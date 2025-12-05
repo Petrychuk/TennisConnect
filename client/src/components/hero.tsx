@@ -1,20 +1,23 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-import heroImage from "@assets/generated_images/dynamic_tennis_ball_on_court_line_with_dramatic_lighting.png";
+import heroImage from "@assets/118174652_3488272227872998_1093348718284959373_n_1764914380008.jpg";
 
 export function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
-      {/* Background Image with Overlay */}
+    <section className="relative min-h-screen flex items-center overflow-hidden pt-16 bg-black">
+      {/* Background Image - Positioned to the right with blending */}
       <div className="absolute inset-0 z-0">
-        <img
-          src={heroImage}
-          alt="Tennis Court"
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
+        <div className="absolute right-0 top-0 bottom-0 w-full md:w-[75%] h-full">
+          <img
+            src={heroImage}
+            alt="Tennis Player"
+            className="w-full h-full object-cover object-center opacity-90"
+          />
+          {/* Gradient Overlay for Text Legibility - Heavy on the left */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
+        </div>
       </div>
 
       {/* Content */}
@@ -32,7 +35,7 @@ export function Hero() {
               </span>
             </div>
             
-            <h1 className="text-4xl md:text-7xl font-display font-bold text-white leading-[1.1] mb-6">
+            <h1 className="text-4xl md:text-7xl font-display font-bold text-white leading-[1.1] mb-6 drop-shadow-xl">
               Find your perfect <br />
               <span className="text-primary relative inline-block">
                 tennis partner
@@ -42,7 +45,7 @@ export function Hero() {
               </span> in Australia
             </h1>
             
-            <p className="text-lg md:text-xl text-gray-200 mb-8 max-w-xl leading-relaxed">
+            <p className="text-lg md:text-xl text-gray-200 mb-8 max-w-xl leading-relaxed drop-shadow-md">
               Join Australia's largest tennis community. Find sparring partners, professional coaches, and book courts across Sydney, Melbourne, and Brisbane.
             </p>
             
