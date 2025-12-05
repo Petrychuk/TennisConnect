@@ -12,11 +12,11 @@ export function Hero() {
           <img
             src={heroImage}
             alt="Tennis Player"
-            className="w-full h-full object-cover object-[50%_0%] opacity-90"
+            className="w-full h-full object-cover object-[50%_0%]"
           />
-          {/* Gradient Overlay for Text Legibility - Heavy on the left */}
-          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/60 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
+          {/* Gradient Overlay for Text Legibility - 50% lighter intensity */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/30 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
         </div>
       </div>
 
