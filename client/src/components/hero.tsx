@@ -12,7 +12,7 @@ export function Hero() {
           <img
             src={heroImage}
             alt="Tennis Player"
-            className="w-full h-full object-cover object-center opacity-90"
+            className="w-full h-full object-cover object-[50%_25%] opacity-90"
           />
           {/* Gradient Overlay for Text Legibility - Heavy on the left */}
           <div className="absolute inset-0 bg-gradient-to-r from-black via-black/60 to-transparent" />
