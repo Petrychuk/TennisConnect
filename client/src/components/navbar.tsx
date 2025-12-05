@@ -8,10 +8,11 @@ export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
 
   const navLinks = [
-    { name: "Партнеры", href: "#partners" },
-    { name: "Тренеры", href: "#coaches" },
-    { name: "Турниры", href: "#tournaments" },
-    { name: "Клубы", href: "#clubs" },
+    { name: "Partners", href: "#partners" },
+    { name: "Coaches", href: "#coaches" },
+    { name: "Marketplace", href: "#marketplace" },
+    { name: "Reviews", href: "#reviews" },
+    { name: "Clubs", href: "#clubs" },
   ];
 
   return (
@@ -41,7 +42,7 @@ export function Navbar() {
         {/* CTA & Mobile Menu */}
         <div className="flex items-center gap-4">
           <Button className="hidden md:inline-flex bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6">
-            Войти
+            Sign In
           </Button>
 
           {/* Mobile Menu */}
@@ -64,7 +65,7 @@ export function Navbar() {
                   </a>
                 ))}
                 <Button className="w-full bg-primary text-primary-foreground font-bold rounded-full">
-                  Войти
+                  Sign In
                 </Button>
               </div>
             </SheetContent>
