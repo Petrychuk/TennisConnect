@@ -17,6 +17,9 @@ import { MARKETPLACE_DATA } from "@/lib/dummy-data";
 
 import heroBg from "@assets/generated_images/clean_modern_tennis_gear_marketplace_header_background.png";
 
+import { Link } from "wouter";
+import { User, ShieldCheck } from "lucide-react";
+
 export default function MarketplacePage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -51,6 +54,8 @@ export default function MarketplacePage() {
             title: item.name, // Normalize name to title
             seller_name: parsed.name,
             seller_email: parsed.email || "coach@tennisconnect.au",
+            seller_id: 1, // Assume current user is ID 1 (coach)
+            seller_type: "coach", // Assume self is coach for now
             isLocal: true
           }));
           allItems = [...userItems, ...allItems];
@@ -212,7 +217,20 @@ export default function MarketplacePage() {
                                 </p>
                                 
                                 <div className="mt-auto pt-4 border-t border-border/50 flex items-center justify-between text-xs text-muted-foreground">
-                                    <span>Seller: {item.seller_name}</span>
+                                    <Link href={item.seller_type === 'coach' ? `/coach/${item.seller_id}` : `#`}>
+                                        <div className="flex items-center gap-2 hover:text-primary transition-colors cursor-pointer group/seller">
+                                            {item.seller_type === 'coach' ? (
+                                                <div className="bg-primary/10 p-1 rounded-full">
+                                                    <ShieldCheck className="w-3 h-3 text-primary" />
+                                                </div>
+                                            ) : (
+                                                <div className="bg-muted p-1 rounded-full">
+                                                    <User className="w-3 h-3" />
+                                                </div>
+                                            )}
+                                            <span className="font-medium group-hover/seller:underline">{item.seller_name}</span>
+                                        </div>
+                                    </Link>
                                 </div>
                             </CardContent>
                             <CardFooter className="p-4 pt-0">

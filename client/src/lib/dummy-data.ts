@@ -123,7 +123,9 @@ export const MARKETPLACE_DATA = [
     location: "Bondi Beach, NSW",
     description: "Classic RF97 Autograph. A few scratches on the bumper but frame is in perfect condition. Freshly strung with Luxilon Alu Power.",
     seller_name: "John D.",
-    seller_email: "john.doe@example.com"
+    seller_email: "john.doe@example.com",
+    seller_id: 2,
+    seller_type: "coach"
   },
   {
     id: 102,
@@ -134,7 +136,9 @@ export const MARKETPLACE_DATA = [
     location: "Surry Hills, NSW",
     description: "Beautiful vintage-style leather bag. Holds 2 rackets and gear. Perfect for the stylish player.",
     seller_name: "Sarah M.",
-    seller_email: "sarah.m@example.com"
+    seller_email: "sarah.m@example.com",
+    seller_id: 3,
+    seller_type: "partner"
   },
   {
     id: 103,
@@ -145,7 +149,9 @@ export const MARKETPLACE_DATA = [
     location: "Manly, NSW",
     description: "Used for one season. Grip size L3. Amazing power and spin. Selling because I switched to Pure Aero.",
     seller_name: "Mike R.",
-    seller_email: "mike.r@example.com"
+    seller_email: "mike.r@example.com",
+    seller_id: 4,
+    seller_type: "coach"
   },
   {
     id: 104,
@@ -156,7 +162,9 @@ export const MARKETPLACE_DATA = [
     location: "Parramatta, NSW",
     description: "Size US 10. Brand new, never worn. Wrong size gift.",
     seller_name: "Alex K.",
-    seller_email: "alex.k@example.com"
+    seller_email: "alex.k@example.com",
+    seller_id: 5,
+    seller_type: "partner"
   },
   {
     id: 105,
@@ -167,7 +175,9 @@ export const MARKETPLACE_DATA = [
     location: "Chatswood, NSW",
     description: "Brand new Head Speed Pro. Unstrung. Grip L2.",
     seller_name: "Jessica L.",
-    seller_email: "jessica.l@example.com"
+    seller_email: "jessica.l@example.com",
+    seller_id: 6,
+    seller_type: "coach"
   },
   {
     id: 106,
@@ -178,6 +188,8 @@ export const MARKETPLACE_DATA = [
     location: "North Sydney, NSW",
     description: "Unopened case of 24 cans. Extra duty felt.",
     seller_name: "Club Pro",
-    seller_email: "proshop@example.com"
+    seller_email: "proshop@example.com",
+    seller_id: 7,
+    seller_type: "partner"
   }
 ];
