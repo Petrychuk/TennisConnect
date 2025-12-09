@@ -48,6 +48,8 @@ import student1 from "@assets/generated_images/portrait_of_a_young_male_tennis_s
 import student2 from "@assets/generated_images/portrait_of_a_female_tennis_student.png";
 import student3 from "@assets/generated_images/portrait_of_an_older_male_tennis_student.png";
 
+import bgImage from "@assets/generated_images/subtle_abstract_tennis-themed_background_with_lime_green_accents.png";
+
 // Default profile for initialization
 const DEFAULT_PROFILE = {
   name: "Nataliia Petrychuk",
@@ -372,10 +374,23 @@ export default function CoachProfile() {
   };
 
   return (
-    <div className="min-h-screen bg-background font-sans">
-      <Navbar />
+    <div className="min-h-screen bg-background font-sans relative">
+      {/* Background Image with Overlay */}
+      <div 
+        className="fixed inset-0 z-0 pointer-events-none opacity-[0.15]" 
+        style={{
+          backgroundImage: `url(${bgImage})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundAttachment: 'fixed',
+          mixBlendMode: 'multiply'
+        }}
+      />
       
-      <main className="pb-24">
+      <div className="relative z-10">
+        <Navbar />
+      
+        <main className="pb-24">
         {/* Hidden File Inputs */}
         <input 
           type="file" 
@@ -1270,6 +1285,7 @@ export default function CoachProfile() {
       </main>
 
       <Footer />
+      </div>
     </div>
   );
 }
