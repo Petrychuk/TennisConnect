@@ -38,6 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null);
     localStorage.removeItem("tennis_connect_user");
+    localStorage.removeItem("tennis_connect_coach_profile"); // Clear profile data on logout to prevent mixing users
   };
 
   const updateUser = (updates: Partial<User>) => {

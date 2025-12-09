@@ -54,7 +54,15 @@ export default function CoachProfile() {
     const savedProfile = localStorage.getItem("tennis_connect_coach_profile");
     if (savedProfile) {
       try {
-        setProfile(JSON.parse(savedProfile));
+        const parsedProfile = JSON.parse(savedProfile);
+        
+        // Sync with auth user data if available to ensure consistency
+        if (user) {
+           if (user.name) parsedProfile.name = user.name;
+           if (user.avatar) parsedProfile.avatar = user.avatar;
+        }
+        
+        setProfile(parsedProfile);
       } catch (e) {
         console.error("Failed to parse profile", e);
       }
