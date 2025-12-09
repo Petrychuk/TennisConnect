@@ -57,7 +57,7 @@ export default function AuthPage() {
       const role = data.email.includes("coach") ? "coach" : "coach"; // Default to coach for demo convenience
       
       login({
-        name: "Sarah Thompson",
+        name: "Nataliia Petrychuk",
         email: data.email,
         role: role,
         avatar: "https://images.unsplash.com/photo-1605218427368-35b868661705?w=400&h=400&fit=crop"
