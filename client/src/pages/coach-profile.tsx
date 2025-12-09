@@ -83,21 +83,21 @@ export default function CoachProfile() {
           />
           <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-background to-transparent z-20" />
           
-          <div className="absolute bottom-6 right-6 z-30">
+          <div className="absolute bottom-6 right-6 z-50">
              {isEditing ? (
-               <Button onClick={handleSave} className="bg-primary text-primary-foreground font-bold shadow-lg gap-2">
+               <Button onClick={handleSave} className="bg-primary text-primary-foreground font-bold shadow-lg gap-2 cursor-pointer relative z-50 pointer-events-auto">
                  <Save className="w-4 h-4" /> Save Profile
                </Button>
              ) : (
-               <Button onClick={() => setIsEditing(true)} variant="secondary" className="bg-white/10 backdrop-blur-md text-white border border-white/20 hover:bg-white/20 font-bold shadow-lg gap-2">
+               <Button onClick={() => setIsEditing(true)} variant="secondary" className="bg-white/10 backdrop-blur-md text-white border border-white/20 hover:bg-white/20 font-bold shadow-lg gap-2 cursor-pointer relative z-50 pointer-events-auto">
                  <Edit2 className="w-4 h-4" /> Edit Profile
                </Button>
              )}
           </div>
         </div>
 
-        <div className="container mx-auto px-4 relative z-30 -mt-20">
-          <div className="flex flex-col md:flex-row gap-8 items-start">
+        <div className="container mx-auto px-4 relative z-40 -mt-20 pointer-events-none">
+          <div className="flex flex-col md:flex-row gap-8 items-start pointer-events-auto">
             {/* Avatar Column */}
             <div className="flex-shrink-0 relative">
               <div className="w-32 h-32 md:w-48 md:h-48 rounded-full border-4 border-background shadow-2xl overflow-hidden bg-muted relative group">
