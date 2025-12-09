@@ -126,6 +126,7 @@ export default function CoachesPage() {
               rate: parsedProfile.rate ? parseInt(parsedProfile.rate) : newCoaches[0].rate,
               experience: parsedProfile.experience ? `${parsedProfile.experience} years` : newCoaches[0].experience,
               image: parsedProfile.avatar || newCoaches[0].image,
+              tags: parsedProfile.tags || newCoaches[0].tags,
             };
             return newCoaches;
           });

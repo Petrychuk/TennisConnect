@@ -29,6 +29,7 @@ const DEFAULT_PROFILE = {
   rate: "90",
   experience: "10",
   locations: ["Manly", "Mosman", "Freshwater", "Brookvale"],
+  tags: ["High Performance", "Kids", "Technique"],
   photos: [gallery1, gallery2],
   avatar: avatarImage,
   cover: heroImage
@@ -412,6 +413,61 @@ export default function CoachProfile() {
                          </CardContent>
                        </Card>
                     </div>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Specialties (Tags)</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex flex-wrap gap-2">
+                          {profile.tags.map((tag) => (
+                            <Badge key={tag} variant="secondary" className="px-3 py-1.5 text-sm flex gap-2">
+                              {tag}
+                              {isEditing && (
+                                <button 
+                                  onClick={() => setProfile({...profile, tags: profile.tags.filter(t => t !== tag)})}
+                                  className="ml-1 hover:text-destructive"
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </Badge>
+                          ))}
+                          
+                          {isEditing && (
+                            <div className="flex items-center gap-2">
+                              <Input 
+                                className="w-[150px] h-8" 
+                                placeholder="Add tag..." 
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    const val = e.currentTarget.value.trim();
+                                    if (val && !profile.tags.includes(val)) {
+                                      setProfile({...profile, tags: [...profile.tags, val]});
+                                      e.currentTarget.value = '';
+                                    }
+                                    e.preventDefault();
+                                  }
+                                }}
+                              />
+                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => {
+                                // Find the input and trigger logic (simplified for prototype)
+                                const input = document.querySelector('input[placeholder="Add tag..."]') as HTMLInputElement;
+                                if (input) {
+                                  const val = input.value.trim();
+                                  if (val && !profile.tags.includes(val)) {
+                                    setProfile({...profile, tags: [...profile.tags, val]});
+                                    input.value = '';
+                                  }
+                                }
+                              }}>
+                                <Plus className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
                   </TabsContent>
 
                   <TabsContent value="photos" className="mt-0">
