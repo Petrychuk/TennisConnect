@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/navbar";
@@ -17,10 +17,10 @@ import {
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Search, MapPin, Star, Filter, ArrowRight, DollarSign } from "lucide-react";
-import heroImage from "@assets/118174652_3488272227872998_1093348718284959373_n_1764914380008.jpg";
+import heroImage from "@assets/generated_images/professional_tennis_coaching_session_on_a_sunny_court.png";
 
 // Mock Data for Coaches
-const COACHES = [
+const INITIAL_COACHES = [
   {
     id: 1,
     name: "Sarah Thompson",
@@ -98,8 +98,38 @@ const COACHES = [
 export default function CoachesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [locationFilter, setLocationFilter] = useState("all");
+  const [coaches, setCoaches] = useState(INITIAL_COACHES);
 
-  const filteredCoaches = COACHES.filter(coach => {
+  useEffect(() => {
+    // Check local storage for dynamic coach profile
+    const savedProfile = localStorage.getItem("tennis_connect_coach_profile");
+    if (savedProfile) {
+      try {
+        const parsedProfile = JSON.parse(savedProfile);
+        
+        // Update the first coach in the list with the user's actual profile
+        setCoaches(prevCoaches => {
+          const newCoaches = [...prevCoaches];
+          // Assuming the first coach is the "current user" placeholder
+          newCoaches[0] = {
+            ...newCoaches[0],
+            name: parsedProfile.name || newCoaches[0].name,
+            title: parsedProfile.title || newCoaches[0].title,
+            location: parsedProfile.locations?.[0] || parsedProfile.location || newCoaches[0].location,
+            rate: parsedProfile.rate ? parseInt(parsedProfile.rate) : newCoaches[0].rate,
+            experience: parsedProfile.experience ? `${parsedProfile.experience} years` : newCoaches[0].experience,
+            image: parsedProfile.avatar || newCoaches[0].image,
+            // Keep existing tags or update if needed
+          };
+          return newCoaches;
+        });
+      } catch (e) {
+        console.error("Failed to parse local profile for coaches list", e);
+      }
+    }
+  }, []);
+
+  const filteredCoaches = coaches.filter(coach => {
     const matchesSearch = coach.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           coach.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesLocation = locationFilter === "all" || coach.location === locationFilter;
