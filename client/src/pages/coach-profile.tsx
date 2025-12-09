@@ -80,7 +80,8 @@ const DEFAULT_PROFILE = {
   hours_taught: "150+",
   attendance: 100,
   phone: "",
-  email: ""
+  email: "",
+  marketplace: [] as any[]
 };
 
 // Top 10 Popular Locations
@@ -112,6 +113,10 @@ import { useRoute } from "wouter";
 
 import { Switch } from "@/components/ui/switch";
 
+import racketImg from "@assets/generated_images/professional_tennis_racket_on_a_court_bench.png";
+import bagImg from "@assets/generated_images/modern_tennis_gear_bag.png";
+import ballsImg from "@assets/generated_images/can_of_new_tennis_balls.png";
+
 export default function CoachProfile() {
   const [match, params] = useRoute("/coach/:id");
   const profileId = params?.id;
@@ -128,8 +133,29 @@ export default function CoachProfile() {
   const [isEditing, setIsEditing] = useState(false);
   const [openCombobox, setOpenCombobox] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [isItemModalOpen, setIsItemModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
+  const [selectedBuyItem, setSelectedBuyItem] = useState<any>(null);
   const { toast } = useToast();
   
+  // Marketplace Form State
+  const [newItem, setNewItem] = useState({
+    id: Date.now(),
+    name: "",
+    price: "",
+    condition: "Used - Good",
+    location: "",
+    description: "",
+    photos: [] as string[]
+  });
+
+  // Buy Form State
+  const [buyName, setBuyName] = useState("");
+  const [buyEmail, setBuyEmail] = useState("");
+  const [buyPhone, setBuyPhone] = useState("");
+  const [buyMessage, setBuyMessage] = useState("");
+
   // Contact Form State
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
@@ -191,7 +217,8 @@ export default function CoachProfile() {
                  hours_taught: parsed.hours_taught || DEFAULT_PROFILE.hours_taught,
                  attendance: parsed.attendance || DEFAULT_PROFILE.attendance,
                  phone: parsed.phone || DEFAULT_PROFILE.phone,
-                 email: parsed.email || (profileId === "1" ? "nataliia.petrychuk@gmail.com" : DEFAULT_PROFILE.email)
+                 email: parsed.email || (profileId === "1" ? "nataliia.petrychuk@gmail.com" : DEFAULT_PROFILE.email),
+                 marketplace: parsed.marketplace || DEFAULT_PROFILE.marketplace
                };
              } catch (e) {
                console.error("Failed to sync guest view with local storage", e);
@@ -219,7 +246,8 @@ export default function CoachProfile() {
             hours_taught: DEFAULT_PROFILE.hours_taught,
             attendance: DEFAULT_PROFILE.attendance,
             phone: DEFAULT_PROFILE.phone,
-            email: (isOwnProfile && user?.email) ? user.email : DEFAULT_PROFILE.email
+            email: (isOwnProfile && user?.email) ? user.email : DEFAULT_PROFILE.email,
+            marketplace: DEFAULT_PROFILE.marketplace
         });
       }
       return;
@@ -265,6 +293,86 @@ export default function CoachProfile() {
   const availableLocations = [
     "Bondi Beach", "Manly", "Surry Hills", "Mosman", "Coogee", "Parramatta", "Chatswood", "Newtown", "Freshwater", "Brookvale"
   ];
+
+  const handleAddItem = () => {
+    if (!newItem.name || !newItem.price) {
+      toast({
+         variant: "destructive",
+         title: "Missing Information",
+         description: "Please provide at least a name and price for the item."
+      });
+      return;
+    }
+
+    const itemToAdd = {
+      ...newItem,
+      id: Date.now(),
+      photos: newItem.photos.length > 0 ? newItem.photos : [racketImg] // Fallback image
+    };
+
+    setProfile(prev => ({
+      ...prev,
+      marketplace: [...(prev.marketplace || []), itemToAdd]
+    }));
+
+    setIsItemModalOpen(false);
+    setNewItem({
+        id: Date.now(),
+        name: "",
+        price: "",
+        condition: "Used - Good",
+        location: profile.location,
+        description: "",
+        photos: []
+    });
+
+    toast({ title: "Item Listed", description: "Your item is now available in the marketplace." });
+  };
+
+  const handleDeleteItem = (id: number) => {
+    setProfile(prev => ({
+      ...prev,
+      marketplace: prev.marketplace.filter(item => item.id !== id)
+    }));
+  };
+
+  const handleBuyRequest = () => {
+     if (!buyName || (!buyEmail && !buyPhone)) {
+        toast({
+          variant: "destructive",
+          title: "Missing Contact Info",
+          description: "Please provide your name and either email or phone number."
+        });
+        return;
+     }
+
+     setIsBuyModalOpen(false);
+     toast({
+       title: "Order Request Sent!",
+       description: `A request for "${selectedBuyItem?.name}" has been sent to the coach. They will contact you shortly.`
+     });
+     
+     // Reset form
+     setBuyName("");
+     setBuyEmail("");
+     setBuyPhone("");
+     setBuyMessage("");
+  };
+
+  const handleItemPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        const result = await resizeImage(file);
+        setNewItem(prev => ({
+          ...prev,
+          photos: [...prev.photos, result].slice(0, 3) // Max 3 photos
+        }));
+      } catch (err) {
+        console.error("Failed to upload item photo", err);
+      }
+    }
+  };
 
   const handleContactSubmit = () => {
     if (!contactName || !contactEmail || !contactMessage) {
@@ -1149,29 +1257,250 @@ export default function CoachProfile() {
                           <ShoppingBag className="w-5 h-5 text-primary" />
                           Coach's Marketplace
                         </CardTitle>
-                        {isEditing && (
-                          <Button size="sm" variant="outline" className="gap-2">
+                        {isEditing && (profile.marketplace?.length || 0) < 3 && (
+                          <Button size="sm" variant="outline" className="gap-2" onClick={() => setIsItemModalOpen(true)}>
                             <Plus className="w-4 h-4" /> Add Item
                           </Button>
                         )}
                       </CardHeader>
                       <CardContent>
-                        <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-muted rounded-xl bg-muted/20">
-                          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                            <ShoppingBag className="w-8 h-8 text-muted-foreground" />
-                          </div>
-                          <h3 className="text-lg font-bold mb-2">No items for sale yet</h3>
-                          <p className="text-muted-foreground max-w-sm mb-6">
-                            {isEditing 
-                              ? "You haven't listed any items in your marketplace. Add rackets, gear, or training packages to sell." 
-                              : "This coach hasn't listed any items for sale yet. Check back later!"}
-                          </p>
-                          {isEditing && (
-                            <Button className="font-bold">List Your First Item</Button>
-                          )}
-                        </div>
+                        {(profile.marketplace?.length || 0) === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-muted rounded-xl bg-muted/20">
+                              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                                <ShoppingBag className="w-8 h-8 text-muted-foreground" />
+                              </div>
+                              <h3 className="text-lg font-bold mb-2">No items for sale yet</h3>
+                              <p className="text-muted-foreground max-w-sm mb-6">
+                                {isEditing 
+                                  ? "You haven't listed any items in your marketplace. Add rackets, gear, or training packages to sell." 
+                                  : "This coach hasn't listed any items for sale yet. Check back later!"}
+                              </p>
+                              {isEditing && (
+                                <Button className="font-bold" onClick={() => setIsItemModalOpen(true)}>List Your First Item</Button>
+                              )}
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {profile.marketplace.map((item) => (
+                                    <div key={item.id} className="group border rounded-xl overflow-hidden bg-card hover:shadow-lg transition-all duration-300 flex flex-col">
+                                        <div className="aspect-[4/3] bg-muted relative overflow-hidden">
+                                            <img 
+                                              src={item.photos?.[0] || racketImg} 
+                                              alt={item.name} 
+                                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                                            />
+                                            <div className="absolute top-2 right-2 flex gap-2">
+                                               <Badge className="bg-black/70 backdrop-blur-sm text-white hover:bg-black/80">{item.condition}</Badge>
+                                            </div>
+                                            {isEditing && (
+                                                <Button 
+                                                  variant="destructive" 
+                                                  size="icon" 
+                                                  className="absolute top-2 left-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                  onClick={() => handleDeleteItem(item.id)}
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </Button>
+                                            )}
+                                        </div>
+                                        <div className="p-4 flex flex-col flex-grow">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <h3 className="font-bold text-lg leading-tight line-clamp-2">{item.name}</h3>
+                                                <span className="font-bold text-lg text-primary whitespace-nowrap ml-2">${item.price}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1 text-xs text-muted-foreground mb-3">
+                                                <MapPin className="w-3 h-3" /> {item.location || profile.location}
+                                            </div>
+                                            <p className="text-sm text-muted-foreground line-clamp-2 mb-4 flex-grow">
+                                                {item.description}
+                                            </p>
+                                            <Button className="w-full font-bold mt-auto" onClick={() => {
+                                                setSelectedBuyItem(item);
+                                                setIsBuyModalOpen(true);
+                                                // Pre-fill user data if logged in
+                                                if (user) {
+                                                    setBuyName(user.name || "");
+                                                    setBuyEmail(user.email || "");
+                                                }
+                                            }}>
+                                                Buy / Order
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {isEditing && (profile.marketplace?.length || 0) < 3 && (
+                                    <div 
+                                      className="border-2 border-dashed border-muted rounded-xl flex flex-col items-center justify-center p-6 text-center cursor-pointer hover:bg-muted/10 hover:border-primary/50 transition-colors min-h-[300px]"
+                                      onClick={() => setIsItemModalOpen(true)}
+                                    >
+                                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-3">
+                                            <Plus className="w-6 h-6" />
+                                        </div>
+                                        <h3 className="font-bold">Add Another Item</h3>
+                                        <p className="text-sm text-muted-foreground mt-1">You can list up to 3 items</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                       </CardContent>
                     </Card>
+
+                    {/* Add Item Modal */}
+                    <Dialog open={isItemModalOpen} onOpenChange={setIsItemModalOpen}>
+                        <DialogContent className="max-w-lg">
+                            <DialogHeader>
+                                <DialogTitle>List an Item for Sale</DialogTitle>
+                                <DialogDescription>Add gear, rackets, or accessories to your marketplace.</DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-2">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Product Name</Label>
+                                        <Input 
+                                          placeholder="e.g. Wilson Pro Staff" 
+                                          value={newItem.name}
+                                          onChange={(e) => setNewItem({...newItem, name: e.target.value})}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Price (AUD)</Label>
+                                        <Input 
+                                          placeholder="150" 
+                                          type="number"
+                                          value={newItem.price}
+                                          onChange={(e) => setNewItem({...newItem, price: e.target.value})}
+                                        />
+                                    </div>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Condition</Label>
+                                        <Select 
+                                          value={newItem.condition} 
+                                          onValueChange={(val) => setNewItem({...newItem, condition: val})}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="New">New</SelectItem>
+                                                <SelectItem value="Used - Like New">Used - Like New</SelectItem>
+                                                <SelectItem value="Used - Good">Used - Good</SelectItem>
+                                                <SelectItem value="Used - Fair">Used - Fair</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Location</Label>
+                                        <Input 
+                                          placeholder="Pickup location" 
+                                          value={newItem.location}
+                                          onChange={(e) => setNewItem({...newItem, location: e.target.value})}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label>Description</Label>
+                                    <Textarea 
+                                      placeholder="Describe the item condition, specs, etc." 
+                                      className="min-h-[80px]"
+                                      value={newItem.description}
+                                      onChange={(e) => setNewItem({...newItem, description: e.target.value})}
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label>Photos (Max 3)</Label>
+                                    <div className="flex gap-2">
+                                        {newItem.photos.map((photo, i) => (
+                                            <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border">
+                                                <img src={photo} className="w-full h-full object-cover" />
+                                                <button 
+                                                  className="absolute top-0 right-0 bg-red-500 text-white p-0.5 rounded-bl"
+                                                  onClick={() => setNewItem({...newItem, photos: newItem.photos.filter((_, idx) => idx !== i)})}
+                                                >
+                                                    <X className="w-3 h-3" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                        {newItem.photos.length < 3 && (
+                                            <label className="w-20 h-20 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
+                                                <Camera className="w-6 h-6 text-muted-foreground" />
+                                                <span className="text-[10px] text-muted-foreground mt-1">Add</span>
+                                                <input type="file" className="hidden" accept="image/*" onChange={handleItemPhotoUpload} />
+                                            </label>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setIsItemModalOpen(false)}>Cancel</Button>
+                                <Button onClick={handleAddItem} className="font-bold">List Item</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+
+                    {/* Buy Item Modal */}
+                    <Dialog open={isBuyModalOpen} onOpenChange={setIsBuyModalOpen}>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Order Request: {selectedBuyItem?.name}</DialogTitle>
+                                <DialogDescription>
+                                    Send a request to {profile.name} to purchase this item.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-2">
+                                <div className="p-3 bg-muted/30 rounded-lg flex gap-3 items-center border">
+                                    <img src={selectedBuyItem?.photos?.[0] || racketImg} className="w-16 h-16 rounded object-cover bg-muted" />
+                                    <div>
+                                        <p className="font-bold">{selectedBuyItem?.name}</p>
+                                        <p className="text-primary font-bold">${selectedBuyItem?.price}</p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label>Your Name</Label>
+                                    <Input 
+                                      value={buyName} 
+                                      onChange={(e) => setBuyName(e.target.value)} 
+                                      placeholder="John Doe"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Email</Label>
+                                        <Input 
+                                          value={buyEmail} 
+                                          onChange={(e) => setBuyEmail(e.target.value)} 
+                                          placeholder="john@example.com"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Phone</Label>
+                                        <Input 
+                                          value={buyPhone} 
+                                          onChange={(e) => setBuyPhone(e.target.value)} 
+                                          placeholder="04XX XXX XXX"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Message</Label>
+                                    <Textarea 
+                                      value={buyMessage} 
+                                      onChange={(e) => setBuyMessage(e.target.value)} 
+                                      placeholder="Hi, is this still available? When can I pick it up?" 
+                                    />
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setIsBuyModalOpen(false)}>Cancel</Button>
+                                <Button onClick={handleBuyRequest} className="font-bold bg-primary text-primary-foreground">Send Request</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                   </TabsContent>
 
                   <TabsContent value="contact" className="mt-0">
