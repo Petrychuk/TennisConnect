@@ -44,6 +44,11 @@ export function Navbar() {
 
         {/* CTA & Mobile Menu */}
         <div className="flex items-center gap-4">
+          <Link href="/coach/profile">
+            <Button variant="ghost" className="hidden md:inline-flex font-bold hover:text-primary">
+              My Profile
+            </Button>
+          </Link>
           <Link href="/auth">
             <Button className="hidden md:inline-flex bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6">
               Sign In
@@ -69,6 +74,11 @@ export function Navbar() {
                     {link.name}
                   </a>
                 ))}
+                <Link href="/coach/profile" onClick={() => setIsOpen(false)}>
+                  <Button variant="outline" className="w-full font-bold rounded-full">
+                    My Profile
+                  </Button>
+                </Link>
                 <Link href="/auth" onClick={() => setIsOpen(false)}>
                   <Button className="w-full bg-primary text-primary-foreground font-bold rounded-full">
                     Sign In

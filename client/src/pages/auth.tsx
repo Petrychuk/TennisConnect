@@ -56,7 +56,8 @@ export default function AuthPage() {
         title: "Welcome back!",
         description: "You have successfully signed in.",
       });
-      setLocation("/");
+      // Redirect to coach profile for demo purposes
+      setLocation("/coach/profile");
     }, 1500);
   };
 
