@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Camera, Edit2, Save, Plus, Trophy, Clock, DollarSign, X } from "lucide-react";
+import { MapPin, Camera, Edit2, Save, Plus, Trophy, Clock, DollarSign, X, ShoppingBag, Mail, Phone, MessageCircle, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { useLocation } from "wouter";
@@ -331,6 +331,8 @@ export default function CoachProfile() {
                 <TabsTrigger value="about" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">About</TabsTrigger>
                 <TabsTrigger value="photos" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Photos</TabsTrigger>
                 <TabsTrigger value="schedule" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Schedule & Locations</TabsTrigger>
+                <TabsTrigger value="marketplace" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Marketplace</TabsTrigger>
+                <TabsTrigger value="contact" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Contact</TabsTrigger>
               </TabsList>
 
               <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -493,6 +495,92 @@ export default function CoachProfile() {
                          </div>
                        </CardContent>
                      </Card>
+                  </TabsContent>
+
+                  <TabsContent value="marketplace" className="mt-0">
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between">
+                        <CardTitle className="flex items-center gap-2">
+                          <ShoppingBag className="w-5 h-5 text-primary" />
+                          Coach's Marketplace
+                        </CardTitle>
+                        {isEditing && (
+                          <Button size="sm" variant="outline" className="gap-2">
+                            <Plus className="w-4 h-4" /> Add Item
+                          </Button>
+                        )}
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-muted rounded-xl bg-muted/20">
+                          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                            <ShoppingBag className="w-8 h-8 text-muted-foreground" />
+                          </div>
+                          <h3 className="text-lg font-bold mb-2">No items for sale yet</h3>
+                          <p className="text-muted-foreground max-w-sm mb-6">
+                            {isEditing 
+                              ? "You haven't listed any items in your marketplace. Add rackets, gear, or training packages to sell." 
+                              : "This coach hasn't listed any items for sale yet. Check back later!"}
+                          </p>
+                          {isEditing && (
+                            <Button className="font-bold">List Your First Item</Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent value="contact" className="mt-0">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <MessageCircle className="w-5 h-5 text-primary" />
+                          Get in Touch
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="flex items-center gap-3 p-4 rounded-lg bg-primary/5 border border-primary/10">
+                            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-primary shadow-sm">
+                              <Phone className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Phone Number</p>
+                              <p className="font-bold text-lg">+61 4XX XXX XXX</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 p-4 rounded-lg bg-primary/5 border border-primary/10">
+                            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-primary shadow-sm">
+                              <Mail className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Email Address</p>
+                              <p className="font-bold text-lg">Show Email</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4 pt-4 border-t">
+                          <h3 className="font-bold text-lg">Send a Message</h3>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Your Name</Label>
+                              <Input placeholder="John Doe" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Your Email</Label>
+                              <Input placeholder="john@example.com" />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Message</Label>
+                            <Textarea placeholder="Hi, I'm interested in booking a lesson..." className="min-h-[120px]" />
+                          </div>
+                          <Button className="w-full font-bold gap-2">
+                            <Send className="w-4 h-4" /> Send Message
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </TabsContent>
                 </div>
 
