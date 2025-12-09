@@ -23,10 +23,10 @@ import gallery2 from "@assets/generated_images/tennis_match_action_shot_in_sydne
 // Default profile for initialization
 const DEFAULT_PROFILE = {
   name: "Nataliia Petrychuk",
-  title: "Tennis Coach (ITF Level 2)",
+  title: "Tennis Coach | Beginner & Intermediate Specialist",
   location: "Manly, Sydney",
-  bio: "Professional tennis coach with a background in competitive play on the WTA tour. With over a decade of experience, I am dedicated to nurturing the next generation of tennis talent. My expertise lies in high-performance training for juniors and advanced players, emphasizing biomechanics, mental toughness, and strategic match play to help athletes reach their full potential.",
-  rate: "90",
+  bio: "Passionate tennis coach dedicated to helping beginners and intermediate players fall in love with the game. I actively compete in local amateur tournaments, so I understand the journey of improving your game firsthand. My sessions focus on building solid fundamentals, improving consistency, and most importantly - having fun on the court! Whether you're just starting out or looking to level up your rally game, I'd love to help you reach your goals.",
+  rate: "70",
   experience: "10",
   locations: ["Manly", "Mosman", "Freshwater", "Brookvale"],
   tags: ["High Performance", "Kids", "Technique"],
