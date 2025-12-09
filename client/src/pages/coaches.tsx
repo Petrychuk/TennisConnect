@@ -214,8 +214,8 @@ export default function CoachesPage() {
 
         {/* Filter & Search Bar - Floating */}
         <div className="container mx-auto px-4 -mt-8 relative z-20 mb-16">
-          <div className="bg-card border border-border/50 shadow-xl rounded-2xl p-4 md:p-6 flex flex-col md:flex-row gap-4 items-center">
-            <div className="relative flex-grow w-full md:w-auto">
+          <div className="bg-card border border-border/50 shadow-xl rounded-2xl p-4 md:p-6 flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="relative w-full md:w-[400px] lg:w-[500px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
               <Input 
                 placeholder="Search by name or specialty..." 
@@ -253,7 +253,7 @@ export default function CoachesPage() {
                     )}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-80 p-6 space-y-6" align="start">
+                <PopoverContent className="w-96 p-6 space-y-6" align="end">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <h4 className="font-bold leading-none">Price Range</h4>
@@ -283,7 +283,7 @@ export default function CoachesPage() {
                           variant={minRating === rating ? "default" : "outline"}
                           size="sm"
                           onClick={() => setMinRating(minRating === rating ? 0 : rating)}
-                          className="flex-1 cursor-pointer"
+                          className="flex-1 cursor-pointer px-2"
                         >
                           {rating}+ <Star className="w-3 h-3 ml-1 fill-current" />
                         </Button>
