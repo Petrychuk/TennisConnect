@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/navbar";
@@ -14,9 +14,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, MapPin, Star, Filter, ArrowRight, DollarSign } from "lucide-react";
+import { Search, MapPin, Star, Filter, ArrowRight, DollarSign, X } from "lucide-react";
 import heroImage from "@assets/generated_images/professional_tennis_coaching_session_on_a_sunny_court.png";
 import avatarImage from "@assets/generated_images/female_tennis_coach_portrait.png";
 
@@ -99,6 +104,8 @@ const INITIAL_COACHES = [
 export default function CoachesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [locationFilter, setLocationFilter] = useState("all");
+  const [priceRange, setPriceRange] = useState([150]); // Max price
+  const [minRating, setMinRating] = useState(0);
   const [coaches, setCoaches] = useState(INITIAL_COACHES);
 
   useEffect(() => {
@@ -143,12 +150,30 @@ export default function CoachesPage() {
     };
   }, []);
 
+  // Dynamically get all unique locations from coaches
+  const uniqueLocations = useMemo(() => {
+    const locations = coaches.map(coach => coach.location).filter(Boolean);
+    return Array.from(new Set(locations)).sort();
+  }, [coaches]);
+
   const filteredCoaches = coaches.filter(coach => {
     const matchesSearch = coach.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           coach.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesLocation = locationFilter === "all" || coach.location === locationFilter;
-    return matchesSearch && matchesLocation;
+    const matchesPrice = coach.rate <= priceRange[0];
+    const matchesRating = coach.rating >= minRating;
+    
+    return matchesSearch && matchesLocation && matchesPrice && matchesRating;
   });
+
+  const activeFiltersCount = (locationFilter !== "all" ? 1 : 0) + (priceRange[0] < 150 ? 1 : 0) + (minRating > 0 ? 1 : 0);
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setLocationFilter("all");
+    setPriceRange([150]);
+    setMinRating(0);
+  };
 
   return (
     <div className="min-h-screen bg-background font-sans">
@@ -174,7 +199,7 @@ export default function CoachesPage() {
               transition={{ duration: 0.6 }}
               className="max-w-3xl"
             >
-              <Badge className="mb-6 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-1.5 text-sm font-bold uppercase tracking-wider">
+              <Badge className="mb-6 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-1.5 text-sm font-bold uppercase tracking-wider cursor-default">
                 Find Your Coach
               </Badge>
               <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold leading-tight mb-6">
@@ -190,39 +215,105 @@ export default function CoachesPage() {
         {/* Filter & Search Bar - Floating */}
         <div className="container mx-auto px-4 -mt-8 relative z-20 mb-16">
           <div className="bg-card border border-border/50 shadow-xl rounded-2xl p-4 md:p-6 flex flex-col md:flex-row gap-4 items-center">
-            <div className="relative flex-grow w-full md:w-auto">
+            <div className="relative w-full md:w-[320px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
               <Input 
                 placeholder="Search by name or specialty..." 
-                className="pl-10 h-12 text-lg bg-background"
+                className="pl-10 h-12 text-lg bg-background w-full"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             
-            <div className="flex w-full md:w-auto gap-4">
+            <div className="flex flex-col md:flex-row w-full gap-4">
               <Select value={locationFilter} onValueChange={setLocationFilter}>
-                <SelectTrigger className="w-full md:w-[200px] h-12 bg-background">
+                <SelectTrigger className="w-full md:w-[200px] h-12 bg-background cursor-pointer">
                   <div className="flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-primary" />
                     <SelectValue placeholder="Location" />
                   </div>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Sydney</SelectItem>
-                  <SelectItem value="Northern Beaches">Northern Beaches</SelectItem>
-                  <SelectItem value="Sydney CBD">Sydney CBD</SelectItem>
-                  <SelectItem value="Eastern Suburbs">Eastern Suburbs</SelectItem>
-                  <SelectItem value="Inner West">Inner West</SelectItem>
-                  <SelectItem value="North Shore">North Shore</SelectItem>
-                  <SelectItem value="Sutherland Shire">Sutherland Shire</SelectItem>
+                  <SelectItem value="all" className="cursor-pointer">All Sydney</SelectItem>
+                  {uniqueLocations.map(loc => (
+                    <SelectItem key={loc} value={loc} className="cursor-pointer">{loc}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 
-              <Button variant="outline" className="h-12 w-12 md:w-auto px-0 md:px-4 flex-shrink-0 bg-background">
-                <Filter className="w-5 h-5 md:mr-2" />
-                <span className="hidden md:inline">Filters</span>
-              </Button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={`h-12 w-full md:w-auto px-4 flex-shrink-0 bg-background cursor-pointer ${activeFiltersCount > 0 ? 'border-primary text-primary' : ''}`}>
+                    <Filter className="w-5 h-5 mr-2" />
+                    Filters
+                    {activeFiltersCount > 0 && (
+                      <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px]">
+                        {activeFiltersCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-6 space-y-6" align="start">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-bold leading-none">Price Range</h4>
+                      <span className="text-sm text-muted-foreground">Up to ${priceRange[0]}/hr</span>
+                    </div>
+                    <Slider
+                      defaultValue={[150]}
+                      max={200}
+                      step={10}
+                      value={priceRange}
+                      onValueChange={setPriceRange}
+                      className="cursor-pointer"
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>$0</span>
+                      <span>$100</span>
+                      <span>$200+</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h4 className="font-bold leading-none">Minimum Rating</h4>
+                    <div className="flex gap-2">
+                      {[4, 4.5, 4.8, 5].map((rating) => (
+                        <Button
+                          key={rating}
+                          variant={minRating === rating ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setMinRating(minRating === rating ? 0 : rating)}
+                          className="flex-1 cursor-pointer"
+                        >
+                          {rating}+ <Star className="w-3 h-3 ml-1 fill-current" />
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {activeFiltersCount > 0 && (
+                     <Button 
+                       variant="ghost" 
+                       size="sm" 
+                       onClick={clearFilters}
+                       className="w-full text-muted-foreground hover:text-destructive cursor-pointer"
+                     >
+                       Clear all filters
+                     </Button>
+                  )}
+                </PopoverContent>
+              </Popover>
+
+              {activeFiltersCount > 0 && (
+                <Button 
+                  variant="ghost" 
+                  onClick={clearFilters}
+                  className="h-12 hidden md:flex text-muted-foreground hover:text-destructive cursor-pointer"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Clear
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -238,7 +329,7 @@ export default function CoachesPage() {
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
               >
-                <Card className="h-full overflow-hidden hover:shadow-lg transition-shadow duration-300 border-border/60 group">
+                <Card className="h-full overflow-hidden hover:shadow-lg transition-shadow duration-300 border-border/60 group cursor-pointer">
                   {/* Card Header with Image */}
                   <div className="relative h-64 overflow-hidden">
                     <img 
@@ -293,7 +384,7 @@ export default function CoachesPage() {
 
                   <CardFooter className="pt-0">
                     <Link href="/coach/profile">
-                      <Button className="w-full font-bold group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                      <Button className="w-full font-bold group-hover:bg-primary group-hover:text-primary-foreground transition-all cursor-pointer">
                         View Profile <ArrowRight className="w-4 h-4 ml-2" />
                       </Button>
                     </Link>
@@ -309,8 +400,8 @@ export default function CoachesPage() {
               <p className="text-muted-foreground">Try adjusting your search or filters to find more coaches.</p>
               <Button 
                 variant="link" 
-                onClick={() => {setSearchTerm(""); setLocationFilter("all")}}
-                className="mt-4 text-primary"
+                onClick={clearFilters}
+                className="mt-4 text-primary cursor-pointer"
               >
                 Clear all filters
               </Button>
