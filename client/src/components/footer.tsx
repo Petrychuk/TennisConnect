@@ -18,8 +18,8 @@ export function Footer() {
             <h4 className="font-bold text-lg mb-6">Platform</h4>
             <ul className="space-y-3 text-gray-400">
               <li><a href="#" className="hover:text-primary transition-colors">Find Partners</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Coaches</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Marketplace</a></li>
+              <li><Link href="/coaches" className="hover:text-primary transition-colors">Coaches</Link></li>
+              <li><Link href="/marketplace" className="hover:text-primary transition-colors">Marketplace</Link></li>
               <li><a href="#" className="hover:text-primary transition-colors">Tournaments</a></li>
             </ul>
           </div>

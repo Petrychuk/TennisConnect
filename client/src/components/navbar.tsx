@@ -22,7 +22,7 @@ export function Navbar() {
   const navLinks = [
     { name: "Partners", href: "/#partners" },
     { name: "Coaches", href: "/coaches" },
-    { name: "Marketplace", href: "/#marketplace" },
+    { name: "Marketplace", href: "/marketplace" },
     { name: "Reviews", href: "/#reviews" },
     { name: "Clubs", href: "/#clubs" },
   ];
