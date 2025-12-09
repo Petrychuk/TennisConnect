@@ -37,7 +37,7 @@ const DEFAULT_PROFILE = {
 export default function CoachProfile() {
   const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, updateUser } = useAuth();
   const [, setLocation] = useLocation();
   
   // State for profile data
@@ -77,6 +77,9 @@ export default function CoachProfile() {
     // Save to localStorage
     localStorage.setItem("tennis_connect_coach_profile", JSON.stringify(profile));
     
+    // Update global auth state (so navbar updates immediately)
+    updateUser({ name: profile.name });
+
     toast({
       title: "Profile Updated",
       description: "Your changes have been saved successfully.",
@@ -100,6 +103,7 @@ export default function CoachProfile() {
         const result = reader.result as string;
         if (field === 'avatar') {
           setProfile({ ...profile, avatar: result });
+          updateUser({ avatar: result }); // Update global state for avatar
           toast({ title: "Avatar Updated", description: "Don't forget to save changes." });
         } else if (field === 'cover') {
           setProfile({ ...profile, cover: result });
