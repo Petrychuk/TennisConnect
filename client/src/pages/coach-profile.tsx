@@ -78,7 +78,9 @@ const DEFAULT_PROFILE = {
   active_students: 24,
   rating: 4.9,
   hours_taught: "150+",
-  attendance: 100
+  attendance: 100,
+  phone: "",
+  email: ""
 };
 
 // Top 10 Popular Locations
@@ -187,7 +189,9 @@ export default function CoachProfile() {
                  active_students: parsed.active_students || DEFAULT_PROFILE.active_students,
                  rating: parsed.rating || DEFAULT_PROFILE.rating,
                  hours_taught: parsed.hours_taught || DEFAULT_PROFILE.hours_taught,
-                 attendance: parsed.attendance || DEFAULT_PROFILE.attendance
+                 attendance: parsed.attendance || DEFAULT_PROFILE.attendance,
+                 phone: parsed.phone || DEFAULT_PROFILE.phone,
+                 email: parsed.email || (profileId === "1" ? "nataliia.petrychuk@gmail.com" : DEFAULT_PROFILE.email)
                };
              } catch (e) {
                console.error("Failed to sync guest view with local storage", e);
@@ -213,7 +217,9 @@ export default function CoachProfile() {
             active_students: DEFAULT_PROFILE.active_students,
             rating: DEFAULT_PROFILE.rating,
             hours_taught: DEFAULT_PROFILE.hours_taught,
-            attendance: DEFAULT_PROFILE.attendance
+            attendance: DEFAULT_PROFILE.attendance,
+            phone: DEFAULT_PROFILE.phone,
+            email: (isOwnProfile && user?.email) ? user.email : DEFAULT_PROFILE.email
         });
       }
       return;
@@ -630,6 +636,35 @@ export default function CoachProfile() {
                            </div>
                          </CardContent>
                        </Card>
+
+                       {/* Contact Info Editing */}
+                       {isEditing && (
+                         <Card>
+                           <CardHeader>
+                             <CardTitle>Contact Information</CardTitle>
+                           </CardHeader>
+                           <CardContent className="space-y-4">
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                               <div className="space-y-2">
+                                 <Label>Phone Number</Label>
+                                 <Input 
+                                   value={profile.phone} 
+                                   onChange={(e) => setProfile({...profile, phone: e.target.value})} 
+                                   placeholder="+61 4XX XXX XXX"
+                                 />
+                               </div>
+                               <div className="space-y-2">
+                                 <Label>Email Address</Label>
+                                 <Input 
+                                   value={profile.email} 
+                                   onChange={(e) => setProfile({...profile, email: e.target.value})} 
+                                   placeholder="coach@example.com"
+                                 />
+                               </div>
+                             </div>
+                           </CardContent>
+                         </Card>
+                       )}
                     </div>
 
                     <Card>
@@ -1156,14 +1191,15 @@ export default function CoachProfile() {
                             <div>
                               <p className="text-sm text-muted-foreground">Phone Number</p>
                               {showCoachPhone ? (
-                                <p className="font-bold text-lg">+61 412 345 678</p>
+                                <p className="font-bold text-lg">{profile.phone || "No phone listed"}</p>
                               ) : (
                                 <Button 
                                   variant="link" 
                                   className="font-bold text-lg p-0 h-auto text-primary"
                                   onClick={() => setShowCoachPhone(true)}
+                                  disabled={!profile.phone}
                                 >
-                                  Show Number
+                                  {profile.phone ? "Show Number" : "No Phone Listed"}
                                 </Button>
                               )}
                             </div>
@@ -1175,14 +1211,15 @@ export default function CoachProfile() {
                             <div>
                               <p className="text-sm text-muted-foreground">Email Address</p>
                               {showCoachEmail ? (
-                                <p className="font-bold text-lg">coach@tennisconnect.au</p>
+                                <p className="font-bold text-lg">{profile.email || "No email listed"}</p>
                               ) : (
                                 <Button 
                                   variant="link" 
                                   className="font-bold text-lg p-0 h-auto text-primary"
                                   onClick={() => setShowCoachEmail(true)}
+                                  disabled={!profile.email}
                                 >
-                                  Show Email
+                                  {profile.email ? "Show Email" : "No Email Listed"}
                                 </Button>
                               )}
                             </div>
