@@ -215,7 +215,7 @@ export default function CoachesPage() {
         {/* Filter & Search Bar - Floating */}
         <div className="container mx-auto px-4 -mt-8 relative z-20 mb-16">
           <div className="bg-card border border-border/50 shadow-xl rounded-2xl p-4 md:p-6 flex flex-col md:flex-row gap-4 items-center">
-            <div className="relative w-full md:w-[320px]">
+            <div className="relative flex-grow w-full md:w-auto">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
               <Input 
                 placeholder="Search by name or specialty..." 
@@ -225,7 +225,7 @@ export default function CoachesPage() {
               />
             </div>
             
-            <div className="flex flex-col md:flex-row w-full gap-4">
+            <div className="flex flex-col md:flex-row w-full md:w-auto gap-4">
               <Select value={locationFilter} onValueChange={setLocationFilter}>
                 <SelectTrigger className="w-full md:w-[200px] h-12 bg-background cursor-pointer">
                   <div className="flex items-center gap-2">
