@@ -15,6 +15,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import heroImage from "@assets/118174652_3488272227872998_1093348718284959373_n_1764914380008.jpg";
 
+import avatarImage from "@assets/generated_images/female_tennis_coach_portrait.png";
+
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
@@ -56,11 +58,26 @@ export default function AuthPage() {
       // Mock login - assuming coach role for demo if email contains "coach"
       const role = data.email.includes("coach") ? "coach" : "coach"; // Default to coach for demo convenience
       
+      // Check if there is a saved profile to use the correct name and avatar
+      let userName = "Nataliia Petrychuk";
+      let userAvatar = avatarImage;
+      
+      const savedProfile = localStorage.getItem("tennis_connect_coach_profile");
+      if (savedProfile) {
+        try {
+          const profile = JSON.parse(savedProfile);
+          if (profile.name) userName = profile.name;
+          if (profile.avatar) userAvatar = profile.avatar;
+        } catch (e) {
+          console.error("Failed to parse profile during login", e);
+        }
+      }
+      
       login({
-        name: "Nataliia Petrychuk",
+        name: userName,
         email: data.email,
         role: role,
-        avatar: "https://images.unsplash.com/photo-1605218427368-35b868661705?w=400&h=400&fit=crop"
+        avatar: userAvatar
       });
 
       toast({
