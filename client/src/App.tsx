@@ -9,6 +9,7 @@ import Home from "@/pages/home";
 import AuthPage from "@/pages/auth";
 import CoachProfile from "@/pages/coach-profile";
 import CoachesPage from "@/pages/coaches";
+import MarketplacePage from "@/pages/marketplace";
 
 function Router() {
   return (
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/coaches" component={CoachesPage} />
+      <Route path="/marketplace" component={MarketplacePage} />
       <Route path="/coach/profile" component={CoachProfile} />
       <Route path="/coach/:id" component={CoachProfile} />
       <Route component={NotFound} />

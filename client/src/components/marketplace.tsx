@@ -1,46 +1,42 @@
 import { motion } from "framer-motion";
-import { ShoppingBag, Tag, ArrowRight } from "lucide-react";
+import { ShoppingBag, Tag, ArrowRight, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import racketImg from "@assets/generated_images/used_professional_tennis_racket.png";
-import bagImg from "@assets/generated_images/vintage_tennis_bag.png";
-
-const items = [
-  {
-    id: 1,
-    title: "Wilson Pro Staff RF97",
-    price: "$180",
-    condition: "Used - Good",
-    image: racketImg,
-    location: "Bondi Beach, NSW"
-  },
-  {
-    id: 2,
-    title: "Vintage Leather Tennis Bag",
-    price: "$120",
-    condition: "Like New",
-    image: bagImg,
-    location: "Surry Hills, NSW"
-  },
-  {
-    id: 3,
-    title: "Babolat Pure Drive 2023",
-    price: "$220",
-    condition: "Used - Excellent",
-    image: "https://images.unsplash.com/photo-1617083934555-5634045431b0?w=800&q=80",
-    location: "Manly, NSW"
-  },
-  {
-    id: 4,
-    title: "Nike Court Zoom Vapor",
-    price: "$90",
-    condition: "New in Box",
-    image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&q=80",
-    location: "Parramatta, NSW"
-  }
-];
+import { MARKETPLACE_DATA } from "@/lib/dummy-data";
+import { useState, useEffect } from "react";
+import { Link } from "wouter";
 
 export function Marketplace() {
+  const [items, setItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    // 1. Load static dummy data (take first 4)
+    let displayItems = [...MARKETPLACE_DATA].slice(0, 4);
+    
+    // 2. Load user's local items if any to PREPEND them (simulating "latest")
+    const savedProfile = localStorage.getItem("tennis_connect_coach_profile");
+    if (savedProfile) {
+      try {
+        const parsed = JSON.parse(savedProfile);
+        if (parsed.marketplace && Array.isArray(parsed.marketplace) && parsed.marketplace.length > 0) {
+          const userItems = parsed.marketplace.map((item: any) => ({
+            ...item,
+            id: `local-${item.id}`,
+            image: item.photos?.[0], // Map photos to image
+            title: item.name // Map name to title
+          }));
+          
+          // Combine: User items first, then fill remaining slots with static data
+          displayItems = [...userItems, ...displayItems].slice(0, 4);
+        }
+      } catch (e) {
+        console.error("Failed to load local items", e);
+      }
+    }
+    
+    setItems(displayItems);
+  }, []);
+
   return (
     <section className="py-24 bg-secondary/30" id="marketplace">
       <div className="container mx-auto px-4">
@@ -57,9 +53,11 @@ export function Marketplace() {
               Buy and sell pre-loved tennis equipment in Sydney. From rackets to vintage gear, find great deals from local players.
             </p>
           </div>
-          <Button variant="outline" className="hidden md:flex gap-2">
-            View All Listings <ArrowRight className="w-4 h-4" />
-          </Button>
+          <Link href="/marketplace">
+            <Button variant="outline" className="hidden md:flex gap-2">
+                View All Listings <ArrowRight className="w-4 h-4" />
+            </Button>
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -71,28 +69,32 @@ export function Marketplace() {
               viewport={{ once: true }}
               transition={{ delay: index * 0.1 }}
             >
-              <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 group">
+              <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 group h-full flex flex-col">
                 <div className="aspect-square relative overflow-hidden bg-gray-100">
                   <img 
-                    src={item.image} 
-                    alt={item.title} 
+                    src={item.image || item.photos?.[0]} 
+                    alt={item.title || item.name} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-md text-white text-sm font-bold px-3 py-1 rounded-full">
-                    {item.price}
+                    ${item.price}
                   </div>
                 </div>
-                <CardContent className="p-4">
-                  <h3 className="font-bold text-lg truncate mb-1">{item.title}</h3>
-                  <p className="text-sm text-muted-foreground mb-2">{item.location}</p>
-                  <div className="inline-block bg-secondary px-2 py-1 rounded text-xs font-medium text-secondary-foreground">
+                <CardContent className="p-4 flex flex-col flex-grow">
+                  <h3 className="font-bold text-lg truncate mb-1" title={item.title || item.name}>{item.title || item.name}</h3>
+                  <p className="text-sm text-muted-foreground mb-2 flex items-center gap-1">
+                    <MapPin className="w-3 h-3" /> {item.location}
+                  </p>
+                  <div className="inline-block bg-secondary px-2 py-1 rounded text-xs font-medium text-secondary-foreground w-fit mt-auto">
                     {item.condition}
                   </div>
                 </CardContent>
                 <CardFooter className="p-4 pt-0">
-                  <Button className="w-full bg-black text-white hover:bg-gray-800">
-                    Contact Seller
-                  </Button>
+                  <Link href="/marketplace">
+                    <Button className="w-full bg-black text-white hover:bg-gray-800">
+                        View Details
+                    </Button>
+                  </Link>
                 </CardFooter>
               </Card>
             </motion.div>
@@ -100,9 +102,11 @@ export function Marketplace() {
         </div>
         
         <div className="mt-8 md:hidden">
-          <Button variant="outline" className="w-full gap-2">
-            View All Listings <ArrowRight className="w-4 h-4" />
-          </Button>
+          <Link href="/marketplace">
+            <Button variant="outline" className="w-full gap-2">
+                View All Listings <ArrowRight className="w-4 h-4" />
+            </Button>
+          </Link>
         </div>
       </div>
     </section>

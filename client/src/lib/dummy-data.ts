@@ -109,3 +109,75 @@ export const COACHES_DATA = [
     photos: []
   }
 ];
+
+import racketImg from "@assets/generated_images/used_professional_tennis_racket.png";
+import bagImg from "@assets/generated_images/vintage_tennis_bag.png";
+
+export const MARKETPLACE_DATA = [
+  {
+    id: 101,
+    title: "Wilson Pro Staff RF97",
+    price: "180",
+    condition: "Used - Good",
+    image: racketImg,
+    location: "Bondi Beach, NSW",
+    description: "Classic RF97 Autograph. A few scratches on the bumper but frame is in perfect condition. Freshly strung with Luxilon Alu Power.",
+    seller_name: "John D.",
+    seller_email: "john.doe@example.com"
+  },
+  {
+    id: 102,
+    title: "Vintage Leather Tennis Bag",
+    price: "120",
+    condition: "Like New",
+    image: bagImg,
+    location: "Surry Hills, NSW",
+    description: "Beautiful vintage-style leather bag. Holds 2 rackets and gear. Perfect for the stylish player.",
+    seller_name: "Sarah M.",
+    seller_email: "sarah.m@example.com"
+  },
+  {
+    id: 103,
+    title: "Babolat Pure Drive 2023",
+    price: "220",
+    condition: "Used - Excellent",
+    image: "https://images.unsplash.com/photo-1617083934555-5634045431b0?w=800&q=80",
+    location: "Manly, NSW",
+    description: "Used for one season. Grip size L3. Amazing power and spin. Selling because I switched to Pure Aero.",
+    seller_name: "Mike R.",
+    seller_email: "mike.r@example.com"
+  },
+  {
+    id: 104,
+    title: "Nike Court Zoom Vapor",
+    price: "90",
+    condition: "New in Box",
+    image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&q=80",
+    location: "Parramatta, NSW",
+    description: "Size US 10. Brand new, never worn. Wrong size gift.",
+    seller_name: "Alex K.",
+    seller_email: "alex.k@example.com"
+  },
+  {
+    id: 105,
+    title: "Head Speed Pro 2024",
+    price: "250",
+    condition: "New",
+    image: "https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?w=800&q=80",
+    location: "Chatswood, NSW",
+    description: "Brand new Head Speed Pro. Unstrung. Grip L2.",
+    seller_name: "Jessica L.",
+    seller_email: "jessica.l@example.com"
+  },
+  {
+    id: 106,
+    title: "Case of Wilson US Open Balls",
+    price: "180",
+    condition: "New",
+    image: "https://images.unsplash.com/photo-1558365849-6ebd8b0454b2?w=800&q=80",
+    location: "North Sydney, NSW",
+    description: "Unopened case of 24 cans. Extra duty felt.",
+    seller_name: "Club Pro",
+    seller_email: "proshop@example.com"
+  }
+];
