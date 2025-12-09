@@ -133,6 +133,7 @@ export default function CoachProfile() {
   const [contactEmail, setContactEmail] = useState("");
   const [contactMessage, setContactMessage] = useState("");
   const [showCoachEmail, setShowCoachEmail] = useState(false);
+  const [showCoachPhone, setShowCoachPhone] = useState(false);
 
   // Initialize contact form with user data if available
   useEffect(() => {
@@ -1154,7 +1155,17 @@ export default function CoachProfile() {
                             </div>
                             <div>
                               <p className="text-sm text-muted-foreground">Phone Number</p>
-                              <p className="font-bold text-lg">+61 4XX XXX XXX</p>
+                              {showCoachPhone ? (
+                                <p className="font-bold text-lg">+61 412 345 678</p>
+                              ) : (
+                                <Button 
+                                  variant="link" 
+                                  className="font-bold text-lg p-0 h-auto text-primary"
+                                  onClick={() => setShowCoachPhone(true)}
+                                >
+                                  Show Number
+                                </Button>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-3 p-4 rounded-lg bg-primary/5 border border-primary/10">
