@@ -653,13 +653,13 @@ export default function CoachProfile() {
                                  <span className="text-sm text-muted-foreground italic flex items-center h-8">No locations selected</span>
                                )}
                                {profile.locations.map((loc) => (
-                                 <Badge key={loc} variant="secondary" className="px-3 py-1.5 text-sm flex gap-2 bg-primary/10 hover:bg-primary/20 text-primary border-primary/20">
+                                 <Badge key={loc} variant="secondary" className="px-3 py-1.5 text-sm flex gap-2 bg-primary text-primary-foreground border-primary/20 hover:bg-primary/90">
                                    <MapPin className="w-3 h-3" />
                                    {loc}
                                    {isEditing && (
                                      <button 
                                        onClick={() => setProfile({...profile, locations: profile.locations.filter(l => l !== loc)})}
-                                       className="ml-1 hover:text-destructive"
+                                       className="ml-1 hover:text-white/80"
                                      >
                                        ×
                                      </button>
@@ -683,7 +683,7 @@ export default function CoachProfile() {
                                          variant={isSelected ? "default" : "outline"}
                                          className={cn(
                                            "cursor-pointer px-3 py-1.5 transition-all", 
-                                           isSelected ? "bg-primary text-primary-foreground hover:bg-primary/90" : "hover:bg-primary/5"
+                                           isSelected ? "bg-primary text-primary-foreground hover:bg-primary/90" : "hover:bg-primary/20 border-primary/20 text-primary"
                                          )}
                                          onClick={() => {
                                            if (isSelected) {
