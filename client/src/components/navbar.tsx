@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -6,14 +6,17 @@ import { useState } from "react";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [location] = useLocation();
 
   const navLinks = [
-    { name: "Partners", href: "#partners" },
-    { name: "Coaches", href: "#coaches" },
-    { name: "Marketplace", href: "#marketplace" },
-    { name: "Reviews", href: "#reviews" },
-    { name: "Clubs", href: "#clubs" },
+    { name: "Partners", href: "/#partners" },
+    { name: "Coaches", href: "/#coaches" },
+    { name: "Marketplace", href: "/#marketplace" },
+    { name: "Reviews", href: "/#reviews" },
+    { name: "Clubs", href: "/#clubs" },
   ];
+
+  if (location === "/auth") return null;
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/40">
@@ -41,9 +44,11 @@ export function Navbar() {
 
         {/* CTA & Mobile Menu */}
         <div className="flex items-center gap-4">
-          <Button className="hidden md:inline-flex bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6">
-            Sign In
-          </Button>
+          <Link href="/auth">
+            <Button className="hidden md:inline-flex bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6">
+              Sign In
+            </Button>
+          </Link>
 
           {/* Mobile Menu */}
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -64,9 +69,11 @@ export function Navbar() {
                     {link.name}
                   </a>
                 ))}
-                <Button className="w-full bg-primary text-primary-foreground font-bold rounded-full">
-                  Sign In
-                </Button>
+                <Link href="/auth" onClick={() => setIsOpen(false)}>
+                  <Button className="w-full bg-primary text-primary-foreground font-bold rounded-full">
+                    Sign In
+                  </Button>
+                </Link>
               </div>
             </SheetContent>
           </Sheet>
