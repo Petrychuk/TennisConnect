@@ -230,7 +230,7 @@ export default function CoachesPage() {
                     <img 
                       src={coach.image} 
                       alt={coach.name} 
-                      className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                      className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
                     />
                     <div className="absolute top-4 right-4 bg-background/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm">
                       <Star className="w-3 h-3 text-primary fill-primary" />
