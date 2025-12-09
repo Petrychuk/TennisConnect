@@ -90,7 +90,7 @@ export default function CoachProfile() {
                  experience: parsed.experience ? (parsed.experience.includes('year') ? parsed.experience : `${parsed.experience} years`) : displayData.experience,
                  image: parsed.avatar || displayData.image,
                  cover: parsed.cover || displayData.cover,
-                 tags: parsed.tags || displayData.tags,
+                 tags: parsed.tags || displayData.tags || [],
                  locations: parsed.locations || displayData.locations
                };
              } catch (e) {
@@ -123,13 +123,20 @@ export default function CoachProfile() {
         // ... existing loading logic ...
       try {
         const parsedProfile = JSON.parse(savedProfile);
-        setProfile(parsedProfile);
+        // Merge with DEFAULT_PROFILE to ensure all fields exist (like tags)
+        // This fixes the crash if localStorage has an old version of the profile
+        const mergedProfile = { ...DEFAULT_PROFILE, ...parsedProfile };
+        
+        // Ensure tags is at least an empty array if somehow missing from both
+        if (!mergedProfile.tags) mergedProfile.tags = [];
+        
+        setProfile(mergedProfile);
         
         // Sync auth user if needed
-        if (user && (user.name !== parsedProfile.name || user.avatar !== parsedProfile.avatar)) {
+        if (user && (user.name !== mergedProfile.name || user.avatar !== mergedProfile.avatar)) {
            updateUser({ 
-               name: parsedProfile.name,
-               avatar: parsedProfile.avatar
+               name: mergedProfile.name,
+               avatar: mergedProfile.avatar
            });
         }
       } catch (e) {
@@ -494,7 +501,7 @@ export default function CoachProfile() {
                       </CardHeader>
                       <CardContent>
                         <div className="flex flex-wrap gap-2">
-                          {profile.tags.map((tag) => (
+                          {profile.tags?.map((tag) => (
                             <Badge key={tag} variant="secondary" className="px-3 py-1.5 text-sm flex gap-2">
                               {tag}
                               {isEditing && (
@@ -516,8 +523,8 @@ export default function CoachProfile() {
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') {
                                     const val = e.currentTarget.value.trim();
-                                    if (val && !profile.tags.includes(val)) {
-                                      setProfile({...profile, tags: [...profile.tags, val]});
+                                    if (val && !profile.tags?.includes(val)) {
+                                      setProfile({...profile, tags: [...(profile.tags || []), val]});
                                       e.currentTarget.value = '';
                                     }
                                     e.preventDefault();
