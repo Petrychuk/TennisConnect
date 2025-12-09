@@ -69,18 +69,48 @@ export default function CoachProfile() {
     if (!isOwnProfile && profileId) {
       const coachData = COACHES_DATA.find(c => c.id === parseInt(profileId));
       if (coachData) {
+        let displayData = { ...coachData };
+
+        // SIMULATION: If viewing ID 1 (the default demo user), check if there is 
+        // updated data in localStorage and show that instead of the static dummy data.
+        // This makes the prototype feel "real" even when viewing as a guest.
+        if (profileId === "1") {
+           const savedProfile = localStorage.getItem("tennis_connect_coach_profile");
+           if (savedProfile) {
+             try {
+               const parsed = JSON.parse(savedProfile);
+               displayData = {
+                 ...displayData,
+                 name: parsed.name || displayData.name,
+                 title: parsed.title || displayData.title,
+                 bio: parsed.bio || displayData.bio,
+                 // Handle rate as string or number
+                 rate: parsed.rate ? parseInt(parsed.rate) : displayData.rate,
+                 // Handle experience formatting
+                 experience: parsed.experience ? (parsed.experience.includes('year') ? parsed.experience : `${parsed.experience} years`) : displayData.experience,
+                 image: parsed.avatar || displayData.image,
+                 cover: parsed.cover || displayData.cover,
+                 tags: parsed.tags || displayData.tags,
+                 locations: parsed.locations || displayData.locations
+               };
+             } catch (e) {
+               console.error("Failed to sync guest view with local storage", e);
+             }
+           }
+        }
+
         setProfile({
-            name: coachData.name,
-            title: coachData.title,
-            location: coachData.location, // Main location
-            bio: coachData.bio,
-            rate: coachData.rate.toString(),
-            experience: coachData.experience.replace(' years', ''),
-            locations: coachData.locations || [coachData.location],
-            tags: coachData.tags || [],
-            photos: coachData.photos || [],
-            avatar: coachData.image,
-            cover: coachData.cover || heroImage
+            name: displayData.name,
+            title: displayData.title,
+            location: displayData.location, // Main location
+            bio: displayData.bio,
+            rate: displayData.rate.toString(),
+            experience: displayData.experience.replace(' years', ''),
+            locations: displayData.locations || [displayData.location],
+            tags: displayData.tags || [],
+            photos: displayData.photos || [],
+            avatar: displayData.image,
+            cover: displayData.cover || heroImage
         });
       }
       return;
