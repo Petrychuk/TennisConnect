@@ -25,7 +25,7 @@ const DEFAULT_PROFILE = {
   name: "Nataliia Petrychuk",
   title: "Tennis Coach (ITF Level 2)",
   location: "Manly, Sydney",
-  bio: "Former WTA ranked player with 10+ years of coaching experience. I specialize in junior development and high-performance training for competitive players. My coaching philosophy focuses on building a strong technical foundation while developing tactical awareness on the court.",
+  bio: "Professional tennis coach with a background in competitive play on the WTA tour. With over a decade of experience, I am dedicated to nurturing the next generation of tennis talent. My expertise lies in high-performance training for juniors and advanced players, emphasizing biomechanics, mental toughness, and strategic match play to help athletes reach their full potential.",
   rate: "90",
   experience: "10",
   locations: ["Manly", "Mosman", "Freshwater", "Brookvale"],
