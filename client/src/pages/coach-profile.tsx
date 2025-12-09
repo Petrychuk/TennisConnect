@@ -74,16 +74,26 @@ export default function CoachProfile() {
 
   const handleSave = () => {
     setIsEditing(false);
-    // Save to localStorage
-    localStorage.setItem("tennis_connect_coach_profile", JSON.stringify(profile));
     
-    // Update global auth state (so navbar updates immediately)
-    updateUser({ name: profile.name });
-
-    toast({
-      title: "Profile Updated",
-      description: "Your changes have been saved successfully.",
-    });
+    try {
+      // Save to localStorage
+      localStorage.setItem("tennis_connect_coach_profile", JSON.stringify(profile));
+      
+      // Update global auth state (so navbar updates immediately)
+      updateUser({ name: profile.name });
+  
+      toast({
+        title: "Profile Updated",
+        description: "Your changes have been saved successfully.",
+      });
+    } catch (error) {
+      console.error("Storage quota exceeded", error);
+      toast({
+        variant: "destructive",
+        title: "Storage Limit Reached",
+        description: "Your media files are too large to save permanently in this browser prototype. Changes are saved for this session only.",
+      });
+    }
   };
 
   const handleRemovePhoto = (index: number) => {
@@ -98,6 +108,16 @@ export default function CoachProfile() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'avatar' | 'cover' | 'photo') => {
     const file = e.target.files?.[0];
     if (file) {
+      // Check file size (limit to 2MB for prototype safety)
+      if (file.size > 2 * 1024 * 1024) {
+        toast({
+          variant: "destructive",
+          title: "File too large",
+          description: "Please select an image or video under 2MB for this prototype.",
+        });
+        return;
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => {
         const result = reader.result as string;
