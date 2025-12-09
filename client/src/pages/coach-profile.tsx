@@ -254,18 +254,6 @@ export default function CoachProfile() {
              </div>
           )}
           <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-background to-transparent z-20" />
-          
-          <div className="absolute bottom-6 right-6 z-50">
-             {isEditing ? (
-               <Button onClick={handleSave} className="bg-primary text-primary-foreground font-bold shadow-lg gap-2 cursor-pointer relative z-50 pointer-events-auto">
-                 <Save className="w-4 h-4" /> Save Profile
-               </Button>
-             ) : (
-               <Button onClick={() => setIsEditing(true)} variant="secondary" className="bg-white/10 backdrop-blur-md text-white border border-white/20 hover:bg-white/20 font-bold shadow-lg gap-2 cursor-pointer relative z-50 pointer-events-auto">
-                 <Edit2 className="w-4 h-4" /> Edit Profile
-               </Button>
-             )}
-          </div>
         </div>
 
         <div className="container mx-auto px-4 relative z-40 -mt-20 pointer-events-none">
@@ -296,31 +284,48 @@ export default function CoachProfile() {
             </div>
 
             {/* Info Column */}
-            <div className="flex-grow pt-4 md:pt-12 text-center md:text-left space-y-4 w-full">
-              {isEditing ? (
-                <div className="space-y-4 max-w-2xl">
-                  <div className="space-y-2">
-                    <Label>Full Name</Label>
-                    <Input 
-                      value={profile.name} 
-                      onChange={(e) => setProfile({...profile, name: e.target.value})} 
-                      className="text-2xl font-bold font-display"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Professional Title</Label>
-                    <Input 
-                      value={profile.title} 
-                      onChange={(e) => setProfile({...profile, title: e.target.value})} 
-                    />
-                  </div>
+            <div className="flex-grow pt-4 md:pt-12 w-full">
+              <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+                <div className="text-center md:text-left space-y-4 w-full max-w-2xl">
+                  {isEditing ? (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Full Name</Label>
+                        <Input 
+                          value={profile.name} 
+                          onChange={(e) => setProfile({...profile, name: e.target.value})} 
+                          className="text-2xl font-bold font-display"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Professional Title</Label>
+                        <Input 
+                          value={profile.title} 
+                          onChange={(e) => setProfile({...profile, title: e.target.value})} 
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <h1 className="text-3xl md:text-5xl font-display font-bold">{profile.name}</h1>
+                      <p className="text-xl text-muted-foreground">{profile.title}</p>
+                    </>
+                  )}
                 </div>
-              ) : (
-                <>
-                  <h1 className="text-3xl md:text-5xl font-display font-bold">{profile.name}</h1>
-                  <p className="text-xl text-muted-foreground">{profile.title}</p>
-                </>
-              )}
+
+                {/* Edit Action Button - Placed here for better UX */}
+                <div className="flex-shrink-0 w-full md:w-auto mt-4 md:mt-0 flex justify-center md:justify-end">
+                  {isEditing ? (
+                    <Button onClick={handleSave} size="lg" className="w-full md:w-auto bg-primary text-primary-foreground font-bold shadow-md gap-2 animate-in fade-in zoom-in duration-300">
+                      <Save className="w-5 h-5" /> Save Changes
+                    </Button>
+                  ) : (
+                    <Button onClick={() => setIsEditing(true)} size="lg" variant="outline" className="w-full md:w-auto border-primary/20 hover:bg-primary/5 hover:border-primary/50 font-bold shadow-sm gap-2">
+                      <Edit2 className="w-5 h-5" /> Edit Profile
+                    </Button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
