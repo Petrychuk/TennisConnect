@@ -10,8 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, User, Trophy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import heroImage from "@assets/118174652_3488272227872998_1093348718284959373_n_1764914380008.jpg";
 
@@ -21,6 +22,7 @@ const loginSchema = z.object({
 });
 
 const registerSchema = z.object({
+  role: z.enum(["player", "coach"], { required_error: "Please select a role" }),
   name: z.string().min(2, { message: "Name must be at least 2 characters" }),
   email: z.string().email({ message: "Please enter a valid email address" }),
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
@@ -42,7 +44,7 @@ export default function AuthPage() {
 
   const registerForm = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { name: "", email: "", password: "", confirmPassword: "" },
+    defaultValues: { role: "player", name: "", email: "", password: "", confirmPassword: "" },
   });
 
   const onLogin = async (data: z.infer<typeof loginSchema>) => {
@@ -149,6 +151,38 @@ export default function AuthPage() {
             
             <TabsContent value="register">
               <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
+                <div className="space-y-3">
+                  <Label>I want to join as a...</Label>
+                  <RadioGroup
+                    defaultValue="player"
+                    onValueChange={(value) => registerForm.setValue("role", value as "player" | "coach")}
+                    className="grid grid-cols-2 gap-4"
+                  >
+                    <div>
+                      <RadioGroupItem value="player" id="role-player" className="peer sr-only" />
+                      <Label
+                        htmlFor="role-player"
+                        className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer transition-all"
+                      >
+                        <User className="mb-2 w-6 h-6" />
+                        <span className="font-bold">Player</span>
+                        <span className="text-xs text-muted-foreground text-center">Find partners</span>
+                      </Label>
+                    </div>
+                    <div>
+                      <RadioGroupItem value="coach" id="role-coach" className="peer sr-only" />
+                      <Label
+                        htmlFor="role-coach"
+                        className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer transition-all"
+                      >
+                        <Trophy className="mb-2 w-6 h-6" />
+                        <span className="font-bold">Coach</span>
+                        <span className="text-xs text-muted-foreground text-center">Find students</span>
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="reg-name">Full Name</Label>
                   <Input 
