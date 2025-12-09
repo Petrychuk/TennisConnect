@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Camera, Edit2, Save, Plus, Trophy, Clock, DollarSign, X, ShoppingBag, Mail, Phone, MessageCircle, Send, Check, ChevronsUpDown } from "lucide-react";
+import { MapPin, Camera, Edit2, Save, Plus, Trophy, Clock, DollarSign, X, ShoppingBag, Mail, Phone, MessageCircle, Send, Check, ChevronsUpDown, Calendar, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { useLocation } from "wouter";
@@ -46,7 +46,16 @@ const DEFAULT_PROFILE = {
   tags: ["High Performance", "Kids", "Technique"],
   photos: [gallery1, gallery2],
   avatar: avatarImage,
-  cover: heroImage
+  cover: heroImage,
+  schedule: {
+    monday: { active: true, start: "07:00", end: "19:00" },
+    tuesday: { active: true, start: "07:00", end: "19:00" },
+    wednesday: { active: true, start: "07:00", end: "19:00" },
+    thursday: { active: true, start: "07:00", end: "19:00" },
+    friday: { active: true, start: "07:00", end: "17:00" },
+    saturday: { active: true, start: "08:00", end: "14:00" },
+    sunday: { active: false, start: "09:00", end: "17:00" }
+  }
 };
 
 // Top 10 Popular Locations
@@ -75,6 +84,8 @@ const ALL_SYDNEY_SUBURBS = [
 
 import { COACHES_DATA } from "@/lib/dummy-data";
 import { useRoute } from "wouter";
+
+import { Switch } from "@/components/ui/switch";
 
 export default function CoachProfile() {
   const [match, params] = useRoute("/coach/:id");
@@ -130,7 +141,8 @@ export default function CoachProfile() {
                  image: parsed.avatar || displayData.image,
                  cover: parsed.cover || displayData.cover,
                  tags: parsed.tags || displayData.tags || [],
-                 locations: parsed.locations || displayData.locations
+                 locations: parsed.locations || displayData.locations,
+                 schedule: parsed.schedule || displayData.schedule || DEFAULT_PROFILE.schedule
                };
              } catch (e) {
                console.error("Failed to sync guest view with local storage", e);
@@ -149,7 +161,8 @@ export default function CoachProfile() {
             tags: displayData.tags || [],
             photos: displayData.photos || [],
             avatar: displayData.image,
-            cover: displayData.cover || heroImage
+            cover: displayData.cover || heroImage,
+            schedule: displayData.schedule || DEFAULT_PROFILE.schedule
         });
       }
       return;
@@ -641,7 +654,90 @@ export default function CoachProfile() {
                   <TabsContent value="schedule" className="mt-0">
                      <Card>
                        <CardHeader>
-                         <CardTitle>Available Locations</CardTitle>
+                         <CardTitle className="flex items-center gap-2">
+                           <Calendar className="w-5 h-5 text-primary" />
+                           Weekly Schedule
+                         </CardTitle>
+                       </CardHeader>
+                       <CardContent>
+                         <div className="space-y-4">
+                           {Object.entries(profile.schedule).map(([day, schedule]) => (
+                             <div key={day} className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors">
+                               <div className="flex items-center gap-4">
+                                 <div className="w-24 capitalize font-medium">{day}</div>
+                                 {isEditing ? (
+                                   <Switch 
+                                     checked={schedule.active}
+                                     onCheckedChange={(checked) => {
+                                       setProfile({
+                                         ...profile,
+                                         schedule: {
+                                           ...profile.schedule,
+                                           [day]: { ...schedule, active: checked }
+                                         }
+                                       });
+                                     }}
+                                   />
+                                 ) : (
+                                   <div className={cn("w-2 h-2 rounded-full", schedule.active ? "bg-green-500" : "bg-muted-foreground/30")} />
+                                 )}
+                               </div>
+                               
+                               <div className="flex items-center gap-2">
+                                 {schedule.active ? (
+                                   isEditing ? (
+                                     <div className="flex items-center gap-2">
+                                       <Input 
+                                         type="time" 
+                                         value={schedule.start}
+                                         onChange={(e) => {
+                                            setProfile({
+                                              ...profile,
+                                              schedule: {
+                                                ...profile.schedule,
+                                                [day]: { ...schedule, start: e.target.value }
+                                              }
+                                            });
+                                         }}
+                                         className="w-24 h-8"
+                                       />
+                                       <span className="text-muted-foreground">-</span>
+                                       <Input 
+                                         type="time" 
+                                         value={schedule.end}
+                                         onChange={(e) => {
+                                            setProfile({
+                                              ...profile,
+                                              schedule: {
+                                                ...profile.schedule,
+                                                [day]: { ...schedule, end: e.target.value }
+                                              }
+                                            });
+                                         }}
+                                         className="w-24 h-8"
+                                       />
+                                     </div>
+                                   ) : (
+                                     <span className="text-sm font-medium">
+                                       {new Date(`2000-01-01T${schedule.start}`).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} - {new Date(`2000-01-01T${schedule.end}`).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                                     </span>
+                                   )
+                                 ) : (
+                                   <span className="text-sm text-muted-foreground italic">Unavailable</span>
+                                 )}
+                               </div>
+                             </div>
+                           ))}
+                         </div>
+                       </CardContent>
+                     </Card>
+
+                     <Card>
+                       <CardHeader>
+                         <CardTitle className="flex items-center gap-2">
+                           <MapPin className="w-5 h-5 text-primary" />
+                           Available Locations
+                         </CardTitle>
                        </CardHeader>
                        <CardContent>
                          <div className="space-y-6">

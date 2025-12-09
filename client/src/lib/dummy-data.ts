@@ -17,7 +17,16 @@ export const COACHES_DATA = [
     image: avatarImage,
     cover: heroImage,
     tags: ["High Performance", "Kids", "Technique"],
-    photos: []
+    photos: [],
+    schedule: {
+      monday: { active: true, start: "07:00", end: "19:00" },
+      tuesday: { active: true, start: "07:00", end: "19:00" },
+      wednesday: { active: true, start: "07:00", end: "19:00" },
+      thursday: { active: true, start: "07:00", end: "19:00" },
+      friday: { active: true, start: "07:00", end: "17:00" },
+      saturday: { active: true, start: "08:00", end: "14:00" },
+      sunday: { active: false, start: "09:00", end: "17:00" }
+    }
   },
   {
     id: 2,

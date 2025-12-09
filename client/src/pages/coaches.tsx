@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/popover";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, MapPin, Star, Filter, ArrowRight, DollarSign, X } from "lucide-react";
+import { Search, MapPin, Star, Filter, ArrowRight, DollarSign, X, Calendar } from "lucide-react";
 import heroImage from "@assets/generated_images/professional_tennis_coaching_session_on_a_sunny_court.png";
 import avatarImage from "@assets/generated_images/female_tennis_coach_portrait.png";
 
@@ -53,6 +53,7 @@ export default function CoachesPage() {
               experience: parsedProfile.experience ? (parsedProfile.experience.includes('year') ? parsedProfile.experience : `${parsedProfile.experience} years`) : newCoaches[0].experience,
               image: parsedProfile.avatar || newCoaches[0].image,
               tags: parsedProfile.tags || newCoaches[0].tags,
+              schedule: parsedProfile.schedule || newCoaches[0].schedule
             };
             return newCoaches;
           });
@@ -303,10 +304,33 @@ export default function CoachesPage() {
                            <span className="text-sm font-normal text-muted-foreground ml-1">AUD</span>
                          </div>
                        </div>
-                       <div className="text-right">
-                         <span className="text-xs text-muted-foreground">Experience</span>
-                         <p className="font-bold">{coach.experience}</p>
-                       </div>
+                       
+                       {/* Schedule Indicator */}
+                       {coach.schedule && (
+                         <div className="flex flex-col items-end">
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Calendar className="w-3 h-3" /> Today
+                            </span>
+                            <div className="text-sm font-medium">
+                              {(() => {
+                                const today = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+                                const schedule = coach.schedule[today];
+                                if (schedule && schedule.active) {
+                                  // Simple formatting
+                                  const formatTime = (t: string) => {
+                                     const [h, m] = t.split(':');
+                                     const hour = parseInt(h);
+                                     const ampm = hour >= 12 ? 'PM' : 'AM';
+                                     const hour12 = hour % 12 || 12;
+                                     return `${hour12}${ampm}`;
+                                  };
+                                  return `${formatTime(schedule.start)} - ${formatTime(schedule.end)}`;
+                                }
+                                return <span className="text-muted-foreground italic text-xs">Unavailable</span>;
+                              })()}
+                            </div>
+                         </div>
+                       )}
                     </div>
                   </CardContent>
 
