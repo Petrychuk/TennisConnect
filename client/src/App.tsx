@@ -23,6 +23,8 @@ function Router() {
   );
 }
 
+import { SupportChat } from "@/components/support-chat";
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -30,6 +32,7 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <Router />
+          <SupportChat />
         </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>
