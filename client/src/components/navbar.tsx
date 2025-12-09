@@ -46,7 +46,7 @@ export function Navbar() {
             <a
               key={link.name}
               href={link.href}
-              className="text-sm font-medium hover:text-green-600 transition-colors"
+              className="text-sm font-medium hover:text-lime-600 transition-colors"
             >
               {link.name}
             </a>
@@ -58,7 +58,7 @@ export function Navbar() {
           {isAuthenticated ? (
             <div className="hidden md:flex items-center gap-4">
               <Link href={user?.role === "coach" ? "/coach/profile" : "/"}>
-                <Button variant="ghost" className="font-bold hover:text-green-600 gap-2">
+                <Button variant="ghost" className="font-bold hover:text-lime-600 gap-2">
                   <User className="w-4 h-4" />
                   {user?.name || "My Profile"}
                 </Button>
@@ -122,7 +122,7 @@ export function Navbar() {
                   <a
                     key={link.name}
                     href={link.href}
-                    className="text-lg font-medium hover:text-green-600 transition-colors"
+                    className="text-lg font-medium hover:text-lime-600 transition-colors"
                     onClick={() => setIsOpen(false)}
                   >
                     {link.name}
