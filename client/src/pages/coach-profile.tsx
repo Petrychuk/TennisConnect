@@ -55,14 +55,16 @@ export default function CoachProfile() {
     if (savedProfile) {
       try {
         const parsedProfile = JSON.parse(savedProfile);
-        
-        // Sync with auth user data if available to ensure consistency
-        if (user) {
-           if (user.name) parsedProfile.name = user.name;
-           if (user.avatar) parsedProfile.avatar = user.avatar;
-        }
-        
         setProfile(parsedProfile);
+        
+        // If the profile data (source of truth for this page) differs from the auth user,
+        // update the auth user to match the profile.
+        if (user && (user.name !== parsedProfile.name || user.avatar !== parsedProfile.avatar)) {
+           updateUser({ 
+               name: parsedProfile.name,
+               avatar: parsedProfile.avatar
+           });
+        }
       } catch (e) {
         console.error("Failed to parse profile", e);
       }
