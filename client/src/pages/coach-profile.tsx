@@ -235,7 +235,7 @@ export default function CoachProfile() {
           </div>
 
           {/* Main Content Tabs */}
-          <div className="mt-12">
+          <div className="mt-12 pointer-events-auto">
             <Tabs defaultValue="about" className="w-full">
               <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent gap-6">
                 <TabsTrigger value="about" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">About</TabsTrigger>
