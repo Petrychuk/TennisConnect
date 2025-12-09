@@ -17,6 +17,7 @@ function Router() {
       <Route path="/auth" component={AuthPage} />
       <Route path="/coaches" component={CoachesPage} />
       <Route path="/coach/profile" component={CoachProfile} />
+      <Route path="/coach/:id" component={CoachProfile} />
       <Route component={NotFound} />
     </Switch>
   );

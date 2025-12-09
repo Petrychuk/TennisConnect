@@ -1,0 +1,102 @@
+import heroImage from "@assets/generated_images/professional_tennis_coaching_session_on_a_sunny_court.png";
+import avatarImage from "@assets/generated_images/female_tennis_coach_portrait.png";
+
+// Shared Mock Data
+export const COACHES_DATA = [
+  {
+    id: 1,
+    name: "Nataliia Petrychuk",
+    title: "Tennis Coach (ITF Level 2)",
+    location: "Manly",
+    locations: ["Manly", "Mosman", "Freshwater", "Brookvale"],
+    bio: "Former WTA ranked player with 10+ years of coaching experience. I specialize in junior development and high-performance training for competitive players. My coaching philosophy focuses on building a strong technical foundation while developing tactical awareness on the court.",
+    rating: 4.9,
+    reviews: 24,
+    rate: 90,
+    experience: "10 years",
+    image: avatarImage,
+    cover: heroImage,
+    tags: ["High Performance", "Kids", "Technique"],
+    photos: []
+  },
+  {
+    id: 2,
+    name: "David Chen",
+    title: "Former ATP Player & Elite Coach",
+    location: "Sydney CBD",
+    locations: ["Sydney CBD", "Surry Hills", "Redfern"],
+    bio: "Former top 300 ATP player specializing in high-performance coaching for competitive juniors and adults. I focus on modern stroke mechanics, footwork patterns, and match strategy.",
+    rating: 5.0,
+    reviews: 42,
+    rate: 120,
+    experience: "15 years",
+    image: "https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?w=400&h=400&fit=crop",
+    cover: "https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?q=80&w=1600&auto=format&fit=crop",
+    tags: ["Pro Level", "Strategy", "Fitness"],
+    photos: ["https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?w=800", "https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=800"]
+  },
+  {
+    id: 3,
+    name: "Emily Wilson",
+    title: "Junior Development Specialist",
+    location: "Eastern Suburbs",
+    locations: ["Bondi Beach", "Coogee", "Bronte"],
+    bio: "Passionate about introducing kids to tennis in a fun and engaging way. I use the Hot Shots program methodology to help children develop coordination, basic strokes, and a love for the game.",
+    rating: 4.8,
+    reviews: 18,
+    rate: 75,
+    experience: "5 years",
+    image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop",
+    cover: "https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=1600&auto=format&fit=crop",
+    tags: ["Beginners", "Kids", "Fun"],
+    photos: ["https://images.unsplash.com/photo-1511512578047-dfb367046420?w=800"]
+  },
+  {
+    id: 4,
+    name: "Michael Ross",
+    title: "Club Coach & Tournament Director",
+    location: "Inner West",
+    locations: ["Newtown", "Marrickville", "Stanmore"],
+    bio: "Experienced club coach who enjoys working with players of all ages and abilities. I organize social competitions and tournaments to help players gain match experience in a friendly environment.",
+    rating: 4.7,
+    reviews: 31,
+    rate: 85,
+    experience: "8 years",
+    image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop",
+    cover: "https://images.unsplash.com/photo-1554068865-24cecd4e34b8?q=80&w=1600&auto=format&fit=crop",
+    tags: ["Tournaments", "Adults", "Social"],
+    photos: []
+  },
+  {
+    id: 5,
+    name: "Jessica Lee",
+    title: "Performance Coach",
+    location: "North Shore",
+    locations: ["Chatswood", "Gordon", "Killara"],
+    bio: "Specializing in technical correction and mental toughness training. I help intermediate and advanced players break through plateaus and improve their competitive performance.",
+    rating: 4.9,
+    reviews: 15,
+    rate: 95,
+    experience: "7 years",
+    image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop",
+    cover: "https://images.unsplash.com/photo-1560012057-4372e14c5085?q=80&w=1600&auto=format&fit=crop",
+    tags: ["Advanced", "Footwork", "Mental Game"],
+    photos: []
+  },
+  {
+    id: 6,
+    name: "James Wilson",
+    title: "Tennis Australia Club Professional",
+    location: "Sutherland Shire",
+    locations: ["Cronulla", "Miranda", "Sutherland"],
+    bio: "Energetic coach known for high-intensity Cardio Tennis sessions and dynamic group drills. Great for fitness enthusiasts and social players looking to stay active.",
+    rating: 4.6,
+    reviews: 28,
+    rate: 80,
+    experience: "12 years",
+    image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=400&fit=crop",
+    cover: "https://images.unsplash.com/photo-1626244422423-4d535130a55c?q=80&w=1600&auto=format&fit=crop",
+    tags: ["Groups", "Cardio Tennis", "Adults"],
+    photos: []
+  }
+];

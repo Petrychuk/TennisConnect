@@ -35,7 +35,14 @@ const DEFAULT_PROFILE = {
   cover: heroImage
 };
 
+import { COACHES_DATA } from "@/lib/dummy-data";
+import { useRoute } from "wouter";
+
 export default function CoachProfile() {
+  const [match, params] = useRoute("/coach/:id");
+  const profileId = params?.id;
+  const isOwnProfile = !profileId || profileId === "profile" || profileId === "1"; // Assuming ID 1 is the user
+
   const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
   const { user, isAuthenticated, updateUser } = useAuth();
@@ -44,22 +51,44 @@ export default function CoachProfile() {
   // State for profile data
   const [profile, setProfile] = useState(DEFAULT_PROFILE);
 
-  // Load profile from localStorage on mount
+  // Load profile logic
   useEffect(() => {
-    // Redirect if not authenticated
-    if (!isAuthenticated) {
+    // Case 1: Viewing another coach's profile (Read Only)
+    if (!isOwnProfile && profileId) {
+      const coachData = COACHES_DATA.find(c => c.id === parseInt(profileId));
+      if (coachData) {
+        setProfile({
+            name: coachData.name,
+            title: coachData.title,
+            location: coachData.location, // Main location
+            bio: coachData.bio,
+            rate: coachData.rate.toString(),
+            experience: coachData.experience.replace(' years', ''),
+            locations: coachData.locations || [coachData.location],
+            tags: coachData.tags || [],
+            photos: coachData.photos || [],
+            avatar: coachData.image,
+            cover: coachData.cover || heroImage
+        });
+      }
+      return;
+    }
+
+    // Case 2: Viewing own profile (Editable)
+    // Redirect if not authenticated only when trying to view own profile
+    if (isOwnProfile && !isAuthenticated) {
       setLocation("/auth");
       return;
     }
 
     const savedProfile = localStorage.getItem("tennis_connect_coach_profile");
     if (savedProfile) {
+        // ... existing loading logic ...
       try {
         const parsedProfile = JSON.parse(savedProfile);
         setProfile(parsedProfile);
         
-        // If the profile data (source of truth for this page) differs from the auth user,
-        // update the auth user to match the profile.
+        // Sync auth user if needed
         if (user && (user.name !== parsedProfile.name || user.avatar !== parsedProfile.avatar)) {
            updateUser({ 
                name: parsedProfile.name,
@@ -77,7 +106,8 @@ export default function CoachProfile() {
         avatar: user.avatar || prev.avatar
       }));
     }
-  }, [isAuthenticated, user, setLocation]);
+  }, [isAuthenticated, user, setLocation, isOwnProfile, profileId]);
+
 
   const availableLocations = [
     "Bondi Beach", "Manly", "Surry Hills", "Mosman", "Coogee", "Parramatta", "Chatswood", "Newtown", "Freshwater", "Brookvale"
@@ -319,14 +349,21 @@ export default function CoachProfile() {
 
                 {/* Edit Action Button - Placed here for better UX */}
                 <div className="flex-shrink-0 w-full md:w-auto mt-4 md:mt-0 flex justify-center md:justify-end">
-                  {isEditing ? (
-                    <Button onClick={handleSave} size="lg" className="w-full md:w-auto bg-primary text-primary-foreground font-bold shadow-md gap-2 animate-in fade-in zoom-in duration-300">
-                      <Save className="w-5 h-5" /> Save Changes
-                    </Button>
-                  ) : (
-                    <Button onClick={() => setIsEditing(true)} size="lg" variant="outline" className="w-full md:w-auto border-primary/20 hover:bg-primary/5 hover:border-primary/50 font-bold shadow-sm gap-2">
-                      <Edit2 className="w-5 h-5" /> Edit Profile
-                    </Button>
+                  {isOwnProfile && (
+                    isEditing ? (
+                      <Button onClick={handleSave} size="lg" className="w-full md:w-auto bg-primary text-primary-foreground font-bold shadow-md gap-2 animate-in fade-in zoom-in duration-300">
+                        <Save className="w-5 h-5" /> Save Changes
+                      </Button>
+                    ) : (
+                      <Button onClick={() => setIsEditing(true)} size="lg" variant="outline" className="w-full md:w-auto border-primary/20 hover:bg-primary/5 hover:border-primary/50 font-bold shadow-sm gap-2">
+                        <Edit2 className="w-5 h-5" /> Edit Profile
+                      </Button>
+                    )
+                  )}
+                  {!isOwnProfile && (
+                      <Button size="lg" className="w-full md:w-auto bg-primary text-primary-foreground font-bold shadow-md gap-2">
+                        <MessageCircle className="w-5 h-5" /> Contact Coach
+                      </Button>
                   )}
                 </div>
               </div>

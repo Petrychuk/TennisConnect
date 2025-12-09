@@ -25,88 +25,14 @@ import { Search, MapPin, Star, Filter, ArrowRight, DollarSign, X } from "lucide-
 import heroImage from "@assets/generated_images/professional_tennis_coaching_session_on_a_sunny_court.png";
 import avatarImage from "@assets/generated_images/female_tennis_coach_portrait.png";
 
-// Mock Data for Coaches
-const INITIAL_COACHES = [
-  {
-    id: 1,
-    name: "Nataliia Petrychuk",
-    title: "Tennis Coach (ITF Level 2)",
-    location: "Manly",
-    rating: 4.9,
-    reviews: 24,
-    rate: 90,
-    experience: "10 years",
-    image: avatarImage,
-    tags: ["High Performance", "Kids", "Technique"]
-  },
-  {
-    id: 2,
-    name: "David Chen",
-    title: "Former ATP Player & Elite Coach",
-    location: "Sydney CBD",
-    rating: 5.0,
-    reviews: 42,
-    rate: 120,
-    experience: "15 years",
-    image: "https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?w=400&h=400&fit=crop",
-    tags: ["Pro Level", "Strategy", "Fitness"]
-  },
-  {
-    id: 3,
-    name: "Emily Wilson",
-    title: "Junior Development Specialist",
-    location: "Eastern Suburbs",
-    rating: 4.8,
-    reviews: 18,
-    rate: 75,
-    experience: "5 years",
-    image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop",
-    tags: ["Beginners", "Kids", "Fun"]
-  },
-  {
-    id: 4,
-    name: "Michael Ross",
-    title: "Club Coach & Tournament Director",
-    location: "Inner West",
-    rating: 4.7,
-    reviews: 31,
-    rate: 85,
-    experience: "8 years",
-    image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop",
-    tags: ["Tournaments", "Adults", "Social"]
-  },
-  {
-    id: 5,
-    name: "Jessica Lee",
-    title: "Performance Coach",
-    location: "North Shore",
-    rating: 4.9,
-    reviews: 15,
-    rate: 95,
-    experience: "7 years",
-    image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop",
-    tags: ["Advanced", "Footwork", "Mental Game"]
-  },
-  {
-    id: 6,
-    name: "James Wilson",
-    title: "Tennis Australia Club Professional",
-    location: "Sutherland Shire",
-    rating: 4.6,
-    reviews: 28,
-    rate: 80,
-    experience: "12 years",
-    image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=400&fit=crop",
-    tags: ["Groups", "Cardio Tennis", "Adults"]
-  }
-];
+import { COACHES_DATA } from "@/lib/dummy-data";
 
 export default function CoachesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [locationFilter, setLocationFilter] = useState("all");
   const [priceRange, setPriceRange] = useState([150]); // Max price
   const [minRating, setMinRating] = useState(0);
-  const [coaches, setCoaches] = useState(INITIAL_COACHES);
+  const [coaches, setCoaches] = useState(COACHES_DATA);
 
   useEffect(() => {
     // Function to load profile
@@ -124,7 +50,7 @@ export default function CoachesPage() {
               title: parsedProfile.title || newCoaches[0].title,
               location: parsedProfile.locations?.[0] || parsedProfile.location || newCoaches[0].location,
               rate: parsedProfile.rate ? parseInt(parsedProfile.rate) : newCoaches[0].rate,
-              experience: parsedProfile.experience ? `${parsedProfile.experience} years` : newCoaches[0].experience,
+              experience: parsedProfile.experience ? (parsedProfile.experience.includes('year') ? parsedProfile.experience : `${parsedProfile.experience} years`) : newCoaches[0].experience,
               image: parsedProfile.avatar || newCoaches[0].image,
               tags: parsedProfile.tags || newCoaches[0].tags,
             };
@@ -135,6 +61,7 @@ export default function CoachesPage() {
         }
       }
     };
+
 
     // Load initially
     loadProfile();
@@ -384,7 +311,7 @@ export default function CoachesPage() {
                   </CardContent>
 
                   <CardFooter className="pt-0">
-                    <Link href="/coach/profile">
+                    <Link href={`/coach/${coach.id}`}>
                       <Button className="w-full font-bold group-hover:bg-primary group-hover:text-primary-foreground transition-all cursor-pointer">
                         View Profile <ArrowRight className="w-4 h-4 ml-2" />
                       </Button>
