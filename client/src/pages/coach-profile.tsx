@@ -11,7 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Camera, Edit2, Save, Plus, Trophy, Clock, DollarSign } from "lucide-react";
+import { MapPin, Camera, Edit2, Save, Plus, Trophy, Clock, DollarSign, X } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import heroImage from "@assets/generated_images/dynamic_tennis_ball_on_court_line_with_dramatic_lighting.png";
 import avatarImage from "@assets/generated_images/female_tennis_coach_portrait.png";
 import gallery1 from "@assets/generated_images/kids_tennis_training_session.png";
@@ -19,6 +20,7 @@ import gallery2 from "@assets/generated_images/tennis_match_action_shot_in_sydne
 
 export default function CoachProfile() {
   const [isEditing, setIsEditing] = useState(false);
+  const { toast } = useToast();
   
   // Mock Data
   const [profile, setProfile] = useState({
@@ -29,6 +31,7 @@ export default function CoachProfile() {
     rate: "90",
     experience: "10",
     locations: ["Manly", "Mosman", "Freshwater", "Brookvale"],
+    photos: [gallery1, gallery2]
   });
 
   const availableLocations = [
@@ -37,7 +40,32 @@ export default function CoachProfile() {
 
   const handleSave = () => {
     setIsEditing(false);
-    // Here you would save to backend
+    toast({
+      title: "Profile Updated",
+      description: "Your changes have been saved successfully.",
+    });
+  };
+
+  const handleAddPhoto = () => {
+    // Mock adding a photo
+    const newPhoto = "https://images.unsplash.com/photo-1599586120429-48281b6f0ece?w=800&q=80";
+    setProfile({
+      ...profile,
+      photos: [...profile.photos, newPhoto]
+    });
+    toast({
+      title: "Photo Added",
+      description: "New photo has been added to your gallery.",
+    });
+  };
+
+  const handleRemovePhoto = (index: number) => {
+    const newPhotos = [...profile.photos];
+    newPhotos.splice(index, 1);
+    setProfile({
+      ...profile,
+      photos: newPhotos
+    });
   };
 
   return (
@@ -205,32 +233,33 @@ export default function CoachProfile() {
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       {/* Upload Button */}
                       {isEditing && (
-                        <div className="aspect-square rounded-xl border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 hover:bg-primary/5 transition-colors flex flex-col items-center justify-center cursor-pointer group">
+                        <div 
+                          onClick={handleAddPhoto}
+                          className="aspect-square rounded-xl border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 hover:bg-primary/5 transition-colors flex flex-col items-center justify-center cursor-pointer group"
+                        >
                           <Plus className="w-8 h-8 text-muted-foreground group-hover:text-primary mb-2" />
                           <span className="text-sm font-medium text-muted-foreground group-hover:text-primary">Add Photo</span>
                         </div>
                       )}
                       
                       {/* Gallery Items */}
-                      <motion.div whileHover={{ scale: 1.02 }} className="aspect-square rounded-xl overflow-hidden relative group">
-                        <img src={gallery1} className="w-full h-full object-cover" alt="Gallery 1" />
-                        {isEditing && (
-                           <button className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                             <Plus className="w-4 h-4 rotate-45" />
-                           </button>
-                        )}
-                      </motion.div>
-                      <motion.div whileHover={{ scale: 1.02 }} className="aspect-square rounded-xl overflow-hidden relative group">
-                        <img src={gallery2} className="w-full h-full object-cover" alt="Gallery 2" />
-                        {isEditing && (
-                           <button className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                             <Plus className="w-4 h-4 rotate-45" />
-                           </button>
-                        )}
-                      </motion.div>
-                      <motion.div whileHover={{ scale: 1.02 }} className="aspect-square rounded-xl overflow-hidden relative bg-muted flex items-center justify-center">
-                        <span className="text-muted-foreground text-sm">Action Shot</span>
-                      </motion.div>
+                      {profile.photos.map((photo, index) => (
+                        <motion.div 
+                          key={index} 
+                          whileHover={{ scale: 1.02 }} 
+                          className="aspect-square rounded-xl overflow-hidden relative group"
+                        >
+                          <img src={photo} className="w-full h-full object-cover" alt={`Gallery ${index + 1}`} />
+                          {isEditing && (
+                             <button 
+                               onClick={() => handleRemovePhoto(index)}
+                               className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                             >
+                               <X className="w-4 h-4" />
+                             </button>
+                          )}
+                        </motion.div>
+                      ))}
                     </div>
                   </TabsContent>
                   
