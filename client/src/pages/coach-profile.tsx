@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
@@ -13,28 +13,60 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MapPin, Camera, Edit2, Save, Plus, Trophy, Clock, DollarSign, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth-context";
+import { useLocation } from "wouter";
 import heroImage from "@assets/generated_images/dynamic_tennis_ball_on_court_line_with_dramatic_lighting.png";
 import avatarImage from "@assets/generated_images/female_tennis_coach_portrait.png";
 import gallery1 from "@assets/generated_images/kids_tennis_training_session.png";
 import gallery2 from "@assets/generated_images/tennis_match_action_shot_in_sydney.png";
 
+// Default profile for initialization
+const DEFAULT_PROFILE = {
+  name: "Sarah Thompson",
+  title: "Professional Tennis Coach (ITF Level 2)",
+  location: "Northern Beaches, Sydney",
+  bio: "Former WTA ranked player with 10+ years of coaching experience. I specialize in junior development and high-performance training for competitive players. My coaching philosophy focuses on building a strong technical foundation while developing tactical awareness on the court.",
+  rate: "90",
+  experience: "10",
+  locations: ["Manly", "Mosman", "Freshwater", "Brookvale"],
+  photos: [gallery1, gallery2],
+  avatar: avatarImage,
+  cover: heroImage
+};
+
 export default function CoachProfile() {
   const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
+  const { user, isAuthenticated } = useAuth();
+  const [, setLocation] = useLocation();
   
-  // Mock Data
-  const [profile, setProfile] = useState({
-    name: "Sarah Thompson",
-    title: "Professional Tennis Coach (ITF Level 2)",
-    location: "Northern Beaches, Sydney",
-    bio: "Former WTA ranked player with 10+ years of coaching experience. I specialize in junior development and high-performance training for competitive players. My coaching philosophy focuses on building a strong technical foundation while developing tactical awareness on the court.",
-    rate: "90",
-    experience: "10",
-    locations: ["Manly", "Mosman", "Freshwater", "Brookvale"],
-    photos: [gallery1, gallery2],
-    avatar: avatarImage,
-    cover: heroImage
-  });
+  // State for profile data
+  const [profile, setProfile] = useState(DEFAULT_PROFILE);
+
+  // Load profile from localStorage on mount
+  useEffect(() => {
+    // Redirect if not authenticated
+    if (!isAuthenticated) {
+      setLocation("/auth");
+      return;
+    }
+
+    const savedProfile = localStorage.getItem("tennis_connect_coach_profile");
+    if (savedProfile) {
+      try {
+        setProfile(JSON.parse(savedProfile));
+      } catch (e) {
+        console.error("Failed to parse profile", e);
+      }
+    } else if (user) {
+      // Initialize with user data if available
+      setProfile(prev => ({
+        ...prev,
+        name: user.name || prev.name,
+        avatar: user.avatar || prev.avatar
+      }));
+    }
+  }, [isAuthenticated, user, setLocation]);
 
   const availableLocations = [
     "Bondi Beach", "Manly", "Surry Hills", "Mosman", "Coogee", "Parramatta", "Chatswood", "Newtown", "Freshwater", "Brookvale"
@@ -42,6 +74,9 @@ export default function CoachProfile() {
 
   const handleSave = () => {
     setIsEditing(false);
+    // Save to localStorage
+    localStorage.setItem("tennis_connect_coach_profile", JSON.stringify(profile));
+    
     toast({
       title: "Profile Updated",
       description: "Your changes have been saved successfully.",
@@ -73,20 +108,20 @@ export default function CoachProfile() {
   const handleUpdateAvatar = () => {
     // Mock avatar update
     const newAvatar = "https://images.unsplash.com/photo-1605218427368-35b868661705?w=400&h=400&fit=crop";
-    setProfile({...profile, avatar: newAvatar}); // Note: need to add avatar to profile state or separate state
+    setProfile({...profile, avatar: newAvatar}); 
     toast({
       title: "Avatar Updated",
-      description: "Your profile picture has been updated.",
+      description: "Your profile picture has been updated. Don't forget to save changes.",
     });
   };
 
   const handleUpdateCover = () => {
     // Mock cover update
     const newCover = "https://images.unsplash.com/photo-1530915513880-4dd07eb9307f?w=1200&h=800&fit=crop";
-    setProfile({...profile, cover: newCover}); // Note: need to add cover to profile state or separate state
+    setProfile({...profile, cover: newCover}); 
     toast({
       title: "Cover Photo Updated",
-      description: "Your cover photo has been updated.",
+      description: "Your cover photo has been updated. Don't forget to save changes.",
     });
   };
 
@@ -99,7 +134,7 @@ export default function CoachProfile() {
         <div className="relative h-[300px] md:h-[400px] w-full overflow-hidden group">
           <div className="absolute inset-0 bg-black/40 z-10" />
           <img 
-            src={profile.cover || heroImage} 
+            src={profile.cover} 
             alt="Cover" 
             className="w-full h-full object-cover transition-transform duration-700"
           />

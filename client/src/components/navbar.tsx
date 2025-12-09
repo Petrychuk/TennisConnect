@@ -1,12 +1,23 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Menu } from "lucide-react";
+import { Menu, LogOut, User } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
+import { useAuth } from "@/lib/auth-context";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [location] = useLocation();
+  const { user, logout, isAuthenticated } = useAuth();
 
   const navLinks = [
     { name: "Partners", href: "/#partners" },
@@ -44,16 +55,46 @@ export function Navbar() {
 
         {/* CTA & Mobile Menu */}
         <div className="flex items-center gap-4">
-          <Link href="/coach/profile">
-            <Button variant="ghost" className="hidden md:inline-flex font-bold hover:text-primary">
-              My Profile
-            </Button>
-          </Link>
-          <Link href="/auth">
-            <Button className="hidden md:inline-flex bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6">
-              Sign In
-            </Button>
-          </Link>
+          {isAuthenticated ? (
+            <div className="hidden md:flex items-center gap-4">
+              <Link href={user?.role === "coach" ? "/coach/profile" : "/"}>
+                <Button variant="ghost" className="font-bold hover:text-primary gap-2">
+                  <User className="w-4 h-4" />
+                  {user?.name || "My Profile"}
+                </Button>
+              </Link>
+              
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Avatar className="h-9 w-9 cursor-pointer border-2 border-primary/20 hover:border-primary transition-colors">
+                    <AvatarImage src={user?.avatar} />
+                    <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                      {user?.name?.[0] || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href={user?.role === "coach" ? "/coach/profile" : "/"}>Profile</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>Settings</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          ) : (
+            <Link href="/auth">
+              <Button className="hidden md:inline-flex bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6">
+                Sign In
+              </Button>
+            </Link>
+          )}
 
           {/* Mobile Menu */}
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -64,6 +105,19 @@ export function Navbar() {
             </SheetTrigger>
             <SheetContent>
               <div className="flex flex-col gap-6 mt-8">
+                {isAuthenticated && (
+                   <div className="flex items-center gap-3 pb-6 border-b">
+                     <Avatar className="h-10 w-10">
+                        <AvatarImage src={user?.avatar} />
+                        <AvatarFallback>{user?.name?.[0] || "U"}</AvatarFallback>
+                     </Avatar>
+                     <div>
+                       <p className="font-bold">{user?.name}</p>
+                       <p className="text-sm text-muted-foreground capitalize">{user?.role}</p>
+                     </div>
+                   </div>
+                )}
+
                 {navLinks.map((link) => (
                   <a
                     key={link.name}
@@ -74,16 +128,32 @@ export function Navbar() {
                     {link.name}
                   </a>
                 ))}
-                <Link href="/coach/profile" onClick={() => setIsOpen(false)}>
-                  <Button variant="outline" className="w-full font-bold rounded-full">
-                    My Profile
-                  </Button>
-                </Link>
-                <Link href="/auth" onClick={() => setIsOpen(false)}>
-                  <Button className="w-full bg-primary text-primary-foreground font-bold rounded-full">
-                    Sign In
-                  </Button>
-                </Link>
+                
+                {isAuthenticated ? (
+                  <>
+                    <Link href={user?.role === "coach" ? "/coach/profile" : "/"} onClick={() => setIsOpen(false)}>
+                      <Button variant="outline" className="w-full font-bold rounded-full">
+                        My Profile
+                      </Button>
+                    </Link>
+                    <Button 
+                      variant="ghost" 
+                      className="w-full justify-start text-destructive hover:text-destructive"
+                      onClick={() => {
+                        logout();
+                        setIsOpen(false);
+                      }}
+                    >
+                      <LogOut className="mr-2 h-4 w-4" /> Sign Out
+                    </Button>
+                  </>
+                ) : (
+                  <Link href="/auth" onClick={() => setIsOpen(false)}>
+                    <Button className="w-full bg-primary text-primary-foreground font-bold rounded-full">
+                      Sign In
+                    </Button>
+                  </Link>
+                )}
               </div>
             </SheetContent>
           </Sheet>

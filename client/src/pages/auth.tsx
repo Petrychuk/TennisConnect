@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,12 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Loader2, User, Trophy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth-context";
 import heroImage from "@assets/118174652_3488272227872998_1093348718284959373_n_1764914380008.jpg";
 
 const loginSchema = z.object({
@@ -36,6 +35,7 @@ export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { login } = useAuth();
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -52,12 +52,27 @@ export default function AuthPage() {
     // Simulate API call
     setTimeout(() => {
       setIsLoading(false);
+      
+      // Mock login - assuming coach role for demo if email contains "coach"
+      const role = data.email.includes("coach") ? "coach" : "coach"; // Default to coach for demo convenience
+      
+      login({
+        name: "Sarah Thompson",
+        email: data.email,
+        role: role,
+        avatar: "https://images.unsplash.com/photo-1605218427368-35b868661705?w=400&h=400&fit=crop"
+      });
+
       toast({
         title: "Welcome back!",
         description: "You have successfully signed in.",
       });
-      // Redirect to coach profile for demo purposes
-      setLocation("/coach/profile");
+      
+      if (role === "coach") {
+        setLocation("/coach/profile");
+      } else {
+        setLocation("/");
+      }
     }, 1500);
   };
 
@@ -66,6 +81,14 @@ export default function AuthPage() {
     // Simulate API call
     setTimeout(() => {
       setIsLoading(false);
+      
+      login({
+        name: data.name,
+        email: data.email,
+        role: data.role,
+        avatar: "https://images.unsplash.com/photo-1605218427368-35b868661705?w=400&h=400&fit=crop"
+      });
+
       toast({
         title: "Account created",
         description: "Welcome to TennisConnect!",
@@ -74,7 +97,6 @@ export default function AuthPage() {
       if (data.role === "coach") {
         setLocation("/coach/profile");
       } else {
-        // Normal player redirect
         setLocation("/");
       }
     }, 1500);
