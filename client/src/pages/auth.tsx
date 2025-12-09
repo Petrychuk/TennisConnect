@@ -67,9 +67,15 @@ export default function AuthPage() {
       setIsLoading(false);
       toast({
         title: "Account created",
-        description: "Welcome to TennisConnect! Please sign in.",
+        description: "Welcome to TennisConnect!",
       });
-      // Switch to login tab or redirect
+      
+      if (data.role === "coach") {
+        setLocation("/coach/profile");
+      } else {
+        // Normal player redirect
+        setLocation("/");
+      }
     }, 1500);
   };
 
