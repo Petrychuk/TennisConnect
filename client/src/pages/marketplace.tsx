@@ -15,6 +15,8 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { MARKETPLACE_DATA } from "@/lib/dummy-data";
 
+import heroBg from "@assets/generated_images/clean_modern_tennis_gear_marketplace_header_background.png";
+
 export default function MarketplacePage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -46,6 +48,7 @@ export default function MarketplacePage() {
             ...item,
             id: `local-${item.id}`, // Avoid ID collision
             image: item.photos?.[0], // Use first photo as main image
+            title: item.name, // Normalize name to title
             seller_name: parsed.name,
             seller_email: parsed.email || "coach@tennisconnect.au",
             isLocal: true
@@ -61,8 +64,12 @@ export default function MarketplacePage() {
   }, []);
 
   const filteredItems = items.filter(item => {
-    const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          item.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    // Safe access to title and description
+    const title = (item.title || item.name || "").toLowerCase();
+    const description = (item.description || "").toLowerCase();
+    const query = searchQuery.toLowerCase();
+    
+    const matchesSearch = title.includes(query) || description.includes(query);
     return matchesSearch;
   });
 
@@ -95,21 +102,27 @@ export default function MarketplacePage() {
       
       <main className="pb-24 pt-20">
         {/* Header */}
-        <div className="bg-secondary/30 border-b border-border/50 py-12 mb-8">
-            <div className="container mx-auto px-4">
-                <div className="flex flex-col md:flex-row justify-between items-end gap-6">
-                    <div>
-                        <Badge className="mb-4 bg-primary/10 text-primary hover:bg-primary/20 border-primary/20 px-3 py-1">
-                            Marketplace
-                        </Badge>
-                        <h1 className="text-4xl md:text-6xl font-display font-bold mb-4">
-                            Tennis <span className="text-primary">Gear Exchange</span>
-                        </h1>
-                        <p className="text-xl text-muted-foreground max-w-2xl">
-                            The trusted place for Sydney's tennis community to buy and sell pre-loved equipment.
-                        </p>
-                    </div>
-                </div>
+        <div className="relative border-b border-border/50 py-24 mb-12 overflow-hidden">
+            <div className="absolute inset-0 z-0">
+               <img src={heroBg} className="w-full h-full object-cover opacity-20" alt="Marketplace Background" />
+               <div className="absolute inset-0 bg-gradient-to-b from-background/50 to-background"></div>
+            </div>
+            
+            <div className="container mx-auto px-4 relative z-10 text-center">
+                <Badge className="mb-6 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-1.5 text-sm font-bold shadow-[0_0_15px_rgba(223,255,0,0.4)]">
+                    Official Marketplace
+                </Badge>
+                <h1 className="text-5xl md:text-7xl font-display font-bold mb-6 tracking-tight">
+                    Tennis <span className="text-primary relative inline-block">
+                        Gear Exchange
+                        <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-30" viewBox="0 0 100 10" preserveAspectRatio="none">
+                           <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" />
+                        </svg>
+                    </span>
+                </h1>
+                <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                    The trusted place for Sydney's tennis community to buy, sell, and trade pre-loved equipment.
+                </p>
             </div>
         </div>
 
