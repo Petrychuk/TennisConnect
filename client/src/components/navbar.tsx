@@ -35,8 +35,8 @@ export function Navbar() {
         {/* Logo */}
         <Link href="/">
           <a className="text-2xl font-display font-bold flex items-center gap-1">
-            Tennis<span className="text-primary">Connect</span>
-            <div className="w-2 h-2 rounded-full bg-primary mt-1 animate-pulse" />
+            Tennis<span className="text-[hsl(var(--tennis-ball))]">Connect</span>
+            <div className="w-2 h-2 rounded-full bg-[hsl(var(--tennis-ball))] mt-1 animate-pulse" />
           </a>
         </Link>
 

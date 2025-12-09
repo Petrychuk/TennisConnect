@@ -7,7 +7,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
           <div className="space-y-4">
             <h3 className="text-2xl font-display font-bold flex items-center gap-1">
-              Tennis<span className="text-primary">Connect</span>
+              Tennis<span className="text-[hsl(var(--tennis-ball))]">Connect</span>
             </h3>
             <p className="text-gray-400 leading-relaxed">
               Australia's modern platform for tennis enthusiasts. Find a partner, book a court, buy gear, and start playing today.
