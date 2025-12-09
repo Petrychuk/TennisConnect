@@ -15,7 +15,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { MARKETPLACE_DATA } from "@/lib/dummy-data";
 
-import heroBg from "@assets/generated_images/clean_modern_tennis_gear_marketplace_header_background.png";
+import heroBg from "@assets/generated_images/cinematic_tennis_court_abstract_background.png";
 
 import { Link } from "wouter";
 import { User, ShieldCheck } from "lucide-react";
@@ -37,6 +37,7 @@ export default function MarketplacePage() {
   const [buyMessage, setBuyMessage] = useState("");
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     // 1. Load static dummy data
     let allItems = [...MARKETPLACE_DATA];
     
