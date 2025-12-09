@@ -29,6 +29,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+
 import heroImage from "@assets/generated_images/dynamic_tennis_ball_on_court_line_with_dramatic_lighting.png";
 import avatarImage from "@assets/generated_images/female_tennis_coach_portrait.png";
 import gallery1 from "@assets/generated_images/kids_tennis_training_session.png";
@@ -106,6 +116,7 @@ export default function CoachProfile() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [openCombobox, setOpenCombobox] = useState(false);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
   const { toast } = useToast();
   
   // State for profile data
@@ -908,7 +919,52 @@ export default function CoachProfile() {
                                   <span className="text-sm text-muted-foreground block">Session Rate</span>
                                   <span className="text-xl font-bold">$50 <span className="text-sm font-normal text-muted-foreground">/ hour</span></span>
                                 </div>
-                                <Button>Book Practice</Button>
+                                <Dialog open={isBookingOpen} onOpenChange={setIsBookingOpen}>
+                                  <DialogTrigger asChild>
+                                    <Button>Book Practice</Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="sm:max-w-[425px]">
+                                    <DialogHeader>
+                                      <DialogTitle>Book a Hitting Session</DialogTitle>
+                                      <DialogDescription>
+                                        Send a request to practice with {profile.name}. 
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="grid gap-4 py-4">
+                                      <div className="grid gap-2">
+                                        <Label htmlFor="name">Name</Label>
+                                        <Input id="name" defaultValue={user?.name || ""} placeholder="Your name" />
+                                      </div>
+                                      <div className="grid gap-2">
+                                        <Label htmlFor="email">Email</Label>
+                                        <Input id="email" type="email" placeholder="your@email.com" />
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid gap-2">
+                                          <Label htmlFor="date">Preferred Date</Label>
+                                          <Input id="date" type="date" />
+                                        </div>
+                                        <div className="grid gap-2">
+                                          <Label htmlFor="time">Time</Label>
+                                          <Input id="time" type="time" />
+                                        </div>
+                                      </div>
+                                      <div className="grid gap-2">
+                                        <Label htmlFor="message">Message</Label>
+                                        <Textarea id="message" placeholder="I'd like to work on my backhand cross-court rally..." />
+                                      </div>
+                                    </div>
+                                    <DialogFooter>
+                                      <Button type="submit" onClick={() => {
+                                        setIsBookingOpen(false);
+                                        toast({
+                                          title: "Request Sent!",
+                                          description: `Your hitting session request has been sent to ${profile.name}.`,
+                                        });
+                                      }}>Send Request</Button>
+                                    </DialogFooter>
+                                  </DialogContent>
+                                </Dialog>
                               </div>
                             </div>
                           </div>
