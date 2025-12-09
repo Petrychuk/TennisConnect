@@ -105,25 +105,79 @@ export default function CoachProfile() {
     });
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'avatar' | 'cover' | 'photo') => {
+  const resizeImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          
+          // Max dimensions
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 800;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          // Compress to JPEG with 0.7 quality
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          resolve(dataUrl);
+        };
+        img.src = event.target?.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, field: 'avatar' | 'cover' | 'photo') => {
     const file = e.target.files?.[0];
     if (file) {
-      // Check file size (limit to 2MB for prototype safety)
-      if (file.size > 2 * 1024 * 1024) {
-        toast({
-          variant: "destructive",
-          title: "File too large",
-          description: "Please select an image or video under 2MB for this prototype.",
-        });
-        return;
-      }
+      try {
+        let result: string;
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
+        // If it's an image, resize it
+        if (file.type.startsWith('image/')) {
+          result = await resizeImage(file);
+        } else {
+          // For videos, still check size limit strictly
+          if (file.size > 5 * 1024 * 1024) {
+             toast({
+              variant: "destructive",
+              title: "Video too large",
+              description: "Please select a video under 5MB for this prototype.",
+            });
+            return;
+          }
+          
+          // Read video as base64
+          result = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(file);
+          });
+        }
+
         if (field === 'avatar') {
           setProfile({ ...profile, avatar: result });
-          updateUser({ avatar: result }); // Update global state for avatar
+          updateUser({ avatar: result });
           toast({ title: "Avatar Updated", description: "Don't forget to save changes." });
         } else if (field === 'cover') {
           setProfile({ ...profile, cover: result });
@@ -132,8 +186,14 @@ export default function CoachProfile() {
           setProfile({ ...profile, photos: [...profile.photos, result] });
           toast({ title: "Media Added", description: "New item added to gallery." });
         }
-      };
-      reader.readAsDataURL(file);
+      } catch (error) {
+        console.error("Error processing file", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to process file.",
+        });
+      }
     }
   };
 
