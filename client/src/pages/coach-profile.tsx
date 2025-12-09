@@ -682,8 +682,10 @@ export default function CoachProfile() {
                                          key={loc} 
                                          variant={isSelected ? "default" : "outline"}
                                          className={cn(
-                                           "cursor-pointer px-3 py-1.5 transition-all", 
-                                           isSelected ? "bg-primary text-primary-foreground hover:bg-primary/90" : "hover:bg-primary/20 border-primary/20 text-primary"
+                                           "cursor-pointer px-3 py-1.5 transition-all border-2", 
+                                           isSelected 
+                                             ? "bg-primary text-primary-foreground border-primary hover:bg-primary/90" 
+                                             : "bg-muted/30 border-muted-foreground/10 text-muted-foreground hover:border-primary/50 hover:text-primary hover:bg-primary/5"
                                          )}
                                          onClick={() => {
                                            if (isSelected) {
