@@ -83,19 +83,6 @@ export default function CoachProfile() {
     });
   };
 
-  const handleAddPhoto = () => {
-    // Mock adding a photo
-    const newPhoto = "https://images.unsplash.com/photo-1599586120429-48281b6f0ece?w=800&q=80";
-    setProfile({
-      ...profile,
-      photos: [...profile.photos, newPhoto]
-    });
-    toast({
-      title: "Photo Added",
-      description: "New photo has been added to your gallery.",
-    });
-  };
-
   const handleRemovePhoto = (index: number) => {
     const newPhotos = [...profile.photos];
     newPhotos.splice(index, 1);
@@ -105,24 +92,25 @@ export default function CoachProfile() {
     });
   };
 
-  const handleUpdateAvatar = () => {
-    // Mock avatar update
-    const newAvatar = "https://images.unsplash.com/photo-1605218427368-35b868661705?w=400&h=400&fit=crop";
-    setProfile({...profile, avatar: newAvatar}); 
-    toast({
-      title: "Avatar Updated",
-      description: "Your profile picture has been updated. Don't forget to save changes.",
-    });
-  };
-
-  const handleUpdateCover = () => {
-    // Mock cover update
-    const newCover = "https://images.unsplash.com/photo-1530915513880-4dd07eb9307f?w=1200&h=800&fit=crop";
-    setProfile({...profile, cover: newCover}); 
-    toast({
-      title: "Cover Photo Updated",
-      description: "Your cover photo has been updated. Don't forget to save changes.",
-    });
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'avatar' | 'cover' | 'photo') => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        if (field === 'avatar') {
+          setProfile({ ...profile, avatar: result });
+          toast({ title: "Avatar Updated", description: "Don't forget to save changes." });
+        } else if (field === 'cover') {
+          setProfile({ ...profile, cover: result });
+          toast({ title: "Cover Updated", description: "Don't forget to save changes." });
+        } else if (field === 'photo') {
+          setProfile({ ...profile, photos: [...profile.photos, result] });
+          toast({ title: "Photo Added", description: "New photo added to gallery." });
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   return (
@@ -130,6 +118,29 @@ export default function CoachProfile() {
       <Navbar />
       
       <main className="pb-24">
+        {/* Hidden File Inputs */}
+        <input 
+          type="file" 
+          id="avatar-upload" 
+          className="hidden" 
+          accept="image/*"
+          onChange={(e) => handleFileChange(e, 'avatar')}
+        />
+        <input 
+          type="file" 
+          id="cover-upload" 
+          className="hidden" 
+          accept="image/*"
+          onChange={(e) => handleFileChange(e, 'cover')}
+        />
+        <input 
+          type="file" 
+          id="photo-upload" 
+          className="hidden" 
+          accept="image/*"
+          onChange={(e) => handleFileChange(e, 'photo')}
+        />
+
         {/* Profile Header / Hero */}
         <div className="relative h-[300px] md:h-[400px] w-full overflow-hidden group">
           <div className="absolute inset-0 bg-black/40 z-10" />
@@ -140,7 +151,7 @@ export default function CoachProfile() {
           />
           {isEditing && (
              <div 
-               onClick={handleUpdateCover}
+               onClick={() => document.getElementById('cover-upload')?.click()}
                className="absolute inset-0 z-20 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
              >
                <Button variant="secondary" className="gap-2 pointer-events-none">
@@ -171,7 +182,7 @@ export default function CoachProfile() {
                 <img src={profile.avatar} alt="Profile" className="w-full h-full object-cover" />
                 {isEditing && (
                   <div 
-                    onClick={handleUpdateAvatar}
+                    onClick={() => document.getElementById('avatar-upload')?.click()}
                     className="absolute inset-0 bg-black/50 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <Camera className="w-8 h-8 text-white" />
@@ -304,7 +315,7 @@ export default function CoachProfile() {
                       {/* Upload Button */}
                       {isEditing && (
                         <div 
-                          onClick={handleAddPhoto}
+                          onClick={() => document.getElementById('photo-upload')?.click()}
                           className="aspect-square rounded-xl border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 hover:bg-primary/5 transition-colors flex flex-col items-center justify-center cursor-pointer group"
                         >
                           <Plus className="w-8 h-8 text-muted-foreground group-hover:text-primary mb-2" />
