@@ -314,7 +314,7 @@ export default function CoachesPage() {
                             <div className="text-sm font-medium">
                               {(() => {
                                 const today = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
-                                const schedule = coach.schedule[today];
+                                const schedule = (coach.schedule as any)?.[today];
                                 if (schedule && schedule.active) {
                                   // Simple formatting
                                   const formatTime = (t: string) => {

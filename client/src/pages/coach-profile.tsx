@@ -473,6 +473,7 @@ export default function CoachProfile() {
                 <TabsTrigger value="about" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">About</TabsTrigger>
                 <TabsTrigger value="photos" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Photos</TabsTrigger>
                 <TabsTrigger value="schedule" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Schedule & Locations</TabsTrigger>
+                <TabsTrigger value="practice" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Hitting Partner</TabsTrigger>
                 <TabsTrigger value="marketplace" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Marketplace</TabsTrigger>
                 <TabsTrigger value="contact" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Contact</TabsTrigger>
               </TabsList>
@@ -856,6 +857,59 @@ export default function CoachProfile() {
                          </div>
                        </CardContent>
                      </Card>
+                  </TabsContent>
+
+                  <TabsContent value="practice" className="mt-0">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Trophy className="w-5 h-5 text-primary" />
+                          Hitting Partner / Practice Sessions
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        <div className="bg-muted/30 p-6 rounded-lg border border-border/50">
+                          <div className="flex items-start gap-4">
+                            <div className="p-3 bg-primary/10 rounded-full text-primary">
+                              <Trophy className="w-6 h-6" />
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-bold mb-2">Need a Hitting Partner?</h3>
+                              <p className="text-muted-foreground mb-4">
+                                Apart from coaching, I also offer hitting sessions for players who want to practice match play, improve consistency, or just get a good workout without technical instruction.
+                              </p>
+                              
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                                <div className="flex items-center gap-2 text-sm">
+                                  <Check className="w-4 h-4 text-primary" />
+                                  <span>Match Play Simulation</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm">
+                                  <Check className="w-4 h-4 text-primary" />
+                                  <span>Drill Repetition</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm">
+                                  <Check className="w-4 h-4 text-primary" />
+                                  <span>Tie-break Practice</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm">
+                                  <Check className="w-4 h-4 text-primary" />
+                                  <span>High Intensity Rallying</span>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center justify-between bg-background p-4 rounded-md border">
+                                <div>
+                                  <span className="text-sm text-muted-foreground block">Session Rate</span>
+                                  <span className="text-xl font-bold">$50 <span className="text-sm font-normal text-muted-foreground">/ hour</span></span>
+                                </div>
+                                <Button>Book Practice</Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </TabsContent>
 
                   <TabsContent value="marketplace" className="mt-0">
