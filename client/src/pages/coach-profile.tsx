@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Camera, Edit2, Save, Plus, Trophy, Clock, DollarSign, X, ShoppingBag, Mail, Phone, MessageCircle, Send, Check, ChevronsUpDown, Calendar, ChevronRight } from "lucide-react";
+import { MapPin, Camera, Edit2, Save, Plus, Trophy, Clock, DollarSign, X, ShoppingBag, Mail, Phone, MessageCircle, Send, Check, ChevronsUpDown, Calendar, ChevronRight, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { useLocation } from "wouter";
@@ -33,6 +33,10 @@ import heroImage from "@assets/generated_images/dynamic_tennis_ball_on_court_lin
 import avatarImage from "@assets/generated_images/female_tennis_coach_portrait.png";
 import gallery1 from "@assets/generated_images/kids_tennis_training_session.png";
 import gallery2 from "@assets/generated_images/tennis_match_action_shot_in_sydney.png";
+
+import student1 from "@assets/generated_images/portrait_of_a_young_male_tennis_student.png";
+import student2 from "@assets/generated_images/portrait_of_a_female_tennis_student.png";
+import student3 from "@assets/generated_images/portrait_of_an_older_male_tennis_student.png";
 
 // Default profile for initialization
 const DEFAULT_PROFILE = {
@@ -474,6 +478,7 @@ export default function CoachProfile() {
                 <TabsTrigger value="photos" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Photos</TabsTrigger>
                 <TabsTrigger value="schedule" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Schedule & Locations</TabsTrigger>
                 <TabsTrigger value="practice" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Hitting Partner</TabsTrigger>
+                <TabsTrigger value="students" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">My Students</TabsTrigger>
                 <TabsTrigger value="marketplace" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Marketplace</TabsTrigger>
                 <TabsTrigger value="contact" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Contact</TabsTrigger>
               </TabsList>
@@ -907,6 +912,72 @@ export default function CoachProfile() {
                               </div>
                             </div>
                           </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent value="students" className="mt-0">
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between">
+                         <CardTitle className="flex items-center gap-2">
+                           <Users className="w-5 h-5 text-primary" />
+                           My Students
+                         </CardTitle>
+                         {isEditing && (
+                           <Button size="sm" variant="outline" className="gap-2">
+                             <Plus className="w-4 h-4" /> Add Student
+                           </Button>
+                         )}
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           {/* Student 1 */}
+                           <div className="flex items-center gap-4 p-4 rounded-lg border bg-card hover:shadow-md transition-shadow">
+                             <Avatar className="w-12 h-12 border-2 border-primary/20">
+                               <AvatarImage src={student1} />
+                               <AvatarFallback>JD</AvatarFallback>
+                             </Avatar>
+                             <div className="flex-1">
+                               <h4 className="font-bold">Jason Davis</h4>
+                               <p className="text-sm text-muted-foreground">Intermediate • Training for 6 months</p>
+                             </div>
+                             <Badge variant="outline" className="ml-auto">Active</Badge>
+                           </div>
+
+                           {/* Student 2 */}
+                           <div className="flex items-center gap-4 p-4 rounded-lg border bg-card hover:shadow-md transition-shadow">
+                             <Avatar className="w-12 h-12 border-2 border-primary/20">
+                               <AvatarImage src={student2} />
+                               <AvatarFallback>SM</AvatarFallback>
+                             </Avatar>
+                             <div className="flex-1">
+                               <h4 className="font-bold">Sarah Miller</h4>
+                               <p className="text-sm text-muted-foreground">Beginner • Training for 2 months</p>
+                             </div>
+                             <Badge variant="outline" className="ml-auto">Active</Badge>
+                           </div>
+
+                           {/* Student 3 */}
+                           <div className="flex items-center gap-4 p-4 rounded-lg border bg-card hover:shadow-md transition-shadow">
+                             <Avatar className="w-12 h-12 border-2 border-primary/20">
+                               <AvatarImage src={student3} />
+                               <AvatarFallback>RT</AvatarFallback>
+                             </Avatar>
+                             <div className="flex-1">
+                               <h4 className="font-bold">Robert Thompson</h4>
+                               <p className="text-sm text-muted-foreground">Advanced • Training for 1.5 years</p>
+                             </div>
+                             <Badge variant="outline" className="ml-auto">Active</Badge>
+                           </div>
+
+                           {/* Add New Placeholder */}
+                           {isEditing && (
+                             <div className="flex items-center justify-center gap-2 p-4 rounded-lg border border-dashed hover:bg-muted/50 transition-colors cursor-pointer text-muted-foreground h-[88px]">
+                               <Plus className="w-5 h-5" />
+                               <span>Add another student</span>
+                             </div>
+                           )}
                         </div>
                       </CardContent>
                     </Card>
