@@ -1128,38 +1128,61 @@ export default function CoachProfile() {
 
                 {/* Right Sidebar */}
                 <div className="space-y-6">
-                  <Card className="bg-primary/5 border-primary/20 sticky top-24">
+                  <Card className="bg-card border-border/50 sticky top-24 shadow-sm">
                     <CardHeader>
-                      <CardTitle className="text-xl">Coach Status</CardTitle>
+                      <CardTitle className="text-xl flex items-center gap-2">
+                        <Check className="w-5 h-5 text-primary" />
+                        Coach Overview
+                      </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex justify-between items-center pb-4 border-b border-primary/10">
-                        <span className="text-muted-foreground">Profile Visibility</span>
-                        <Badge className="bg-green-500 hover:bg-green-600">Public</Badge>
+                    <CardContent className="space-y-6">
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground text-sm">Verification Status</span>
+                          <Badge variant="outline" className="text-primary border-primary/30 bg-primary/5 flex gap-1 items-center">
+                            <Check className="w-3 h-3" /> Verified
+                          </Badge>
+                        </div>
+                        
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground text-sm">Response Time</span>
+                          <span className="font-medium text-sm">Usually within 1 hr</span>
+                        </div>
+
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground text-sm">Accepting Students</span>
+                          <Badge className="bg-green-500 hover:bg-green-600 border-none text-white">Yes, Open</Badge>
+                        </div>
                       </div>
-                      <div className="flex justify-between items-center pb-4 border-b border-primary/10">
-                        <span className="text-muted-foreground">Verification</span>
-                        <Badge variant="outline" className="text-primary border-primary">Verified</Badge>
-                      </div>
-                      <div className="space-y-2">
-                         <span className="text-sm font-bold block">Quick Stats</span>
-                         <div className="grid grid-cols-2 gap-2">
-                           <div className="bg-background p-3 rounded-lg text-center">
-                             <div className="text-xl font-bold text-primary">24</div>
-                             <div className="text-xs text-muted-foreground">Students</div>
+
+                      <div className="pt-4 border-t border-border/50">
+                         <span className="text-sm font-bold block mb-3">Performance Stats</span>
+                         <div className="grid grid-cols-2 gap-3">
+                           <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/50">
+                             <div className="text-2xl font-bold text-primary">24</div>
+                             <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Active Students</div>
                            </div>
-                           <div className="bg-background p-3 rounded-lg text-center">
-                             <div className="text-xl font-bold text-primary">4.9</div>
-                             <div className="text-xs text-muted-foreground">Rating</div>
+                           <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/50">
+                             <div className="text-2xl font-bold text-primary">4.9</div>
+                             <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Rating</div>
+                           </div>
+                           <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/50">
+                             <div className="text-2xl font-bold text-primary">150+</div>
+                             <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Hours Taught</div>
+                           </div>
+                           <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/50">
+                             <div className="text-2xl font-bold text-primary">100%</div>
+                             <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Attendance</div>
                            </div>
                          </div>
                       </div>
                       
-                      {!isEditing && (
-                         <Button className="w-full font-bold" variant="outline">
-                           View Public Profile
-                         </Button>
-                      )}
+                      <Button className="w-full gap-2" variant="outline" onClick={() => {
+                        navigator.clipboard.writeText(window.location.href);
+                        toast({ description: "Profile link copied to clipboard!" });
+                      }}>
+                        <Send className="w-4 h-4" /> Share Profile
+                      </Button>
                     </CardContent>
                   </Card>
                 </div>
