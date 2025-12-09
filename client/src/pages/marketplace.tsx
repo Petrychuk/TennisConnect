@@ -103,231 +103,228 @@ export default function MarketplacePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background font-sans">
-      <Navbar />
-      
-      <main className="pb-24 pt-20">
-        {/* Header */}
-        <div className="relative border-b border-white/10 py-32 mb-12 overflow-hidden bg-black/90">
-            <div className="absolute inset-0 z-0">
-               <img src={heroBg} className="w-full h-full object-cover opacity-80" alt="Marketplace Background" />
-               <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background"></div>
-            </div>
-            
-            <div className="container mx-auto px-4 relative z-10 text-center">
-                <Badge className="mb-6 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-1.5 text-sm font-bold shadow-[0_0_20px_rgba(223,255,0,0.4)] border-none">
-                    Official Marketplace
-                </Badge>
-                <h1 className="text-5xl md:text-7xl font-display font-bold mb-6 tracking-tight text-white drop-shadow-xl">
-                    Tennis <span className="text-primary relative inline-block">
-                        Gear Exchange
-                        <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-50" viewBox="0 0 100 10" preserveAspectRatio="none">
-                           <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" />
-                        </svg>
-                    </span>
-                </h1>
-                <p className="text-xl md:text-2xl text-gray-200 max-w-2xl mx-auto leading-relaxed drop-shadow-md font-medium">
-                    The trusted place for Sydney's tennis community to buy, sell, and trade pre-loved equipment.
-                </p>
-            </div>
-        </div>
-
-        {/* Filters & Search */}
-        <div className="container mx-auto px-4 mb-12">
-            <div className="flex flex-col md:flex-row gap-4 items-center bg-card p-4 rounded-xl border shadow-sm">
-                <div className="relative flex-grow w-full md:w-auto">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                    <Input 
-                      placeholder="Search for rackets, bags, shoes..." 
-                      className="pl-9 bg-background"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
+      <div className="min-h-screen bg-background font-sans">
+          <Navbar />
+          <main className="pb-24 pt-20">
+            {/* Header */}
+            <div className="relative border-b border-white/10 py-32 mb-12 overflow-hidden bg-black/90">
+                <div className="absolute inset-0 z-0">
+                   <img src={heroBg} className="w-full h-full object-cover opacity-80" alt="Marketplace Background" />
+                   <div className="absolute inset-0 from-transparent to-background bg-[#030303c2]"></div>
                 </div>
-                <div className="flex gap-2 w-full md:w-auto">
-                    <Select defaultValue="all">
-                        <SelectTrigger className="w-[180px]">
-                            <div className="flex items-center gap-2">
-                                <Filter className="w-4 h-4" />
-                                <SelectValue placeholder="Category" />
-                            </div>
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Categories</SelectItem>
-                            <SelectItem value="rackets">Rackets</SelectItem>
-                            <SelectItem value="bags">Bags</SelectItem>
-                            <SelectItem value="shoes">Shoes</SelectItem>
-                            <SelectItem value="apparel">Apparel</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <Button variant="outline" className="gap-2">
-                        <ArrowUpDown className="w-4 h-4" /> Sort
-                    </Button>
+                
+                <div className="container mx-auto px-4 relative z-10 text-center">
+                    <Badge className="mb-6 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-1.5 text-sm font-bold shadow-[0_0_20px_rgba(223,255,0,0.4)] border-none">
+                        Official Marketplace
+                    </Badge>
+                    <h1 className="text-5xl md:text-7xl font-display font-bold mb-6 tracking-tight text-white drop-shadow-xl">
+                        Tennis <span className="text-primary relative inline-block">
+                            Gear Exchange
+                            <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-50" viewBox="0 0 100 10" preserveAspectRatio="none">
+                               <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" />
+                            </svg>
+                        </span>
+                    </h1>
+                    <p className="text-xl md:text-2xl text-gray-200 max-w-2xl mx-auto leading-relaxed drop-shadow-md font-medium">
+                        The trusted place for Sydney's tennis community to buy, sell, and trade pre-loved equipment.
+                    </p>
                 </div>
             </div>
-        </div>
 
-        {/* Grid */}
-        <div className="container mx-auto px-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {filteredItems.map((item, index) => (
-                    <motion.div
-                        key={item.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.05 }}
-                    >
-                        <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 group h-full flex flex-col border-border/50">
-                            <div className="aspect-[4/3] relative overflow-hidden bg-muted">
-                                <img 
-                                  src={item.image || item.photos?.[0]} 
-                                  alt={item.title || item.name} 
-                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                />
-                                <div className="absolute top-3 right-3 flex gap-2">
-                                    <Badge className="bg-black/70 backdrop-blur-md text-white border-none shadow-sm">
-                                        ${item.price}
-                                    </Badge>
+            {/* Filters & Search */}
+            <div className="container mx-auto px-4 mb-12">
+                <div className="flex flex-col md:flex-row gap-4 items-center bg-card p-4 rounded-xl border shadow-sm">
+                    <div className="relative flex-grow w-full md:w-auto">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                        <Input 
+                          placeholder="Search for rackets, bags, shoes..." 
+                          className="pl-9 bg-background"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex gap-2 w-full md:w-auto">
+                        <Select defaultValue="all">
+                            <SelectTrigger className="w-[180px]">
+                                <div className="flex items-center gap-2">
+                                    <Filter className="w-4 h-4" />
+                                    <SelectValue placeholder="Category" />
                                 </div>
-                                {item.isLocal && (
-                                    <div className="absolute top-3 left-3">
-                                        <Badge className="bg-primary text-primary-foreground font-bold shadow-sm">
-                                            New Listing
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Categories</SelectItem>
+                                <SelectItem value="rackets">Rackets</SelectItem>
+                                <SelectItem value="bags">Bags</SelectItem>
+                                <SelectItem value="shoes">Shoes</SelectItem>
+                                <SelectItem value="apparel">Apparel</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Button variant="outline" className="gap-2">
+                            <ArrowUpDown className="w-4 h-4" /> Sort
+                        </Button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Grid */}
+            <div className="container mx-auto px-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {filteredItems.map((item, index) => (
+                        <motion.div
+                            key={item.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                        >
+                            <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 group h-full flex flex-col border-border/50">
+                                <div className="aspect-[4/3] relative overflow-hidden bg-muted">
+                                    <img 
+                                      src={item.image || item.photos?.[0]} 
+                                      alt={item.title || item.name} 
+                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                    />
+                                    <div className="absolute top-3 right-3 flex gap-2">
+                                        <Badge className="bg-black/70 backdrop-blur-md text-white border-none shadow-sm">
+                                            ${item.price}
                                         </Badge>
                                     </div>
-                                )}
-                            </div>
-                            <CardContent className="p-5 flex flex-col flex-grow">
-                                <div className="mb-2">
-                                    <h3 className="font-bold text-lg leading-tight line-clamp-1" title={item.title || item.name}>
-                                        {item.title || item.name}
-                                    </h3>
-                                    <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
-                                        <MapPin className="w-3 h-3" /> {item.location}
-                                    </p>
-                                </div>
-                                
-                                <div className="flex gap-2 mb-4">
-                                    <Badge variant="secondary" className="text-xs font-normal">
-                                        {item.condition}
-                                    </Badge>
-                                </div>
-                                
-                                <p className="text-sm text-muted-foreground line-clamp-2 mb-4 flex-grow">
-                                    {item.description}
-                                </p>
-                                
-                                <div className="mt-auto pt-4 border-t border-border/50 flex items-center justify-between text-xs text-muted-foreground">
-                                    <Link href={item.seller_type === 'coach' ? `/coach/${item.seller_id}` : `#`}>
-                                        <div className="flex items-center gap-2 hover:text-primary transition-colors cursor-pointer group/seller">
-                                            {item.seller_type === 'coach' ? (
-                                                <div className="bg-primary/10 p-1 rounded-full">
-                                                    <ShieldCheck className="w-3 h-3 text-primary" />
-                                                </div>
-                                            ) : (
-                                                <div className="bg-muted p-1 rounded-full">
-                                                    <User className="w-3 h-3" />
-                                                </div>
-                                            )}
-                                            <span className="font-medium group-hover/seller:underline">{item.seller_name}</span>
+                                    {item.isLocal && (
+                                        <div className="absolute top-3 left-3">
+                                            <Badge className="bg-primary text-primary-foreground font-bold shadow-sm">
+                                                New Listing
+                                            </Badge>
                                         </div>
-                                    </Link>
+                                    )}
                                 </div>
-                            </CardContent>
-                            <CardFooter className="p-4 pt-0">
-                                <Button 
-                                    className="w-full font-bold gap-2 group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
-                                    onClick={() => {
-                                        setSelectedItem(item);
-                                        setIsBuyModalOpen(true);
-                                        if (user) {
-                                            setBuyName(user.name || "");
-                                            setBuyEmail(user.email || "");
-                                        }
-                                    }}
-                                >
-                                    <ShoppingBag className="w-4 h-4" /> Buy / Offer
-                                </Button>
-                            </CardFooter>
-                        </Card>
-                    </motion.div>
-                ))}
-            </div>
-
-            {filteredItems.length === 0 && (
-                <div className="text-center py-24 text-muted-foreground">
-                    <ShoppingBag className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                    <h3 className="text-xl font-bold mb-2">No items found</h3>
-                    <p>Try adjusting your search terms or filters.</p>
+                                <CardContent className="p-5 flex flex-col flex-grow">
+                                    <div className="mb-2">
+                                        <h3 className="font-bold text-lg leading-tight line-clamp-1" title={item.title || item.name}>
+                                            {item.title || item.name}
+                                        </h3>
+                                        <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
+                                            <MapPin className="w-3 h-3" /> {item.location}
+                                        </p>
+                                    </div>
+                                    
+                                    <div className="flex gap-2 mb-4">
+                                        <Badge variant="secondary" className="text-xs font-normal">
+                                            {item.condition}
+                                        </Badge>
+                                    </div>
+                                    
+                                    <p className="text-sm text-muted-foreground line-clamp-2 mb-4 flex-grow">
+                                        {item.description}
+                                    </p>
+                                    
+                                    <div className="mt-auto pt-4 border-t border-border/50 flex items-center justify-between text-xs text-muted-foreground">
+                                        <Link href={item.seller_type === 'coach' ? `/coach/${item.seller_id}` : `#`}>
+                                            <div className="flex items-center gap-2 hover:text-primary transition-colors cursor-pointer group/seller">
+                                                {item.seller_type === 'coach' ? (
+                                                    <div className="bg-primary/10 p-1 rounded-full">
+                                                        <ShieldCheck className="w-3 h-3 text-primary" />
+                                                    </div>
+                                                ) : (
+                                                    <div className="bg-muted p-1 rounded-full">
+                                                        <User className="w-3 h-3" />
+                                                    </div>
+                                                )}
+                                                <span className="font-medium group-hover/seller:underline">{item.seller_name}</span>
+                                            </div>
+                                        </Link>
+                                    </div>
+                                </CardContent>
+                                <CardFooter className="p-4 pt-0">
+                                    <Button 
+                                        className="w-full font-bold gap-2 group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
+                                        onClick={() => {
+                                            setSelectedItem(item);
+                                            setIsBuyModalOpen(true);
+                                            if (user) {
+                                                setBuyName(user.name || "");
+                                                setBuyEmail(user.email || "");
+                                            }
+                                        }}
+                                    >
+                                        <ShoppingBag className="w-4 h-4" /> Buy / Offer
+                                    </Button>
+                                </CardFooter>
+                            </Card>
+                        </motion.div>
+                    ))}
                 </div>
-            )}
-        </div>
-      </main>
 
-      <Footer />
-
-      {/* Buy Modal */}
-      <Dialog open={isBuyModalOpen} onOpenChange={setIsBuyModalOpen}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Contact Seller</DialogTitle>
-                <DialogDescription>
-                    Send a message to {selectedItem?.seller_name} about {selectedItem?.title || selectedItem?.name}.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-2">
-                <div className="p-3 bg-muted/30 rounded-lg flex gap-3 items-center border">
-                    <img 
-                        src={selectedItem?.image || selectedItem?.photos?.[0]} 
-                        className="w-16 h-16 rounded object-cover bg-muted" 
-                    />
-                    <div>
-                        <p className="font-bold">{selectedItem?.title || selectedItem?.name}</p>
-                        <p className="text-primary font-bold">${selectedItem?.price}</p>
+                {filteredItems.length === 0 && (
+                    <div className="text-center py-24 text-muted-foreground">
+                        <ShoppingBag className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                        <h3 className="text-xl font-bold mb-2">No items found</h3>
+                        <p>Try adjusting your search terms or filters.</p>
                     </div>
-                </div>
+                )}
+            </div>
+          </main>
+          <Footer />
+          {/* Buy Modal */}
+          <Dialog open={isBuyModalOpen} onOpenChange={setIsBuyModalOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Contact Seller</DialogTitle>
+                    <DialogDescription>
+                        Send a message to {selectedItem?.seller_name} about {selectedItem?.title || selectedItem?.name}.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                    <div className="p-3 bg-muted/30 rounded-lg flex gap-3 items-center border">
+                        <img 
+                            src={selectedItem?.image || selectedItem?.photos?.[0]} 
+                            className="w-16 h-16 rounded object-cover bg-muted" 
+                        />
+                        <div>
+                            <p className="font-bold">{selectedItem?.title || selectedItem?.name}</p>
+                            <p className="text-primary font-bold">${selectedItem?.price}</p>
+                        </div>
+                    </div>
 
-                <div className="space-y-2">
-                    <Label>Your Name</Label>
-                    <Input 
-                        value={buyName} 
-                        onChange={(e) => setBuyName(e.target.value)} 
-                        placeholder="John Doe"
-                    />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                        <Label>Email</Label>
+                        <Label>Your Name</Label>
                         <Input 
-                            value={buyEmail} 
-                            onChange={(e) => setBuyEmail(e.target.value)} 
-                            placeholder="john@example.com"
+                            value={buyName} 
+                            onChange={(e) => setBuyName(e.target.value)} 
+                            placeholder="John Doe"
                         />
                     </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label>Email</Label>
+                            <Input 
+                                value={buyEmail} 
+                                onChange={(e) => setBuyEmail(e.target.value)} 
+                                placeholder="john@example.com"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Phone</Label>
+                            <Input 
+                                value={buyPhone} 
+                                onChange={(e) => setBuyPhone(e.target.value)} 
+                                placeholder="04XX XXX XXX"
+                            />
+                        </div>
+                    </div>
                     <div className="space-y-2">
-                        <Label>Phone</Label>
-                        <Input 
-                            value={buyPhone} 
-                            onChange={(e) => setBuyPhone(e.target.value)} 
-                            placeholder="04XX XXX XXX"
+                        <Label>Message</Label>
+                        <Textarea 
+                            value={buyMessage} 
+                            onChange={(e) => setBuyMessage(e.target.value)} 
+                            placeholder="Hi, is this still available? When can I pick it up?" 
                         />
                     </div>
                 </div>
-                <div className="space-y-2">
-                    <Label>Message</Label>
-                    <Textarea 
-                        value={buyMessage} 
-                        onChange={(e) => setBuyMessage(e.target.value)} 
-                        placeholder="Hi, is this still available? When can I pick it up?" 
-                    />
-                </div>
-            </div>
-            <DialogFooter>
-                <Button variant="outline" onClick={() => setIsBuyModalOpen(false)}>Cancel</Button>
-                <Button onClick={handleBuyRequest} className="font-bold bg-primary text-primary-foreground">Send Request</Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsBuyModalOpen(false)}>Cancel</Button>
+                    <Button onClick={handleBuyRequest} className="font-bold bg-primary text-primary-foreground">Send Request</Button>
+                </DialogFooter>
+            </DialogContent>
+          </Dialog>
+      </div>
   );
 }
