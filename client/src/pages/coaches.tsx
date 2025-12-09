@@ -226,11 +226,11 @@ export default function CoachesPage() {
               >
                 <Card className="h-full overflow-hidden hover:shadow-lg transition-shadow duration-300 border-border/60 group">
                   {/* Card Header with Image */}
-                  <div className="relative h-48 overflow-hidden">
+                  <div className="relative h-64 overflow-hidden">
                     <img 
                       src={coach.image} 
                       alt={coach.name} 
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
                     />
                     <div className="absolute top-4 right-4 bg-background/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm">
                       <Star className="w-3 h-3 text-primary fill-primary" />
