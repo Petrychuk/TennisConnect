@@ -37,27 +37,27 @@
   /* H S L format for Tailwind v4 variables */
   
   /* Light Mode - Fresh and Clean */
-  --background: 0 0% 100%; /* White */
-  --foreground: 240 10% 10%; /* Dark Charcoal */
+  --background: 240 5% 98%; /* Slightly off-white to reduce glare */
+  --foreground: 240 10% 3.9%; /* Deep Black */
   
   --card: 0 0% 100%;
-  --card-foreground: 240 10% 10%;
+  --card-foreground: 240 10% 3.9%;
   
   --popover: 0 0% 100%;
-  --popover-foreground: 240 10% 10%;
+  --popover-foreground: 240 10% 3.9%;
   
-  /* The Star: Electric Lime */
-  --primary: 75 90% 55%; /* Bright Tennis Ball Lime */
-  --primary-foreground: 240 20% 10%; /* Dark text on lime for contrast */
+  /* The Star: Electric Lime - Slightly Darker for better text readability */
+  --primary: 78 85% 42%; /* Darker Lime/Olive Green */
+  --primary-foreground: 0 0% 100%; /* White text on darker green */
   
-  --secondary: 240 5% 96%; /* Very light gray */
-  --secondary-foreground: 240 10% 10%;
+  --secondary: 240 5% 94%; /* Slightly darker gray */
+  --secondary-foreground: 240 5% 10%;
   
-  --muted: 240 5% 96%;
-  --muted-foreground: 240 4% 46%;
+  --muted: 240 5% 94%;
+  --muted-foreground: 240 4% 35%; /* Darker gray for better readability */
   
-  --accent: 75 90% 90%; /* Very pale lime for hover states */
-  --accent-foreground: 240 10% 10%;
+  --accent: 78 85% 92%; /* Pale lime for hover states */
+  --accent-foreground: 240 5% 10%;
   
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
