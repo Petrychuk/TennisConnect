@@ -41,19 +41,31 @@ import { useRoute } from "wouter";
 export default function CoachProfile() {
   const [match, params] = useRoute("/coach/:id");
   const profileId = params?.id;
-  const isOwnProfile = !profileId || profileId === "profile" || profileId === "1"; // Assuming ID 1 is the user
+  
+  const { user, isAuthenticated, updateUser } = useAuth();
+  const [, setLocation] = useLocation();
+
+  // Determine if this is the user's own profile (editable)
+  // 1. /coach/profile (or empty id) is always the user's own profile (requires auth)
+  // 2. /coach/1 is the user's profile IF they are logged in (assuming ID 1 is the user)
+  const isGenericProfileRoute = !profileId || profileId === "profile";
+  const isOwnProfile = isGenericProfileRoute || (isAuthenticated && profileId === "1");
 
   const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
-  const { user, isAuthenticated, updateUser } = useAuth();
-  const [, setLocation] = useLocation();
   
   // State for profile data
   const [profile, setProfile] = useState(DEFAULT_PROFILE);
 
   // Load profile logic
   useEffect(() => {
-    // Case 1: Viewing another coach's profile (Read Only)
+    // Redirect if trying to access generic profile route without auth
+    if (isGenericProfileRoute && !isAuthenticated) {
+      setLocation("/auth");
+      return;
+    }
+
+    // Case 1: Viewing another profile (Read Only) or Guest viewing ID 1
     if (!isOwnProfile && profileId) {
       const coachData = COACHES_DATA.find(c => c.id === parseInt(profileId));
       if (coachData) {
@@ -75,12 +87,7 @@ export default function CoachProfile() {
     }
 
     // Case 2: Viewing own profile (Editable)
-    // Redirect if not authenticated only when trying to view own profile
-    if (isOwnProfile && !isAuthenticated) {
-      setLocation("/auth");
-      return;
-    }
-
+    // Only loads here if isOwnProfile is true (which means authenticated)
     const savedProfile = localStorage.getItem("tennis_connect_coach_profile");
     if (savedProfile) {
         // ... existing loading logic ...
