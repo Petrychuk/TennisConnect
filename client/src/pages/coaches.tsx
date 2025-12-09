@@ -102,32 +102,45 @@ export default function CoachesPage() {
   const [coaches, setCoaches] = useState(INITIAL_COACHES);
 
   useEffect(() => {
-    // Check local storage for dynamic coach profile
-    const savedProfile = localStorage.getItem("tennis_connect_coach_profile");
-    if (savedProfile) {
-      try {
-        const parsedProfile = JSON.parse(savedProfile);
-        
-        // Update the first coach in the list with the user's actual profile
-        setCoaches(prevCoaches => {
-          const newCoaches = [...prevCoaches];
-          // Assuming the first coach is the "current user" placeholder
-          newCoaches[0] = {
-            ...newCoaches[0],
-            name: parsedProfile.name || newCoaches[0].name,
-            title: parsedProfile.title || newCoaches[0].title,
-            location: parsedProfile.locations?.[0] || parsedProfile.location || newCoaches[0].location,
-            rate: parsedProfile.rate ? parseInt(parsedProfile.rate) : newCoaches[0].rate,
-            experience: parsedProfile.experience ? `${parsedProfile.experience} years` : newCoaches[0].experience,
-            image: parsedProfile.avatar || newCoaches[0].image,
-            // Keep existing tags or update if needed
-          };
-          return newCoaches;
-        });
-      } catch (e) {
-        console.error("Failed to parse local profile for coaches list", e);
+    // Function to load profile
+    const loadProfile = () => {
+      const savedProfile = localStorage.getItem("tennis_connect_coach_profile");
+      if (savedProfile) {
+        try {
+          const parsedProfile = JSON.parse(savedProfile);
+          
+          setCoaches(prevCoaches => {
+            const newCoaches = [...prevCoaches];
+            newCoaches[0] = {
+              ...newCoaches[0],
+              name: parsedProfile.name || newCoaches[0].name,
+              title: parsedProfile.title || newCoaches[0].title,
+              location: parsedProfile.locations?.[0] || parsedProfile.location || newCoaches[0].location,
+              rate: parsedProfile.rate ? parseInt(parsedProfile.rate) : newCoaches[0].rate,
+              experience: parsedProfile.experience ? `${parsedProfile.experience} years` : newCoaches[0].experience,
+              image: parsedProfile.avatar || newCoaches[0].image,
+            };
+            return newCoaches;
+          });
+        } catch (e) {
+          console.error("Failed to parse local profile for coaches list", e);
+        }
       }
-    }
+    };
+
+    // Load initially
+    loadProfile();
+
+    // Listen for storage changes (in case profile is updated in another tab or component)
+    window.addEventListener('storage', loadProfile);
+    
+    // Custom event listener for same-tab updates
+    window.addEventListener('profile-updated', loadProfile);
+
+    return () => {
+      window.removeEventListener('storage', loadProfile);
+      window.removeEventListener('profile-updated', loadProfile);
+    };
   }, []);
 
   const filteredCoaches = coaches.filter(coach => {

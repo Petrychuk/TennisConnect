@@ -90,7 +90,10 @@ export default function CoachProfile() {
       localStorage.setItem("tennis_connect_coach_profile", JSON.stringify(profile));
       
       // Update global auth state (so navbar updates immediately)
-      updateUser({ name: profile.name });
+      updateUser({ name: profile.name, avatar: profile.avatar });
+      
+      // Dispatch custom event to notify other components (like Coaches list)
+      window.dispatchEvent(new Event('profile-updated'));
   
       toast({
         title: "Profile Updated",
