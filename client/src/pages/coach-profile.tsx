@@ -22,9 +22,9 @@ import gallery2 from "@assets/generated_images/tennis_match_action_shot_in_sydne
 
 // Default profile for initialization
 const DEFAULT_PROFILE = {
-  name: "Sarah Thompson",
-  title: "Professional Tennis Coach (ITF Level 2)",
-  location: "Northern Beaches, Sydney",
+  name: "Nataliia Petrychuk",
+  title: "Tennis Coach (ITF Level 2)",
+  location: "Manly, Sydney",
   bio: "Former WTA ranked player with 10+ years of coaching experience. I specialize in junior development and high-performance training for competitive players. My coaching philosophy focuses on building a strong technical foundation while developing tactical awareness on the court.",
   rate: "90",
   experience: "10",

@@ -24,9 +24,9 @@ import avatarImage from "@assets/generated_images/female_tennis_coach_portrait.p
 const INITIAL_COACHES = [
   {
     id: 1,
-    name: "Sarah Thompson",
-    title: "Professional Tennis Coach (ITF Level 2)",
-    location: "Northern Beaches",
+    name: "Nataliia Petrychuk",
+    title: "Tennis Coach (ITF Level 2)",
+    location: "Manly",
     rating: 4.9,
     reviews: 24,
     rate: 90,
