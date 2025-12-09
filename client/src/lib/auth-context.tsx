@@ -38,7 +38,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null);
     localStorage.removeItem("tennis_connect_user");
-    localStorage.removeItem("tennis_connect_coach_profile"); // Clear profile data on logout to prevent mixing users
+    // We keep the coach profile in localStorage so it persists in the public listing
+    // even after logout, simulating a "published" profile.
   };
 
   const updateUser = (updates: Partial<User>) => {
