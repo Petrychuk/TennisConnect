@@ -148,7 +148,7 @@ export default function CoachesPage() {
             <img 
               src={heroImage}
               alt="Tennis Court" 
-              className="w-full h-full object-cover opacity-40"
+              className="w-full h-full object-cover object-[50%_25%] opacity-40"
             />
             <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-background" />
           </div>
