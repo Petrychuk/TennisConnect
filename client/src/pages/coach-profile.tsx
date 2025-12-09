@@ -11,10 +11,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Camera, Edit2, Save, Plus, Trophy, Clock, DollarSign, X, ShoppingBag, Mail, Phone, MessageCircle, Send } from "lucide-react";
+import { MapPin, Camera, Edit2, Save, Plus, Trophy, Clock, DollarSign, X, ShoppingBag, Mail, Phone, MessageCircle, Send, Check, ChevronsUpDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { useLocation } from "wouter";
+import { cn } from "@/lib/utils";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import heroImage from "@assets/generated_images/dynamic_tennis_ball_on_court_line_with_dramatic_lighting.png";
 import avatarImage from "@assets/generated_images/female_tennis_coach_portrait.png";
 import gallery1 from "@assets/generated_images/kids_tennis_training_session.png";
@@ -35,6 +49,30 @@ const DEFAULT_PROFILE = {
   cover: heroImage
 };
 
+// Top 10 Popular Locations
+const POPULAR_LOCATIONS = [
+  "Bondi Beach", "Manly", "Surry Hills", "Mosman", "Coogee", 
+  "Parramatta", "Chatswood", "Newtown", "Freshwater", "Brookvale"
+];
+
+// Comprehensive list of Sydney Suburbs
+const ALL_SYDNEY_SUBURBS = [
+  // Eastern Suburbs
+  "Bondi", "Bondi Beach", "Bondi Junction", "Bronte", "Coogee", "Clovelly", "Darling Point", "Double Bay", "Dover Heights", "Edgecliff", "Elizabeth Bay", "Maroubra", "Paddington", "Point Piper", "Potts Point", "Randwick", "Rose Bay", "Rushcutters Bay", "Surry Hills", "Vaucluse", "Watsons Bay", "Waverley", "Woollahra", "Woolloomooloo",
+  // North Shore
+  "Artarmon", "Cammeray", "Castle Cove", "Castlecrag", "Chatswood", "Chatswood West", "Cremorne", "Cremorne Point", "Crows Nest", "East Lindfield", "East Willoughby", "Gordon", "Greenwich", "Hornsby", "Hunters Hill", "Killara", "Kirribilli", "Lane Cove", "Lane Cove North", "Lane Cove West", "Lavender Bay", "Lindfield", "Linley Point", "Longueville", "McMahons Point", "Middle Cove", "Milsons Point", "Mosman", "Naremburn", "Neutral Bay", "North Sydney", "North Willoughby", "Northbridge", "Northwood", "Pymble", "Riverview", "Roseville", "Roseville Chase", "St Leonards", "Turramurra", "Wahroonga", "Waitara", "Warrawee", "Waverton", "Willoughby", "Wollstonecraft",
+  // Northern Beaches
+  "Allambie Heights", "Avalon Beach", "Balgowlah", "Balgowlah Heights", "Bayview", "Beacon Hill", "Belrose", "Bilgola Plateau", "Brookvale", "Church Point", "Clontarf", "Collaroy", "Collaroy Plateau", "Cromer", "Curl Curl", "Davidson", "Dee Why", "Duffys Forest", "Elanora Heights", "Fairlight", "Forestville", "Frenchs Forest", "Freshwater", "Ingleside", "Killarney Heights", "Manly", "Manly Vale", "Mona Vale", "Narrabeen", "Narraweena", "Newport", "North Balgowlah", "North Curl Curl", "North Manly", "North Narrabeen", "Oxford Falls", "Palm Beach", "Queenscliff", "Seaforth", "Terrey Hills", "Warriewood", "Whale Beach", "Wheeler Heights",
+  // Inner West
+  "Abbotsford", "Annandale", "Ashbury", "Ashfield", "Balmain", "Balmain East", "Birchgrove", "Breakfast Point", "Burwood", "Burwood Heights", "Cabarita", "Camperdown", "Canada Bay", "Chiswick", "Concord", "Concord West", "Croydon", "Croydon Park", "Drummoyne", "Dulwich Hill", "Enfield", "Enmore", "Erskineville", "Five Dock", "Forest Lodge", "Glebe", "Haberfield", "Homebush", "Leichhardt", "Lewisham", "Lilyfield", "Marrickville", "Newtown", "North Strathfield", "Petersham", "Rhodes", "Rodd Point", "Rozelle", "Russell Lea", "St Peters", "Stanmore", "Strathfield", "Summer Hill", "Sydenham", "Tempe", "Wareemba",
+  // Western Suburbs
+  "Auburn", "Bankstown", "Blacktown", "Cabramatta", "Canley Vale", "Fairfield", "Granville", "Guildford", "Harris Park", "Lidcombe", "Liverpool", "Merrylands", "Parramatta", "Penrith", "Rosehill", "Rydalmere", "Silverwater", "Westmead", "Wentworthville",
+  // South Sydney & St George
+  "Allawah", "Arncliffe", "Banksia", "Bardwell Park", "Bardwell Valley", "Bexley", "Bexley North", "Blakehurst", "Brighton-Le-Sands", "Carlton", "Carss Park", "Connells Point", "Cronulla", "Dolls Point", "Hurstville", "Kogarah", "Kogarah Bay", "Kyle Bay", "Lugarno", "Miranda", "Monterey", "Mortdale", "Oatley", "Peakhurst", "Penshurst", "Ramsgate", "Ramsgate Beach", "Rockdale", "Sandringham", "Sans Souci", "South Hurstville", "Sutherland", "Sylvania", "Turrella", "Wolli Creek",
+  // Hills District
+  "Baulkham Hills", "Beaumont Hills", "Bella Vista", "Castle Hill", "Cherrybrook", "Dural", "Glenhaven", "Kellyville", "Kenthurst", "North Rocks", "Pennant Hills", "Rouse Hill", "Seven Hills", "West Pennant Hills", "Winston Hills"
+].sort();
+
 import { COACHES_DATA } from "@/lib/dummy-data";
 import { useRoute } from "wouter";
 
@@ -52,6 +90,7 @@ export default function CoachProfile() {
   const isOwnProfile = isGenericProfileRoute || (isAuthenticated && profileId === "1");
 
   const [isEditing, setIsEditing] = useState(false);
+  const [openCombobox, setOpenCombobox] = useState(false);
   const { toast } = useToast();
   
   // State for profile data
@@ -605,37 +644,116 @@ export default function CoachProfile() {
                          <CardTitle>Available Locations</CardTitle>
                        </CardHeader>
                        <CardContent>
-                         <div className="flex flex-wrap gap-2">
-                           {profile.locations.map((loc) => (
-                             <Badge key={loc} variant="secondary" className="px-3 py-1.5 text-sm flex gap-2">
-                               <MapPin className="w-3 h-3" />
-                               {loc}
-                               {isEditing && (
-                                 <button 
-                                   onClick={() => setProfile({...profile, locations: profile.locations.filter(l => l !== loc)})}
-                                   className="ml-1 hover:text-destructive"
-                                 >
-                                   ×
-                                 </button>
+                         <div className="space-y-6">
+                           {/* Current Locations */}
+                           <div>
+                             <Label className="mb-2 block text-muted-foreground">Selected Locations</Label>
+                             <div className="flex flex-wrap gap-2 min-h-[40px]">
+                               {profile.locations.length === 0 && (
+                                 <span className="text-sm text-muted-foreground italic flex items-center h-8">No locations selected</span>
                                )}
-                             </Badge>
-                           ))}
+                               {profile.locations.map((loc) => (
+                                 <Badge key={loc} variant="secondary" className="px-3 py-1.5 text-sm flex gap-2 bg-primary/10 hover:bg-primary/20 text-primary border-primary/20">
+                                   <MapPin className="w-3 h-3" />
+                                   {loc}
+                                   {isEditing && (
+                                     <button 
+                                       onClick={() => setProfile({...profile, locations: profile.locations.filter(l => l !== loc)})}
+                                       className="ml-1 hover:text-destructive"
+                                     >
+                                       ×
+                                     </button>
+                                   )}
+                                 </Badge>
+                               ))}
+                             </div>
+                           </div>
                            
                            {isEditing && (
-                             <Select onValueChange={(val) => {
-                               if (!profile.locations.includes(val)) {
-                                 setProfile({...profile, locations: [...profile.locations, val]})
-                               }
-                             }}>
-                               <SelectTrigger className="w-[180px] h-8">
-                                 <SelectValue placeholder="Add location" />
-                               </SelectTrigger>
-                               <SelectContent>
-                                 {availableLocations.map(loc => (
-                                   <SelectItem key={loc} value={loc}>{loc}</SelectItem>
-                                 ))}
-                               </SelectContent>
-                             </Select>
+                             <>
+                               {/* Popular Locations */}
+                               <div>
+                                 <Label className="mb-2 block">Popular Locations</Label>
+                                 <div className="flex flex-wrap gap-2">
+                                   {POPULAR_LOCATIONS.map(loc => {
+                                      const isSelected = profile.locations.includes(loc);
+                                      return (
+                                       <Badge 
+                                         key={loc} 
+                                         variant={isSelected ? "default" : "outline"}
+                                         className={cn(
+                                           "cursor-pointer px-3 py-1.5 transition-all", 
+                                           isSelected ? "bg-primary text-primary-foreground hover:bg-primary/90" : "hover:bg-primary/5"
+                                         )}
+                                         onClick={() => {
+                                           if (isSelected) {
+                                             setProfile({...profile, locations: profile.locations.filter(l => l !== loc)});
+                                           } else {
+                                             setProfile({...profile, locations: [...profile.locations, loc]});
+                                           }
+                                         }}
+                                       >
+                                         {isSelected && <Check className="w-3 h-3 mr-1" />}
+                                         {loc}
+                                       </Badge>
+                                      );
+                                   })}
+                                 </div>
+                               </div>
+
+                               {/* Search All Suburbs */}
+                               <div className="flex flex-col gap-2">
+                                 <Label>Search All Suburbs</Label>
+                                 <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+                                   <PopoverTrigger asChild>
+                                     <Button
+                                       variant="outline"
+                                       role="combobox"
+                                       aria-expanded={openCombobox}
+                                       className="w-full justify-between"
+                                     >
+                                       Select suburb...
+                                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                     </Button>
+                                   </PopoverTrigger>
+                                   <PopoverContent className="w-[300px] p-0" align="start">
+                                     <Command>
+                                       <CommandInput placeholder="Search suburb..." />
+                                       <CommandList>
+                                         <CommandEmpty>No suburb found.</CommandEmpty>
+                                         <CommandGroup className="max-h-[300px] overflow-auto">
+                                           {ALL_SYDNEY_SUBURBS.map((suburb) => (
+                                             <CommandItem
+                                               key={suburb}
+                                               value={suburb}
+                                               onSelect={(currentValue) => {
+                                                 // The value from CommandItem is lowercased by default in some versions, 
+                                                 // so we use the original 'suburb' string to ensure correct casing
+                                                 if (!profile.locations.includes(suburb)) {
+                                                   setProfile({...profile, locations: [...profile.locations, suburb]});
+                                                   toast({
+                                                     description: `Added ${suburb} to locations`
+                                                   });
+                                                 }
+                                                 setOpenCombobox(false);
+                                               }}
+                                             >
+                                               <Check
+                                                 className={cn(
+                                                   "mr-2 h-4 w-4",
+                                                   profile.locations.includes(suburb) ? "opacity-100" : "opacity-0"
+                                                 )}
+                                               />
+                                               {suburb}
+                                             </CommandItem>
+                                           ))}
+                                         </CommandGroup>
+                                       </CommandList>
+                                     </Command>
+                                   </PopoverContent>
+                                 </Popover>
+                               </div>
+                             </>
                            )}
                          </div>
                        </CardContent>
