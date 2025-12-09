@@ -108,7 +108,7 @@ export default function MarketplacePage() {
       
       <main className="pb-24 pt-20">
         {/* Header */}
-            <div className="relative border-b border-white/10 py-32 mb-12 overflow-hidden bg-black/90">
+            <div className="relative border-b-0 py-32 mb-12 overflow-hidden bg-black/90">
                 <div className="absolute inset-0 z-0">
                    <img src={heroBg} className="w-full h-full object-cover opacity-40" alt="Marketplace Background" />
                    <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/60 to-background"></div>
