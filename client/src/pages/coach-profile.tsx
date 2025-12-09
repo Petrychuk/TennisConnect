@@ -69,7 +69,14 @@ const DEFAULT_PROFILE = {
     friday: { active: true, start: "07:00", end: "17:00" },
     saturday: { active: true, start: "08:00", end: "14:00" },
     sunday: { active: false, start: "09:00", end: "17:00" }
-  }
+  },
+  // Stats & Status (Usually platform-generated, editable for prototype)
+  response_time: "Usually within 1 hr",
+  accepting_students: true,
+  active_students: 24,
+  rating: 4.9,
+  hours_taught: "150+",
+  attendance: 100
 };
 
 // Top 10 Popular Locations
@@ -134,7 +141,7 @@ export default function CoachProfile() {
     if (!isOwnProfile && profileId) {
       const coachData = COACHES_DATA.find(c => c.id === parseInt(profileId));
       if (coachData) {
-        let displayData = { ...coachData };
+        let displayData: any = { ...coachData };
 
         // SIMULATION: If viewing ID 1 (the default demo user), check if there is 
         // updated data in localStorage and show that instead of the static dummy data.
@@ -157,7 +164,13 @@ export default function CoachProfile() {
                  cover: parsed.cover || displayData.cover,
                  tags: parsed.tags || displayData.tags || [],
                  locations: parsed.locations || displayData.locations,
-                 schedule: parsed.schedule || displayData.schedule || DEFAULT_PROFILE.schedule
+                 schedule: parsed.schedule || displayData.schedule || DEFAULT_PROFILE.schedule,
+                 response_time: parsed.response_time || DEFAULT_PROFILE.response_time,
+                 accepting_students: parsed.accepting_students ?? DEFAULT_PROFILE.accepting_students,
+                 active_students: parsed.active_students || DEFAULT_PROFILE.active_students,
+                 rating: parsed.rating || DEFAULT_PROFILE.rating,
+                 hours_taught: parsed.hours_taught || DEFAULT_PROFILE.hours_taught,
+                 attendance: parsed.attendance || DEFAULT_PROFILE.attendance
                };
              } catch (e) {
                console.error("Failed to sync guest view with local storage", e);
@@ -177,7 +190,13 @@ export default function CoachProfile() {
             photos: displayData.photos || [],
             avatar: displayData.image,
             cover: displayData.cover || heroImage,
-            schedule: displayData.schedule || DEFAULT_PROFILE.schedule
+            schedule: displayData.schedule || DEFAULT_PROFILE.schedule,
+            response_time: DEFAULT_PROFILE.response_time,
+            accepting_students: DEFAULT_PROFILE.accepting_students,
+            active_students: DEFAULT_PROFILE.active_students,
+            rating: DEFAULT_PROFILE.rating,
+            hours_taught: DEFAULT_PROFILE.hours_taught,
+            attendance: DEFAULT_PROFILE.attendance
         });
       }
       return;
@@ -1144,34 +1163,92 @@ export default function CoachProfile() {
                           </Badge>
                         </div>
                         
-                        <div className="flex justify-between items-center">
-                          <span className="text-muted-foreground text-sm">Response Time</span>
-                          <span className="font-medium text-sm">Usually within 1 hr</span>
+                        <div className="flex justify-between items-center gap-2">
+                          <span className="text-muted-foreground text-sm whitespace-nowrap">Response Time</span>
+                          {isEditing ? (
+                            <Input 
+                              value={profile.response_time} 
+                              onChange={(e) => setProfile({...profile, response_time: e.target.value})}
+                              className="h-8 w-[140px] text-right"
+                            />
+                          ) : (
+                            <span className="font-medium text-sm text-right">{profile.response_time}</span>
+                          )}
                         </div>
 
                         <div className="flex justify-between items-center">
                           <span className="text-muted-foreground text-sm">Accepting Students</span>
-                          <Badge className="bg-green-500 hover:bg-green-600 border-none text-white">Yes, Open</Badge>
+                          {isEditing ? (
+                             <div className="flex items-center gap-2">
+                               <span className="text-xs text-muted-foreground">{profile.accepting_students ? 'Open' : 'Closed'}</span>
+                               <Switch 
+                                 checked={profile.accepting_students}
+                                 onCheckedChange={(checked) => setProfile({...profile, accepting_students: checked})}
+                               />
+                             </div>
+                          ) : (
+                             <Badge className={cn("border-none text-white", profile.accepting_students ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600")}>
+                               {profile.accepting_students ? "Yes, Open" : "Waitlist Only"}
+                             </Badge>
+                          )}
                         </div>
                       </div>
 
                       <div className="pt-4 border-t border-border/50">
-                         <span className="text-sm font-bold block mb-3">Performance Stats</span>
+                         <div className="flex justify-between items-center mb-3">
+                           <span className="text-sm font-bold block">Performance Stats</span>
+                           {isEditing && <span className="text-[10px] text-muted-foreground uppercase tracking-widest bg-muted px-2 py-1 rounded">Editable Prototype</span>}
+                         </div>
                          <div className="grid grid-cols-2 gap-3">
-                           <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/50">
-                             <div className="text-2xl font-bold text-primary">24</div>
+                           <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/50 relative group">
+                             {isEditing ? (
+                               <Input 
+                                 value={profile.active_students}
+                                 onChange={(e) => setProfile({...profile, active_students: parseInt(e.target.value) || 0})}
+                                 className="text-center h-8 text-lg font-bold p-0 border-none bg-transparent focus-visible:ring-0 focus-visible:bg-background" 
+                               />
+                             ) : (
+                               <div className="text-2xl font-bold text-primary">{profile.active_students}</div>
+                             )}
                              <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Active Students</div>
                            </div>
-                           <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/50">
-                             <div className="text-2xl font-bold text-primary">4.9</div>
+                           <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/50 relative">
+                             {isEditing ? (
+                               <Input 
+                                 value={profile.rating}
+                                 onChange={(e) => setProfile({...profile, rating: parseFloat(e.target.value) || 0})}
+                                 className="text-center h-8 text-lg font-bold p-0 border-none bg-transparent focus-visible:ring-0 focus-visible:bg-background" 
+                               />
+                             ) : (
+                               <div className="text-2xl font-bold text-primary">{profile.rating}</div>
+                             )}
                              <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Rating</div>
                            </div>
-                           <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/50">
-                             <div className="text-2xl font-bold text-primary">150+</div>
+                           <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/50 relative">
+                             {isEditing ? (
+                               <Input 
+                                 value={profile.hours_taught}
+                                 onChange={(e) => setProfile({...profile, hours_taught: e.target.value})}
+                                 className="text-center h-8 text-lg font-bold p-0 border-none bg-transparent focus-visible:ring-0 focus-visible:bg-background" 
+                               />
+                             ) : (
+                               <div className="text-2xl font-bold text-primary">{profile.hours_taught}</div>
+                             )}
                              <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Hours Taught</div>
                            </div>
-                           <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/50">
-                             <div className="text-2xl font-bold text-primary">100%</div>
+                           <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/50 relative">
+                             {isEditing ? (
+                               <div className="flex items-center justify-center gap-0.5">
+                                 <Input 
+                                   value={profile.attendance}
+                                   onChange={(e) => setProfile({...profile, attendance: parseInt(e.target.value) || 0})}
+                                   className="text-center h-8 w-12 text-lg font-bold p-0 border-none bg-transparent focus-visible:ring-0 focus-visible:bg-background" 
+                                 />
+                                 <span className="text-lg font-bold text-primary">%</span>
+                               </div>
+                             ) : (
+                               <div className="text-2xl font-bold text-primary">{profile.attendance}%</div>
+                             )}
                              <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Attendance</div>
                            </div>
                          </div>
