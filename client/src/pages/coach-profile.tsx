@@ -128,6 +128,20 @@ export default function CoachProfile() {
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const { toast } = useToast();
   
+  // Contact Form State
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactMessage, setContactMessage] = useState("");
+  const [showCoachEmail, setShowCoachEmail] = useState(false);
+
+  // Initialize contact form with user data if available
+  useEffect(() => {
+    if (user) {
+      setContactName(user.name || "");
+      setContactEmail(user.email || "");
+    }
+  }, [user]);
+
   // State for profile data
   const [profile, setProfile] = useState(DEFAULT_PROFILE);
 
@@ -244,6 +258,25 @@ export default function CoachProfile() {
   const availableLocations = [
     "Bondi Beach", "Manly", "Surry Hills", "Mosman", "Coogee", "Parramatta", "Chatswood", "Newtown", "Freshwater", "Brookvale"
   ];
+
+  const handleContactSubmit = () => {
+    if (!contactName || !contactEmail || !contactMessage) {
+      toast({
+        variant: "destructive",
+        title: "Missing Information",
+        description: "Please fill in all fields to send a message.",
+      });
+      return;
+    }
+
+    toast({
+      title: "Message Sent!",
+      description: `Your message has been sent to ${profile.name}. They usually reply within 1 hour.`,
+    });
+    
+    // Reset message only, keep contact details for convenience
+    setContactMessage("");
+  };
 
   const handleSave = () => {
     setIsEditing(false);
@@ -1130,7 +1163,17 @@ export default function CoachProfile() {
                             </div>
                             <div>
                               <p className="text-sm text-muted-foreground">Email Address</p>
-                              <p className="font-bold text-lg">Show Email</p>
+                              {showCoachEmail ? (
+                                <p className="font-bold text-lg">coach@tennisconnect.au</p>
+                              ) : (
+                                <Button 
+                                  variant="link" 
+                                  className="font-bold text-lg p-0 h-auto text-primary"
+                                  onClick={() => setShowCoachEmail(true)}
+                                >
+                                  Show Email
+                                </Button>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -1140,18 +1183,31 @@ export default function CoachProfile() {
                           <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                               <Label>Your Name</Label>
-                              <Input placeholder="John Doe" />
+                              <Input 
+                                placeholder="John Doe" 
+                                value={contactName}
+                                onChange={(e) => setContactName(e.target.value)}
+                              />
                             </div>
                             <div className="space-y-2">
                               <Label>Your Email</Label>
-                              <Input placeholder="john@example.com" />
+                              <Input 
+                                placeholder="john@example.com" 
+                                value={contactEmail}
+                                onChange={(e) => setContactEmail(e.target.value)}
+                              />
                             </div>
                           </div>
                           <div className="space-y-2">
                             <Label>Message</Label>
-                            <Textarea placeholder="Hi, I'm interested in booking a lesson..." className="min-h-[120px]" />
+                            <Textarea 
+                              placeholder="Hi, I'm interested in booking a lesson..." 
+                              className="min-h-[120px]"
+                              value={contactMessage}
+                              onChange={(e) => setContactMessage(e.target.value)}
+                            />
                           </div>
-                          <Button className="w-full font-bold gap-2">
+                          <Button className="w-full font-bold gap-2" onClick={handleContactSubmit}>
                             <Send className="w-4 h-4" /> Send Message
                           </Button>
                         </div>
