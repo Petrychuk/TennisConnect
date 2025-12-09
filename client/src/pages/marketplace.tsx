@@ -105,7 +105,7 @@ export default function MarketplacePage() {
   return (
       <div className="min-h-screen bg-background font-sans">
           <Navbar />
-          <main className="pb-24 pt-20 bg-[#00000021]">
+          <main className="pb-24 pt-20 bg-[#00000021] text-[#f2f2f7]">
             {/* Header */}
             <div className="relative border-b border-white/10 py-32 mb-12 overflow-hidden bg-black/90">
                 <div className="absolute inset-0 z-0">
