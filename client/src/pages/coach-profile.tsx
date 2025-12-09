@@ -31,7 +31,9 @@ export default function CoachProfile() {
     rate: "90",
     experience: "10",
     locations: ["Manly", "Mosman", "Freshwater", "Brookvale"],
-    photos: [gallery1, gallery2]
+    photos: [gallery1, gallery2],
+    avatar: avatarImage,
+    cover: heroImage
   });
 
   const availableLocations = [
@@ -68,19 +70,49 @@ export default function CoachProfile() {
     });
   };
 
+  const handleUpdateAvatar = () => {
+    // Mock avatar update
+    const newAvatar = "https://images.unsplash.com/photo-1605218427368-35b868661705?w=400&h=400&fit=crop";
+    setProfile({...profile, avatar: newAvatar}); // Note: need to add avatar to profile state or separate state
+    toast({
+      title: "Avatar Updated",
+      description: "Your profile picture has been updated.",
+    });
+  };
+
+  const handleUpdateCover = () => {
+    // Mock cover update
+    const newCover = "https://images.unsplash.com/photo-1530915513880-4dd07eb9307f?w=1200&h=800&fit=crop";
+    setProfile({...profile, cover: newCover}); // Note: need to add cover to profile state or separate state
+    toast({
+      title: "Cover Photo Updated",
+      description: "Your cover photo has been updated.",
+    });
+  };
+
   return (
     <div className="min-h-screen bg-background font-sans">
       <Navbar />
       
       <main className="pb-24">
         {/* Profile Header / Hero */}
-        <div className="relative h-[300px] md:h-[400px] w-full overflow-hidden">
+        <div className="relative h-[300px] md:h-[400px] w-full overflow-hidden group">
           <div className="absolute inset-0 bg-black/40 z-10" />
           <img 
-            src={heroImage} 
+            src={profile.cover || heroImage} 
             alt="Cover" 
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover transition-transform duration-700"
           />
+          {isEditing && (
+             <div 
+               onClick={handleUpdateCover}
+               className="absolute inset-0 z-20 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+             >
+               <Button variant="secondary" className="gap-2 pointer-events-none">
+                 <Camera className="w-5 h-5" /> Change Cover Photo
+               </Button>
+             </div>
+          )}
           <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-background to-transparent z-20" />
           
           <div className="absolute bottom-6 right-6 z-50">
@@ -101,9 +133,12 @@ export default function CoachProfile() {
             {/* Avatar Column */}
             <div className="flex-shrink-0 relative">
               <div className="w-32 h-32 md:w-48 md:h-48 rounded-full border-4 border-background shadow-2xl overflow-hidden bg-muted relative group">
-                <img src={avatarImage} alt="Profile" className="w-full h-full object-cover" />
+                <img src={profile.avatar} alt="Profile" className="w-full h-full object-cover" />
                 {isEditing && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div 
+                    onClick={handleUpdateAvatar}
+                    className="absolute inset-0 bg-black/50 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
                     <Camera className="w-8 h-8 text-white" />
                   </div>
                 )}
