@@ -110,7 +110,7 @@ export default function CoachProfile() {
           toast({ title: "Cover Updated", description: "Don't forget to save changes." });
         } else if (field === 'photo') {
           setProfile({ ...profile, photos: [...profile.photos, result] });
-          toast({ title: "Photo Added", description: "New photo added to gallery." });
+          toast({ title: "Media Added", description: "New item added to gallery." });
         }
       };
       reader.readAsDataURL(file);
@@ -141,7 +141,7 @@ export default function CoachProfile() {
           type="file" 
           id="photo-upload" 
           className="hidden" 
-          accept="image/*"
+          accept="image/*,video/*"
           onChange={(e) => handleFileChange(e, 'photo')}
         />
 
@@ -323,28 +323,42 @@ export default function CoachProfile() {
                           className="aspect-square rounded-xl border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 hover:bg-primary/5 transition-colors flex flex-col items-center justify-center cursor-pointer group"
                         >
                           <Plus className="w-8 h-8 text-muted-foreground group-hover:text-primary mb-2" />
-                          <span className="text-sm font-medium text-muted-foreground group-hover:text-primary">Add Photo</span>
+                          <span className="text-sm font-medium text-muted-foreground group-hover:text-primary">Add Photo/Video</span>
                         </div>
                       )}
                       
                       {/* Gallery Items */}
-                      {profile.photos.map((photo, index) => (
-                        <motion.div 
-                          key={index} 
-                          whileHover={{ scale: 1.02 }} 
-                          className="aspect-square rounded-xl overflow-hidden relative group"
-                        >
-                          <img src={photo} className="w-full h-full object-cover" alt={`Gallery ${index + 1}`} />
-                          {isEditing && (
-                             <button 
-                               onClick={() => handleRemovePhoto(index)}
-                               className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                             >
-                               <X className="w-4 h-4" />
-                             </button>
-                          )}
-                        </motion.div>
-                      ))}
+                      {profile.photos.map((item, index) => {
+                        const isVideo = item.startsWith('data:video') || item.match(/\.(mp4|webm|ogg)$/i);
+                        return (
+                          <motion.div 
+                            key={index} 
+                            whileHover={{ scale: 1.02 }} 
+                            className="aspect-square rounded-xl overflow-hidden relative group bg-black"
+                          >
+                            {isVideo ? (
+                              <video 
+                                src={item} 
+                                className="w-full h-full object-cover" 
+                                controls={!isEditing}
+                                muted
+                                playsInline
+                              />
+                            ) : (
+                              <img src={item} className="w-full h-full object-cover" alt={`Gallery ${index + 1}`} />
+                            )}
+                            
+                            {isEditing && (
+                               <button 
+                                 onClick={() => handleRemovePhoto(index)}
+                                 className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                               >
+                                 <X className="w-4 h-4" />
+                               </button>
+                            )}
+                          </motion.div>
+                        );
+                      })}
                     </div>
                   </TabsContent>
                   
