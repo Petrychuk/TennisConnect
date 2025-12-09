@@ -108,25 +108,25 @@ export default function MarketplacePage() {
       
       <main className="pb-24 pt-20">
         {/* Header */}
-        <div className="relative border-b border-border/50 py-24 mb-12 overflow-hidden">
+        <div className="relative border-b border-white/10 py-32 mb-12 overflow-hidden bg-black/90">
             <div className="absolute inset-0 z-0">
-               <img src={heroBg} className="w-full h-full object-cover opacity-20" alt="Marketplace Background" />
-               <div className="absolute inset-0 bg-gradient-to-b from-background/50 to-background"></div>
+               <img src={heroBg} className="w-full h-full object-cover opacity-40" alt="Marketplace Background" />
+               <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/60 to-background"></div>
             </div>
             
             <div className="container mx-auto px-4 relative z-10 text-center">
-                <Badge className="mb-6 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-1.5 text-sm font-bold shadow-[0_0_15px_rgba(223,255,0,0.4)]">
+                <Badge className="mb-6 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-1.5 text-sm font-bold shadow-[0_0_20px_rgba(223,255,0,0.4)] border-none">
                     Official Marketplace
                 </Badge>
-                <h1 className="text-5xl md:text-7xl font-display font-bold mb-6 tracking-tight">
+                <h1 className="text-5xl md:text-7xl font-display font-bold mb-6 tracking-tight text-white drop-shadow-xl">
                     Tennis <span className="text-primary relative inline-block">
                         Gear Exchange
-                        <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-30" viewBox="0 0 100 10" preserveAspectRatio="none">
+                        <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-50" viewBox="0 0 100 10" preserveAspectRatio="none">
                            <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" />
                         </svg>
                     </span>
                 </h1>
-                <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                <p className="text-xl md:text-2xl text-gray-200 max-w-2xl mx-auto leading-relaxed drop-shadow-md font-medium">
                     The trusted place for Sydney's tennis community to buy, sell, and trade pre-loved equipment.
                 </p>
             </div>
