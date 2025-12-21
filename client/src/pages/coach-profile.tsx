@@ -128,7 +128,9 @@ export default function CoachProfile() {
   // 1. /coach/profile (or empty id) is always the user's own profile (requires auth)
   // 2. /coach/1 is the user's profile IF they are logged in (assuming ID 1 is the user)
   const isGenericProfileRoute = !profileId || profileId === "profile";
-  const isOwnProfile = isGenericProfileRoute || (isAuthenticated && profileId === "1");
+  // Only consider it "own profile" if the user is actually a coach
+  const isOwnProfile = (isGenericProfileRoute && user?.role === "coach") || 
+                       (isAuthenticated && profileId === "1" && user?.role === "coach");
 
   const [isEditing, setIsEditing] = useState(false);
   const [openCombobox, setOpenCombobox] = useState(false);
@@ -179,6 +181,12 @@ export default function CoachProfile() {
     // Redirect if trying to access generic profile route without auth
     if (isGenericProfileRoute && !isAuthenticated) {
       setLocation("/auth");
+      return;
+    }
+
+    // Redirect if a player tries to access generic coach profile
+    if (isGenericProfileRoute && isAuthenticated && user?.role === "player") {
+      setLocation("/player/profile");
       return;
     }
 
