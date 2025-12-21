@@ -117,7 +117,7 @@ export default function ClubsPage() {
                  </div>
                  <div>
                    <p className="font-bold text-lg">${club.price}</p>
-                   <p className="text-xs text-muted-foreground">per hour / court</p>
+                   <p className="text-xs text-muted-foreground">за час / корт</p>
                  </div>
               </div>
               <div className="flex items-start gap-3">
@@ -125,21 +125,21 @@ export default function ClubsPage() {
                    <Trophy className="w-5 h-5" />
                  </div>
                  <div>
-                   <p className="font-bold text-lg">Tournaments</p>
-                   <p className="text-xs text-muted-foreground">Monthly Events</p>
+                   <p className="font-bold text-lg">Турниры</p>
+                   <p className="text-xs text-muted-foreground">Ежемесячные мероприятия</p>
                  </div>
               </div>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4">
-               <Button className="flex-1 font-bold text-base h-12 rounded-xl" asChild>
+               <Button className="flex-1 font-bold text-base h-12 rounded-xl cursor-pointer" asChild>
                  <a href={`tel:${club.phone}`}>
-                    <Phone className="w-4 h-4 mr-2" /> Call to Book
+                    <Phone className="w-4 h-4 mr-2" /> Позвонить
                  </a>
                </Button>
-               <Button variant="outline" className="flex-1 font-bold text-base h-12 rounded-xl border-2 hover:bg-secondary/50" asChild>
+               <Button variant="outline" className="flex-1 font-bold text-base h-12 rounded-xl border-2 hover:bg-secondary/50 cursor-pointer" asChild>
                  <a href={club.website} target="_blank" rel="noopener noreferrer">
-                    <Globe className="w-4 h-4 mr-2" /> Visit Website
+                    <Globe className="w-4 h-4 mr-2" /> Сайт клуба
                  </a>
                </Button>
             </div>
@@ -296,14 +296,14 @@ export default function ClubsPage() {
                             <CheckCircle className="w-8 h-8 text-white" />
                             <div className="text-left">
                               <p className="font-bold text-2xl">200+</p>
-                              <p className="text-xs opacity-75">Active Clubs</p>
+                              <p className="text-xs opacity-75">Активных клубов</p>
                             </div>
                          </div>
                          <div className="flex items-center gap-3">
                             <CheckCircle className="w-8 h-8 text-white" />
                             <div className="text-left">
                               <p className="font-bold text-2xl">50k+</p>
-                              <p className="text-xs opacity-75">Monthly Bookings</p>
+                              <p className="text-xs opacity-75">Бронирований в месяц</p>
                             </div>
                          </div>
                       </div>
@@ -318,14 +318,14 @@ export default function ClubsPage() {
               <div className="inline-flex p-4 rounded-full bg-muted mb-4">
                 <Search className="w-8 h-8 text-muted-foreground" />
               </div>
-              <h3 className="text-xl font-bold mb-2">No clubs found</h3>
-              <p className="text-muted-foreground">Try adjusting your search or filters.</p>
+              <h3 className="text-xl font-bold mb-2">Клубы не найдены</h3>
+              <p className="text-muted-foreground">Попробуйте изменить параметры поиска или фильтры.</p>
               <Button 
                 variant="link" 
                 onClick={() => { setSearchTerm(""); setFilterService(""); }}
-                className="mt-2"
+                className="mt-2 cursor-pointer"
               >
-                Clear all filters
+                Сбросить все фильтры
               </Button>
             </div>
           )}
@@ -337,14 +337,16 @@ export default function ClubsPage() {
                 variant="outline" 
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
+                className="cursor-pointer"
               >
-                Previous
+                Назад
               </Button>
               {Array.from({ length: totalPages }).map((_, i) => (
                 <Button
                   key={i}
                   variant={currentPage === i + 1 ? "default" : "outline"}
                   onClick={() => setCurrentPage(i + 1)}
+                  className="cursor-pointer"
                 >
                   {i + 1}
                 </Button>
@@ -353,8 +355,9 @@ export default function ClubsPage() {
                 variant="outline" 
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages}
+                className="cursor-pointer"
               >
-                Next
+                Далее
               </Button>
             </div>
           )}

@@ -87,16 +87,16 @@ export default function MarketplacePage() {
      if (!buyName || (!buyEmail && !buyPhone)) {
         toast({
           variant: "destructive",
-          title: "Missing Contact Info",
-          description: "Please provide your name and either email or phone number."
+          title: "Недостаточно данных",
+          description: "Пожалуйста, укажите ваше имя и email или телефон."
         });
         return;
      }
 
      setIsBuyModalOpen(false);
      toast({
-       title: "Order Request Sent!",
-       description: `A request for "${selectedItem?.title || selectedItem?.name}" has been sent to ${selectedItem?.seller_name}.`
+       title: "Запрос отправлен!",
+       description: `Запрос на "${selectedItem?.title || selectedItem?.name}" отправлен продавцу ${selectedItem?.seller_name}.`
      });
      
      // Reset
@@ -120,18 +120,18 @@ export default function MarketplacePage() {
                 
                 <div className="container mx-auto px-4 relative z-10 text-center">
                     <Badge className="mb-6 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-1.5 text-sm font-bold shadow-[0_0_20px_rgba(223,255,0,0.4)] border-none">
-                        Official Marketplace
+                        Официальный маркетплейс
                     </Badge>
                     <h1 className="text-5xl md:text-7xl font-display font-bold mb-6 tracking-tight text-white drop-shadow-xl">
-                        Tennis <span className="text-primary relative inline-block">
-                            Gear Exchange
+                        Теннисное <span className="text-primary relative inline-block">
+                            снаряжение
                             <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-50" viewBox="0 0 100 10" preserveAspectRatio="none">
                                <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" />
                             </svg>
                         </span>
                     </h1>
                     <p className="text-xl md:text-2xl text-gray-200 max-w-2xl mx-auto leading-relaxed drop-shadow-md font-medium">
-                        The trusted place for Sydney's tennis community to buy, sell, and trade pre-loved equipment.
+                        Надёжное место для теннисного сообщества Сиднея для покупки, продажи и обмена экипировки.
                     </p>
                 </div>
             </div>
@@ -142,7 +142,7 @@ export default function MarketplacePage() {
                     <div className="relative flex-grow w-full md:w-auto">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
                         <Input 
-                          placeholder="Search for rackets, bags, shoes..." 
+                          placeholder="Поиск ракеток, сумок, обуви..." 
                           className="pl-9 bg-background"
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
@@ -153,19 +153,19 @@ export default function MarketplacePage() {
                             <SelectTrigger className="w-[180px]">
                                 <div className="flex items-center gap-2">
                                     <Filter className="w-4 h-4" />
-                                    <SelectValue placeholder="Category" />
+                                    <SelectValue placeholder="Категория" />
                                 </div>
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">All Categories</SelectItem>
-                                <SelectItem value="rackets">Rackets</SelectItem>
-                                <SelectItem value="bags">Bags</SelectItem>
-                                <SelectItem value="shoes">Shoes</SelectItem>
-                                <SelectItem value="apparel">Apparel</SelectItem>
+                                <SelectItem value="all">Все категории</SelectItem>
+                                <SelectItem value="rackets">Ракетки</SelectItem>
+                                <SelectItem value="bags">Сумки</SelectItem>
+                                <SelectItem value="shoes">Обувь</SelectItem>
+                                <SelectItem value="apparel">Одежда</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Button variant="outline" className="gap-2">
-                            <ArrowUpDown className="w-4 h-4" /> Sort
+                        <Button variant="outline" className="gap-2 cursor-pointer">
+                            <ArrowUpDown className="w-4 h-4" /> Сортировка
                         </Button>
                     </div>
                 </div>
@@ -272,9 +272,9 @@ export default function MarketplacePage() {
           <Dialog open={isBuyModalOpen} onOpenChange={setIsBuyModalOpen}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Contact Seller</DialogTitle>
+                    <DialogTitle>Связаться с продавцом</DialogTitle>
                     <DialogDescription>
-                        Send a message to {selectedItem?.seller_name} about {selectedItem?.title || selectedItem?.name}.
+                        Отправьте сообщение {selectedItem?.seller_name} о товаре {selectedItem?.title || selectedItem?.name}.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-2">
@@ -290,43 +290,43 @@ export default function MarketplacePage() {
                     </div>
 
                     <div className="space-y-2">
-                        <Label>Your Name</Label>
+                        <Label>Ваше имя</Label>
                         <Input 
                             value={buyName} 
                             onChange={(e) => setBuyName(e.target.value)} 
-                            placeholder="John Doe"
+                            placeholder="Иван Иванов"
                         />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label>Email</Label>
+                            <Label>Электронная почта</Label>
                             <Input 
                                 value={buyEmail} 
                                 onChange={(e) => setBuyEmail(e.target.value)} 
-                                placeholder="john@example.com"
+                                placeholder="ivan@example.com"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>Phone</Label>
+                            <Label>Телефон</Label>
                             <Input 
                                 value={buyPhone} 
                                 onChange={(e) => setBuyPhone(e.target.value)} 
-                                placeholder="04XX XXX XXX"
+                                placeholder="+61 4XX XXX XXX"
                             />
                         </div>
                     </div>
                     <div className="space-y-2">
-                        <Label>Message</Label>
+                        <Label>Сообщение</Label>
                         <Textarea 
                             value={buyMessage} 
                             onChange={(e) => setBuyMessage(e.target.value)} 
-                            placeholder="Hi, is this still available? When can I pick it up?" 
+                            placeholder="Здравствуйте! Этот товар ещё в наличии? Когда можно забрать?" 
                         />
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsBuyModalOpen(false)}>Cancel</Button>
-                    <Button onClick={handleBuyRequest} className="font-bold bg-primary text-primary-foreground">Send Request</Button>
+                    <Button variant="outline" onClick={() => setIsBuyModalOpen(false)} className="cursor-pointer">Отмена</Button>
+                    <Button onClick={handleBuyRequest} className="font-bold bg-primary text-primary-foreground cursor-pointer">Отправить запрос</Button>
                 </DialogFooter>
             </DialogContent>
           </Dialog>
