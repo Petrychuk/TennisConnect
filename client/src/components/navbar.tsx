@@ -1,8 +1,8 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Menu, LogOut, User } from "lucide-react";
+import { Menu, LogOut, User, Bell, Mail } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import {
   DropdownMenu,
@@ -13,11 +13,33 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [location] = useLocation();
   const { user, logout, isAuthenticated } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchUnreadCount();
+      const interval = setInterval(fetchUnreadCount, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated]);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const res = await fetch("/api/messages/unread-count");
+      if (res.ok) {
+        const data = await res.json();
+        setUnreadCount(data.count);
+      }
+    } catch (error) {
+      console.error("Failed to fetch unread count:", error);
+    }
+  };
 
   const navLinks = [
     { name: "Partners", href: "/partners" },
@@ -54,7 +76,22 @@ export function Navbar() {
         {/* CTA & Mobile Menu */}
         <div className="flex items-center gap-4">
           {isAuthenticated ? (
-            <div className="hidden md:flex items-center gap-4">
+            <div className="hidden md:flex items-center gap-2">
+              {/* Notifications Bell */}
+              <Link href="/messages">
+                <Button variant="ghost" size="icon" className="relative cursor-pointer" data-testid="button-notifications">
+                  <Bell className="w-5 h-5" />
+                  {unreadCount > 0 && (
+                    <Badge 
+                      className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-[10px] bg-red-500 text-white border-2 border-background"
+                      data-testid="badge-unread-count"
+                    >
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </Badge>
+                  )}
+                </Button>
+              </Link>
+
               <Link href={user?.role === "coach" ? "/coach/profile" : "/player/profile"}>
                 <Button variant="ghost" className="font-bold hover:text-lime-600 gap-2 cursor-pointer">
                   <User className="w-4 h-4" />
@@ -76,6 +113,17 @@ export function Navbar() {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild className="cursor-pointer">
                     <Link href={user?.role === "coach" ? "/coach/profile" : "/player/profile"}>Profile</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <Link href="/messages" className="flex items-center gap-2">
+                      <Mail className="w-4 h-4" />
+                      Messages
+                      {unreadCount > 0 && (
+                        <Badge variant="destructive" className="ml-auto text-[10px] h-5 px-1.5">
+                          {unreadCount}
+                        </Badge>
+                      )}
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem className="cursor-pointer">Settings</DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -129,6 +177,17 @@ export function Navbar() {
                 
                 {isAuthenticated ? (
                   <>
+                    <Link href="/messages" onClick={() => setIsOpen(false)}>
+                      <Button variant="outline" className="w-full font-bold rounded-full cursor-pointer flex items-center gap-2">
+                        <Mail className="w-4 h-4" />
+                        Messages
+                        {unreadCount > 0 && (
+                          <Badge variant="destructive" className="ml-auto">
+                            {unreadCount}
+                          </Badge>
+                        )}
+                      </Button>
+                    </Link>
                     <Link href={user?.role === "coach" ? "/coach/profile" : "/player/profile"} onClick={() => setIsOpen(false)}>
                       <Button variant="outline" className="w-full font-bold rounded-full cursor-pointer">
                         My Profile

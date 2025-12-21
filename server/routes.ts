@@ -10,7 +10,9 @@ import {
   insertTournamentSchema,
   insertMarketplaceItemSchema,
   insertClubSchema,
+  insertMessageSchema,
 } from "@shared/schema";
+import { z } from "zod";
 
 // Auth middleware
 function requireAuth(req: Request, res: Response, next: Function) {
@@ -337,6 +339,77 @@ export async function registerRoutes(
 
       const club = await storage.createClub(result.data);
       res.json(club);
+    } catch (error: any) {
+      next(error);
+    }
+  });
+
+  // ===== MESSAGE ROUTES =====
+  // Get user's messages (requires auth)
+  app.get("/api/messages", requireAuth, async (req, res, next) => {
+    try {
+      const messages = await storage.getUserMessages(req.user!.id);
+      res.json(messages);
+    } catch (error: any) {
+      next(error);
+    }
+  });
+
+  // Get unread message count (requires auth)
+  app.get("/api/messages/unread-count", requireAuth, async (req, res, next) => {
+    try {
+      const count = await storage.getUnreadMessageCount(req.user!.id);
+      res.json({ count });
+    } catch (error: any) {
+      next(error);
+    }
+  });
+
+  // Send a message (can be from authenticated or anonymous users)
+  app.post("/api/messages", async (req, res, next) => {
+    try {
+      const messageSchema = z.object({
+        recipientId: z.string(),
+        recipientType: z.enum(["coach", "player"]),
+        senderName: z.string().min(1, "Name is required"),
+        senderEmail: z.string().email("Valid email is required"),
+        senderPhone: z.string().optional(),
+        subject: z.string().optional(),
+        content: z.string().min(1, "Message is required"),
+      });
+
+      const result = messageSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: "Invalid input", errors: result.error });
+      }
+
+      const messageData = {
+        ...result.data,
+        senderUserId: req.isAuthenticated() ? req.user!.id : null,
+      };
+
+      const message = await storage.createMessage(messageData);
+      res.json(message);
+    } catch (error: any) {
+      next(error);
+    }
+  });
+
+  // Mark message as read (requires auth)
+  app.put("/api/messages/:id/read", requireAuth, async (req, res, next) => {
+    try {
+      const message = await storage.markMessageAsRead(req.params.id);
+      res.json(message);
+    } catch (error: any) {
+      next(error);
+    }
+  });
+
+  // Delete message (requires auth)
+  app.delete("/api/messages/:id", requireAuth, async (req, res, next) => {
+    try {
+      await storage.deleteMessage(req.params.id);
+      res.json({ message: "Message deleted" });
     } catch (error: any) {
       next(error);
     }

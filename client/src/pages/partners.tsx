@@ -11,23 +11,38 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MapPin, Search, MessageCircle, User, Activity } from "lucide-react";
+import { MapPin, Search, MessageCircle, User, Activity, Send } from "lucide-react";
 import { PARTNERS_DATA } from "@/lib/dummy-data";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 
+interface PartnerData {
+  id: string | number;
+  name: string;
+  location: string;
+  skillLevel: string;
+  avatar: string;
+  available: boolean;
+  bio: string;
+  userId?: string;
+}
+
 export default function PartnersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterLevel, setFilterLevel] = useState("");
-  const [partners, setPartners] = useState(PARTNERS_DATA);
+  const [partners, setPartners] = useState<PartnerData[]>(PARTNERS_DATA);
   const [loading, setLoading] = useState(true);
   const [messageModalOpen, setMessageModalOpen] = useState(false);
-  const [selectedPartner, setSelectedPartner] = useState<any>(null);
+  const [selectedPartner, setSelectedPartner] = useState<PartnerData | null>(null);
   const [messageText, setMessageText] = useState("");
+  const [senderName, setSenderName] = useState("");
+  const [senderEmail, setSenderEmail] = useState("");
+  const [senderPhone, setSenderPhone] = useState("");
+  const [sending, setSending] = useState(false);
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!messageText.trim()) {
       toast({
         title: "Error",
@@ -37,25 +52,64 @@ export default function PartnersPage() {
       return;
     }
 
-    toast({
-      title: "Message sent!",
-      description: `Your message has been sent to ${selectedPartner?.name}. Expect a reply via email.`
-    });
-
-    setMessageModalOpen(false);
-    setMessageText("");
-    setSelectedPartner(null);
-  };
-
-  const openMessageModal = (partner: any) => {
     if (!isAuthenticated) {
+      if (!senderName.trim() || !senderEmail.trim()) {
+        toast({
+          title: "Error",
+          description: "Please enter your name and email",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
+    setSending(true);
+    try {
+      const res = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipientId: selectedPartner?.userId || selectedPartner?.id,
+          recipientType: "player",
+          senderName: isAuthenticated ? user?.name : senderName,
+          senderEmail: isAuthenticated ? user?.email : senderEmail,
+          senderPhone: senderPhone || undefined,
+          subject: `Message from ${isAuthenticated ? user?.name : senderName}`,
+          content: messageText,
+        }),
+      });
+
+      if (res.ok) {
+        toast({
+          title: "Message sent!",
+          description: `Your message has been sent to ${selectedPartner?.name}. They will receive it in their inbox.`
+        });
+        setMessageModalOpen(false);
+        setMessageText("");
+        setSenderName("");
+        setSenderEmail("");
+        setSenderPhone("");
+        setSelectedPartner(null);
+      } else {
+        const error = await res.json();
+        toast({
+          title: "Error",
+          description: error.message || "Failed to send message",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
       toast({
-        title: "Sign in required",
-        description: "You need to sign in to send messages",
+        title: "Error",
+        description: "Failed to send message. Please try again.",
         variant: "destructive"
       });
-      return;
+    } finally {
+      setSending(false);
     }
+  };
+
+  const openMessageModal = (partner: PartnerData) => {
     setSelectedPartner(partner);
     setMessageModalOpen(true);
   };
@@ -67,10 +121,10 @@ export default function PartnersPage() {
         
         if (res.ok) {
           const data = await res.json();
-          // Transform API data to match UI format
           if (data.length > 0) {
             const transformedPartners = data.map((player: any) => ({
               id: player.id,
+              userId: player.userId,
               name: player.location || "Player",
               location: player.location || "Sydney",
               skillLevel: player.skillLevel || "Intermediate",
@@ -156,6 +210,7 @@ export default function PartnersPage() {
                 className="pl-10 h-11 bg-secondary/50 border-transparent focus:border-primary focus:bg-background transition-all rounded-xl"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                data-testid="input-search"
               />
             </div>
             
@@ -169,6 +224,7 @@ export default function PartnersPage() {
                       ? "bg-primary text-primary-foreground border-primary" 
                       : "bg-background hover:bg-secondary border-input hover:border-primary/50"
                   }`}
+                  data-testid={`button-filter-${level.toLowerCase()}`}
                 >
                   {level}
                 </button>
@@ -189,7 +245,7 @@ export default function PartnersPage() {
               transition={{ duration: 0.4, delay: index * 0.1 }}
               viewport={{ once: true }}
             >
-              <Card className="h-full flex flex-col overflow-hidden hover:shadow-lg transition-all duration-300 border-border/50 group">
+              <Card className="h-full flex flex-col overflow-hidden hover:shadow-lg transition-all duration-300 border-border/50 group" data-testid={`card-partner-${partner.id}`}>
                 <CardContent className="p-6 flex-grow flex flex-col items-center text-center">
                   <div className="relative mb-4">
                      <Avatar className="w-24 h-24 border-4 border-background shadow-lg group-hover:scale-105 transition-transform duration-300">
@@ -215,13 +271,14 @@ export default function PartnersPage() {
                 
                 <CardFooter className="p-4 pt-0 grid grid-cols-2 gap-3">
                   <Link href={`/player/${partner.id}`}>
-                    <Button variant="outline" className="w-full text-xs font-bold h-9 cursor-pointer">
+                    <Button variant="outline" className="w-full text-xs font-bold h-9 cursor-pointer" data-testid={`button-profile-${partner.id}`}>
                       <User className="w-3 h-3 mr-1" /> Profile
                     </Button>
                   </Link>
                   <Button 
                     className="w-full text-xs font-bold h-9 bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
                     onClick={() => openMessageModal(partner)}
+                    data-testid={`button-message-${partner.id}`}
                   >
                     <MessageCircle className="w-3 h-3 mr-1" /> Message
                   </Button>
@@ -251,28 +308,77 @@ export default function PartnersPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            {!isAuthenticated && (
+              <>
+                <div>
+                  <Label htmlFor="senderName">Your Name *</Label>
+                  <Input
+                    id="senderName"
+                    placeholder="John Smith"
+                    value={senderName}
+                    onChange={(e) => setSenderName(e.target.value)}
+                    data-testid="input-sender-name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="senderEmail">Your Email *</Label>
+                  <Input
+                    id="senderEmail"
+                    type="email"
+                    placeholder="john@example.com"
+                    value={senderEmail}
+                    onChange={(e) => setSenderEmail(e.target.value)}
+                    data-testid="input-sender-email"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="senderPhone">Your Phone (optional)</Label>
+                  <Input
+                    id="senderPhone"
+                    type="tel"
+                    placeholder="+61 400 000 000"
+                    value={senderPhone}
+                    onChange={(e) => setSenderPhone(e.target.value)}
+                    data-testid="input-sender-phone"
+                  />
+                </div>
+              </>
+            )}
             <div>
-              <Label htmlFor="message">Your message</Label>
+              <Label htmlFor="message">Your message *</Label>
               <Textarea
                 id="message"
                 placeholder="Hi! I'd love to play a match together..."
                 value={messageText}
                 onChange={(e) => setMessageText(e.target.value)}
                 className="min-h-[120px]"
+                data-testid="input-message"
               />
             </div>
-            {user && (
+            {isAuthenticated && user && (
               <p className="text-sm text-muted-foreground">
-                Reply will be sent to your email: {user.email}
+                Sending as: {user.name} ({user.email})
               </p>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setMessageModalOpen(false)}>
+            <Button variant="outline" onClick={() => setMessageModalOpen(false)} data-testid="button-cancel">
               Cancel
             </Button>
-            <Button onClick={handleSendMessage} className="bg-primary text-primary-foreground">
-              Send
+            <Button 
+              onClick={handleSendMessage} 
+              className="bg-primary text-primary-foreground"
+              disabled={sending}
+              data-testid="button-send-message"
+            >
+              {sending ? (
+                <>Sending...</>
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  Send
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
