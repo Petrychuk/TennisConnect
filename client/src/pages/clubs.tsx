@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navbar } from "@/components/navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,10 +15,40 @@ export default function ClubsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterService, setFilterService] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [clubs, setClubs] = useState<typeof CLUBS_DATA>([]);
+  const [loading, setLoading] = useState(true);
   const itemsPerPage = 10;
 
+  useEffect(() => {
+    async function fetchClubs() {
+      try {
+        const res = await fetch("/api/clubs");
+        
+        if (res.ok) {
+          const data = await res.json();
+          // Use API data if available
+          if (data.length > 0) {
+            setClubs(data);
+          } else {
+            // Fallback to dummy data if no clubs in database
+            setClubs(CLUBS_DATA);
+          }
+        } else {
+          setClubs(CLUBS_DATA);
+        }
+      } catch (error) {
+        console.error("Failed to fetch clubs:", error);
+        setClubs(CLUBS_DATA);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchClubs();
+  }, []);
+
   // Filter Logic
-  const filteredClubs = CLUBS_DATA.filter(club => {
+  const filteredClubs = clubs.filter(club => {
     const matchesSearch = 
       club.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
       club.location.toLowerCase().includes(searchTerm.toLowerCase());

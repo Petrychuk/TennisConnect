@@ -37,7 +37,7 @@ export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { login } = useAuth();
+  const { login, register } = useAuth();
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -51,76 +51,31 @@ export default function AuthPage() {
 
   const onLogin = async (data: z.infer<typeof loginSchema>) => {
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await login(data.email, data.password);
       
-      // Mock login - assuming coach role for demo if email contains "coach"
-      const role = data.email.includes("coach") ? "coach" : "player"; // Default to player unless coach is in email
-      
-      // Check if there is a saved profile to use the correct name and avatar
-      let userName = "New User";
-      let userAvatar = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop";
-
-      if (role === "coach") {
-         userName = "Nataliia Petrychuk";
-         userAvatar = avatarImage;
-         const savedProfile = localStorage.getItem("tennis_connect_coach_profile");
-         if (savedProfile) {
-            try {
-              const profile = JSON.parse(savedProfile);
-              if (profile.name) userName = profile.name;
-              if (profile.avatar) userAvatar = profile.avatar;
-            } catch (e) {
-              console.error("Failed to parse profile during login", e);
-            }
-         }
-      } else {
-         const savedProfile = localStorage.getItem("tennis_connect_player_profile");
-         if (savedProfile) {
-            try {
-              const profile = JSON.parse(savedProfile);
-              if (profile.name) userName = profile.name;
-              if (profile.avatar) userAvatar = profile.avatar;
-            } catch (e) {
-              console.error("Failed to parse profile during login", e);
-            }
-         }
-      }
-      
-      login({
-        name: userName,
-        email: data.email,
-        role: role,
-        avatar: userAvatar
-      });
-
       toast({
         title: "Welcome back!",
         description: "You have successfully signed in.",
       });
       
-      if (role === "coach") {
-        setLocation("/coach/profile");
-      } else {
-        setLocation("/player/profile");
-      }
-    }, 1500);
+      setLocation("/");
+    } catch (error: any) {
+      toast({
+        title: "Login failed",
+        description: error.message || "Please check your credentials and try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const onRegister = async (data: z.infer<typeof registerSchema>) => {
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await register(data.email, data.password, data.name, data.role);
       
-      login({
-        name: data.name,
-        email: data.email,
-        role: data.role,
-        avatar: "https://images.unsplash.com/photo-1605218427368-35b868661705?w=400&h=400&fit=crop"
-      });
-
       toast({
         title: "Account created",
         description: "Welcome to TennisConnect!",
@@ -131,43 +86,22 @@ export default function AuthPage() {
       } else {
         setLocation("/player/profile");
       }
-    }, 1500);
+    } catch (error: any) {
+      toast({
+        title: "Registration failed",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSocialLogin = (provider: string) => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      
-      // Check if there is a saved profile to use the correct name and avatar
-      let userName = "Nataliia Petrychuk";
-      let userAvatar = avatarImage;
-      
-      const savedProfile = localStorage.getItem("tennis_connect_coach_profile");
-      if (savedProfile) {
-        try {
-          const profile = JSON.parse(savedProfile);
-          if (profile.name) userName = profile.name;
-          if (profile.avatar) userAvatar = profile.avatar;
-        } catch (e) {
-          console.error("Failed to parse profile during login", e);
-        }
-      }
-
-      login({
-        name: userName,
-        email: `${userName.toLowerCase().replace(" ", ".")}@example.com`,
-        role: "coach",
-        avatar: userAvatar
-      });
-
-      toast({
-        title: `Welcome back via ${provider}!`,
-        description: "You have successfully signed in.",
-      });
-      
-      setLocation("/coach/profile");
-    }, 1500);
+    toast({
+      title: "Not implemented",
+      description: `${provider} login will be available soon.`,
+    });
   };
 
   return (

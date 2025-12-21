@@ -45,6 +45,8 @@ export default function PlayerProfile() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState(DEFAULT_PLAYER_PROFILE);
+  const [loading, setLoading] = useState(true);
+  const [profileData, setProfileData] = useState<any>(null);
   
   // Marketplace State
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
@@ -54,6 +56,7 @@ export default function PlayerProfile() {
     description: "",
     condition: "Used - Good"
   });
+  const [marketplaceItems, setMarketplaceItems] = useState<any[]>([]);
 
   // Tournament State
   const [isTournamentModalOpen, setIsTournamentModalOpen] = useState(false);
@@ -65,6 +68,7 @@ export default function PlayerProfile() {
     award: "",
     photos: [] as string[]
   });
+  const [tournaments, setTournaments] = useState<any[]>([]);
 
   // Load Profile Logic
   useEffect(() => {
@@ -73,91 +77,247 @@ export default function PlayerProfile() {
       return;
     }
 
-    const savedProfile = localStorage.getItem("tennis_connect_player_profile");
-    if (savedProfile && isOwnProfile) {
-      try {
-        const parsed = JSON.parse(savedProfile);
-        // Migration: Ensure tournaments have photos array
-        const migratedTournaments = (parsed.tournaments || []).map((t: any) => ({
-          ...t,
-          photos: t.photos || []
-        }));
-        
-        setProfile({ 
-          ...DEFAULT_PLAYER_PROFILE, 
-          ...parsed,
-          tournaments: migratedTournaments
-        });
-      } catch (e) {
-        console.error("Failed to parse profile", e);
+    const loadProfile = async () => {
+      if (!isOwnProfile || !user) {
+        setLoading(false);
+        return;
       }
-    } else if (user && isOwnProfile) {
-      setProfile(prev => ({
-        ...prev,
-        name: user.name || prev.name,
-        avatar: user.avatar || prev.avatar
-      }));
-    }
+
+      try {
+        setLoading(true);
+        
+        // Load player profile
+        const profileRes = await fetch("/api/player-profile", {
+          credentials: "include"
+        });
+        
+        if (profileRes.ok) {
+          const data = await profileRes.json();
+          if (data) {
+            setProfileData(data);
+            setProfile({
+              ...DEFAULT_PLAYER_PROFILE,
+              name: user.name || data.name || DEFAULT_PLAYER_PROFILE.name,
+              avatar: user.avatar || DEFAULT_PLAYER_PROFILE.avatar,
+              cover: user.cover || DEFAULT_PLAYER_PROFILE.cover,
+              location: data.location || DEFAULT_PLAYER_PROFILE.location,
+              age: data.age || DEFAULT_PLAYER_PROFILE.age,
+              country: data.country || DEFAULT_PLAYER_PROFILE.country,
+              skillLevel: data.skillLevel || DEFAULT_PLAYER_PROFILE.skillLevel,
+              bio: data.bio || DEFAULT_PLAYER_PROFILE.bio,
+              preferredCourts: data.preferredCourts || DEFAULT_PLAYER_PROFILE.preferredCourts,
+              coaches: DEFAULT_PLAYER_PROFILE.coaches,
+              marketplaceItems: [],
+              tournaments: []
+            });
+          } else {
+            // No profile exists yet, use user data
+            setProfile(prev => ({
+              ...prev,
+              name: user.name || prev.name,
+              avatar: user.avatar || prev.avatar,
+              cover: user.cover || prev.cover
+            }));
+          }
+        } else {
+          // Profile doesn't exist yet
+          setProfile(prev => ({
+            ...prev,
+            name: user.name || prev.name,
+            avatar: user.avatar || prev.avatar,
+            cover: user.cover || prev.cover
+          }));
+        }
+
+        // Load tournaments
+        const tournamentsRes = await fetch("/api/tournaments", {
+          credentials: "include"
+        });
+        if (tournamentsRes.ok) {
+          const tournamentsData = await tournamentsRes.json();
+          setTournaments(tournamentsData || []);
+        }
+
+        // Load marketplace items
+        const marketplaceRes = await fetch("/api/marketplace/user", {
+          credentials: "include"
+        });
+        if (marketplaceRes.ok) {
+          const marketplaceData = await marketplaceRes.json();
+          setMarketplaceItems(marketplaceData || []);
+        }
+
+      } catch (error) {
+        console.error("Failed to load profile", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to load profile data"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProfile();
   }, [isAuthenticated, user, isOwnProfile]);
 
-  const handleSave = () => {
-    setIsEditing(false);
-    localStorage.setItem("tennis_connect_player_profile", JSON.stringify(profile));
-    updateUser({ name: profile.name, avatar: profile.avatar });
-    toast({ title: "Profile Updated", description: "Your changes have been saved." });
+  const handleSave = async () => {
+    if (!user) return;
+
+    try {
+      const profilePayload = {
+        location: profile.location,
+        age: profile.age,
+        country: profile.country,
+        skillLevel: profile.skillLevel,
+        bio: profile.bio,
+        preferredCourts: profile.preferredCourts
+      };
+
+      let savedProfile;
+      if (profileData) {
+        // Update existing profile
+        const res = await fetch(`/api/player-profile/${profileData.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(profilePayload),
+          credentials: "include"
+        });
+
+        if (!res.ok) throw new Error("Failed to update profile");
+        savedProfile = await res.json();
+      } else {
+        // Create new profile
+        const res = await fetch("/api/player-profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(profilePayload),
+          credentials: "include"
+        });
+
+        if (!res.ok) throw new Error("Failed to create profile");
+        savedProfile = await res.json();
+        setProfileData(savedProfile);
+      }
+
+      setIsEditing(false);
+      toast({ title: "Profile Updated", description: "Your changes have been saved." });
+    } catch (error) {
+      console.error("Failed to save profile", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to save profile changes"
+      });
+    }
   };
 
-  const handleAddItem = () => {
+  const handleAddItem = async () => {
     if (!newItem.name || !newItem.price) return;
     
-    const item = {
-      id: Date.now(),
-      ...newItem,
-      location: profile.location,
-      seller_name: profile.name,
-      image: "https://images.unsplash.com/photo-1617083934555-5634045431b0?w=800&q=80" // Placeholder
-    };
+    try {
+      const res = await fetch("/api/marketplace", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: newItem.name,
+          price: newItem.price,
+          condition: newItem.condition,
+          description: newItem.description,
+          location: profile.location,
+          image: "https://images.unsplash.com/photo-1617083934555-5634045431b0?w=800&q=80"
+        }),
+        credentials: "include"
+      });
 
-    setProfile(prev => ({
-      ...prev,
-      marketplaceItems: [...prev.marketplaceItems, item]
-    }));
-    
-    setNewItem({ name: "", price: "", description: "", condition: "Used - Good" });
-    setIsItemModalOpen(false);
-    toast({ title: "Item Added", description: "Your item is now listed." });
+      if (!res.ok) throw new Error("Failed to add item");
+      
+      const item = await res.json();
+      setMarketplaceItems(prev => [...prev, item]);
+      
+      setNewItem({ name: "", price: "", description: "", condition: "Used - Good" });
+      setIsItemModalOpen(false);
+      toast({ title: "Item Added", description: "Your item is now listed." });
+    } catch (error) {
+      console.error("Failed to add item", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to add marketplace item"
+      });
+    }
   };
 
-  const handleDeleteItem = (id: number) => {
-    setProfile(prev => ({
-      ...prev,
-      marketplaceItems: prev.marketplaceItems.filter(item => item.id !== id)
-    }));
+  const handleDeleteItem = async (id: string) => {
+    try {
+      const res = await fetch(`/api/marketplace/${id}`, {
+        method: "DELETE",
+        credentials: "include"
+      });
+
+      if (!res.ok) throw new Error("Failed to delete item");
+      
+      setMarketplaceItems(prev => prev.filter(item => item.id !== id));
+      toast({ title: "Item Deleted", description: "Your item has been removed." });
+    } catch (error) {
+      console.error("Failed to delete item", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete marketplace item"
+      });
+    }
   };
 
-  const handleAddTournament = () => {
+  const handleAddTournament = async () => {
     if (!newTournament.name || !newTournament.date) return;
     
-    const tournament = {
-      id: Date.now(),
-      ...newTournament
-    };
+    try {
+      const res = await fetch("/api/tournaments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newTournament),
+        credentials: "include"
+      });
 
-    setProfile(prev => ({
-      ...prev,
-      tournaments: [...prev.tournaments, tournament]
-    }));
-    
-    setNewTournament({ name: "", location: "", date: "", result: "", award: "", photos: [] });
-    setIsTournamentModalOpen(false);
-    toast({ title: "Tournament Added", description: "Your tournament history has been updated." });
+      if (!res.ok) throw new Error("Failed to add tournament");
+      
+      const tournament = await res.json();
+      setTournaments(prev => [...prev, tournament]);
+      
+      setNewTournament({ name: "", location: "", date: "", result: "", award: "", photos: [] });
+      setIsTournamentModalOpen(false);
+      toast({ title: "Tournament Added", description: "Your tournament history has been updated." });
+    } catch (error) {
+      console.error("Failed to add tournament", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to add tournament"
+      });
+    }
   };
 
-  const handleDeleteTournament = (id: number) => {
-    setProfile(prev => ({
-      ...prev,
-      tournaments: prev.tournaments.filter(t => t.id !== id)
-    }));
+  const handleDeleteTournament = async (id: string) => {
+    try {
+      const res = await fetch(`/api/tournaments/${id}`, {
+        method: "DELETE",
+        credentials: "include"
+      });
+
+      if (!res.ok) throw new Error("Failed to delete tournament");
+      
+      setTournaments(prev => prev.filter(t => t.id !== id));
+      toast({ title: "Tournament Deleted", description: "Tournament has been removed." });
+    } catch (error) {
+      console.error("Failed to delete tournament", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete tournament"
+      });
+    }
   };
 
   const resizeImage = (file: File): Promise<string> => {
@@ -232,25 +392,25 @@ export default function PlayerProfile() {
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, field: 'avatar' | 'cover') => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (file && user) {
       try {
         const result = await resizeImage(file);
         
-        if (field === 'avatar') {
-          setProfile(prev => ({ ...prev, avatar: result }));
-          updateUser({ avatar: result });
-        } else {
-          setProfile(prev => ({ ...prev, cover: result }));
-          // Note: updateUser might need to be updated to accept cover if we want it in global auth state,
-          // but local storage update below handles persistence for this page.
-          updateUser({ cover: result }); 
-        }
+        // Update user avatar/cover via API
+        const res = await fetch(`/api/users/${user.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ [field]: result }),
+          credentials: "include"
+        });
+
+        if (!res.ok) throw new Error("Failed to update photo");
+
+        // Update local state
+        setProfile(prev => ({ ...prev, [field]: result }));
         
-        // Also save immediately to ensure persistence even if they don't click "Save"
-        const savedProfile = localStorage.getItem("tennis_connect_player_profile");
-        const currentProfile = savedProfile ? JSON.parse(savedProfile) : DEFAULT_PLAYER_PROFILE;
-        const newProfile = { ...currentProfile, ...profile, [field]: result };
-        localStorage.setItem("tennis_connect_player_profile", JSON.stringify(newProfile));
+        // Update auth context
+        await updateUser({ [field]: result });
 
         toast({ title: "Photo Updated", description: `Your ${field} photo has been updated.` });
       } catch (err) {
@@ -402,7 +562,7 @@ export default function PlayerProfile() {
               <TabsTrigger value="overview" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none pb-2 text-lg">Overview</TabsTrigger>
               <TabsTrigger value="tournaments" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none pb-2 text-lg">Tournaments</TabsTrigger>
               <TabsTrigger value="coaches" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none pb-2 text-lg">My Coaches</TabsTrigger>
-              <TabsTrigger value="marketplace" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none pb-2 text-lg">Selling ({profile.marketplaceItems.length})</TabsTrigger>
+              <TabsTrigger value="marketplace" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none pb-2 text-lg">Selling ({marketplaceItems.length})</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-8">
@@ -567,7 +727,7 @@ export default function PlayerProfile() {
               {/* Tournament Lists */}
               {(() => {
                 const today = new Date().toISOString().split('T')[0];
-                const sortedTournaments = [...profile.tournaments].sort((a, b) => {
+                const sortedTournaments = [...tournaments].sort((a, b) => {
                    // Sort descending by date
                    return new Date(b.date).getTime() - new Date(a.date).getTime();
                 });
@@ -773,14 +933,14 @@ export default function PlayerProfile() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {profile.marketplaceItems.map(item => (
+                {marketplaceItems.map(item => (
                   <Card key={item.id}>
                     <div className="aspect-square bg-muted relative">
-                      <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                      <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
                     </div>
                     <CardHeader>
                       <CardTitle className="flex justify-between items-start text-lg">
-                        <span>{item.name}</span>
+                        <span>{item.title}</span>
                         <span className="text-primary">${item.price}</span>
                       </CardTitle>
                     </CardHeader>
@@ -797,7 +957,7 @@ export default function PlayerProfile() {
                     </CardContent>
                   </Card>
                 ))}
-                {profile.marketplaceItems.length === 0 && (
+                {marketplaceItems.length === 0 && (
                   <div className="col-span-full text-center py-12 text-muted-foreground bg-muted/20 rounded-xl border-2 border-dashed">
                     <ShoppingBag className="w-12 h-12 mx-auto mb-4 opacity-20" />
                     <p>You haven't listed any items yet.</p>

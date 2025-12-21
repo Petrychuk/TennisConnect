@@ -33,50 +33,46 @@ export default function CoachesPage() {
   const [priceRange, setPriceRange] = useState([150]); // Max price
   const [minRating, setMinRating] = useState(0);
   const [coaches, setCoaches] = useState(COACHES_DATA);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Function to load profile
-    const loadProfile = () => {
-      const savedProfile = localStorage.getItem("tennis_connect_coach_profile");
-      if (savedProfile) {
-        try {
-          const parsedProfile = JSON.parse(savedProfile);
-          
-          setCoaches(prevCoaches => {
-            const newCoaches = [...prevCoaches];
-            newCoaches[0] = {
-              ...newCoaches[0],
-              name: parsedProfile.name || newCoaches[0].name,
-              title: parsedProfile.title || newCoaches[0].title,
-              location: parsedProfile.locations?.[0] || parsedProfile.location || newCoaches[0].location,
-              rate: parsedProfile.rate ? parseInt(parsedProfile.rate) : newCoaches[0].rate,
-              experience: parsedProfile.experience ? (parsedProfile.experience.includes('year') ? parsedProfile.experience : `${parsedProfile.experience} years`) : newCoaches[0].experience,
-              image: parsedProfile.avatar || newCoaches[0].image,
-              tags: parsedProfile.tags || newCoaches[0].tags,
-              schedule: parsedProfile.schedule || newCoaches[0].schedule
-            };
-            return newCoaches;
-          });
-        } catch (e) {
-          console.error("Failed to parse local profile for coaches list", e);
+    async function fetchCoaches() {
+      try {
+        const res = await fetch("/api/coaches");
+        
+        if (res.ok) {
+          const data = await res.json();
+          // Transform API data to match UI format
+          if (data.length > 0) {
+            const transformedCoaches = data.map((coach: any) => ({
+              id: coach.id,
+              name: coach.title || "Coach",
+              title: coach.title || "Tennis Coach",
+              location: coach.locations?.[0] || coach.location || "Sydney",
+              rate: coach.rate ? parseInt(coach.rate) : 80,
+              rating: coach.rating || "4.9",
+              reviews: coach.reviews || 0,
+              experience: coach.experience || "5 years",
+              image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop",
+              tags: coach.tags || [],
+              schedule: coach.schedule || {},
+            }));
+            setCoaches([...transformedCoaches, ...COACHES_DATA]);
+          } else {
+            setCoaches(COACHES_DATA);
+          }
+        } else {
+          setCoaches(COACHES_DATA);
         }
+      } catch (error) {
+        console.error("Failed to fetch coaches:", error);
+        setCoaches(COACHES_DATA);
+      } finally {
+        setLoading(false);
       }
-    };
+    }
 
-
-    // Load initially
-    loadProfile();
-
-    // Listen for storage changes (in case profile is updated in another tab or component)
-    window.addEventListener('storage', loadProfile);
-    
-    // Custom event listener for same-tab updates
-    window.addEventListener('profile-updated', loadProfile);
-
-    return () => {
-      window.removeEventListener('storage', loadProfile);
-      window.removeEventListener('profile-updated', loadProfile);
-    };
+    fetchCoaches();
   }, []);
 
   // Dynamically get all unique locations from coaches

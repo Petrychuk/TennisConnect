@@ -25,6 +25,7 @@ export default function MarketplacePage() {
   const { toast } = useToast();
   
   const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   
@@ -38,35 +39,38 @@ export default function MarketplacePage() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    // 1. Load static dummy data
-    let allItems = [...MARKETPLACE_DATA];
     
-    // 2. Load user's local items if any
-    const savedProfile = localStorage.getItem("tennis_connect_coach_profile");
-    if (savedProfile) {
+    async function fetchMarketplaceItems() {
       try {
-        const parsed = JSON.parse(savedProfile);
-        if (parsed.marketplace && Array.isArray(parsed.marketplace)) {
-          // Add user items to the top
-          const userItems = parsed.marketplace.map((item: any) => ({
+        const res = await fetch("/api/marketplace", {
+          credentials: "include",
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          // Transform data to match expected format
+          const transformedItems = data.map((item: any) => ({
             ...item,
-            id: `local-${item.id}`, // Avoid ID collision
-            image: item.photos?.[0], // Use first photo as main image
-            title: item.name, // Normalize name to title
-            seller_name: parsed.name,
-            seller_email: parsed.email || "coach@tennisconnect.au",
-            seller_id: 1, // Assume current user is ID 1 (coach)
-            seller_type: "coach", // Assume self is coach for now
-            isLocal: true
+            title: item.title,
+            image: item.image || "https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=800&h=800&fit=crop",
+            seller_name: item.sellerName,
+            seller_email: item.sellerEmail,
           }));
-          allItems = [...userItems, ...allItems];
+          setItems(transformedItems);
+        } else {
+          // Fallback to dummy data if API fails
+          setItems(MARKETPLACE_DATA);
         }
-      } catch (e) {
-        console.error("Failed to load local items", e);
+      } catch (error) {
+        console.error("Failed to fetch marketplace items:", error);
+        // Fallback to dummy data
+        setItems(MARKETPLACE_DATA);
+      } finally {
+        setLoading(false);
       }
     }
     
-    setItems(allItems);
+    fetchMarketplaceItems();
   }, []);
 
   const filteredItems = items.filter(item => {

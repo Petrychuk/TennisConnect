@@ -187,6 +187,15 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/players", async (req, res, next) => {
+    try {
+      const players = await storage.getAllPlayers();
+      res.json(players);
+    } catch (error: any) {
+      next(error);
+    }
+  });
+
   app.post("/api/coach-profile", requireAuth, async (req, res, next) => {
     try {
       if (req.user!.role !== 'coach') {

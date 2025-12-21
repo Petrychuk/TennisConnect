@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navbar } from "@/components/navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +13,46 @@ import { Link } from "wouter";
 export default function PartnersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterLevel, setFilterLevel] = useState("");
+  const [partners, setPartners] = useState(PARTNERS_DATA);
+  const [loading, setLoading] = useState(true);
 
-  const filteredPartners = PARTNERS_DATA.filter(partner => {
+  useEffect(() => {
+    async function fetchPlayers() {
+      try {
+        const res = await fetch("/api/players");
+        
+        if (res.ok) {
+          const data = await res.json();
+          // Transform API data to match UI format
+          if (data.length > 0) {
+            const transformedPartners = data.map((player: any) => ({
+              id: player.id,
+              name: player.location || "Player",
+              location: player.location || "Sydney",
+              skillLevel: player.skillLevel || "Intermediate",
+              avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop",
+              available: true,
+              bio: player.bio || "",
+            }));
+            setPartners([...transformedPartners, ...PARTNERS_DATA]);
+          } else {
+            setPartners(PARTNERS_DATA);
+          }
+        } else {
+          setPartners(PARTNERS_DATA);
+        }
+      } catch (error) {
+        console.error("Failed to fetch partners:", error);
+        setPartners(PARTNERS_DATA);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchPlayers();
+  }, []);
+
+  const filteredPartners = partners.filter(partner => {
     const matchesSearch = 
       partner.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
       partner.location.toLowerCase().includes(searchTerm.toLowerCase());

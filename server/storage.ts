@@ -31,6 +31,7 @@ export interface IStorage {
   
   // Player Profiles
   getPlayerProfile(userId: string): Promise<PlayerProfile | undefined>;
+  getAllPlayers(): Promise<PlayerProfile[]>;
   createPlayerProfile(profile: InsertPlayerProfile): Promise<PlayerProfile>;
   updatePlayerProfile(id: string, updates: Partial<PlayerProfile>): Promise<PlayerProfile>;
   
@@ -92,6 +93,10 @@ export class DatabaseStorage implements IStorage {
       .from(playerProfiles)
       .where(eq(playerProfiles.userId, userId));
     return profile || undefined;
+  }
+
+  async getAllPlayers(): Promise<PlayerProfile[]> {
+    return await db.select().from(playerProfiles);
   }
 
   async createPlayerProfile(profile: InsertPlayerProfile): Promise<PlayerProfile> {

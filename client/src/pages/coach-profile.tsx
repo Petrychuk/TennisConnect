@@ -140,6 +140,9 @@ export default function CoachProfile() {
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
   const [selectedBuyItem, setSelectedBuyItem] = useState<any>(null);
   const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [profileData, setProfileData] = useState<any>(null);
+  const [marketplaceItems, setMarketplaceItems] = useState<any[]>([]);
   
   // Marketplace Form State
   const [newItem, setNewItem] = useState({
@@ -263,38 +266,91 @@ export default function CoachProfile() {
 
     // Case 2: Viewing own profile (Editable)
     // Only loads here if isOwnProfile is true (which means authenticated)
-    const savedProfile = localStorage.getItem("tennis_connect_coach_profile");
-    if (savedProfile) {
-        // ... existing loading logic ...
-      try {
-        const parsedProfile = JSON.parse(savedProfile);
-        // Merge with DEFAULT_PROFILE to ensure all fields exist (like tags)
-        // This fixes the crash if localStorage has an old version of the profile
-        const mergedProfile = { ...DEFAULT_PROFILE, ...parsedProfile };
-        
-        // Ensure tags is at least an empty array if somehow missing from both
-        if (!mergedProfile.tags) mergedProfile.tags = [];
-        
-        setProfile(mergedProfile);
-        
-        // Sync auth user if needed
-        if (user && (user.name !== mergedProfile.name || user.avatar !== mergedProfile.avatar)) {
-           updateUser({ 
-               name: mergedProfile.name,
-               avatar: mergedProfile.avatar
-           });
-        }
-      } catch (e) {
-        console.error("Failed to parse profile", e);
+    const loadProfile = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
       }
-    } else if (user) {
-      // Initialize with user data if available
-      setProfile(prev => ({
-        ...prev,
-        name: user.name || prev.name,
-        avatar: user.avatar || prev.avatar
-      }));
-    }
+
+      try {
+        setLoading(true);
+        
+        // Load coach profile
+        const profileRes = await fetch("/api/coach-profile", {
+          credentials: "include"
+        });
+        
+        if (profileRes.ok) {
+          const data = await profileRes.json();
+          if (data) {
+            setProfileData(data);
+            setProfile({
+              ...DEFAULT_PROFILE,
+              name: user.name || data.name || DEFAULT_PROFILE.name,
+              avatar: user.avatar || DEFAULT_PROFILE.avatar,
+              cover: user.cover || DEFAULT_PROFILE.cover,
+              title: data.title || DEFAULT_PROFILE.title,
+              location: data.location || DEFAULT_PROFILE.location,
+              locations: data.locations || DEFAULT_PROFILE.locations,
+              bio: data.bio || DEFAULT_PROFILE.bio,
+              rate: data.rate || DEFAULT_PROFILE.rate,
+              experience: data.experience || DEFAULT_PROFILE.experience,
+              tags: data.tags || DEFAULT_PROFILE.tags,
+              photos: data.photos || DEFAULT_PROFILE.photos,
+              schedule: data.schedule || DEFAULT_PROFILE.schedule,
+              phone: data.phone || DEFAULT_PROFILE.phone,
+              email: data.email || user.email || DEFAULT_PROFILE.email,
+              response_time: DEFAULT_PROFILE.response_time,
+              accepting_students: DEFAULT_PROFILE.accepting_students,
+              active_students: DEFAULT_PROFILE.active_students,
+              rating: DEFAULT_PROFILE.rating,
+              hours_taught: DEFAULT_PROFILE.hours_taught,
+              attendance: DEFAULT_PROFILE.attendance,
+              marketplace: []
+            });
+          } else {
+            // No profile exists yet, use user data
+            setProfile(prev => ({
+              ...prev,
+              name: user.name || prev.name,
+              avatar: user.avatar || prev.avatar,
+              cover: user.cover || prev.cover,
+              email: user.email || prev.email
+            }));
+          }
+        } else {
+          // Profile doesn't exist yet
+          setProfile(prev => ({
+            ...prev,
+            name: user.name || prev.name,
+            avatar: user.avatar || prev.avatar,
+            cover: user.cover || prev.cover,
+            email: user.email || prev.email
+          }));
+        }
+
+        // Load marketplace items
+        const marketplaceRes = await fetch("/api/marketplace/user", {
+          credentials: "include"
+        });
+        if (marketplaceRes.ok) {
+          const marketplaceData = await marketplaceRes.json();
+          setMarketplaceItems(marketplaceData || []);
+        }
+
+      } catch (error) {
+        console.error("Failed to load profile", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to load profile data"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProfile();
   }, [isAuthenticated, user, setLocation, isOwnProfile, profileId]);
 
 
@@ -302,7 +358,7 @@ export default function CoachProfile() {
     "Bondi Beach", "Manly", "Surry Hills", "Mosman", "Coogee", "Parramatta", "Chatswood", "Newtown", "Freshwater", "Brookvale"
   ];
 
-  const handleAddItem = () => {
+  const handleAddItem = async () => {
     if (!newItem.name || !newItem.price) {
       toast({
          variant: "destructive",
@@ -312,19 +368,28 @@ export default function CoachProfile() {
       return;
     }
 
-    const itemToAdd = {
-      ...newItem,
-      id: Date.now(),
-      photos: newItem.photos.length > 0 ? newItem.photos : [racketImg] // Fallback image
-    };
+    try {
+      const res = await fetch("/api/marketplace", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: newItem.name,
+          price: newItem.price,
+          condition: newItem.condition,
+          description: newItem.description,
+          location: newItem.location || profile.location,
+          image: newItem.photos.length > 0 ? newItem.photos[0] : racketImg
+        }),
+        credentials: "include"
+      });
 
-    setProfile(prev => ({
-      ...prev,
-      marketplace: [...(prev.marketplace || []), itemToAdd]
-    }));
-
-    setIsItemModalOpen(false);
-    setNewItem({
+      if (!res.ok) throw new Error("Failed to add item");
+      
+      const item = await res.json();
+      setMarketplaceItems(prev => [...prev, item]);
+      
+      setIsItemModalOpen(false);
+      setNewItem({
         id: Date.now(),
         name: "",
         price: "",
@@ -332,16 +397,38 @@ export default function CoachProfile() {
         location: profile.location,
         description: "",
         photos: []
-    });
+      });
 
-    toast({ title: "Item Listed", description: "Your item is now available in the marketplace." });
+      toast({ title: "Item Listed", description: "Your item is now available in the marketplace." });
+    } catch (error) {
+      console.error("Failed to add item", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to add marketplace item"
+      });
+    }
   };
 
-  const handleDeleteItem = (id: number) => {
-    setProfile(prev => ({
-      ...prev,
-      marketplace: prev.marketplace.filter(item => item.id !== id)
-    }));
+  const handleDeleteItem = async (id: string) => {
+    try {
+      const res = await fetch(`/api/marketplace/${id}`, {
+        method: "DELETE",
+        credentials: "include"
+      });
+
+      if (!res.ok) throw new Error("Failed to delete item");
+      
+      setMarketplaceItems(prev => prev.filter(item => item.id !== id));
+      toast({ title: "Item Deleted", description: "Your item has been removed." });
+    } catch (error) {
+      console.error("Failed to delete item", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete marketplace item"
+      });
+    }
   };
 
   const handleBuyRequest = () => {
@@ -401,15 +488,51 @@ export default function CoachProfile() {
     setContactMessage("");
   };
 
-  const handleSave = () => {
-    setIsEditing(false);
-    
+  const handleSave = async () => {
+    if (!user) return;
+
     try {
-      // Save to localStorage
-      localStorage.setItem("tennis_connect_coach_profile", JSON.stringify(profile));
-      
-      // Update global auth state (so navbar updates immediately)
-      updateUser({ name: profile.name, avatar: profile.avatar });
+      const profilePayload = {
+        title: profile.title,
+        location: profile.location,
+        locations: profile.locations,
+        bio: profile.bio,
+        rate: profile.rate,
+        experience: profile.experience,
+        tags: profile.tags,
+        photos: profile.photos,
+        schedule: profile.schedule,
+        phone: profile.phone,
+        email: profile.email
+      };
+
+      let savedProfile;
+      if (profileData) {
+        // Update existing profile
+        const res = await fetch(`/api/coach-profile/${profileData.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(profilePayload),
+          credentials: "include"
+        });
+
+        if (!res.ok) throw new Error("Failed to update profile");
+        savedProfile = await res.json();
+      } else {
+        // Create new profile
+        const res = await fetch("/api/coach-profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(profilePayload),
+          credentials: "include"
+        });
+
+        if (!res.ok) throw new Error("Failed to create profile");
+        savedProfile = await res.json();
+        setProfileData(savedProfile);
+      }
+
+      setIsEditing(false);
       
       // Dispatch custom event to notify other components (like Coaches list)
       window.dispatchEvent(new Event('profile-updated'));
@@ -419,11 +542,11 @@ export default function CoachProfile() {
         description: "Your changes have been saved successfully.",
       });
     } catch (error) {
-      console.error("Storage quota exceeded", error);
+      console.error("Failed to save profile", error);
       toast({
         variant: "destructive",
-        title: "Storage Limit Reached",
-        description: "Your media files are too large to save permanently in this browser prototype. Changes are saved for this session only.",
+        title: "Error",
+        description: "Failed to save profile changes"
       });
     }
   };
@@ -481,7 +604,7 @@ export default function CoachProfile() {
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, field: 'avatar' | 'cover' | 'photo') => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (file && user) {
       try {
         let result: string;
 
@@ -507,16 +630,27 @@ export default function CoachProfile() {
           });
         }
 
-        if (field === 'avatar') {
-          setProfile({ ...profile, avatar: result });
-          updateUser({ avatar: result });
-          toast({ title: "Avatar Updated", description: "Don't forget to save changes." });
-        } else if (field === 'cover') {
-          setProfile({ ...profile, cover: result });
-          toast({ title: "Cover Updated", description: "Don't forget to save changes." });
+        if (field === 'avatar' || field === 'cover') {
+          // Update user avatar/cover via API
+          const res = await fetch(`/api/users/${user.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ [field]: result }),
+            credentials: "include"
+          });
+
+          if (!res.ok) throw new Error("Failed to update photo");
+
+          // Update local state
+          setProfile({ ...profile, [field]: result });
+          
+          // Update auth context
+          await updateUser({ [field]: result });
+
+          toast({ title: "Photo Updated", description: `Your ${field} has been updated.` });
         } else if (field === 'photo') {
           setProfile({ ...profile, photos: [...profile.photos, result] });
-          toast({ title: "Media Added", description: "New item added to gallery." });
+          toast({ title: "Media Added", description: "New item added to gallery. Don't forget to save changes." });
         }
       } catch (error) {
         console.error("Error processing file", error);
@@ -1265,14 +1399,14 @@ export default function CoachProfile() {
                           <ShoppingBag className="w-5 h-5 text-primary" />
                           Coach's Marketplace
                         </CardTitle>
-                        {isEditing && (profile.marketplace?.length || 0) < 3 && (
+                        {isEditing && marketplaceItems.length < 3 && (
                           <Button size="sm" variant="outline" className="gap-2" onClick={() => setIsItemModalOpen(true)}>
                             <Plus className="w-4 h-4" /> Add Item
                           </Button>
                         )}
                       </CardHeader>
                       <CardContent>
-                        {(profile.marketplace?.length || 0) === 0 ? (
+                        {marketplaceItems.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-muted rounded-xl bg-muted/20">
                               <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
                                 <ShoppingBag className="w-8 h-8 text-muted-foreground" />
@@ -1289,12 +1423,12 @@ export default function CoachProfile() {
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {profile.marketplace.map((item) => (
+                                {marketplaceItems.map((item) => (
                                     <div key={item.id} className="group border rounded-xl overflow-hidden bg-card hover:shadow-lg transition-all duration-300 flex flex-col">
                                         <div className="aspect-[4/3] bg-muted relative overflow-hidden">
                                             <img 
-                                              src={item.photos?.[0] || racketImg} 
-                                              alt={item.name} 
+                                              src={item.image || racketImg} 
+                                              alt={item.title} 
                                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                                             />
                                             <div className="absolute top-2 right-2 flex gap-2">
@@ -1313,7 +1447,7 @@ export default function CoachProfile() {
                                         </div>
                                         <div className="p-4 flex flex-col flex-grow">
                                             <div className="flex justify-between items-start mb-2">
-                                                <h3 className="font-bold text-lg leading-tight line-clamp-2">{item.name}</h3>
+                                                <h3 className="font-bold text-lg leading-tight line-clamp-2">{item.title}</h3>
                                                 <span className="font-bold text-lg text-primary whitespace-nowrap ml-2">${item.price}</span>
                                             </div>
                                             <div className="flex items-center gap-1 text-xs text-muted-foreground mb-3">
@@ -1336,7 +1470,7 @@ export default function CoachProfile() {
                                         </div>
                                     </div>
                                 ))}
-                                {isEditing && (profile.marketplace?.length || 0) < 3 && (
+                                {isEditing && marketplaceItems.length < 3 && (
                                     <div 
                                       className="border-2 border-dashed border-muted rounded-xl flex flex-col items-center justify-center p-6 text-center cursor-pointer hover:bg-muted/10 hover:border-primary/50 transition-colors min-h-[300px]"
                                       onClick={() => setIsItemModalOpen(true)}
