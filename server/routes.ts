@@ -395,9 +395,13 @@ export async function registerRoutes(
     }
   });
 
-  // Mark message as read (requires auth)
+  // Mark message as read (requires auth + ownership)
   app.put("/api/messages/:id/read", requireAuth, async (req, res, next) => {
     try {
+      const existingMessage = await storage.getMessageById(req.params.id);
+      if (!existingMessage || existingMessage.recipientId !== req.user!.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
       const message = await storage.markMessageAsRead(req.params.id);
       res.json(message);
     } catch (error: any) {
@@ -405,9 +409,13 @@ export async function registerRoutes(
     }
   });
 
-  // Delete message (requires auth)
+  // Delete message (requires auth + ownership)
   app.delete("/api/messages/:id", requireAuth, async (req, res, next) => {
     try {
+      const existingMessage = await storage.getMessageById(req.params.id);
+      if (!existingMessage || existingMessage.recipientId !== req.user!.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
       await storage.deleteMessage(req.params.id);
       res.json({ message: "Message deleted" });
     } catch (error: any) {

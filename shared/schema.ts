@@ -94,7 +94,7 @@ export const clubs = pgTable("clubs", {
 // Messages - for contact requests and messaging between users
 export const messages = pgTable("messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  recipientId: varchar("recipient_id").notNull().references(() => users.id),
+  recipientId: varchar("recipient_id").notNull(), // no FK to support demo profiles
   recipientType: text("recipient_type").notNull(), // 'coach' or 'player'
   senderUserId: varchar("sender_user_id").references(() => users.id), // null if unregistered
   senderName: text("sender_name").notNull(),

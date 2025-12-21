@@ -62,6 +62,7 @@ export interface IStorage {
   // Messages
   getUserMessages(userId: string): Promise<Message[]>;
   getUnreadMessageCount(userId: string): Promise<number>;
+  getMessageById(id: string): Promise<Message | undefined>;
   createMessage(message: InsertMessage): Promise<Message>;
   markMessageAsRead(id: string): Promise<Message>;
   deleteMessage(id: string): Promise<void>;
@@ -246,6 +247,14 @@ export class DatabaseStorage implements IStorage {
       .from(messages)
       .where(and(eq(messages.recipientId, userId), eq(messages.isRead, false)));
     return unreadMessages.length;
+  }
+
+  async getMessageById(id: string): Promise<Message | undefined> {
+    const [message] = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.id, id));
+    return message || undefined;
   }
 
   async createMessage(message: InsertMessage): Promise<Message> {
