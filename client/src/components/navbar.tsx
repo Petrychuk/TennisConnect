@@ -23,8 +23,8 @@ export function Navbar() {
     { name: "Partners", href: "/#partners" },
     { name: "Coaches", href: "/coaches" },
     { name: "Marketplace", href: "/marketplace" },
+    { name: "Clubs", href: "/clubs" },
     { name: "Reviews", href: "/#reviews" },
-    { name: "Clubs", href: "/#clubs" },
   ];
 
   if (location === "/auth") return null;
