@@ -91,6 +91,21 @@ export const clubs = pgTable("clubs", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Messages - for contact requests and messaging between users
+export const messages = pgTable("messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  recipientId: varchar("recipient_id").notNull().references(() => users.id),
+  recipientType: text("recipient_type").notNull(), // 'coach' or 'player'
+  senderUserId: varchar("sender_user_id").references(() => users.id), // null if unregistered
+  senderName: text("sender_name").notNull(),
+  senderEmail: text("sender_email").notNull(),
+  senderPhone: text("sender_phone"),
+  subject: text("subject"),
+  content: text("content").notNull(),
+  isRead: boolean("is_read").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   playerProfile: one(playerProfiles, {
@@ -103,6 +118,18 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   }),
   tournaments: many(tournaments),
   marketplaceItems: many(marketplaceItems),
+  receivedMessages: many(messages),
+}));
+
+export const messagesRelations = relations(messages, ({ one }) => ({
+  recipient: one(users, {
+    fields: [messages.recipientId],
+    references: [users.id],
+  }),
+  sender: one(users, {
+    fields: [messages.senderUserId],
+    references: [users.id],
+  }),
 }));
 
 export const playerProfilesRelations = relations(playerProfiles, ({ one }) => ({
@@ -168,6 +195,12 @@ export const insertClubSchema = createInsertSchema(clubs).omit({
   createdAt: true,
 });
 
+export const insertMessageSchema = createInsertSchema(messages).omit({
+  id: true,
+  createdAt: true,
+  isRead: true,
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -186,3 +219,6 @@ export type MarketplaceItem = typeof marketplaceItems.$inferSelect;
 
 export type InsertClub = z.infer<typeof insertClubSchema>;
 export type Club = typeof clubs.$inferSelect;
+
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type Message = typeof messages.$inferSelect;

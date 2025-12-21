@@ -65,7 +65,7 @@ export function Navbar() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Avatar className="h-9 w-9 cursor-pointer border-2 border-primary/20 hover:border-primary transition-colors">
-                    <AvatarImage src={user?.avatar} />
+                    <AvatarImage src={user?.avatar || undefined} />
                     <AvatarFallback className="bg-primary/10 text-primary font-bold">
                       {user?.name?.[0] || "U"}
                     </AvatarFallback>
@@ -106,7 +106,7 @@ export function Navbar() {
                 {isAuthenticated && (
                    <div className="flex items-center gap-3 pb-6 border-b">
                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={user?.avatar} />
+                        <AvatarImage src={user?.avatar || undefined} />
                         <AvatarFallback>{user?.name?.[0] || "U"}</AvatarFallback>
                      </Avatar>
                      <div>

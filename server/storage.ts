@@ -6,6 +6,7 @@ import {
   tournaments,
   marketplaceItems,
   clubs,
+  messages,
   type User, 
   type InsertUser,
   type PlayerProfile,
@@ -18,9 +19,11 @@ import {
   type InsertMarketplaceItem,
   type Club,
   type InsertClub,
+  type Message,
+  type InsertMessage,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -55,6 +58,13 @@ export interface IStorage {
   // Clubs
   getAllClubs(): Promise<Club[]>;
   createClub(club: InsertClub): Promise<Club>;
+  
+  // Messages
+  getUserMessages(userId: string): Promise<Message[]>;
+  getUnreadMessageCount(userId: string): Promise<number>;
+  createMessage(message: InsertMessage): Promise<Message>;
+  markMessageAsRead(id: string): Promise<Message>;
+  deleteMessage(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -100,9 +110,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPlayerProfile(profile: InsertPlayerProfile): Promise<PlayerProfile> {
+    const profileData = {
+      ...profile,
+      preferredCourts: profile.preferredCourts as string[] | undefined,
+    };
     const [newProfile] = await db
       .insert(playerProfiles)
-      .values(profile)
+      .values(profileData)
       .returning();
     return newProfile;
   }
@@ -130,9 +144,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCoachProfile(profile: InsertCoachProfile): Promise<CoachProfile> {
+    const profileData = {
+      ...profile,
+      locations: profile.locations as string[] | undefined,
+      tags: profile.tags as string[] | undefined,
+      photos: profile.photos as string[] | undefined,
+    };
     const [newProfile] = await db
       .insert(coachProfiles)
-      .values(profile)
+      .values(profileData)
       .returning();
     return newProfile;
   }
@@ -155,9 +175,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTournament(tournament: InsertTournament): Promise<Tournament> {
+    const tournamentData = {
+      ...tournament,
+      photos: tournament.photos as string[] | undefined,
+    };
     const [newTournament] = await db
       .insert(tournaments)
-      .values(tournament)
+      .values(tournamentData)
       .returning();
     return newTournament;
   }
@@ -196,11 +220,53 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createClub(club: InsertClub): Promise<Club> {
+    const clubData = {
+      ...club,
+      services: club.services as string[] | undefined,
+    };
     const [newClub] = await db
       .insert(clubs)
-      .values(club)
+      .values(clubData)
       .returning();
     return newClub;
+  }
+
+  // Messages
+  async getUserMessages(userId: string): Promise<Message[]> {
+    return await db
+      .select()
+      .from(messages)
+      .where(eq(messages.recipientId, userId))
+      .orderBy(desc(messages.createdAt));
+  }
+
+  async getUnreadMessageCount(userId: string): Promise<number> {
+    const unreadMessages = await db
+      .select()
+      .from(messages)
+      .where(and(eq(messages.recipientId, userId), eq(messages.isRead, false)));
+    return unreadMessages.length;
+  }
+
+  async createMessage(message: InsertMessage): Promise<Message> {
+    const [newMessage] = await db
+      .insert(messages)
+      .values(message)
+      .returning();
+    return newMessage;
+  }
+
+  async markMessageAsRead(id: string): Promise<Message> {
+    const [message] = await db
+      .update(messages)
+      .set({ isRead: true })
+      .where(eq(messages.id, id))
+      .returning();
+    return message;
+  }
+
+  async deleteMessage(id: string): Promise<void> {
+    await db.delete(messages).where(eq(messages.id, id));
   }
 }
 
