@@ -56,21 +56,36 @@ export default function AuthPage() {
       setIsLoading(false);
       
       // Mock login - assuming coach role for demo if email contains "coach"
-      const role = data.email.includes("coach") ? "coach" : "coach"; // Default to coach for demo convenience
+      const role = data.email.includes("coach") ? "coach" : "player"; // Default to player unless coach is in email
       
       // Check if there is a saved profile to use the correct name and avatar
-      let userName = "Nataliia Petrychuk";
-      let userAvatar = avatarImage;
-      
-      const savedProfile = localStorage.getItem("tennis_connect_coach_profile");
-      if (savedProfile) {
-        try {
-          const profile = JSON.parse(savedProfile);
-          if (profile.name) userName = profile.name;
-          if (profile.avatar) userAvatar = profile.avatar;
-        } catch (e) {
-          console.error("Failed to parse profile during login", e);
-        }
+      let userName = "New User";
+      let userAvatar = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop";
+
+      if (role === "coach") {
+         userName = "Nataliia Petrychuk";
+         userAvatar = avatarImage;
+         const savedProfile = localStorage.getItem("tennis_connect_coach_profile");
+         if (savedProfile) {
+            try {
+              const profile = JSON.parse(savedProfile);
+              if (profile.name) userName = profile.name;
+              if (profile.avatar) userAvatar = profile.avatar;
+            } catch (e) {
+              console.error("Failed to parse profile during login", e);
+            }
+         }
+      } else {
+         const savedProfile = localStorage.getItem("tennis_connect_player_profile");
+         if (savedProfile) {
+            try {
+              const profile = JSON.parse(savedProfile);
+              if (profile.name) userName = profile.name;
+              if (profile.avatar) userAvatar = profile.avatar;
+            } catch (e) {
+              console.error("Failed to parse profile during login", e);
+            }
+         }
       }
       
       login({
