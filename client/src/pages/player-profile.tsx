@@ -148,17 +148,67 @@ export default function PlayerProfile() {
     }));
   };
 
+  const resizeImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          
+          // Max dimensions
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 800;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          // Compress to JPEG with 0.7 quality
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          resolve(dataUrl);
+        };
+        img.src = event.target?.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
+      try {
+        const result = await resizeImage(file);
         setProfile(prev => ({ ...prev, avatar: result }));
         updateUser({ avatar: result });
+        
+        // Also save immediately to ensure persistence even if they don't click "Save"
+        const savedProfile = localStorage.getItem("tennis_connect_player_profile");
+        const currentProfile = savedProfile ? JSON.parse(savedProfile) : DEFAULT_PLAYER_PROFILE;
+        const newProfile = { ...currentProfile, ...profile, avatar: result };
+        localStorage.setItem("tennis_connect_player_profile", JSON.stringify(newProfile));
+
         toast({ title: "Photo Updated", description: "Your profile photo has been updated." });
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+         console.error("Error processing image", err);
+         toast({ variant: "destructive", title: "Upload Failed", description: "Could not process image." });
+      }
     }
   };
 

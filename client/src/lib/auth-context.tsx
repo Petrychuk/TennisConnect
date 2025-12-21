@@ -32,7 +32,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = (newUser: User) => {
     setUser(newUser);
-    localStorage.setItem("tennis_connect_user", JSON.stringify(newUser));
+    try {
+      localStorage.setItem("tennis_connect_user", JSON.stringify(newUser));
+    } catch (e) {
+      console.error("Failed to save user to localStorage", e);
+    }
   };
 
   const logout = () => {
@@ -46,7 +50,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const updatedUser = { ...user, ...updates };
     setUser(updatedUser);
-    localStorage.setItem("tennis_connect_user", JSON.stringify(updatedUser));
+    try {
+      localStorage.setItem("tennis_connect_user", JSON.stringify(updatedUser));
+    } catch (e) {
+      console.error("Failed to update user in localStorage", e);
+    }
   };
 
   return (
