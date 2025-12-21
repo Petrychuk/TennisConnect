@@ -18,18 +18,18 @@ import heroImage from "@assets/118174652_3488272227872998_1093348718284959373_n_
 import avatarImage from "@assets/generated_images/female_tennis_coach_portrait.png";
 
 const loginSchema = z.object({
-  email: z.string().email({ message: "Введите корректный email адрес" }),
-  password: z.string().min(6, { message: "Пароль должен содержать минимум 6 символов" }),
+  email: z.string().email({ message: "Please enter a valid email address" }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
 });
 
 const registerSchema = z.object({
-  role: z.enum(["player", "coach"], { required_error: "Пожалуйста, выберите роль" }),
-  name: z.string().min(2, { message: "Имя должно содержать минимум 2 символа" }),
-  email: z.string().email({ message: "Введите корректный email адрес" }),
-  password: z.string().min(6, { message: "Пароль должен содержать минимум 6 символов" }),
+  role: z.enum(["player", "coach"], { required_error: "Please select a role" }),
+  name: z.string().min(2, { message: "Name must be at least 2 characters" }),
+  email: z.string().email({ message: "Please enter a valid email address" }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
-  message: "Пароли не совпадают",
+  message: "Passwords do not match",
   path: ["confirmPassword"],
 });
 
@@ -55,15 +55,15 @@ export default function AuthPage() {
       await login(data.email, data.password);
       
       toast({
-        title: "С возвращением!",
-        description: "Вы успешно вошли в систему.",
+        title: "Welcome back!",
+        description: "You have successfully signed in.",
       });
       
       setLocation("/");
     } catch (error: any) {
       toast({
-        title: "Ошибка входа",
-        description: error.message || "Проверьте свои данные и попробуйте снова.",
+        title: "Login failed",
+        description: error.message || "Please check your credentials and try again.",
         variant: "destructive",
       });
     } finally {
@@ -77,8 +77,8 @@ export default function AuthPage() {
       await register(data.email, data.password, data.name, data.role);
       
       toast({
-        title: "Аккаунт создан",
-        description: "Добро пожаловать в TennisConnect!",
+        title: "Account created",
+        description: "Welcome to TennisConnect!",
       });
       
       if (data.role === "coach") {
@@ -88,8 +88,8 @@ export default function AuthPage() {
       }
     } catch (error: any) {
       toast({
-        title: "Ошибка регистрации",
-        description: error.message || "Пожалуйста, попробуйте снова.",
+        title: "Registration failed",
+        description: error.message || "Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -99,8 +99,8 @@ export default function AuthPage() {
 
   const handleSocialLogin = (provider: string) => {
     toast({
-      title: "В разработке",
-      description: `Вход через ${provider} скоро будет доступен.`,
+      title: "Coming Soon",
+      description: `${provider} login will be available soon.`,
     });
   };
 
@@ -110,7 +110,7 @@ export default function AuthPage() {
       <div className="w-full lg:w-1/2 flex flex-col p-8 md:p-12 lg:p-16 justify-center bg-background relative z-10">
         <Link href="/" className="absolute top-8 left-8 md:left-12 flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer">
           <ArrowLeft className="w-4 h-4" />
-          На главную
+          Back to Home
         </Link>
 
         <div className="max-w-md w-full mx-auto space-y-8">
@@ -119,14 +119,14 @@ export default function AuthPage() {
               Tennis<span className="text-primary">Connect</span>
             </h1>
             <p className="text-muted-foreground">
-              Присоединяйтесь к крупнейшему теннисному сообществу Австралии.
+              Join Australia's largest tennis community.
             </p>
           </div>
 
           <Tabs defaultValue="login" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-8">
-              <TabsTrigger value="login" className="cursor-pointer">Вход</TabsTrigger>
-              <TabsTrigger value="register" className="cursor-pointer">Регистрация</TabsTrigger>
+              <TabsTrigger value="login" className="cursor-pointer">Sign In</TabsTrigger>
+              <TabsTrigger value="register" className="cursor-pointer">Sign Up</TabsTrigger>
             </TabsList>
             
             <TabsContent value="login">
@@ -145,9 +145,9 @@ export default function AuthPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="password">Пароль</Label>
+                    <Label htmlFor="password">Password</Label>
                     <a href="#" className="text-sm font-medium text-primary hover:underline cursor-pointer">
-                      Забыли пароль?
+                      Forgot password?
                     </a>
                   </div>
                   <Input 
@@ -167,13 +167,13 @@ export default function AuthPage() {
                     htmlFor="remember"
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                   >
-                    Запомнить меня на 30 дней
+                    Remember me for 30 days
                   </label>
                 </div>
 
                 <Button type="submit" className="w-full font-bold bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer" disabled={isLoading}>
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Войти
+                  Sign In
                 </Button>
               </form>
             </TabsContent>
@@ -181,7 +181,7 @@ export default function AuthPage() {
             <TabsContent value="register">
               <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
                 <div className="space-y-3">
-                  <Label>Я хочу присоединиться как...</Label>
+                  <Label>I want to join as a...</Label>
                   <RadioGroup
                     defaultValue="player"
                     onValueChange={(value) => registerForm.setValue("role", value as "player" | "coach")}
@@ -194,8 +194,8 @@ export default function AuthPage() {
                         className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer transition-all"
                       >
                         <User className="mb-2 w-6 h-6" />
-                        <span className="font-bold">Игрок</span>
-                        <span className="text-xs text-muted-foreground text-center">Найти партнеров</span>
+                        <span className="font-bold">Player</span>
+                        <span className="text-xs text-muted-foreground text-center">Find partners</span>
                       </Label>
                     </div>
                     <div>
@@ -205,18 +205,18 @@ export default function AuthPage() {
                         className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer transition-all"
                       >
                         <Trophy className="mb-2 w-6 h-6" />
-                        <span className="font-bold">Тренер</span>
-                        <span className="text-xs text-muted-foreground text-center">Найти учеников</span>
+                        <span className="font-bold">Coach</span>
+                        <span className="text-xs text-muted-foreground text-center">Find students</span>
                       </Label>
                     </div>
                   </RadioGroup>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="reg-name">Полное имя</Label>
+                  <Label htmlFor="reg-name">Full Name</Label>
                   <Input 
                     id="reg-name" 
-                    placeholder="Иван Иванов" 
+                    placeholder="John Doe" 
                     {...registerForm.register("name")} 
                     className={registerForm.formState.errors.name ? "border-destructive focus-visible:ring-destructive" : ""}
                   />
@@ -237,7 +237,7 @@ export default function AuthPage() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="reg-password">Пароль</Label>
+                  <Label htmlFor="reg-password">Password</Label>
                   <Input 
                     id="reg-password" 
                     type="password" 
@@ -249,7 +249,7 @@ export default function AuthPage() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Подтвердите пароль</Label>
+                  <Label htmlFor="confirm-password">Confirm Password</Label>
                   <Input 
                     id="confirm-password" 
                     type="password" 
@@ -263,11 +263,11 @@ export default function AuthPage() {
 
                 <Button type="submit" className="w-full font-bold bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer" disabled={isLoading}>
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Создать аккаунт
+                  Create Account
                 </Button>
                 
                 <p className="text-xs text-center text-muted-foreground mt-4">
-                  Нажимая "Создать аккаунт", вы соглашаетесь с нашими <a href="#" className="underline hover:text-primary cursor-pointer">Условиями использования</a> и <a href="#" className="underline hover:text-primary cursor-pointer">Политикой конфиденциальности</a>.
+                  By clicking Create Account, you agree to our <a href="#" className="underline hover:text-primary cursor-pointer">Terms of Service</a> and <a href="#" className="underline hover:text-primary cursor-pointer">Privacy Policy</a>.
                 </p>
               </form>
             </TabsContent>
@@ -279,7 +279,7 @@ export default function AuthPage() {
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-background px-2 text-muted-foreground">
-                Или войти через
+                Or continue with
               </span>
             </div>
           </div>
@@ -321,22 +321,22 @@ export default function AuthPage() {
         <div className="absolute inset-0 bg-black">
           <img 
             src={heroImage} 
-            alt="Теннисный матч" 
+            alt="Tennis match" 
             className="w-full h-full object-cover object-[50%_0%] opacity-80"
           />
           <div className="absolute inset-0 bg-gradient-to-l from-transparent via-black/20 to-black/80" />
           
           <div className="absolute bottom-16 left-12 right-12 text-white">
             <blockquote className="text-2xl font-display font-bold leading-relaxed mb-6">
-              "TennisConnect помог мне найти партнера для тренировок за неделю после переезда в Сидней. Теперь мы играем каждый вторник!"
+              "TennisConnect helped me find a training partner within a week of moving to Sydney. Now we play every Tuesday!"
             </blockquote>
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg">
-                МЧ
+                MC
               </div>
               <div>
-                <div className="font-bold">Майкл Чен</div>
-                <div className="text-primary text-sm">Участник с 2024 года</div>
+                <div className="font-bold">Michael Chen</div>
+                <div className="text-primary text-sm">Member since 2024</div>
               </div>
             </div>
           </div>

@@ -111,7 +111,7 @@ export default function CoachesPage() {
           <div className="absolute inset-0 z-0">
             <img 
               src={heroImage}
-              alt="Теннисный корт" 
+              alt="Tennis court" 
               className="w-full h-full object-cover object-[50%_25%] opacity-40"
             />
             <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-background" />
@@ -125,13 +125,13 @@ export default function CoachesPage() {
               className="max-w-3xl"
             >
               <Badge className="mb-6 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-1.5 text-sm font-bold uppercase tracking-wider cursor-default">
-                Найди своего тренера
+                Find Your Coach
               </Badge>
               <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold leading-tight mb-6">
-                Выведи игру на новый уровень с <span className="text-primary">профессиональным тренером.</span>
+                Elevate your game with <span className="text-primary">pro coaching.</span>
               </h1>
               <p className="text-xl text-gray-300 max-w-xl mb-8 leading-relaxed">
-                Свяжитесь с сертифицированными теннисными тренерами в Сиднее, которые помогут вам улучшить навыки — будь вы новичок или турнирный игрок.
+                Connect with certified tennis coaches in Sydney who can take your skills to the next level, whether you're a beginner or a tournament player.
               </p>
             </motion.div>
           </div>
@@ -143,7 +143,7 @@ export default function CoachesPage() {
             <div className="relative w-full md:w-[400px] lg:w-[500px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
               <Input 
-                placeholder="Поиск по имени или специализации..." 
+                placeholder="Search by name or specialty..." 
                 className="pl-10 h-12 text-lg bg-background w-full"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -159,7 +159,7 @@ export default function CoachesPage() {
                   </div>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all" className="cursor-pointer">Весь Сидней</SelectItem>
+                  <SelectItem value="all" className="cursor-pointer">All Sydney</SelectItem>
                   {uniqueLocations.map(loc => (
                     <SelectItem key={loc} value={loc} className="cursor-pointer">{loc}</SelectItem>
                   ))}
@@ -170,7 +170,7 @@ export default function CoachesPage() {
                 <PopoverTrigger asChild>
                   <Button variant="outline" className={`h-12 w-full md:w-auto px-4 flex-shrink-0 bg-background cursor-pointer ${activeFiltersCount > 0 ? 'border-primary text-primary' : ''}`}>
                     <Filter className="w-5 h-5 mr-2" />
-                    Фильтры
+                    Filters
                     {activeFiltersCount > 0 && (
                       <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px]">
                         {activeFiltersCount}
@@ -181,8 +181,8 @@ export default function CoachesPage() {
                 <PopoverContent className="w-96 p-6 space-y-6" align="end">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h4 className="font-bold leading-none">Диапазон цен</h4>
-                      <span className="text-sm text-muted-foreground">До ${priceRange[0]}/час</span>
+                      <h4 className="font-bold leading-none">Price Range</h4>
+                      <span className="text-sm text-muted-foreground">Up to ${priceRange[0]}/hr</span>
                     </div>
                     <Slider
                       defaultValue={[150]}
@@ -200,7 +200,7 @@ export default function CoachesPage() {
                   </div>
 
                   <div className="space-y-4">
-                    <h4 className="font-bold leading-none">Минимальный рейтинг</h4>
+                    <h4 className="font-bold leading-none">Minimum Rating</h4>
                     <div className="flex gap-2">
                       {[4, 4.5, 4.8, 5].map((rating) => (
                         <Button

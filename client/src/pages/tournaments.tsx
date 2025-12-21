@@ -27,7 +27,7 @@ const TOURNAMENTS_DATA = [
     prizePool: "5000 AUD",
     maxParticipants: 64,
     currentParticipants: 48,
-    description: "Главный теннисный турнир Сиднея для продвинутых игроков. Три дня соревнований с призовым фондом 5000 AUD. Проводится на профессиональных кортах Olympic Park.",
+    description: "Sydney's premier tennis tournament for advanced players. Three days of competition with a $5000 AUD prize pool. Held at the professional Olympic Park courts.",
     organizer: "Sydney Tennis Association",
     phone: "+61 2 9714 7888",
     email: "tournaments@sydneytennis.com.au",
@@ -49,7 +49,7 @@ const TOURNAMENTS_DATA = [
     prizePool: "3000 AUD",
     maxParticipants: 128,
     currentParticipants: 95,
-    description: "Крупнейший любительский турнир Мельбурна для игроков среднего уровня. Отличная возможность проверить свои силы и познакомиться с теннисным сообществом.",
+    description: "Melbourne's largest amateur tournament for intermediate players. Great opportunity to test your skills and connect with the tennis community.",
     organizer: "Tennis Victoria",
     phone: "+61 3 8420 8420",
     email: "events@tennisvic.com.au",
@@ -71,7 +71,7 @@ const TOURNAMENTS_DATA = [
     prizePool: "1000 AUD",
     maxParticipants: 32,
     currentParticipants: 28,
-    description: "Турнир для начинающих юных теннисистов. Отличный старт для детей 8-16 лет, желающих попробовать себя в соревнованиях.",
+    description: "Tournament for beginner junior players. Great start for kids aged 8-16 who want to try competitive tennis.",
     organizer: "Tennis Queensland",
     phone: "+61 7 3120 7900",
     email: "juniors@tennisqld.com.au",
@@ -95,7 +95,7 @@ const TOURNAMENTS_DATA = [
     currentParticipants: 48,
     winner: "James Wilson",
     finalist: "Michael Chen",
-    description: "Престижный летний турнир Перта. Собрал лучших игроков западного побережья Австралии.",
+    description: "Perth's prestigious summer tournament. Featured the best players from Australia's west coast.",
     organizer: "Tennis West",
     phone: "+61 8 6462 8300",
     email: "tournaments@tenniswest.com.au",
@@ -119,7 +119,7 @@ const TOURNAMENTS_DATA = [
     currentParticipants: 64,
     winner: "Sarah Thompson",
     finalist: "Emma Davis",
-    description: "Осенний турнир Аделаиды для игроков среднего уровня. Замечательная атмосфера и дружеское соревнование.",
+    description: "Adelaide's autumn tournament for intermediate players. Wonderful atmosphere and friendly competition.",
     organizer: "Tennis SA",
     phone: "+61 8 8367 9400",
     email: "events@tennissa.com.au",
@@ -158,23 +158,23 @@ export default function TournamentsPage() {
   const handleRegister = () => {
     if (!isAuthenticated) {
       toast({
-        title: "Войдите в аккаунт",
-        description: "Для регистрации на турнир необходимо войти в систему",
+        title: "Sign in required",
+        description: "You need to sign in to register for tournaments",
         variant: "destructive"
       });
       return;
     }
 
     toast({
-      title: "Заявка отправлена!",
-      description: `Вы зарегистрированы на турнир "${selectedTournament?.name}". Подтверждение придет на email.`
+      title: "Registration submitted!",
+      description: `You've registered for "${selectedTournament?.name}". Confirmation will be sent to your email.`
     });
     setRegisterModalOpen(false);
   };
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+    return date.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
   };
 
   const TournamentCard = ({ tournament, isPast = false }: { tournament: any; isPast?: boolean }) => (
@@ -199,15 +199,14 @@ export default function TournamentsPage() {
               tournament.level === 'Intermediate' ? 'bg-yellow-500' :
               'bg-green-500'
             } text-white font-bold`}>
-              {tournament.level === 'Advanced' ? 'Продвинутый' :
-               tournament.level === 'Intermediate' ? 'Средний' : 'Начинающий'}
+              {tournament.level}
             </Badge>
           </div>
 
           {isPast && tournament.winner && (
             <div className="absolute top-4 right-4">
               <Badge className="bg-primary text-primary-foreground font-bold">
-                <Trophy className="w-3 h-3 mr-1" /> Завершен
+                <Trophy className="w-3 h-3 mr-1" /> Completed
               </Badge>
             </div>
           )}
@@ -234,35 +233,35 @@ export default function TournamentsPage() {
             <div className="text-center p-3 bg-secondary/50 rounded-lg">
               <DollarSign className="w-5 h-5 mx-auto mb-1 text-primary" />
               <p className="font-bold">{tournament.price} AUD</p>
-              <p className="text-xs text-muted-foreground">Взнос</p>
+              <p className="text-xs text-muted-foreground">Entry Fee</p>
             </div>
             <div className="text-center p-3 bg-secondary/50 rounded-lg">
               <Trophy className="w-5 h-5 mx-auto mb-1 text-primary" />
               <p className="font-bold">{tournament.prizePool}</p>
-              <p className="text-xs text-muted-foreground">Призовой фонд</p>
+              <p className="text-xs text-muted-foreground">Prize Pool</p>
             </div>
             <div className="text-center p-3 bg-secondary/50 rounded-lg">
               <Users className="w-5 h-5 mx-auto mb-1 text-primary" />
               <p className="font-bold">{tournament.currentParticipants}/{tournament.maxParticipants}</p>
-              <p className="text-xs text-muted-foreground">Участников</p>
+              <p className="text-xs text-muted-foreground">Participants</p>
             </div>
             <div className="text-center p-3 bg-secondary/50 rounded-lg">
               <Clock className="w-5 h-5 mx-auto mb-1 text-primary" />
               <p className="font-bold">{tournament.categories.length}</p>
-              <p className="text-xs text-muted-foreground">Категорий</p>
+              <p className="text-xs text-muted-foreground">Categories</p>
             </div>
           </div>
 
           {isPast && tournament.winner && (
             <div className="bg-primary/10 rounded-lg p-4 mb-4">
-              <p className="text-sm text-muted-foreground mb-2">Результаты:</p>
+              <p className="text-sm text-muted-foreground mb-2">Results:</p>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <Trophy className="w-5 h-5 text-yellow-500" />
                   <span className="font-bold">{tournament.winner}</span>
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <span className="text-sm">2 место: {tournament.finalist}</span>
+                  <span className="text-sm">Runner-up: {tournament.finalist}</span>
                 </div>
               </div>
             </div>
@@ -286,7 +285,7 @@ export default function TournamentsPage() {
                   setRegisterModalOpen(true);
                 }}
               >
-                Зарегистрироваться
+                Register
               </Button>
             ) : null}
             <Button 
@@ -294,7 +293,7 @@ export default function TournamentsPage() {
               className="flex-1 cursor-pointer"
               onClick={() => setSelectedTournament(tournament)}
             >
-              Подробнее
+              View Details
             </Button>
           </div>
         </CardContent>
@@ -325,13 +324,13 @@ export default function TournamentsPage() {
             transition={{ duration: 0.8 }}
           >
             <Badge className="mb-6 bg-primary text-primary-foreground px-4 py-1.5 text-sm font-bold">
-              <Trophy className="w-4 h-4 mr-2" /> Официальные турниры
+              <Trophy className="w-4 h-4 mr-2" /> Official Tournaments
             </Badge>
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold mb-6 tracking-tight text-white">
-              Теннисные <span className="text-primary">турниры</span>
+              Tennis <span className="text-primary">Tournaments</span>
             </h1>
             <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto font-light leading-relaxed">
-              Участвуйте в соревнованиях, проверяйте свои навыки и поднимайтесь в рейтинге лучших игроков Австралии.
+              Compete in tournaments, test your skills, and climb the rankings among Australia's best players.
             </p>
           </motion.div>
         </div>
@@ -344,7 +343,7 @@ export default function TournamentsPage() {
             <div className="relative w-full md:w-96 group">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input 
-                placeholder="Поиск турниров..." 
+                placeholder="Search tournaments..." 
                 className="pl-10 h-11 bg-secondary/50 border-transparent focus:border-primary rounded-xl"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -353,10 +352,10 @@ export default function TournamentsPage() {
             
             <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
               {[
-                { value: "", label: "Все уровни" },
-                { value: "Beginner", label: "Начинающий" },
-                { value: "Intermediate", label: "Средний" },
-                { value: "Advanced", label: "Продвинутый" }
+                { value: "", label: "All Levels" },
+                { value: "Beginner", label: "Beginner" },
+                { value: "Intermediate", label: "Intermediate" },
+                { value: "Advanced", label: "Advanced" }
               ].map((level) => (
                 <button
                   key={level.value}
@@ -380,10 +379,10 @@ export default function TournamentsPage() {
         <Tabs defaultValue="upcoming" className="w-full">
           <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
             <TabsTrigger value="upcoming" className="cursor-pointer">
-              <Calendar className="w-4 h-4 mr-2" /> Предстоящие
+              <Calendar className="w-4 h-4 mr-2" /> Upcoming
             </TabsTrigger>
             <TabsTrigger value="past" className="cursor-pointer">
-              <Trophy className="w-4 h-4 mr-2" /> Прошедшие
+              <Trophy className="w-4 h-4 mr-2" /> Past
             </TabsTrigger>
           </TabsList>
 
@@ -396,8 +395,8 @@ export default function TournamentsPage() {
             {filterTournaments(upcomingTournaments).length === 0 && (
               <div className="text-center py-20">
                 <Trophy className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-xl font-bold mb-2">Турниры не найдены</h3>
-                <p className="text-muted-foreground">Попробуйте изменить параметры поиска</p>
+                <h3 className="text-xl font-bold mb-2">No tournaments found</h3>
+                <p className="text-muted-foreground">Try adjusting your search criteria</p>
               </div>
             )}
           </TabsContent>
@@ -411,8 +410,8 @@ export default function TournamentsPage() {
             {filterTournaments(pastTournaments).length === 0 && (
               <div className="text-center py-20">
                 <Trophy className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-xl font-bold mb-2">Турниры не найдены</h3>
-                <p className="text-muted-foreground">Попробуйте изменить параметры поиска</p>
+                <h3 className="text-xl font-bold mb-2">No tournaments found</h3>
+                <p className="text-muted-foreground">Try adjusting your search criteria</p>
               </div>
             )}
           </TabsContent>
@@ -423,7 +422,7 @@ export default function TournamentsPage() {
       <Dialog open={registerModalOpen} onOpenChange={setRegisterModalOpen}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Регистрация на турнир</DialogTitle>
+            <DialogTitle>Tournament Registration</DialogTitle>
             <DialogDescription>
               {selectedTournament?.name}
             </DialogDescription>
@@ -434,26 +433,26 @@ export default function TournamentsPage() {
               <div className="bg-secondary/50 rounded-lg p-4">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-muted-foreground">Дата</p>
+                    <p className="text-muted-foreground">Date</p>
                     <p className="font-bold">{formatDate(selectedTournament.date)}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Взнос</p>
+                    <p className="text-muted-foreground">Entry Fee</p>
                     <p className="font-bold">{selectedTournament.price} AUD</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Уровень</p>
+                    <p className="text-muted-foreground">Level</p>
                     <p className="font-bold">{selectedTournament.level}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Мест осталось</p>
+                    <p className="text-muted-foreground">Spots Left</p>
                     <p className="font-bold">{selectedTournament.maxParticipants - selectedTournament.currentParticipants}</p>
                   </div>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <p className="text-sm font-medium">Контакты организатора:</p>
+                <p className="text-sm font-medium">Organizer Contact:</p>
                 <div className="text-sm space-y-1">
                   <p className="flex items-center gap-2">
                     <Phone className="w-4 h-4 text-muted-foreground" />
@@ -474,10 +473,10 @@ export default function TournamentsPage() {
 
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setRegisterModalOpen(false)} className="cursor-pointer">
-              Отмена
+              Cancel
             </Button>
             <Button onClick={handleRegister} className="bg-primary text-primary-foreground cursor-pointer">
-              Подтвердить регистрацию
+              Confirm Registration
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -504,27 +503,27 @@ export default function TournamentsPage() {
                 <div className="text-center p-3 bg-secondary/50 rounded-lg">
                   <Calendar className="w-5 h-5 mx-auto mb-1 text-primary" />
                   <p className="font-bold text-sm">{formatDate(selectedTournament.date)}</p>
-                  <p className="text-xs text-muted-foreground">Начало</p>
+                  <p className="text-xs text-muted-foreground">Start Date</p>
                 </div>
                 <div className="text-center p-3 bg-secondary/50 rounded-lg">
                   <DollarSign className="w-5 h-5 mx-auto mb-1 text-primary" />
                   <p className="font-bold">{selectedTournament.price} AUD</p>
-                  <p className="text-xs text-muted-foreground">Взнос</p>
+                  <p className="text-xs text-muted-foreground">Entry Fee</p>
                 </div>
                 <div className="text-center p-3 bg-secondary/50 rounded-lg">
                   <Trophy className="w-5 h-5 mx-auto mb-1 text-primary" />
                   <p className="font-bold">{selectedTournament.prizePool}</p>
-                  <p className="text-xs text-muted-foreground">Призы</p>
+                  <p className="text-xs text-muted-foreground">Prizes</p>
                 </div>
                 <div className="text-center p-3 bg-secondary/50 rounded-lg">
                   <Users className="w-5 h-5 mx-auto mb-1 text-primary" />
                   <p className="font-bold">{selectedTournament.currentParticipants}/{selectedTournament.maxParticipants}</p>
-                  <p className="text-xs text-muted-foreground">Участников</p>
+                  <p className="text-xs text-muted-foreground">Participants</p>
                 </div>
               </div>
 
               <div className="border-t pt-4">
-                <h4 className="font-bold mb-3">Организатор</h4>
+                <h4 className="font-bold mb-3">Organizer</h4>
                 <p className="font-medium">{selectedTournament.organizer}</p>
                 <div className="mt-2 space-y-2 text-sm">
                   <p className="flex items-center gap-2">
@@ -551,7 +550,7 @@ export default function TournamentsPage() {
                   className="w-full bg-primary text-primary-foreground font-bold cursor-pointer"
                   onClick={() => setRegisterModalOpen(true)}
                 >
-                  Зарегистрироваться на турнир
+                  Register for Tournament
                 </Button>
               )}
             </div>

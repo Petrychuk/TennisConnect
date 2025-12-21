@@ -6,18 +6,18 @@ import { Link } from "wouter";
 const partnerBenefits = [
   {
     icon: Users,
-    title: "Новые клиенты",
-    description: "Получите доступ к тысячам активных теннисистов в вашем регионе"
+    title: "New Clients",
+    description: "Get access to thousands of active tennis players in your area"
   },
   {
     icon: TrendingUp,
-    title: "Рост бизнеса",
-    description: "Увеличьте загрузку кортов и записи на тренировки"
+    title: "Business Growth",
+    description: "Increase court utilization and training bookings"
   },
   {
     icon: Building2,
-    title: "Продвижение",
-    description: "Ваш клуб будет представлен в нашем каталоге с премиум-размещением"
+    title: "Promotion",
+    description: "Your club will be featured in our catalog with premium placement"
   },
 ];
 
@@ -38,16 +38,16 @@ export function Partnership() {
           >
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/20 text-primary border border-primary/30 mb-6">
               <Handshake className="w-4 h-4" />
-              <span className="text-sm font-bold uppercase tracking-wider">Партнерство</span>
+              <span className="text-sm font-bold uppercase tracking-wider">Partnership</span>
             </div>
             
             <h2 className="text-3xl md:text-5xl font-display font-bold mb-6 leading-tight">
-              Станьте нашим <span className="text-primary">партнером</span>
+              Become Our <span className="text-primary">Partner</span>
             </h2>
             
             <p className="text-gray-300 text-lg leading-relaxed mb-8">
-              Приглашаем теннисные клубы, тренеров и организаторов турниров к сотрудничеству. 
-              Вместе мы сможем развивать теннисное сообщество и привлекать новых игроков.
+              We invite tennis clubs, coaches, and tournament organizers to collaborate. 
+              Together we can grow the tennis community and attract new players.
             </p>
 
             <div className="space-y-4 mb-8">
@@ -79,7 +79,7 @@ export function Partnership() {
               >
                 <a href="mailto:partners@tennisconnect.au">
                   <Mail className="w-4 h-4 mr-2" />
-                  Связаться с нами
+                  Contact Us
                 </a>
               </Button>
               <Button 
@@ -89,7 +89,7 @@ export function Partnership() {
                 asChild
               >
                 <Link href="/clubs">
-                  Посмотреть партнеров <ArrowRight className="w-4 h-4 ml-2" />
+                  View Partners <ArrowRight className="w-4 h-4 ml-2" />
                 </Link>
               </Button>
             </div>
@@ -105,15 +105,15 @@ export function Partnership() {
             <div className="relative">
               <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 to-primary/5 rounded-3xl blur-xl" />
               <div className="relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-3xl p-8 border border-white/10">
-                <h3 className="text-2xl font-bold mb-6">Что мы предлагаем</h3>
+                <h3 className="text-2xl font-bold mb-6">What We Offer</h3>
                 <ul className="space-y-4">
                   {[
-                    "Размещение в каталоге клубов с полным описанием",
-                    "Интеграция системы бронирования кортов",
-                    "Продвижение ваших турниров и мероприятий",
-                    "Доступ к аналитике и статистике",
-                    "Маркетинговая поддержка и совместные акции",
-                    "Приоритетная техническая поддержка"
+                    "Club catalog listing with full description",
+                    "Court booking system integration",
+                    "Tournament and event promotion",
+                    "Access to analytics and statistics",
+                    "Marketing support and joint promotions",
+                    "Priority technical support"
                   ].map((item, index) => (
                     <li key={index} className="flex items-center gap-3">
                       <div className="w-2 h-2 rounded-full bg-primary" />
@@ -123,8 +123,9 @@ export function Partnership() {
                 </ul>
                 
                 <div className="mt-8 p-4 rounded-xl bg-primary/10 border border-primary/20">
-                  <p className="text-primary font-bold text-lg mb-1">Бесплатный пробный период</p>
-                  <p className="text-sm text-gray-400">30 дней полного доступа для новых партнеров</p>
+                  <p className="text-sm text-gray-300">
+                    <span className="text-primary font-bold">50+ clubs</span> are already growing their business with TennisConnect
+                  </p>
                 </div>
               </div>
             </div>

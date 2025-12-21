@@ -2,32 +2,32 @@ import { motion } from "framer-motion";
 import { Users, Heart, Target, Award } from "lucide-react";
 
 const stats = [
-  { number: "5000+", label: "Активных игроков" },
-  { number: "200+", label: "Тренеров" },
-  { number: "50+", label: "Клубов-партнеров" },
-  { number: "100+", label: "Турниров в год" },
+  { number: "5000+", label: "Active Players" },
+  { number: "200+", label: "Coaches" },
+  { number: "50+", label: "Partner Clubs" },
+  { number: "100+", label: "Tournaments/Year" },
 ];
 
 const values = [
   {
     icon: Users,
-    title: "Сообщество",
-    description: "Мы объединяем людей, которые любят теннис, независимо от возраста и уровня подготовки."
+    title: "Community",
+    description: "We unite people who love tennis, regardless of age or skill level."
   },
   {
     icon: Heart,
-    title: "Страсть к игре",
-    description: "Теннис — это не просто спорт, это стиль жизни и путь к здоровью."
+    title: "Passion for the Game",
+    description: "Tennis is more than a sport - it's a lifestyle and path to health."
   },
   {
     icon: Target,
-    title: "Доступность",
-    description: "Мы делаем теннис доступным для каждого, помогая найти партнеров и тренеров рядом с вами."
+    title: "Accessibility",
+    description: "We make tennis accessible to everyone, helping find partners and coaches near you."
   },
   {
     icon: Award,
-    title: "Качество",
-    description: "Все тренеры и клубы проходят проверку для гарантии высокого уровня услуг."
+    title: "Quality",
+    description: "All coaches and clubs are verified to ensure high-quality services."
   },
 ];
 
@@ -45,22 +45,22 @@ export function AboutUs() {
             transition={{ duration: 0.6 }}
           >
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 mb-6">
-              <span className="text-xs font-bold uppercase tracking-wider">О нас</span>
+              <span className="text-xs font-bold uppercase tracking-wider">About Us</span>
             </div>
             
             <h2 className="text-3xl md:text-5xl font-display font-bold mb-6 leading-tight">
-              TennisConnect — ваш путь в мир <span className="text-primary">большого тенниса</span>
+              TennisConnect — Your Gateway to <span className="text-primary">Tennis</span>
             </h2>
             
             <p className="text-muted-foreground text-lg leading-relaxed mb-8">
-              Мы создали платформу, которая объединяет теннисное сообщество Австралии. 
-              Наша миссия — помочь каждому найти идеального партнера для игры, 
-              профессионального тренера или удобный корт рядом с домом.
+              We've built a platform that unites Australia's tennis community. 
+              Our mission is to help everyone find the perfect playing partner, 
+              professional coach, or convenient court near home.
             </p>
             
             <p className="text-muted-foreground text-lg leading-relaxed">
-              С 2020 года мы помогаем тысячам игроков развивать свои навыки, 
-              находить друзей и наслаждаться любимым спортом. Присоединяйтесь к нашему сообществу!
+              Since 2020, we've helped thousands of players develop their skills, 
+              make friends, and enjoy their favorite sport. Join our community!
             </p>
           </motion.div>
 

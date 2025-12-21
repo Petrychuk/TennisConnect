@@ -20,11 +20,11 @@ export function Navbar() {
   const { user, logout, isAuthenticated } = useAuth();
 
   const navLinks = [
-    { name: "Партнеры", href: "/partners" },
-    { name: "Тренеры", href: "/coaches" },
-    { name: "Турниры", href: "/tournaments" },
-    { name: "Маркетплейс", href: "/marketplace" },
-    { name: "Клубы", href: "/clubs" },
+    { name: "Partners", href: "/partners" },
+    { name: "Coaches", href: "/coaches" },
+    { name: "Tournaments", href: "/tournaments" },
+    { name: "Marketplace", href: "/marketplace" },
+    { name: "Clubs", href: "/clubs" },
   ];
 
   if (location === "/auth") return null;
@@ -58,7 +58,7 @@ export function Navbar() {
               <Link href={user?.role === "coach" ? "/coach/profile" : "/player/profile"}>
                 <Button variant="ghost" className="font-bold hover:text-lime-600 gap-2 cursor-pointer">
                   <User className="w-4 h-4" />
-                  {user?.name || "Мой профиль"}
+                  {user?.name || "My Profile"}
                 </Button>
               </Link>
               
@@ -72,16 +72,16 @@ export function Navbar() {
                   </Avatar>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Мой аккаунт</DropdownMenuLabel>
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild className="cursor-pointer">
-                    <Link href={user?.role === "coach" ? "/coach/profile" : "/player/profile"}>Профиль</Link>
+                    <Link href={user?.role === "coach" ? "/coach/profile" : "/player/profile"}>Profile</Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer">Настройки</DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer">Settings</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive cursor-pointer">
                     <LogOut className="mr-2 h-4 w-4" />
-                    Выйти
+                    Sign Out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -89,7 +89,7 @@ export function Navbar() {
           ) : (
             <Link href="/auth">
               <Button className="hidden md:inline-flex bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer">
-                Войти
+                Sign In
               </Button>
             </Link>
           )}
@@ -131,7 +131,7 @@ export function Navbar() {
                   <>
                     <Link href={user?.role === "coach" ? "/coach/profile" : "/player/profile"} onClick={() => setIsOpen(false)}>
                       <Button variant="outline" className="w-full font-bold rounded-full cursor-pointer">
-                        Мой профиль
+                        My Profile
                       </Button>
                     </Link>
                     <Button 
@@ -142,13 +142,13 @@ export function Navbar() {
                         setIsOpen(false);
                       }}
                     >
-                      <LogOut className="mr-2 h-4 w-4" /> Выйти
+                      <LogOut className="mr-2 h-4 w-4" /> Sign Out
                     </Button>
                   </>
                 ) : (
                   <Link href="/auth" onClick={() => setIsOpen(false)}>
                     <Button className="w-full bg-primary text-primary-foreground font-bold rounded-full cursor-pointer">
-                      Войти
+                      Sign In
                     </Button>
                   </Link>
                 )}

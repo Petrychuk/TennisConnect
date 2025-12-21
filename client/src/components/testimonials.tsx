@@ -6,24 +6,24 @@ import avatar2 from "@assets/generated_images/female_tennis_coach_portrait.png";
 
 const testimonials = [
   {
-    name: "Джеймс Уилсон",
-    role: "Владелец, Sydney Harbour Tennis Club",
+    name: "James Wilson",
+    role: "Owner, Sydney Harbour Tennis Club",
     image: avatar1,
-    content: "TennisConnect полностью изменил то, как мы заполняем наши корты. С момента присоединения загрузка в непиковые часы выросла на 40%. Это лучшая платформа для связи с теннисным сообществом Сиднея.",
+    content: "TennisConnect completely changed how we fill our courts. Since joining, our off-peak utilization has increased by 40%. This is the best platform for connecting with Sydney's tennis community.",
     rating: 5
   },
   {
-    name: "Сара Томпсон",
-    role: "Главный тренер, Northern Beaches Tennis",
+    name: "Sarah Thompson",
+    role: "Head Coach, Northern Beaches Tennis",
     image: avatar2,
-    content: "Раньше поиск новых учеников для моей юниорской академии был сложной задачей. Теперь родители находят меня напрямую через приложение. Проверенные отзывы помогают мгновенно завоевать доверие.",
+    content: "Finding new students for my junior academy used to be challenging. Now parents find me directly through the app. Verified reviews help build instant trust.",
     rating: 5
   },
   {
-    name: "Майкл Чен",
-    role: "Директор, Chatswood Tennis Centre",
+    name: "Michael Chen",
+    role: "Director, Chatswood Tennis Centre",
     image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop",
-    content: "Функция маркетплейса — настоящий прорыв. Нашим членам нравится покупать и продавать снаряжение в проверенном сообществе. Это оживляет атмосферу нашего клуба.",
+    content: "The marketplace feature is a game-changer. Our members love buying and selling gear within a trusted community. It brings our club atmosphere to life.",
     rating: 5
   }
 ];
@@ -41,10 +41,10 @@ export function Testimonials() {
             viewport={{ once: true }}
           >
             <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">
-              Нам доверяют <span className="text-primary">лучшие клубы</span> Сиднея
+              Trusted by Sydney's <span className="text-primary">Best Clubs</span>
             </h2>
             <p className="text-gray-400 max-w-2xl mx-auto text-lg">
-              Отзывы владельцев клубов и тренеров, которые развивают свой бизнес с TennisConnect.
+              Hear from club owners and coaches who are growing their business with TennisConnect.
             </p>
           </motion.div>
         </div>

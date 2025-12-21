@@ -10,10 +10,8 @@ export function Marketplace() {
   const [items, setItems] = useState<any[]>([]);
 
   useEffect(() => {
-    // 1. Load static dummy data (take first 4)
     let displayItems = [...MARKETPLACE_DATA].slice(0, 4);
     
-    // 2. Load user's local items if any to PREPEND them (simulating "latest")
     const savedProfile = localStorage.getItem("tennis_connect_coach_profile");
     if (savedProfile) {
       try {
@@ -22,11 +20,10 @@ export function Marketplace() {
           const userItems = parsed.marketplace.map((item: any) => ({
             ...item,
             id: `local-${item.id}`,
-            image: item.photos?.[0], // Map photos to image
-            title: item.name // Map name to title
+            image: item.photos?.[0],
+            title: item.name
           }));
           
-          // Combine: User items first, then fill remaining slots with static data
           displayItems = [...userItems, ...displayItems].slice(0, 4);
         }
       } catch (e) {
@@ -44,18 +41,18 @@ export function Marketplace() {
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/10 text-orange-600 border border-orange-500/20 mb-4">
               <Tag className="w-4 h-4" />
-              <span className="text-xs font-bold uppercase tracking-wider">Маркетплейс</span>
+              <span className="text-xs font-bold uppercase tracking-wider">Marketplace</span>
             </div>
             <h2 className="text-3xl md:text-5xl font-display font-bold">
-              Теннисное <span className="text-primary">снаряжение</span>
+              Tennis <span className="text-primary">Gear</span>
             </h2>
             <p className="text-muted-foreground mt-4 max-w-xl text-lg">
-              Покупайте и продавайте б/у теннисное оборудование в Сиднее. От ракеток до винтажного снаряжения — отличные предложения от местных игроков.
+              Buy and sell used tennis equipment in Sydney. From rackets to vintage gear — great deals from local players.
             </p>
           </div>
           <Link href="/marketplace">
             <Button variant="outline" className="hidden md:flex gap-2 cursor-pointer">
-                Все объявления <ArrowRight className="w-4 h-4" />
+                All Listings <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>
         </div>
@@ -92,7 +89,7 @@ export function Marketplace() {
                 <CardFooter className="p-4 pt-0">
                   <Link href={`/coach/${item.seller_id || item.id}`}>
                     <Button className="w-full bg-black text-white hover:bg-gray-800 cursor-pointer">
-                        Подробнее
+                        View Details
                     </Button>
                   </Link>
                 </CardFooter>
@@ -104,7 +101,7 @@ export function Marketplace() {
         <div className="mt-8 md:hidden">
           <Link href="/marketplace">
             <Button variant="outline" className="w-full gap-2 cursor-pointer">
-                Все объявления <ArrowRight className="w-4 h-4" />
+                All Listings <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>
         </div>

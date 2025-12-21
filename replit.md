@@ -6,7 +6,7 @@ TennisConnect is a tennis community platform designed for the Australian market 
 
 ## Language Support
 
-The entire application uses **Russian language** throughout the UI, as requested by the user. This includes:
+The entire application uses **English language** throughout the UI. This includes:
 - Navigation and menus
 - All page titles and descriptions
 - Form labels and buttons
@@ -19,12 +19,19 @@ Future migration to Supabase database is planned (currently using Replit Postgre
 ## User Preferences
 
 - Preferred communication style: Simple, everyday language
-- Language: Russian/Ukrainian language support throughout the entire application
+- Language: English throughout the entire application
 - Future migration: Supabase database (currently using Replit PostgreSQL)
 - Design choices:
   - Client-side image compression with 800x800px max dimensions and 0.7 JPEG quality
   - Global cursor pointer styling for all interactive elements
   - Real messaging system requiring authentication with email notifications
+
+## Recent Changes
+
+- **December 2025**: Translated entire application UI from Russian to English
+  - Updated all components: navbar, hero, features, about-us, partnership, testimonials, gallery, marketplace, footer
+  - Updated all pages: auth, coaches, clubs, tournaments, partners
+  - Updated form validation messages, toast notifications, and error messages
 
 ## System Architecture
 

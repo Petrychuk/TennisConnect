@@ -30,16 +30,16 @@ export default function PartnersPage() {
   const handleSendMessage = () => {
     if (!messageText.trim()) {
       toast({
-        title: "Ошибка",
-        description: "Введите текст сообщения",
+        title: "Error",
+        description: "Please enter a message",
         variant: "destructive"
       });
       return;
     }
 
     toast({
-      title: "Сообщение отправлено!",
-      description: `Ваше сообщение отправлено игроку ${selectedPartner?.name}. Ожидайте ответа на email.`
+      title: "Message sent!",
+      description: `Your message has been sent to ${selectedPartner?.name}. Expect a reply via email.`
     });
 
     setMessageModalOpen(false);
@@ -50,8 +50,8 @@ export default function PartnersPage() {
   const openMessageModal = (partner: any) => {
     if (!isAuthenticated) {
       toast({
-        title: "Войдите в аккаунт",
-        description: "Чтобы отправить сообщение, необходимо войти в систему",
+        title: "Sign in required",
+        description: "You need to sign in to send messages",
         variant: "destructive"
       });
       return;
@@ -131,15 +131,15 @@ export default function PartnersPage() {
              transition={{ duration: 0.8 }}
           >
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-display font-bold mb-6 tracking-tight">
-              Найди своего <span className="text-primary relative inline-block">
-                партнера
+              Find Your <span className="text-primary relative inline-block">
+                Partner
                 <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none">
                   <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" />
                 </svg>
               </span>
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto font-light leading-relaxed">
-              Находите партнеров для игры, присоединяйтесь к местным матчам и расширяйте свою теннисную сеть.
+              Connect with partners for games, join local matches, and expand your tennis network.
             </p>
           </motion.div>
         </div>
@@ -152,7 +152,7 @@ export default function PartnersPage() {
             <div className="relative w-full md:w-96 group">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
               <Input 
-                placeholder="Поиск по имени или локации..." 
+                placeholder="Search by name or location..." 
                 className="pl-10 h-11 bg-secondary/50 border-transparent focus:border-primary focus:bg-background transition-all rounded-xl"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -160,17 +160,17 @@ export default function PartnersPage() {
             </div>
             
             <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-hide">
-              {[{ value: "Beginner", label: "Начинающий" }, { value: "Intermediate", label: "Средний" }, { value: "Advanced", label: "Продвинутый" }].map((level) => (
+              {["Beginner", "Intermediate", "Advanced"].map((level) => (
                 <button
-                  key={level.value}
-                  onClick={() => setFilterLevel(filterLevel === level.value ? "" : level.value)}
+                  key={level}
+                  onClick={() => setFilterLevel(filterLevel === level ? "" : level)}
                   className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border cursor-pointer ${
-                    filterLevel === level.value 
+                    filterLevel === level 
                       ? "bg-primary text-primary-foreground border-primary" 
                       : "bg-background hover:bg-secondary border-input hover:border-primary/50"
                   }`}
                 >
-                  {level.label}
+                  {level}
                 </button>
               ))}
             </div>
@@ -216,14 +216,14 @@ export default function PartnersPage() {
                 <CardFooter className="p-4 pt-0 grid grid-cols-2 gap-3">
                   <Link href={`/player/${partner.id}`}>
                     <Button variant="outline" className="w-full text-xs font-bold h-9 cursor-pointer">
-                      <User className="w-3 h-3 mr-1" /> Профиль
+                      <User className="w-3 h-3 mr-1" /> Profile
                     </Button>
                   </Link>
                   <Button 
                     className="w-full text-xs font-bold h-9 bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
                     onClick={() => openMessageModal(partner)}
                   >
-                    <MessageCircle className="w-3 h-3 mr-1" /> Написать
+                    <MessageCircle className="w-3 h-3 mr-1" /> Message
                   </Button>
                 </CardFooter>
               </Card>
@@ -236,8 +236,8 @@ export default function PartnersPage() {
              <div className="inline-flex p-4 rounded-full bg-muted mb-4">
                <User className="w-8 h-8 text-muted-foreground" />
              </div>
-             <h3 className="text-xl font-bold mb-2">Партнеры не найдены</h3>
-             <p className="text-muted-foreground">Попробуйте изменить фильтры поиска.</p>
+             <h3 className="text-xl font-bold mb-2">No partners found</h3>
+             <p className="text-muted-foreground">Try adjusting your search filters.</p>
           </div>
         )}
       </div>
@@ -245,17 +245,17 @@ export default function PartnersPage() {
       <Dialog open={messageModalOpen} onOpenChange={setMessageModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Отправить сообщение</DialogTitle>
+            <DialogTitle>Send Message</DialogTitle>
             <DialogDescription>
-              Напишите сообщение игроку {selectedPartner?.name}
+              Send a message to {selectedPartner?.name}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="message">Ваше сообщение</Label>
+              <Label htmlFor="message">Your message</Label>
               <Textarea
                 id="message"
-                placeholder="Привет! Хочу предложить сыграть вместе..."
+                placeholder="Hi! I'd love to play a match together..."
                 value={messageText}
                 onChange={(e) => setMessageText(e.target.value)}
                 className="min-h-[120px]"
@@ -263,16 +263,16 @@ export default function PartnersPage() {
             </div>
             {user && (
               <p className="text-sm text-muted-foreground">
-                Ответ придет на ваш email: {user.email}
+                Reply will be sent to your email: {user.email}
               </p>
             )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setMessageModalOpen(false)}>
-              Отмена
+              Cancel
             </Button>
             <Button onClick={handleSendMessage} className="bg-primary text-primary-foreground">
-              Отправить
+              Send
             </Button>
           </DialogFooter>
         </DialogContent>
