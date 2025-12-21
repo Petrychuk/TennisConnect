@@ -28,7 +28,8 @@ const DEFAULT_PLAYER_PROFILE = {
   avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop",
   preferredCourts: ["Bondi Beach", "Manly"],
   coaches: [1], // IDs of connected coaches
-  marketplaceItems: [] as any[]
+  marketplaceItems: [] as any[],
+  tournaments: [] as any[]
 };
 
 export default function PlayerProfile() {
@@ -51,6 +52,16 @@ export default function PlayerProfile() {
     price: "",
     description: "",
     condition: "Used - Good"
+  });
+
+  // Tournament State
+  const [isTournamentModalOpen, setIsTournamentModalOpen] = useState(false);
+  const [newTournament, setNewTournament] = useState({
+    name: "",
+    location: "",
+    date: "",
+    result: "",
+    award: ""
   });
 
   // Load Profile Logic
@@ -112,6 +123,45 @@ export default function PlayerProfile() {
     }));
   };
 
+  const handleAddTournament = () => {
+    if (!newTournament.name || !newTournament.date) return;
+    
+    const tournament = {
+      id: Date.now(),
+      ...newTournament
+    };
+
+    setProfile(prev => ({
+      ...prev,
+      tournaments: [...prev.tournaments, tournament]
+    }));
+    
+    setNewTournament({ name: "", location: "", date: "", result: "", award: "" });
+    setIsTournamentModalOpen(false);
+    toast({ title: "Tournament Added", description: "Your tournament history has been updated." });
+  };
+
+  const handleDeleteTournament = (id: number) => {
+    setProfile(prev => ({
+      ...prev,
+      tournaments: prev.tournaments.filter(t => t.id !== id)
+    }));
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        setProfile(prev => ({ ...prev, avatar: result }));
+        updateUser({ avatar: result });
+        toast({ title: "Photo Updated", description: "Your profile photo has been updated." });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const myCoaches = COACHES_DATA.filter(coach => profile.coaches.includes(coach.id));
 
   return (
@@ -133,11 +183,26 @@ export default function PlayerProfile() {
         <div className="container mx-auto px-4 pt-24 max-w-6xl">
           {/* Header Section */}
           <div className="flex flex-col md:flex-row gap-8 mb-12">
-            <div className="flex-shrink-0 mx-auto md:mx-0">
+            <div className="flex-shrink-0 mx-auto md:mx-0 relative group">
               <Avatar className="w-40 h-40 border-4 border-background shadow-xl">
                 <AvatarImage src={profile.avatar} className="object-cover" />
                 <AvatarFallback>{profile.name.charAt(0)}</AvatarFallback>
               </Avatar>
+              {isOwnProfile && (
+                <label 
+                  htmlFor="avatar-upload" 
+                  className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                >
+                  <Camera className="w-8 h-8 text-white" />
+                  <input 
+                    type="file" 
+                    id="avatar-upload" 
+                    className="hidden" 
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                  />
+                </label>
+              )}
             </div>
             
             <div className="flex-grow text-center md:text-left space-y-4">
@@ -209,6 +274,7 @@ export default function PlayerProfile() {
           <Tabs defaultValue="overview" className="space-y-8">
             <TabsList className="bg-transparent border-b w-full justify-start rounded-none h-auto p-0 gap-6">
               <TabsTrigger value="overview" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none pb-2 text-lg">Overview</TabsTrigger>
+              <TabsTrigger value="tournaments" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none pb-2 text-lg">Tournaments</TabsTrigger>
               <TabsTrigger value="coaches" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none pb-2 text-lg">My Coaches</TabsTrigger>
               <TabsTrigger value="marketplace" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none pb-2 text-lg">Selling ({profile.marketplaceItems.length})</TabsTrigger>
             </TabsList>
@@ -262,6 +328,107 @@ export default function PlayerProfile() {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="tournaments" className="space-y-8">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xl font-bold">Tournament History</h3>
+                {isOwnProfile && (
+                  <Dialog open={isTournamentModalOpen} onOpenChange={setIsTournamentModalOpen}>
+                    <DialogTrigger asChild>
+                      <Button><Plus className="w-4 h-4 mr-2" /> Add Entry</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Add Tournament Result</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <Label>Tournament Name</Label>
+                          <Input 
+                            value={newTournament.name} 
+                            onChange={(e) => setNewTournament({...newTournament, name: e.target.value})} 
+                            placeholder="e.g. Sydney Open 2024" 
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                           <div className="space-y-2">
+                            <Label>Date</Label>
+                            <Input 
+                              value={newTournament.date} 
+                              onChange={(e) => setNewTournament({...newTournament, date: e.target.value})} 
+                              placeholder="e.g. Dec 2024" 
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Location</Label>
+                            <Input 
+                              value={newTournament.location} 
+                              onChange={(e) => setNewTournament({...newTournament, location: e.target.value})} 
+                              placeholder="e.g. Homebush" 
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                           <div className="space-y-2">
+                            <Label>Result</Label>
+                            <Input 
+                              value={newTournament.result} 
+                              onChange={(e) => setNewTournament({...newTournament, result: e.target.value})} 
+                              placeholder="e.g. Quarter Finals" 
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Award/Prize</Label>
+                            <Input 
+                              value={newTournament.award} 
+                              onChange={(e) => setNewTournament({...newTournament, award: e.target.value})} 
+                              placeholder="e.g. Winner Trophy" 
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button onClick={handleAddTournament}>Save Entry</Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                {profile.tournaments.map((t) => (
+                  <Card key={t.id}>
+                    <CardContent className="p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                       <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                             <h4 className="font-bold text-lg">{t.name}</h4>
+                             {t.award && <Badge className="bg-yellow-500 hover:bg-yellow-600"><Trophy className="w-3 h-3 mr-1" /> {t.award}</Badge>}
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                             <div className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {t.date}</div>
+                             <div className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {t.location}</div>
+                          </div>
+                       </div>
+                       
+                       <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
+                          <div className="font-bold text-primary">{t.result}</div>
+                          {isOwnProfile && (
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteTournament(t.id)} className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                       </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                {profile.tournaments.length === 0 && (
+                  <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-xl border-2 border-dashed">
+                    <Trophy className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                    <p>No tournament history added yet.</p>
+                  </div>
+                )}
+              </div>
             </TabsContent>
 
             <TabsContent value="coaches" className="space-y-8">
