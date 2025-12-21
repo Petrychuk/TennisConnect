@@ -26,6 +26,7 @@ const DEFAULT_PLAYER_PROFILE = {
   skillLevel: "Intermediate",
   bio: "Hi! I love tennis and I'm looking for partners to play with on weekends.",
   avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop",
+  cover: "https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?q=80&w=2000&auto=format&fit=crop",
   preferredCourts: ["Bondi Beach", "Manly"],
   coaches: [1], // IDs of connected coaches
   marketplaceItems: [] as any[],
@@ -190,21 +191,29 @@ export default function PlayerProfile() {
     });
   };
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, field: 'avatar' | 'cover') => {
     const file = e.target.files?.[0];
     if (file) {
       try {
         const result = await resizeImage(file);
-        setProfile(prev => ({ ...prev, avatar: result }));
-        updateUser({ avatar: result });
+        
+        if (field === 'avatar') {
+          setProfile(prev => ({ ...prev, avatar: result }));
+          updateUser({ avatar: result });
+        } else {
+          setProfile(prev => ({ ...prev, cover: result }));
+          // Note: updateUser might need to be updated to accept cover if we want it in global auth state,
+          // but local storage update below handles persistence for this page.
+          updateUser({ cover: result }); 
+        }
         
         // Also save immediately to ensure persistence even if they don't click "Save"
         const savedProfile = localStorage.getItem("tennis_connect_player_profile");
         const currentProfile = savedProfile ? JSON.parse(savedProfile) : DEFAULT_PLAYER_PROFILE;
-        const newProfile = { ...currentProfile, ...profile, avatar: result };
+        const newProfile = { ...currentProfile, ...profile, [field]: result };
         localStorage.setItem("tennis_connect_player_profile", JSON.stringify(newProfile));
 
-        toast({ title: "Photo Updated", description: "Your profile photo has been updated." });
+        toast({ title: "Photo Updated", description: `Your ${field} photo has been updated.` });
       } catch (err) {
          console.error("Error processing image", err);
          toast({ variant: "destructive", title: "Upload Failed", description: "Could not process image." });
@@ -230,7 +239,28 @@ export default function PlayerProfile() {
       <div className="relative z-10">
         <Navbar />
 
-        <div className="container mx-auto px-4 pt-24 max-w-6xl">
+        {/* Cover Photo Section */}
+        <div className="relative h-[250px] md:h-[350px] w-full overflow-hidden group">
+          <div className="absolute inset-0 bg-black/20 z-10" />
+          <img 
+            src={profile.cover} 
+            alt="Cover" 
+            className="w-full h-full object-cover transition-transform duration-700"
+          />
+          {isEditing && (
+             <div 
+               onClick={() => document.getElementById('cover-upload')?.click()}
+               className="absolute inset-0 z-20 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+             >
+               <Button variant="secondary" className="gap-2 pointer-events-none">
+                 <Camera className="w-5 h-5" /> Change Cover Photo
+               </Button>
+             </div>
+          )}
+          <div className="absolute bottom-0 left-0 w-full h-24 bg-gradient-to-t from-background to-transparent z-20" />
+        </div>
+
+        <div className="container mx-auto px-4 -mt-20 relative z-30 max-w-6xl">
           {/* Header Section */}
           <div className="flex flex-col md:flex-row gap-8 mb-12">
             <div className="flex-shrink-0 mx-auto md:mx-0 relative group">
@@ -249,7 +279,14 @@ export default function PlayerProfile() {
                     id="avatar-upload" 
                     className="hidden" 
                     accept="image/*"
-                    onChange={handleAvatarUpload}
+                    onChange={(e) => handleFileChange(e, 'avatar')}
+                  />
+                   <input 
+                    type="file" 
+                    id="cover-upload" 
+                    className="hidden" 
+                    accept="image/*"
+                    onChange={(e) => handleFileChange(e, 'cover')}
                   />
                 </label>
               )}
