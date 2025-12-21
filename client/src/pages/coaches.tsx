@@ -46,13 +46,13 @@ export default function CoachesPage() {
           if (data.length > 0) {
             const transformedCoaches = data.map((coach: any) => ({
               id: coach.id,
-              name: coach.title || "Тренер",
-              title: coach.title || "Теннисный тренер",
-              location: coach.locations?.[0] || coach.location || "Сидней",
+              name: coach.title || "Coach",
+              title: coach.title || "Tennis Coach",
+              location: coach.locations?.[0] || coach.location || "Sydney",
               rate: coach.rate ? parseInt(coach.rate) : 80,
               rating: coach.rating || "4.9",
               reviews: coach.reviews || 0,
-              experience: coach.experience || "5 лет",
+              experience: coach.experience || "5 years",
               image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop",
               tags: coach.tags || [],
               schedule: coach.schedule || {},
@@ -155,7 +155,7 @@ export default function CoachesPage() {
                 <SelectTrigger className="w-full md:w-[200px] h-12 bg-background cursor-pointer">
                   <div className="flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-primary" />
-                    <SelectValue placeholder="Локация" />
+                    <SelectValue placeholder="Location" />
                   </div>
                 </SelectTrigger>
                 <SelectContent>
@@ -223,7 +223,7 @@ export default function CoachesPage() {
                        onClick={clearFilters}
                        className="w-full text-muted-foreground hover:text-destructive cursor-pointer"
                      >
-                       Сбросить все фильтры
+                       Clear all filters
                      </Button>
                   )}
                 </PopoverContent>
@@ -236,7 +236,7 @@ export default function CoachesPage() {
                   className="h-12 hidden md:flex text-muted-foreground hover:text-destructive cursor-pointer"
                 >
                   <X className="w-4 h-4 mr-2" />
-                  Сбросить
+                  Clear
                 </Button>
               )}
             </div>
@@ -293,7 +293,7 @@ export default function CoachesPage() {
 
                     <div className="flex items-center justify-between pt-4 border-t border-border/50">
                        <div className="flex flex-col">
-                         <span className="text-xs text-muted-foreground">Ставка в час</span>
+                         <span className="text-xs text-muted-foreground">Hourly Rate</span>
                          <div className="flex items-center font-bold text-lg">
                            <DollarSign className="w-4 h-4 text-primary" />
                            {coach.rate}
@@ -305,16 +305,24 @@ export default function CoachesPage() {
                        {coach.schedule && (
                          <div className="flex flex-col items-end">
                             <span className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Calendar className="w-3 h-3" /> Сегодня
+                              <Calendar className="w-3 h-3" /> Today
                             </span>
                             <div className="text-sm font-medium">
                               {(() => {
                                 const today = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
                                 const schedule = (coach.schedule as any)?.[today];
                                 if (schedule && schedule.active) {
-                                  return `${schedule.start} - ${schedule.end}`;
+                                  // Simple formatting
+                                  const formatTime = (t: string) => {
+                                     const [h, m] = t.split(':');
+                                     const hour = parseInt(h);
+                                     const ampm = hour >= 12 ? 'PM' : 'AM';
+                                     const hour12 = hour % 12 || 12;
+                                     return `${hour12}${ampm}`;
+                                  };
+                                  return `${formatTime(schedule.start)} - ${formatTime(schedule.end)}`;
                                 }
-                                return <span className="text-muted-foreground italic text-xs">Недоступен</span>;
+                                return <span className="text-muted-foreground italic text-xs">Unavailable</span>;
                               })()}
                             </div>
                          </div>
@@ -325,7 +333,7 @@ export default function CoachesPage() {
                   <CardFooter className="pt-0">
                     <Link href={`/coach/${coach.id}`}>
                       <Button className="w-full font-bold group-hover:bg-primary group-hover:text-primary-foreground transition-all cursor-pointer">
-                        Открыть профиль <ArrowRight className="w-4 h-4 ml-2" />
+                        View Profile <ArrowRight className="w-4 h-4 ml-2" />
                       </Button>
                     </Link>
                   </CardFooter>
@@ -336,14 +344,14 @@ export default function CoachesPage() {
 
           {filteredCoaches.length === 0 && (
             <div className="text-center py-20">
-              <h3 className="text-2xl font-bold mb-2">Тренеры не найдены</h3>
-              <p className="text-muted-foreground">Попробуйте изменить параметры поиска или фильтры.</p>
+              <h3 className="text-2xl font-bold mb-2">No coaches found</h3>
+              <p className="text-muted-foreground">Try adjusting your search or filters to find more coaches.</p>
               <Button 
                 variant="link" 
                 onClick={clearFilters}
                 className="mt-4 text-primary cursor-pointer"
               >
-                Сбросить все фильтры
+                Clear all filters
               </Button>
             </div>
           )}

@@ -52,14 +52,14 @@ import bgImage from "@assets/generated_images/subtle_abstract_tennis-themed_back
 
 // Default profile for initialization
 const DEFAULT_PROFILE = {
-  name: "Наталия Петричук",
-  title: "Теннисный тренер | Специалист для начинающих и среднего уровня",
-  location: "Мэнли, Сидней",
-  bio: "Увлечённый теннисный тренер, помогающий начинающим и игрокам среднего уровня влюбиться в теннис. Я активно участвую в любительских турнирах, поэтому понимаю путь совершенствования вашей игры из первых рук. Мои занятия фокусируются на построении прочного фундамента, улучшении стабильности и, самое главное, на получении удовольствия от игры! Независимо от того, начинаете ли вы только или хотите повысить свой уровень игры, я с радостью помогу вам достичь ваших целей.",
+  name: "Nataliia Petrychuk",
+  title: "Tennis Coach | Beginner & Intermediate Specialist",
+  location: "Manly, Sydney",
+  bio: "Passionate tennis coach dedicated to helping beginners and intermediate players fall in love with the game. I actively compete in local amateur tournaments, so I understand the journey of improving your game firsthand. My sessions focus on building solid fundamentals, improving consistency, and most importantly - having fun on the court! Whether you're just starting out or looking to level up your rally game, I'd love to help you reach your goals.",
   rate: "70",
   experience: "10",
   locations: ["Manly", "Mosman", "Freshwater", "Brookvale"],
-  tags: ["Высокий уровень", "Дети", "Техника"],
+  tags: ["High Performance", "Kids", "Technique"],
   photos: [gallery1, gallery2],
   avatar: avatarImage,
   cover: heroImage,
@@ -73,7 +73,7 @@ const DEFAULT_PROFILE = {
     sunday: { active: false, start: "09:00", end: "17:00" }
   },
   // Stats & Status (Usually platform-generated, editable for prototype)
-  response_time: "Обычно в течение 1 часа",
+  response_time: "Usually within 1 hr",
   accepting_students: true,
   active_students: 24,
   rating: 4.9,
@@ -420,13 +420,13 @@ export default function CoachProfile() {
       if (!res.ok) throw new Error("Failed to delete item");
       
       setMarketplaceItems(prev => prev.filter(item => item.id !== id));
-      toast({ title: "Товар удалён", description: "Ваш товар был удалён." });
+      toast({ title: "Item Deleted", description: "Your item has been removed." });
     } catch (error) {
       console.error("Failed to delete item", error);
       toast({
         variant: "destructive",
-        title: "Ошибка",
-        description: "Не удалось удалить товар"
+        title: "Error",
+        description: "Failed to delete marketplace item"
       });
     }
   };
@@ -435,16 +435,16 @@ export default function CoachProfile() {
      if (!buyName || (!buyEmail && !buyPhone)) {
         toast({
           variant: "destructive",
-          title: "Недостаточно данных",
-          description: "Пожалуйста, укажите ваше имя и email или телефон."
+          title: "Missing Contact Info",
+          description: "Please provide your name and either email or phone number."
         });
         return;
      }
 
      setIsBuyModalOpen(false);
      toast({
-       title: "Запрос отправлен!",
-       description: `Запрос на "${selectedBuyItem?.name}" отправлен тренеру. Он свяжется с вами в ближайшее время.`
+       title: "Order Request Sent!",
+       description: `A request for "${selectedBuyItem?.name}" has been sent to the coach. They will contact you shortly.`
      });
      
      // Reset form
@@ -759,7 +759,7 @@ export default function CoachProfile() {
                   {isEditing ? (
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <Label>Полное имя</Label>
+                        <Label>Full Name</Label>
                         <Input 
                           value={profile.name} 
                           onChange={(e) => setProfile({...profile, name: e.target.value})} 
@@ -767,7 +767,7 @@ export default function CoachProfile() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Профессиональное звание</Label>
+                        <Label>Professional Title</Label>
                         <Input 
                           value={profile.title} 
                           onChange={(e) => setProfile({...profile, title: e.target.value})} 
@@ -786,18 +786,18 @@ export default function CoachProfile() {
                 <div className="flex-shrink-0 w-full md:w-auto mt-4 md:mt-0 flex justify-center md:justify-end">
                   {isOwnProfile && (
                     isEditing ? (
-                      <Button onClick={handleSave} size="lg" className="w-full md:w-auto bg-primary text-primary-foreground font-bold shadow-md gap-2 animate-in fade-in zoom-in duration-300 cursor-pointer">
-                        <Save className="w-5 h-5" /> Сохранить изменения
+                      <Button onClick={handleSave} size="lg" className="w-full md:w-auto bg-primary text-primary-foreground font-bold shadow-md gap-2 animate-in fade-in zoom-in duration-300">
+                        <Save className="w-5 h-5" /> Save Changes
                       </Button>
                     ) : (
-                      <Button onClick={() => setIsEditing(true)} size="lg" variant="outline" className="w-full md:w-auto border-primary/20 hover:bg-primary/5 hover:border-primary/50 font-bold shadow-sm gap-2 cursor-pointer">
-                        <Edit2 className="w-5 h-5" /> Редактировать профиль
+                      <Button onClick={() => setIsEditing(true)} size="lg" variant="outline" className="w-full md:w-auto border-primary/20 hover:bg-primary/5 hover:border-primary/50 font-bold shadow-sm gap-2">
+                        <Edit2 className="w-5 h-5" /> Edit Profile
                       </Button>
                     )
                   )}
                   {!isOwnProfile && (
-                      <Button size="lg" className="w-full md:w-auto bg-primary text-primary-foreground font-bold shadow-md gap-2 cursor-pointer">
-                        <MessageCircle className="w-5 h-5" /> Связаться с тренером
+                      <Button size="lg" className="w-full md:w-auto bg-primary text-primary-foreground font-bold shadow-md gap-2">
+                        <MessageCircle className="w-5 h-5" /> Contact Coach
                       </Button>
                   )}
                 </div>
@@ -809,13 +809,13 @@ export default function CoachProfile() {
           <div className="mt-12 pointer-events-auto">
             <Tabs defaultValue="about" className="w-full">
               <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent gap-6">
-                <TabsTrigger value="about" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">О тренере</TabsTrigger>
-                <TabsTrigger value="photos" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Фото</TabsTrigger>
-                <TabsTrigger value="schedule" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Расписание</TabsTrigger>
-                <TabsTrigger value="practice" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Спарринг</TabsTrigger>
-                <TabsTrigger value="students" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Ученики</TabsTrigger>
-                <TabsTrigger value="marketplace" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Маркетплейс</TabsTrigger>
-                <TabsTrigger value="contact" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Контакты</TabsTrigger>
+                <TabsTrigger value="about" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">About</TabsTrigger>
+                <TabsTrigger value="photos" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Photos</TabsTrigger>
+                <TabsTrigger value="schedule" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Schedule & Locations</TabsTrigger>
+                <TabsTrigger value="practice" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Hitting Partner</TabsTrigger>
+                <TabsTrigger value="students" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">My Students</TabsTrigger>
+                <TabsTrigger value="marketplace" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Marketplace</TabsTrigger>
+                <TabsTrigger value="contact" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Contact</TabsTrigger>
               </TabsList>
 
               <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -824,7 +824,7 @@ export default function CoachProfile() {
                   <TabsContent value="about" className="space-y-8 mt-0">
                     <Card>
                       <CardHeader>
-                        <CardTitle>Биография</CardTitle>
+                        <CardTitle>Biography</CardTitle>
                       </CardHeader>
                       <CardContent>
                         {isEditing ? (
@@ -848,7 +848,7 @@ export default function CoachProfile() {
                              <Trophy className="w-6 h-6" />
                            </div>
                            <div>
-                             <p className="text-sm text-muted-foreground">Опыт</p>
+                             <p className="text-sm text-muted-foreground">Experience</p>
                              {isEditing ? (
                                <div className="flex items-center gap-2">
                                  <Input 
@@ -1243,78 +1243,78 @@ export default function CoachProfile() {
                               <Trophy className="w-6 h-6" />
                             </div>
                             <div>
-                              <h3 className="text-lg font-bold mb-2">Нужен партнёр для спарринга?</h3>
+                              <h3 className="text-lg font-bold mb-2">Need a Hitting Partner?</h3>
                               <p className="text-muted-foreground mb-4">
-                                Помимо тренировок, я также предлагаю игровые сессии для игроков, которые хотят практиковать матчевую игру, улучшить стабильность или просто хорошо потренироваться без технических указаний.
+                                Apart from coaching, I also offer hitting sessions for players who want to practice match play, improve consistency, or just get a good workout without technical instruction.
                               </p>
                               
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                                 <div className="flex items-center gap-2 text-sm">
                                   <Check className="w-4 h-4 text-primary" />
-                                  <span>Симуляция матча</span>
+                                  <span>Match Play Simulation</span>
                                 </div>
                                 <div className="flex items-center gap-2 text-sm">
                                   <Check className="w-4 h-4 text-primary" />
-                                  <span>Повторение упражнений</span>
+                                  <span>Drill Repetition</span>
                                 </div>
                                 <div className="flex items-center gap-2 text-sm">
                                   <Check className="w-4 h-4 text-primary" />
-                                  <span>Практика тай-брейков</span>
+                                  <span>Tie-break Practice</span>
                                 </div>
                                 <div className="flex items-center gap-2 text-sm">
                                   <Check className="w-4 h-4 text-primary" />
-                                  <span>Интенсивные розыгрыши</span>
+                                  <span>High Intensity Rallying</span>
                                 </div>
                               </div>
                               
                               <div className="flex items-center justify-between bg-background p-4 rounded-md border">
                                 <div>
-                                  <span className="text-sm text-muted-foreground block">Стоимость сессии</span>
-                                  <span className="text-xl font-bold">$50 <span className="text-sm font-normal text-muted-foreground">/ час</span></span>
+                                  <span className="text-sm text-muted-foreground block">Session Rate</span>
+                                  <span className="text-xl font-bold">$50 <span className="text-sm font-normal text-muted-foreground">/ hour</span></span>
                                 </div>
                                 <Dialog open={isBookingOpen} onOpenChange={setIsBookingOpen}>
                                   <DialogTrigger asChild>
-                                    <Button className="cursor-pointer">Записаться</Button>
+                                    <Button>Book Practice</Button>
                                   </DialogTrigger>
                                   <DialogContent className="sm:max-w-[425px]">
                                     <DialogHeader>
-                                      <DialogTitle>Записаться на игровую сессию</DialogTitle>
+                                      <DialogTitle>Book a Hitting Session</DialogTitle>
                                       <DialogDescription>
-                                        Отправьте запрос на тренировку с {profile.name}. 
+                                        Send a request to practice with {profile.name}. 
                                       </DialogDescription>
                                     </DialogHeader>
                                     <div className="grid gap-4 py-4">
                                       <div className="grid gap-2">
-                                        <Label htmlFor="name">Имя</Label>
-                                        <Input id="name" defaultValue={user?.name || ""} placeholder="Ваше имя" />
+                                        <Label htmlFor="name">Name</Label>
+                                        <Input id="name" defaultValue={user?.name || ""} placeholder="Your name" />
                                       </div>
                                       <div className="grid gap-2">
-                                        <Label htmlFor="email">Электронная почта</Label>
-                                        <Input id="email" type="email" placeholder="ваша@почта.com" />
+                                        <Label htmlFor="email">Email</Label>
+                                        <Input id="email" type="email" placeholder="your@email.com" />
                                       </div>
                                       <div className="grid grid-cols-2 gap-4">
                                         <div className="grid gap-2">
-                                          <Label htmlFor="date">Желаемая дата</Label>
+                                          <Label htmlFor="date">Preferred Date</Label>
                                           <Input id="date" type="date" />
                                         </div>
                                         <div className="grid gap-2">
-                                          <Label htmlFor="time">Время</Label>
+                                          <Label htmlFor="time">Time</Label>
                                           <Input id="time" type="time" />
                                         </div>
                                       </div>
                                       <div className="grid gap-2">
-                                        <Label htmlFor="message">Сообщение</Label>
-                                        <Textarea id="message" placeholder="Хочу поработать над бекхендом по кросс-корту..." />
+                                        <Label htmlFor="message">Message</Label>
+                                        <Textarea id="message" placeholder="I'd like to work on my backhand cross-court rally..." />
                                       </div>
                                     </div>
                                     <DialogFooter>
-                                      <Button type="submit" className="cursor-pointer" onClick={() => {
+                                      <Button type="submit" onClick={() => {
                                         setIsBookingOpen(false);
                                         toast({
-                                          title: "Запрос отправлен!",
-                                          description: `Ваш запрос на игровую сессию отправлен ${profile.name}.`,
+                                          title: "Request Sent!",
+                                          description: `Your hitting session request has been sent to ${profile.name}.`,
                                         });
-                                      }}>Отправить запрос</Button>
+                                      }}>Send Request</Button>
                                     </DialogFooter>
                                   </DialogContent>
                                 </Dialog>
@@ -1331,11 +1331,11 @@ export default function CoachProfile() {
                       <CardHeader className="flex flex-row items-center justify-between">
                          <CardTitle className="flex items-center gap-2">
                            <Users className="w-5 h-5 text-primary" />
-                           Мои ученики
+                           My Students
                          </CardTitle>
                          {isEditing && (
-                           <Button size="sm" variant="outline" className="gap-2 cursor-pointer">
-                             <Plus className="w-4 h-4" /> Добавить ученика
+                           <Button size="sm" variant="outline" className="gap-2">
+                             <Plus className="w-4 h-4" /> Add Student
                            </Button>
                          )}
                       </CardHeader>
@@ -1348,10 +1348,10 @@ export default function CoachProfile() {
                                <AvatarFallback>JD</AvatarFallback>
                              </Avatar>
                              <div className="flex-1">
-                               <h4 className="font-bold">Джейсон Дэвис</h4>
-                               <p className="text-sm text-muted-foreground">Средний • Тренируется 6 месяцев</p>
+                               <h4 className="font-bold">Jason Davis</h4>
+                               <p className="text-sm text-muted-foreground">Intermediate • Training for 6 months</p>
                              </div>
-                             <Badge variant="outline" className="ml-auto">Активен</Badge>
+                             <Badge variant="outline" className="ml-auto">Active</Badge>
                            </div>
 
                            {/* Student 2 */}
@@ -1361,10 +1361,10 @@ export default function CoachProfile() {
                                <AvatarFallback>SM</AvatarFallback>
                              </Avatar>
                              <div className="flex-1">
-                               <h4 className="font-bold">Сара Миллер</h4>
-                               <p className="text-sm text-muted-foreground">Начинающий • Тренируется 2 месяца</p>
+                               <h4 className="font-bold">Sarah Miller</h4>
+                               <p className="text-sm text-muted-foreground">Beginner • Training for 2 months</p>
                              </div>
-                             <Badge variant="outline" className="ml-auto">Активен</Badge>
+                             <Badge variant="outline" className="ml-auto">Active</Badge>
                            </div>
 
                            {/* Student 3 */}
@@ -1374,17 +1374,17 @@ export default function CoachProfile() {
                                <AvatarFallback>RT</AvatarFallback>
                              </Avatar>
                              <div className="flex-1">
-                               <h4 className="font-bold">Роберт Томпсон</h4>
-                               <p className="text-sm text-muted-foreground">Продвинутый • Тренируется 1.5 года</p>
+                               <h4 className="font-bold">Robert Thompson</h4>
+                               <p className="text-sm text-muted-foreground">Advanced • Training for 1.5 years</p>
                              </div>
-                             <Badge variant="outline" className="ml-auto">Активен</Badge>
+                             <Badge variant="outline" className="ml-auto">Active</Badge>
                            </div>
 
                            {/* Add New Placeholder */}
                            {isEditing && (
                              <div className="flex items-center justify-center gap-2 p-4 rounded-lg border border-dashed hover:bg-muted/50 transition-colors cursor-pointer text-muted-foreground h-[88px]">
                                <Plus className="w-5 h-5" />
-                               <span>Добавить ещё ученика</span>
+                               <span>Add another student</span>
                              </div>
                            )}
                         </div>
@@ -1397,11 +1397,11 @@ export default function CoachProfile() {
                       <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle className="flex items-center gap-2">
                           <ShoppingBag className="w-5 h-5 text-primary" />
-                          Маркетплейс тренера
+                          Coach's Marketplace
                         </CardTitle>
                         {isEditing && marketplaceItems.length < 3 && (
-                          <Button size="sm" variant="outline" className="gap-2 cursor-pointer" onClick={() => setIsItemModalOpen(true)}>
-                            <Plus className="w-4 h-4" /> Добавить товар
+                          <Button size="sm" variant="outline" className="gap-2" onClick={() => setIsItemModalOpen(true)}>
+                            <Plus className="w-4 h-4" /> Add Item
                           </Button>
                         )}
                       </CardHeader>
@@ -1588,9 +1588,9 @@ export default function CoachProfile() {
                     <Dialog open={isBuyModalOpen} onOpenChange={setIsBuyModalOpen}>
                         <DialogContent>
                             <DialogHeader>
-                                <DialogTitle>Запрос на покупку: {selectedBuyItem?.name}</DialogTitle>
+                                <DialogTitle>Order Request: {selectedBuyItem?.name}</DialogTitle>
                                 <DialogDescription>
-                                    Отправьте запрос {profile.name} на покупку этого товара.
+                                    Send a request to {profile.name} to purchase this item.
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4 py-2">
@@ -1603,43 +1603,43 @@ export default function CoachProfile() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label>Ваше имя</Label>
+                                    <Label>Your Name</Label>
                                     <Input 
                                       value={buyName} 
                                       onChange={(e) => setBuyName(e.target.value)} 
-                                      placeholder="Иван Иванов"
+                                      placeholder="John Doe"
                                     />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label>Электронная почта</Label>
+                                        <Label>Email</Label>
                                         <Input 
                                           value={buyEmail} 
                                           onChange={(e) => setBuyEmail(e.target.value)} 
-                                          placeholder="ivan@example.com"
+                                          placeholder="john@example.com"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Телефон</Label>
+                                        <Label>Phone</Label>
                                         <Input 
                                           value={buyPhone} 
                                           onChange={(e) => setBuyPhone(e.target.value)} 
-                                          placeholder="+61 4XX XXX XXX"
+                                          placeholder="04XX XXX XXX"
                                         />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Сообщение</Label>
+                                    <Label>Message</Label>
                                     <Textarea 
                                       value={buyMessage} 
                                       onChange={(e) => setBuyMessage(e.target.value)} 
-                                      placeholder="Здравствуйте! Этот товар ещё в наличии? Когда можно забрать?" 
+                                      placeholder="Hi, is this still available? When can I pick it up?" 
                                     />
                                 </div>
                             </div>
                             <DialogFooter>
-                                <Button variant="outline" onClick={() => setIsBuyModalOpen(false)} className="cursor-pointer">Отмена</Button>
-                                <Button onClick={handleBuyRequest} className="font-bold bg-primary text-primary-foreground cursor-pointer">Отправить запрос</Button>
+                                <Button variant="outline" onClick={() => setIsBuyModalOpen(false)}>Cancel</Button>
+                                <Button onClick={handleBuyRequest} className="font-bold bg-primary text-primary-foreground">Send Request</Button>
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
@@ -1650,7 +1650,7 @@ export default function CoachProfile() {
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                           <MessageCircle className="w-5 h-5 text-primary" />
-                          Связаться
+                          Get in Touch
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-6">
@@ -1660,17 +1660,17 @@ export default function CoachProfile() {
                               <Phone className="w-5 h-5" />
                             </div>
                             <div>
-                              <p className="text-sm text-muted-foreground">Номер телефона</p>
+                              <p className="text-sm text-muted-foreground">Phone Number</p>
                               {showCoachPhone ? (
-                                <p className="font-bold text-lg">{profile.phone || "Не указан"}</p>
+                                <p className="font-bold text-lg">{profile.phone || "No phone listed"}</p>
                               ) : (
                                 <Button 
                                   variant="link" 
-                                  className="font-bold text-lg p-0 h-auto text-primary cursor-pointer"
+                                  className="font-bold text-lg p-0 h-auto text-primary"
                                   onClick={() => setShowCoachPhone(true)}
                                   disabled={!profile.phone}
                                 >
-                                  {profile.phone ? "Показать номер" : "Не указан"}
+                                  {profile.phone ? "Show Number" : "No Phone Listed"}
                                 </Button>
                               )}
                             </div>
@@ -1680,17 +1680,17 @@ export default function CoachProfile() {
                               <Mail className="w-5 h-5" />
                             </div>
                             <div>
-                              <p className="text-sm text-muted-foreground">Электронная почта</p>
+                              <p className="text-sm text-muted-foreground">Email Address</p>
                               {showCoachEmail ? (
-                                <p className="font-bold text-lg">{profile.email || "Не указана"}</p>
+                                <p className="font-bold text-lg">{profile.email || "No email listed"}</p>
                               ) : (
                                 <Button 
                                   variant="link" 
-                                  className="font-bold text-lg p-0 h-auto text-primary cursor-pointer"
+                                  className="font-bold text-lg p-0 h-auto text-primary"
                                   onClick={() => setShowCoachEmail(true)}
                                   disabled={!profile.email}
                                 >
-                                  {profile.email ? "Показать email" : "Не указана"}
+                                  {profile.email ? "Show Email" : "No Email Listed"}
                                 </Button>
                               )}
                             </div>
@@ -1698,36 +1698,36 @@ export default function CoachProfile() {
                         </div>
 
                         <div className="space-y-4 pt-4 border-t">
-                          <h3 className="font-bold text-lg">Отправить сообщение</h3>
+                          <h3 className="font-bold text-lg">Send a Message</h3>
                           <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                              <Label>Ваше имя</Label>
+                              <Label>Your Name</Label>
                               <Input 
-                                placeholder="Иван Иванов" 
+                                placeholder="John Doe" 
                                 value={contactName}
                                 onChange={(e) => setContactName(e.target.value)}
                               />
                             </div>
                             <div className="space-y-2">
-                              <Label>Ваша почта</Label>
+                              <Label>Your Email</Label>
                               <Input 
-                                placeholder="ivan@example.com" 
+                                placeholder="john@example.com" 
                                 value={contactEmail}
                                 onChange={(e) => setContactEmail(e.target.value)}
                               />
                             </div>
                           </div>
                           <div className="space-y-2">
-                            <Label>Сообщение</Label>
+                            <Label>Message</Label>
                             <Textarea 
-                              placeholder="Здравствуйте, я хочу записаться на урок..." 
+                              placeholder="Hi, I'm interested in booking a lesson..." 
                               className="min-h-[120px]"
                               value={contactMessage}
                               onChange={(e) => setContactMessage(e.target.value)}
                             />
                           </div>
-                          <Button className="w-full font-bold gap-2 cursor-pointer" onClick={handleContactSubmit}>
-                            <Send className="w-4 h-4" /> Отправить сообщение
+                          <Button className="w-full font-bold gap-2" onClick={handleContactSubmit}>
+                            <Send className="w-4 h-4" /> Send Message
                           </Button>
                         </div>
                       </CardContent>
@@ -1741,20 +1741,20 @@ export default function CoachProfile() {
                     <CardHeader>
                       <CardTitle className="text-xl flex items-center gap-2">
                         <Check className="w-5 h-5 text-primary" />
-                        О тренере
+                        Coach Overview
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
                       <div className="space-y-4">
                         <div className="flex justify-between items-center">
-                          <span className="text-muted-foreground text-sm">Статус верификации</span>
+                          <span className="text-muted-foreground text-sm">Verification Status</span>
                           <Badge variant="outline" className="text-primary border-primary/30 bg-primary/5 flex gap-1 items-center">
-                            <Check className="w-3 h-3" /> Подтверждён
+                            <Check className="w-3 h-3" /> Verified
                           </Badge>
                         </div>
                         
                         <div className="flex justify-between items-center gap-2">
-                          <span className="text-muted-foreground text-sm whitespace-nowrap">Время ответа</span>
+                          <span className="text-muted-foreground text-sm whitespace-nowrap">Response Time</span>
                           {isEditing ? (
                             <Input 
                               value={profile.response_time} 
@@ -1767,10 +1767,10 @@ export default function CoachProfile() {
                         </div>
 
                         <div className="flex justify-between items-center">
-                          <span className="text-muted-foreground text-sm">Приём учеников</span>
+                          <span className="text-muted-foreground text-sm">Accepting Students</span>
                           {isEditing ? (
                              <div className="flex items-center gap-2">
-                               <span className="text-xs text-muted-foreground">{profile.accepting_students ? 'Открыт' : 'Закрыт'}</span>
+                               <span className="text-xs text-muted-foreground">{profile.accepting_students ? 'Open' : 'Closed'}</span>
                                <Switch 
                                  checked={profile.accepting_students}
                                  onCheckedChange={(checked) => setProfile({...profile, accepting_students: checked})}
@@ -1778,7 +1778,7 @@ export default function CoachProfile() {
                              </div>
                           ) : (
                              <Badge className={cn("border-none text-white", profile.accepting_students ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600")}>
-                               {profile.accepting_students ? "Да, открыт" : "Только лист ожидания"}
+                               {profile.accepting_students ? "Yes, Open" : "Waitlist Only"}
                              </Badge>
                           )}
                         </div>
@@ -1786,8 +1786,8 @@ export default function CoachProfile() {
 
                       <div className="pt-4 border-t border-border/50">
                          <div className="flex justify-between items-center mb-3">
-                           <span className="text-sm font-bold block">Статистика</span>
-                           {isEditing && <span className="text-[10px] text-muted-foreground uppercase tracking-widest bg-muted px-2 py-1 rounded">Редактируемый прототип</span>}
+                           <span className="text-sm font-bold block">Performance Stats</span>
+                           {isEditing && <span className="text-[10px] text-muted-foreground uppercase tracking-widest bg-muted px-2 py-1 rounded">Editable Prototype</span>}
                          </div>
                          <div className="grid grid-cols-2 gap-3">
                            <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/50 relative group">
@@ -1800,7 +1800,7 @@ export default function CoachProfile() {
                              ) : (
                                <div className="text-2xl font-bold text-primary">{profile.active_students}</div>
                              )}
-                             <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Учеников</div>
+                             <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Active Students</div>
                            </div>
                            <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/50 relative">
                              {isEditing ? (
@@ -1812,7 +1812,7 @@ export default function CoachProfile() {
                              ) : (
                                <div className="text-2xl font-bold text-primary">{profile.rating}</div>
                              )}
-                             <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Рейтинг</div>
+                             <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Rating</div>
                            </div>
                            <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/50 relative">
                              {isEditing ? (
@@ -1824,7 +1824,7 @@ export default function CoachProfile() {
                              ) : (
                                <div className="text-2xl font-bold text-primary">{profile.hours_taught}</div>
                              )}
-                             <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Часов обучения</div>
+                             <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Hours Taught</div>
                            </div>
                            <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/50 relative">
                              {isEditing ? (

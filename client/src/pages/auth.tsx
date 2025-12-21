@@ -132,7 +132,7 @@ export default function AuthPage() {
             <TabsContent value="login">
               <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Электронная почта</Label>
+                  <Label htmlFor="email">Email</Label>
                   <Input 
                     id="email" 
                     placeholder="name@example.com" 
@@ -225,7 +225,7 @@ export default function AuthPage() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="reg-email">Электронная почта</Label>
+                  <Label htmlFor="reg-email">Email</Label>
                   <Input 
                     id="reg-email" 
                     placeholder="name@example.com" 
