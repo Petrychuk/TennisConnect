@@ -14,6 +14,7 @@ import CoachesPage from "@/pages/coaches";
 import MarketplacePage from "@/pages/marketplace";
 import ClubsPage from "@/pages/clubs";
 import PartnersPage from "@/pages/partners";
+import TournamentsPage from "@/pages/tournaments";
 
 function Router() {
   return (
@@ -27,6 +28,7 @@ function Router() {
       <Route path="/marketplace" component={MarketplacePage} />
       <Route path="/clubs" component={ClubsPage} />
       <Route path="/partners" component={PartnersPage} />
+      <Route path="/tournaments" component={TournamentsPage} />
       <Route path="/coach/profile" component={CoachProfile} />
       <Route path="/coach/:id" component={CoachProfile} />
       <Route component={NotFound} />

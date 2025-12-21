@@ -44,18 +44,18 @@ export function Marketplace() {
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/10 text-orange-600 border border-orange-500/20 mb-4">
               <Tag className="w-4 h-4" />
-              <span className="text-xs font-bold uppercase tracking-wider">Marketplace</span>
+              <span className="text-xs font-bold uppercase tracking-wider">Маркетплейс</span>
             </div>
             <h2 className="text-3xl md:text-5xl font-display font-bold">
-              Tennis <span className="text-primary">Gear Exchange</span>
+              Теннисное <span className="text-primary">снаряжение</span>
             </h2>
             <p className="text-muted-foreground mt-4 max-w-xl text-lg">
-              Buy and sell pre-loved tennis equipment in Sydney. From rackets to vintage gear, find great deals from local players.
+              Покупайте и продавайте б/у теннисное оборудование в Сиднее. От ракеток до винтажного снаряжения — отличные предложения от местных игроков.
             </p>
           </div>
           <Link href="/marketplace">
-            <Button variant="outline" className="hidden md:flex gap-2">
-                View All Listings <ArrowRight className="w-4 h-4" />
+            <Button variant="outline" className="hidden md:flex gap-2 cursor-pointer">
+                Все объявления <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>
         </div>
@@ -90,9 +90,9 @@ export function Marketplace() {
                   </div>
                 </CardContent>
                 <CardFooter className="p-4 pt-0">
-                  <Link href="/marketplace">
-                    <Button className="w-full bg-black text-white hover:bg-gray-800">
-                        View Details
+                  <Link href={`/coach/${item.seller_id || item.id}`}>
+                    <Button className="w-full bg-black text-white hover:bg-gray-800 cursor-pointer">
+                        Подробнее
                     </Button>
                   </Link>
                 </CardFooter>
@@ -103,8 +103,8 @@ export function Marketplace() {
         
         <div className="mt-8 md:hidden">
           <Link href="/marketplace">
-            <Button variant="outline" className="w-full gap-2">
-                View All Listings <ArrowRight className="w-4 h-4" />
+            <Button variant="outline" className="w-full gap-2 cursor-pointer">
+                Все объявления <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>
         </div>

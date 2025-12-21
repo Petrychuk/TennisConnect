@@ -172,15 +172,15 @@ export default function ClubsPage() {
              transition={{ duration: 0.8 }}
           >
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-display font-bold mb-6 tracking-tight">
-              Find Your <span className="text-primary relative inline-block">
-                Court
+              Найди свой <span className="text-primary relative inline-block">
+                корт
                 <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none">
                   <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" />
                 </svg>
               </span>
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto font-light leading-relaxed">
-              Discover premier tennis clubs, book courts, and join competitive tournaments in your area.
+              Откройте для себя лучшие теннисные клубы, забронируйте корты и участвуйте в турнирах вашего региона.
             </p>
           </motion.div>
         </div>
@@ -193,7 +193,7 @@ export default function ClubsPage() {
             <div className="relative w-full md:w-96 group">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
               <Input 
-                placeholder="Search by name or location..." 
+                placeholder="Поиск по названию или локации..." 
                 className="pl-10 h-11 bg-secondary/50 border-transparent focus:border-primary focus:bg-background transition-all rounded-xl"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -201,17 +201,23 @@ export default function ClubsPage() {
             </div>
             
             <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-hide">
-              {["Grass Courts", "Hard Courts", "Coaching", "Pro Shop", "Night Tennis"].map((tag) => (
+              {[
+                { value: "Grass Courts", label: "Травяные корты" },
+                { value: "Hard Courts", label: "Хард-корты" },
+                { value: "Coaching", label: "Тренировки" },
+                { value: "Pro Shop", label: "Магазин" },
+                { value: "Night Tennis", label: "Ночной теннис" }
+              ].map((tag) => (
                 <button
-                  key={tag}
-                  onClick={() => setFilterService(filterService === tag ? "" : tag)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border ${
-                    filterService === tag 
+                  key={tag.value}
+                  onClick={() => setFilterService(filterService === tag.value ? "" : tag.value)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border cursor-pointer ${
+                    filterService === tag.value 
                       ? "bg-primary text-primary-foreground border-primary" 
                       : "bg-background hover:bg-secondary border-input hover:border-primary/50"
                   }`}
                 >
-                  {tag}
+                  {tag.label}
                 </button>
               ))}
             </div>
@@ -239,49 +245,49 @@ export default function ClubsPage() {
                     <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
                       <div className="max-w-2xl">
                          <div className="inline-flex items-center gap-2 bg-white/20 px-3 py-1 rounded-full text-sm font-bold mb-4 backdrop-blur-sm">
-                           <Building2 className="w-4 h-4" /> Partner With Us
+                           <Building2 className="w-4 h-4" /> Партнерство
                          </div>
-                         <h3 className="text-3xl md:text-5xl font-display font-bold mb-4">Own a Tennis Club?</h3>
+                         <h3 className="text-3xl md:text-5xl font-display font-bold mb-4">Владеете теннисным клубом?</h3>
                          <p className="text-lg opacity-90 mb-8 max-w-xl">
-                           Join our network to manage bookings, attract new players, and streamline your operations. Get listed today!
+                           Присоединяйтесь к нашей сети для управления бронированиями, привлечения новых игроков и оптимизации работы. Добавьте свой клуб сегодня!
                          </p>
                          <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
                             <Dialog>
                               <DialogTrigger asChild>
-                                <Button size="lg" variant="secondary" className="font-bold text-primary h-12 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all">
-                                  Become a Partner
+                                <Button size="lg" variant="secondary" className="font-bold text-primary h-12 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer">
+                                  Стать партнером
                                 </Button>
                               </DialogTrigger>
                               <DialogContent>
                                 <DialogHeader>
-                                  <DialogTitle>Partner Inquiry</DialogTitle>
-                                  <DialogDescription>Fill out this form and our team will contact you within 24 hours.</DialogDescription>
+                                  <DialogTitle>Заявка на партнерство</DialogTitle>
+                                  <DialogDescription>Заполните форму, и наша команда свяжется с вами в течение 24 часов.</DialogDescription>
                                 </DialogHeader>
                                 <div className="space-y-4 py-4">
                                   <div className="space-y-2">
-                                    <Label>Club Name</Label>
-                                    <Input placeholder="e.g. Grand Slam Tennis Centre" />
+                                    <Label>Название клуба</Label>
+                                    <Input placeholder="напр. Grand Slam Tennis Centre" />
                                   </div>
                                   <div className="space-y-2">
-                                    <Label>Contact Person</Label>
-                                    <Input placeholder="Your Name" />
+                                    <Label>Контактное лицо</Label>
+                                    <Input placeholder="Ваше имя" />
                                   </div>
                                   <div className="space-y-2">
-                                    <Label>Phone Number</Label>
+                                    <Label>Номер телефона</Label>
                                     <Input placeholder="+61 ..." />
                                   </div>
                                   <div className="space-y-2">
-                                    <Label>Message</Label>
-                                    <Textarea placeholder="Tell us about your facilities..." />
+                                    <Label>Сообщение</Label>
+                                    <Textarea placeholder="Расскажите о вашем клубе..." />
                                   </div>
                                 </div>
                                 <DialogFooter>
-                                  <Button className="w-full">Send Inquiry</Button>
+                                  <Button className="w-full cursor-pointer">Отправить заявку</Button>
                                 </DialogFooter>
                               </DialogContent>
                             </Dialog>
-                            <Button size="lg" variant="outline" className="bg-transparent border-white/30 text-white hover:bg-white/10 h-12 px-8 rounded-xl backdrop-blur-sm">
-                               <Phone className="w-4 h-4 mr-2" /> Call Sales
+                            <Button size="lg" variant="outline" className="bg-transparent border-white/30 text-white hover:bg-white/10 h-12 px-8 rounded-xl backdrop-blur-sm cursor-pointer">
+                               <Phone className="w-4 h-4 mr-2" /> Позвонить
                             </Button>
                          </div>
                       </div>

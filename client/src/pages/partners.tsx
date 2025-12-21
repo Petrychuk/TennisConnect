@@ -1,6 +1,12 @@
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/navbar";
+import { Footer } from "@/components/footer";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth-context";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -15,6 +21,44 @@ export default function PartnersPage() {
   const [filterLevel, setFilterLevel] = useState("");
   const [partners, setPartners] = useState(PARTNERS_DATA);
   const [loading, setLoading] = useState(true);
+  const [messageModalOpen, setMessageModalOpen] = useState(false);
+  const [selectedPartner, setSelectedPartner] = useState<any>(null);
+  const [messageText, setMessageText] = useState("");
+  const { toast } = useToast();
+  const { user, isAuthenticated } = useAuth();
+
+  const handleSendMessage = () => {
+    if (!messageText.trim()) {
+      toast({
+        title: "Ошибка",
+        description: "Введите текст сообщения",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    toast({
+      title: "Сообщение отправлено!",
+      description: `Ваше сообщение отправлено игроку ${selectedPartner?.name}. Ожидайте ответа на email.`
+    });
+
+    setMessageModalOpen(false);
+    setMessageText("");
+    setSelectedPartner(null);
+  };
+
+  const openMessageModal = (partner: any) => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Войдите в аккаунт",
+        description: "Чтобы отправить сообщение, необходимо войти в систему",
+        variant: "destructive"
+      });
+      return;
+    }
+    setSelectedPartner(partner);
+    setMessageModalOpen(true);
+  };
 
   useEffect(() => {
     async function fetchPlayers() {
@@ -87,15 +131,15 @@ export default function PartnersPage() {
              transition={{ duration: 0.8 }}
           >
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-display font-bold mb-6 tracking-tight">
-              Meet Your <span className="text-primary relative inline-block">
-                Match
+              Найди своего <span className="text-primary relative inline-block">
+                партнера
                 <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none">
                   <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" />
                 </svg>
               </span>
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto font-light leading-relaxed">
-              Find hitting partners, join local matches, and expand your tennis network.
+              Находите партнеров для игры, присоединяйтесь к местным матчам и расширяйте свою теннисную сеть.
             </p>
           </motion.div>
         </div>
@@ -108,7 +152,7 @@ export default function PartnersPage() {
             <div className="relative w-full md:w-96 group">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
               <Input 
-                placeholder="Search by name or location..." 
+                placeholder="Поиск по имени или локации..." 
                 className="pl-10 h-11 bg-secondary/50 border-transparent focus:border-primary focus:bg-background transition-all rounded-xl"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -116,17 +160,17 @@ export default function PartnersPage() {
             </div>
             
             <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-hide">
-              {["Beginner", "Intermediate", "Advanced"].map((level) => (
+              {[{ value: "Beginner", label: "Начинающий" }, { value: "Intermediate", label: "Средний" }, { value: "Advanced", label: "Продвинутый" }].map((level) => (
                 <button
-                  key={level}
-                  onClick={() => setFilterLevel(filterLevel === level ? "" : level)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border ${
-                    filterLevel === level 
+                  key={level.value}
+                  onClick={() => setFilterLevel(filterLevel === level.value ? "" : level.value)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border cursor-pointer ${
+                    filterLevel === level.value 
                       ? "bg-primary text-primary-foreground border-primary" 
                       : "bg-background hover:bg-secondary border-input hover:border-primary/50"
                   }`}
                 >
-                  {level}
+                  {level.label}
                 </button>
               ))}
             </div>
@@ -171,12 +215,15 @@ export default function PartnersPage() {
                 
                 <CardFooter className="p-4 pt-0 grid grid-cols-2 gap-3">
                   <Link href={`/player/${partner.id}`}>
-                    <Button variant="outline" className="w-full text-xs font-bold h-9">
-                      <User className="w-3 h-3 mr-1" /> Profile
+                    <Button variant="outline" className="w-full text-xs font-bold h-9 cursor-pointer">
+                      <User className="w-3 h-3 mr-1" /> Профиль
                     </Button>
                   </Link>
-                  <Button className="w-full text-xs font-bold h-9 bg-primary text-primary-foreground hover:bg-primary/90">
-                    <MessageCircle className="w-3 h-3 mr-1" /> Message
+                  <Button 
+                    className="w-full text-xs font-bold h-9 bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                    onClick={() => openMessageModal(partner)}
+                  >
+                    <MessageCircle className="w-3 h-3 mr-1" /> Написать
                   </Button>
                 </CardFooter>
               </Card>
@@ -189,11 +236,49 @@ export default function PartnersPage() {
              <div className="inline-flex p-4 rounded-full bg-muted mb-4">
                <User className="w-8 h-8 text-muted-foreground" />
              </div>
-             <h3 className="text-xl font-bold mb-2">No partners found</h3>
-             <p className="text-muted-foreground">Try adjusting your filters.</p>
+             <h3 className="text-xl font-bold mb-2">Партнеры не найдены</h3>
+             <p className="text-muted-foreground">Попробуйте изменить фильтры поиска.</p>
           </div>
         )}
       </div>
+
+      <Dialog open={messageModalOpen} onOpenChange={setMessageModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Отправить сообщение</DialogTitle>
+            <DialogDescription>
+              Напишите сообщение игроку {selectedPartner?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="message">Ваше сообщение</Label>
+              <Textarea
+                id="message"
+                placeholder="Привет! Хочу предложить сыграть вместе..."
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                className="min-h-[120px]"
+              />
+            </div>
+            {user && (
+              <p className="text-sm text-muted-foreground">
+                Ответ придет на ваш email: {user.email}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMessageModalOpen(false)}>
+              Отмена
+            </Button>
+            <Button onClick={handleSendMessage} className="bg-primary text-primary-foreground">
+              Отправить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Footer />
     </div>
   );
 }

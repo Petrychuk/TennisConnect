@@ -11,7 +11,7 @@ export function Hero() {
         <div className="absolute right-0 top-0 bottom-0 w-full md:w-[75%] h-full">
           <img
             src={heroImage}
-            alt="Tennis Player"
+            alt="Теннисист"
             className="w-full h-full object-cover object-[50%_0%]"
           />
           {/* Gradient Overlay for Text Legibility - Lighter intensity */}
@@ -31,31 +31,31 @@ export function Hero() {
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md mb-6">
               <span className="w-2 h-2 rounded-full bg-primary" />
               <span className="text-xs font-bold tracking-wider uppercase text-white">
-                Sydney Season Open
+                Сезон открыт в Сиднее
               </span>
             </div>
             
             <h1 className="text-4xl md:text-7xl font-display font-bold text-white leading-[1.1] mb-6 drop-shadow-xl">
-              Find your perfect <br />
+              Найди идеального <br />
               <span className="text-primary relative inline-block">
-                tennis partner
+                партнера по теннису
                 <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary/50" viewBox="0 0 100 10" preserveAspectRatio="none">
                   <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="4" fill="none" />
                 </svg>
-              </span> in Australia
+              </span> в Австралии
             </h1>
             
             <p className="text-lg md:text-xl text-gray-200 mb-8 max-w-xl leading-relaxed drop-shadow-md">
-              Join Australia's largest tennis community. Find sparring partners, professional coaches, and book courts across Sydney, Melbourne, and Brisbane.
+              Присоединяйтесь к крупнейшему теннисному сообществу Австралии. Находите партнеров для игры, профессиональных тренеров и бронируйте корты в Сиднее, Мельбурне и Брисбене.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
-              <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-lg h-14 px-8 rounded-full shadow-[0_0_20px_rgba(223,255,0,0.3)] hover:shadow-[0_0_30px_rgba(223,255,0,0.5)] transition-all duration-300 group">
-                Find a Partner
+              <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-lg h-14 px-8 rounded-full shadow-[0_0_20px_rgba(223,255,0,0.3)] hover:shadow-[0_0_30px_rgba(223,255,0,0.5)] transition-all duration-300 group cursor-pointer">
+                Найти партнера
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
-              <Button size="lg" variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20 font-bold text-lg h-14 px-8 rounded-full backdrop-blur-md">
-                I'm a Coach
+              <Button size="lg" variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20 font-bold text-lg h-14 px-8 rounded-full backdrop-blur-md cursor-pointer">
+                Я тренер
               </Button>
             </div>
           </motion.div>

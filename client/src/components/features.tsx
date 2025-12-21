@@ -5,26 +5,26 @@ import { Card, CardContent } from "@/components/ui/card";
 const features = [
   {
     icon: Users,
-    title: "Sparring Partners",
-    description: "Find players of your skill level in your neighborhood. Filter by NTRP rating.",
+    title: "Партнеры для игры",
+    description: "Найдите игроков вашего уровня в вашем районе. Фильтрация по рейтингу NTRP.",
     color: "bg-blue-500",
   },
   {
     icon: Star,
-    title: "Professional Coaches",
-    description: "Private and group lessons for kids and adults. Verified reviews.",
+    title: "Профессиональные тренеры",
+    description: "Индивидуальные и групповые занятия для детей и взрослых. Проверенные отзывы.",
     color: "bg-primary",
   },
   {
     icon: Trophy,
-    title: "Local Tournaments",
-    description: "Join amateur leagues in Sydney, climb the rankings and win prizes.",
+    title: "Местные турниры",
+    description: "Участвуйте в любительских лигах Сиднея, поднимайтесь в рейтинге и выигрывайте призы.",
     color: "bg-purple-500",
   },
   {
     icon: MapPin,
-    title: "Court Booking",
-    description: "Easy search for available courts and instant online booking.",
+    title: "Бронирование кортов",
+    description: "Удобный поиск свободных кортов и мгновенное онлайн-бронирование.",
     color: "bg-orange-500",
   },
 ];
@@ -38,10 +38,10 @@ export function Features() {
       <div className="container mx-auto px-4 relative z-10">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">
-            Everything for tennis in <span className="text-primary">one place</span>
+            Всё для тенниса в <span className="text-primary">одном месте</span>
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-            We've built an ecosystem that helps players of all levels thrive in the Australian tennis scene.
+            Мы создали экосистему, которая помогает игрокам любого уровня развиваться в австралийском теннисе.
           </p>
         </div>
 

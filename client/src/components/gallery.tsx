@@ -5,10 +5,10 @@ import img3 from "@assets/generated_images/modern_tennis_club_lounge.png";
 import img4 from "@assets/generated_images/close_up_tennis_racket_hitting_ball.png";
 
 const photos = [
-  { src: img1, alt: "Match Action", span: "col-span-1 md:col-span-2 row-span-2" },
-  { src: img2, alt: "Kids Training", span: "col-span-1 row-span-1" },
-  { src: img3, alt: "Club Lounge", span: "col-span-1 row-span-1" },
-  { src: img4, alt: "Close Up", span: "col-span-1 md:col-span-2 row-span-1" },
+  { src: img1, alt: "Игровой момент", span: "col-span-1 md:col-span-2 row-span-2" },
+  { src: img2, alt: "Детская тренировка", span: "col-span-1 row-span-1" },
+  { src: img3, alt: "Лаунж клуба", span: "col-span-1 row-span-1" },
+  { src: img4, alt: "Крупный план", span: "col-span-1 md:col-span-2 row-span-1" },
 ];
 
 export function Gallery() {
@@ -17,10 +17,10 @@ export function Gallery() {
       <div className="container mx-auto px-4">
         <div className="mb-12 text-center md:text-left">
           <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">
-            Life on the <span className="text-primary">Court</span>
+            Жизнь на <span className="text-primary">корте</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl">
-            Experience the energy of Sydney's tennis community.
+            Почувствуйте энергию теннисного сообщества Сиднея.
           </p>
         </div>
 

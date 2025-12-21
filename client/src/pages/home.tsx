@@ -1,12 +1,15 @@
 import { Navbar } from "@/components/navbar";
 import { Hero } from "@/components/hero";
 import { Features } from "@/components/features";
+import { AboutUs } from "@/components/about-us";
 import { Marketplace } from "@/components/marketplace";
+import { Partnership } from "@/components/partnership";
 import { Gallery } from "@/components/gallery";
 import { Testimonials } from "@/components/testimonials";
 import { Footer } from "@/components/footer";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { Link } from "wouter";
 
 export default function Home() {
   return (
@@ -16,9 +19,11 @@ export default function Home() {
       <main>
         <Hero />
         <Features />
+        <AboutUs />
         <Marketplace />
-        <Gallery />
         <Testimonials />
+        <Partnership />
+        <Gallery />
         
         {/* CTA Section */}
         <section className="py-24 px-4 relative overflow-hidden">
@@ -38,14 +43,16 @@ export default function Home() {
                 className="relative z-10"
               >
                 <h2 className="text-3xl md:text-5xl font-display font-bold text-white mb-6">
-                  Ready to hit the court?
+                  Готовы выйти на корт?
                 </h2>
                 <p className="text-xl text-gray-300 max-w-2xl mx-auto mb-10">
-                  Create your profile in 2 minutes, set your skill level, and start receiving match proposals today.
+                  Создайте профиль за 2 минуты, укажите свой уровень и начните получать предложения для игры уже сегодня.
                 </p>
-                <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-lg h-14 px-10 rounded-full shadow-[0_0_20px_rgba(223,255,0,0.4)] hover:shadow-[0_0_30px_rgba(223,255,0,0.6)] transition-all duration-300 transform hover:-translate-y-1">
-                  Create Profile
-                </Button>
+                <Link href="/auth">
+                  <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-lg h-14 px-10 rounded-full shadow-[0_0_20px_rgba(223,255,0,0.4)] hover:shadow-[0_0_30px_rgba(223,255,0,0.6)] transition-all duration-300 transform hover:-translate-y-1 cursor-pointer">
+                    Создать профиль
+                  </Button>
+                </Link>
               </motion.div>
             </div>
           </div>

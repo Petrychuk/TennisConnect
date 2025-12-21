@@ -20,11 +20,11 @@ export function Navbar() {
   const { user, logout, isAuthenticated } = useAuth();
 
   const navLinks = [
-    { name: "Partners", href: "/partners" },
-    { name: "Coaches", href: "/coaches" },
-    { name: "Marketplace", href: "/marketplace" },
-    { name: "Clubs", href: "/clubs" },
-    { name: "Reviews", href: "/#reviews" },
+    { name: "Партнеры", href: "/partners" },
+    { name: "Тренеры", href: "/coaches" },
+    { name: "Турниры", href: "/tournaments" },
+    { name: "Маркетплейс", href: "/marketplace" },
+    { name: "Клубы", href: "/clubs" },
   ];
 
   if (location === "/auth") return null;
@@ -33,23 +33,21 @@ export function Navbar() {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/40">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/">
-          <a className="text-2xl font-display font-bold flex items-center gap-1">
-            Tennis<span className="text-[hsl(var(--tennis-ball))]">Connect</span>
-            <div className="w-2 h-2 rounded-full bg-[hsl(var(--tennis-ball))] mt-1 animate-pulse" />
-          </a>
+        <Link href="/" className="text-2xl font-display font-bold flex items-center gap-1 cursor-pointer">
+          Tennis<span className="text-[hsl(var(--tennis-ball))]">Connect</span>
+          <div className="w-2 h-2 rounded-full bg-[hsl(var(--tennis-ball))] mt-1 animate-pulse" />
         </Link>
 
         {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => (
-            <a
+            <Link
               key={link.name}
               href={link.href}
-              className="text-sm font-medium hover:text-lime-600 transition-colors"
+              className="text-sm font-medium hover:text-lime-600 transition-colors cursor-pointer"
             >
               {link.name}
-            </a>
+            </Link>
           ))}
         </div>
 
@@ -58,9 +56,9 @@ export function Navbar() {
           {isAuthenticated ? (
             <div className="hidden md:flex items-center gap-4">
               <Link href={user?.role === "coach" ? "/coach/profile" : "/player/profile"}>
-                <Button variant="ghost" className="font-bold hover:text-lime-600 gap-2">
+                <Button variant="ghost" className="font-bold hover:text-lime-600 gap-2 cursor-pointer">
                   <User className="w-4 h-4" />
-                  {user?.name || "My Profile"}
+                  {user?.name || "Мой профиль"}
                 </Button>
               </Link>
               
@@ -74,24 +72,24 @@ export function Navbar() {
                   </Avatar>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuLabel>Мой аккаунт</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href={user?.role === "coach" ? "/coach/profile" : "/player/profile"}>Profile</Link>
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <Link href={user?.role === "coach" ? "/coach/profile" : "/player/profile"}>Профиль</Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem>Settings</DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer">Настройки</DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
+                  <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive cursor-pointer">
                     <LogOut className="mr-2 h-4 w-4" />
-                    Sign Out
+                    Выйти
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           ) : (
             <Link href="/auth">
-              <Button className="hidden md:inline-flex bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6">
-                Sign In
+              <Button className="hidden md:inline-flex bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer">
+                Войти
               </Button>
             </Link>
           )}
@@ -119,38 +117,38 @@ export function Navbar() {
                 )}
 
                 {navLinks.map((link) => (
-                  <a
+                  <Link
                     key={link.name}
                     href={link.href}
-                    className="text-lg font-medium hover:text-lime-600 transition-colors"
+                    className="text-lg font-medium hover:text-lime-600 transition-colors cursor-pointer"
                     onClick={() => setIsOpen(false)}
                   >
                     {link.name}
-                  </a>
+                  </Link>
                 ))}
                 
                 {isAuthenticated ? (
                   <>
                     <Link href={user?.role === "coach" ? "/coach/profile" : "/player/profile"} onClick={() => setIsOpen(false)}>
-                      <Button variant="outline" className="w-full font-bold rounded-full">
-                        My Profile
+                      <Button variant="outline" className="w-full font-bold rounded-full cursor-pointer">
+                        Мой профиль
                       </Button>
                     </Link>
                     <Button 
                       variant="ghost" 
-                      className="w-full justify-start text-destructive hover:text-destructive"
+                      className="w-full justify-start text-destructive hover:text-destructive cursor-pointer"
                       onClick={() => {
                         logout();
                         setIsOpen(false);
                       }}
                     >
-                      <LogOut className="mr-2 h-4 w-4" /> Sign Out
+                      <LogOut className="mr-2 h-4 w-4" /> Выйти
                     </Button>
                   </>
                 ) : (
                   <Link href="/auth" onClick={() => setIsOpen(false)}>
-                    <Button className="w-full bg-primary text-primary-foreground font-bold rounded-full">
-                      Sign In
+                    <Button className="w-full bg-primary text-primary-foreground font-bold rounded-full cursor-pointer">
+                      Войти
                     </Button>
                   </Link>
                 )}

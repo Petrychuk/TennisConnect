@@ -2,11 +2,29 @@
 
 ## Overview
 
-TennisConnect is a tennis community platform designed for the Australian market, connecting tennis players with partners, coaches, clubs, and a marketplace for gear. The application enables users to create profiles as either players or coaches, find sparring partners, book coaching sessions, browse tennis clubs, and buy/sell tennis equipment.
+TennisConnect is a tennis community platform designed for the Australian market (specifically Sydney), connecting tennis players with partners, coaches, clubs, and a marketplace for gear. The application enables users to create profiles as either players or coaches, find sparring partners, book coaching sessions, browse tennis clubs, participate in tournaments, and buy/sell tennis equipment.
+
+## Language Support
+
+The entire application uses **Russian language** throughout the UI, as requested by the user. This includes:
+- Navigation and menus
+- All page titles and descriptions
+- Form labels and buttons
+- Toast notifications and messages
+- Filter labels and placeholders
+- Footer and legal text
+
+Future migration to Supabase database is planned (currently using Replit PostgreSQL).
 
 ## User Preferences
 
-Preferred communication style: Simple, everyday language.
+- Preferred communication style: Simple, everyday language
+- Language: Russian/Ukrainian language support throughout the entire application
+- Future migration: Supabase database (currently using Replit PostgreSQL)
+- Design choices:
+  - Client-side image compression with 800x800px max dimensions and 0.7 JPEG quality
+  - Global cursor pointer styling for all interactive elements
+  - Real messaging system requiring authentication with email notifications
 
 ## System Architecture
 
@@ -37,9 +55,17 @@ Preferred communication style: Simple, everyday language.
 - **Users**: Core authentication with role-based access (player/coach)
 - **PlayerProfiles**: Extended player data including skill level, location, preferred courts
 - **CoachProfiles**: Coach-specific data with ratings, rates, schedule, photos
-- **Tournaments**: User-created tournament entries
-- **MarketplaceItems**: Gear listings for buy/sell
+- **Tournaments**: Tournament listings with registration, filtering by level, past/upcoming separation
+- **MarketplaceItems**: Gear listings for buy/sell (links to seller profiles)
 - **Clubs**: Tennis club directory
+
+### Key Pages & Features
+- **Homepage**: Hero → Features → About Us → Marketplace → Testimonials → Partnership → Gallery → CTA
+- **Tournaments**: Upcoming and past tournaments with registration system, level filtering, detailed modals
+- **Partners**: Real messaging with authentication checks, email notifications
+- **Marketplace**: Links to seller profiles for detailed product information
+- **About Us**: Community values and statistics (5000+ players, 200+ coaches)
+- **Partnership**: Club/coach collaboration with contact forms
 
 ### Build System
 - **Development**: Vite dev server with HMR for frontend, tsx for backend
