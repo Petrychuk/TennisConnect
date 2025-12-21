@@ -57,7 +57,7 @@ export function Navbar() {
         <div className="flex items-center gap-4">
           {isAuthenticated ? (
             <div className="hidden md:flex items-center gap-4">
-              <Link href={user?.role === "coach" ? "/coach/profile" : "/"}>
+              <Link href={user?.role === "coach" ? "/coach/profile" : "/player/profile"}>
                 <Button variant="ghost" className="font-bold hover:text-lime-600 gap-2">
                   <User className="w-4 h-4" />
                   {user?.name || "My Profile"}
@@ -77,7 +77,7 @@ export function Navbar() {
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href={user?.role === "coach" ? "/coach/profile" : "/"}>Profile</Link>
+                    <Link href={user?.role === "coach" ? "/coach/profile" : "/player/profile"}>Profile</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem>Settings</DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -131,7 +131,7 @@ export function Navbar() {
                 
                 {isAuthenticated ? (
                   <>
-                    <Link href={user?.role === "coach" ? "/coach/profile" : "/"} onClick={() => setIsOpen(false)}>
+                    <Link href={user?.role === "coach" ? "/coach/profile" : "/player/profile"} onClick={() => setIsOpen(false)}>
                       <Button variant="outline" className="w-full font-bold rounded-full">
                         My Profile
                       </Button>

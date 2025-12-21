@@ -88,7 +88,7 @@ export default function AuthPage() {
       if (role === "coach") {
         setLocation("/coach/profile");
       } else {
-        setLocation("/");
+        setLocation("/player/profile");
       }
     }, 1500);
   };
@@ -114,7 +114,7 @@ export default function AuthPage() {
       if (data.role === "coach") {
         setLocation("/coach/profile");
       } else {
-        setLocation("/");
+        setLocation("/player/profile");
       }
     }, 1500);
   };

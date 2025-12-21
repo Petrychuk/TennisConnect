@@ -8,6 +8,8 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import AuthPage from "@/pages/auth";
 import CoachProfile from "@/pages/coach-profile";
+import PlayerProfile from "@/pages/player-profile";
+import PlayerRegistration from "@/pages/player-registration";
 import CoachesPage from "@/pages/coaches";
 import MarketplacePage from "@/pages/marketplace";
 
@@ -16,6 +18,9 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/player/register" component={PlayerRegistration} />
+      <Route path="/player/profile" component={PlayerProfile} />
+      <Route path="/player/:id" component={PlayerProfile} />
       <Route path="/coaches" component={CoachesPage} />
       <Route path="/marketplace" component={MarketplacePage} />
       <Route path="/coach/profile" component={CoachProfile} />
