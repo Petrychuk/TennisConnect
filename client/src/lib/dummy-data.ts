@@ -328,3 +328,78 @@ export const CLUBS_DATA = [
     rating: 4.3
   }
 ];
+
+export const PARTNERS_DATA = [
+  {
+    id: 1,
+    name: "John D.",
+    location: "Bondi Beach, NSW",
+    skillLevel: "Advanced",
+    bio: "I've been playing tennis for 15 years. Looking for a hitting partner for weekday mornings. I love high-intensity rallies.",
+    avatar: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=400&h=400&fit=crop",
+    available: true
+  },
+  {
+    id: 2,
+    name: "Sarah M.",
+    location: "Surry Hills, NSW",
+    skillLevel: "Intermediate",
+    bio: "Looking for friendly matches on weekends. I enjoy doubles as well!",
+    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop",
+    available: true
+  },
+  {
+    id: 3,
+    name: "Mike R.",
+    location: "Manly, NSW",
+    skillLevel: "Beginner",
+    bio: "Just started playing tennis a few months ago. Looking for someone to practice with.",
+    avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop",
+    available: false
+  },
+  {
+    id: 4,
+    name: "Emily W.",
+    location: "Coogee, NSW",
+    skillLevel: "Advanced",
+    bio: "Former college player. Looking for competitive sets.",
+    avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=400&fit=crop",
+    available: true
+  },
+  {
+    id: 5,
+    name: "David C.",
+    location: "Sydney CBD, NSW",
+    skillLevel: "Intermediate",
+    bio: "Available evenings after work. Let's hit!",
+    avatar: "https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=400&h=400&fit=crop",
+    available: true
+  },
+  {
+    id: 6,
+    name: "Jessica L.",
+    location: "Chatswood, NSW",
+    skillLevel: "Beginner",
+    bio: "Looking for a patient partner to practice basics.",
+    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop",
+    available: true
+  },
+  {
+    id: 7,
+    name: "James W.",
+    location: "Sutherland, NSW",
+    skillLevel: "Advanced",
+    bio: "Love playing matches. Contact me if you want a challenge.",
+    avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=400&fit=crop",
+    available: false
+  },
+  {
+    id: 8,
+    name: "Anna K.",
+    location: "Parramatta, NSW",
+    skillLevel: "Intermediate",
+    bio: "Looking for mixed doubles partner for upcoming tournament.",
+    avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&h=400&fit=crop",
+    available: true
+  }
+];

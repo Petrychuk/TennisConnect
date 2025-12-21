@@ -20,7 +20,7 @@ export function Navbar() {
   const { user, logout, isAuthenticated } = useAuth();
 
   const navLinks = [
-    { name: "Partners", href: "/#partners" },
+    { name: "Partners", href: "/partners" },
     { name: "Coaches", href: "/coaches" },
     { name: "Marketplace", href: "/marketplace" },
     { name: "Clubs", href: "/clubs" },
