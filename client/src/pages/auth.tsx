@@ -324,7 +324,7 @@ export default function AuthPage() {
             alt="Tennis match" 
             className="w-full h-full object-cover object-[50%_0%] opacity-80"
           />
-          <div className="absolute inset-0 bg-gradient-to-l from-transparent via-black/20 to-black/80" />
+          <div className="absolute inset-0 bg-linear-to-l from-transparent via-black/20 to-black/80" />
           
           <div className="absolute bottom-16 left-12 right-12 text-white">
             <blockquote className="text-2xl font-display font-bold leading-relaxed mb-6">

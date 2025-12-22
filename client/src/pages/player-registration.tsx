@@ -25,7 +25,8 @@ export default function PlayerRegistration() {
   const [isLoading, setIsLoading] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { login } = useAuth();
+  const { login, register, updateUser } = useAuth();
+
 
   const registerForm = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
@@ -33,27 +34,34 @@ export default function PlayerRegistration() {
   });
 
   const onRegister = async (data: z.infer<typeof registerSchema>) => {
-    setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      
-      login({
-        name: data.name,
-        email: data.email,
-        role: "player",
-        avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop"
-      });
+  setIsLoading(true);
 
-      toast({
-        title: "Account created",
-        description: "Welcome! Let's set up your profile.",
-      });
-      
-      // Redirect to profile setup
-      setLocation("/player/profile");
-    }, 1500);
-  };
+  try {
+    // Сначала регистрируем пользователя через контекст
+    await register(data.email, data.password, data.name, "player");
+
+    // Обновляем аватар после регистрации (если нужен)
+    await updateUser({
+      avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop"
+    });
+
+    toast({
+      title: "Account created",
+      description: "Welcome! Let's set up your profile.",
+    });
+
+    // Перенаправляем на страницу профиля игрока
+    setLocation("/player/profile");
+  } catch (error: any) {
+    toast({
+      title: "Registration failed",
+      description: error.message || "Something went wrong. Please try again.",
+      variant: "destructive",
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen w-full flex">
@@ -146,7 +154,7 @@ export default function PlayerRegistration() {
             alt="Tennis Player" 
             className="w-full h-full object-cover object-[50%_0%] opacity-80"
           />
-          <div className="absolute inset-0 bg-gradient-to-l from-transparent via-black/20 to-black/80" />
+          <div className="absolute inset-0 bg-linear-to-l from-transparent via-black/20 to-black/80" />
           
           <div className="absolute bottom-16 left-12 right-12 text-white">
             <blockquote className="text-2xl font-display font-bold leading-relaxed mb-6">

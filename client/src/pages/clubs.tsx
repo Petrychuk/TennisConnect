@@ -86,7 +86,7 @@ export default function ClubsPage() {
                 <Star className="w-3 h-3 mr-1 fill-yellow-400 text-yellow-400" /> {club.rating}
              </Badge>
           </div>
-          <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-black/60 to-transparent lg:hidden" />
+          <div className="absolute bottom-0 left-0 w-full h-1/2 bg-linear-to-t from-black/60 to-transparent lg:hidden" />
         </div>
 
         {/* Content Section */}
@@ -163,7 +163,7 @@ export default function ClubsPage() {
             backgroundPosition: 'center',
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/20 to-background z-10" />
+        <div className="absolute inset-0 bg-linear-to-b from-background/80 via-background/20 to-background z-10" />
         
         <div className="relative z-20 container mx-auto px-4 text-center mt-20">
           <motion.div 

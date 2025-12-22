@@ -722,13 +722,13 @@ export default function CoachProfile() {
                </Button>
              </div>
           )}
-          <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-background to-transparent z-20" />
+          <div className="absolute bottom-0 left-0 w-full h-32 bg-linear-to-t from-background to-transparent z-20" />
         </div>
 
         <div className="container mx-auto px-4 relative z-40 -mt-20 pointer-events-none">
           <div className="flex flex-col md:flex-row gap-8 items-start pointer-events-auto">
             {/* Avatar Column */}
-            <div className="flex-shrink-0 relative">
+            <div className="shrink-0 relative">
               <div className="w-32 h-32 md:w-48 md:h-48 rounded-full border-4 border-background shadow-2xl overflow-hidden bg-muted relative group">
                 <img src={profile.avatar} alt="Profile" className="w-full h-full object-cover" />
                 {isEditing && (
@@ -753,7 +753,7 @@ export default function CoachProfile() {
             </div>
 
             {/* Info Column */}
-            <div className="flex-grow pt-4 md:pt-12 w-full">
+            <div className="grow pt-4 md:pt-12 w-full">
               <div className="flex flex-col md:flex-row justify-between items-start gap-4">
                 <div className="text-center md:text-left space-y-4 w-full max-w-2xl">
                   {isEditing ? (
@@ -783,7 +783,7 @@ export default function CoachProfile() {
                 </div>
 
                 {/* Edit Action Button - Placed here for better UX */}
-                <div className="flex-shrink-0 w-full md:w-auto mt-4 md:mt-0 flex justify-center md:justify-end">
+                <div className="shrink-0 w-full md:w-auto mt-4 md:mt-0 flex justify-center md:justify-end">
                   {isOwnProfile && (
                     isEditing ? (
                       <Button onClick={handleSave} size="lg" className="w-full md:w-auto bg-primary text-primary-foreground font-bold shadow-md gap-2 animate-in fade-in zoom-in duration-300">
@@ -1114,7 +1114,7 @@ export default function CoachProfile() {
                            {/* Current Locations */}
                            <div>
                              <Label className="mb-2 block text-muted-foreground">Selected Locations</Label>
-                             <div className="flex flex-wrap gap-2 min-h-[40px]">
+                             <div className="flex flex-wrap gap-2 min-h-10">
                                {profile.locations.length === 0 && (
                                  <span className="text-sm text-muted-foreground italic flex items-center h-8">No locations selected</span>
                                )}
@@ -1425,7 +1425,7 @@ export default function CoachProfile() {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {marketplaceItems.map((item) => (
                                     <div key={item.id} className="group border rounded-xl overflow-hidden bg-card hover:shadow-lg transition-all duration-300 flex flex-col">
-                                        <div className="aspect-[4/3] bg-muted relative overflow-hidden">
+                                        <div className="aspect-4/3 bg-muted relative overflow-hidden">
                                             <img 
                                               src={item.image || racketImg} 
                                               alt={item.title} 
@@ -1445,7 +1445,7 @@ export default function CoachProfile() {
                                                 </Button>
                                             )}
                                         </div>
-                                        <div className="p-4 flex flex-col flex-grow">
+                                        <div className="p-4 flex flex-col grow">
                                             <div className="flex justify-between items-start mb-2">
                                                 <h3 className="font-bold text-lg leading-tight line-clamp-2">{item.title}</h3>
                                                 <span className="font-bold text-lg text-primary whitespace-nowrap ml-2">${item.price}</span>
@@ -1453,7 +1453,7 @@ export default function CoachProfile() {
                                             <div className="flex items-center gap-1 text-xs text-muted-foreground mb-3">
                                                 <MapPin className="w-3 h-3" /> {item.location || profile.location}
                                             </div>
-                                            <p className="text-sm text-muted-foreground line-clamp-2 mb-4 flex-grow">
+                                            <p className="text-sm text-muted-foreground line-clamp-2 mb-4 grow">
                                                 {item.description}
                                             </p>
                                             <Button className="w-full font-bold mt-auto" onClick={() => {
@@ -1547,7 +1547,7 @@ export default function CoachProfile() {
                                     <Label>Description</Label>
                                     <Textarea 
                                       placeholder="Describe the item condition, specs, etc." 
-                                      className="min-h-[80px]"
+                                      className="min-h-20"
                                       value={newItem.description}
                                       onChange={(e) => setNewItem({...newItem, description: e.target.value})}
                                     />

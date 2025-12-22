@@ -191,7 +191,7 @@ export default function TournamentsPage() {
             alt={tournament.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent" />
           
           <div className="absolute top-4 left-4 flex gap-2">
             <Badge className={`${
@@ -315,7 +315,7 @@ export default function TournamentsPage() {
             backgroundPosition: 'center',
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-background z-10" />
+        <div className="absolute inset-0 bg-linear-to-b from-black/60 via-black/40 to-background z-10" />
         
         <div className="relative z-20 container mx-auto px-4 text-center mt-20">
           <motion.div 

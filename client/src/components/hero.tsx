@@ -15,8 +15,8 @@ export function Hero() {
             className="w-full h-full object-cover object-[50%_0%]"
           />
           {/* Gradient Overlay for Text Legibility - Lighter intensity */}
-          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/10 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-r from-black via-black/10 to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-t from-black/20 via-transparent to-transparent" />
         </div>
       </div>
 

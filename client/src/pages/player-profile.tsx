@@ -456,13 +456,13 @@ export default function PlayerProfile() {
                </Button>
              </div>
           )}
-          <div className="absolute bottom-0 left-0 w-full h-24 bg-gradient-to-t from-background to-transparent z-20" />
+          <div className="absolute bottom-0 left-0 w-full h-24 bg-linear-to-t from-background to-transparent z-20" />
         </div>
 
         <div className="container mx-auto px-4 -mt-20 relative z-30 max-w-6xl">
           {/* Header Section */}
           <div className="flex flex-col md:flex-row gap-8 mb-12">
-            <div className="flex-shrink-0 mx-auto md:mx-0 relative group">
+            <div className="shrink-0 mx-auto md:mx-0 relative group">
               <Avatar className="w-40 h-40 border-4 border-background shadow-xl">
                 <AvatarImage src={profile.avatar} className="object-cover" />
                 <AvatarFallback>{profile.name.charAt(0)}</AvatarFallback>
@@ -491,7 +491,7 @@ export default function PlayerProfile() {
               )}
             </div>
             
-            <div className="flex-grow text-center md:text-left space-y-4">
+            <div className="grow text-center md:text-left space-y-4">
               <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-4">
                 <div>
                   {isEditing ? (
@@ -741,7 +741,7 @@ export default function PlayerProfile() {
                       <div className="flex flex-col md:flex-row">
                         {/* Image Gallery Column - Only if photos exist */}
                         {t.photos && t.photos.length > 0 && (
-                          <div className="w-full md:w-48 h-48 md:h-auto flex-shrink-0 bg-muted relative">
+                          <div className="w-full md:w-48 h-48 md:h-auto shrink-0 bg-muted relative">
                              <img src={t.photos[0]} alt={t.name} className="w-full h-full object-cover" />
                              {t.photos.length > 1 && (
                                <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
@@ -752,7 +752,7 @@ export default function PlayerProfile() {
                         )}
                         
                         {/* Content Column */}
-                        <div className="flex-grow p-6 flex flex-col justify-between">
+                        <div className="grow p-6 flex flex-col justify-between">
                           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4">
                              <div className="space-y-1">
                                 <div className="flex items-center gap-2">
@@ -791,7 +791,7 @@ export default function PlayerProfile() {
                           {t.photos && t.photos.length > 0 && (
                             <div className="flex gap-2 overflow-x-auto pb-2 pt-2 border-t mt-2">
                               {t.photos.map((photo: string, i: number) => (
-                                <div key={i} className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0 border bg-muted cursor-pointer hover:opacity-80 transition-opacity">
+                                <div key={i} className="w-12 h-12 rounded-md overflow-hidden shrink-0 border bg-muted cursor-pointer hover:opacity-80 transition-opacity">
                                   <img src={photo} className="w-full h-full object-cover" alt={`Gallery ${i}`} />
                                 </div>
                               ))}

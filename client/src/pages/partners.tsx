@@ -176,7 +176,7 @@ export default function PartnersPage() {
             backgroundPosition: 'center',
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/20 to-background z-10" />
+        <div className="absolute inset-0 bg-linear-to-b from-background/80 via-background/20 to-background z-10" />
         
         <div className="relative z-20 container mx-auto px-4 text-center mt-20">
           <motion.div 
@@ -246,7 +246,7 @@ export default function PartnersPage() {
               viewport={{ once: true }}
             >
               <Card className="h-full flex flex-col overflow-hidden hover:shadow-lg transition-all duration-300 border-border/50 group" data-testid={`card-partner-${partner.id}`}>
-                <CardContent className="p-6 flex-grow flex flex-col items-center text-center">
+                <CardContent className="p-6 grow flex flex-col items-center text-center">
                   <div className="relative mb-4">
                      <Avatar className="w-24 h-24 border-4 border-background shadow-lg group-hover:scale-105 transition-transform duration-300">
                         <AvatarImage src={partner.avatar} className="object-cover" />

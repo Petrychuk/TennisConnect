@@ -192,7 +192,7 @@ export default function MessagesPage() {
                           data-testid={`message-item-${message.id}`}
                         >
                           <div className="flex items-start gap-3">
-                            <Avatar className="h-10 w-10 flex-shrink-0">
+                            <Avatar className="h-10 w-10 shrink-0">
                               <AvatarFallback className={!message.isRead ? "bg-primary text-primary-foreground" : ""}>
                                 {message.senderName[0]}
                               </AvatarFallback>
@@ -203,7 +203,7 @@ export default function MessagesPage() {
                                   {message.senderName}
                                 </p>
                                 {!message.isRead && (
-                                  <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />
+                                  <div className="w-2 h-2 rounded-full bg-primary shrink-0" />
                                 )}
                               </div>
                               <p className="text-sm text-muted-foreground truncate">

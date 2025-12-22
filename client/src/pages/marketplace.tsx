@@ -115,7 +115,7 @@ export default function MarketplacePage() {
             <div className="relative border-b-0 py-32 mb-12 overflow-hidden bg-black/90">
                 <div className="absolute inset-0 z-0">
                    <img src={heroBg} className="w-full h-full object-cover opacity-40" alt="Marketplace Background" />
-                   <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/60 to-background"></div>
+                   <div className="absolute inset-0 bg-linear-to-b from-black/80 via-black/60 to-background"></div>
                 </div>
                 
                 <div className="container mx-auto px-4 relative z-10 text-center">
@@ -139,7 +139,7 @@ export default function MarketplacePage() {
             {/* Filters & Search */}
             <div className="container mx-auto px-4 mb-12">
                 <div className="flex flex-col md:flex-row gap-4 items-center bg-card p-4 rounded-xl border shadow-sm">
-                    <div className="relative flex-grow w-full md:w-auto">
+                    <div className="relative grow w-full md:w-auto">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
                         <Input 
                           placeholder="Search for rackets, bags, shoes..." 
@@ -182,7 +182,7 @@ export default function MarketplacePage() {
                             transition={{ delay: index * 0.05 }}
                         >
                             <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 group h-full flex flex-col border-border/50">
-                                <div className="aspect-[4/3] relative overflow-hidden bg-muted">
+                                <div className="aspect-4/3 relative overflow-hidden bg-muted">
                                     <img 
                                       src={item.image || item.photos?.[0]} 
                                       alt={item.title || item.name} 
@@ -201,7 +201,7 @@ export default function MarketplacePage() {
                                         </div>
                                     )}
                                 </div>
-                                <CardContent className="p-5 flex flex-col flex-grow">
+                                <CardContent className="p-5 flex flex-col grow">
                                     <div className="mb-2">
                                         <h3 className="font-bold text-lg leading-tight line-clamp-1" title={item.title || item.name}>
                                             {item.title || item.name}
@@ -217,7 +217,7 @@ export default function MarketplacePage() {
                                         </Badge>
                                     </div>
                                     
-                                    <p className="text-sm text-muted-foreground line-clamp-2 mb-4 flex-grow">
+                                    <p className="text-sm text-muted-foreground line-clamp-2 mb-4 grow">
                                         {item.description}
                                     </p>
                                     
