@@ -38,7 +38,7 @@ export function Features() {
       <div className="container mx-auto px-4 relative z-10">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">
-            Everything Tennis in <span className="text-primary">One Place</span>
+           Everything for tennis in <span className="text-primary">One Place</span>
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
             We've built an ecosystem that helps players of all levels grow in Australian tennis.

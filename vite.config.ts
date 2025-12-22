@@ -4,10 +4,41 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { metaImagesPlugin } from "./vite-plugin-meta-images";
+import viteImagemin from 'vite-plugin-imagemin';
 
 export default defineConfig({
   plugins: [
     react(),
+    viteImagemin({
+      gifsicle: {
+        optimizationLevel: 7,
+      },
+      optipng: {
+        optimizationLevel: 7,
+      },
+      mozjpeg: {
+        quality: 70,
+      },
+      pngquant: {
+        quality: [0.6, 0.8],
+        speed: 3,
+      },
+      svgo: {
+        plugins: [
+          {
+            name: 'removeViewBox',
+            active: false,
+          },
+          {
+            name: 'removeDimensions',
+            active: true,
+          },
+        ],
+      },
+      webp: {
+        quality: 75,
+      },
+    }),
     runtimeErrorOverlay(),
     tailwindcss(),
     metaImagesPlugin(),

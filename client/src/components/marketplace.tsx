@@ -44,7 +44,7 @@ export function Marketplace() {
               <span className="text-xs font-bold uppercase tracking-wider">Marketplace</span>
             </div>
             <h2 className="text-3xl md:text-5xl font-display font-bold">
-              Tennis <span className="text-primary">Gear</span>
+              Tennis <span className="text-primary">Gear Exchange</span>
             </h2>
             <p className="text-muted-foreground mt-4 max-w-xl text-lg">
               Buy and sell used tennis equipment in Sydney. From rackets to vintage gear — great deals from local players.
