@@ -1,5 +1,5 @@
-import heroImage from "@assets/generated_images/professional_tennis_coaching_session_on_a_sunny_court.png";
-import avatarImage from "@assets/generated_images/female_tennis_coach_portrait.png";
+import heroImage from "/assets/images/professional_tennis_coaching_session_on_a_sunny_court.png";
+import avatarImage from "/assets/images/female_tennis_coach_portrait.png";
 
 // Shared Mock Data
 export const COACHES_DATA = [
@@ -110,8 +110,8 @@ export const COACHES_DATA = [
   }
 ];
 
-import racketImg from "@assets/generated_images/used_professional_tennis_racket.png";
-import bagImg from "@assets/generated_images/vintage_tennis_bag.png";
+import racketImg from "/assets/images/used_professional_tennis_racket.png";
+import bagImg from "/assets/images/vintage_tennis_bag.png";
 
 export const MARKETPLACE_DATA = [
   {

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
-import heroImage from "@assets/118174652_3488272227872998_1093348718284959373_n_1764914380008.jpg";
+import heroImage from "/assets/images/tennis_main.jpg";
 
 const registerSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters" }),

@@ -23,7 +23,7 @@ const partnerBenefits = [
 
 export function Partnership() {
   return (
-    <section className="py-24 bg-gradient-to-br from-black via-gray-900 to-black text-white relative overflow-hidden" id="partnership">
+    <section className="py-24 bg-linear-to-br from-black via-gray-900 to-black text-white relative overflow-hidden" id="partnership">
       <div className="absolute inset-0 opacity-10" 
            style={{ backgroundImage: 'radial-gradient(#DFFF00 1px, transparent 1px)', backgroundSize: '30px 30px' }}>
       </div>
@@ -60,7 +60,7 @@ export function Partnership() {
                   transition={{ delay: 0.2 + index * 0.1 }}
                   className="flex items-start gap-4 p-4 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10"
                 >
-                  <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
                     <benefit.icon className="w-5 h-5 text-primary" />
                   </div>
                   <div>
@@ -103,8 +103,8 @@ export function Partnership() {
             className="hidden lg:block"
           >
             <div className="relative">
-              <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 to-primary/5 rounded-3xl blur-xl" />
-              <div className="relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-3xl p-8 border border-white/10">
+              <div className="absolute -inset-4 bg-linear-to-r from-primary/20 to-primary/5 rounded-3xl blur-xl" />
+              <div className="relative bg-linear-to-br from-gray-800 to-gray-900 rounded-3xl p-8 border border-white/10">
                 <h3 className="text-2xl font-bold mb-6">What We Offer</h3>
                 <ul className="space-y-4">
                   {[

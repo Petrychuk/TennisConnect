@@ -1,8 +1,8 @@
 import { motion } from "framer-motion";
 import { Star, Quote } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import avatar1 from "@assets/generated_images/tennis_club_owner_portrait.png";
-import avatar2 from "@assets/generated_images/female_tennis_coach_portrait.png";
+import avatar1 from "/assets/images/tennis_club_owner_portrait.png";
+import avatar2 from "/assets/images/female_tennis_coach_portrait.png";
 
 const testimonials = [
   {
@@ -31,7 +31,7 @@ const testimonials = [
 export function Testimonials() {
   return (
     <section className="py-24 bg-black text-white relative overflow-hidden" id="reviews">
-      <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+      <div className="absolute top-0 left-0 w-full h-px bg-linear-to-r from-transparent via-white/20 to-transparent" />
       
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">

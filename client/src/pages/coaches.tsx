@@ -22,8 +22,8 @@ import {
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Search, MapPin, Star, Filter, ArrowRight, DollarSign, X, Calendar } from "lucide-react";
-import heroImage from "@assets/generated_images/professional_tennis_coaching_session_on_a_sunny_court.png";
-import avatarImage from "@assets/generated_images/female_tennis_coach_portrait.png";
+import heroImage from "/assets/images/professional_tennis_coaching_session_on_a_sunny_court.png";
+import avatarImage from "/assets/images/female_tennis_coach_portrait.png";
 
 import { COACHES_DATA } from "@/lib/dummy-data";
 

@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Loader2, User, Trophy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
-import heroImage from "@assets/118174652_3488272227872998_1093348718284959373_n_1764914380008.jpg";
+import heroImage from "/assets/images/tennis_main.jpg";
 
 import avatarImage from "@assets/generated_images/female_tennis_coach_portrait.png";
 

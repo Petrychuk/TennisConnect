@@ -15,7 +15,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useLocation, useRoute } from "wouter";
 import { MapPin, Calendar, Trophy, Edit2, Save, ShoppingBag, Plus, Trash2, Camera, Globe } from "lucide-react";
 import { COACHES_DATA, MARKETPLACE_DATA } from "@/lib/dummy-data";
-import bgImage from "@assets/generated_images/subtle_abstract_tennis-themed_background_with_lime_green_accents.png";
+import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.png";
 
 // Default Profile State
 const DEFAULT_PLAYER_PROFILE = {

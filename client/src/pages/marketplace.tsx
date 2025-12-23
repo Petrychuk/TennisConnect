@@ -15,7 +15,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { MARKETPLACE_DATA } from "@/lib/dummy-data";
 
-import heroBg from "@assets/generated_images/elegant_dark_tennis_equipment_display_background.png";
+import heroBg from "/assets/images/elegant_dark_tennis_equipment_display_background.png";
 
 import { Link } from "wouter";
 import { User, ShieldCheck } from "lucide-react";

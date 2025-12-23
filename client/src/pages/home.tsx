@@ -17,13 +17,13 @@ export default function Home() {
       <Navbar />
       
       <main>
-        <Hero />
-        <Features />
+        <Hero />       
         <AboutUs />
-        <Marketplace />
-        <Testimonials />
-        <Partnership />
         <Gallery />
+        <Marketplace />
+        <Testimonials /> 
+        <Features />          
+        <Partnership />
         
         {/* CTA Section */}
         <section className="py-24 px-4 relative overflow-hidden">

@@ -1,8 +1,8 @@
 import { motion } from "framer-motion";
-import img1 from "@assets/generated_images/tennis_match_action_shot_in_sydney.png";
-import img2 from "@assets/generated_images/kids_tennis_training_session.png";
-import img3 from "@assets/generated_images/modern_tennis_club_lounge.png";
-import img4 from "@assets/generated_images/close_up_tennis_racket_hitting_ball.png";
+import img1 from "/assets/images/tennis_match_action_shot_in_sydney.png";
+import img2 from "/assets/images/kids_tennis_training_session.png";
+import img3 from "/assets/images/modern_tennis_club_lounge.png";
+import img4 from "/assets/images/close_up_tennis_racket_hitting_ball.png";
 
 const photos = [
   { src: img1, alt: "Match Action", span: "col-span-1 md:col-span-2 row-span-2" },

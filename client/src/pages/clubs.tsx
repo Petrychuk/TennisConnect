@@ -156,14 +156,15 @@ export default function ClubsPage() {
       {/* Intro / Hero Section */}
       <div className="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
         <div 
-          className="absolute inset-0 z-0 opacity-40"
+          className="absolute inset-0 z-0 opacity-50"
           style={{
-            backgroundImage: "url(https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?q=80&w=2000&auto=format&fit=crop)",
+            backgroundImage: "url(/assets/images/tennisClubs.png)",
+            //backgroundImage: "url(https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?q=80&w=2000&auto=format&fit=crop)",
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
         />
-        <div className="absolute inset-0 bg-linear-to-b from-background/80 via-background/20 to-background z-10" />
+        <div className="absolute inset-0 bg-linear-to-b from-background/30 via-background/10 to-background z-10" />
         
         <div className="relative z-20 container mx-auto px-4 text-center mt-20">
           <motion.div 

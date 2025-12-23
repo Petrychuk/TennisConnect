@@ -39,16 +39,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-import heroImage from "@assets/generated_images/dynamic_tennis_ball_on_court_line_with_dramatic_lighting.png";
-import avatarImage from "@assets/generated_images/female_tennis_coach_portrait.png";
-import gallery1 from "@assets/generated_images/kids_tennis_training_session.png";
-import gallery2 from "@assets/generated_images/tennis_match_action_shot_in_sydney.png";
+import heroImage from "/assets/images/dynamic_tennis_ball_on_court_line_with_dramatic_lighting.png";
+import avatarImage from "/assets/images/female_tennis_coach_portrait.png";
+import gallery1 from "/assets/images/kids_tennis_training_session.png";
+import gallery2 from "/assets/images/tennis_match_action_shot_in_sydney.png";
 
-import student1 from "@assets/generated_images/portrait_of_a_young_male_tennis_student.png";
-import student2 from "@assets/generated_images/portrait_of_a_female_tennis_student.png";
-import student3 from "@assets/generated_images/portrait_of_an_older_male_tennis_student.png";
+import student1 from "/assets/images/portrait_of_a_young_male_tennis_student.png";
+import student2 from "/assets/images/portrait_of_a_female_tennis_student.png";
+import student3 from "/assets/images/portrait_of_an_older_male_tennis_student.png";
 
-import bgImage from "@assets/generated_images/subtle_abstract_tennis-themed_background_with_lime_green_accents.png";
+import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.png";
 
 // Default profile for initialization
 const DEFAULT_PROFILE = {
@@ -113,9 +113,9 @@ import { useRoute } from "wouter";
 
 import { Switch } from "@/components/ui/switch";
 
-import racketImg from "@assets/generated_images/professional_tennis_racket_on_a_court_bench.png";
-import bagImg from "@assets/generated_images/modern_tennis_gear_bag.png";
-import ballsImg from "@assets/generated_images/can_of_new_tennis_balls.png";
+import racketImg from "/assets/images/professional_tennis_racket_on_a_court_bench.png";
+import bagImg from "/assets/images/modern_tennis_gear_bag.png";
+import ballsImg from "/assets/images/can_of_new_tennis_balls.png";
 
 export default function CoachProfile() {
   const [match, params] = useRoute("/coach/:id");

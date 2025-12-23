@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-import heroImage from "@assets/118174652_3488272227872998_1093348718284959373_n_1764914380008.jpg";
+import heroImage from "/assets/images/tennis_main.jpg";
+import { Link } from "wouter";
 
 export function Hero() {
   return (
@@ -50,13 +51,17 @@ export function Hero() {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
-              <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-lg h-14 px-8 rounded-full shadow-[0_0_20px_rgba(223,255,0,0.3)] hover:shadow-[0_0_30px_rgba(223,255,0,0.5)] transition-all duration-300 group cursor-pointer">
-                Find a Partner
-                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Button>
-              <Button size="lg" variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20 font-bold text-lg h-14 px-8 rounded-full backdrop-blur-md cursor-pointer">
-                I'm a Coach
-              </Button>
+              <Link href="/partners">
+                <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-lg h-14 px-8 rounded-full shadow-[0_0_20px_rgba(223,255,0,0.3)] hover:shadow-[0_0_30px_rgba(223,255,0,0.5)] transition-all duration-300 group cursor-pointer">
+                  Find a Partner
+                  <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </Link>
+              <Link href="/coaches">
+                <Button size="lg" variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20 font-bold text-lg h-14 px-8 rounded-full backdrop-blur-md cursor-pointer">
+                  Chose a Coach
+                </Button>
+              </Link>
             </div>
           </motion.div>
         </div>

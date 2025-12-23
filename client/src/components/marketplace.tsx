@@ -77,7 +77,7 @@ export function Marketplace() {
                     ${item.price}
                   </div>
                 </div>
-                <CardContent className="p-4 flex flex-col flex-grow">
+                <CardContent className="p-4 flex flex-col grow">
                   <h3 className="font-bold text-lg truncate mb-1" title={item.title || item.name}>{item.title || item.name}</h3>
                   <p className="text-sm text-muted-foreground mb-2 flex items-center gap-1">
                     <MapPin className="w-3 h-3" /> {item.location}
