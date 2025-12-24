@@ -1,4 +1,5 @@
 import type { Express, Request, Response } from "express";
+import crypto from "crypto";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { hashPassword } from "./auth";
@@ -22,6 +23,17 @@ function requireAuth(req: Request, res: Response, next: Function) {
   res.status(401).json({ message: "Unauthorized" });
 }
 
+function generateSlug(name: string) {
+  const base = name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+
+  const suffix = crypto.randomBytes(2).toString("hex"); // x8k2
+  return `${base}-${suffix}`;
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -39,11 +51,15 @@ export async function registerRoutes(
       if (existingUser) {
         return res.status(400).json({ message: "Email already exists" });
       }
-
+ 
       const hashedPassword = await hashPassword(result.data.password);
+      
+      const slug = generateSlug(result.data.name);
+      
       const user = await storage.createUser({
         ...result.data,
         password: hashedPassword,
+        slug,
       });
 
       req.login({
@@ -131,6 +147,29 @@ export async function registerRoutes(
       res.json(profile || null);
     } catch (error: any) {
       next(error);
+    }
+  });
+
+  app.get("/api/player/:slug", async (req, res, next) => {
+    try {
+      const user = await storage.getUserBySlug(req.params.slug);
+      if (!user || user.role !== "player") {
+        return res.status(404).json({ message: "Player not found" });
+      }
+
+      const profile = await storage.getPlayerProfile(user.id);
+
+      res.json({
+        user: {
+          id: user.id,
+          name: user.name,
+          avatar: user.avatar,
+          slug: user.slug,
+        },
+        profile,
+      });
+    } catch (e) {
+      next(e);
     }
   });
 
@@ -233,6 +272,30 @@ export async function registerRoutes(
       next(error);
     }
   });
+
+  app.get("/api/coach/:slug", async (req, res, next) => {
+    try {
+      const user = await storage.getUserBySlug(req.params.slug);
+      if (!user || user.role !== "coach") {
+        return res.status(404).json({ message: "Coach not found" });
+      }
+
+      const profile = await storage.getCoachProfile(user.id);
+
+      res.json({
+        user: {
+          id: user.id,
+          name: user.name,
+          avatar: user.avatar,
+          slug: user.slug,
+        },
+        profile,
+      });
+    } catch (e) {
+      next(e);
+    }
+  });
+
 
   // ===== TOURNAMENT ROUTES =====
   app.get("/api/tournaments", requireAuth, async (req, res, next) => {

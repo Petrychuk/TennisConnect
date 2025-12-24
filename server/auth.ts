@@ -6,7 +6,6 @@ import createMemoryStore from "memorystore";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
-import type { User } from "@shared/schema";
 
 const scryptAsync = promisify(scrypt);
 
@@ -35,14 +34,16 @@ declare global {
       role: string;
       avatar?: string | null;
       cover?: string | null;
+      slug?: string; 
     }
   }
 }
 
 export function setupAuth(app: Express) {
   const MemoryStore = createMemoryStore(session);
+
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.REPL_ID || "tennis-connect-secret",
+    secret: process.env.SESSION_SECRET || "tennis-connect-secret",
     resave: false,
     saveUninitialized: false,
     cookie: {},
@@ -53,9 +54,7 @@ export function setupAuth(app: Express) {
 
   if (app.get("env") === "production") {
     app.set("trust proxy", 1);
-    sessionSettings.cookie = {
-      secure: true,
-    };
+    sessionSettings.cookie = { secure: true };
   }
 
   app.use(session(sessionSettings));
@@ -69,12 +68,14 @@ export function setupAuth(app: Express) {
         try {
           const user = await storage.getUserByEmail(email);
           if (!user) {
-            return done(null, false, { message: "Incorrect email." });
+            return done(null, false);
           }
+
           const isMatch = await comparePasswords(password, user.password);
           if (!isMatch) {
-            return done(null, false, { message: "Incorrect password." });
+            return done(null, false);
           }
+
           return done(null, {
             id: user.id,
             email: user.email,
@@ -82,31 +83,33 @@ export function setupAuth(app: Express) {
             role: user.role,
             avatar: user.avatar,
             cover: user.cover,
+            slug: user.slug, 
           });
         } catch (err) {
-          return done(err);
+          done(err);
         }
-      },
-    ),
+      }
+    )
   );
 
-  passport.serializeUser((user, done) => {
+  passport.serializeUser((user: any, done) => {
     done(null, user.id);
   });
 
   passport.deserializeUser(async (id: string, done) => {
     try {
       const user = await storage.getUser(id);
-      if (!user) {
-        return done(null, false);
-      }
+      if (!user) return done(null, false);
+
       done(null, {
         id: user.id,
         email: user.email,
         name: user.name,
         role: user.role,
+        slug: user.slug,
         avatar: user.avatar,
         cover: user.cover,
+      
       });
     } catch (err) {
       done(err);

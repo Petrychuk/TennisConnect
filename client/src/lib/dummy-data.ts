@@ -6,6 +6,7 @@ export const COACHES_DATA = [
   {
     id: 1,
     name: "Nataliia Petrychuk",
+    slug: "nataliia-petrychuk-x8k2",
     title: "Tennis Coach | Beginner & Intermediate Specialist",
     location: "Manly",
     locations: ["Manly", "Mosman", "Freshwater", "Brookvale"],
@@ -31,6 +32,7 @@ export const COACHES_DATA = [
   {
     id: 2,
     name: "David Chen",
+    slug: "david-chen-x8k3",
     title: "Former ATP Player & Elite Coach",
     location: "Sydney CBD",
     locations: ["Sydney CBD", "Surry Hills", "Redfern"],
@@ -47,6 +49,7 @@ export const COACHES_DATA = [
   {
     id: 3,
     name: "Emily Wilson",
+    slug: "emily-wilson-x8o2",
     title: "Junior Development Specialist",
     location: "Eastern Suburbs",
     locations: ["Bondi Beach", "Coogee", "Bronte"],
@@ -63,6 +66,7 @@ export const COACHES_DATA = [
   {
     id: 4,
     name: "Michael Ross",
+    slug: "michael-ross-x8q2",
     title: "Club Coach & Tournament Director",
     location: "Inner West",
     locations: ["Newtown", "Marrickville", "Stanmore"],
@@ -79,6 +83,7 @@ export const COACHES_DATA = [
   {
     id: 5,
     name: "Jessica Lee",
+    slug: "jessica-lee-x1k2",
     title: "Performance Coach",
     location: "North Shore",
     locations: ["Chatswood", "Gordon", "Killara"],
@@ -95,6 +100,7 @@ export const COACHES_DATA = [
   {
     id: 6,
     name: "James Wilson",
+    slug: "James-wilson-y8k2",
     title: "Tennis Australia Club Professional",
     location: "Sutherland Shire",
     locations: ["Cronulla", "Miranda", "Sutherland"],
@@ -333,33 +339,40 @@ export const PARTNERS_DATA = [
   {
     id: 1,
     name: "John D.",
+    slug: "john-dev-x8k5",
     location: "Bondi Beach, NSW",
     skillLevel: "Advanced",
     bio: "I've been playing tennis for 15 years. Looking for a hitting partner for weekday mornings. I love high-intensity rallies.",
     avatar: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=400&h=400&fit=crop",
     available: true
+    
   },
   {
     id: 2,
     name: "Sarah M.",
+    slug: "sarah-moss-x9k2",
     location: "Surry Hills, NSW",
     skillLevel: "Intermediate",
     bio: "Looking for friendly matches on weekends. I enjoy doubles as well!",
     avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop",
     available: true
+   
   },
   {
     id: 3,
     name: "Mike R.",
+    slug: "mike-rubio-x0k2",
     location: "Manly, NSW",
     skillLevel: "Beginner",
     bio: "Just started playing tennis a few months ago. Looking for someone to practice with.",
     avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop",
     available: false
+    
   },
   {
     id: 4,
     name: "Emily W.",
+    slug: "emily-whatson-x8p2",
     location: "Coogee, NSW",
     skillLevel: "Advanced",
     bio: "Former college player. Looking for competitive sets.",
@@ -369,6 +382,7 @@ export const PARTNERS_DATA = [
   {
     id: 5,
     name: "David C.",
+    slug: "david-cooper-m8k2",
     location: "Sydney CBD, NSW",
     skillLevel: "Intermediate",
     bio: "Available evenings after work. Let's hit!",
@@ -378,6 +392,7 @@ export const PARTNERS_DATA = [
   {
     id: 6,
     name: "Jessica L.",
+    slug: "jessica-lymc-x8s2",
     location: "Chatswood, NSW",
     skillLevel: "Beginner",
     bio: "Looking for a patient partner to practice basics.",
@@ -387,6 +402,7 @@ export const PARTNERS_DATA = [
   {
     id: 7,
     name: "James W.",
+    slug: "james-petrychuk-a8k2",
     location: "Sutherland, NSW",
     skillLevel: "Advanced",
     bio: "Love playing matches. Contact me if you want a challenge.",
@@ -396,6 +412,7 @@ export const PARTNERS_DATA = [
   {
     id: 8,
     name: "Anna K.",
+    slug: "anna-petr-x8k9",
     location: "Parramatta, NSW",
     skillLevel: "Intermediate",
     bio: "Looking for mixed doubles partner for upcoming tournament.",

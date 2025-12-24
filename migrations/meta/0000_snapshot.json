@@ -1,5 +1,5 @@
 {
-  "id": "1a5a97f6-c5bd-4f25-a10e-b6f729779ad5",
+  "id": "36a381a3-eb3c-4175-b46f-a1b09663c111",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -609,6 +609,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "slug": {
+          "name": "slug",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
         "avatar": {
           "name": "avatar",
           "type": "text",
@@ -638,6 +644,13 @@
           "nullsNotDistinct": false,
           "columns": [
             "email"
+          ]
+        },
+        "users_slug_unique": {
+          "name": "users_slug_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "slug"
           ]
         }
       },

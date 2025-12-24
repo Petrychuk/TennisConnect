@@ -25,12 +25,41 @@ import {
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
 
+function slugify(text: string) {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-");
+}
+
+async function generateUniqueSlug(name: string): Promise<string> {
+  const base = slugify(name);
+  let slug = base;
+  let counter = 1;
+
+  while (true) {
+    const [existing] = await db
+      .select()
+      .from(users)
+      .where(eq(users.slug, slug));
+
+    if (!existing) return slug;
+
+    slug = `${base}-${Math.random().toString(36).slice(2, 6)}`;
+    counter++;
+  }
+}
+
 export interface IStorage {
+  
   // Users
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User>;
+  getUserBySlug(slug: string): Promise<User | undefined>;
+
   
   // Player Profiles
   getPlayerProfile(userId: string): Promise<PlayerProfile | undefined>;
@@ -81,12 +110,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
+    const slug = await generateUniqueSlug(insertUser.name);
+
     const [user] = await db
       .insert(users)
-      .values(insertUser)
+      .values({
+        ...insertUser,
+        slug,
+      })
       .returning();
+
     return user;
-  }
+}
 
   async updateUser(id: string, updates: Partial<User>): Promise<User> {
     const [user] = await db
@@ -96,6 +131,11 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return user;
   }
+
+  async getUserBySlug(slug: string): Promise<User | undefined> {
+  const [user] = await db.select().from(users).where(eq(users.slug, slug));
+  return user;
+}
 
   // Player Profiles
   async getPlayerProfile(userId: string): Promise<PlayerProfile | undefined> {

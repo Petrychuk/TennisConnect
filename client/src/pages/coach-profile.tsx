@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MapPin, Camera, Edit2, Save, Plus, Trophy, Clock, DollarSign, X, ShoppingBag, Mail, Phone, MessageCircle, Send, Check, ChevronsUpDown, Calendar, ChevronRight, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
-import { useLocation } from "wouter";
+import { useRouter, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import {
   Command,
@@ -129,8 +129,7 @@ export default function CoachProfile() {
   // 2. /coach/1 is the user's profile IF they are logged in (assuming ID 1 is the user)
   const isGenericProfileRoute = !profileId || profileId === "profile";
   // Only consider it "own profile" if the user is actually a coach
-  const isOwnProfile = (isGenericProfileRoute && user?.role === "coach") || 
-                       (isAuthenticated && profileId === "1" && user?.role === "coach");
+  const isOwnProfile = profileId === "profile" || (!profileId && user?.role === "coach");
 
   const [isEditing, setIsEditing] = useState(false);
   const [openCombobox, setOpenCombobox] = useState(false);
@@ -182,177 +181,139 @@ export default function CoachProfile() {
   // Load profile logic
   useEffect(() => {
     // Redirect if trying to access generic profile route without auth
-    if (isGenericProfileRoute && !isAuthenticated) {
+    if (!isAuthenticated) {
       setLocation("/auth");
       return;
     }
 
     // Redirect if a player tries to access generic coach profile
-    if (isGenericProfileRoute && isAuthenticated && user?.role === "player") {
+    if (isOwnProfile && user?.role !== "coach") {
       setLocation("/player/profile");
       return;
     }
 
     // Case 1: Viewing another profile (Read Only) or Guest viewing ID 1
-    if (!isOwnProfile && profileId) {
-      const coachData = COACHES_DATA.find(c => c.id === parseInt(profileId));
-      if (coachData) {
-        let displayData: any = { ...coachData };
+    if (profileId && profileId !== "profile" && profileId !== user?.id) {
+    const coachData = COACHES_DATA.find(
+      c => String(c.id) === String(profileId)
+    );
 
-        // SIMULATION: If viewing ID 1 (the default demo user), check if there is 
-        // updated data in localStorage and show that instead of the static dummy data.
-        // This makes the prototype feel "real" even when viewing as a guest.
-        if (profileId === "1") {
-           const savedProfile = localStorage.getItem("tennis_connect_coach_profile");
-           if (savedProfile) {
-             try {
-               const parsed = JSON.parse(savedProfile);
-               displayData = {
-                 ...displayData,
-                 name: parsed.name || displayData.name,
-                 title: parsed.title || displayData.title,
-                 bio: parsed.bio || displayData.bio,
-                 // Handle rate as string or number
-                 rate: parsed.rate ? parseInt(parsed.rate) : displayData.rate,
-                 // Handle experience formatting
-                 experience: parsed.experience ? (parsed.experience.includes('year') ? parsed.experience : `${parsed.experience} years`) : displayData.experience,
-                 image: parsed.avatar || displayData.image,
-                 cover: parsed.cover || displayData.cover,
-                 tags: parsed.tags || displayData.tags || [],
-                 locations: parsed.locations || displayData.locations,
-                 schedule: parsed.schedule || displayData.schedule || DEFAULT_PROFILE.schedule,
-                 response_time: parsed.response_time || DEFAULT_PROFILE.response_time,
-                 accepting_students: parsed.accepting_students ?? DEFAULT_PROFILE.accepting_students,
-                 active_students: parsed.active_students || DEFAULT_PROFILE.active_students,
-                 rating: parsed.rating || DEFAULT_PROFILE.rating,
-                 hours_taught: parsed.hours_taught || DEFAULT_PROFILE.hours_taught,
-                 attendance: parsed.attendance || DEFAULT_PROFILE.attendance,
-                 phone: parsed.phone || DEFAULT_PROFILE.phone,
-                 email: parsed.email || (profileId === "1" ? "nataliia.petrychuk@gmail.com" : DEFAULT_PROFILE.email),
-                 marketplace: parsed.marketplace || DEFAULT_PROFILE.marketplace
-               };
-             } catch (e) {
-               console.error("Failed to sync guest view with local storage", e);
-             }
-           }
-        }
+    if (!coachData) {
+      toast({
+        variant: "destructive",
+        title: "Not found",
+        description: "Coach profile not found",
+      });
+      setLocation("/coaches");
+      return;
+    }
 
-        setProfile({
-            name: displayData.name,
-            title: displayData.title,
-            location: displayData.location, // Main location
-            bio: displayData.bio,
-            rate: displayData.rate.toString(),
-            experience: displayData.experience.replace(' years', ''),
-            locations: displayData.locations || [displayData.location],
-            tags: displayData.tags || [],
-            photos: displayData.photos || [],
-            avatar: displayData.image,
-            cover: displayData.cover || heroImage,
-            schedule: displayData.schedule || DEFAULT_PROFILE.schedule,
+    setProfile({
+      ...DEFAULT_PROFILE,
+      ...coachData,
+      rate: coachData.rate ? String(coachData.rate) : DEFAULT_PROFILE.rate,
+    });
+
+    setLoading(false);
+    return;
+  }
+
+  // ===== CASE 2: VIEWING OWN PROFILE (EDITABLE) =====
+  const loadProfile = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // ---- Load coach profile ----
+      const profileRes = await fetch("/api/coach-profile", {
+        credentials: "include",
+      });
+
+      if (profileRes.ok) {
+        const data = await profileRes.json();
+
+        if (data) {
+          setProfileData(data);
+          setProfile({
+            ...DEFAULT_PROFILE,
+
+            // user data (priority)
+            name: user.name || data.name || DEFAULT_PROFILE.name,
+            avatar: user.avatar || DEFAULT_PROFILE.avatar,
+            cover: user.cover || DEFAULT_PROFILE.cover,
+            email: user.email || data.email || DEFAULT_PROFILE.email,
+
+            // profile data
+            title: data.title || DEFAULT_PROFILE.title,
+            location: data.location || DEFAULT_PROFILE.location,
+            locations: data.locations || DEFAULT_PROFILE.locations,
+            bio: data.bio || DEFAULT_PROFILE.bio,
+            rate: data.rate ? String(data.rate) : DEFAULT_PROFILE.rate,
+            experience: data.experience || DEFAULT_PROFILE.experience,
+            tags: data.tags || DEFAULT_PROFILE.tags,
+            photos: data.photos || DEFAULT_PROFILE.photos,
+            schedule: data.schedule || DEFAULT_PROFILE.schedule,
+            phone: data.phone || DEFAULT_PROFILE.phone,
+
+            // stats (пока дефолт)
             response_time: DEFAULT_PROFILE.response_time,
             accepting_students: DEFAULT_PROFILE.accepting_students,
             active_students: DEFAULT_PROFILE.active_students,
             rating: DEFAULT_PROFILE.rating,
             hours_taught: DEFAULT_PROFILE.hours_taught,
             attendance: DEFAULT_PROFILE.attendance,
-            phone: DEFAULT_PROFILE.phone,
-            email: (isOwnProfile && user?.email) ? user.email : DEFAULT_PROFILE.email,
-            marketplace: DEFAULT_PROFILE.marketplace
-        });
-      }
-      return;
-    }
 
-    // Case 2: Viewing own profile (Editable)
-    // Only loads here if isOwnProfile is true (which means authenticated)
-    const loadProfile = async () => {
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        
-        // Load coach profile
-        const profileRes = await fetch("/api/coach-profile", {
-          credentials: "include"
-        });
-        
-        if (profileRes.ok) {
-          const data = await profileRes.json();
-          if (data) {
-            setProfileData(data);
-            setProfile({
-              ...DEFAULT_PROFILE,
-              name: user.name || data.name || DEFAULT_PROFILE.name,
-              avatar: user.avatar || DEFAULT_PROFILE.avatar,
-              cover: user.cover || DEFAULT_PROFILE.cover,
-              title: data.title || DEFAULT_PROFILE.title,
-              location: data.location || DEFAULT_PROFILE.location,
-              locations: data.locations || DEFAULT_PROFILE.locations,
-              bio: data.bio || DEFAULT_PROFILE.bio,
-              rate: data.rate || DEFAULT_PROFILE.rate,
-              experience: data.experience || DEFAULT_PROFILE.experience,
-              tags: data.tags || DEFAULT_PROFILE.tags,
-              photos: data.photos || DEFAULT_PROFILE.photos,
-              schedule: data.schedule || DEFAULT_PROFILE.schedule,
-              phone: data.phone || DEFAULT_PROFILE.phone,
-              email: data.email || user.email || DEFAULT_PROFILE.email,
-              response_time: DEFAULT_PROFILE.response_time,
-              accepting_students: DEFAULT_PROFILE.accepting_students,
-              active_students: DEFAULT_PROFILE.active_students,
-              rating: DEFAULT_PROFILE.rating,
-              hours_taught: DEFAULT_PROFILE.hours_taught,
-              attendance: DEFAULT_PROFILE.attendance,
-              marketplace: []
-            });
-          } else {
-            // No profile exists yet, use user data
-            setProfile(prev => ({
-              ...prev,
-              name: user.name || prev.name,
-              avatar: user.avatar || prev.avatar,
-              cover: user.cover || prev.cover,
-              email: user.email || prev.email
-            }));
-          }
+            marketplace: [],
+          });
         } else {
-          // Profile doesn't exist yet
+          // Профиль ещё не создан
           setProfile(prev => ({
             ...prev,
             name: user.name || prev.name,
             avatar: user.avatar || prev.avatar,
             cover: user.cover || prev.cover,
-            email: user.email || prev.email
+            email: user.email || prev.email,
           }));
         }
-
-        // Load marketplace items
-        const marketplaceRes = await fetch("/api/marketplace/user", {
-          credentials: "include"
-        });
-        if (marketplaceRes.ok) {
-          const marketplaceData = await marketplaceRes.json();
-          setMarketplaceItems(marketplaceData || []);
-        }
-
-      } catch (error) {
-        console.error("Failed to load profile", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to load profile data"
-        });
-      } finally {
-        setLoading(false);
+      } else {
+        // Профиля нет
+        setProfile(prev => ({
+          ...prev,
+          name: user.name || prev.name,
+          avatar: user.avatar || prev.avatar,
+          cover: user.cover || prev.cover,
+          email: user.email || prev.email,
+        }));
       }
-    };
 
-    loadProfile();
-  }, [isAuthenticated, user, setLocation, isOwnProfile, profileId]);
+      // ---- Load marketplace items ----
+      const marketplaceRes = await fetch("/api/marketplace/user", {
+        credentials: "include",
+      });
 
+      if (marketplaceRes.ok) {
+        const marketplaceData = await marketplaceRes.json();
+        setMarketplaceItems(marketplaceData || []);
+      }
+
+    } catch (error) {
+      console.error("Failed to load profile", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load profile data",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  loadProfile();
+}, [isAuthenticated, user, profileId]);
 
   const availableLocations = [
     "Bondi Beach", "Manly", "Surry Hills", "Mosman", "Coogee", "Parramatta", "Chatswood", "Newtown", "Freshwater", "Brookvale"
@@ -602,66 +563,75 @@ export default function CoachProfile() {
     });
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, field: 'avatar' | 'cover' | 'photo') => {
+  const handleFileChange = async (
+  e: React.ChangeEvent<HTMLInputElement>,
+  field: 'avatar' | 'cover' | 'photo'
+  ) => {
     const file = e.target.files?.[0];
-    if (file && user) {
-      try {
-        let result: string;
+    if (!file || !user) return;
 
-        // If it's an image, resize it
-        if (file.type.startsWith('image/')) {
-          result = await resizeImage(file);
-        } else {
-          // For videos, still check size limit strictly
-          if (file.size > 5 * 1024 * 1024) {
-             toast({
-              variant: "destructive",
-              title: "Video too large",
-              description: "Please select a video under 5MB for this prototype.",
-            });
-            return;
-          }
-          
-          // Read video as base64
-          result = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(file);
+    try {
+      let result: string;
+
+      // Images
+      if (file.type.startsWith("image/")) {
+        result = await resizeImage(file);
+      } else {
+        // Videos — max 5MB
+        if (file.size > 5 * 1024 * 1024) {
+          toast({
+            variant: "destructive",
+            title: "Video too large",
+            description: "Please select a video under 5MB.",
           });
+          return;
         }
 
-        if (field === 'avatar' || field === 'cover') {
-          // Update user avatar/cover via API
-          const res = await fetch(`/api/users/${user.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ [field]: result }),
-            credentials: "include"
-          });
-
-          if (!res.ok) throw new Error("Failed to update photo");
-
-          // Update local state
-          setProfile({ ...profile, [field]: result });
-          
-          // Update auth context
-          await updateUser({ [field]: result });
-
-          toast({ title: "Photo Updated", description: `Your ${field} has been updated.` });
-        } else if (field === 'photo') {
-          setProfile({ ...profile, photos: [...profile.photos, result] });
-          toast({ title: "Media Added", description: "New item added to gallery. Don't forget to save changes." });
-        }
-      } catch (error) {
-        console.error("Error processing file", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to process file.",
+        result = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
         });
       }
+
+      // AVATAR / COVER
+      if (field === "avatar" || field === "cover") {
+        await updateUser({ [field]: result });
+
+        setProfile(prev => ({
+          ...prev,
+          [field]: result,
+        }));
+
+        toast({
+          title: "Photo Updated",
+          description: `Your ${field} has been updated.`,
+        });
+      }
+
+      // GALLERY PHOTO
+      if (field === "photo") {
+        setProfile(prev => ({
+          ...prev,
+          photos: [...prev.photos, result],
+        }));
+
+        toast({
+          title: "Media Added",
+          description: "New item added to gallery. Don't forget to save changes.",
+        });
+      }
+
+    } catch (error) {
+      console.error("Error processing file", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to process file.",
+      });
     }
   };
+
 
   return (
     <div className="min-h-screen bg-background font-sans relative">

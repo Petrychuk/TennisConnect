@@ -165,8 +165,8 @@ export default function PlayerRegistration() {
                 JS
               </div>
               <div>
-                <div className="font-bold">Jessica Smith</div>
-                <div className="text-primary text-sm">Player since 2024</div>
+                <div className="font-bold">Nataliia Petrychuk</div>
+                <div className="text-primary text-sm">Player since 2016</div>
               </div>
             </div>
           </div>

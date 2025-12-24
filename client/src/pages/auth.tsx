@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import heroImage from "/assets/images/tennis_main.jpg";
 
-import avatarImage from "@assets/generated_images/female_tennis_coach_portrait.png";
+import avatarImage from "/assets/images/female_tennis_coach_portrait.png";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -50,52 +50,60 @@ export default function AuthPage() {
   });
 
   const onLogin = async (data: z.infer<typeof loginSchema>) => {
-    setIsLoading(true);
-    try {
-      await login(data.email, data.password);
-      
-      toast({
-        title: "Welcome back!",
-        description: "You have successfully signed in.",
-      });
-      
-      setLocation("/");
-    } catch (error: any) {
-      toast({
-        title: "Login failed",
-        description: error.message || "Please check your credentials and try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  setIsLoading(true);
+  try {
+    // login должен возвращать объект пользователя с id и role
+    const loggedInUser = await login(data.email, data.password);
 
-  const onRegister = async (data: z.infer<typeof registerSchema>) => {
-    setIsLoading(true);
-    try {
-      await register(data.email, data.password, data.name, data.role);
-      
-      toast({
-        title: "Account created",
-        description: "Welcome to TennisConnect!",
-      });
-      
-      if (data.role === "coach") {
-        setLocation("/coach/profile");
-      } else {
-        setLocation("/player/profile");
-      }
-    } catch (error: any) {
-      toast({
-        title: "Registration failed",
-        description: error.message || "Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
+    toast({
+      title: "Welcome back!",
+      description: "You have successfully signed in.",
+    });
+
+    const usloggedInUserer = await login(data.email, data.password);
+    setLocation(`/${loggedInUser.role}/${loggedInUser.id}`);
+
+  } catch (error: any) {
+    toast({
+      title: "Login failed",
+      description: error.message || "Please check your credentials and try again.",
+      variant: "destructive",
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+const onRegister = async (data: z.infer<typeof registerSchema>) => {
+  setIsLoading(true);
+  try {
+    // register должен возвращать объект пользователя с id и role
+    const user = await register(data.email, data.password, data.name, data.role);
+
+    toast({
+      title: "Account created",
+      description: "Welcome to TennisConnect!",
+    });
+
+    // Редирект на профиль с id
+    if (user.role === "coach") {
+      setLocation(`/coach/${user.id}`);
+    } else if (user.role === "player") {
+      setLocation(`/player/${user.id}`);
+    } else {
+      setLocation("/"); // на всякий случай fallback
     }
-  };
+  } catch (error: any) {
+    toast({
+      title: "Registration failed",
+      description: error.message || "Please try again.",
+      variant: "destructive",
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   const handleSocialLogin = (provider: string) => {
     toast({

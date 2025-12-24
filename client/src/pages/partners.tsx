@@ -17,14 +17,17 @@ import { motion } from "framer-motion";
 import { Link } from "wouter";
 
 interface PartnerData {
+  
   id: string | number;
+  userId?: string;
+  slug?: string;
   name: string;
   location: string;
   skillLevel: string;
   avatar: string;
   available: boolean;
   bio: string;
-  userId?: string;
+  
 }
 
 export default function PartnersPage() {
@@ -161,7 +164,7 @@ export default function PartnersPage() {
 
     return matchesSearch && matchesLevel;
   });
-
+  
   return (
     <div className="min-h-screen bg-background font-sans">
       <Navbar />
@@ -270,15 +273,15 @@ export default function PartnersPage() {
                 </CardContent>
                 
                 <CardFooter className="p-4 pt-0 grid grid-cols-2 gap-3">
-                  <Link href={`/player/${partner.id}`}>
-                    <Button variant="outline" className="w-full text-xs font-bold h-9 cursor-pointer" data-testid={`button-profile-${partner.id}`}>
+                  <Link href={`/player/${partner.slug ?? partner.userId ?? partner.id}`}>
+                    <Button variant="outline" className="w-full text-xs font-bold h-9 cursor-pointer" data-testid={`button-profile-${partner.slug}`}>
                       <User className="w-3 h-3 mr-1" /> Profile
                     </Button>
                   </Link>
                   <Button 
                     className="w-full text-xs font-bold h-9 bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
                     onClick={() => openMessageModal(partner)}
-                    data-testid={`button-message-${partner.id}`}
+                    data-testid={`button-message-${partner.slug}`}
                   >
                     <MessageCircle className="w-3 h-3 mr-1" /> Message
                   </Button>

@@ -41,7 +41,7 @@ export default function PlayerProfile() {
   const { toast } = useToast();
 
   const isGenericProfileRoute = !profileId || profileId === "profile";
-  const isOwnProfile = isGenericProfileRoute || (isAuthenticated && profileId === "1"); // Assuming ID 1 is current user for demo
+  const isOwnProfile = isGenericProfileRoute || (isAuthenticated && user?.id === profileId); 
 
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState(DEFAULT_PLAYER_PROFILE);
@@ -69,10 +69,16 @@ export default function PlayerProfile() {
     photos: [] as string[]
   });
   const [tournaments, setTournaments] = useState<any[]>([]);
+  
+  useEffect(() => {
+  if (!loading && isAuthenticated && user && isGenericProfileRoute) {
+    setLocation(`/player/${user.id}`);
+  }
+}, [loading, isAuthenticated, user, isGenericProfileRoute]);
 
   // Load Profile Logic
   useEffect(() => {
-    if (isGenericProfileRoute && !isAuthenticated) {
+    if (!loading && isGenericProfileRoute && !isAuthenticated) {
       setLocation("/auth");
       return;
     }
@@ -160,7 +166,7 @@ export default function PlayerProfile() {
     };
 
     loadProfile();
-  }, [isAuthenticated, user, isOwnProfile]);
+  }, [loading, isAuthenticated, user, isOwnProfile]);
 
   const handleSave = async () => {
     if (!user) return;
