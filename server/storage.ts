@@ -60,7 +60,6 @@ export interface IStorage {
   updateUser(id: string, updates: Partial<User>): Promise<User>;
   getUserBySlug(slug: string): Promise<User | undefined>;
 
-  
   // Player Profiles
   getPlayerProfile(userId: string): Promise<PlayerProfile | undefined>;
   getAllPlayers(): Promise<PlayerProfile[]>;
@@ -98,16 +97,23 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  db: any;
-  // Users
+  // =====================
+  // USERS
+  // =====================
+
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user || undefined;
+    return user;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user || undefined;
+    return user;
+  }
+
+  async getUserBySlug(slug: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.slug, slug));
+    return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
@@ -122,7 +128,7 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     return user;
-}
+  }
 
   async updateUser(id: string, updates: Partial<User>): Promise<User> {
     const [user] = await db
@@ -130,36 +136,36 @@ export class DatabaseStorage implements IStorage {
       .set(updates)
       .where(eq(users.id, id))
       .returning();
+
     return user;
   }
 
-  async getUserBySlug(slug: string): Promise<User | undefined> {
-  const [user] = await db.select().from(users).where(eq(users.slug, slug));
-  return user;
-}
+  // =====================
+  // PLAYER PROFILES
+  // =====================
 
-  // Player Profiles
   async getPlayerProfile(userId: string): Promise<PlayerProfile | undefined> {
     const [profile] = await db
       .select()
       .from(playerProfiles)
       .where(eq(playerProfiles.userId, userId));
-    return profile || undefined;
+
+    return profile;
   }
 
   async getAllPlayers(): Promise<PlayerProfile[]> {
-    return await db.select().from(playerProfiles);
+    return db.select().from(playerProfiles);
   }
 
   async createPlayerProfile(profile: InsertPlayerProfile): Promise<PlayerProfile> {
-    const profileData = {
-      ...profile,
-      preferredCourts: profile.preferredCourts as string[] | undefined,
-    };
     const [newProfile] = await db
       .insert(playerProfiles)
-      .values(profileData)
+      .values({
+        ...profile,
+        preferredCourts: profile.preferredCourts as string[] | undefined,
+      })
       .returning();
+
     return newProfile;
   }
 
@@ -169,62 +175,7 @@ export class DatabaseStorage implements IStorage {
       .set(updates)
       .where(eq(playerProfiles.id, id))
       .returning();
-    return profile;
-  }
 
-  // Coach Profiles
-  async getCoachProfile(userId: string): Promise<CoachProfile | undefined> {
-    const [profile] = await db
-      .select()
-      .from(coachProfiles)
-      .where(eq(coachProfiles.userId, userId));
-    return profile || undefined;
-  }
-
-  async getAllCoaches(): Promise<CoachProfile[]> {
-    return await db.select().from(coachProfiles);
-  }
-
-  async getAllCoachesWithProfiles(): Promise<
-      {
-        user: typeof users.$inferSelect;
-        profile: typeof coachProfiles.$inferSelect;
-      }[]
-    > {
-      return this.db
-        .select({
-          user: users,
-          profile: coachProfiles,
-        })
-        .from(users)
-        .innerJoin(
-          coachProfiles,
-          eq(users.id, coachProfiles.userId)
-        )
-        .where(eq(users.role, "coach"));
-    }
-
-
-  async createCoachProfile(profile: InsertCoachProfile): Promise<CoachProfile> {
-    const profileData = {
-      ...profile,
-      locations: profile.locations as string[] | undefined,
-      tags: profile.tags as string[] | undefined,
-      photos: profile.photos as string[] | undefined,
-    };
-    const [newProfile] = await db
-      .insert(coachProfiles)
-      .values(profileData)
-      .returning();
-    return newProfile;
-  }
-
-  async updateCoachProfile(id: string, updates: Partial<CoachProfile>): Promise<CoachProfile> {
-    const [profile] = await db
-      .update(coachProfiles)
-      .set(updates)
-      .where(eq(coachProfiles.id, id))
-      .returning();
     return profile;
   }
 
@@ -235,6 +186,66 @@ export class DatabaseStorage implements IStorage {
     return this.updatePlayerProfile(profile.id, data);
   }
 
+  // =====================
+  // COACH PROFILES
+  // =====================
+
+  async getCoachProfile(userId: string): Promise<CoachProfile | undefined> {
+    const [profile] = await db
+      .select()
+      .from(coachProfiles)
+      .where(eq(coachProfiles.userId, userId));
+
+    return profile;
+  }
+
+  async getAllCoaches(): Promise<CoachProfile[]> {
+    return db.select().from(coachProfiles);
+  }
+
+  async getAllCoachesWithProfiles(): Promise<
+    {
+      user: typeof users.$inferSelect;
+      profile: typeof coachProfiles.$inferSelect;
+    }[]
+  > {
+    return db
+      .select({
+        user: users,
+        profile: coachProfiles,
+      })
+      .from(users)
+      .innerJoin(
+        coachProfiles,
+        eq(users.id, coachProfiles.userId)
+      )
+      .where(eq(users.role, "coach"));
+  }
+
+  async createCoachProfile(profile: InsertCoachProfile): Promise<CoachProfile> {
+    const [newProfile] = await db
+      .insert(coachProfiles)
+      .values({
+        ...profile,
+        locations: profile.locations as string[] | undefined,
+        tags: profile.tags as string[] | undefined,
+        photos: profile.photos as string[] | undefined,
+      })
+      .returning();
+
+    return newProfile;
+  }
+
+  async updateCoachProfile(id: string, updates: Partial<CoachProfile>): Promise<CoachProfile> {
+    const [profile] = await db
+      .update(coachProfiles)
+      .set(updates)
+      .where(eq(coachProfiles.id, id))
+      .returning();
+
+    return profile;
+  }
+
   async updateCoachProfileByUserId(userId: string, data: any) {
     const profile = await this.getCoachProfile(userId);
     if (!profile) throw new Error("Coach profile not found");
@@ -242,23 +253,26 @@ export class DatabaseStorage implements IStorage {
     return this.updateCoachProfile(profile.id, data);
   }
 
-  // Tournaments
+  // =====================
+  // TOURNAMENTS
+  // =====================
+
   async getUserTournaments(userId: string): Promise<Tournament[]> {
-    return await db
+    return db
       .select()
       .from(tournaments)
       .where(eq(tournaments.userId, userId));
   }
 
   async createTournament(tournament: InsertTournament): Promise<Tournament> {
-    const tournamentData = {
-      ...tournament,
-      photos: tournament.photos as string[] | undefined,
-    };
     const [newTournament] = await db
       .insert(tournaments)
-      .values(tournamentData)
+      .values({
+        ...tournament,
+        photos: tournament.photos as string[] | undefined,
+      })
       .returning();
+
     return newTournament;
   }
 
@@ -266,23 +280,29 @@ export class DatabaseStorage implements IStorage {
     await db.delete(tournaments).where(eq(tournaments.id, id));
   }
 
-  // Marketplace
+  // =====================
+  // MARKETPLACE
+  // =====================
+
   async getAllMarketplaceItems(): Promise<MarketplaceItem[]> {
-    return await db.select().from(marketplaceItems);
+    return db.select().from(marketplaceItems);
   }
 
   async getUserMarketplaceItems(userId: string): Promise<MarketplaceItem[]> {
-    return await db
+    return db
       .select()
       .from(marketplaceItems)
       .where(eq(marketplaceItems.userId, userId));
   }
 
-  async createMarketplaceItem(item: InsertMarketplaceItem): Promise<MarketplaceItem> {
+  async createMarketplaceItem(
+    item: InsertMarketplaceItem
+  ): Promise<MarketplaceItem> {
     const [newItem] = await db
       .insert(marketplaceItems)
       .values(item)
       .returning();
+
     return newItem;
   }
 
@@ -290,26 +310,32 @@ export class DatabaseStorage implements IStorage {
     await db.delete(marketplaceItems).where(eq(marketplaceItems.id, id));
   }
 
-  // Clubs
+  // =====================
+  // CLUBS
+  // =====================
+
   async getAllClubs(): Promise<Club[]> {
-    return await db.select().from(clubs);
+    return db.select().from(clubs);
   }
 
   async createClub(club: InsertClub): Promise<Club> {
-    const clubData = {
-      ...club,
-      services: club.services as string[] | undefined,
-    };
     const [newClub] = await db
       .insert(clubs)
-      .values(clubData)
+      .values({
+        ...club,
+        services: club.services as string[] | undefined,
+      })
       .returning();
+
     return newClub;
   }
 
-  // Messages
+  // =====================
+  // MESSAGES
+  // =====================
+
   async getUserMessages(userId: string): Promise<Message[]> {
-    return await db
+    return db
       .select()
       .from(messages)
       .where(eq(messages.recipientId, userId))
@@ -320,7 +346,13 @@ export class DatabaseStorage implements IStorage {
     const unreadMessages = await db
       .select()
       .from(messages)
-      .where(and(eq(messages.recipientId, userId), eq(messages.isRead, false)));
+      .where(
+        and(
+          eq(messages.recipientId, userId),
+          eq(messages.isRead, false)
+        )
+      );
+
     return unreadMessages.length;
   }
 
@@ -329,7 +361,8 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(messages)
       .where(eq(messages.id, id));
-    return message || undefined;
+
+    return message;
   }
 
   async createMessage(message: InsertMessage): Promise<Message> {
@@ -337,6 +370,7 @@ export class DatabaseStorage implements IStorage {
       .insert(messages)
       .values(message)
       .returning();
+
     return newMessage;
   }
 
@@ -346,6 +380,7 @@ export class DatabaseStorage implements IStorage {
       .set({ isRead: true })
       .where(eq(messages.id, id))
       .returning();
+
     return message;
   }
 
@@ -354,4 +389,4 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-export const storage = new DatabaseStorage();
+  export const storage = new DatabaseStorage();

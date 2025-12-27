@@ -17,10 +17,10 @@ import { Badge } from "@/components/ui/badge";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { user, logout, isAuthenticated } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
-  
+ 
   const profileHref =
   user?.role && user?.slug
     ? `/${user.role}/${user.slug}`
@@ -132,7 +132,13 @@ export function Navbar() {
                   </DropdownMenuItem>
                   <DropdownMenuItem className="cursor-pointer">Settings</DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive cursor-pointer">
+                  <DropdownMenuItem 
+                    className="text-destructive focus:text-destructive cursor-pointer" 
+                    onClick={async () => {
+                      await logout();
+                      setLocation("/");
+                    }}
+                  >
                     <LogOut className="mr-2 h-4 w-4" />
                     Sign Out
                   </DropdownMenuItem>

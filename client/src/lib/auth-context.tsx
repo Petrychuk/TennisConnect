@@ -40,37 +40,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * INIT AUTH ON APP LOAD
    */
   useEffect(() => {
-    async function initAuth() {
-      setLoading(true);
-      let resolvedUser: User | null = null;
+      let cancelled = false;
 
-      try {
-        const res = await fetch("/api/auth/me", {
-          credentials: "include",
-        });
+      async function initAuth() {
+        setLoading(true);
 
-        if (res.status === 401) {
-          resolvedUser = null;
-          setUser(null);
-        } else if (!res.ok) {
-          console.warn("Auth check failed:", res.status);
-        } else {
+        try {
+          const res = await fetch("/api/auth/me", {
+            credentials: "include",
+          });
+
+          if (res.status === 401) {
+            // 👤 Гость — это нормально
+            if (!cancelled) {
+              setUser(null);
+              setProfileLoaded(false);
+            }
+            return;
+          }
+
+          if (!res.ok) {
+            console.error("Auth init failed:", res.status);
+            if (!cancelled) {
+              setUser(null);
+              setProfileLoaded(false);
+            }
+            return;
+          }
+
           const userData: User = await res.json();
-          resolvedUser = userData;
-          setUser(userData);
-        }
-      } catch (error) {
-        console.error("Auth init failed", error);
-        resolvedUser = null;
-        setUser(null);
-      } finally {
-        setProfileLoaded(!!resolvedUser);
-        setLoading(false);
-      }
-    }
 
-    initAuth();
-  }, []);
+          if (!cancelled) {
+            setUser(userData);
+            setProfileLoaded(true);
+          }
+
+        } catch (error) {
+          console.error("Auth init network error", error);
+          if (!cancelled) {
+            setUser(null);
+            setProfileLoaded(false);
+          }
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
+      }
+
+      initAuth();
+
+      return () => {
+        cancelled = true;
+      };
+    }, []);
+
 
   /**
    * LOGIN
