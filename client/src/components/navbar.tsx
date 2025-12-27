@@ -20,6 +20,11 @@ export function Navbar() {
   const [location] = useLocation();
   const { user, logout, isAuthenticated } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
+  
+  const profileHref =
+  user?.role && user?.slug
+    ? `/${user.role}/${user.slug}`
+    : "/";
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -92,13 +97,13 @@ export function Navbar() {
                 </Button>
               </Link>
 
-              <Link href={user?.role === "coach" ? "/coach/profile" : "/player/profile"}>
+              <Link href={profileHref}>
                 <Button variant="ghost" className="font-bold hover:text-lime-600 gap-2 cursor-pointer">
                   <User className="w-4 h-4" />
                   {user?.name || "My Profile"}
                 </Button>
               </Link>
-              
+            
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Avatar className="h-9 w-9 cursor-pointer border-2 border-primary/20 hover:border-primary transition-colors">
@@ -112,7 +117,7 @@ export function Navbar() {
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild className="cursor-pointer">
-                    <Link href={user?.role === "coach" ? "/coach/profile" : "/player/profile"}>Profile</Link>
+                    <Link href={profileHref}>Profile</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild className="cursor-pointer">
                     <Link href="/messages" className="flex items-center gap-2">
@@ -188,7 +193,7 @@ export function Navbar() {
                         )}
                       </Button>
                     </Link>
-                    <Link href={user?.role === "coach" ? "/coach/profile" : "/player/profile"} onClick={() => setIsOpen(false)}>
+                    <Link href={profileHref} onClick={() => setIsOpen(false)}>
                       <Button variant="outline" className="w-full font-bold rounded-full cursor-pointer">
                         My Profile
                       </Button>

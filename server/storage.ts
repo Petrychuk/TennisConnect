@@ -98,6 +98,7 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  db: any;
   // Users
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -184,6 +185,26 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(coachProfiles);
   }
 
+  async getAllCoachesWithProfiles(): Promise<
+      {
+        user: typeof users.$inferSelect;
+        profile: typeof coachProfiles.$inferSelect;
+      }[]
+    > {
+      return this.db
+        .select({
+          user: users,
+          profile: coachProfiles,
+        })
+        .from(users)
+        .innerJoin(
+          coachProfiles,
+          eq(users.id, coachProfiles.userId)
+        )
+        .where(eq(users.role, "coach"));
+    }
+
+
   async createCoachProfile(profile: InsertCoachProfile): Promise<CoachProfile> {
     const profileData = {
       ...profile,
@@ -205,6 +226,20 @@ export class DatabaseStorage implements IStorage {
       .where(eq(coachProfiles.id, id))
       .returning();
     return profile;
+  }
+
+  async updatePlayerProfileByUserId(userId: string, data: any) {
+    const profile = await this.getPlayerProfile(userId);
+    if (!profile) throw new Error("Player profile not found");
+
+    return this.updatePlayerProfile(profile.id, data);
+  }
+
+  async updateCoachProfileByUserId(userId: string, data: any) {
+    const profile = await this.getCoachProfile(userId);
+    if (!profile) throw new Error("Coach profile not found");
+
+    return this.updateCoachProfile(profile.id, data);
   }
 
   // Tournaments

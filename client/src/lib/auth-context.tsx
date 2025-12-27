@@ -42,36 +42,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function initAuth() {
       setLoading(true);
+      let resolvedUser: User | null = null;
 
       try {
         const res = await fetch("/api/auth/me", {
           credentials: "include",
         });
 
-        if (!res.ok) {
+        if (res.status === 401) {
+          resolvedUser = null;
           setUser(null);
+        } else if (!res.ok) {
+          console.warn("Auth check failed:", res.status);
         } else {
           const userData: User = await res.json();
+          resolvedUser = userData;
           setUser(userData);
-
-          // Optional preload profile (safe)
-          // if (userData.role === "player") {
-          //   await fetch("/api/player-profile", {
-          //     credentials: "include",
-          //   }).catch(() => {});
-          // }
-
-          // if (userData.role === "coach") {
-          //   await fetch("/api/coach-profile", {
-          //     credentials: "include",
-          //   }).catch(() => {});
-          // }
         }
       } catch (error) {
         console.error("Auth init failed", error);
+        resolvedUser = null;
         setUser(null);
       } finally {
-        setProfileLoaded(true);
+        setProfileLoaded(!!resolvedUser);
         setLoading(false);
       }
     }
@@ -100,7 +93,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const userData = await res.json();
     setUser(userData);
-    setProfileLoaded(false);
+      if (!userData.slug) {
+      console.warn("User logged in without slug");
+    }
+    setProfileLoaded(false);  // ожидаем загрузку профиля
     setLoading(false);
 
     return userData;
@@ -132,6 +128,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const userData = await res.json();
     setUser(userData);
+    if (!userData.slug) {
+      console.warn("User logged in without slug");
+    }
     setProfileLoaded(false);
     setLoading(false);
 

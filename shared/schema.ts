@@ -161,6 +161,13 @@ export const marketplaceItemsRelations = relations(marketplaceItems, ({ one }) =
   }),
 }));
 
+// export const registerSchema = z.object({
+//   email: z.string().email(),
+//   password: z.string().min(6),
+//   name: z.string().min(2),
+//   role: z.enum(["player", "coach"]),
+// });
+
 // Insert Schemas
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,

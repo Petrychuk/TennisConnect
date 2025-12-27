@@ -4,7 +4,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { hashPassword } from "./auth";
 import passport from "passport";
-import { 
+import {
   insertUserSchema,
   insertPlayerProfileSchema,
   insertCoachProfileSchema,
@@ -15,12 +15,27 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 
-// Auth middleware
+/* =========================
+   HELPERS & MIDDLEWARE
+========================= */
+
 function requireAuth(req: Request, res: Response, next: Function) {
-  if (req.isAuthenticated()) {
-    return next();
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Unauthorized" });
   }
-  res.status(401).json({ message: "Unauthorized" });
+  next();
+}
+
+function requireRole(role: "player" | "coach") {
+  return (req: Request, res: Response, next: Function) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    if (req.user!.role !== role) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    next();
+  };
 }
 
 function generateSlug(name: string) {
@@ -30,66 +45,85 @@ function generateSlug(name: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 
-  const suffix = crypto.randomBytes(2).toString("hex"); // x8k2
+  const suffix = crypto.randomBytes(2).toString("hex");
   return `${base}-${suffix}`;
 }
 
-export async function registerRoutes(
-  httpServer: Server,
-  app: Express
-): Promise<Server> {
-  
-  // ===== AUTH ROUTES =====
+/* =========================
+   ROUTES
+========================= */
+
+export async function registerRoutes(app: Express): Promise<void> {
+
+  /* =========================
+     AUTH
+  ========================= */
+
   app.post("/api/auth/register", async (req, res, next) => {
     try {
-      const result = insertUserSchema.safeParse(req.body);
-      if (!result.success) {
-        return res.status(400).json({ message: "Invalid input", errors: result.error });
+      const parsed = insertUserSchema
+        .omit({ slug: true })
+        .safeParse(req.body);
+
+      if (!parsed.success) {
+        return res.status(400).json({
+          message: "Invalid input",
+          errors: parsed.error,
+        });
       }
 
-      const existingUser = await storage.getUserByEmail(result.data.email);
-      if (existingUser) {
+      const exists = await storage.getUserByEmail(parsed.data.email);
+      if (exists) {
         return res.status(400).json({ message: "Email already exists" });
       }
- 
-      const hashedPassword = await hashPassword(result.data.password);
-      
-      const slug = generateSlug(result.data.name);
-      
+
+      const hashedPassword = await hashPassword(parsed.data.password);
+      const slug = generateSlug(parsed.data.name);
+
       const user = await storage.createUser({
-        ...result.data,
+        ...parsed.data,
         password: hashedPassword,
         slug,
       });
 
-      req.login({
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        avatar: user.avatar,
-        cover: user.cover,
-      }, (err) => {
-        if (err) return next(err);
-        res.json({
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          avatar: user.avatar,
-          cover: user.cover,
+      // 🔑 AUTO-CREATE PROFILE
+      if (user.role === "player") {
+        await storage.createPlayerProfile({
+          userId: user.id,
+          location: "Sydney",
+          skillLevel: "Beginner",
         });
+      }
+
+      if (user.role === "coach") {
+        await storage.createCoachProfile({
+          userId: user.id,
+          title: "Coach",
+          location: "Sydney",
+        });
+      }
+
+      req.login(user, (err) => {
+        if (err) return next(err);
+        res.json(user);
       });
-    } catch (error: any) {
-      next(error);
+
+    } catch (e) {
+      next(e);
     }
   });
 
   app.post("/api/auth/login", (req, res, next) => {
-    passport.authenticate("local", (err: any, user: Express.User | false, info: any) => {
+    passport.authenticate(
+      "local", 
+      (
+        err: any,
+        user: Express.User | false,
+        info: { message?: string } | undefined
+        ) => {
       if (err) return next(err);
       if (!user) {
-        return res.status(401).json({ message: info?.message || "Login failed" });
+        return res.status(401).json({ message: "Login failed" });
       }
       req.login(user, (err) => {
         if (err) return next(err);
@@ -99,203 +133,103 @@ export async function registerRoutes(
   });
 
   app.post("/api/auth/logout", (req, res) => {
-    req.logout((err) => {
-      if (err) {
-        return res.status(500).json({ message: "Logout failed" });
-      }
-      res.json({ message: "Logged out successfully" });
+    req.logout(() => {
+      res.json({ message: "Logged out" });
     });
   });
 
   app.get("/api/auth/me", (req, res) => {
-    if (req.isAuthenticated()) {
-      res.json(req.user);
-    } else {
-      res.status(401).json({ message: "Not authenticated" });
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
     }
+    res.json(req.user);
   });
 
-  // ===== USER ROUTES =====
-  app.put("/api/users/:id", requireAuth, async (req, res, next) => {
-    try {
-      if (req.user!.id !== req.params.id) {
-        return res.status(403).json({ message: "Forbidden" });
-      }
+  /* =========================
+     ME (CURRENT USER)
+  ========================= */
 
-      const user = await storage.updateUser(req.params.id, {
-        avatar: req.body.avatar,
-        cover: req.body.cover,
-      });
-
-      res.json({
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        avatar: user.avatar,
-        cover: user.cover,
-      });
-    } catch (error: any) {
-      next(error);
-    }
+  app.get("/api/me", requireAuth, (req, res) => {
+    res.json(req.user);
   });
 
-  // ===== PLAYER PROFILE ROUTES =====
-  app.get("/api/player-profile", requireAuth, async (req, res, next) => {
-    try {
+  app.get(
+    "/api/me/player-profile",
+    requireAuth,
+    requireRole("player"),
+    async (req, res) => {
       const profile = await storage.getPlayerProfile(req.user!.id);
-      res.json(profile || null);
-    } catch (error: any) {
-      next(error);
-    }
-  });
-
-  app.get("/api/player/:slug", async (req, res, next) => {
-    try {
-      const user = await storage.getUserBySlug(req.params.slug);
-      if (!user || user.role !== "player") {
-        return res.status(404).json({ message: "Player not found" });
-      }
-
-      const profile = await storage.getPlayerProfile(user.id);
-
-      res.json({
-        user: {
-          id: user.id,
-          name: user.name,
-          avatar: user.avatar,
-          slug: user.slug,
-        },
-        profile,
-      });
-    } catch (e) {
-      next(e);
-    }
-  });
-
-  app.post("/api/player-profile", requireAuth, async (req, res, next) => {
-    try {
-      if (req.user!.role !== 'player') {
-        return res.status(403).json({ message: "Only players can create player profiles" });
-      }
-
-      const result = insertPlayerProfileSchema.safeParse({
-        ...req.body,
-        userId: req.user!.id,
-      });
-
-      if (!result.success) {
-        return res.status(400).json({ message: "Invalid input", errors: result.error });
-      }
-
-      const profile = await storage.createPlayerProfile(result.data);
       res.json(profile);
-    } catch (error: any) {
-      next(error);
     }
-  });
+  );
 
-  app.put("/api/player-profile/:id", requireAuth, async (req, res, next) => {
-    try {
-      const existingProfile = await storage.getPlayerProfile(req.user!.id);
-      if (!existingProfile || existingProfile.id !== req.params.id) {
-        return res.status(403).json({ message: "Forbidden" });
-      }
-
-      const profile = await storage.updatePlayerProfile(req.params.id, req.body);
+  app.put(
+    "/api/me/player-profile",
+    requireAuth,
+    requireRole("player"),
+    async (req, res) => {
+      const profile = await storage.updatePlayerProfileByUserId(
+        req.user!.id,
+        req.body
+      );
       res.json(profile);
-    } catch (error: any) {
-      next(error);
     }
-  });
+  );
 
-  // ===== COACH PROFILE ROUTES =====
-  app.get("/api/coach-profile", requireAuth, async (req, res, next) => {
-    try {
+  app.get(
+    "/api/me/coach-profile",
+    requireAuth,
+    requireRole("coach"),
+    async (req, res) => {
       const profile = await storage.getCoachProfile(req.user!.id);
-      res.json(profile || null);
-    } catch (error: any) {
-      next(error);
-    }
-  });
-
-  app.get("/api/coaches", async (req, res, next) => {
-    try {
-      const coaches = await storage.getAllCoaches();
-      res.json(coaches);
-    } catch (error: any) {
-      next(error);
-    }
-  });
-
-  app.get("/api/players", async (req, res, next) => {
-    try {
-      const players = await storage.getAllPlayers();
-      res.json(players);
-    } catch (error: any) {
-      next(error);
-    }
-  });
-
-  app.post("/api/coach-profile", requireAuth, async (req, res, next) => {
-    try {
-      if (req.user!.role !== 'coach') {
-        return res.status(403).json({ message: "Only coaches can create coach profiles" });
-      }
-
-      const result = insertCoachProfileSchema.safeParse({
-        ...req.body,
-        userId: req.user!.id,
-      });
-
-      if (!result.success) {
-        return res.status(400).json({ message: "Invalid input", errors: result.error });
-      }
-
-      const profile = await storage.createCoachProfile(result.data);
       res.json(profile);
-    } catch (error: any) {
-      next(error);
     }
-  });
+  );
 
-  app.put("/api/coach-profile/:id", requireAuth, async (req, res, next) => {
-    try {
-      const existingProfile = await storage.getCoachProfile(req.user!.id);
-      if (!existingProfile || existingProfile.id !== req.params.id) {
-        return res.status(403).json({ message: "Forbidden" });
-      }
-
-      const profile = await storage.updateCoachProfile(req.params.id, req.body);
+  app.put(
+    "/api/me/coach-profile",
+    requireAuth,
+    requireRole("coach"),
+    async (req, res) => {
+      const profile = await storage.updateCoachProfileByUserId(
+        req.user!.id,
+        req.body
+      );
       res.json(profile);
-    } catch (error: any) {
-      next(error);
     }
+  );
+
+  /* =========================
+     PUBLIC PROFILES
+  ========================= */
+
+  app.get("/api/players", async (_req, res) => {
+    const players = await storage.getAllPlayers();
+    res.json(players);
   });
 
-  app.get("/api/coach/:slug", async (req, res, next) => {
-    try {
-      const user = await storage.getUserBySlug(req.params.slug);
-      if (!user || user.role !== "coach") {
-        return res.status(404).json({ message: "Coach not found" });
-      }
-
-      const profile = await storage.getCoachProfile(user.id);
-
-      res.json({
-        user: {
-          id: user.id,
-          name: user.name,
-          avatar: user.avatar,
-          slug: user.slug,
-        },
-        profile,
-      });
-    } catch (e) {
-      next(e);
+  app.get("/api/players/:slug", async (req, res) => {
+    const user = await storage.getUserBySlug(req.params.slug);
+    if (!user || user.role !== "player") {
+      return res.status(404).json({ message: "Player not found" });
     }
+    const profile = await storage.getPlayerProfile(user.id);
+    res.json({ user, profile });
   });
 
+  app.get("/api/coaches", async (_req, res) => {
+    const coaches = await storage.getAllCoachesWithProfiles();
+    res.json(coaches);
+  });
+
+  app.get("/api/coaches/:slug", async (req, res) => {
+    const user = await storage.getUserBySlug(req.params.slug);
+    if (!user || user.role !== "coach") {
+      return res.status(404).json({ message: "Coach not found" });
+    }
+    const profile = await storage.getCoachProfile(user.id);
+    res.json({ user, profile });
+  });
 
   // ===== TOURNAMENT ROUTES =====
   app.get("/api/tournaments", requireAuth, async (req, res, next) => {
@@ -428,15 +362,12 @@ export async function registerRoutes(
     }
   });
 
-  // Send a message (can be from authenticated or anonymous users)
-  app.post("/api/messages", async (req, res, next) => {
+  // Send a message (can be from authenticated)
+  app.post("/api/messages", requireAuth, async (req, res, next) => {
     try {
       const messageSchema = z.object({
         recipientId: z.string(),
         recipientType: z.enum(["coach", "player"]),
-        senderName: z.string().min(1, "Name is required"),
-        senderEmail: z.string().email("Valid email is required"),
-        senderPhone: z.string().optional(),
         subject: z.string().optional(),
         content: z.string().min(1, "Message is required"),
       });
@@ -446,17 +377,24 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Invalid input", errors: result.error });
       }
 
-      const messageData = {
-        ...result.data,
-        senderUserId: req.isAuthenticated() ? req.user!.id : null,
-      };
+      // 🔐 sender ВСЕГДА из auth-сессии
+      const message = await storage.createMessage({
+        recipientId: result.data.recipientId,
+        recipientType: result.data.recipientType,
+        subject: result.data.subject,
+        content: result.data.content,
 
-      const message = await storage.createMessage(messageData);
+        senderUserId: req.user!.id,
+        senderName: req.user!.name,
+        senderEmail: req.user!.email,
+      });
+
       res.json(message);
     } catch (error: any) {
       next(error);
     }
   });
+
 
   // Mark message as read (requires auth + ownership)
   app.put("/api/messages/:id/read", requireAuth, async (req, res, next) => {
@@ -485,6 +423,4 @@ export async function registerRoutes(
       next(error);
     }
   });
-
-  return httpServer;
 }

@@ -6,6 +6,7 @@ import createMemoryStore from "memorystore";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
+import { ENV } from "./env";
 
 const scryptAsync = promisify(scrypt);
 
@@ -43,10 +44,15 @@ export function setupAuth(app: Express) {
   const MemoryStore = createMemoryStore(session);
 
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || "tennis-connect-secret",
+    secret: ENV.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    cookie: {},
+    cookie: {
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: 1000 * 60 * 60,
+      secure: app.get("env") === "production",
+    },
     store: new MemoryStore({
       checkPeriod: 86400000,
     }),
@@ -60,6 +66,28 @@ export function setupAuth(app: Express) {
   app.use(session(sessionSettings));
   app.use(passport.initialize());
   app.use(passport.session());
+
+  // === Idle timeout middleware ===
+  app.use((req, res, next) => {
+    if (req.isAuthenticated() && req.session) {
+      const now = Date.now();
+      const lastActivity = (req.session as any).lastActivity || now;
+
+      // 1 час без активности → logout
+      if (now - lastActivity > 1000 * 60 * 60) {
+        req.logout(() => {
+          req.session.destroy(() => {
+            res.clearCookie("connect.sid");
+          });
+        });
+        return;
+      }
+
+      (req.session as any).lastActivity = now;
+    }
+
+    next();
+  });
 
   passport.use(
     new LocalStrategy(
@@ -96,25 +124,28 @@ export function setupAuth(app: Express) {
     done(null, user.id);
   });
 
-  passport.deserializeUser(async (id: string, done) => {
-    try {
-      const user = await storage.getUser(id);
-      if (!user) return done(null, false);
+    passport.deserializeUser(async (id: string, done) => {
+    console.log("🔄 deserializeUser id:", id);
 
-      done(null, {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        slug: user.slug,
-        avatar: user.avatar,
-        cover: user.cover,
-      
-      });
-    } catch (err) {
-      done(err);
+    const user = await storage.getUser(id);
+    console.log("👤 user from storage:", user);
+
+    if (!user) {
+      console.warn("❌ User not found during deserialize");
+      return done(null, false);
     }
+
+    done(null, {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      slug: user.slug,
+      avatar: user.avatar,
+      cover: user.cover,
+    });
   });
+
 }
 
 export { hashPassword };

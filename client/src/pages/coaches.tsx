@@ -331,7 +331,7 @@ export default function CoachesPage() {
                   </CardContent>
 
                   <CardFooter className="pt-0">
-                    <Link href={`/coach/${coach.id}`}>
+                    <Link href={`/coach/${coach.slug}`}>
                       <Button className="w-full font-bold group-hover:bg-primary group-hover:text-primary-foreground transition-all cursor-pointer">
                         View Profile <ArrowRight className="w-4 h-4 ml-2" />
                       </Button>

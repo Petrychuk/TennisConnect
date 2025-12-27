@@ -50,34 +50,39 @@ export default function AuthPage() {
   });
 
   const onLogin = async (data: z.infer<typeof loginSchema>) => {
-  setIsLoading(true);
-  try {
-    // login должен возвращать объект пользователя с id и role
-    const loggedInUser = await login(data.email, data.password);
+    setIsLoading(true);
+    try {
+      const loggedInUser = await login(data.email, data.password);
 
-    toast({
-      title: "Welcome back!",
-      description: "You have successfully signed in.",
-    });
+      toast({
+        title: "Welcome back!",
+        description: "You have successfully signed in.",
+      });
+        if (!loggedInUser.slug) {
+          toast({
+            title: "Profile error",
+            description: "Your profile is not ready yet. Please try again later.",
+            variant: "destructive",
+          });
+          return;
+        }
+      setLocation(`/${loggedInUser.role}/${loggedInUser.slug}`);
 
-    const usloggedInUserer = await login(data.email, data.password);
-    setLocation(`/${loggedInUser.role}/${loggedInUser.id}`);
-
-  } catch (error: any) {
-    toast({
-      title: "Login failed",
-      description: error.message || "Please check your credentials and try again.",
-      variant: "destructive",
-    });
-  } finally {
-    setIsLoading(false);
-  }
-};
+    } catch (error: any) {
+      toast({
+        title: "Login failed",
+        description: error.message || "Please check your credentials and try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
 const onRegister = async (data: z.infer<typeof registerSchema>) => {
   setIsLoading(true);
   try {
-    // register должен возвращать объект пользователя с id и role
+    
     const user = await register(data.email, data.password, data.name, data.role);
 
     toast({
@@ -85,14 +90,11 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
       description: "Welcome to TennisConnect!",
     });
 
-    // Редирект на профиль с id
-    if (user.role === "coach") {
-      setLocation(`/coach/${user.id}`);
-    } else if (user.role === "player") {
-      setLocation(`/player/${user.id}`);
-    } else {
-      setLocation("/"); // на всякий случай fallback
-    }
+      if (user.role === "coach") {
+        setLocation(`/coach/${user.slug}`);
+      } else if (user.role === "player") {
+        setLocation(`/player/${user.slug}`);
+      }
   } catch (error: any) {
     toast({
       title: "Registration failed",
@@ -103,7 +105,6 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
     setIsLoading(false);
   }
 };
-
 
   const handleSocialLogin = (provider: string) => {
     toast({

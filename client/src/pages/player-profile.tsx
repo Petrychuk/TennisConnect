@@ -34,14 +34,13 @@ const DEFAULT_PLAYER_PROFILE = {
 };
 
 export default function PlayerProfile() {
-  const [match, params] = useRoute("/player/:id");
-  const profileId = params?.id;
+  const [match, params] = useRoute("/player/:slug");
+  const profileSlug = params?.slug; 
   const { user, isAuthenticated, updateUser } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  const isGenericProfileRoute = !profileId || profileId === "profile";
-  const isOwnProfile = isGenericProfileRoute || (isAuthenticated && user?.id === profileId); 
+  const isOwnProfile = isAuthenticated && user?.slug === profileSlug; 
 
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState(DEFAULT_PLAYER_PROFILE);
@@ -70,154 +69,124 @@ export default function PlayerProfile() {
   });
   const [tournaments, setTournaments] = useState<any[]>([]);
   
-  useEffect(() => {
-  if (!loading && isAuthenticated && user && isGenericProfileRoute) {
-    setLocation(`/player/${user.id}`);
-  }
-}, [loading, isAuthenticated, user, isGenericProfileRoute]);
+   useEffect(() => {
+      if (!profileSlug) return;
 
-  // Load Profile Logic
-  useEffect(() => {
-    if (!loading && isGenericProfileRoute && !isAuthenticated) {
-      setLocation("/auth");
-      return;
-    }
+      const loadPublicProfile = async () => {
+        try {
+          setLoading(true);
 
-    const loadProfile = async () => {
-      if (!isOwnProfile || !user) {
-        setLoading(false);
-        return;
-      }
+          const res = await fetch(`/api/players/${profileSlug}`, {
+            credentials: "include",
+          });
 
-      try {
-        setLoading(true);
-        
-        // Load player profile
-        const profileRes = await fetch("/api/player-profile", {
-          credentials: "include"
-        });
-        
-        if (profileRes.ok) {
-          const data = await profileRes.json();
-          if (data) {
-            setProfileData(data);
-            setProfile({
-              ...DEFAULT_PLAYER_PROFILE,
-              name: user.name || data.name || DEFAULT_PLAYER_PROFILE.name,
-              avatar: user.avatar || DEFAULT_PLAYER_PROFILE.avatar,
-              cover: user.cover || DEFAULT_PLAYER_PROFILE.cover,
-              location: data.location || DEFAULT_PLAYER_PROFILE.location,
-              age: data.age || DEFAULT_PLAYER_PROFILE.age,
-              country: data.country || DEFAULT_PLAYER_PROFILE.country,
-              skillLevel: data.skillLevel || DEFAULT_PLAYER_PROFILE.skillLevel,
-              bio: data.bio || DEFAULT_PLAYER_PROFILE.bio,
-              preferredCourts: data.preferredCourts || DEFAULT_PLAYER_PROFILE.preferredCourts,
-              coaches: DEFAULT_PLAYER_PROFILE.coaches,
-              marketplaceItems: [],
-              tournaments: []
-            });
-          } else {
-            // No profile exists yet, use user data
-            setProfile(prev => ({
-              ...prev,
-              name: user.name || prev.name,
-              avatar: user.avatar || prev.avatar,
-              cover: user.cover || prev.cover
-            }));
-          }
-        } else {
-          // Profile doesn't exist yet
-          setProfile(prev => ({
-            ...prev,
-            name: user.name || prev.name,
-            avatar: user.avatar || prev.avatar,
-            cover: user.cover || prev.cover
-          }));
+          if (!res.ok) throw new Error("Not found");
+
+          const data = await res.json();
+
+          setProfile({
+            ...DEFAULT_PLAYER_PROFILE,
+            name: data.user.name,
+            avatar: data.user.avatar || DEFAULT_PLAYER_PROFILE.avatar,
+            cover: data.user.cover || DEFAULT_PLAYER_PROFILE.cover,
+            location: data.profile?.location || DEFAULT_PLAYER_PROFILE.location,
+            age: data.profile?.age || DEFAULT_PLAYER_PROFILE.age,
+            country: data.profile?.country || DEFAULT_PLAYER_PROFILE.country,
+            skillLevel: data.profile?.skillLevel || DEFAULT_PLAYER_PROFILE.skillLevel,
+            bio: data.profile?.bio || DEFAULT_PLAYER_PROFILE.bio,
+            preferredCourts: data.profile?.preferredCourts || DEFAULT_PLAYER_PROFILE.preferredCourts,
+          });
+
+          setProfileData(data.profile || null);
+        } catch {
+          setLocation("/");
+        } finally {
+          setLoading(false);
         }
-
-        // Load tournaments
-        const tournamentsRes = await fetch("/api/tournaments", {
-          credentials: "include"
-        });
-        if (tournamentsRes.ok) {
-          const tournamentsData = await tournamentsRes.json();
-          setTournaments(tournamentsData || []);
-        }
-
-        // Load marketplace items
-        const marketplaceRes = await fetch("/api/marketplace/user", {
-          credentials: "include"
-        });
-        if (marketplaceRes.ok) {
-          const marketplaceData = await marketplaceRes.json();
-          setMarketplaceItems(marketplaceData || []);
-        }
-
-      } catch (error) {
-        console.error("Failed to load profile", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to load profile data"
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadProfile();
-  }, [loading, isAuthenticated, user, isOwnProfile]);
-
-  const handleSave = async () => {
-    if (!user) return;
-
-    try {
-      const profilePayload = {
-        location: profile.location,
-        age: profile.age,
-        country: profile.country,
-        skillLevel: profile.skillLevel,
-        bio: profile.bio,
-        preferredCourts: profile.preferredCourts
       };
 
-      let savedProfile;
-      if (profileData) {
-        // Update existing profile
-        const res = await fetch(`/api/player-profile/${profileData.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(profilePayload),
-          credentials: "include"
-        });
+      loadPublicProfile();
+    }, [profileSlug]);
+    
+    useEffect(() => {
+      if (!isOwnProfile) return;
 
-        if (!res.ok) throw new Error("Failed to update profile");
-        savedProfile = await res.json();
-      } else {
-        // Create new profile
-        const res = await fetch("/api/player-profile", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(profilePayload),
-          credentials: "include"
-        });
+        const loadPrivateData = async () => {
+          try {
+             const res = await fetch("/api/me/player-profile", {
+              credentials: "include",
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setProfileData(data);
 
-        if (!res.ok) throw new Error("Failed to create profile");
-        savedProfile = await res.json();
-        setProfileData(savedProfile);
-      }
+                setProfile(prev => ({
+                  ...prev,
+                  location: data.location,
+                  age: data.age,
+                  country: data.country,
+                  skillLevel: data.skillLevel,
+                  bio: data.bio,
+                  preferredCourts: data.preferredCourts,
+                }));
+              }           
+            
+            const tournamentsRes = await fetch("/api/tournaments", {
+              credentials: "include",
+            });
+            if (tournamentsRes.ok) {
+              setTournaments(await tournamentsRes.json());
+            }
 
+            const marketplaceRes = await fetch("/api/marketplace/user", {
+              credentials: "include",
+            });
+            if (marketplaceRes.ok) {
+              setMarketplaceItems(await marketplaceRes.json());
+            }
+          } catch (e) {
+            console.error("Private data load failed", e);
+          }
+        };
+
+        loadPrivateData();
+      }, [isOwnProfile]);
+
+  const handleSave = async () => {
+    try {
+      const res = await fetch("/api/me/player-profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          location: profile.location,
+          age: profile.age,
+          country: profile.country,
+          skillLevel: profile.skillLevel,
+          bio: profile.bio,
+          preferredCourts: profile.preferredCourts,
+        }),
+        credentials: "include",
+      });
+
+      if (!res.ok) throw new Error("Failed to update profile");
+
+      const updated = await res.json();
+      setProfileData(updated);
       setIsEditing(false);
-      toast({ title: "Profile Updated", description: "Your changes have been saved." });
-    } catch (error) {
-      console.error("Failed to save profile", error);
+
+      toast({
+        title: "Profile Updated",
+        description: "Your changes have been saved.",
+      });
+    } catch (e) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to save profile changes"
+        description: "Failed to save profile",
       });
     }
   };
+
 
   const handleAddItem = async () => {
     if (!newItem.name || !newItem.price) return;
