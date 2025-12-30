@@ -16,18 +16,42 @@ import { useLocation, useRoute } from "wouter";
 import { MapPin, Calendar, Trophy, Edit2, Save, ShoppingBag, Plus, Trash2, Camera, Globe } from "lucide-react";
 import { COACHES_DATA, MARKETPLACE_DATA } from "@/lib/dummy-data";
 import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.png";
+import { uploadImage } from "@/lib/uploadImage";
+import { deleteImage } from "@/lib/deleteImage";
+
+export type PlayerProfile = {
+  name: string;
+  location: string;
+  age: string;
+  country: string;
+  skillLevel: string;
+  bio: string;
+
+  avatar?: string | null;
+  cover?: string | null;
+
+  preferredCourts: string[];
+  photos: string[];
+
+  coaches: number[];          // связи
+  marketplaceItems: any[];
+  tournaments: any[];
+};
 
 // Default Profile State
-const DEFAULT_PLAYER_PROFILE = {
+export const DEFAULT_PLAYER_PROFILE: PlayerProfile = {
   name: "New Player",
   location: "Sydney, NSW",
   age: "25",
   country: "Australia",
   skillLevel: "Intermediate",
   bio: "Hi! I love tennis and I'm looking for partners to play with on weekends.",
+
   avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop",
   cover: "https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?q=80&w=2000&auto=format&fit=crop",
+  
   preferredCourts: ["Bondi Beach", "Manly"],
+  photos: [],
   coaches: [1], // IDs of connected coaches
   marketplaceItems: [] as any[],
   tournaments: [] as any[]
@@ -43,13 +67,14 @@ export default function PlayerProfile() {
   const isOwnProfile = isAuthenticated && user?.slug === profileSlug; 
 
   const [isEditing, setIsEditing] = useState(false);
-  const [profile, setProfile] = useState(DEFAULT_PLAYER_PROFILE);
+  const [profile, setProfile] = useState<PlayerProfile>(DEFAULT_PLAYER_PROFILE);
   const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState<any>(null);
   
   // Marketplace State
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
   const [newItem, setNewItem] = useState({
+    id: "",
     name: "",
     price: "",
     description: "",
@@ -187,7 +212,6 @@ export default function PlayerProfile() {
     }
   };
 
-
   const handleAddItem = async () => {
     if (!newItem.name || !newItem.price) return;
     
@@ -211,7 +235,7 @@ export default function PlayerProfile() {
       const item = await res.json();
       setMarketplaceItems(prev => [...prev, item]);
       
-      setNewItem({ name: "", price: "", description: "", condition: "Used - Good" });
+      setNewItem({id: "", name: "", price: "", description: "", condition: "Used - Good" });
       setIsItemModalOpen(false);
       toast({ title: "Item Added", description: "Your item is now listed." });
     } catch (error) {
@@ -223,6 +247,26 @@ export default function PlayerProfile() {
       });
     }
   };
+
+const handleItemPhotoUpload = async (
+  e: React.ChangeEvent<HTMLInputElement>
+) => {
+  const file = e.target.files?.[0];
+  if (!file || !user || !newItem.id) return;
+
+  try {
+    const imageUrl = await uploadImage(file, {
+      folder: `marketplace/${user.id}/${newItem.id}`,
+    });
+
+    setNewItem(prev => ({
+      ...prev,
+      photos: [...prev.photos, imageUrl],
+    }));
+  } catch (error) {
+    console.error("Marketplace image upload failed", error);
+  }
+};
 
   const handleDeleteItem = async (id: string) => {
     try {
@@ -295,68 +339,28 @@ export default function PlayerProfile() {
     }
   };
 
-  const resizeImage = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          
-          // Max dimensions
-          const MAX_WIDTH = 800;
-          const MAX_HEIGHT = 800;
+  const handleTournamentPhotoUpload = async (
+  e: React.ChangeEvent<HTMLInputElement>
+) => {
+  if (!user) return;
 
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
-          }
+  const files = Array.from(e.target.files || []);
+  const remaining = 5 - newTournament.photos.length;
+  const filesToUpload = files.slice(0, remaining);
 
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
-          
-          // Compress to JPEG with 0.7 quality
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-          resolve(dataUrl);
-        };
-        img.src = event.target?.result as string;
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
+  for (const file of filesToUpload) {
+
+    const url = await uploadImage(file, {
+      folder: `players/${user.id}/tournaments`,
     });
-  };
 
-  const handleTournamentPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (newTournament.photos.length >= 5) {
-      toast({ variant: "destructive", title: "Limit Reached", description: "You can upload a maximum of 5 photos." });
-      return;
-    }
-
-    const files = Array.from(e.target.files || []);
-    const remainingSlots = 5 - newTournament.photos.length;
-    const filesToProcess = files.slice(0, remainingSlots);
-
-    for (const file of filesToProcess) {
-       try {
-         const result = await resizeImage(file);
-         setNewTournament(prev => ({ ...prev, photos: [...prev.photos, result] }));
-       } catch (err) {
-         console.error("Error processing tournament image", err);
-       }
-    }
-  };
-  
+    setNewTournament(prev => ({
+      ...prev,
+      photos: [...prev.photos, url],
+    }));
+  }
+};
+     
   const removeTournamentPhoto = (index: number) => {
     setNewTournament(prev => ({
       ...prev,
@@ -364,36 +368,65 @@ export default function PlayerProfile() {
     }));
   };
 
+  const handleFileChange = async (
+      e: React.ChangeEvent<HTMLInputElement>,
+      field: "avatar" | "cover"
+    ) => {
+      const file = e.target.files?.[0];
+      if (!file || !user) return;
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, field: 'avatar' | 'cover') => {
-    const file = e.target.files?.[0];
-    if (file && user) {
       try {
-        const result = await resizeImage(file);
-        
-        // Update user avatar/cover via API
-        const res = await fetch(`/api/users/${user.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ [field]: result }),
-          credentials: "include"
+        // 1️⃣ upload to Supabase (replace!)
+        const imageUrl = await uploadImage(file, {
+          folder: `players/${user.id}/${field}`,
+          replace: true,
         });
 
-        if (!res.ok) throw new Error("Failed to update photo");
+        // 2️⃣ save URL to PLAYER PROFILE
+        const res = await fetch("/api/me/player-profile", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ [field]: imageUrl }),
+        });
 
-        // Update local state
-        setProfile(prev => ({ ...prev, [field]: result }));
-        
-        // Update auth context
-        await updateUser({ [field]: result });
+        if (!res.ok) throw new Error("Failed to update profile");
 
-        toast({ title: "Photo Updated", description: `Your ${field} photo has been updated.` });
+        // 3️⃣ local UI
+        setProfile(prev => ({ ...prev, [field]: imageUrl }));
+
+        // 4️⃣ navbar + auth context
+        await updateUser({ [field]: imageUrl });
+
+        toast({
+          title: "Photo updated",
+          description: `${field} successfully updated`,
+        });
       } catch (err) {
-         console.error("Error processing image", err);
-         toast({ variant: "destructive", title: "Upload Failed", description: "Could not process image." });
+        console.error(err);
+        toast({
+          variant: "destructive",
+          title: "Upload failed",
+          description: "Could not upload image",
+        });
       }
-    }
-  };
+    };
+
+    const handleRemovePhoto = async (index: number) => {
+      const url = profile.photos[index];
+
+      // 🔧 временно просто убираем из профиля
+      const updated = profile.photos.filter((_, i) => i !== index);
+
+      setProfile(prev => ({ ...prev, photos: updated }));
+
+      await fetch("/api/me/coach-profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ photos: updated }),
+      });
+    };
 
   const myCoaches = COACHES_DATA.filter(coach => profile.coaches.includes(coach.id));
 
@@ -417,7 +450,7 @@ export default function PlayerProfile() {
         <div className="relative h-[250px] md:h-[350px] w-full overflow-hidden group">
           <div className="absolute inset-0 bg-black/20 z-10" />
           <img 
-            src={profile.cover} 
+            src={profile.cover ?? undefined} 
             alt="Cover" 
             className="w-full h-full object-cover transition-transform duration-700"
           />
@@ -439,7 +472,7 @@ export default function PlayerProfile() {
           <div className="flex flex-col md:flex-row gap-8 mb-12">
             <div className="shrink-0 mx-auto md:mx-0 relative group">
               <Avatar className="w-40 h-40 border-4 border-background shadow-xl">
-                <AvatarImage src={profile.avatar} className="object-cover" />
+                <AvatarImage src={profile.avatar ?? undefined} className="object-cover" />
                 <AvatarFallback>{profile.name.charAt(0)}</AvatarFallback>
               </Avatar>
               {isOwnProfile && (

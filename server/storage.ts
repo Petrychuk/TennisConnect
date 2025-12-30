@@ -62,7 +62,12 @@ export interface IStorage {
 
   // Player Profiles
   getPlayerProfile(userId: string): Promise<PlayerProfile | undefined>;
-  getAllPlayers(): Promise<PlayerProfile[]>;
+  getAllPlayers(): Promise<
+      {
+        user: typeof users.$inferSelect;
+        profile: typeof playerProfiles.$inferSelect;
+      }[]
+    >;
   createPlayerProfile(profile: InsertPlayerProfile): Promise<PlayerProfile>;
   updatePlayerProfile(id: string, updates: Partial<PlayerProfile>): Promise<PlayerProfile>;
   
@@ -153,9 +158,24 @@ export class DatabaseStorage implements IStorage {
     return profile;
   }
 
-  async getAllPlayers(): Promise<PlayerProfile[]> {
-    return db.select().from(playerProfiles);
-  }
+  async getAllPlayers(): Promise<
+      {
+        user: typeof users.$inferSelect;
+        profile: typeof playerProfiles.$inferSelect;
+      }[]
+    > {
+      return await db
+        .select({
+          user: users,
+          profile: playerProfiles,
+        })
+        .from(users)
+        .innerJoin(
+          playerProfiles,
+          eq(users.id, playerProfiles.userId)
+        )
+        .where(eq(users.role, "player"));
+    }
 
   async createPlayerProfile(profile: InsertPlayerProfile): Promise<PlayerProfile> {
     const [newProfile] = await db

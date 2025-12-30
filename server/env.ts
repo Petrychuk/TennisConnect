@@ -21,5 +21,8 @@ function requireEnv(name: string): string {
 
 export const ENV = {
   SESSION_SECRET: requireEnv("SESSION_SECRET"),
+  VITE_SUPABASE_URL: requireEnv("VITE_SUPABASE_URL"),
+  VITE_SUPABASE_ANON_KEY: requireEnv("VITE_SUPABASE_ANON_KEY"),
+  
 };
 

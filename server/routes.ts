@@ -204,7 +204,19 @@ export async function registerRoutes(app: Express): Promise<void> {
   ========================= */
 
   app.get("/api/players", async (_req, res) => {
-    const players = await storage.getAllPlayers();
+    const rows = await storage.getAllPlayers();
+
+    const players = rows.map(row => ({
+      id: row.user.id,
+      slug: row.user.slug,
+      name: row.user.name,
+      avatar: row.user.avatar,
+      cover: row.user.cover,
+      location: row.profile.location,
+      skillLevel: row.profile.skillLevel,
+      bio: row.profile.bio,
+    }));
+
     res.json(players);
   });
 
@@ -218,7 +230,20 @@ export async function registerRoutes(app: Express): Promise<void> {
   });
 
   app.get("/api/coaches", async (_req, res) => {
-    const coaches = await storage.getAllCoachesWithProfiles();
+    const rows = await storage.getAllCoachesWithProfiles();
+
+    const coaches = rows.map(row => ({
+      id: row.user.id,
+      slug: row.user.slug,
+      name: row.user.name,
+      avatar: row.user.avatar,
+      cover: row.user.cover,
+      title: row.profile.title,
+      location: row.profile.location,
+      rate: row.profile.rate,
+      tags: row.profile.tags,
+    }));
+
     res.json(coaches);
   });
 

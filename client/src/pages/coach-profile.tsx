@@ -48,20 +48,72 @@ import student2 from "/assets/images/portrait_of_a_female_tennis_student.png";
 import student3 from "/assets/images/portrait_of_an_older_male_tennis_student.png";
 
 import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.png";
+import { resizeImage } from "@/lib/image";
+import { uploadImage } from "@/lib/uploadImage";
+import { deleteImage } from "@/lib/deleteImage";
 
-// Default profile for initialization
-const DEFAULT_PROFILE = {
+export type CoachScheduleDay = {
+  active: boolean;
+  start: string;
+  end: string;
+};
+
+export type CoachSchedule = {
+  monday: CoachScheduleDay;
+  tuesday: CoachScheduleDay;
+  wednesday: CoachScheduleDay;
+  thursday: CoachScheduleDay;
+  friday: CoachScheduleDay;
+  saturday: CoachScheduleDay;
+  sunday: CoachScheduleDay;
+};
+
+export type CoachProfile = {
+  name: string;
+  title: string;
+  location: string;
+  bio: string;
+
+  avatar?: string | null;
+  cover?: string | null;
+
+  rate: string;
+  experience: string;
+
+  locations: string[];
+  tags: string[];
+  photos: string[];   
+
+  schedule: CoachSchedule;
+
+  response_time: string;
+  accepting_students: boolean;
+  active_students: string;
+  rating: number;
+  hours_taught: string;
+  attendance: number;
+
+  phone: string;
+  email: string;
+
+  marketplace: any[];
+};
+
+export const DEFAULT_COACH_PROFILE: CoachProfile = {
   name: "Nataliia Petrychuk",
   title: "Tennis Coach | Beginner & Intermediate Specialist",
   location: "Manly, Sydney",
-  bio: "Passionate tennis coach dedicated to helping beginners and intermediate players fall in love with the game. I actively compete in local amateur tournaments, so I understand the journey of improving your game firsthand. My sessions focus on building solid fundamentals, improving consistency, and most importantly - having fun on the court! Whether you're just starting out or looking to level up your rally game, I'd love to help you reach your goals.",
+  bio: "Passionate tennis coach dedicated to helping beginners and intermediate players fall in love with the game.",
+
+  avatar: avatarImage,
+  cover: heroImage,
+
   rate: "70",
   experience: "10",
   locations: ["Manly", "Mosman", "Freshwater", "Brookvale"],
   tags: ["High Performance", "Kids", "Technique"],
-  photos: [gallery1, gallery2],
-  avatar: avatarImage,
-  cover: heroImage,
+  photos: [],
+
   schedule: {
     monday: { active: true, start: "07:00", end: "19:00" },
     tuesday: { active: true, start: "07:00", end: "19:00" },
@@ -69,18 +121,19 @@ const DEFAULT_PROFILE = {
     thursday: { active: true, start: "07:00", end: "19:00" },
     friday: { active: true, start: "07:00", end: "17:00" },
     saturday: { active: true, start: "08:00", end: "14:00" },
-    sunday: { active: false, start: "09:00", end: "17:00" }
+    sunday: { active: false, start: "09:00", end: "17:00" },
   },
-  // Stats & Status (Usually platform-generated, editable for prototype)
+
   response_time: "Usually within 1 hr",
   accepting_students: true,
   active_students: "24",
   rating: 4.9,
   hours_taught: "150+",
   attendance: 100,
+
   phone: "",
   email: "",
-  marketplace: [] as any[]
+  marketplace: [],
 };
 
 // Top 10 Popular Locations
@@ -130,7 +183,7 @@ export default function CoachProfile() {
   const [isDemo, setIsDemo] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const [profile, setProfile] = useState(DEFAULT_PROFILE);
+  const [profile, setProfile] = useState<CoachProfile>(DEFAULT_COACH_PROFILE);
   const [profileData, setProfileData] = useState<any>(null);
   const [marketplaceItems, setMarketplaceItems] = useState<any[]>([]);
 
@@ -166,7 +219,6 @@ export default function CoachProfile() {
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
-
   const [selectedBuyItem, setSelectedBuyItem] = useState<any>(null);
 
   /* =========================
@@ -185,70 +237,53 @@ export default function CoachProfile() {
   /* =========================
      HANDLERS — FILE UPLOAD
   ========================= */
-  const resizeImage = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = e => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          const MAX = 800;
-          let { width, height } = img;
+  type UploadField = "avatar" | "cover" | "photo";
 
-          if (width > height && width > MAX) {
-            height *= MAX / width;
-            width = MAX;
-          } else if (height > MAX) {
-            width *= MAX / height;
-            height = MAX;
-          }
+    const handleFileChange = async (
+      e: React.ChangeEvent<HTMLInputElement>,
+      field: UploadField
+    ) => {
+      const file = e.target.files?.[0];
+      if (!file || !user || !isOwnProfile) return;
 
-          canvas.width = width;
-          canvas.height = height;
-          canvas.getContext("2d")?.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL("image/jpeg", 0.7));
-        };
-        img.src = e.target?.result as string;
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
+      // 📸 ГАЛЕРЕЯ ТРЕНЕРА
+      if (field === "photo") {
+        const imageUrl = await uploadImage(file, {
+          folder: `coaches/${user.id}/gallery`,
+        });
 
-  const handleFileChange = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-    field: "avatar" | "cover" | "photo"
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+        const updatedPhotos = [...profile.photos, imageUrl];
 
-    const image = await resizeImage(file);
+        setProfile(prev => ({ ...prev, photos: updatedPhotos }));
 
-    if (field === "photo") {
-      setProfile(prev => ({ ...prev, photos: [...prev.photos, image] }));
-      return;
-    }
+        await fetch("/api/me/coach-profile", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ photos: updatedPhotos }),
+        });
 
-    if ((field === "avatar" || field === "cover") && isOwnProfile) {
-      await updateUser({ [field]: image });
-      setProfile(prev => ({ ...prev, [field]: image }));
-    }
-    await fetch("/api/me", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ [field]: image }),
-    });
+        return;
+      }
 
-    await updateUser({ [field]: image });
-  };
+      // 🧑‍🏫 AVATAR / COVER
+      const imageUrl = await uploadImage(file, {
+        folder: `coaches/${user.id}/${field}`,
+        replace: true,
+        
+      });
 
-  const handleRemovePhoto = (index: number) => {
-    setProfile(prev => ({
-      ...prev,
-      photos: prev.photos.filter((_, i) => i !== index),
-    }));
-  };
+      await fetch("/api/me/coach-profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ [field]: imageUrl }),
+      });
+
+      await updateUser({ [field]: imageUrl });
+
+      setProfile(prev => ({ ...prev, [field]: imageUrl }));
+    };
 
   /* =========================
      MARKETPLACE HANDLERS
@@ -295,13 +330,24 @@ export default function CoachProfile() {
   };
 
   const handleItemPhotoUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const image = await resizeImage(file);
-    setNewItem(prev => ({ ...prev, photos: [...prev.photos, image] }));
-  };
+      e: React.ChangeEvent<HTMLInputElement>
+    ) => {
+      const file = e.target.files?.[0];
+      if (!file || !user || !newItem.id) return;
+
+      try {
+        const imageUrl = await uploadImage(file, {
+          folder: `marketplace/${user.id}/${newItem.id}`,
+        });
+
+        setNewItem(prev => ({
+          ...prev,
+          photos: [...prev.photos, imageUrl],
+        }));
+      } catch (error) {
+        console.error("Marketplace image upload failed", error);
+      }
+    };
 
   const handleBuyRequest = () => {
     setIsBuyModalOpen(false);
@@ -321,47 +367,61 @@ export default function CoachProfile() {
   };
 
   const handleSave = async () => {
-  try {
-    const payload = {
-      ...profile,
+      try {
+        const res = await fetch("/api/me/coach-profile", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            title: profile.title,
+            location: profile.location,
+            bio: profile.bio,
+            tags: profile.tags,
+            photos: profile.photos,
+          }),
+        });
 
-      // ⬇️ приведение типов ТОЛЬКО ПЕРЕД ОТПРАВКОЙ
-      rate: Number(profile.rate),
-      experience: Number(profile.experience),
-      active_students: Number(profile.active_students),
-      rating: Number(profile.rating),
-      attendance: Number(profile.attendance),
+        if (!res.ok) throw new Error();
+
+        const updatedProfile = await res.json();
+        setProfile(updatedProfile);
+
+        toast({
+          title: "Profile updated",
+          description: "Your changes were saved",
+        });
+      } catch {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to save profile",
+        });
+      }
     };
 
-    const res = await fetch("/api/me/coach-profile", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(payload),
-    });
+    const handleRemovePhoto = async (index: number) => {
+      try {
+        const url = profile.photos[index];
+        if (!url) return;
 
-    if (!res.ok) {
-      throw new Error("Failed to save profile");
-    }
+        // 1️⃣ удаляем файл из Supabase Storage
+        await deleteImage(url);
 
-    const savedProfile = await res.json();
-    setProfileData(savedProfile);
+        // 2️⃣ обновляем локально
+        const updatedPhotos = profile.photos.filter((_, i) => i !== index);
+        setProfile(prev => ({ ...prev, photos: updatedPhotos }));
 
-    setIsEditing(false);
-
-    toast({
-      title: "Profile saved",
-      description: "Your changes have been successfully saved.",
-    });
-  } catch (error) {
-    console.error(error);
-    toast({
-      variant: "destructive",
-      title: "Save failed",
-      description: "Could not save profile. Please try again.",
-    });
-  }
-};
+        // 3️⃣ сохраняем в БД
+        await fetch("/api/me/coach-profile", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ photos: updatedPhotos }),
+        });
+      } catch (err) {
+        console.error("Failed to remove photo", err);
+      }
+    };
 
     /* =========================
      LOAD PUBLIC PROFILE
@@ -485,16 +545,80 @@ export default function CoachProfile() {
      EFFECTS
   ========================= */
   useEffect(() => {
-    loadPublicProfile();
-  }, [profileSlug]);
+      if (!profileSlug) return;
 
-  useEffect(() => {
-    if (!user || !profileSlug) return;
+      async function loadProfile() {
+        try {
+          setLoading(true);
 
-    if (user.role === "coach" && user.slug === profileSlug) {
+          // 1️⃣ PUBLIC DATA
+          const res = await fetch(`/api/coaches/${profileSlug}`, {
+            credentials: "include",
+          });
+
+          if (!res.ok) throw new Error("Not found");
+
+          const data = await res.json();
+
+          setProfile(prev => ({
+            ...DEFAULT_COACH_PROFILE,
+
+            // user-level
+            name: data.user.name,
+            avatar: data.user.avatar ?? DEFAULT_COACH_PROFILE.avatar,
+            cover: data.user.cover ?? DEFAULT_COACH_PROFILE.cover,
+
+            // profile-level
+            title: data.profile.title ?? DEFAULT_COACH_PROFILE.title,
+            location: data.profile.location ?? DEFAULT_COACH_PROFILE.location,
+            bio: data.profile.bio ?? DEFAULT_COACH_PROFILE.bio,
+
+            rate: data.profile.rate ?? DEFAULT_COACH_PROFILE.rate,
+            experience: data.profile.experience ?? DEFAULT_COACH_PROFILE.experience,
+            locations: data.profile.locations ?? DEFAULT_COACH_PROFILE.locations,
+            tags: data.profile.tags ?? DEFAULT_COACH_PROFILE.tags,
+            photos: data.profile.photos ?? DEFAULT_COACH_PROFILE.photos,
+
+            schedule: data.profile.schedule ?? DEFAULT_COACH_PROFILE.schedule,
+
+            response_time: data.profile.response_time ?? DEFAULT_COACH_PROFILE.response_time,
+            accepting_students: data.profile.accepting_students ?? DEFAULT_COACH_PROFILE.accepting_students,
+            active_students: data.profile.active_students ?? DEFAULT_COACH_PROFILE.active_students,
+            rating: data.profile.rating ?? DEFAULT_COACH_PROFILE.rating,
+            hours_taught: data.profile.hours_taught ?? DEFAULT_COACH_PROFILE.hours_taught,
+            attendance: data.profile.attendance ?? DEFAULT_COACH_PROFILE.attendance,
+
+            phone: data.profile.phone ?? "",
+            email: data.profile.email ?? "",
+            marketplace: data.profile.marketplace ?? [],
+          }));
+
+        } catch (e) {
+          setLocation("/");
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      loadProfile();
+    }, [profileSlug]);
+
+    useEffect(() => {
+      if (!isOwnProfile) return;
+
+      async function loadPrivateProfile() {
+        const res = await fetch("/api/me/coach-profile", {
+          credentials: "include",
+        });
+
+        if (!res.ok) return;
+
+        const profile = await res.json();
+        setProfile(profile);
+      }
+
       loadPrivateProfile();
-    }
-  }, [user, profileSlug]);
+    }, [isOwnProfile]);
 
   return (
     <div className="min-h-screen bg-background font-sans relative">
@@ -541,7 +665,7 @@ export default function CoachProfile() {
         <div className="relative h-[300px] md:h-[400px] w-full overflow-hidden group">
           <div className="absolute inset-0 bg-black/40 z-10" />
           <img 
-            src={profile.cover} 
+            src={profile.cover ?? undefined} 
             alt="Cover" 
             className="w-full h-full object-cover transition-transform duration-700"
           />
@@ -563,7 +687,7 @@ export default function CoachProfile() {
             {/* Avatar Column */}
             <div className="shrink-0 relative">
               <div className="w-32 h-32 md:w-48 md:h-48 rounded-full border-4 border-background shadow-2xl overflow-hidden bg-muted relative group">
-                <img src={profile.avatar} alt="Profile" className="w-full h-full object-cover" />
+                <img src={profile.avatar ?? undefined} alt="Profile" className="w-full h-full object-cover" />
                 {isEditing && (
                   <div 
                     onClick={() => document.getElementById('avatar-upload')?.click()}

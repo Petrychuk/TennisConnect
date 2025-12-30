@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { supabase } from "@/lib/supabaseClient";
 
 type UserRole = "player" | "coach" | null;
 
@@ -93,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
     }, []);
 
-
+  
   /**
    * LOGIN
    */
@@ -158,6 +159,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return userData;
   };
+
+useEffect(() => {
+  const connectSupabase = async () => {
+    await supabase.auth.signInWithPassword({
+      email: "makeinfosense@gmail.com",
+      password: import.meta.env.VITE_STORAGE_PASSWORD,
+    });
+  };
+
+  connectSupabase();
+}, []);
 
   /**
    * LOGOUT
