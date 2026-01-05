@@ -49,6 +49,16 @@ function generateSlug(name: string) {
   return `${base}-${suffix}`;
 }
 
+function requireCompletedProfile(req: Request, res: Response, next: Function) {
+  if (!req.user?.profileCompleted) {
+    return res.status(403).json({
+      message: "Profile not completed",
+      code: "PROFILE_INCOMPLETE",
+    });
+  }
+  next();
+}
+
 /* =========================
    ROUTES
 ========================= */
@@ -84,6 +94,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         ...parsed.data,
         password: hashedPassword,
         slug,
+
       });
 
       // 🔑 AUTO-CREATE PROFILE
@@ -142,7 +153,31 @@ export async function registerRoutes(app: Express): Promise<void> {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Not authenticated" });
     }
-    res.json(req.user);
+    res.json({
+      ...req.user,
+      needsProfileCompletion: !req.user.profileCompleted,
+    });
+  });
+
+  app.post("/api/me/complete-profile", requireAuth, async (req, res, next) => {
+    try {
+      const user = await storage.updateUser(req.user!.id, {
+        profileCompleted: true,
+      });
+
+      // OPTIONAL: снять draft
+      if (user.role === "player") {
+        await storage.updatePlayerProfileByUserId(user.id, { isDraft: false });
+      }
+
+      if (user.role === "coach") {
+        await storage.updateCoachProfileByUserId(user.id, { isDraft: false });
+      }
+
+      res.json(user);
+    } catch (e) {
+      next(e);
+    }
   });
 
   /* =========================
@@ -157,6 +192,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     "/api/me/player-profile",
     requireAuth,
     requireRole("player"),
+    requireCompletedProfile,
     async (req, res) => {
       const profile = await storage.getPlayerProfile(req.user!.id);
       res.json(profile);
@@ -180,6 +216,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     "/api/me/coach-profile",
     requireAuth,
     requireRole("coach"),
+    requireCompletedProfile,
     async (req, res) => {
       const profile = await storage.getCoachProfile(req.user!.id);
       res.json(profile);
@@ -222,7 +259,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/players/:slug", async (req, res) => {
     const user = await storage.getUserBySlug(req.params.slug);
-    if (!user || user.role !== "player") {
+    if (!user || user.role !== "player" || !user.profileCompleted ) {
       return res.status(404).json({ message: "Player not found" });
     }
     const profile = await storage.getPlayerProfile(user.id);
@@ -254,6 +291,13 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
     const profile = await storage.getCoachProfile(user.id);
     res.json({ user, profile });
+  });
+
+ app.delete("/api/me/profile", requireAuth, async (_req, res) => {
+    //  TODO: implement later
+    res.status(501).json({
+      message: "Profile deletion not implemented yet",
+    });
   });
 
   // ===== TOURNAMENT ROUTES =====

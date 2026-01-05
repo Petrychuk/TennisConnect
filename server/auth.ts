@@ -35,7 +35,9 @@ declare global {
       role: string;
       avatar?: string | null;
       cover?: string | null;
-      slug?: string; 
+      slug?: string;
+      status?: string | null;
+      profileCompleted?: boolean | null; 
     }
   }
 }
@@ -111,7 +113,9 @@ export function setupAuth(app: Express) {
             role: user.role,
             avatar: user.avatar,
             cover: user.cover,
-            slug: user.slug, 
+            slug: user.slug,
+            status: user.status,
+            profileCompleted: user.profileCompleted, 
           });
         } catch (err) {
           done(err);
@@ -143,6 +147,8 @@ export function setupAuth(app: Express) {
       slug: user.slug,
       avatar: user.avatar,
       cover: user.cover,
+      status: user.status,
+      profileCompleted: user.profileCompleted,
     });
   });
 

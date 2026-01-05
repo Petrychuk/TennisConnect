@@ -13,6 +13,8 @@ export const users = pgTable("users", {
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   avatar: text("avatar"),
   cover: text("cover"),
+  status: varchar("status", { length: 50 }).default("active"),
+  profileCompleted: boolean("profile_completed").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -26,6 +28,7 @@ export const playerProfiles = pgTable("player_profiles", {
   skillLevel: text("skill_level").notNull(),
   bio: text("bio"),
   preferredCourts: json("preferred_courts").$type<string[]>().default([]),
+  isDraft: boolean("is_draft").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -46,6 +49,7 @@ export const coachProfiles = pgTable("coach_profiles", {
   schedule: json("schedule").$type<any>(),
   phone: text("phone"),
   email: text("email"),
+  isDraft: boolean("is_draft").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

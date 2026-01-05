@@ -52,7 +52,7 @@ async function generateUniqueSlug(name: string): Promise<string> {
 }
 
 export interface IStorage {
-  
+ 
   // Users
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
@@ -122,18 +122,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const slug = await generateUniqueSlug(insertUser.name);
-
+   
     const [user] = await db
-      .insert(users)
-      .values({
-        ...insertUser,
-        slug,
-      })
-      .returning();
+        .insert(users)
+        .values(insertUser)
+        .returning();
 
-    return user;
-  }
+      return user;
+    }
 
   async updateUser(id: string, updates: Partial<User>): Promise<User> {
     const [user] = await db
@@ -174,7 +170,13 @@ export class DatabaseStorage implements IStorage {
           playerProfiles,
           eq(users.id, playerProfiles.userId)
         )
-        .where(eq(users.role, "player"));
+        .where(
+          and(
+            eq(users.role, "player"),
+            eq(playerProfiles.isDraft, false),
+            eq(users.profileCompleted, true)
+          )
+        );
     }
 
   async createPlayerProfile(profile: InsertPlayerProfile): Promise<PlayerProfile> {
@@ -182,6 +184,7 @@ export class DatabaseStorage implements IStorage {
       .insert(playerProfiles)
       .values({
         ...profile,
+        isDraft: true,
         preferredCourts: profile.preferredCourts as string[] | undefined,
       })
       .returning();
@@ -203,9 +206,22 @@ export class DatabaseStorage implements IStorage {
     const profile = await this.getPlayerProfile(userId);
     if (!profile) throw new Error("Player profile not found");
 
-    return this.updatePlayerProfile(profile.id, data);
-  }
+    const [updatedProfile] = await db
+      .update(playerProfiles)
+      .set({
+        ...data,
+        isDraft: false,
+      })
+      .where(eq(playerProfiles.id, profile.id))
+      .returning();
 
+    await db
+      .update(users)
+      .set({ profileCompleted: true })
+      .where(eq(users.id, userId));
+
+    return updatedProfile;
+  }
   // =====================
   // COACH PROFILES
   // =====================
@@ -239,7 +255,13 @@ export class DatabaseStorage implements IStorage {
         coachProfiles,
         eq(users.id, coachProfiles.userId)
       )
-      .where(eq(users.role, "coach"));
+      .where(
+        and(
+          eq(users.role, "coach"),
+          eq(coachProfiles.isDraft, false),
+          eq(users.profileCompleted, true)
+        )
+      );
   }
 
   async createCoachProfile(profile: InsertCoachProfile): Promise<CoachProfile> {
@@ -247,6 +269,7 @@ export class DatabaseStorage implements IStorage {
       .insert(coachProfiles)
       .values({
         ...profile,
+        isDraft: true,
         locations: profile.locations as string[] | undefined,
         tags: profile.tags as string[] | undefined,
         photos: profile.photos as string[] | undefined,
@@ -270,7 +293,21 @@ export class DatabaseStorage implements IStorage {
     const profile = await this.getCoachProfile(userId);
     if (!profile) throw new Error("Coach profile not found");
 
-    return this.updateCoachProfile(profile.id, data);
+    const [updatedProfile] = await db
+      .update(coachProfiles)
+      .set({
+        ...data,
+        isDraft: false,
+      })
+      .where(eq(coachProfiles.id, profile.id))
+      .returning();
+
+    await db
+      .update(users)
+      .set({ profileCompleted: true })
+      .where(eq(users.id, userId));
+
+    return updatedProfile;
   }
 
   // =====================
