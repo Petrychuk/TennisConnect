@@ -87,14 +87,11 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
 
     toast({
       title: "Account created",
-      description: "Welcome to TennisConnect!",
+       description: "Please complete your profile to get started!",
     });
 
-      if (user.role === "coach") {
-        setLocation(`/coach/${user.slug}`);
-      } else if (user.role === "player") {
-        setLocation(`/player/${user.slug}`);
-      }
+    setLocation("/complete-profile");
+   
   } catch (error: any) {
     toast({
       title: "Registration failed",

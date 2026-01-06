@@ -16,12 +16,14 @@ import ClubsPage from "@/pages/clubs";
 import PartnersPage from "@/pages/partners";
 import TournamentsPage from "@/pages/tournaments";
 import MessagesPage from "@/pages/messages";
+import CompleteProfilePage from "@/pages/complete-profile";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/complete-profile" component={CompleteProfilePage} />
       <Route path="/player/register" component={PlayerRegistration} />
       <Route path="/player/profile" component={PlayerProfile} />
       <Route path="/player/:id" component={PlayerProfile} />

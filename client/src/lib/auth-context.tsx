@@ -11,6 +11,7 @@ interface User {
   slug: string;
   avatar?: string | null;
   cover?: string | null;
+  profileCompleted: boolean;
 }
 
 interface AuthContextType {
@@ -159,17 +160,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return userData;
   };
-
-useEffect(() => {
-  const connectSupabase = async () => {
-    await supabase.auth.signInWithPassword({
-      email: "makeinfosense@gmail.com",
-      password: import.meta.env.VITE_STORAGE_PASSWORD,
-    });
-  };
-
-  connectSupabase();
-}, []);
 
   /**
    * LOGOUT

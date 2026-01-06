@@ -1,8 +1,6 @@
 import dotenv from "dotenv";
-
 // Определяем окружение
 const NODE_ENV = process.env.NODE_ENV || "development";
-
 // Выбираем env-файл
 const envFile = NODE_ENV === "development" ? ".env.dev" : ".env";
 

@@ -49,7 +49,11 @@ function generateSlug(name: string) {
   return `${base}-${suffix}`;
 }
 
-function requireCompletedProfile(req: Request, res: Response, next: Function) {
+function requireCompletedProfile(
+  req: Request,
+  res: Response,
+  next: Function
+) {
   if (!req.user?.profileCompleted) {
     return res.status(403).json({
       message: "Profile not completed",

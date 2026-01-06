@@ -124,17 +124,17 @@ export default function PartnersPage() {
   
   const normalizeApiPlayers = (data: any[]): PartnerData[] =>
     data.map((item) => ({
-      id: item.user.id,
-      userId: item.user.id,
-      slug: item.user.slug,
-      name: item.user.name,
-      location: item.profile?.location ?? "Sydney",
-      skillLevel: item.profile?.skillLevel ?? "Beginner",
+      id: item.id,
+      userId: item.id,
+      slug: item.slug,
+      name: item.name,
+      location: item.location ?? "Sydney",
+      skillLevel: item.skillLevel ?? "Beginner",
       avatar:
-        item.user.avatar ??
+        item.avatar ??
         "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop",
       available: true,
-      bio: item.profile?.bio ?? "",
+      bio: item.bio ?? "",
       isDemo: false,
     }));
 
