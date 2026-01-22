@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AvatarUploader } from "@/components/avatar-uploader";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
@@ -19,6 +20,25 @@ import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_wit
 import { uploadImage } from "@/lib/uploadImage";
 import { deleteImage } from "@/lib/deleteImage";
 
+type MarketplaceDraft = {
+  id: string;
+  name: string;
+  price: string;
+  description: string;
+  condition: string;
+  photos: string[];
+};
+
+type TournamentDraft = {
+  id: number;
+  name: string;
+  location: string;
+  date: string;
+  result: string;
+  award: string;
+  photos: string[];
+};
+
 export type PlayerProfile = {
   name: string;
   location: string;
@@ -31,9 +51,9 @@ export type PlayerProfile = {
   cover?: string | null;
 
   preferredCourts: string[];
-  photos: string[];
+  photos?: string[];
 
-  coaches: number[];          // связи
+  coaches: number[];          
   marketplaceItems: any[];
   tournaments: any[];
 };
@@ -60,7 +80,7 @@ export const DEFAULT_PLAYER_PROFILE: PlayerProfile = {
 export default function PlayerProfile() {
   const [match, params] = useRoute("/player/:slug");
   const profileSlug = params?.slug; 
-  const { user, isAuthenticated, updateUser } = useAuth();
+  const { user, isAuthenticated, updateUserLocal } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
@@ -73,25 +93,28 @@ export default function PlayerProfile() {
   
   // Marketplace State
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
-  const [newItem, setNewItem] = useState({
-    id: "",
-    name: "",
-    price: "",
-    description: "",
-    condition: "Used - Good"
-  });
+  const [newItem, setNewItem] = useState<MarketplaceDraft>({
+      id: "",
+      name: "",
+      price: "",
+      description: "",
+      condition: "Used - Good",
+      photos: [],
+    });
+
   const [marketplaceItems, setMarketplaceItems] = useState<any[]>([]);
 
   // Tournament State
   const [isTournamentModalOpen, setIsTournamentModalOpen] = useState(false);
-  const [newTournament, setNewTournament] = useState({
-    name: "",
-    location: "",
-    date: "",
-    result: "",
-    award: "",
-    photos: [] as string[]
-  });
+  const [newTournament, setNewTournament] = useState<TournamentDraft>({
+      id: Date.now(),
+      name: "",
+      location: "",
+      date: "",
+      result: "",
+      award: "",
+      photos: [],
+    });
   const [tournaments, setTournaments] = useState<any[]>([]);
   
    useEffect(() => {
@@ -109,20 +132,32 @@ export default function PlayerProfile() {
 
           const data = await res.json();
 
-          setProfile({
-            ...DEFAULT_PLAYER_PROFILE,
-            name: data.user.name,
-            avatar: data.user.avatar || DEFAULT_PLAYER_PROFILE.avatar,
-            cover: data.user.cover || DEFAULT_PLAYER_PROFILE.cover,
-            location: data.profile?.location || DEFAULT_PLAYER_PROFILE.location,
-            age: data.profile?.age || DEFAULT_PLAYER_PROFILE.age,
-            country: data.profile?.country || DEFAULT_PLAYER_PROFILE.country,
-            skillLevel: data.profile?.skillLevel || DEFAULT_PLAYER_PROFILE.skillLevel,
-            bio: data.profile?.bio || DEFAULT_PLAYER_PROFILE.bio,
-            preferredCourts: data.profile?.preferredCourts || DEFAULT_PLAYER_PROFILE.preferredCourts,
-          });
+          const normalizedUser = {
+          ...data.user,
+          avatar: data.user.avatar
+            ? `${data.user.avatar}?t=${Date.now()}`
+            : null,
+          cover: data.user.cover
+            ? `${data.user.cover}?t=${Date.now()}`
+            : null,
+        };
 
-          setProfileData(data.profile || null);
+        setProfile({
+          ...DEFAULT_PLAYER_PROFILE,
+          name: normalizedUser.name,
+          avatar: normalizedUser.avatar || DEFAULT_PLAYER_PROFILE.avatar,
+          cover: normalizedUser.cover || DEFAULT_PLAYER_PROFILE.cover,
+          location: data.profile?.location || DEFAULT_PLAYER_PROFILE.location,
+          age: data.profile?.age || DEFAULT_PLAYER_PROFILE.age,
+          country: data.profile?.country || DEFAULT_PLAYER_PROFILE.country,
+          skillLevel: data.profile?.skillLevel || DEFAULT_PLAYER_PROFILE.skillLevel,
+          bio: data.profile?.bio || DEFAULT_PLAYER_PROFILE.bio,
+          preferredCourts:
+            data.profile?.preferredCourts ||
+            DEFAULT_PLAYER_PROFILE.preferredCourts,
+        });
+
+  setProfileData(data.profile || null);
         } catch {
           setLocation("/");
         } finally {
@@ -235,7 +270,7 @@ export default function PlayerProfile() {
       const item = await res.json();
       setMarketplaceItems(prev => [...prev, item]);
       
-      setNewItem({id: "", name: "", price: "", description: "", condition: "Used - Good" });
+      setNewItem({id: "", name: "", price: "", description: "", condition: "Used - Good", photos: [] });
       setIsItemModalOpen(false);
       toast({ title: "Item Added", description: "Your item is now listed." });
     } catch (error) {
@@ -249,24 +284,34 @@ export default function PlayerProfile() {
   };
 
 const handleItemPhotoUpload = async (
-  e: React.ChangeEvent<HTMLInputElement>
-) => {
-  const file = e.target.files?.[0];
-  if (!file || !user || !newItem.id) return;
+      e: React.ChangeEvent<HTMLInputElement>
+    ) => {
+      const file = e.target.files?.[0];
+      if (!file || !user || !newItem.id) return;
 
-  try {
-    const imageUrl = await uploadImage(file, {
-      folder: `marketplace/${user.id}/${newItem.id}`,
-    });
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("itemId", String(newItem.id));
 
-    setNewItem(prev => ({
-      ...prev,
-      photos: [...prev.photos, imageUrl],
-    }));
-  } catch (error) {
-    console.error("Marketplace image upload failed", error);
-  }
-};
+        const resUpload = await fetch("/api/upload/marketplace", {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        });
+
+        if (!resUpload.ok) throw new Error("Upload failed");
+
+        const { url } = await resUpload.json();
+
+        setNewItem(prev => ({
+          ...prev,
+          photos: [...prev.photos, url],
+        }));
+      } catch (error) {
+        console.error("Marketplace image upload failed", error);
+      }
+    };
 
   const handleDeleteItem = async (id: string) => {
     try {
@@ -305,7 +350,7 @@ const handleItemPhotoUpload = async (
       const tournament = await res.json();
       setTournaments(prev => [...prev, tournament]);
       
-      setNewTournament({ name: "", location: "", date: "", result: "", award: "", photos: [] });
+      setNewTournament({ id: 1, name: "", location: "", date: "", result: "", award: "", photos: [] });
       setIsTournamentModalOpen(false);
       toast({ title: "Tournament Added", description: "Your tournament history has been updated." });
     } catch (error) {
@@ -340,26 +385,39 @@ const handleItemPhotoUpload = async (
   };
 
   const handleTournamentPhotoUpload = async (
-  e: React.ChangeEvent<HTMLInputElement>
-) => {
-  if (!user) return;
+      e: React.ChangeEvent<HTMLInputElement>
+    ) => {
+      if (!user) return;
 
-  const files = Array.from(e.target.files || []);
-  const remaining = 5 - newTournament.photos.length;
-  const filesToUpload = files.slice(0, remaining);
+      const files = Array.from(e.target.files || []);
+      const remaining = 5 - (newTournament.photos?.length ?? 0);
+      const filesToUpload = files.slice(0, remaining);
 
-  for (const file of filesToUpload) {
+      for (const file of filesToUpload) {
+        try {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("tournamentId", String(newTournament.id));
 
-    const url = await uploadImage(file, {
-      folder: `players/${user.id}/tournaments`,
-    });
+          const resUpload = await fetch("/api/upload/tournament", {
+            method: "POST",
+            body: formData,
+            credentials: "include",
+          });
 
-    setNewTournament(prev => ({
-      ...prev,
-      photos: [...prev.photos, url],
-    }));
-  }
-};
+          if (!resUpload.ok) throw new Error("Upload failed");
+
+          const { url } = await resUpload.json();
+
+          setNewTournament(prev => ({
+              ...prev,
+            photos: [...prev.photos, url],
+          }));
+        } catch (err) {
+          console.error("Tournament image upload failed", err);
+        }
+      }
+    };
      
   const removeTournamentPhoto = (index: number) => {
     setNewTournament(prev => ({
@@ -369,63 +427,111 @@ const handleItemPhotoUpload = async (
   };
 
   const handleFileChange = async (
-      e: React.ChangeEvent<HTMLInputElement>,
-      field: "avatar" | "cover"
-    ) => {
-      const file = e.target.files?.[0];
-      if (!file || !user) return;
+  e: React.ChangeEvent<HTMLInputElement>,
+  field: "avatar" | "cover"
+) => {
+  const file = e.target.files?.[0];
+  if (!file || !user) return;
+
+  // 🧠 DEBUG
+  console.log("UPLOAD:", {
+    field,
+    name: file.name,
+    sizeKB: Math.round(file.size / 1024),
+    type: file.type,
+  });
+
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const resUpload = await fetch(`/api/uploadMedia/${field}`, {
+      method: "POST",
+      body: formData,
+      credentials: "include",
+    });
+
+    const contentType = resUpload.headers.get("content-type") || "";
+
+    if (!contentType.includes("application/json")) {
+      const text = await resUpload.text();
+      console.error("❌ NON-JSON RESPONSE:", text);
+      throw new Error("Server returned non-JSON response");
+    }
+
+    const data = await resUpload.json();
+
+    if (!resUpload.ok) {
+      throw new Error(data?.message || `Upload failed (${resUpload.status})`);
+    }
+
+    const { url: imageUrl, user: updatedUserObject } = data;
+
+    if (!imageUrl || !updatedUserObject) {
+      throw new Error("Invalid server response");
+    }
+
+    // 🟢 UI — обновляем профиль
+    setProfile(prev => ({
+      ...prev,
+      [field]: imageUrl,
+    }));
+
+    // 🟢 ГЛОБАЛЬНО — обновляем auth-context
+    // ❗ ВАЖНО: используем updateUserLocal, НЕ updateUser
+    updateUserLocal(updatedUserObject);
+
+    toast({
+      title: "Photo updated",
+      description: `${field} updated successfully`,
+    });
+
+  } catch (err) {
+    console.error("Avatar/Cover upload error:", err);
+    toast({
+      variant: "destructive",
+      title: "Upload failed",
+      description: err instanceof Error ? err.message : "Unknown error",
+    });
+  } finally {
+    e.target.value = "";
+  }
+};
+
+
+    const handleRemovePhoto = async (index: number) => {
+      if (!profile.photos) return;
+
+      const urlToRemove = profile.photos[index];
 
       try {
-        // 1️⃣ upload to Supabase (replace!)
-        const imageUrl = await uploadImage(file, {
-          folder: `players/${user.id}/${field}`,
-          replace: true,
-        });
+        // 1️⃣ локально обновляем UI
+        const updated = profile.photos.filter((_, i) => i !== index);
+        setProfile(prev => ({ ...prev, photos: updated }));
 
-        // 2️⃣ save URL to PLAYER PROFILE
-        const res = await fetch("/api/me/player-profile", {
+        // 2️⃣ сохраняем в БД (coach profile)
+        const res = await fetch("/api/me/coach-profile", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ [field]: imageUrl }),
+          body: JSON.stringify({ photos: updated }),
         });
 
-        if (!res.ok) throw new Error("Failed to update profile");
+        if (!res.ok) {
+          throw new Error("Failed to update profile");
+        }
 
-        // 3️⃣ local UI
-        setProfile(prev => ({ ...prev, [field]: imageUrl }));
-
-        // 4️⃣ navbar + auth context
-        await updateUser({ [field]: imageUrl });
-
-        toast({
-          title: "Photo updated",
-          description: `${field} successfully updated`,
+        // 3️⃣ (опционально) удалить файл из storage
+        await fetch("/api/upload/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ url: urlToRemove }),
         });
+
       } catch (err) {
-        console.error(err);
-        toast({
-          variant: "destructive",
-          title: "Upload failed",
-          description: "Could not upload image",
-        });
+        console.error("Failed to remove photo", err);
       }
-    };
-
-    const handleRemovePhoto = async (index: number) => {
-      const url = profile.photos[index];
-
-      // 🔧 временно просто убираем из профиля
-      const updated = profile.photos.filter((_, i) => i !== index);
-
-      setProfile(prev => ({ ...prev, photos: updated }));
-
-      await fetch("/api/me/coach-profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ photos: updated }),
-      });
     };
 
   const myCoaches = COACHES_DATA.filter(coach => profile.coaches.includes(coach.id));
@@ -487,13 +593,6 @@ const handleItemPhotoUpload = async (
                     className="hidden" 
                     accept="image/*"
                     onChange={(e) => handleFileChange(e, 'avatar')}
-                  />
-                   <input 
-                    type="file" 
-                    id="cover-upload" 
-                    className="hidden" 
-                    accept="image/*"
-                    onChange={(e) => handleFileChange(e, 'cover')}
                   />
                 </label>
               )}

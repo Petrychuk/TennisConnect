@@ -1,26 +1,22 @@
 import dotenv from "dotenv";
-// Определяем окружение
-const NODE_ENV = process.env.NODE_ENV || "development";
-// Выбираем env-файл
-const envFile = NODE_ENV === "development" ? ".env.dev" : ".env";
 
-// Загружаем переменные
+const envFile =
+  process.env.NODE_ENV === "development" ? ".env.dev" : ".env";
+
 dotenv.config({ path: envFile });
 
-function requireEnv(name: string): string {
-  const value = process.env[name];
+export const env = {
+  SUPABASE_URL: process.env.SUPABASE_URL!,
+  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  SESSION_SECRET: process.env.SESSION_SECRET!, 
+};
 
-  if (!value || value.trim() === "") {
-    throw new Error(`❌ Missing required environment variable: ${name}`);
-  }
-
-  return value;
+if (
+  !env.SUPABASE_URL ||
+  !env.SUPABASE_SERVICE_ROLE_KEY ||
+  !env.SESSION_SECRET
+) {
+  throw new Error("Missing required environment variables");
 }
 
-export const ENV = {
-  SESSION_SECRET: requireEnv("SESSION_SECRET"),
-  VITE_SUPABASE_URL: requireEnv("VITE_SUPABASE_URL"),
-  VITE_SUPABASE_ANON_KEY: requireEnv("VITE_SUPABASE_ANON_KEY"),
-  
-};
 

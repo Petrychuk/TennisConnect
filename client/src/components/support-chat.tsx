@@ -16,7 +16,7 @@ interface Message {
 }
 
 const SUPPORT_AGENT = {
-  name: "Sarah from Support",
+  name: "Nataliia from Support",
   avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop",
   initialMessage: "Hi there! 👋 Welcome to TennisConnect. How can I help you find a coach or improve your game today?"
 };
@@ -96,7 +96,7 @@ export function SupportChat() {
               <CardHeader className="bg-primary p-4 flex flex-row items-center justify-between space-y-0">
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <Avatar className="h-10 w-10 border-2 border-white/20">
+                    <Avatar  className="h-10 w-10 border-2 border-white/20">
                       <AvatarImage src={SUPPORT_AGENT.avatar} />
                       <AvatarFallback>S</AvatarFallback>
                     </Avatar>

@@ -5,11 +5,10 @@ export function requireAuth(
   res: Response,
   next: NextFunction
 ) {
-  if (req.isAuthenticated && req.isAuthenticated()) {
-    return next();
+  if (!req.isAuthenticated || !req.isAuthenticated()) {
+    return res.status(401).json({ message: "Unauthorized" });
   }
 
-  return res.status(401).json({
-    error: "Unauthorized",
-  });
+  next();
 }
+

@@ -27,9 +27,16 @@ interface AuthContextType {
     name: string,
     role: "player" | "coach"
   ) => Promise<User>;
-  logout: () => Promise<void>;
+  
+  // 🔁 Старый метод — ОСТАВЛЯЕМ
   updateUser: (updates: Partial<User>) => Promise<void>;
-}
+
+  // ✅ НОВЫЙ метод — БЕЗ API
+  updateUserLocal: (user: User) => void;
+
+  logout: () => Promise<void>;
+  
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -70,11 +77,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
           }
 
-          const userData: User = await res.json();
+          const data = await res.json();
+
+          // 🔥 поддерживаем оба формата ответа
+          const resolvedUser: User | null = data?.user ?? data ?? null;
 
           if (!cancelled) {
-            setUser(userData);
-            setProfileLoaded(true);
+            setUser(resolvedUser);
+            setProfileLoaded(!!resolvedUser);
           }
 
         } catch (error) {
@@ -95,7 +105,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
     }, []);
 
-  
   /**
    * LOGIN
    */
@@ -161,7 +170,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return userData;
   };
 
+  
   /**
+   * UPDATE USER (avatar / cover)
+   */
+  const updateUser = async (updates: Partial<User>) => {
+    if (!user) return;
+
+    const res = await fetch(`/api/me`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(updates),
+      
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to update user");
+    }
+
+    const updatedUser = await res.json();
+    setUser(updatedUser);
+  };
+  
+  // используется ТОЛЬКО после upload avatar / cover
+  const updateUserLocal = (newUser: User) => {
+    console.log("AUTH CONTEXT LOCAL UPDATE:", newUser);
+    setUser(newUser);
+  };
+
+/**
    * LOGOUT
    */
   const logout = async () => {
@@ -172,27 +210,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setUser(null);
     setProfileLoaded(false);
-  };
-
-  /**
-   * UPDATE USER (avatar / cover)
-   */
-  const updateUser = async (updates: Partial<User>) => {
-    if (!user) return;
-
-    const res = await fetch(`/api/users/${user.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updates),
-      credentials: "include",
-    });
-
-    if (!res.ok) {
-      throw new Error("Failed to update user");
-    }
-
-    const updatedUser = await res.json();
-    setUser(updatedUser);
   };
 
   return (
@@ -206,6 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         logout,
         updateUser,
+        updateUserLocal,
       }}
     >
       {children}

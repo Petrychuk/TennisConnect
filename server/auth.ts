@@ -6,7 +6,7 @@ import createMemoryStore from "memorystore";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
-import { ENV } from "./env";
+import { env } from "./env";
 
 const scryptAsync = promisify(scrypt);
 
@@ -44,15 +44,17 @@ declare global {
 
 export function setupAuth(app: Express) {
   const MemoryStore = createMemoryStore(session);
+  
+  const ONE_HOUR = 1000 * 60 * 60;
 
   const sessionSettings: session.SessionOptions = {
-    secret: ENV.SESSION_SECRET,
+    secret: env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
       sameSite: "lax",
-      maxAge: 1000 * 60 * 60,
+      maxAge: ONE_HOUR,
       secure: app.get("env") === "production",
     },
     store: new MemoryStore({
@@ -62,7 +64,11 @@ export function setupAuth(app: Express) {
 
   if (app.get("env") === "production") {
     app.set("trust proxy", 1);
-    sessionSettings.cookie = { secure: true };
+    sessionSettings.cookie = {
+      ...sessionSettings.cookie,
+      secure: true,
+      sameSite: "none",
+    };
   }
 
   app.use(session(sessionSettings));

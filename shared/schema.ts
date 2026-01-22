@@ -172,16 +172,19 @@ export const marketplaceItemsRelations = relations(marketplaceItems, ({ one }) =
 //   role: z.enum(["player", "coach"]),
 // });
 
-// Insert Schemas
-export const insertUserSchema = createInsertSchema(users).pick({
-  email: true,
-  password: true,
-  name: true,
-  role: true,
-  slug: true,
-  avatar: true,
-  cover: true,
-});
+export const insertUserSchema = createInsertSchema(users)
+  .pick({
+    email: true,
+    password: true,
+    name: true,
+    role: true,
+    slug: true,
+    avatar: true,
+    cover: true,
+  })
+  .extend({
+    slug: z.string().optional(), 
+  });
 
 export const insertPlayerProfileSchema = createInsertSchema(playerProfiles).omit({
   id: true,

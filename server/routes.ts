@@ -3,7 +3,9 @@ import crypto from "crypto";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { hashPassword } from "./auth";
+import uploadMediaRouter from "./routes/uploadMedia";
 import passport from "passport";
+import { requireAuth } from "./requireAuth";
 import {
   insertUserSchema,
   insertPlayerProfileSchema,
@@ -19,13 +21,6 @@ import { z } from "zod";
    HELPERS & MIDDLEWARE
 ========================= */
 
-function requireAuth(req: Request, res: Response, next: Function) {
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-  next();
-}
-
 function requireRole(role: "player" | "coach") {
   return (req: Request, res: Response, next: Function) => {
     if (!req.isAuthenticated()) {
@@ -36,17 +31,6 @@ function requireRole(role: "player" | "coach") {
     }
     next();
   };
-}
-
-function generateSlug(name: string) {
-  const base = name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-
-  const suffix = crypto.randomBytes(2).toString("hex");
-  return `${base}-${suffix}`;
 }
 
 function requireCompletedProfile(
@@ -68,7 +52,8 @@ function requireCompletedProfile(
 ========================= */
 
 export async function registerRoutes(app: Express): Promise<void> {
-
+  
+  app.use("/api/uploadMedia", uploadMediaRouter);
   /* =========================
      AUTH
   ========================= */
@@ -92,12 +77,10 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
 
       const hashedPassword = await hashPassword(parsed.data.password);
-      const slug = generateSlug(parsed.data.name);
-
+      
       const user = await storage.createUser({
         ...parsed.data,
         password: hashedPassword,
-        slug,
 
       });
 
@@ -189,9 +172,11 @@ export async function registerRoutes(app: Express): Promise<void> {
   ========================= */
 
   app.get("/api/me", requireAuth, (req, res) => {
-    res.json(req.user);
-  });
-
+    if (!req.user) {
+    return res.status(401).json({ user: null });
+  }
+  res.json({ user: req.user });
+});
   app.get(
     "/api/me/player-profile",
     requireAuth,

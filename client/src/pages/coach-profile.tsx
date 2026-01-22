@@ -69,33 +69,27 @@ export type CoachSchedule = {
 };
 
 export type CoachProfile = {
+  gallery: any;
   name: string;
   title: string;
   location: string;
   bio: string;
-
   avatar?: string | null;
   cover?: string | null;
-
   rate: string;
   experience: string;
-
   locations: string[];
   tags: string[];
-  photos: string[];   
-
+  photos?: string[]; 
   schedule: CoachSchedule;
-
   response_time: string;
   accepting_students: boolean;
   active_students: string;
   rating: number;
   hours_taught: string;
   attendance: number;
-
   phone: string;
   email: string;
-
   marketplace: any[];
 };
 
@@ -134,6 +128,7 @@ export const DEFAULT_COACH_PROFILE: CoachProfile = {
   phone: "",
   email: "",
   marketplace: [],
+  gallery: undefined
 };
 
 // Top 10 Popular Locations
@@ -237,7 +232,7 @@ export default function CoachProfile() {
   /* =========================
      HANDLERS — FILE UPLOAD
   ========================= */
-  type UploadField = "avatar" | "cover" | "photo";
+  type UploadField = "avatar" | "cover" | "gallery";
 
     const handleFileChange = async (
       e: React.ChangeEvent<HTMLInputElement>,
@@ -247,12 +242,21 @@ export default function CoachProfile() {
       if (!file || !user || !isOwnProfile) return;
 
       // 📸 ГАЛЕРЕЯ ТРЕНЕРА
-      if (field === "photo") {
-        const imageUrl = await uploadImage(file, {
-          folder: `coaches/${user.id}/gallery`,
+      if (field === "gallery") {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const resUpload = await fetch("/api/upload/coach-gallery", {
+          method: "POST",
+          body: formData,
+          credentials: "include",
         });
 
-        const updatedPhotos = [...profile.photos, imageUrl];
+        if (!resUpload.ok) throw new Error("Upload failed");
+
+        const { url } = await resUpload.json();
+
+        const updatedPhotos = [...(profile.photos ?? []), url];
 
         setProfile(prev => ({ ...prev, photos: updatedPhotos }));
 
@@ -267,22 +271,29 @@ export default function CoachProfile() {
       }
 
       // 🧑‍🏫 AVATAR / COVER
-      const imageUrl = await uploadImage(file, {
-        folder: `coaches/${user.id}/${field}`,
-        replace: true,
-        
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const resUpload = await fetch(`/api/upload/${field}`, {
+        method: "POST",
+        body: formData,
+        credentials: "include",
       });
+
+      if (!resUpload.ok) throw new Error("Upload failed");
+
+      const { url } = await resUpload.json();
 
       await fetch("/api/me/coach-profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ [field]: imageUrl }),
+        body: JSON.stringify({ [field]: url }),
       });
 
-      await updateUser({ [field]: imageUrl });
+      await updateUser({ [field]: url });
 
-      setProfile(prev => ({ ...prev, [field]: imageUrl }));
+      setProfile(prev => ({ ...prev, [field]: url }));
     };
 
   /* =========================
@@ -336,13 +347,23 @@ export default function CoachProfile() {
       if (!file || !user || !newItem.id) return;
 
       try {
-        const imageUrl = await uploadImage(file, {
-          folder: `marketplace/${user.id}/${newItem.id}`,
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("itemId", String(newItem.id));
+
+        const resUpload = await fetch("/api/upload/marketplace", {
+          method: "POST",
+          body: formData,
+          credentials: "include",
         });
+
+        if (!resUpload.ok) throw new Error("Upload failed");
+
+        const { url } = await resUpload.json();
 
         setNewItem(prev => ({
           ...prev,
-          photos: [...prev.photos, imageUrl],
+          photos: [...(prev.photos ?? []), url],
         }));
       } catch (error) {
         console.error("Marketplace image upload failed", error);
@@ -401,10 +422,12 @@ export default function CoachProfile() {
 
     const handleRemovePhoto = async (index: number) => {
       try {
+        if (!profile.photos) return;
+
         const url = profile.photos[index];
         if (!url) return;
 
-        // 1️⃣ удаляем файл из Supabase Storage
+        // 1️⃣ удаляем файл из Storage
         await deleteImage(url);
 
         // 2️⃣ обновляем локально
@@ -658,7 +681,7 @@ export default function CoachProfile() {
           id="photo-upload" 
           className="hidden" 
           accept="image/*,video/*"
-          onChange={(e) => handleFileChange(e, 'photo')}
+          onChange={(e) => handleFileChange(e, 'gallery')}
         />
 
         {/* Profile Header / Hero */}
@@ -944,7 +967,7 @@ export default function CoachProfile() {
                       )}
                       
                       {/* Gallery Items */}
-                      {profile.photos.map((item, index) => {
+                      {/* {profile.gallery.map((item, index) => {
                         const isVideo = item.startsWith('data:video') || item.match(/\.(mp4|webm|ogg)$/i);
                         return (
                           <motion.div 
@@ -974,7 +997,7 @@ export default function CoachProfile() {
                             )}
                           </motion.div>
                         );
-                      })}
+                      })} */}
                     </div>
                   </TabsContent>
                   

@@ -34,9 +34,12 @@ function slugify(text: string) {
 }
 
 async function generateUniqueSlug(name: string): Promise<string> {
+  if (!name || !name.trim()) {
+    throw new Error("generateUniqueSlug: name is required");
+  }
+
   const base = slugify(name);
   let slug = base;
-  let counter = 1;
 
   while (true) {
     const [existing] = await db
@@ -47,7 +50,6 @@ async function generateUniqueSlug(name: string): Promise<string> {
     if (!existing) return slug;
 
     slug = `${base}-${Math.random().toString(36).slice(2, 6)}`;
-    counter++;
   }
 }
 
@@ -121,15 +123,21 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-   
-    const [user] = await db
-        .insert(users)
-        .values(insertUser)
-        .returning();
+ async createUser(insertUser: InsertUser): Promise<User> {
+    const slug = insertUser.slug
+      ? insertUser.slug
+      : await generateUniqueSlug(insertUser.name);
 
-      return user;
-    }
+    const [user] = await db
+      .insert(users)
+      .values({
+        ...insertUser,
+        slug,
+      })
+      .returning();
+
+    return user;
+}
 
   async updateUser(id: string, updates: Partial<User>): Promise<User> {
     const [user] = await db

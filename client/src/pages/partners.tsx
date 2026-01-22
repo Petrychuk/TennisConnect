@@ -26,7 +26,7 @@ interface PartnerData {
     avatar: string;
     available: boolean;
     bio: string;
-    isDemo: boolean;         // 👈 КЛЮЧЕВО
+    isDemo: boolean;      
   }
 
 export default function PartnersPage() {
@@ -43,8 +43,7 @@ export default function PartnersPage() {
   const [sending, setSending] = useState(false);
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
-
-
+  
   const handleSendMessage = async () => {
   if (!messageText.trim()) {
     toast({
@@ -54,7 +53,6 @@ export default function PartnersPage() {
     });
     return;
   }
-
   setSending(true);
 
   try {
@@ -121,6 +119,7 @@ export default function PartnersPage() {
         bio: p.bio ?? "",
         isDemo: true,
       }));
+  const DEFAULT_AVATAR ="";
   
   const normalizeApiPlayers = (data: any[]): PartnerData[] =>
     data.map((item) => ({
@@ -131,8 +130,9 @@ export default function PartnersPage() {
       location: item.location ?? "Sydney",
       skillLevel: item.skillLevel ?? "Beginner",
       avatar:
-        item.avatar ??
-        "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop",
+        item.avatar 
+        ? `${item.avatar}?t=${item.updatedAt ?? Date.now()}`
+      : DEFAULT_AVATAR,
       available: true,
       bio: item.bio ?? "",
       isDemo: false,
@@ -273,8 +273,14 @@ export default function PartnersPage() {
                   <CardContent className="p-6 grow flex flex-col items-center text-center">
                     <div className="relative mb-4">
                       <Avatar className="w-24 h-24 border-4 border-background shadow-lg">
-                        <AvatarImage src={partner.avatar} />
-                        <AvatarFallback>{partner.name[0]}</AvatarFallback>
+                        <AvatarImage
+                          src={
+                            isMe && user?.avatar
+                              ? user.avatar
+                              : partner.avatar
+                          }
+                        />
+                      <AvatarFallback>{partner.name[0]}</AvatarFallback>
                       </Avatar>
 
                       {isMe && (
