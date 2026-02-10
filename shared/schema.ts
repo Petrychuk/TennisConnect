@@ -53,8 +53,8 @@ export const coachProfiles = pgTable("coach_profiles", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Tournaments
-export const tournaments = pgTable("tournaments", {
+// Tournaments History
+export const tournamentHistory = pgTable("tournament_history", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
   name: text("name").notNull(),
@@ -121,7 +121,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
     fields: [users.id],
     references: [coachProfiles.userId],
   }),
-  tournaments: many(tournaments),
+  tournamentHistory: many(tournamentHistory),
   marketplaceItems: many(marketplaceItems),
   receivedMessages: many(messages),
 }));
@@ -151,9 +151,9 @@ export const coachProfilesRelations = relations(coachProfiles, ({ one }) => ({
   }),
 }));
 
-export const tournamentsRelations = relations(tournaments, ({ one }) => ({
+export const tournamentHistoryRelations = relations(tournamentHistory, ({ one }) => ({
   user: one(users, {
-    fields: [tournaments.userId],
+    fields: [tournamentHistory.userId],
     references: [users.id],
   }),
 }));
@@ -196,9 +196,10 @@ export const insertCoachProfileSchema = createInsertSchema(coachProfiles).omit({
   createdAt: true,
 });
 
-export const insertTournamentSchema = createInsertSchema(tournaments).omit({
-  id: true,
-  createdAt: true,
+export const insertTournamentHistorySchema = createInsertSchema(
+  tournamentHistory
+).extend({
+  photos: z.array(z.string()).optional().default([]),
 });
 
 export const insertMarketplaceItemSchema = createInsertSchema(marketplaceItems).omit({
@@ -227,8 +228,8 @@ export type PlayerProfile = typeof playerProfiles.$inferSelect;
 export type InsertCoachProfile = z.infer<typeof insertCoachProfileSchema>;
 export type CoachProfile = typeof coachProfiles.$inferSelect;
 
-export type InsertTournament = z.infer<typeof insertTournamentSchema>;
-export type Tournament = typeof tournaments.$inferSelect;
+export type InsertTournamentHistory = z.infer<typeof insertTournamentHistorySchema>;
+export type TournamentHistory = typeof tournamentHistory.$inferSelect;
 
 export type InsertMarketplaceItem = z.infer<typeof insertMarketplaceItemSchema>;
 export type MarketplaceItem = typeof marketplaceItems.$inferSelect;

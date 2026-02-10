@@ -3,7 +3,7 @@ import {
   users, 
   playerProfiles,
   coachProfiles,
-  tournaments,
+  tournamentHistory,
   marketplaceItems,
   clubs,
   messages,
@@ -13,8 +13,8 @@ import {
   type InsertPlayerProfile,
   type CoachProfile,
   type InsertCoachProfile,
-  type Tournament,
-  type InsertTournament,
+  type TournamentHistory,
+  type InsertTournamentHistory,
   type MarketplaceItem,
   type InsertMarketplaceItem,
   type Club,
@@ -79,10 +79,12 @@ export interface IStorage {
   createCoachProfile(profile: InsertCoachProfile): Promise<CoachProfile>;
   updateCoachProfile(id: string, updates: Partial<CoachProfile>): Promise<CoachProfile>;
   
-  // Tournaments
-  getUserTournaments(userId: string): Promise<Tournament[]>;
-  createTournament(tournament: InsertTournament): Promise<Tournament>;
-  deleteTournament(id: string): Promise<void>;
+ // Tournament History (Player profile)
+  getTournamentOwnedByUser(id: string, userId: string): Promise<TournamentHistory>;
+  getUserTournamentHistory(userId: string): Promise<TournamentHistory[]>;
+  createTournamentHistory(data: InsertTournamentHistory): Promise<TournamentHistory>;
+  updateTournamentHistory(id: string, userId: string, data: Partial<InsertTournamentHistory>): Promise<TournamentHistory>;
+  deleteTournamentHistory(id: string, userId: string): Promise<void>;
   
   // Marketplace
   getAllMarketplaceItems(): Promise<MarketplaceItem[]>;
@@ -319,31 +321,119 @@ export class DatabaseStorage implements IStorage {
   }
 
   // =====================
-  // TOURNAMENTS
+  // TOURNAMENT HISTORY
   // =====================
-
-  async getUserTournaments(userId: string): Promise<Tournament[]> {
+  // публично (для профайла)
+  async getUserTournamentHistory(userId: string): Promise<TournamentHistory[]> {
     return db
       .select()
-      .from(tournaments)
-      .where(eq(tournaments.userId, userId));
+      .from(tournamentHistory)
+      .where(eq(tournamentHistory.userId, userId))
+      .orderBy(desc(tournamentHistory.date));
   }
 
-  async createTournament(tournament: InsertTournament): Promise<Tournament> {
-    const [newTournament] = await db
-      .insert(tournaments)
+  // создание (только владелец)
+  async createTournamentHistory(
+    data: InsertTournamentHistory
+  ): Promise<TournamentHistory> {
+    const [created] = await db
+      .insert(tournamentHistory)
       .values({
-        ...tournament,
-        photos: tournament.photos as string[] | undefined,
+        ...data,
+        photos: data.photos ?? [],
       })
       .returning();
 
-    return newTournament;
+    return created;
   }
 
-  async deleteTournament(id: string): Promise<void> {
-    await db.delete(tournaments).where(eq(tournaments.id, id));
+  // получить турнир владельца (ключевой метод)
+  async getTournamentOwnedByUser(
+    id: string,
+    userId: string
+  ): Promise<TournamentHistory> {
+    const [tournament] = await db
+      .select()
+      .from(tournamentHistory)
+      .where(
+        and(
+          eq(tournamentHistory.id, id),
+          eq(tournamentHistory.userId, userId)
+        )
+      );
+
+    if (!tournament) {
+      throw new Error("Tournament not found or access denied");
+    }
+
+    return tournament;
   }
+
+  // получить турнир (для чтения, public / owner)
+  async getTournamentHistoryById(
+    id: string,
+    userId: string
+  ): Promise<TournamentHistory | null> {
+    const [tournament] = await db
+      .select()
+      .from(tournamentHistory)
+      .where(
+        and(
+          eq(tournamentHistory.id, id),
+          eq(tournamentHistory.userId, userId)
+        )
+      );
+
+    return tournament ?? null;
+  }
+
+  // обновление (владелец)
+  async updateTournamentHistory(
+    id: string,
+    userId: string,
+    data: Partial<InsertTournamentHistory>
+  ): Promise<TournamentHistory> {
+
+    const [updated] = await db
+      .update(tournamentHistory)
+      .set({
+        ...(data.name !== undefined && { name: data.name }),
+        ...(data.location !== undefined && { location: data.location }),
+        ...(data.date !== undefined && { date: data.date }),
+        ...(data.result !== undefined && { result: data.result }),
+        ...(data.award !== undefined && { award: data.award }),
+        ...(data.photos !== undefined && { photos: data.photos }),
+      })
+      .where(
+        and(
+          eq(tournamentHistory.id, id),
+          eq(tournamentHistory.userId, userId)
+        )
+      )
+      .returning();
+
+    if (!updated) {
+      throw new Error("Tournament not found or access denied");
+    }
+
+    return updated;
+  }
+
+  // удаление (владелец)
+  async deleteTournamentHistory(
+    id: string,
+    userId: string
+  ): Promise<void> {
+    await db
+      .delete(tournamentHistory)
+      .where(
+        and(
+          eq(tournamentHistory.id, id),
+          eq(tournamentHistory.userId, userId)
+        )
+      );
+  }
+
 
   // =====================
   // MARKETPLACE

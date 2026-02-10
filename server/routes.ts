@@ -4,13 +4,14 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { hashPassword } from "./auth";
 import uploadMediaRouter from "./routes/uploadMedia";
+import profileTournamentHistoryRouter from "./routes/profileTournamentHistory";
 import passport from "passport";
 import { requireAuth } from "./requireAuth";
 import {
   insertUserSchema,
   insertPlayerProfileSchema,
   insertCoachProfileSchema,
-  insertTournamentSchema,
+  insertTournamentHistorySchema,
   insertMarketplaceItemSchema,
   insertClubSchema,
   insertMessageSchema,
@@ -47,13 +48,16 @@ function requireCompletedProfile(
   next();
 }
 
-/* =========================
-   ROUTES
-========================= */
+  /* =========================
+    ROUTES
+  ========================= */
 
 export async function registerRoutes(app: Express): Promise<void> {
   
   app.use("/api/uploadMedia", uploadMediaRouter);
+  app.use("/api/profile/tournament-history", profileTournamentHistoryRouter);
+  //app.use("/api/tournaments", profileTournamentHistoryRouter);
+  
   /* =========================
      AUTH
   ========================= */
@@ -212,8 +216,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   );
 
-  app.put(
-    "/api/me/coach-profile",
+  app.put("/api/me/coach-profile",
     requireAuth,
     requireRole("coach"),
     async (req, res) => {
@@ -287,43 +290,6 @@ export async function registerRoutes(app: Express): Promise<void> {
     res.status(501).json({
       message: "Profile deletion not implemented yet",
     });
-  });
-
-  // ===== TOURNAMENT ROUTES =====
-  app.get("/api/tournaments", requireAuth, async (req, res, next) => {
-    try {
-      const tournaments = await storage.getUserTournaments(req.user!.id);
-      res.json(tournaments);
-    } catch (error: any) {
-      next(error);
-    }
-  });
-
-  app.post("/api/tournaments", requireAuth, async (req, res, next) => {
-    try {
-      const result = insertTournamentSchema.safeParse({
-        ...req.body,
-        userId: req.user!.id,
-      });
-
-      if (!result.success) {
-        return res.status(400).json({ message: "Invalid input", errors: result.error });
-      }
-
-      const tournament = await storage.createTournament(result.data);
-      res.json(tournament);
-    } catch (error: any) {
-      next(error);
-    }
-  });
-
-  app.delete("/api/tournaments/:id", requireAuth, async (req, res, next) => {
-    try {
-      await storage.deleteTournament(req.params.id);
-      res.json({ message: "Tournament deleted" });
-    } catch (error: any) {
-      next(error);
-    }
   });
 
   // ===== MARKETPLACE ROUTES =====
