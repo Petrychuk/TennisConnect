@@ -131,6 +131,7 @@ const TOURNAMENTS_DATA = [
   }
 ];
 
+
 export default function TournamentsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterLevel, setFilterLevel] = useState("");
