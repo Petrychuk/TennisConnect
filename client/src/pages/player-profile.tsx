@@ -6,8 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { AvatarUploader } from "@/components/avatar-uploader";
-import type { TournamentHistory } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
@@ -16,10 +14,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { useLocation, useRoute } from "wouter";
 import { MapPin, Calendar, Trophy, Edit2, Save, ShoppingBag, Plus, Trash2, Camera, Globe } from "lucide-react";
-import { COACHES_DATA, MARKETPLACE_DATA } from "@/lib/dummy-data";
+import { COACHES_DATA } from "@/lib/dummy-data";
 import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.png";
-import { uploadImage } from "@/lib/uploadImage";
-import { deleteImage } from "@/lib/deleteImage";
+import { TennisLoader } from "@/components/ui/tennisLoader";
+
 
 type MarketplaceDraft = {
   id: string;
@@ -100,7 +98,7 @@ export default function PlayerProfile() {
       award: "",
       photos: [],
     });
-  const [tournaments, setTournaments] = useState<any[]>([]);
+  const [tournaments, setTournaments] = useState<TournamentDraft[]>([]);
   const [editingTournament, setEditingTournament] = useState<TournamentDraft | null>(null);
   
   // Marketplace State
@@ -319,7 +317,7 @@ export default function PlayerProfile() {
         } catch (error) {
           console.error("Marketplace image upload failed", error);
         }
-      };
+  };
 
   const handleDeleteItem = async (id: string) => {
     try {
@@ -342,36 +340,9 @@ export default function PlayerProfile() {
     }
   };
 
-  // ===== Tournaments  =====
-  const handleAddTournament = async () => {
-    if (!newTournament.name || !newTournament.date) return;
-    
-    try {
-      const res = await fetch("/api/tournaments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newTournament),
-        credentials: "include"
-      });
-
-      if (!res.ok) throw new Error("Failed to add tournament");
-      
-      const tournament = await res.json();
-      setTournaments(prev => [...prev, tournament]);
-      
-      setNewTournament({ id: "", name: "", location: "", date: "", result: "", award: "", photos: [] });
-      setIsTournamentModalOpen(false);
-      toast({ title: "Tournament Added", description: "Your tournament history has been updated." });
-    } catch (error) {
-      console.error("Failed to add tournament", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to add tournament"
-      });
-    }
-  };
-
+  /* ======================
+   TOURNAMENTS (CRUD + PHOTOS)
+   ====================== */  
   const handleSaveTournament = async () => {
   const editingTournamentId = editingTournament?.id ?? null;
   const isEdit = Boolean(editingTournamentId); 
@@ -410,7 +381,7 @@ export default function PlayerProfile() {
     setEditingTournament(saved);
     toast({ title: "Tournament created. Upload photos." });
   }
-};
+  };
 
   const handleTournamentPhotoUpload = async (
     e: React.ChangeEvent<HTMLInputElement>
@@ -466,13 +437,35 @@ export default function PlayerProfile() {
     e.target.value = "";
   };
         
-  const removeTournamentPhoto = (index: number) => {
-    setNewTournament(prev => ({
-      ...prev,
-      photos: prev.photos.filter((_, i) => i !== index)
-    }));
+  const removeTournamentPhoto = async (index: number) => {
+    if (!newTournament.id) return;
+
+    const res = await fetch(
+      `/api/profile/tournament-history/${newTournament.id}/photos/${index}`,
+      {
+        method: "DELETE",
+        credentials: "include",
+      }
+    );
+
+    if (!res.ok) {
+      toast({ variant: "destructive", title: "Failed to remove photo" });
+      return;
+    }
+
+    const updatedTournament = await res.json();
+
+    // обновляем форму
+    setNewTournament(updatedTournament);
+
+    // обновляем список
+    setTournaments(prev =>
+      prev.map(t =>
+        t.id === updatedTournament.id ? updatedTournament : t
+      )
+    );
   };
-  
+ 
   const resetTournamentForm = () => {
   setNewTournament({
     id: "",
@@ -484,9 +477,24 @@ export default function PlayerProfile() {
     photos: [],
   });
   setEditingTournament(null);
-};
+ };
 
-  const handleFileChange = async (
+  const handledeleteTournamentHistory = async (id: string) => {
+    const res = await fetch(
+      `/api/profile/tournament-history/${id}`,
+      {
+        method: "DELETE",
+        credentials: "include",
+      }
+    );
+
+    if (!res.ok) throw new Error("Delete failed");
+
+    // ❗️после delete — сразу рефетч или обновление state
+    setTournaments(prev => prev.filter(t => t.id !== id));
+  };
+
+ const handleFileChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
     field: "avatar" | "cover"
   ) => {
@@ -555,57 +563,7 @@ export default function PlayerProfile() {
     }
   };
 
-    const handleRemovePhoto = async (index: number) => {
-      if (!profile.photos) return;
-
-      const urlToRemove = profile.photos[index];
-
-      try {
-        // 1️⃣ локально обновляем UI
-        const updated = profile.photos.filter((_, i) => i !== index);
-        setProfile(prev => ({ ...prev, photos: updated }));
-
-        // 2️⃣ сохраняем в БД (coach profile)
-        const res = await fetch("/api/me/coach-profile", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ photos: updated }),
-        });
-
-        if (!res.ok) {
-          throw new Error("Failed to update profile");
-        }
-
-        // 3️⃣ (опционально) удалить файл из storage
-        await fetch("/api/upload/delete", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ url: urlToRemove }),
-        });
-
-      } catch (err) {
-        console.error("Failed to remove photo", err);
-      }
-    };
-
   const myCoaches = COACHES_DATA.filter(coach => profile.coaches.includes(coach.id));
-
-  const handledeleteTournamentHistory = async (id: string) => {
-    try {
-      const res = await fetch(`/api/tournaments/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      if (!res.ok) throw new Error("Delete failed");
-
-      setTournaments(prev => prev.filter(t => t.id !== id));
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-background font-sans relative pb-20">
@@ -1192,4 +1150,5 @@ export default function PlayerProfile() {
       </div>
     </div>
   );
-}
+ }
+

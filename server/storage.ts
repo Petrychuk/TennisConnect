@@ -24,6 +24,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
+import { supabaseAdmin } from "./supabaseAdmin";
 
 function slugify(text: string) {
   return text
@@ -420,20 +421,32 @@ export class DatabaseStorage implements IStorage {
   }
 
   // удаление (владелец)
-  async deleteTournamentHistory(
-    id: string,
-    userId: string
-  ): Promise<void> {
-    await db
-      .delete(tournamentHistory)
-      .where(
-        and(
-          eq(tournamentHistory.id, id),
-          eq(tournamentHistory.userId, userId)
-        )
-      );
+  async deleteTournamentHistory(id: string, userId: string): Promise<void> {
+  const tournament = await this.getTournamentOwnedByUser(id, userId);
+
+  const photos: string[] = tournament.photos ?? [];
+
+  // 1️⃣ удалить файлы из Supabase Storage
+  if (photos.length > 0) {
+    const paths = photos.map(
+      url => url.split("/storage/v1/object/public/media/")[1]
+    );
+
+    await supabaseAdmin.storage
+      .from("media")
+      .remove(paths);
   }
 
+  // 2️⃣ удалить запись из БД
+  await db
+    .delete(tournamentHistory)
+    .where(
+      and(
+        eq(tournamentHistory.id, id),
+        eq(tournamentHistory.userId, userId)
+      )
+    );
+}
 
   // =====================
   // MARKETPLACE
