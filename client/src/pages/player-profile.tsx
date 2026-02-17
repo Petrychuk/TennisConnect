@@ -224,6 +224,7 @@ export default function PlayerProfile() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          name: profile.name,
           location: profile.location,
           age: profile.age,
           country: profile.country,

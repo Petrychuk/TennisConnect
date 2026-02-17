@@ -197,11 +197,27 @@ export async function registerRoutes(app: Express): Promise<void> {
     requireAuth,
     requireRole("player"),
     async (req, res) => {
-      const profile = await storage.updatePlayerProfileByUserId(
-        req.user!.id,
-        req.body
-      );
-      res.json(profile);
+      try {
+        const userId = req.user!.id;
+
+        const { name, ...profileData } = req.body;
+
+        // ✅ 1. Обновляем name в users
+        if (name) {
+          await storage.updateUserName(userId, name);
+        }
+
+        // ✅ 2. Обновляем профиль
+        const profile = await storage.updatePlayerProfileByUserId(
+          userId,
+          profileData
+        );
+
+        res.json({ success: true, profile });
+      } catch (err) {
+        console.error("Update profile error:", err);
+        res.status(500).json({ message: "Failed to update profile" });
+      }
     }
   );
 

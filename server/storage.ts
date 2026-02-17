@@ -212,6 +212,12 @@ export class DatabaseStorage implements IStorage {
 
     return profile;
   }
+  async updateUserName(userId: string, name: string) {
+    return db
+      .update(users)
+      .set({ name })
+      .where(eq(users.id, userId));
+  }
 
   async updatePlayerProfileByUserId(userId: string, data: any) {
     const profile = await this.getPlayerProfile(userId);
