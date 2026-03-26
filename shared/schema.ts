@@ -73,12 +73,14 @@ export const marketplaceItems = pgTable("marketplace_items", {
   title: text("title").notNull(),
   price: text("price").notNull(),
   condition: text("condition").notNull(),
-  image: text("image"),
+  photos: text("photos").array().default(sql`'{}'`),
   location: text("location").notNull(),
   description: text("description"),
+  type: text("type").notNull().default("second-hand"),
   sellerName: text("seller_name").notNull(),
   sellerEmail: text("seller_email"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  isActive: boolean("is_active").default(true),
 });
 
 // Clubs
@@ -202,10 +204,17 @@ export const insertTournamentHistorySchema = createInsertSchema(
   photos: z.array(z.string()).optional().default([]),
 });
 
-export const insertMarketplaceItemSchema = createInsertSchema(marketplaceItems).omit({
-  id: true,
-  createdAt: true,
-});
+export const insertMarketplaceItemSchema = createInsertSchema(marketplaceItems)
+  .omit({
+    id: true,
+    createdAt: true,
+    userId: true,
+    sellerName: true,
+    sellerEmail: true,
+    photos: true,
+    type: true,
+    isActive: true,
+  });
 
 export const insertClubSchema = createInsertSchema(clubs).omit({
   id: true,

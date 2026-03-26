@@ -42,9 +42,7 @@ export default function MarketplacePage() {
     
     async function fetchMarketplaceItems() {
       try {
-        const res = await fetch("/api/marketplace", {
-          credentials: "include",
-        });
+        const res = await fetch("/api/profile/marketplace/all", { credentials: "include" });
         
         if (res.ok) {
           const data = await res.json();
@@ -52,7 +50,7 @@ export default function MarketplacePage() {
           const transformedItems = data.map((item: any) => ({
             ...item,
             title: item.title,
-            image: item.image || "https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=800&h=800&fit=crop",
+            image: item.photos?.[0] || item.image || "https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=800&h=800&fit=crop",
             seller_name: item.sellerName,
             seller_email: item.sellerEmail,
           }));

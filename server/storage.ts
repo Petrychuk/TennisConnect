@@ -92,6 +92,8 @@ export interface IStorage {
   getUserMarketplaceItems(userId: string): Promise<MarketplaceItem[]>;
   createMarketplaceItem(item: InsertMarketplaceItem): Promise<MarketplaceItem>;
   deleteMarketplaceItem(id: string): Promise<void>;
+  addMarketplacePhoto(itemId: string, photoUrl: string): Promise<MarketplaceItem>;
+  removeMarketplacePhoto(itemId: string, photoUrl: string): Promise<MarketplaceItem>;
   
   // Clubs
   getAllClubs(): Promise<Club[]>;
@@ -126,21 +128,21 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
- async createUser(insertUser: InsertUser): Promise<User> {
-    const slug = insertUser.slug
-      ? insertUser.slug
-      : await generateUniqueSlug(insertUser.name);
+  async createUser(insertUser: InsertUser): Promise<User> {
+      const slug = insertUser.slug
+        ? insertUser.slug
+        : await generateUniqueSlug(insertUser.name);
 
-    const [user] = await db
-      .insert(users)
-      .values({
-        ...insertUser,
-        slug,
-      })
-      .returning();
+      const [user] = await db
+        .insert(users)
+        .values({
+          ...insertUser,
+          slug,
+        })
+        .returning();
 
-    return user;
-}
+      return user;
+  }
 
   async updateUser(id: string, updates: Partial<User>): Promise<User> {
     const [user] = await db
@@ -169,8 +171,7 @@ export class DatabaseStorage implements IStorage {
       {
         user: typeof users.$inferSelect;
         profile: typeof playerProfiles.$inferSelect;
-      }[]
-    > {
+      }[]> {
       return await db
         .select({
           user: users,
@@ -212,6 +213,7 @@ export class DatabaseStorage implements IStorage {
 
     return profile;
   }
+
   async updateUserName(userId: string, name: string) {
     return db
       .update(users)
@@ -239,6 +241,7 @@ export class DatabaseStorage implements IStorage {
 
     return updatedProfile;
   }
+
   // =====================
   // COACH PROFILES
   // =====================
@@ -260,8 +263,7 @@ export class DatabaseStorage implements IStorage {
     {
       user: typeof users.$inferSelect;
       profile: typeof coachProfiles.$inferSelect;
-    }[]
-  > {
+    }[]> {
     return db
       .select({
         user: users,
@@ -457,31 +459,97 @@ export class DatabaseStorage implements IStorage {
   // =====================
   // MARKETPLACE
   // =====================
+  async createMarketplaceItem(data: any) {
+      const [item] = await db
+        .insert(marketplaceItems)
+        .values({
+          ...data,
+          photos: [],
+        })
+        .returning();
 
-  async getAllMarketplaceItems(): Promise<MarketplaceItem[]> {
-    return db.select().from(marketplaceItems);
+      return item;
   }
 
-  async getUserMarketplaceItems(userId: string): Promise<MarketplaceItem[]> {
+  async getMarketplaceItemsByUser(userId: string) {
     return db
       .select()
       .from(marketplaceItems)
-      .where(eq(marketplaceItems.userId, userId));
+      .where(eq(marketplaceItems.userId, userId))
+      .orderBy(desc(marketplaceItems.createdAt));
+  } 
+
+  async getMarketplaceItemById(id: string) {
+    const [item] = await db
+      .select()
+      .from(marketplaceItems)
+      .where(eq(marketplaceItems.id, id));
+
+    return item;
+  }
+  
+  async getAllMarketplaceItems() {
+    return db
+      .select()
+      .from(marketplaceItems)
+      .where(eq(marketplaceItems.isActive, true))
+      .orderBy(desc(marketplaceItems.createdAt));
   }
 
-  async createMarketplaceItem(
-    item: InsertMarketplaceItem
-  ): Promise<MarketplaceItem> {
-    const [newItem] = await db
-      .insert(marketplaceItems)
-      .values(item)
+  async getUserMarketplaceItems(userId: string) {
+    return db
+      .select()
+      .from(marketplaceItems)
+      .where(eq(marketplaceItems.userId, userId))
+      .orderBy(desc(marketplaceItems.createdAt));
+  }
+
+  async updateMarketplaceItem(id: string, updates: any) {
+    const [item] = await db
+      .update(marketplaceItems)
+      .set(updates)
+      .where(eq(marketplaceItems.id, id))
       .returning();
 
-    return newItem;
+    return item;
+  }
+ 
+  async deleteMarketplaceItem(id: string): Promise<void> {
+    await db
+      .delete(marketplaceItems)
+      .where(eq(marketplaceItems.id, id));
   }
 
-  async deleteMarketplaceItem(id: string): Promise<void> {
-    await db.delete(marketplaceItems).where(eq(marketplaceItems.id, id));
+  async addMarketplacePhoto(itemId: string, photoUrl: string) {
+    const item = await this.getMarketplaceItemById(itemId);
+    if (!item) throw new Error("Item not found");
+
+    const updatedPhotos = [...(item.photos || []), photoUrl];
+
+    const [updated] = await db
+      .update(marketplaceItems)
+      .set({ photos: updatedPhotos })
+      .where(eq(marketplaceItems.id, itemId))
+      .returning();
+
+    return updated;
+  }
+
+  async removeMarketplacePhoto(itemId: string, photoUrl: string) {
+  const item = await this.getMarketplaceItemById(itemId);
+  if (!item) throw new Error("Item not found");
+
+  const updatedPhotos = (item.photos || []).filter(
+    (photo: string) => photo !== photoUrl
+  );
+
+  const [updated] = await db
+    .update(marketplaceItems)
+    .set({ photos: updatedPhotos })
+    .where(eq(marketplaceItems.id, itemId))
+    .returning();
+
+  return updated;
   }
 
   // =====================

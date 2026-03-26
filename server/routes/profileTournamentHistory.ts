@@ -119,14 +119,12 @@ router.post(
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
-
       // ✅ imageService сам обновляет БД
       const updatedTournament = await imageService.addPhoto({
         tournamentId: req.params.id,
         userId: req.user!.id,
         file: req.file,
       });
-
       // ✅ возвращаем обновлённый турнир ИЗ БД
       res.json({
         ...updatedTournament,
@@ -137,7 +135,6 @@ router.post(
     }
   }
 );
-
 // REMOVE PHOTO
 router.delete("/:id/photos/:index", requireAuth, async (req, res, next) => {
   try {
@@ -146,7 +143,6 @@ router.delete("/:id/photos/:index", requireAuth, async (req, res, next) => {
       userId: req.user!.id,
       index: Number(req.params.index),
     });
-
     res.json({
       ...updatedTournament,
       photos: updatedTournament.photos ?? [],

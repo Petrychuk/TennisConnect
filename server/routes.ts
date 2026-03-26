@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import { hashPassword } from "./auth";
 import uploadMediaRouter from "./routes/uploadMedia";
 import profileTournamentHistoryRouter from "./routes/profileTournamentHistory";
+import profileMarketplace from "./routes/profileMarketplace";
 import passport from "passport";
 import { requireAuth } from "./requireAuth";
 import {
@@ -56,7 +57,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   
   app.use("/api/uploadMedia", uploadMediaRouter);
   app.use("/api/profile/tournament-history", profileTournamentHistoryRouter);
-  //app.use("/api/tournaments", profileTournamentHistoryRouter);
+  app.use("/api/profile/marketplace", profileMarketplace);
   
   /* =========================
      AUTH
@@ -308,53 +309,76 @@ export async function registerRoutes(app: Express): Promise<void> {
     });
   });
 
+
   // ===== MARKETPLACE ROUTES =====
-  app.get("/api/marketplace", async (req, res, next) => {
-    try {
-      const items = await storage.getAllMarketplaceItems();
-      res.json(items);
-    } catch (error: any) {
-      next(error);
-    }
-  });
+  // CREATE
+  // app.post("/api/marketplace", requireAuth, async (req, res) => {
+  //   try {
+  //     const item = await storage.createMarketplaceItem({
+  //       ...req.body,
+  //       user_id: req.user!.id,
+  //       seller_name: req.user!.name,
+  //       seller_email: req.user!.email,
+  //       type: "second-hand",
+  //     });
 
-  app.get("/api/marketplace/user", requireAuth, async (req, res, next) => {
-    try {
-      const items = await storage.getUserMarketplaceItems(req.user!.id);
-      res.json(items);
-    } catch (error: any) {
-      next(error);
-    }
-  });
+  //     res.json(item);
+  //   } catch (err) {
+  //     res.status(500).json({ message: "Failed to create item" });
+  //   }
+  // });
+  // GET BY USER
+  // app.get("/api/marketplace/user/:userId", async (req, res) => {
+  //   const items = await storage.getMarketplaceItemsByUser(
+  //     req.params.userId
+  //   );
+  //   res.json(items);
+  // });
 
-  app.post("/api/marketplace", requireAuth, async (req, res, next) => {
-    try {
-      const result = insertMarketplaceItemSchema.safeParse({
-        ...req.body,
-        userId: req.user!.id,
-        sellerName: req.user!.name,
-        sellerEmail: req.user!.email,
-      });
+  // UPDATE
+    // app.put("/api/marketplace/:id", requireAuth, async (req, res) => {
+    //   const item = await storage.updateMarketplaceItem(
+    //     req.params.id,
+    //     req.body
+    //   );
+    //   res.json(item);
+    // });
 
-      if (!result.success) {
-        return res.status(400).json({ message: "Invalid input", errors: result.error });
-      }
+  // DELETE
+    // app.delete("/api/marketplace/:id", requireAuth, async (req, res) => {
+    //   const item = await storage.getMarketplaceItemById(req.params.id);
 
-      const item = await storage.createMarketplaceItem(result.data);
-      res.json(item);
-    } catch (error: any) {
-      next(error);
-    }
-  });
+    //   if (!item || item.userId !== req.user!.id) {
+    //     return res.status(403).json({ message: "Forbidden" });
+    //   }
 
-  app.delete("/api/marketplace/:id", requireAuth, async (req, res, next) => {
-    try {
-      await storage.deleteMarketplaceItem(req.params.id);
-      res.json({ message: "Item deleted" });
-    } catch (error: any) {
-      next(error);
-    }
-  });
+    //   await storage.deleteMarketplaceItem(req.params.id);
+
+    //   res.json({ success: true });
+    // });
+      
+  // ADD PHOTO
+  // app.post(
+  //     "/api/marketplace/:id/photos",
+  //     requireAuth,
+  //     upload.single("file"),
+  //     async (req, res) => {
+  //       const itemId = req.params.id;
+  //       const file = req.file;
+
+  //       const url = await uploadToSupabaseStorage(
+  //         file,
+  //         `marketplace/${req.user!.id}/${itemId}`
+  //       );
+
+  //       const updatedItem = await storage.addMarketplacePhoto(
+  //         itemId,
+  //         url
+  //       );
+
+  //       res.json(updatedItem);
+  //     }
+  //   );
 
   // ===== CLUBS ROUTES =====
   app.get("/api/clubs", async (req, res, next) => {
@@ -393,14 +417,14 @@ export async function registerRoutes(app: Express): Promise<void> {
   });
 
   // Get unread message count (requires auth)
-  app.get("/api/messages/unread-count", requireAuth, async (req, res, next) => {
-    try {
-      const count = await storage.getUnreadMessageCount(req.user!.id);
-      res.json({ count });
-    } catch (error: any) {
-      next(error);
-    }
-  });
+  // app.get("/api/messages/unread-count", requireAuth, async (req, res, next) => {
+  //   try {
+  //     const count = await storage.getUnreadMessageCount(req.user!.id);
+  //     res.json({ count });
+  //   } catch (error: any) {
+  //     next(error);
+  //   }
+  // });
 
   // Send a message (can be from authenticated)
   app.post("/api/messages", requireAuth, async (req, res, next) => {

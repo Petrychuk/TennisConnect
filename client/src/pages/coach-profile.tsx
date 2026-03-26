@@ -52,6 +52,17 @@ import { resizeImage } from "@/lib/image";
 import { uploadImage } from "@/lib/uploadImage";
 import { deleteImage } from "@/lib/deleteImage";
 
+interface MarketplaceItemForm {
+  id: string;
+  name: string;
+  price: string;
+  description: string;
+  condition: string;
+  location: string;
+  photos: string[];
+  files: File[];
+}
+
 export type CoachScheduleDay = {
   active: boolean;
   start: string;
@@ -219,15 +230,18 @@ export default function CoachProfile() {
   /* =========================
      MARKETPLACE STATE
   ========================= */
-  const [newItem, setNewItem] = useState({
-    id: Date.now(),
+  const [newItem, setNewItem] = useState<MarketplaceItemForm>({
+    id: "",
     name: "",
     price: "",
     condition: "Used - Good",
     location: "",
     description: "",
     photos: [] as string[],
+    files: [],
   });
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+
 
   /* =========================
      HANDLERS — FILE UPLOAD
@@ -304,75 +318,62 @@ export default function CoachProfile() {
       toast({ variant: "destructive", title: "Missing data" });
       return;
     }
-
-    setMarketplaceItems(prev => [
-      ...prev,
-      { ...newItem, id: Date.now() },
-    ]);
-    await fetch("/api/marketplace", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        title: newItem.name,
-        price: newItem.price,
-        condition: newItem.condition,
-        location: newItem.location,
-        description: newItem.description,
-        image: newItem.photos[0],
-      }),
-    });
-
-    setNewItem({
-      id: Date.now(),
-      name: "",
-      price: "",
-      condition: "Used - Good",
-      location: "",
-      description: "",
-      photos: [],
-    });
-
-    setIsItemModalOpen(false);
+  
+    try {
+      const res = await fetch("/api/profile/marketplace", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          title: newItem.name,
+          price: newItem.price,
+          condition: newItem.condition || "Used - Good",
+          description: newItem.description || "",
+          location: newItem.location || profile.location || "",
+        }),
+      });
+  
+      if (!res.ok) throw new Error("Save failed");
+  
+      const savedItem = await res.json();
+  
+      // Загрузка фото (если есть)
+      if (newItem.files?.length) {
+        for (const file of newItem.files.slice(0, 3)) {
+          const formData = new FormData();
+          formData.append("file", file);
+          await fetch(`/api/profile/marketplace/${savedItem.id}/photos`, {
+            method: "POST",
+            body: formData,
+            credentials: "include",
+          });
+        }
+      }
+  
+      // Рефетч
+      const refreshed = await fetch("/api/profile/marketplace", { credentials: "include" });
+      setMarketplaceItems(await refreshed.json());
+  
+      setNewItem({ id: "", name: "", price: "", condition: "Used - Good", location: "", description: "", photos: [], files: [] });
+      setIsItemModalOpen(false);
+      toast({ title: "Item added" });
+    } catch (e) {
+      toast({ variant: "destructive", title: "Failed to add item" });
+    }
   };
 
   const handleDeleteItem = async (id: string) => {
-    setMarketplaceItems(prev => prev.filter(i => i.id !== id));
-  };
-
-  const handleItemPhotoUpload = async (
-      e: React.ChangeEvent<HTMLInputElement>
-    ) => {
-      const file = e.target.files?.[0];
-      if (!file || !user || !newItem.id) return;
-
-      try {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("itemId", String(newItem.id));
-
-        const resUpload = await fetch("/api/upload/marketplace", {
-          method: "POST",
-          body: formData,
-          credentials: "include",
-        });
-
-        if (!resUpload.ok) throw new Error("Upload failed");
-
-        const { url } = await resUpload.json();
-
-        setNewItem(prev => ({
-          ...prev,
-          photos: [...(prev.photos ?? []), url],
-        }));
-      } catch (error) {
-        console.error("Marketplace image upload failed", error);
-      }
-    };
-
-  const handleBuyRequest = () => {
-    setIsBuyModalOpen(false);
-    toast({ title: "Request sent" });
+    try {
+      const res = await fetch(`/api/profile/marketplace/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to delete");
+      setMarketplaceItems(prev => prev.filter(i => i.id !== id));
+      toast({ title: "Item deleted" });
+    } catch (e) {
+      toast({ variant: "destructive", title: "Failed to delete item" });
+    }
   };
 
   /* =========================
@@ -497,6 +498,7 @@ export default function CoachProfile() {
     setLocation("/coaches");
   };
 
+   
   /* =========================
      LOAD PRIVATE PROFILE
      (ONLY OWNER)
@@ -544,13 +546,12 @@ export default function CoachProfile() {
         }
       }
 
-      // 🛒 marketplace items владельца
-      const marketRes = await fetch("/api/marketplace/user", {
+      const marketplaceRes = await fetch("/api/profile/marketplace", {
         credentials: "include",
       });
 
-      if (marketRes.ok) {
-        setMarketplaceItems(await marketRes.json());
+      if (marketplaceRes.ok) {
+        setMarketplaceItems(await marketplaceRes.json());
       }
     } catch (err) {
       console.error(err);
@@ -612,9 +613,17 @@ export default function CoachProfile() {
             attendance: data.profile.attendance ?? DEFAULT_COACH_PROFILE.attendance,
 
             phone: data.profile.phone ?? "",
-            email: data.profile.email ?? "",
-            marketplace: data.profile.marketplace ?? [],
+            email: data.profile.email ?? ""
+
           }));
+
+          const marketplaceRes = await fetch(
+              `/api/profile/marketplace/public/${data.user.id}`,
+              { credentials: "include" }
+            );
+            if (marketplaceRes.ok) {
+              setMarketplaceItems(await marketplaceRes.json());
+            }
 
         } catch (e) {
           setLocation("/");
@@ -642,6 +651,10 @@ export default function CoachProfile() {
 
       loadPrivateProfile();
     }, [isOwnProfile]);
+
+    const handleBuyRequest = async (itemId: string) => {
+      console.log("Buy request for:", itemId);
+    };    
 
   return (
     <div className="min-h-screen bg-background font-sans relative">
@@ -1535,26 +1548,39 @@ export default function CoachProfile() {
 
                                 <div className="space-y-2">
                                     <Label>Photos (Max 3)</Label>
-                                    <div className="flex gap-2">
-                                        {newItem.photos.map((photo, i) => (
-                                            <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border">
-                                                <img src={photo} className="w-full h-full object-cover" />
-                                                <button 
-                                                  className="absolute top-0 right-0 bg-red-500 text-white p-0.5 rounded-bl"
-                                                  onClick={() => setNewItem({...newItem, photos: newItem.photos.filter((_, idx) => idx !== i)})}
-                                                >
-                                                    <X className="w-3 h-3" />
-                                                </button>
-                                            </div>
-                                        ))}
-                                        {newItem.photos.length < 3 && (
-                                            <label className="w-20 h-20 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
-                                                <Camera className="w-6 h-6 text-muted-foreground" />
-                                                <span className="text-[10px] text-muted-foreground mt-1">Add</span>
-                                                <input type="file" className="hidden" accept="image/*" onChange={handleItemPhotoUpload} />
-                                            </label>
-                                        )}
-                                    </div>
+                                    <div className="flex gap-2 flex-wrap">
+                                    {newItem.photos.map((photo, i) => (
+                                      <div key={i} className="w-20 h-20 relative">
+                                        <img src={photo} className="w-full h-full object-cover rounded" alt="" />
+                                      </div>
+                                    ))}
+                                    {newItem.files?.map((file: File, i: number) => (
+                                      <div key={`f-${i}`} className="w-20 h-20 relative">
+                                        <img
+                                          src={URL.createObjectURL(file)}
+                                          className="w-full h-full object-cover rounded"
+                                          alt=""
+                                        />
+                                      </div>
+                                    ))}
+                                    {(newItem.photos?.length ?? 0) + (newItem.files?.length ?? 0) < 3 && (
+                                      <label className="w-20 h-20 border-dashed border flex items-center justify-center cursor-pointer rounded">
+                                        +
+                                        <input
+                                          type="file"
+                                          multiple
+                                          accept="image/*"
+                                          className="hidden"
+                                          onChange={(e) =>
+                                            setNewItem(prev => ({
+                                              ...prev,
+                                              files: Array.from(e.target.files || []),
+                                            }))
+                                          }
+                                        />
+                                      </label>
+                                    )}
+                                  </div>
                                 </div>
                             </div>
                             <DialogFooter>
@@ -1619,7 +1645,14 @@ export default function CoachProfile() {
                             </div>
                             <DialogFooter>
                                 <Button variant="outline" onClick={() => setIsBuyModalOpen(false)}>Cancel</Button>
-                                <Button onClick={handleBuyRequest} className="font-bold bg-primary text-primary-foreground">Send Request</Button>
+                                <Button onClick={() =>
+                                      selectedBuyItem && handleBuyRequest(selectedBuyItem.id)
+                                    }
+                                  className="font-bold bg-primary text-primary-foreground"
+                                >
+                                  Send Request
+                                </Button>
+
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>

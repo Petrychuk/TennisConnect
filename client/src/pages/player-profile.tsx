@@ -18,14 +18,15 @@ import { COACHES_DATA } from "@/lib/dummy-data";
 import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.png";
 import { TennisLoader } from "@/components/ui/tennisLoader";
 
-
 type MarketplaceDraft = {
   id: string;
   name: string;
   price: string;
   description: string;
   condition: string;
+  location: string;
   photos: string[];
+  files?: File[];
 };
 
 type TournamentDraft = {
@@ -45,13 +46,10 @@ export type PlayerProfile = {
   country: string;
   skillLevel: string;
   bio: string;
-
   avatar?: string | null;
   cover?: string | null;
-
   preferredCourts: string[];
   photos?: string[];
-
   coaches: number[];          
   marketplaceItems: any[];
   tournaments: any[];
@@ -109,7 +107,9 @@ export default function PlayerProfile() {
       price: "",
       description: "",
       condition: "Used - Good",
+      location: "",
       photos: [],
+      files: [],
     });
   const [marketplaceItems, setMarketplaceItems] = useState<any[]>([]);
 
@@ -170,7 +170,7 @@ export default function PlayerProfile() {
 
           /* ===== PUBLIC MARKETPLACE ===== */
           const marketplaceRes = await fetch(
-            `/api/marketplace/user/${data.user.id}`
+            `/api/profile/marketplace/public/${data.user.id}`
           );
           if (marketplaceRes.ok) {
             setMarketplaceItems(await marketplaceRes.json());
@@ -254,75 +254,74 @@ export default function PlayerProfile() {
     }
   };
 
-  const handleAddItem = async () => {
-    if (!newItem.name || !newItem.price) return;
-    
-    try {
-      const res = await fetch("/api/marketplace", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: newItem.name,
-          price: newItem.price,
-          condition: newItem.condition,
-          description: newItem.description,
-          location: profile.location,
-          image: "https://images.unsplash.com/photo-1617083934555-5634045431b0?w=800&q=80"
-        }),
-        credentials: "include"
-      });
+  const handleSaveItem = async () => {
+    const isEdit = Boolean(newItem.id);
 
-      if (!res.ok) throw new Error("Failed to add item");
-      
-      const item = await res.json();
-      setMarketplaceItems(prev => [...prev, item]);
-      
-      setNewItem({id: "", name: "", price: "", description: "", condition: "Used - Good", photos: [] });
-      setIsItemModalOpen(false);
-      toast({ title: "Item Added", description: "Your item is now listed." });
-    } catch (error) {
-      console.error("Failed to add item", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to add marketplace item"
-      });
-    }
-  };
+    const url = isEdit
+      ? `/api/profile/marketplace/${newItem.id}`
+      : `/api/profile/marketplace`;
 
-  const handleItemPhotoUpload = async (
-        e: React.ChangeEvent<HTMLInputElement>
-      ) => {
-        const file = e.target.files?.[0];
-        if (!file || !user || !newItem.id) return;
+    const method = isEdit ? "PUT" : "POST";
 
-        try {
-          const formData = new FormData();
-          formData.append("file", file);
-          formData.append("itemId", String(newItem.id));
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        title: newItem.name,
+        price: newItem.price,
+        condition: newItem.condition,
+        description: newItem.description,
+        location: newItem.location,
+      }),
+    });
 
-          const resUpload = await fetch("/api/upload/marketplace", {
+    if (!res.ok) throw new Error("Save failed");
+
+    const savedItem = await res.json();
+
+    /* 🔥 ЗАГРУЖАЕМ ФОТО ДЛЯ НОВОГО ТОВАРА */
+    if (!isEdit && newItem.files?.length) {
+      for (const file of newItem.files.slice(0, 3)) {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        await fetch(
+          `/api/profile/marketplace/${savedItem.id}/photos`,
+          {
             method: "POST",
             body: formData,
             credentials: "include",
-          });
+          }
+        );
+      }
+    }
 
-          if (!resUpload.ok) throw new Error("Upload failed");
+    /* 🔥 РЕФЕТЧ ПОСЛЕ ВСЕГО */
+    const refreshed = await fetch(`/api/profile/marketplace`, {
+      credentials: "include",
+    });
 
-          const { url } = await resUpload.json();
+    setMarketplaceItems(await refreshed.json());
 
-          setNewItem(prev => ({
-            ...prev,
-            photos: [...prev.photos, url],
-          }));
-        } catch (error) {
-          console.error("Marketplace image upload failed", error);
-        }
+    // очищаем форму
+    setNewItem({
+      id: "",
+      name: "",
+      price: "",
+      description: "",
+      condition: "Used - Good",
+      location: "",
+      photos: [],
+      files: [],
+    });
+
+    setIsItemModalOpen(false);
   };
 
   const handleDeleteItem = async (id: string) => {
     try {
-      const res = await fetch(`/api/marketplace/${id}`, {
+      const res = await fetch(`/api/profile/marketplace/${id}`, {
         method: "DELETE",
         credentials: "include"
       });
@@ -468,17 +467,17 @@ export default function PlayerProfile() {
   };
  
   const resetTournamentForm = () => {
-  setNewTournament({
-    id: "",
-    name: "",
-    location: "",
-    date: "",
-    result: "",
-    award: "",
-    photos: [],
-  });
-  setEditingTournament(null);
- };
+    setNewTournament({
+      id: "",
+      name: "",
+      location: "",
+      date: "",
+      result: "",
+      award: "",
+      photos: [],
+    });
+    setEditingTournament(null);
+  };
 
   const handledeleteTournamentHistory = async (id: string) => {
     const res = await fetch(
@@ -1071,7 +1070,7 @@ export default function PlayerProfile() {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label>Price ($)</Label>
+                          <Label>Price (AUD)</Label>
                           <Input 
                             value={newItem.price} 
                             onChange={(e) => setNewItem({...newItem, price: e.target.value})} 
@@ -1104,9 +1103,48 @@ export default function PlayerProfile() {
                             placeholder="Tell potential buyers about your item..." 
                           />
                         </div>
+                        <div className="space-y-2">
+                          <Label>Location</Label>
+                          <Input
+                            value={newItem.location}
+                            onChange={(e) =>
+                              setNewItem({ ...newItem, location: e.target.value })
+                            }
+                            placeholder="e.g. Sydney"
+                          />
+                        </div>
+                        <div className="flex gap-2 flex-wrap">
+                          {newItem.photos.map((photo, i) => (
+                            <div key={i} className="w-20 h-20 relative">
+                              <img
+                                src={photo}
+                                className="w-full h-full object-cover rounded"
+                              />
+                            </div>
+                          ))}
+
+                          {newItem.photos.length < 3 && (
+                            <label className="w-20 h-20 border-dashed border flex items-center justify-center cursor-pointer">
+                              +
+                              <input
+                                type="file"
+                                multiple
+                                accept="image/*"
+                                onChange={(e) =>
+                                  setNewItem(prev => ({
+                                    ...prev,
+                                    files: Array.from(e.target.files || []),
+                                  }))
+                                }
+                              />
+                            </label>
+                          )}
+                        </div>
                       </div>
                       <DialogFooter>
-                        <Button onClick={handleAddItem}>List Item</Button>
+                        <Button onClick={handleSaveItem}>
+                        {newItem.id ? "Update Item" : "List Item"}
+                      </Button>
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
@@ -1117,7 +1155,7 @@ export default function PlayerProfile() {
                 {marketplaceItems.map(item => (
                   <Card key={item.id}>
                     <div className="aspect-square bg-muted relative">
-                      <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
+                      <img src={item.photos?.[0]} alt={item.title} className="w-full h-full object-cover" />
                     </div>
                     <CardHeader>
                       <CardTitle className="flex justify-between items-start text-lg">
@@ -1130,9 +1168,26 @@ export default function PlayerProfile() {
                       <div className="flex justify-between items-center">
                         <Badge variant="outline">{item.condition}</Badge>
                         {isOwnProfile && (
-                          <Button variant="ghost" size="icon" onClick={() => handleDeleteItem(item.id)} className="text-destructive hover:text-destructive hover:bg-destructive/10">
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          <><Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setNewItem({
+                                id: item.id,
+                                name: item.title,
+                                price: item.price,
+                                description: item.description,
+                                condition: item.condition,
+                                location: item.location,
+                                photos: item.photos || [],
+                              });
+                              setIsItemModalOpen(true);
+                            } }
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button><Button variant="ghost" size="icon" onClick={() => handleDeleteItem(item.id)} className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                              <Trash2 className="w-4 h-4" />
+                            </Button></>
                         )}
                       </div>
                     </CardContent>
