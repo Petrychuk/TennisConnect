@@ -2,6 +2,8 @@ import { Navbar } from "@/components/navbar";
 import { Hero } from "@/components/hero";
 import { Features } from "@/components/features";
 import { AboutUs } from "@/components/about-us";
+import { ProShop } from "@/components/pro-shop";
+import { BrandMarquee } from "@/components/brand-marquee";
 import { Marketplace } from "@/components/marketplace";
 import { Partnership } from "@/components/partnership";
 import { Gallery } from "@/components/gallery";
@@ -19,6 +21,8 @@ export default function Home() {
       <main>
         <Hero />       
         <AboutUs />
+        <ProShop />
+        <BrandMarquee />
         <Gallery />
         <Marketplace />
         <Testimonials /> 

@@ -52,6 +52,7 @@ export function Navbar() {
     { name: "Tournaments", href: "/tournaments" },
     { name: "Marketplace", href: "/marketplace" },
     { name: "Clubs", href: "/clubs" },
+    { name: "Shop", href: "https://shop.tennisconnect.com", external: true },
   ];
 
   if (location === "/auth") return null;
@@ -68,13 +69,28 @@ export function Navbar() {
         {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => (
-            <Link
-              key={link.name}
-              href={link.href}
-              className="text-sm font-medium hover:text-lime-600 transition-colors cursor-pointer"
-            >
-              {link.name}
-            </Link>
+            link.external ? (
+              <a
+                key={link.name}
+                href={link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-medium hover:text-lime-600 transition-colors cursor-pointer flex items-center gap-1"
+              >
+                {link.name}
+                <svg className="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+            ) : (
+              <Link
+                key={link.name}
+                href={link.href}
+                className="text-sm font-medium hover:text-lime-600 transition-colors cursor-pointer"
+              >
+                {link.name}
+              </Link>
+            )
           ))}
         </div>
 
@@ -178,14 +194,30 @@ export function Navbar() {
                 )}
 
                 {navLinks.map((link) => (
-                  <Link
-                    key={link.name}
-                    href={link.href}
-                    className="text-lg font-medium hover:text-lime-600 transition-colors cursor-pointer"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    {link.name}
-                  </Link>
+                  link.external ? (
+                    <a
+                      key={link.name}
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-lg font-medium hover:text-lime-600 transition-colors cursor-pointer flex items-center gap-2"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      {link.name}
+                      <svg className="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  ) : (
+                    <Link
+                      key={link.name}
+                      href={link.href}
+                      className="text-lg font-medium hover:text-lime-600 transition-colors cursor-pointer"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      {link.name}
+                    </Link>
+                  )
                 ))}
                 
                 {isAuthenticated ? (
