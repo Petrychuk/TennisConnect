@@ -47,31 +47,36 @@ export function setupAuth(app: Express) {
   
   const ONE_HOUR = 1000 * 60 * 60;
 
+  // Enable trust proxy for all environments (needed for preview URLs)
+  app.set("trust proxy", 1);
+
+  // Dynamic cookie settings based on request
   const sessionSettings: session.SessionOptions = {
     secret: env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      sameSite: "lax" as const,
       maxAge: ONE_HOUR,
-      secure: process.env.NODE_ENV === "production",
+      secure: false, // Will be overridden per-request
     },
     store: new MemoryStore({
       checkPeriod: 86400000,
     }),
   };
 
-  if (app.get("env") === "production") {
-    app.set("trust proxy", 1);
-    sessionSettings.cookie = {
-      ...sessionSettings.cookie,
-      secure: true,
-      sameSite: "none",
-    };
-  }
-
   app.use(session(sessionSettings));
+  
+  // Middleware to adjust cookie settings based on request protocol
+  app.use((req, res, next) => {
+    if (req.secure || req.headers['x-forwarded-proto'] === 'https') {
+      req.session.cookie.secure = true;
+      req.session.cookie.sameSite = 'none';
+    }
+    next();
+  });
+  
   app.use(passport.initialize());
   app.use(passport.session());
 
