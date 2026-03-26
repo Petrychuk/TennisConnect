@@ -53,9 +53,9 @@ export function setupAuth(app: Express) {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      sameSite: "lax",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
       maxAge: ONE_HOUR,
-      secure: app.get("env") === "production",
+      secure: process.env.NODE_ENV === "production",
     },
     store: new MemoryStore({
       checkPeriod: 86400000,
