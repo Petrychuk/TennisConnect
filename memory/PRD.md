@@ -42,3 +42,32 @@ NODE_ENV=development npx tsx server/index.ts
 - P1: Add SSL for production deployment
 - P2: Image optimization (re-add vite-plugin-imagemin with proper dependencies)
 - P3: Add monitoring and logging
+
+## Updates (March 26, 2026 - Session 2)
+
+### New Features Added:
+1. **"The Tennis Vault" Pro Shop Section**
+   - New arrivals showcase with 4 product cards
+   - Badges: New, Bestseller, Pro Choice, Sale
+   - External link to shop.tennisconnect.com
+   - Mobile responsive with dedicated CTA button
+
+2. **Brand Marquee**
+   - 12 tennis brands: Wilson, Babolat, Head, Nike, Adidas, Yonex, Prince, Tecnifibre, Dunlop, Asics, Lacoste, New Balance
+   - Smooth infinite scroll animation (120s duration - slow)
+   - Compact pill-style brand names
+   - Minimal vertical padding
+
+3. **Navigation Update**
+   - Added "Shop" link after "Clubs"
+   - Opens in new tab (external link)
+   - External icon indicator on desktop and mobile
+
+### Files Created/Modified:
+- `/app/client/src/components/pro-shop.tsx` (new)
+- `/app/client/src/components/brand-marquee.tsx` (new)
+- `/app/client/src/components/navbar.tsx` (modified)
+- `/app/client/src/pages/home.tsx` (modified)
+
+### Section Order on Homepage:
+Hero → AboutUs → ProShop → BrandMarquee → Gallery → Marketplace → Testimonials → Features → Partnership → CTA → Footer
