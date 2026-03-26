@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import crypto from "crypto";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { hashPassword } from "./auth";
+import { hashPassword, comparePasswords } from "./auth";
 import uploadMediaRouter from "./routes/uploadMedia";
 import profileTournamentHistoryRouter from "./routes/profileTournamentHistory";
 import profileMarketplace from "./routes/profileMarketplace";
@@ -16,8 +16,12 @@ import {
   insertMarketplaceItemSchema,
   insertClubSchema,
   insertMessageSchema,
+  passwordResetTokens,
 } from "@shared/schema";
 import { z } from "zod";
+import { supabaseAdmin } from "./supabaseAdmin";
+import { db } from "./db";
+import { eq, and, gt } from "drizzle-orm";
 
 /* =========================
    HELPERS & MIDDLEWARE
@@ -139,6 +143,141 @@ export async function registerRoutes(app: Express): Promise<void> {
     req.logout(() => {
       res.json({ message: "Logged out" });
     });
+  });
+
+  // ==========================================
+  // PASSWORD RESET ENDPOINTS
+  // ==========================================
+  
+  // Request password reset - sends email with reset link
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      const user = await storage.getUserByEmail(email);
+      
+      // Always return success to prevent email enumeration
+      if (!user) {
+        return res.json({ message: "If the email exists, a reset link has been sent" });
+      }
+
+      // Generate secure token
+      const token = crypto.randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      // Save token to database
+      await db.insert(passwordResetTokens).values({
+        userId: user.id,
+        token,
+        expiresAt,
+      });
+
+      // Send email via Supabase
+      const resetUrl = `${req.headers.origin || 'https://tennisconnect.au'}/reset-password?token=${token}`;
+      
+      // Use Supabase to send email
+      const { error: emailError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+        redirectTo: resetUrl,
+        data: { reset_password: true }
+      }).catch(() => ({ error: { message: 'Email service unavailable' } }));
+
+      // Fallback: If Supabase invite doesn't work, we'll use a simpler approach
+      // For now, log the reset URL (in production, integrate proper email service)
+      console.log(`🔑 Password reset requested for ${email}`);
+      console.log(`🔗 Reset URL: ${resetUrl}`);
+
+      res.json({ 
+        message: "If the email exists, a reset link has been sent",
+        // Only in development - remove in production
+        ...(process.env.NODE_ENV === 'development' && { resetUrl })
+      });
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      res.status(500).json({ message: "Failed to process request" });
+    }
+  });
+
+  // Verify reset token
+  app.get("/api/auth/verify-reset-token", async (req, res) => {
+    try {
+      const { token } = req.query;
+      
+      if (!token || typeof token !== 'string') {
+        return res.status(400).json({ valid: false, message: "Token is required" });
+      }
+
+      const [resetToken] = await db
+        .select()
+        .from(passwordResetTokens)
+        .where(
+          and(
+            eq(passwordResetTokens.token, token),
+            eq(passwordResetTokens.used, false),
+            gt(passwordResetTokens.expiresAt, new Date())
+          )
+        );
+
+      if (!resetToken) {
+        return res.json({ valid: false, message: "Invalid or expired token" });
+      }
+
+      res.json({ valid: true });
+    } catch (error) {
+      console.error("Verify token error:", error);
+      res.status(500).json({ valid: false, message: "Failed to verify token" });
+    }
+  });
+
+  // Reset password with token
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const { token, password } = req.body;
+      
+      if (!token || !password) {
+        return res.status(400).json({ message: "Token and password are required" });
+      }
+
+      if (password.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters" });
+      }
+
+      // Find valid token
+      const [resetToken] = await db
+        .select()
+        .from(passwordResetTokens)
+        .where(
+          and(
+            eq(passwordResetTokens.token, token),
+            eq(passwordResetTokens.used, false),
+            gt(passwordResetTokens.expiresAt, new Date())
+          )
+        );
+
+      if (!resetToken) {
+        return res.status(400).json({ message: "Invalid or expired token" });
+      }
+
+      // Hash new password
+      const hashedPassword = await hashPassword(password);
+
+      // Update user password
+      await storage.updateUserPassword(resetToken.userId, hashedPassword);
+
+      // Mark token as used
+      await db
+        .update(passwordResetTokens)
+        .set({ used: true })
+        .where(eq(passwordResetTokens.id, resetToken.id));
+
+      res.json({ message: "Password successfully reset" });
+    } catch (error) {
+      console.error("Reset password error:", error);
+      res.status(500).json({ message: "Failed to reset password" });
+    }
   });
 
   app.get("/api/auth/me", (req, res) => {

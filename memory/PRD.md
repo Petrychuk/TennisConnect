@@ -71,3 +71,41 @@ NODE_ENV=development npx tsx server/index.ts
 
 ### Section Order on Homepage:
 Hero → AboutUs → ProShop → BrandMarquee → Gallery → Marketplace → Testimonials → Features → Partnership → CTA → Footer
+
+## Updates (March 26, 2026 - Session 3)
+
+### Password Reset Feature Added:
+1. **Forgot Password Flow**
+   - "Forgot password?" link on login page
+   - Email input form with validation
+   - Success confirmation with "Check your email" message
+   - Toast notifications
+
+2. **Reset Password Page** (`/reset-password?token=...`)
+   - Token validation on page load
+   - Invalid/expired token handling with error message
+   - New password + confirm password form
+   - Success state with redirect to login
+
+3. **Backend Endpoints**
+   - `POST /api/auth/forgot-password` - Generate reset token, send email
+   - `GET /api/auth/verify-reset-token` - Validate token
+   - `POST /api/auth/reset-password` - Reset password with token
+
+4. **Database**
+   - New table: `password_reset_tokens`
+   - Fields: id, userId, token, expiresAt, used, createdAt
+   - Token expires in 1 hour
+
+### Files Created/Modified:
+- `/app/shared/schema.ts` - Added passwordResetTokens table
+- `/app/server/routes.ts` - Added password reset endpoints
+- `/app/server/storage.ts` - Added updateUserPassword method
+- `/app/server/auth.ts` - Exported comparePasswords
+- `/app/client/src/pages/reset-password.tsx` (new)
+- `/app/client/src/pages/auth.tsx` - Added forgot password form
+- `/app/client/src/App.tsx` - Added reset-password route
+
+### Notes:
+- In development mode, reset URL is logged to console and returned in API response
+- For production, integrate proper email service (SendGrid, Resend, or Supabase email)

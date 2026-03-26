@@ -160,4 +160,4 @@ export function setupAuth(app: Express) {
 
 }
 
-export { hashPassword };
+export { hashPassword, comparePasswords };

@@ -7,6 +7,7 @@ import { AuthProvider } from "@/lib/auth-context";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import AuthPage from "@/pages/auth";
+import ResetPasswordPage from "@/pages/reset-password";
 import CoachProfile from "@/pages/coach-profile";
 import PlayerProfile from "@/pages/player-profile";
 import PlayerRegistration from "@/pages/player-registration";
@@ -23,6 +24,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/complete-profile" component={CompleteProfilePage} />
       <Route path="/player/register" component={PlayerRegistration} />
       <Route path="/player/profile" component={PlayerProfile} />
