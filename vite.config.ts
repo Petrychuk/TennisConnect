@@ -52,6 +52,7 @@ export default defineConfig({
     },
     watch: {
       usePolling: false,
+      ignored: ['**/server/**', '**/node_modules/**', '**/.git/**'],
     },
   },
 });
