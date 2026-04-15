@@ -47,9 +47,7 @@ export default defineConfig({
       strict: true,
       deny: ["**/.*"],
     },
-    hmr: {
-      overlay: false,
-    },
+    hmr: false, // Disable hot reload completely
     watch: {
       usePolling: false,
       ignored: ['**/server/**', '**/node_modules/**', '**/.git/**'],
