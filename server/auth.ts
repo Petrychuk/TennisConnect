@@ -52,15 +52,19 @@ export function setupAuth(app: Express) {
   // Enable trust proxy for all environments (needed for preview URLs)
   app.set("trust proxy", 1);
 
+  // For HTTPS (preview URLs), we need secure cookies with sameSite=none
+  // Check if running behind HTTPS proxy
+  const isProduction = process.env.NODE_ENV === 'production';
+  
   const sessionSettings: session.SessionOptions = {
     secret: env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      sameSite: "lax" as const,
-      maxAge: ONE_DAY, // 24 hours instead of 1 hour
-      secure: false,
+      sameSite: "none" as const, // Required for cross-site cookies
+      maxAge: ONE_DAY,
+      secure: true, // Required when sameSite is 'none'
     },
     store: new MemoryStore({
       checkPeriod: 86400000,
@@ -68,16 +72,6 @@ export function setupAuth(app: Express) {
   };
 
   app.use(session(sessionSettings));
-  
-  // Middleware to adjust cookie settings based on request protocol
-  app.use((req, res, next) => {
-    if (req.secure || req.headers['x-forwarded-proto'] === 'https') {
-      req.session.cookie.secure = true;
-      req.session.cookie.sameSite = 'none';
-    }
-    next();
-  });
-  
   app.use(passport.initialize());
   app.use(passport.session());
 
