@@ -3,6 +3,8 @@ import { Strategy as LocalStrategy } from "passport-local";
 import { type Express } from "express";
 import session from "express-session";
 import createMemoryStore from "memorystore";
+import pgSession from "connect-pg-simple";
+import { Pool } from "pg";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
@@ -44,13 +46,12 @@ declare global {
 
 export function setupAuth(app: Express) {
   const MemoryStore = createMemoryStore(session);
-  
   const ONE_HOUR = 1000 * 60 * 60;
+  const ONE_DAY = 24 * ONE_HOUR;
 
   // Enable trust proxy for all environments (needed for preview URLs)
   app.set("trust proxy", 1);
 
-  // Dynamic cookie settings based on request
   const sessionSettings: session.SessionOptions = {
     secret: env.SESSION_SECRET,
     resave: false,
@@ -58,8 +59,8 @@ export function setupAuth(app: Express) {
     cookie: {
       httpOnly: true,
       sameSite: "lax" as const,
-      maxAge: ONE_HOUR,
-      secure: false, // Will be overridden per-request
+      maxAge: ONE_DAY, // 24 hours instead of 1 hour
+      secure: false,
     },
     store: new MemoryStore({
       checkPeriod: 86400000,
