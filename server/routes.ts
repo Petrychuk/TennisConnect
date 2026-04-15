@@ -132,9 +132,20 @@ export async function registerRoutes(app: Express): Promise<void> {
       if (!user) {
         return res.status(401).json({ message: "Login failed" });
       }
-      req.login(user, (err) => {
-        if (err) return next(err);
-        res.json(user);
+      
+      // Regenerate session to prevent session fixation
+      req.session.regenerate((regenerateErr) => {
+        if (regenerateErr) return next(regenerateErr);
+        
+        req.login(user, (loginErr) => {
+          if (loginErr) return next(loginErr);
+          
+          // Save session explicitly
+          req.session.save((saveErr) => {
+            if (saveErr) return next(saveErr);
+            res.json(user);
+          });
+        });
       });
     })(req, res, next);
   });
