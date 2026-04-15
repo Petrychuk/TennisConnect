@@ -556,14 +556,14 @@ export async function registerRoutes(app: Express): Promise<void> {
   });
 
   // Get unread message count (requires auth)
-  // app.get("/api/messages/unread-count", requireAuth, async (req, res, next) => {
-  //   try {
-  //     const count = await storage.getUnreadMessageCount(req.user!.id);
-  //     res.json({ count });
-  //   } catch (error: any) {
-  //     next(error);
-  //   }
-  // });
+  app.get("/api/messages/unread-count", requireAuth, async (req, res, next) => {
+    try {
+      const count = await storage.getUnreadMessageCount(req.user!.id);
+      res.json({ count });
+    } catch (error: any) {
+      next(error);
+    }
+  });
 
   // Send a message (can be from authenticated)
   app.post("/api/messages", requireAuth, async (req, res, next) => {
