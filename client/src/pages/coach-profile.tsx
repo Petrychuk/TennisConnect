@@ -1024,7 +1024,7 @@ export default function CoachProfile() {
                        </CardHeader>
                        <CardContent>
                          <div className="space-y-4">
-                           {Object.entries(profile.schedule).map(([day, schedule]) => (
+                           {profile.schedule && Object.entries(profile.schedule).map(([day, schedule]) => (
                              <div key={day} className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors">
                                <div className="flex items-center gap-4">
                                  <div className="w-24 capitalize font-medium">{day}</div>
