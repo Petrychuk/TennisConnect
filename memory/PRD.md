@@ -109,3 +109,37 @@ Hero → AboutUs → ProShop → BrandMarquee → Gallery → Marketplace → Te
 ### Notes:
 - In development mode, reset URL is logged to console and returned in API response
 - For production, integrate proper email service (SendGrid, Resend, or Supabase email)
+
+## Updates (April 15, 2026 - Session 4)
+
+### Coach Photo Upload Feature:
+1. **Default Photos on Registration**
+   - Coach: Default avatar (professional woman) + tennis court cover
+   - Player: Default avatar + tennis equipment cover
+   - Stored in Supabase Storage
+
+2. **Upload Route Updated**
+   - `/api/uploadMedia/:type` now supports both coach and player roles
+   - Files stored in `coaches/{userId}/` or `players/{userId}/` based on role
+   - Supports avatar and cover uploads
+
+3. **Coaches Page**
+   - Cards now display actual avatar from database
+   - Fallback to default image if no avatar
+
+4. **Coach Profile Page**
+   - Fixed TypeError with null schedule
+   - Avatar and cover display properly
+   - Edit mode allows photo updates
+
+5. **Session/Auth Fixes**
+   - Added session regeneration on login (prevents session fixation)
+   - Proper cookie settings for HTTPS (sameSite=none, secure=true)
+   - Fixed 401 errors after login
+
+### Files Modified:
+- `/app/server/routes/uploadMedia.ts` - Role-based folder selection
+- `/app/server/routes.ts` - Default photos on registration, session regeneration
+- `/app/client/src/pages/coach-profile.tsx` - Fixed schedule null check, proper upload endpoint
+- `/app/client/src/pages/coaches.tsx` - Use avatar from API
+- `/app/server/auth.ts` - Secure cookie settings

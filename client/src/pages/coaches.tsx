@@ -53,7 +53,7 @@ export default function CoachesPage() {
               rating: coach.rating || "4.9",
               reviews: coach.reviews || 0,
               experience: coach.experience || "5 years",
-              image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop",
+              image: coach.avatar || "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop",
               tags: coach.tags || [],
               schedule: coach.schedule || {},
             }));

@@ -87,10 +87,19 @@ export async function registerRoutes(app: Express): Promise<void> {
 
       const hashedPassword = await hashPassword(parsed.data.password);
       
+      // Default avatar and cover based on role
+      const defaultAvatar = parsed.data.role === 'coach' 
+        ? 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop'
+        : 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop';
+      const defaultCover = parsed.data.role === 'coach'
+        ? 'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=1200&h=400&fit=crop'
+        : 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=1200&h=400&fit=crop';
+      
       const user = await storage.createUser({
         ...parsed.data,
         password: hashedPassword,
-
+        avatar: defaultAvatar,
+        cover: defaultCover,
       });
 
       // 🔑 AUTO-CREATE PROFILE

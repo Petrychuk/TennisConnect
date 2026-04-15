@@ -288,26 +288,43 @@ export default function CoachProfile() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const resUpload = await fetch(`/api/upload/${field}`, {
+      const resUpload = await fetch(`/api/uploadMedia/${field}`, {
         method: "POST",
         body: formData,
         credentials: "include",
       });
 
-      if (!resUpload.ok) throw new Error("Upload failed");
+      const contentType = resUpload.headers.get("content-type") || "";
 
-      const { url } = await resUpload.json();
+      if (!contentType.includes("application/json")) {
+        const text = await resUpload.text();
+        console.error("❌ NON-JSON RESPONSE:", text);
+        throw new Error("Server returned non-JSON response");
+      }
 
-      await fetch("/api/me/coach-profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ [field]: url }),
+      const data = await resUpload.json();
+
+      if (!resUpload.ok) {
+        throw new Error(data?.message || `Upload failed (${resUpload.status})`);
+      }
+
+      const { url: imageUrl, user: updatedUserObject } = data;
+
+      if (!imageUrl || !updatedUserObject) {
+        throw new Error("Invalid server response");
+      }
+
+      setProfile(prev => ({
+        ...prev,
+        [field]: imageUrl,
+      }));
+
+      updateUser(updatedUserObject);
+
+      toast({
+        title: "Photo updated",
+        description: `${field === 'avatar' ? 'Avatar' : 'Cover'} updated successfully`,
       });
-
-      await updateUser({ [field]: url });
-
-      setProfile(prev => ({ ...prev, [field]: url }));
     };
 
   /* =========================
