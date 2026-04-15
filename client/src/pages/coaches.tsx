@@ -46,7 +46,8 @@ export default function CoachesPage() {
           if (data.length > 0) {
             const transformedCoaches = data.map((coach: any) => ({
               id: coach.id,
-              name: coach.title || "Coach",
+              slug: coach.slug,
+              name: coach.name || coach.title || "Coach",
               title: coach.title || "Tennis Coach",
               location: coach.locations?.[0] || coach.location || "Sydney",
               rate: coach.rate ? parseInt(coach.rate) : 80,

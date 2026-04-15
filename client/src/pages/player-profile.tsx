@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { useLocation, useRoute } from "wouter";
 import { MapPin, Calendar, Trophy, Edit2, Save, ShoppingBag, Plus, Trash2, Camera, Globe } from "lucide-react";
-import { COACHES_DATA } from "@/lib/dummy-data";
+import { COACHES_DATA, PARTNERS_DATA } from "@/lib/dummy-data";
 import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.png";
 import { TennisLoader } from "@/components/ui/tennisLoader";
 
@@ -98,6 +98,7 @@ export default function PlayerProfile() {
     });
   const [tournaments, setTournaments] = useState<TournamentDraft[]>([]);
   const [editingTournament, setEditingTournament] = useState<TournamentDraft | null>(null);
+  const [isDemo, setIsDemo] = useState(false);
   
   // Marketplace State
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
@@ -178,6 +179,22 @@ export default function PlayerProfile() {
 
         } catch (err) {
           console.error("Public profile load failed", err);
+          // Try to find in demo data
+          const demoPlayer = PARTNERS_DATA.find(p => p.slug === profileSlug);
+          if (demoPlayer) {
+            setProfile({
+              ...DEFAULT_PLAYER_PROFILE,
+              name: demoPlayer.name,
+              avatar: demoPlayer.image,
+              location: demoPlayer.location,
+              age: demoPlayer.age,
+              country: demoPlayer.country,
+              skillLevel: demoPlayer.level,
+              bio: demoPlayer.bio,
+              preferredCourts: demoPlayer.courts || [],
+            });
+            setIsDemo(true);
+          }
         } finally {
           setLoading(false);
         }

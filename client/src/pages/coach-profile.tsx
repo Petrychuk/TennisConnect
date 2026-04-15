@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { COACHES_DATA } from "@/lib/dummy-data";
 import {
   Command,
   CommandEmpty,
@@ -166,7 +167,6 @@ const ALL_SYDNEY_SUBURBS = [
   "Baulkham Hills", "Beaumont Hills", "Bella Vista", "Castle Hill", "Cherrybrook", "Dural", "Glenhaven", "Kellyville", "Kenthurst", "North Rocks", "Pennant Hills", "Rouse Hill", "Seven Hills", "West Pennant Hills", "Winston Hills"
 ].sort();
 
-import { COACHES_DATA } from "@/lib/dummy-data";
 import { useRoute } from "wouter";
 
 import { Switch } from "@/components/ui/switch";
@@ -643,7 +643,26 @@ export default function CoachProfile() {
             }
 
         } catch (e) {
-          setLocation("/");
+          // Try to find in demo data
+          const demoCoach = COACHES_DATA.find(c => c.slug === profileSlug);
+          if (demoCoach) {
+            setProfile(prev => ({
+              ...DEFAULT_COACH_PROFILE,
+              name: demoCoach.name,
+              avatar: demoCoach.image,
+              cover: DEFAULT_COACH_PROFILE.cover,
+              title: demoCoach.title || DEFAULT_COACH_PROFILE.title,
+              location: demoCoach.location,
+              bio: demoCoach.bio || DEFAULT_COACH_PROFILE.bio,
+              rate: String(demoCoach.rate),
+              experience: demoCoach.experience,
+              tags: demoCoach.tags || [],
+              schedule: demoCoach.schedule || DEFAULT_COACH_PROFILE.schedule,
+            }));
+            setIsDemo(true);
+          } else {
+            setLocation("/coaches");
+          }
         } finally {
           setLoading(false);
         }
