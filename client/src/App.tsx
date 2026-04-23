@@ -17,12 +17,14 @@ import PartnersPage from "@/pages/partners";
 import TournamentsPage from "@/pages/tournaments";
 import MessagesPage from "@/pages/messages";
 import CompleteProfilePage from "@/pages/complete-profile";
+import ResetPasswordPage from "@/pages/reset-password";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/complete-profile" component={CompleteProfilePage} />
       <Route path="/player/register" component={PlayerRegistration} />
       <Route path="/player/profile" component={PlayerProfile} />

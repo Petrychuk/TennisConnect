@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Loader2, User, Trophy } from "lucide-react";
+import { ArrowLeft, Loader2, User, Trophy, Mail, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import heroImage from "/assets/images/tennis_main.jpg";
@@ -35,6 +35,10 @@ const registerSchema = z.object({
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { login, register } = useAuth();
@@ -110,6 +114,45 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
     });
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotPasswordEmail) return;
+
+    setForgotPasswordLoading(true);
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotPasswordEmail }),
+      });
+
+      const data = await res.json();
+
+      setForgotPasswordSent(true);
+      toast({
+        title: "Check your email",
+        description: "If an account exists, we've sent a password reset link.",
+      });
+
+      // In development, show the reset URL
+      if (data.resetUrl) {
+        console.log("Reset URL:", data.resetUrl);
+        toast({
+          title: "Development Mode",
+          description: "Check console for reset link",
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to send reset email. Please try again.",
+      });
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen w-full flex">
       {/* Left Side - Form */}
@@ -136,7 +179,85 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
             </TabsList>
             
             <TabsContent value="login">
-              <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4">
+              {showForgotPassword ? (
+                // Forgot Password Form
+                <div className="space-y-6">
+                  {forgotPasswordSent ? (
+                    <div className="text-center py-8">
+                      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <CheckCircle className="w-8 h-8 text-green-500" />
+                      </div>
+                      <h3 className="text-xl font-bold mb-2">Check your email</h3>
+                      <p className="text-muted-foreground mb-6">
+                        If an account exists for {forgotPasswordEmail}, we've sent password reset instructions.
+                      </p>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setShowForgotPassword(false);
+                          setForgotPasswordSent(false);
+                          setForgotPasswordEmail("");
+                        }}
+                        className="cursor-pointer"
+                      >
+                        Back to Sign In
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="text-center mb-6">
+                        <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+                          <Mail className="w-6 h-6 text-primary" />
+                        </div>
+                        <h3 className="text-xl font-bold mb-1">Forgot your password?</h3>
+                        <p className="text-muted-foreground text-sm">
+                          Enter your email and we'll send you a reset link.
+                        </p>
+                      </div>
+                      <form onSubmit={handleForgotPassword} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="forgot-email">Email</Label>
+                          <Input
+                            id="forgot-email"
+                            type="email"
+                            placeholder="name@example.com"
+                            value={forgotPasswordEmail}
+                            onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                            required
+                            data-testid="forgot-email-input"
+                          />
+                        </div>
+                        <Button
+                          type="submit"
+                          className="w-full font-bold bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                          disabled={forgotPasswordLoading}
+                          data-testid="send-reset-link-button"
+                        >
+                          {forgotPasswordLoading ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Sending...
+                            </>
+                          ) : (
+                            "Send Reset Link"
+                          )}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="w-full cursor-pointer"
+                          onClick={() => setShowForgotPassword(false)}
+                        >
+                          <ArrowLeft className="w-4 h-4 mr-2" />
+                          Back to Sign In
+                        </Button>
+                      </form>
+                    </>
+                  )}
+                </div>
+              ) : (
+                // Regular Login Form
+                <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input 
@@ -152,9 +273,14 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="password">Password</Label>
-                    <a href="#" className="text-sm font-medium text-primary hover:underline cursor-pointer">
+                    <button 
+                      type="button"
+                      onClick={() => setShowForgotPassword(true)}
+                      className="text-sm font-medium text-primary hover:underline cursor-pointer"
+                      data-testid="forgot-password-link"
+                    >
                       Forgot password?
-                    </a>
+                    </button>
                   </div>
                   <Input 
                     id="password" 
@@ -182,6 +308,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                   Sign In
                 </Button>
               </form>
+              )}
             </TabsContent>
             
             <TabsContent value="register">

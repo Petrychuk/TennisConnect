@@ -22,6 +22,7 @@ import {
   type Message,
   type InsertMessage,
 } from "@shared/schema";
+import { hashPassword } from "./auth";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
 import { supabaseAdmin } from "./supabaseAdmin";
@@ -61,6 +62,7 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User>;
+  updateUserPassword(id: string, hashedPassword: string): Promise<void>;
   getUserBySlug(slug: string): Promise<User | undefined>;
 
   // Player Profiles
@@ -152,6 +154,15 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     return user;
+  }
+
+  async updateUserPassword(userId: string, password: string): Promise<void> {
+    const hashed = await hashPassword(password);
+  
+    await db
+      .update(users)
+      .set({ password: hashed })
+      .where(eq(users.id, userId));
   }
 
   // =====================
