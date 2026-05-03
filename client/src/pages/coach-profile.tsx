@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { COACHES_DATA } from "@/lib/dummy-data";
 import {
   Command,
   CommandEmpty,
@@ -166,11 +167,8 @@ const ALL_SYDNEY_SUBURBS = [
   "Baulkham Hills", "Beaumont Hills", "Bella Vista", "Castle Hill", "Cherrybrook", "Dural", "Glenhaven", "Kellyville", "Kenthurst", "North Rocks", "Pennant Hills", "Rouse Hill", "Seven Hills", "West Pennant Hills", "Winston Hills"
 ].sort();
 
-import { COACHES_DATA } from "@/lib/dummy-data";
 import { useRoute } from "wouter";
-
 import { Switch } from "@/components/ui/switch";
-
 import racketImg from "/assets/images/professional_tennis_racket_on_a_court_bench.png";
 import bagImg from "/assets/images/modern_tennis_gear_bag.png";
 import ballsImg from "/assets/images/can_of_new_tennis_balls.png";
@@ -178,19 +176,14 @@ import ballsImg from "/assets/images/can_of_new_tennis_balls.png";
 export default function CoachProfile() {
   const [match, params] = useRoute("/coach/:slug");
   const profileSlug = params?.slug;
-  
-  const { user, isAuthenticated, updateUser } = useAuth();
+  const { user, isAuthenticated, updateUserProfile, updateUserLocal } = useAuth();
   const [, setLocation] = useLocation();
-
   const { toast } = useToast();
-
   const [openCombobox, setOpenCombobox] = useState(false);
-
   const [isDemo, setIsDemo] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const [profile, setProfile] = useState<CoachProfile>(DEFAULT_COACH_PROFILE);
-  const [profileData, setProfileData] = useState<any>(null);
   const [marketplaceItems, setMarketplaceItems] = useState<any[]>([]);
 
   const isOwnProfile =
@@ -242,7 +235,6 @@ export default function CoachProfile() {
   });
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
-
   /* =========================
      HANDLERS — FILE UPLOAD
   ========================= */
@@ -288,26 +280,43 @@ export default function CoachProfile() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const resUpload = await fetch(`/api/upload/${field}`, {
+      const resUpload = await fetch(`/api/uploadMedia/${field}`, {
         method: "POST",
         body: formData,
         credentials: "include",
       });
 
-      if (!resUpload.ok) throw new Error("Upload failed");
+      const contentType = resUpload.headers.get("content-type") || "";
 
-      const { url } = await resUpload.json();
+      if (!contentType.includes("application/json")) {
+        const text = await resUpload.text();
+        console.error("❌ NON-JSON RESPONSE:", text);
+        throw new Error("Server returned non-JSON response");
+      }
 
-      await fetch("/api/me/coach-profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ [field]: url }),
+      const data = await resUpload.json();
+
+      if (!resUpload.ok) {
+        throw new Error(data?.message || `Upload failed (${resUpload.status})`);
+      }
+
+      const { url: imageUrl, user: updatedUserObject } = data;
+
+      if (!imageUrl || !updatedUserObject) {
+        throw new Error("Invalid server response");
+      }
+
+      setProfile(prev => ({
+        ...prev,
+        [field]: imageUrl,
+      }));
+
+      updateUserLocal(updatedUserObject);
+
+      toast({
+        title: "Photo updated",
+        description: `${field === 'avatar' ? 'Avatar' : 'Cover'} updated successfully`,
       });
-
-      await updateUser({ [field]: url });
-
-      setProfile(prev => ({ ...prev, [field]: url }));
     };
 
   /* =========================
@@ -389,37 +398,47 @@ export default function CoachProfile() {
   };
 
   const handleSave = async () => {
-      try {
-        const res = await fetch("/api/me/coach-profile", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            title: profile.title,
-            location: profile.location,
-            bio: profile.bio,
-            tags: profile.tags,
-            photos: profile.photos,
-          }),
-        });
-
-        if (!res.ok) throw new Error();
-
-        const updatedProfile = await res.json();
-        setProfile(updatedProfile);
-
-        toast({
-          title: "Profile updated",
-          description: "Your changes were saved",
-        });
-      } catch {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to save profile",
-        });
-      }
-    };
+    try {
+      const res = await fetch("/api/me/coach-profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          title: profile.title,
+          location: profile.location,
+          bio: profile.bio,
+          tags: profile.tags,
+          photos: profile.photos,
+        }),
+      });
+  
+      if (!res.ok) throw new Error();
+  
+      const updatedProfile = await res.json();
+  
+      setProfile(prev => ({
+        ...prev,
+        ...updatedProfile
+      }));
+  
+      toast({
+        title: "Profile updated",
+        description: "Your changes were saved",
+      });
+  
+      // 🔥 ВОТ ЭТО ДОБАВЬ
+      setTimeout(() => {
+        window.location.reload();
+      }, 300);
+  
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to save profile",
+      });
+    }
+  };
 
     const handleRemovePhoto = async (index: number) => {
       try {
@@ -447,214 +466,121 @@ export default function CoachProfile() {
       }
     };
 
-    /* =========================
-     LOAD PUBLIC PROFILE
-     (guest / any user)
-  ========================= */
-  const loadPublicProfile = async () => {
-    if (!profileSlug) return;
+  /* =========================
+   EFFECTS
+========================= */
+useEffect(() => {
+  if (!profileSlug) return;
 
+  // ⚠️ ждём user чтобы не было "мигания"
+  if (isAuthenticated && !user) return;
+
+  async function loadProfile() {
     setLoading(true);
 
     try {
-      const res = await fetch(`/api/coaches/${profileSlug}`, {
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setProfile(prev => ({
-          ...prev,
-          ...data,
-        }));
-        setIsDemo(false);
-        setLoading(false);
-        return;
-      }
-    } catch (e) {
-      console.warn("Public profile fetch failed");
-    }
-
-    // 🔁 DEMO FALLBACK (важно — НЕ УДАЛЯТЬ)
-    const demoCoach = COACHES_DATA.find(c => c.slug === profileSlug);
-    if (demoCoach) {
-      setProfile(prev => ({
-        ...prev,
-        name: demoCoach.name,
-        title: demoCoach.title,
-        bio: demoCoach.bio,
-        location: demoCoach.location,
-        rate: String(demoCoach.rate),
-        tags: demoCoach.tags,
-        photos: demoCoach.photos,
-        avatar: demoCoach.image,
-        cover: demoCoach.cover,
-      }));
-      setIsDemo(true);
-      setLoading(false);
-      return;
-    }
-
-    setLocation("/coaches");
-  };
-
-   
-  /* =========================
-     LOAD PRIVATE PROFILE
-     (ONLY OWNER)
-  ========================= */
-  const loadPrivateProfile = async () => {
-    if (!isOwnProfile) return;
-
-    try {
-      
-      const res = await fetch("/api/me/coach-profile", {
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-
-        if (data) {
-          setProfileData(data);
-
-          setProfile(prev => ({
-            ...prev,
-
-            // user
-            name: user?.name || prev.name,
-            avatar: user?.avatar || prev.avatar,
-            cover: user?.cover || prev.cover,
-            email: user?.email || prev.email,
-
-            // profile
-            title: data.title ?? prev.title,
-            bio: data.bio ?? prev.bio,
-            location: data.location ?? prev.location,
-            locations: data.locations ?? prev.locations,
-            tags: data.tags ?? prev.tags,
-            schedule: data.schedule ?? prev.schedule,
-            phone: data.phone ?? prev.phone,
-            rate: String(data.rate ?? prev.rate),
-            experience: data.experience ?? prev.experience,
-            photos: data.photos?.length ? data.photos : prev.photos,
-
-            active_students: data.active_students ?? prev.active_students,
-            rating: data.rating ?? prev.rating,
-            attendance: data.attendance ?? prev.attendance,
-          }));
-        }
-      }
-
-      const marketplaceRes = await fetch("/api/profile/marketplace", {
-        credentials: "include",
-      });
-
-      if (marketplaceRes.ok) {
-        setMarketplaceItems(await marketplaceRes.json());
-      }
-    } catch (err) {
-      console.error(err);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to load private profile",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /* =========================
-     EFFECTS
-  ========================= */
-  useEffect(() => {
-      if (!profileSlug) return;
-
-      async function loadProfile() {
-        try {
-          setLoading(true);
-
-          // 1️⃣ PUBLIC DATA
-          const res = await fetch(`/api/coaches/${profileSlug}`, {
-            credentials: "include",
-          });
-
-          if (!res.ok) throw new Error("Not found");
-
-          const data = await res.json();
-
-          setProfile(prev => ({
-            ...DEFAULT_COACH_PROFILE,
-
-            // user-level
-            name: data.user.name,
-            avatar: data.user.avatar ?? DEFAULT_COACH_PROFILE.avatar,
-            cover: data.user.cover ?? DEFAULT_COACH_PROFILE.cover,
-
-            // profile-level
-            title: data.profile.title ?? DEFAULT_COACH_PROFILE.title,
-            location: data.profile.location ?? DEFAULT_COACH_PROFILE.location,
-            bio: data.profile.bio ?? DEFAULT_COACH_PROFILE.bio,
-
-            rate: data.profile.rate ?? DEFAULT_COACH_PROFILE.rate,
-            experience: data.profile.experience ?? DEFAULT_COACH_PROFILE.experience,
-            locations: data.profile.locations ?? DEFAULT_COACH_PROFILE.locations,
-            tags: data.profile.tags ?? DEFAULT_COACH_PROFILE.tags,
-            photos: data.profile.photos ?? DEFAULT_COACH_PROFILE.photos,
-
-            schedule: data.profile.schedule ?? DEFAULT_COACH_PROFILE.schedule,
-
-            response_time: data.profile.response_time ?? DEFAULT_COACH_PROFILE.response_time,
-            accepting_students: data.profile.accepting_students ?? DEFAULT_COACH_PROFILE.accepting_students,
-            active_students: data.profile.active_students ?? DEFAULT_COACH_PROFILE.active_students,
-            rating: data.profile.rating ?? DEFAULT_COACH_PROFILE.rating,
-            hours_taught: data.profile.hours_taught ?? DEFAULT_COACH_PROFILE.hours_taught,
-            attendance: data.profile.attendance ?? DEFAULT_COACH_PROFILE.attendance,
-
-            phone: data.profile.phone ?? "",
-            email: data.profile.email ?? ""
-
-          }));
-
-          const marketplaceRes = await fetch(
-              `/api/profile/marketplace/public/${data.user.id}`,
-              { credentials: "include" }
-            );
-            if (marketplaceRes.ok) {
-              setMarketplaceItems(await marketplaceRes.json());
-            }
-
-        } catch (e) {
-          setLocation("/");
-        } finally {
-          setLoading(false);
-        }
-      }
-
-      loadProfile();
-    }, [profileSlug]);
-
-    useEffect(() => {
-      if (!isOwnProfile) return;
-
-      async function loadPrivateProfile() {
+      // =========================
+      // 🔥 PRIVATE PROFILE (МОЙ)
+      // =========================
+      if (isOwnProfile) {
         const res = await fetch("/api/me/coach-profile", {
           credentials: "include",
         });
 
-        if (!res.ok) return;
+        if (!res.ok) throw new Error();
 
-        const profile = await res.json();
-        setProfile(profile);
+        const data = await res.json();
+
+        setProfile({
+          ...DEFAULT_COACH_PROFILE,
+        
+          name: user?.name ?? DEFAULT_COACH_PROFILE.name,
+          avatar: user?.avatar ?? DEFAULT_COACH_PROFILE.avatar,
+          cover: user?.cover ?? DEFAULT_COACH_PROFILE.cover,
+          email: user?.email ?? DEFAULT_COACH_PROFILE.email,
+        
+          ...data,
+        });
+
+        // marketplace (private)
+        const marketplaceRes = await fetch("/api/profile/marketplace", {
+          credentials: "include",
+        });
+
+        if (marketplaceRes.ok) {
+          setMarketplaceItems(await marketplaceRes.json());
+        }
+
+        return;
+      }
+      // =========================
+      // 🌍 PUBLIC PROFILE
+      // =========================
+      const res = await fetch(`/api/coaches/${profileSlug}`, {
+        credentials: "include",
+      });
+
+      if (!res.ok) throw new Error();
+
+      const data = await res.json();
+
+      setProfile({
+        ...DEFAULT_COACH_PROFILE,
+
+        name: data.user?.name ?? DEFAULT_COACH_PROFILE.name,
+        avatar: data.user?.avatar ?? DEFAULT_COACH_PROFILE.avatar,
+        cover: data.user?.cover ?? DEFAULT_COACH_PROFILE.cover,
+
+        ...data.profile,
+      });
+
+      // marketplace (public)
+      const marketplaceRes = await fetch(
+        `/api/profile/marketplace/public/${data.user?.id}`,
+        { credentials: "include" }
+      );
+
+      if (marketplaceRes.ok) {
+        setMarketplaceItems(await marketplaceRes.json());
       }
 
-      loadPrivateProfile();
-    }, [isOwnProfile]);
+    } catch (e) {
+      console.error("Load profile failed", e);
+
+      // 🔁 fallback (demo)
+      const demoCoach = COACHES_DATA.find(c => c.slug === profileSlug);
+      if (demoCoach) {
+        setProfile({
+          ...DEFAULT_COACH_PROFILE,
+          name: demoCoach.name,
+          title: demoCoach.title,
+          bio: demoCoach.bio,
+          location: demoCoach.location,
+          rate: String(demoCoach.rate),
+          tags: demoCoach.tags || [],
+          photos: demoCoach.photos || [],
+          avatar: demoCoach.image,
+          cover: demoCoach.cover,
+        });
+        setIsDemo(true);
+      } else {
+        setLocation("/coaches");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  loadProfile();
+}, [profileSlug, isOwnProfile, user, isAuthenticated]);
 
     const handleBuyRequest = async (itemId: string) => {
       console.log("Buy request for:", itemId);
     };    
+
+    if (loading) {
+      return <div className="p-10 text-center">Loading...</div>;
+    }
 
   return (
     <div className="min-h-screen bg-background font-sans relative">
@@ -1024,7 +950,7 @@ export default function CoachProfile() {
                        </CardHeader>
                        <CardContent>
                          <div className="space-y-4">
-                           {Object.entries(profile.schedule).map(([day, schedule]) => (
+                           {profile.schedule && Object.entries(profile.schedule).map(([day, schedule]) => (
                              <div key={day} className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors">
                                <div className="flex items-center gap-4">
                                  <div className="w-24 capitalize font-medium">{day}</div>

@@ -3,8 +3,14 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { setupAuth } from "./auth";
+import cors from "cors";
 
 const app = express();
+
+app.use(cors({
+  origin: "http://localhost:3000",
+  credentials: true
+}));
 const httpServer = createServer(app);
 
 declare module "http" {

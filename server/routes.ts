@@ -69,31 +69,41 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.post("/api/auth/register", async (req, res, next) => {
     try {
+      // 1️⃣ Валидация
       const parsed = insertUserSchema
         .omit({ slug: true })
         .safeParse(req.body);
-
+  
       if (!parsed.success) {
         return res.status(400).json({
           message: "Invalid input",
           errors: parsed.error,
         });
       }
-
+  
+      // 2️⃣ Проверка email
       const exists = await storage.getUserByEmail(parsed.data.email);
       if (exists) {
         return res.status(400).json({ message: "Email already exists" });
       }
-
+  
+      // 3️⃣ Хэш пароль
       const hashedPassword = await hashPassword(parsed.data.password);
-      
-      const user = await storage.createUser({
+  
+      // 4️⃣ Создаём пользователя
+      const createdUser = await storage.createUser({
         ...parsed.data,
         password: hashedPassword,
-
       });
-
-      // 🔑 AUTO-CREATE PROFILE
+  
+      // 🔥 5️⃣ КРИТИЧНО: заново берём пользователя из БД
+      const user = await storage.getUser(createdUser.id);
+  
+      if (!user) {
+        throw new Error("User not found after creation");
+      }
+  
+      // 6️⃣ Создаём профиль
       if (user.role === "player") {
         await storage.createPlayerProfile({
           userId: user.id,
@@ -101,22 +111,31 @@ export async function registerRoutes(app: Express): Promise<void> {
           skillLevel: "Beginner",
         });
       }
-
+  
       if (user.role === "coach") {
         await storage.createCoachProfile({
           userId: user.id,
           title: "Coach",
           location: "Sydney",
         });
+        console.log("🔥 creating coach profile for:", user.id);
       }
-
+  
+      // 🔥 7️⃣ ЛОГИНИМ пользователя (самое важное)
       req.login(user, (err) => {
-        if (err) return next(err);
-        res.json(user);
+        if (err) {
+          console.error("❌ login error:", err);
+          return next(err);
+        }
+  
+        console.log("✅ user logged in:", user.id);
+  
+        return res.json(user);
       });
-
-    } catch (e) {
-      next(e);
+  
+    } catch (err) {
+      console.error("❌ register error:", err);
+      next(err);
     }
   });
 
@@ -155,9 +174,9 @@ export async function registerRoutes(app: Express): Promise<void> {
     });
   });
 
-  app.post("/api/me/complete-profile", requireAuth, async (req, res, next) => {
+  app.put("/api/me/complete-profile", requireAuth, async (req, res, next) => {
     try {
-      const user = await storage.updateUser(req.user!.id, {
+      const user = await storage.updateUserProfile(req.user!.id, {
         profileCompleted: true,
       });
 
@@ -323,7 +342,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.post("/api/me/complete-profile", requireAuth, async (req, res, next) => {
     try {
-      const user = await storage.updateUser(req.user!.id, {
+      const user = await storage.updateUserProfile(req.user!.id, {
         profileCompleted: true,
       });
 
@@ -346,12 +365,55 @@ export async function registerRoutes(app: Express): Promise<void> {
      ME (CURRENT USER)
   ========================= */
 
-  app.get("/api/me", requireAuth, (req, res) => {
-    if (!req.user) {
-    return res.status(401).json({ user: null });
-  }
-  res.json({ user: req.user });
-});
+  app.get("/api/auth/me", (req, res) => {
+    if (!req.isAuthenticated()) {
+      console.log("❌ /api/auth/me unauthorized");
+      return res.status(401).json(null);
+    }
+  
+    console.log("🔥 /api/auth/me user:", req.user); // 👈 сначала лог
+  
+    res.json(req.user); // 👈 потом ответ
+  });
+
+  app.put("/api/auth/me", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+  
+      const userId = req.user.id;
+      const updates = req.body;
+  
+      console.log("🛠 UPDATE USER:", updates);
+  
+      // ⚠️ Белый список полей (важно для безопасности)
+      const allowedFields = ["name", "avatar", "cover", "status"];
+      const filteredUpdates: any = {};
+  
+      for (const key of allowedFields) {
+        if (updates[key] !== undefined) {
+          filteredUpdates[key] = updates[key];
+        }
+      }
+  
+      if (Object.keys(filteredUpdates).length === 0) {
+        return res.status(400).json({ message: "No valid fields to update" });
+      }
+  
+      // 🔥 Обновление пользователя
+      const updateUserProfile = await storage.updateUserProfile(userId, filteredUpdates);
+  
+      console.log("✅ USER UPDATED:", updatedUserProfile);
+  
+      res.json(updatedUserProfile);
+  
+    } catch (err) {
+      console.error("❌ UPDATE USER ERROR:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   app.get(
     "/api/me/player-profile",
     requireAuth,

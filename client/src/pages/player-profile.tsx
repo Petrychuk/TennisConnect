@@ -75,7 +75,7 @@ export const DEFAULT_PLAYER_PROFILE: PlayerProfile = {
 export default function PlayerProfile() {
   const [match, params] = useRoute("/player/:slug");
   const profileSlug = params?.slug; 
-  const { user, isAuthenticated, updateUserLocal } = useAuth();
+  const { user, isAuthenticated, updateUserProfile, updateUserLocal } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
@@ -591,15 +591,18 @@ export default function PlayerProfile() {
           />
           {isEditing && (
              <div 
-               onClick={() => document.getElementById('cover-upload')?.click()}
+               onClick={() => {
+                console.log("CLICK COVER");
+                document.getElementById('cover-upload')?.click();
+              }}
                className="absolute inset-0 z-20 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
              >
-               <Button variant="secondary" className="gap-2 pointer-events-none">
+               <Button variant="secondary" className="gap-2">
                  <Camera className="w-5 h-5" /> Change Cover Photo
                </Button>
              </div>
           )}
-          <div className="absolute bottom-0 left-0 w-full h-24 bg-linear-to-t from-background to-transparent z-20" />
+          <div className="absolute bottom-0 left-0 w-full h-24 bg-linear-to-t from-background to-transparent z-10" />
         </div>
 
         <div className="container mx-auto px-4 -mt-20 relative z-30 max-w-6xl">

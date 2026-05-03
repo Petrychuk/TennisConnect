@@ -28,11 +28,14 @@ interface AuthContextType {
     role: "player" | "coach"
   ) => Promise<User>;
   
-  // 🔁 Старый метод — ОСТАВЛЯЕМ
-  updateUser: (updates: Partial<User>) => Promise<void>;
+    // 🔹 GET current user 
+    fetchCurrentUser: () => Promise<User | null>;
 
-  // ✅ НОВЫЙ метод — БЕЗ API
-  updateUserLocal: (user: User) => void;
+    // 🔹 PUT update user (avatar / cover / name)
+    updateUserProfile: (updates: Partial<User>) => Promise<User | null>;
+  
+    // 🔹 локальное обновление (без API)
+    updateUserLocal: (user: User) => void;
 
   logout: () => Promise<void>;
   
@@ -169,28 +172,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return userData;
   };
-
+  const fetchCurrentUser = async () => {
+    const res = await fetch("/api/auth/me", {
+      credentials: "include",
+    });
   
-  /**
-   * UPDATE USER (avatar / cover)
-   */
-  const updateUser = async (updates: Partial<User>) => {
-    if (!user) return;
+    if (!res.ok) {
+      throw new Error("Failed to fetch user");
+    }
+  
+    const data = await res.json();
+    setUser(data);
+  
+    return data;
+  };
 
-    const res = await fetch(`/api/me`, {
+  // UPDATE USER (avatar / cover)
+  const updateUserProfile = async (updates: Partial<User>) => {
+    const res = await fetch("/api/auth/me", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify(updates),
-      
     });
-
+  
     if (!res.ok) {
-      throw new Error("Failed to update user");
+      const err = await res.text();
+      throw new Error(err);
     }
-
+  
     const updatedUser = await res.json();
     setUser(updatedUser);
+  
+    return updatedUser;
   };
   
   // используется ТОЛЬКО после upload avatar / cover
@@ -199,9 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(newUser);
   };
 
-/**
-   * LOGOUT
-   */
+// LOGOUT
   const logout = async () => {
     await fetch("/api/auth/logout", {
       method: "POST",
@@ -222,8 +234,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         register,
         logout,
-        updateUser,
+        updateUserProfile,
         updateUserLocal,
+        fetchCurrentUser,
       }}
     >
       {children}

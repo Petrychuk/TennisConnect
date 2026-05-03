@@ -61,7 +61,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateUser(id: string, updates: Partial<User>): Promise<User>;
+  updateUserProfile(id: string, updates: Partial<User>): Promise<User>;
   updateUserPassword(id: string, hashedPassword: string): Promise<void>;
   getUserBySlug(slug: string): Promise<User | undefined>;
 
@@ -111,6 +111,7 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+
   // =====================
   // USERS
   // =====================
@@ -142,17 +143,20 @@ export class DatabaseStorage implements IStorage {
           slug,
         })
         .returning();
-
+   
       return user;
   }
 
-  async updateUser(id: string, updates: Partial<User>): Promise<User> {
+  async updateUserProfile(id: string, updates: Partial<User>): Promise<User> {
     const [user] = await db
       .update(users)
       .set(updates)
       .where(eq(users.id, id))
       .returning();
-
+      
+      if (!user) {
+        throw new Error("User not found");
+      }
     return user;
   }
 

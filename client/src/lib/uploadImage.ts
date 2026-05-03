@@ -8,7 +8,7 @@ export async function uploadImage(
 
   const res = await fetch(`/api/upload/${type}`, {
     method: "POST",
-     body: fd,
+    body: fd,
     credentials: "include",
   });
 

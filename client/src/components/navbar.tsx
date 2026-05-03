@@ -20,31 +20,47 @@ export function Navbar() {
   const [location, setLocation] = useLocation();
   const { user, logout, isAuthenticated } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
- 
+
   const profileHref =
-  user?.role && user?.slug
-    ? `/${user.role}/${user.slug}`
-    : "/";
+    user?.role && user?.slug
+      ? `/${user.role}/${user.slug}`
+      : "/";
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchUnreadCount();
-      const interval = setInterval(fetchUnreadCount, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [isAuthenticated]);
-
+  // 🔥 БЕЗОПАСНЫЙ FETCH
   const fetchUnreadCount = async () => {
     try {
-      const res = await fetch("/api/messages/unread-count");
-      if (res.ok) {
-        const data = await res.json();
+      const res = await fetch("/api/messages/unread-count", {
+        credentials: "include", // ❗ обязательно для session
+      });
+
+      // 🔥 защита от 401 / HTML
+      if (!res.ok) {
+        console.warn("Unread count failed:", res.status);
+        return;
+      }
+
+      const data = await res.json();
+
+      // 🔥 защита от кривых данных
+      if (data && typeof data.count === "number") {
         setUnreadCount(data.count);
       }
+
     } catch (error) {
       console.error("Failed to fetch unread count:", error);
     }
   };
+
+  // 🔥 useEffect оставляем, но делаем безопасным
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    fetchUnreadCount();
+
+    const interval = setInterval(fetchUnreadCount, 30000);
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
 
   const navLinks = [
     { name: "Partners", href: "/partners" },

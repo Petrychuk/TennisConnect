@@ -34,7 +34,7 @@ export default function CompleteProfilePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { user, loading, updateUser } = useAuth();
+  const { user, loading, updateUserProfile } = useAuth();
 
   const playerForm = useForm<z.infer<typeof playerProfileSchema>>({
     resolver: zodResolver(playerProfileSchema),
@@ -70,34 +70,55 @@ export default function CompleteProfilePage() {
 
   const onPlayerSubmit = async (data: z.infer<typeof playerProfileSchema>) => {
     setIsLoading(true);
+  
     try {
       const profileData = {
         ...data,
-        preferredCourts: data.preferredCourts ? data.preferredCourts.split(",").map(c => c.trim()) : [],
+        preferredCourts: data.preferredCourts
+          ? data.preferredCourts.split(",").map(c => c.trim())
+          : [],
       };
-
+  
+      // 🔹 1. Save player profile
       const res = await fetch("/api/me/player-profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(profileData),
         credentials: "include",
       });
-
+  
       if (!res.ok) throw new Error("Failed to save profile");
-
-      await fetch("/api/me/complete-profile", {
+  
+      // 🔹 2. Complete profile
+      const completeRes = await fetch("/api/me/complete-profile", {
         method: "POST",
         credentials: "include",
       });
-
-      await updateUser({ profileCompleted: true });
-
-      toast({
-        title: "Profile completed!",
-        description: "Your profile is now visible to other players.",
+  
+      if (!completeRes.ok) {
+        const err = await completeRes.text();
+        throw new Error(err);
+      }
+  
+      // 🔹 3. Fetch fresh user (🔥 ВАЖНО)
+      const userRes = await fetch("/api/auth/me", {
+        credentials: "include",
       });
-
-      setLocation(`/player/${user?.slug}`);
+  
+      if (!userRes.ok) {
+        const errText = await userRes.text();
+        throw new Error(errText);
+      }
+  
+      const freshUser = await userRes.json();
+  
+      if (!freshUser?.slug) {
+        throw new Error("Slug missing");
+      }
+  
+      // 🔹 4. Redirect
+      window.location.href = `/player/${freshUser.slug}`;
+  
     } catch (error: any) {
       toast({
         title: "Error",
@@ -110,40 +131,99 @@ export default function CompleteProfilePage() {
   };
 
   const onCoachSubmit = async (data: z.infer<typeof coachProfileSchema>) => {
-    setIsLoading(true);
-    try {
-      const res = await fetch("/api/me/coach-profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-        credentials: "include",
-      });
+  console.log("🚀 SUBMIT START", data);
 
-      if (!res.ok) throw new Error("Failed to save profile");
+  setIsLoading(true);
 
-      await fetch("/api/me/complete-profile", {
-        method: "POST",
-        credentials: "include",
-      });
+  try {
+    // 🔹 1. Save coach profile
+    console.log("➡️ Step 1: Saving coach profile");
 
-      await updateUser({ profileCompleted: true });
+    const res = await fetch("/api/me/coach-profile", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+      credentials: "include",
+    });
 
-      toast({
-        title: "Profile completed!",
-        description: "Your profile is now visible to students.",
-      });
+    const text = await res.text();
+    console.log("✅ coach-profile response:", text);
 
-      setLocation(`/coach/${user?.slug}`);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save profile",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
+    if (!res.ok) {
+      console.error("❌ Step 1 FAILED");
+      throw new Error(text);
     }
-  };
+
+    console.log("✅ Step 1 SUCCESS");
+
+    // 🔹 2. Complete profile
+    console.log("➡️ Step 2: Completing profile");
+
+    const completeRes = await fetch("/api/me/complete-profile", {
+      method: "POST",
+      credentials: "include",
+    });
+
+    console.log("complete-profile status:", completeRes.status);
+
+    if (!completeRes.ok) {
+      const err = await completeRes.text();
+      console.error("❌ Step 2 FAILED:", err);
+      throw new Error(err);
+    }
+
+    console.log("✅ Step 2 SUCCESS");
+
+    toast({
+      title: "Profile completed!",
+      description: "Your profile is now visible to students.",
+    });
+
+    // 🔹 4. Fetch fresh user
+    console.log("➡️ Step 4: Fetching fresh user");
+
+    const userRes = await fetch("/api/auth/me", {
+      credentials: "include",
+    });
+
+    console.log("auth/me status:", userRes.status);
+
+    if (!userRes.ok) {
+      const errText = await userRes.text();
+      console.error("❌ Step 4 FAILED:", errText);
+      return;
+    }
+
+    const freshUser = await userRes.json();
+    console.log("✅ freshUser:", freshUser);
+
+    if (!freshUser?.slug) {
+      console.error("❌ Step 4 FAILED: slug missing");
+      return;
+    }
+
+    console.log("✅ Step 4 SUCCESS");
+
+    // 🔹 5. Redirect
+    console.log("➡️ Step 5: Redirecting to", `/coach/${freshUser.slug}`);
+
+    setLocation(`/coach/${freshUser.slug}`);
+
+    console.log("❗ If you see this log — redirect DID NOT happen");
+
+  } catch (error: any) {
+    console.error("💥 SUBMIT ERROR:", error);
+
+    toast({
+      title: "Error",
+      description: error.message || "Failed to save profile",
+      variant: "destructive",
+    });
+  } finally {
+    console.log("🏁 SUBMIT END");
+    setIsLoading(false);
+  }
+};
 
   if (loading) {
     return (
