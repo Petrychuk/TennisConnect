@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { ShieldCheck } from "lucide-react";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -150,6 +151,14 @@ export function Navbar() {
                       )}
                     </Link>
                   </DropdownMenuItem>
+                  {user?.isAdmin && (
+                    <DropdownMenuItem asChild className="cursor-pointer">
+                      <Link href="/admin" className="flex items-center gap-2" data-testid="navbar-admin-link">
+                        <ShieldCheck className="w-4 h-4" />
+                        Admin Panel
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem className="cursor-pointer">Settings</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 

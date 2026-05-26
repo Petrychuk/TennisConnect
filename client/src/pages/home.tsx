@@ -9,6 +9,10 @@ import { Partnership } from "@/components/partnership";
 import { Gallery } from "@/components/gallery";
 import { Testimonials } from "@/components/testimonials";
 import { Footer } from "@/components/footer";
+import { HomeArticles } from "@/components/home-articles";
+import { HomeTravel } from "@/components/home-travel";
+import { HomeRecreation } from "@/components/home-recreation";
+import { HomeTournaments } from "@/components/home-tournaments";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
@@ -21,8 +25,13 @@ export default function Home() {
       <main>
         <Hero />       
         <AboutUs />
+        <HomeTournaments variant="recent" />
+        <HomeArticles />
         <ProShop />
         <BrandMarquee />
+        <HomeTravel />
+        <HomeRecreation />
+        <HomeTournaments variant="upcoming" />
         <Gallery />
         <Marketplace />
         <Testimonials /> 

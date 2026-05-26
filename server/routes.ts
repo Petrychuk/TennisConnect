@@ -6,6 +6,7 @@ import { hashPassword, comparePasswords } from "./auth";
 import uploadMediaRouter from "./routes/uploadMedia";
 import profileTournamentHistoryRouter from "./routes/profileTournamentHistory";
 import profileMarketplace from "./routes/profileMarketplace";
+import contentRouter from "./routes/content";
 import passport from "passport";
 import { requireAuth } from "./requireAuth";
 import {
@@ -62,6 +63,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/api/uploadMedia", uploadMediaRouter);
   app.use("/api/profile/tournament-history", profileTournamentHistoryRouter);
   app.use("/api/profile/marketplace", profileMarketplace);
+  app.use("/api", contentRouter);
   
   /* =========================
      AUTH

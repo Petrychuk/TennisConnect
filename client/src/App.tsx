@@ -18,6 +18,13 @@ import PartnersPage from "@/pages/partners";
 import TournamentsPage from "@/pages/tournaments";
 import MessagesPage from "@/pages/messages";
 import CompleteProfilePage from "@/pages/complete-profile";
+import ArticlesPage from "@/pages/articles";
+import ArticleDetailPage from "@/pages/article-detail";
+import TravelPage from "@/pages/travel";
+import TravelDetailPage from "@/pages/travel-detail";
+import RecreationPage from "@/pages/recreation";
+import RecreationDetailPage from "@/pages/recreation-detail";
+import AdminPage from "@/pages/admin";
 
 function Router() {
   return (
@@ -34,6 +41,13 @@ function Router() {
       <Route path="/clubs" component={ClubsPage} />
       <Route path="/partners" component={PartnersPage} />
       <Route path="/tournaments" component={TournamentsPage} />
+      <Route path="/articles" component={ArticlesPage} />
+      <Route path="/articles/:slug" component={ArticleDetailPage} />
+      <Route path="/travel" component={TravelPage} />
+      <Route path="/travel/:slug" component={TravelDetailPage} />
+      <Route path="/recreation" component={RecreationPage} />
+      <Route path="/recreation/:slug" component={RecreationDetailPage} />
+      <Route path="/admin" component={AdminPage} />
       <Route path="/messages" component={MessagesPage} />
       <Route path="/coach/profile" component={CoachProfile} />
       <Route path="/coach/:id" component={CoachProfile} />

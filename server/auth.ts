@@ -39,7 +39,8 @@ declare global {
       cover?: string | null;
       slug?: string;
       status?: string | null;
-      profileCompleted?: boolean | null; 
+      profileCompleted?: boolean | null;
+      isAdmin?: boolean;
     }
   }
 }
@@ -121,7 +122,8 @@ export function setupAuth(app: Express) {
             cover: user.cover,
             slug: user.slug,
             status: user.status,
-            profileCompleted: user.profileCompleted, 
+            profileCompleted: user.profileCompleted,
+            isAdmin: (user as any).isAdmin || false,
           });
         } catch (err) {
           done(err);
@@ -155,6 +157,7 @@ export function setupAuth(app: Express) {
       cover: user.cover,
       status: user.status,
       profileCompleted: user.profileCompleted,
+      isAdmin: (user as any).isAdmin || false,
     });
   });
 
