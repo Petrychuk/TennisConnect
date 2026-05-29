@@ -5,6 +5,7 @@ import { Building2, ArrowRight, MapPin, Star, Phone } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CLUBS_DATA } from "@/lib/dummy-data";
 
 interface Club {
   id: string | number;
@@ -20,16 +21,22 @@ interface Club {
 }
 
 export function HomeClubs() {
-  const [items, setItems] = useState<Club[]>([]);
+  const [items, setItems] = useState<Club[]>(
+    CLUBS_DATA.slice(0, 3)
+  );
 
   useEffect(() => {
     fetch("/api/clubs", { credentials: "include" })
       .then((r) => r.json())
-      .then((data) => setItems((Array.isArray(data) ? data : []).slice(0, 3)))
-      .catch(() => setItems([]));
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setItems(data.slice(0, 3));
+        }
+      })
+      .catch(() => {
+        console.log("Using fallback club data");
+      });
   }, []);
-
-  if (!items.length) return null;
 
   return (
     <section className="py-24 bg-black text-white relative overflow-hidden" id="tennis-club">
