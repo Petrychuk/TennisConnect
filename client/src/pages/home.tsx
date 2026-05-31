@@ -2,11 +2,18 @@ import { Navbar } from "@/components/navbar";
 import { Hero } from "@/components/hero";
 import { Features } from "@/components/features";
 import { AboutUs } from "@/components/about-us";
+import { ProShop } from "@/components/pro-shop";
+import { BrandMarquee } from "@/components/brand-marquee";
 import { Marketplace } from "@/components/marketplace";
 import { Partnership } from "@/components/partnership";
 import { Gallery } from "@/components/gallery";
 import { Testimonials } from "@/components/testimonials";
 import { Footer } from "@/components/footer";
+import { HomeArticles } from "@/components/home-articles";
+import { HomeTravel } from "@/components/home-travel";
+import { HomeRecreation } from "@/components/home-recreation";
+import { HomeTournaments } from "@/components/home-tournaments";
+import { HomeClubs } from "@/components/home-clubs";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
@@ -19,6 +26,13 @@ export default function Home() {
       <main>
         <Hero />       
         <AboutUs />
+        <HomeClubs />
+        <HomeArticles />
+        <ProShop />
+        <BrandMarquee />
+        <HomeTravel />
+        <HomeRecreation />
+        <HomeTournaments variant="upcoming" />
         <Gallery />
         <Marketplace />
         <Testimonials /> 

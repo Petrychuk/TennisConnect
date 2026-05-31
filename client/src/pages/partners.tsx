@@ -271,7 +271,7 @@ export default function PartnersPage() {
                 <Card className="h-full flex flex-col overflow-hidden hover:shadow-lg transition-all duration-300 border-border/50 group">
                   
                   <CardContent className="p-6 grow flex flex-col items-center text-center">
-                    <div className="relative mb-4">
+                    <div className="relative mb-4 group">
                       <Avatar className="w-24 h-24 border-4 border-background shadow-lg">
                         <AvatarImage
                           src={
@@ -279,14 +279,20 @@ export default function PartnersPage() {
                               ? user.avatar
                               : partner.avatar
                           }
+                          className="object-cover"
                         />
                       <AvatarFallback>{partner.name[0]}</AvatarFallback>
                       </Avatar>
 
                       {isMe && (
-                        <Badge className="absolute top-0 right-0 bg-primary text-primary-foreground">
-                          You
-                        </Badge>
+                        <>
+                          <Badge className="absolute top-0 right-0 bg-primary text-primary-foreground z-10">
+                            You
+                          </Badge>
+                          <div className="absolute inset-0 w-24 h-24 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                            <Camera className="w-6 h-6 text-white" />
+                          </div>
+                        </>
                       )}
                     </div>
 

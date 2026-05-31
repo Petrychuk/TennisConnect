@@ -3,6 +3,8 @@ import { Strategy as LocalStrategy } from "passport-local";
 import { type Express } from "express";
 import session from "express-session";
 import createMemoryStore from "memorystore";
+import pgSession from "connect-pg-simple";
+import { Pool } from "pg";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
@@ -37,39 +39,38 @@ declare global {
       cover?: string | null;
       slug?: string;
       status?: string | null;
-      profileCompleted?: boolean | null; 
+      profileCompleted?: boolean | null;
+      isAdmin?: boolean;
     }
   }
 }
 
 export function setupAuth(app: Express) {
   const MemoryStore = createMemoryStore(session);
-  
   const ONE_HOUR = 1000 * 60 * 60;
+  const ONE_DAY = 24 * ONE_HOUR;
 
+  // Enable trust proxy for all environments (needed for preview URLs)
+  app.set("trust proxy", 1);
+
+  // For HTTPS (preview URLs), we need secure cookies with sameSite=none
+  // Check if running behind HTTPS proxy
+  const isProduction = process.env.NODE_ENV === 'production';
+  
   const sessionSettings: session.SessionOptions = {
     secret: env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      sameSite: "lax",
-      maxAge: ONE_HOUR,
-      secure: app.get("env") === "production",
+      sameSite: "none" as const, // Required for cross-site cookies
+      maxAge: ONE_DAY,
+      secure: true, // Required when sameSite is 'none'
     },
     store: new MemoryStore({
       checkPeriod: 86400000,
     }),
   };
-
-  if (app.get("env") === "production") {
-    app.set("trust proxy", 1);
-    sessionSettings.cookie = {
-      ...sessionSettings.cookie,
-      secure: true,
-      sameSite: "none",
-    };
-  }
 
   app.use(session(sessionSettings));
   app.use(passport.initialize());
@@ -121,7 +122,8 @@ export function setupAuth(app: Express) {
             cover: user.cover,
             slug: user.slug,
             status: user.status,
-            profileCompleted: user.profileCompleted, 
+            profileCompleted: user.profileCompleted,
+            isAdmin: (user as any).isAdmin || false,
           });
         } catch (err) {
           done(err);
@@ -155,9 +157,10 @@ export function setupAuth(app: Express) {
       cover: user.cover,
       status: user.status,
       profileCompleted: user.profileCompleted,
+      isAdmin: (user as any).isAdmin || false,
     });
   });
 
 }
 
-export { hashPassword };
+export { hashPassword, comparePasswords };

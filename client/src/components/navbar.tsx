@@ -14,53 +14,40 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { ShieldCheck } from "lucide-react";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [location, setLocation] = useLocation();
   const { user, logout, isAuthenticated } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
-
+ 
   const profileHref =
-    user?.role && user?.slug
-      ? `/${user.role}/${user.slug}`
-      : "/";
+  user?.role && user?.slug
+    ? `/${user.role}/${user.slug}`
+    : "/";
 
-  // 🔥 БЕЗОПАСНЫЙ FETCH
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchUnreadCount();
+      const interval = setInterval(fetchUnreadCount, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated]);
+
   const fetchUnreadCount = async () => {
     try {
       const res = await fetch("/api/messages/unread-count", {
-        credentials: "include", // ❗ обязательно для session
+        credentials: "include",
       });
-
-      // 🔥 защита от 401 / HTML
-      if (!res.ok) {
-        console.warn("Unread count failed:", res.status);
-        return;
-      }
-
-      const data = await res.json();
-
-      // 🔥 защита от кривых данных
-      if (data && typeof data.count === "number") {
+      if (res.ok) {
+        const data = await res.json();
         setUnreadCount(data.count);
       }
-
     } catch (error) {
       console.error("Failed to fetch unread count:", error);
     }
   };
-
-  // 🔥 useEffect оставляем, но делаем безопасным
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    fetchUnreadCount();
-
-    const interval = setInterval(fetchUnreadCount, 30000);
-
-    return () => clearInterval(interval);
-  }, [isAuthenticated]);
 
   const navLinks = [
     { name: "Partners", href: "/partners" },
@@ -68,6 +55,7 @@ export function Navbar() {
     { name: "Tournaments", href: "/tournaments" },
     { name: "Marketplace", href: "/marketplace" },
     { name: "Clubs", href: "/clubs" },
+    { name: "Shop", href: "https://shop.tennisconnect.com", external: true },
   ];
 
   if (location === "/auth") return null;
@@ -84,13 +72,28 @@ export function Navbar() {
         {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => (
-            <Link
-              key={link.name}
-              href={link.href}
-              className="text-sm font-medium hover:text-lime-600 transition-colors cursor-pointer"
-            >
-              {link.name}
-            </Link>
+            link.external ? (
+              <a
+                key={link.name}
+                href={link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-medium hover:text-lime-600 transition-colors cursor-pointer flex items-center gap-1"
+              >
+                {link.name}
+                <svg className="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+            ) : (
+              <Link
+                key={link.name}
+                href={link.href}
+                className="text-sm font-medium hover:text-lime-600 transition-colors cursor-pointer"
+              >
+                {link.name}
+              </Link>
+            )
           ))}
         </div>
 
@@ -148,6 +151,14 @@ export function Navbar() {
                       )}
                     </Link>
                   </DropdownMenuItem>
+                  {user?.isAdmin && (
+                    <DropdownMenuItem asChild className="cursor-pointer">
+                      <Link href="/admin" className="flex items-center gap-2" data-testid="navbar-admin-link">
+                        <ShieldCheck className="w-4 h-4" />
+                        Admin Panel
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem className="cursor-pointer">Settings</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
@@ -194,14 +205,30 @@ export function Navbar() {
                 )}
 
                 {navLinks.map((link) => (
-                  <Link
-                    key={link.name}
-                    href={link.href}
-                    className="text-lg font-medium hover:text-lime-600 transition-colors cursor-pointer"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    {link.name}
-                  </Link>
+                  link.external ? (
+                    <a
+                      key={link.name}
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-lg font-medium hover:text-lime-600 transition-colors cursor-pointer flex items-center gap-2"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      {link.name}
+                      <svg className="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  ) : (
+                    <Link
+                      key={link.name}
+                      href={link.href}
+                      className="text-lg font-medium hover:text-lime-600 transition-colors cursor-pointer"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      {link.name}
+                    </Link>
+                  )
                 ))}
                 
                 {isAuthenticated ? (

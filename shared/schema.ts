@@ -15,6 +15,92 @@ export const users = pgTable("users", {
   cover: text("cover"),
   status: varchar("status", { length: 50 }).default("active"),
   profileCompleted: boolean("profile_completed").default(false).notNull(),
+  isAdmin: boolean("is_admin").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Articles - blog posts about tennis
+export const articles = pgTable("articles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  title: text("title").notNull(),
+  excerpt: text("excerpt").notNull(),
+  content: text("content").notNull(),
+  coverImage: text("cover_image").notNull(),
+  category: text("category").notNull(), // 'Training', 'Equipment', 'News', 'Health'
+  author: text("author").notNull(),
+  readTime: integer("read_time").default(5).notNull(),
+  isPublished: boolean("is_published").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Travel Packages - tennis tour packages
+export const travelPackages = pgTable("travel_packages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  title: text("title").notNull(),
+  destination: text("destination").notNull(),
+  duration: text("duration").notNull(), // e.g. "7 days"
+  price: integer("price").notNull(),
+  currency: varchar("currency", { length: 8 }).default("AUD").notNull(),
+  description: text("description").notNull(),
+  highlights: json("highlights").$type<string[]>().default([]),
+  includes: json("includes").$type<string[]>().default([]),
+  coverImage: text("cover_image").notNull(),
+  gallery: json("gallery").$type<string[]>().default([]),
+  startDate: text("start_date"),
+  spotsLeft: integer("spots_left").default(10).notNull(),
+  isFeatured: boolean("is_featured").default(false).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Recreation Services - massage / recovery / wellness
+export const recreationServices = pgTable("recreation_services", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  name: text("name").notNull(),
+  type: text("type").notNull(), // 'Massage', 'Recovery', 'Yoga', 'Physio'
+  provider: text("provider").notNull(),
+  location: text("location").notNull(),
+  duration: text("duration").notNull(), // e.g. "60 min"
+  price: integer("price").notNull(),
+  currency: varchar("currency", { length: 8 }).default("AUD").notNull(),
+  description: text("description").notNull(),
+  benefits: json("benefits").$type<string[]>().default([]),
+  coverImage: text("cover_image").notNull(),
+  rating: text("rating"),
+  phone: text("phone"),
+  email: text("email"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Tournaments (events) - separate from tournamentHistory (which is per-user history)
+export const tournaments = pgTable("tournaments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  name: text("name").notNull(),
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date"),
+  location: text("location").notNull(),
+  address: text("address"),
+  level: text("level").notNull(), // 'Beginner', 'Intermediate', 'Advanced'
+  price: integer("price").notNull(),
+  prizePool: text("prize_pool"),
+  maxParticipants: integer("max_participants").default(64).notNull(),
+  currentParticipants: integer("current_participants").default(0).notNull(),
+  description: text("description").notNull(),
+  organizer: text("organizer").notNull(),
+  phone: text("phone"),
+  email: text("email"),
+  website: text("website"),
+  coverImage: text("cover_image").notNull(),
+  status: text("status").notNull().default("upcoming"), // 'upcoming' or 'past'
+  categories: json("categories").$type<string[]>().default([]),
+  ageGroups: json("age_groups").$type<string[]>().default([]),
+  winner: text("winner"),
+  finalist: text("finalist"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -258,3 +344,44 @@ export type Club = typeof clubs.$inferSelect;
 
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
+
+// Articles / Travel / Recreation / Tournaments schemas
+export const insertArticleSchema = createInsertSchema(articles).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  slug: z.string().optional(),
+});
+export const insertTravelPackageSchema = createInsertSchema(travelPackages).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  slug: z.string().optional(),
+  highlights: z.array(z.string()).optional().default([]),
+  includes: z.array(z.string()).optional().default([]),
+  gallery: z.array(z.string()).optional().default([]),
+});
+export const insertRecreationServiceSchema = createInsertSchema(recreationServices).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  slug: z.string().optional(),
+  benefits: z.array(z.string()).optional().default([]),
+});
+export const insertTournamentSchema = createInsertSchema(tournaments).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  slug: z.string().optional(),
+  categories: z.array(z.string()).optional().default([]),
+  ageGroups: z.array(z.string()).optional().default([]),
+});
+
+export type InsertArticle = z.infer<typeof insertArticleSchema>;
+export type Article = typeof articles.$inferSelect;
+export type InsertTravelPackage = z.infer<typeof insertTravelPackageSchema>;
+export type TravelPackage = typeof travelPackages.$inferSelect;
+export type InsertRecreationService = z.infer<typeof insertRecreationServiceSchema>;
+export type RecreationService = typeof recreationServices.$inferSelect;
+export type InsertTournament = z.infer<typeof insertTournamentSchema>;
+export type Tournament = typeof tournaments.$inferSelect;

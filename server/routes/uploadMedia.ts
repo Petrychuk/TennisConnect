@@ -32,11 +32,13 @@ router.post(
       console.log("UPLOAD ROUTE HIT:", {
         type: req.params.type,
         user: req.user?.id,
+        role: req.user?.role,
         hasFile: !!req.file,
         });
 
-      const { id: userId } = req.user;
-      const folder = `players/${userId}`;
+      const { id: userId, role } = req.user;
+      // Use appropriate folder based on user role
+      const folder = role === 'coach' ? `coaches/${userId}` : `players/${userId}`;
       const filePath = `${folder}/${type}.webp`;
 
       // 1. Загружаем файл в Storage

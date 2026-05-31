@@ -12,6 +12,7 @@ interface User {
   avatar?: string | null;
   cover?: string | null;
   profileCompleted: boolean;
+  isAdmin?: boolean;
 }
 
 interface AuthContextType {

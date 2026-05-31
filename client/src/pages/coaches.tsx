@@ -46,14 +46,15 @@ export default function CoachesPage() {
           if (data.length > 0) {
             const transformedCoaches = data.map((coach: any) => ({
               id: coach.id,
-              name: coach.title || "Coach",
+              slug: coach.slug,
+              name: coach.name || coach.title || "Coach",
               title: coach.title || "Tennis Coach",
               location: coach.locations?.[0] || coach.location || "Sydney",
               rate: coach.rate ? parseInt(coach.rate) : 80,
               rating: coach.rating || "4.9",
               reviews: coach.reviews || 0,
               experience: coach.experience || "5 years",
-              image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop",
+              image: coach.avatar || "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop",
               tags: coach.tags || [],
               schedule: coach.schedule || {},
             }));

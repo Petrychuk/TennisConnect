@@ -2,10 +2,11 @@ import type { Express, Request, Response } from "express";
 import crypto from "crypto";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { hashPassword } from "./auth";
+import { hashPassword, comparePasswords } from "./auth";
 import uploadMediaRouter from "./routes/uploadMedia";
 import profileTournamentHistoryRouter from "./routes/profileTournamentHistory";
 import profileMarketplace from "./routes/profileMarketplace";
+import contentRouter from "./routes/content";
 import passport from "passport";
 import { requireAuth } from "./requireAuth";
 import {
@@ -16,7 +17,7 @@ import {
   insertMarketplaceItemSchema,
   insertClubSchema,
   insertMessageSchema,
-  passwordResetTokens 
+  passwordResetTokens,
 } from "@shared/schema";
 import { z } from "zod";
 import { supabaseAdmin } from "./supabaseAdmin";
@@ -62,6 +63,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/api/uploadMedia", uploadMediaRouter);
   app.use("/api/profile/tournament-history", profileTournamentHistoryRouter);
   app.use("/api/profile/marketplace", profileMarketplace);
+  app.use("/api", contentRouter);
   
   /* =========================
      AUTH
@@ -69,41 +71,40 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.post("/api/auth/register", async (req, res, next) => {
     try {
-      // 1️⃣ Валидация
       const parsed = insertUserSchema
         .omit({ slug: true })
         .safeParse(req.body);
-  
+
       if (!parsed.success) {
         return res.status(400).json({
           message: "Invalid input",
           errors: parsed.error,
         });
       }
-  
-      // 2️⃣ Проверка email
+
       const exists = await storage.getUserByEmail(parsed.data.email);
       if (exists) {
         return res.status(400).json({ message: "Email already exists" });
       }
-  
-      // 3️⃣ Хэш пароль
+
       const hashedPassword = await hashPassword(parsed.data.password);
-  
-      // 4️⃣ Создаём пользователя
-      const createdUser = await storage.createUser({
+      
+      // Default avatar and cover based on role
+      const defaultAvatar = parsed.data.role === 'coach' 
+        ? 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop'
+        : 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop';
+      const defaultCover = parsed.data.role === 'coach'
+        ? 'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=1200&h=400&fit=crop'
+        : 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=1200&h=400&fit=crop';
+      
+      const user = await storage.createUser({
         ...parsed.data,
         password: hashedPassword,
+        avatar: defaultAvatar,
+        cover: defaultCover,
       });
-  
-      // 🔥 5️⃣ КРИТИЧНО: заново берём пользователя из БД
-      const user = await storage.getUser(createdUser.id);
-  
-      if (!user) {
-        throw new Error("User not found after creation");
-      }
-  
-      // 6️⃣ Создаём профиль
+
+      // 🔑 AUTO-CREATE PROFILE
       if (user.role === "player") {
         await storage.createPlayerProfile({
           userId: user.id,
@@ -111,31 +112,22 @@ export async function registerRoutes(app: Express): Promise<void> {
           skillLevel: "Beginner",
         });
       }
-  
+
       if (user.role === "coach") {
         await storage.createCoachProfile({
           userId: user.id,
           title: "Coach",
           location: "Sydney",
         });
-        console.log("🔥 creating coach profile for:", user.id);
       }
-  
-      // 🔥 7️⃣ ЛОГИНИМ пользователя (самое важное)
+
       req.login(user, (err) => {
-        if (err) {
-          console.error("❌ login error:", err);
-          return next(err);
-        }
-  
-        console.log("✅ user logged in:", user.id);
-  
-        return res.json(user);
+        if (err) return next(err);
+        res.json(user);
       });
-  
-    } catch (err) {
-      console.error("❌ register error:", err);
-      next(err);
+
+    } catch (e) {
+      next(e);
     }
   });
 
@@ -151,9 +143,20 @@ export async function registerRoutes(app: Express): Promise<void> {
       if (!user) {
         return res.status(401).json({ message: "Login failed" });
       }
-      req.login(user, (err) => {
-        if (err) return next(err);
-        res.json(user);
+      
+      // Regenerate session to prevent session fixation
+      req.session.regenerate((regenerateErr) => {
+        if (regenerateErr) return next(regenerateErr);
+        
+        req.login(user, (loginErr) => {
+          if (loginErr) return next(loginErr);
+          
+          // Save session explicitly
+          req.session.save((saveErr) => {
+            if (saveErr) return next(saveErr);
+            res.json(user);
+          });
+        });
       });
     })(req, res, next);
   });
@@ -162,37 +165,6 @@ export async function registerRoutes(app: Express): Promise<void> {
     req.logout(() => {
       res.json({ message: "Logged out" });
     });
-  });
-
-  app.get("/api/auth/me", (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-    res.json({
-      ...req.user,
-      needsProfileCompletion: !req.user.profileCompleted,
-    });
-  });
-
-  app.put("/api/me/complete-profile", requireAuth, async (req, res, next) => {
-    try {
-      const user = await storage.updateUserProfile(req.user!.id, {
-        profileCompleted: true,
-      });
-
-      // OPTIONAL: снять draft
-      if (user.role === "player") {
-        await storage.updatePlayerProfileByUserId(user.id, { isDraft: false });
-      }
-
-      if (user.role === "coach") {
-        await storage.updateCoachProfileByUserId(user.id, { isDraft: false });
-      }
-
-      res.json(user);
-    } catch (e) {
-      next(e);
-    }
   });
 
   // ==========================================
@@ -342,7 +314,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.post("/api/me/complete-profile", requireAuth, async (req, res, next) => {
     try {
-      const user = await storage.updateUserProfile(req.user!.id, {
+      const user = await storage.updateUser(req.user!.id, {
         profileCompleted: true,
       });
 
@@ -365,55 +337,12 @@ export async function registerRoutes(app: Express): Promise<void> {
      ME (CURRENT USER)
   ========================= */
 
-  app.get("/api/auth/me", (req, res) => {
-    if (!req.isAuthenticated()) {
-      console.log("❌ /api/auth/me unauthorized");
-      return res.status(401).json(null);
-    }
-  
-    console.log("🔥 /api/auth/me user:", req.user); // 👈 сначала лог
-  
-    res.json(req.user); // 👈 потом ответ
-  });
-
-  app.put("/api/auth/me", async (req, res) => {
-    try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-  
-      const userId = req.user.id;
-      const updates = req.body;
-  
-      console.log("🛠 UPDATE USER:", updates);
-  
-      // ⚠️ Белый список полей (важно для безопасности)
-      const allowedFields = ["name", "avatar", "cover", "status"];
-      const filteredUpdates: any = {};
-  
-      for (const key of allowedFields) {
-        if (updates[key] !== undefined) {
-          filteredUpdates[key] = updates[key];
-        }
-      }
-  
-      if (Object.keys(filteredUpdates).length === 0) {
-        return res.status(400).json({ message: "No valid fields to update" });
-      }
-  
-      // 🔥 Обновление пользователя
-      const updateUserProfile = await storage.updateUserProfile(userId, filteredUpdates);
-  
-      console.log("✅ USER UPDATED:", updatedUserProfile);
-  
-      res.json(updatedUserProfile);
-  
-    } catch (err) {
-      console.error("❌ UPDATE USER ERROR:", err);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
+  app.get("/api/me", requireAuth, (req, res) => {
+    if (!req.user) {
+    return res.status(401).json({ user: null });
+  }
+  res.json({ user: req.user });
+});
   app.get(
     "/api/me/player-profile",
     requireAuth,
@@ -649,14 +578,14 @@ export async function registerRoutes(app: Express): Promise<void> {
   });
 
   // Get unread message count (requires auth)
-  // app.get("/api/messages/unread-count", requireAuth, async (req, res, next) => {
-  //   try {
-  //     const count = await storage.getUnreadMessageCount(req.user!.id);
-  //     res.json({ count });
-  //   } catch (error: any) {
-  //     next(error);
-  //   }
-  // });
+  app.get("/api/messages/unread-count", requireAuth, async (req, res, next) => {
+    try {
+      const count = await storage.getUnreadMessageCount(req.user!.id);
+      res.json({ count });
+    } catch (error: any) {
+      next(error);
+    }
+  });
 
   // Send a message (can be from authenticated)
   app.post("/api/messages", requireAuth, async (req, res, next) => {
