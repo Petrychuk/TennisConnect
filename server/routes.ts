@@ -394,15 +394,41 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   );
 
-  app.put("/api/me/coach-profile",
+  app.put(
+    "/api/me/coach-profile",
     requireAuth,
     requireRole("coach"),
     async (req, res) => {
-      const profile = await storage.updateCoachProfileByUserId(
-        req.user!.id,
-        req.body
-      );
-      res.json(profile);
+      try {
+        const userId = req.user!.id;
+  
+        const { name, ...profileData } = req.body;
+  
+        // обновляем имя пользователя в таблице users
+        if (name && typeof name === "string") {
+          await storage.updateUserName(userId, name);
+        }
+  
+        // обновляем профиль коуча
+        const profile = await storage.updateCoachProfileByUserId(
+          userId,
+          profileData
+        );
+  
+        // возвращаем свежие данные
+        const user = await storage.getUser(userId);
+  
+        res.json({
+          user,
+          profile,
+        });
+      } catch (error) {
+        console.error("Update coach profile error:", error);
+  
+        res.status(500).json({
+          message: "Failed to update coach profile",
+        });
+      }
     }
   );
 

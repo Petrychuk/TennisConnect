@@ -55,7 +55,7 @@ export function Navbar() {
     { name: "Tournaments", href: "/tournaments" },
     { name: "Marketplace", href: "/marketplace" },
     { name: "Clubs", href: "/clubs" },
-    { name: "Shop", href: "https://shop.tennisconnect.com", external: true },
+    { name: "Shop", href: "https://shop.tennisconnect.com.au", external: true },
   ];
 
   if (location === "/auth") return null;

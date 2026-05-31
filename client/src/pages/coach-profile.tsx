@@ -179,7 +179,7 @@ export default function CoachProfile() {
   const [match, params] = useRoute("/coach/:slug");
   const profileSlug = params?.slug;
   
-  const { user, isAuthenticated, updateUser } = useAuth();
+  const { user, isAuthenticated, updateUserLocal, fetchCurrentUser} = useAuth();
   const [, setLocation] = useLocation();
 
   const { toast } = useToast();
@@ -319,7 +319,7 @@ export default function CoachProfile() {
         [field]: imageUrl,
       }));
 
-      updateUser(updatedUserObject);
+      updateUserLocal(updatedUserObject);
 
       toast({
         title: "Photo updated",
@@ -412,18 +412,44 @@ export default function CoachProfile() {
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
+            name: profile.name,
+          
             title: profile.title,
             location: profile.location,
             bio: profile.bio,
+          
             tags: profile.tags,
             photos: profile.photos,
+          
+            rate: profile.rate,
+            experience: profile.experience,
+          
+            phone: profile.phone,
+            email: profile.email,
+          
+            locations: profile.locations,
+            schedule: profile.schedule,
+          
+            response_time: profile.response_time,
+            accepting_students: profile.accepting_students,
+          
+            active_students: profile.active_students,
+            rating: profile.rating,
+            hours_taught: profile.hours_taught,
+            attendance: profile.attendance,
           }),
         });
 
         if (!res.ok) throw new Error();
 
         const updatedProfile = await res.json();
-        setProfile(updatedProfile);
+        setProfile(prev => ({
+          ...prev,
+          ...updatedProfile,
+        }));
+        await fetchCurrentUser();
+
+        setIsEditing(false);
 
         toast({
           title: "Profile updated",
@@ -670,23 +696,6 @@ export default function CoachProfile() {
 
       loadProfile();
     }, [profileSlug]);
-
-    useEffect(() => {
-      if (!isOwnProfile) return;
-
-      async function loadPrivateProfile() {
-        const res = await fetch("/api/me/coach-profile", {
-          credentials: "include",
-        });
-
-        if (!res.ok) return;
-
-        const profile = await res.json();
-        setProfile(profile);
-      }
-
-      loadPrivateProfile();
-    }, [isOwnProfile]);
 
     const handleBuyRequest = async (itemId: string) => {
       console.log("Buy request for:", itemId);
