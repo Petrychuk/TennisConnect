@@ -63,9 +63,9 @@ export function setupAuth(app: Express) {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      sameSite: "none" as const, // Required for cross-site cookies
       maxAge: ONE_DAY,
-      secure: true, // Required when sameSite is 'none'
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
     },
     store: new MemoryStore({
       checkPeriod: 86400000,
