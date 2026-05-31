@@ -75,7 +75,7 @@ export const DEFAULT_PLAYER_PROFILE: PlayerProfile = {
 export default function PlayerProfile() {
   const [match, params] = useRoute("/player/:slug");
   const profileSlug = params?.slug; 
-  const { user, isAuthenticated, updateUserProfile, updateUserLocal } = useAuth();
+  const { user, isAuthenticated, updateUserProfile, updateUserLocal, fetchCurrentUser } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
@@ -254,8 +254,12 @@ export default function PlayerProfile() {
 
       if (!res.ok) throw new Error("Failed to update profile");
 
-      const updated = await res.json();
-      setProfileData(updated);
+      const updatedProfile = await res.json();
+      setProfile(prev => ({
+        ...prev,
+        ...updatedProfile,
+      }));
+      //await fetchCurrentUser();
       setIsEditing(false);
 
       toast({
@@ -560,7 +564,9 @@ export default function PlayerProfile() {
         ...prev,
         [field]: imageUrl,
       }));
-
+      
+      console.log("UPDATED USER:", updatedUserObject);
+      console.log("NEW IMAGE:", imageUrl);
       updateUserLocal(updatedUserObject);
 
       toast({
@@ -597,6 +603,21 @@ export default function PlayerProfile() {
       
       <div className="relative z-10">
         <Navbar />
+        <input
+          type="file"
+          id="avatar-upload"
+          className="hidden"
+          accept="image/*"
+          onChange={(e) => handleFileChange(e, "avatar")}
+        />
+
+        <input
+          type="file"
+          id="cover-upload"
+          className="hidden"
+          accept="image/*"
+          onChange={(e) => handleFileChange(e, "cover")}
+        />
 
         {/* Cover Photo Section */}
         <div className="relative h-[250px] md:h-[350px] w-full overflow-hidden group">
@@ -625,27 +646,28 @@ export default function PlayerProfile() {
         <div className="container mx-auto px-4 -mt-20 relative z-30 max-w-6xl">
           {/* Header Section */}
           <div className="flex flex-col md:flex-row gap-8 mb-12">
-            <div className="shrink-0 mx-auto md:mx-0 relative group">
-              <Avatar className="w-40 h-40 border-4 border-background shadow-xl">
-                <AvatarImage src={profile.avatar ?? undefined} className="object-cover" />
-                <AvatarFallback>{profile.name.charAt(0)}</AvatarFallback>
-              </Avatar>
-              {isOwnProfile && (
-                <label 
-                  htmlFor="avatar-upload" 
-                  className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                >
-                  <Camera className="w-8 h-8 text-white" />
-                  <input 
-                    type="file" 
-                    id="avatar-upload" 
-                    className="hidden" 
-                    accept="image/*"
-                    onChange={(e) => handleFileChange(e, 'avatar')}
-                  />
-                </label>
-              )}
-            </div>
+          <div className="shrink-0 mx-auto md:mx-0 relative group">
+            <Avatar className="w-40 h-40 border-4 border-background shadow-xl">
+              <AvatarImage
+                src={profile.avatar ?? undefined}
+                className="object-cover"
+              />
+              <AvatarFallback>
+                {profile.name.charAt(0)}
+              </AvatarFallback>
+            </Avatar>
+
+            {isEditing && (
+              <div
+                onClick={() =>
+                  document.getElementById("avatar-upload")?.click()
+                }
+                className="absolute inset-0 bg-black/50 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity rounded-full"
+              >
+                <Camera className="w-8 h-8 text-white" />
+              </div>
+            )}
+          </div>
             
             <div className="grow text-center md:text-left space-y-4">
               <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-4">

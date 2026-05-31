@@ -447,7 +447,7 @@ export default function CoachProfile() {
           ...prev,
           ...updatedProfile,
         }));
-        await fetchCurrentUser();
+        //await fetchCurrentUser();
 
         setIsEditing(false);
 
