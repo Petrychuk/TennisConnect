@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Menu, LogOut, User, Bell, Mail } from "lucide-react";
+import { Menu, LogOut, User, Bell, Mail, UserCircle, ShieldCheck, Settings } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
@@ -14,8 +14,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { ShieldCheck } from "lucide-react";
-
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [location, setLocation] = useLocation();
@@ -53,8 +51,10 @@ export function Navbar() {
     { name: "Partners", href: "/partners" },
     { name: "Coaches", href: "/coaches" },
     { name: "Tournaments", href: "/tournaments" },
-    { name: "Marketplace", href: "/marketplace" },
     { name: "Clubs", href: "/clubs" },
+    { name: "Travel", href: "/travel" },
+    { name: "Recreation", href: "/recreation" },
+    { name: "Marketplace", href: "/marketplace" }, 
     { name: "Shop", href: "https://shop.tennisconnect.com.au", external: true },
   ];
 
@@ -138,7 +138,7 @@ export function Navbar() {
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild className="cursor-pointer">
-                    <Link href={profileHref}>Profile</Link>
+                    <Link href={profileHref}><UserCircle className="h-4 w-4" />Profile</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild className="cursor-pointer">
                     <Link href="/messages" className="flex items-center gap-2">
@@ -159,7 +159,10 @@ export function Navbar() {
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem className="cursor-pointer">Settings</DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Settings className="h-4 w-4" />
+                      Settings
+                    </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
                     className="text-destructive focus:text-destructive cursor-pointer" 
