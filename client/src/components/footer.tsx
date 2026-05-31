@@ -8,6 +8,7 @@ export function Footer() {
           <div className="space-y-4">
             <h3 className="text-2xl font-display font-bold flex items-center gap-1">
               Tennis<span className="text-[hsl(var(--tennis-ball))]">Connect</span>
+              <div className="w-2 h-2 rounded-full bg-[hsl(var(--tennis-ball))] mt-1 animate-pulse" />
             </h3>
             <p className="text-gray-400 leading-relaxed">
               The modern platform for tennis enthusiasts in Australia. Find a partner, book a court, buy gear, and start playing today.
