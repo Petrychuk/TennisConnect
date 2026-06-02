@@ -182,7 +182,7 @@ export function Navbar() {
                     </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
-                    className="text-bolt cursor-pointer" 
+                    className="text-destructive focus:text-destructive cursor-pointer" 
                     onClick={async () => {
                       await logout();
                       setLocation("/");
@@ -280,9 +280,10 @@ export function Navbar() {
                     <Button 
                       variant="ghost" 
                       className="w-full justify-start text-destructive hover:text-destructive cursor-pointer"
-                      onClick={() => {
-                        logout();
+                      onClick={async () => {
+                        await logout();
                         setIsOpen(false);
+                        setLocation("/");
                       }}
                     >
                       <LogOut className="mr-2 h-4 w-4" /> Sign Out
@@ -319,9 +320,7 @@ export function Navbar() {
           }
         }}
       >
-  <DialogContent className="w-[95vw]
-    max-w-md
-    p-5d">
+        <DialogContent className="w-[95vw] max-w-md p-5">
     <DialogHeader>
       <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10">
         <AlertTriangle className="h-7 w-7 text-destructive" />
