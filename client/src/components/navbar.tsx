@@ -408,8 +408,6 @@ export function Navbar() {
 
                   await logout();
 
-                  setLocation("/");
-
                   window.location.href = "/";
                 } catch (error) {
                   toast({

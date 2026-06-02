@@ -443,14 +443,19 @@ export async function registerRoutes(app: Express): Promise<void> {
       const userId = req.user.id;
   
       await storage.deleteUserAccount(userId);
-  
-      req.session?.destroy(() => {});
-  
-      res.clearCookie("connect.sid");
-  
-      return res.json({
-        success: true,
+
+      await new Promise<void>((resolve, reject) => {
+        req.session?.destroy((err) => {
+          if (err) reject(err);
+          else resolve();
+        });
       });
+
+res.clearCookie("connect.sid");
+
+return res.json({
+  success: true,
+});
   
     } catch (error) {
       console.error("Delete account error:", error);
