@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "../db";
 import { articles, travelPackages, recreationServices, tournaments } from "@shared/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, ne } from "drizzle-orm";
 import {
   insertArticleSchema,
   insertTravelPackageSchema,
@@ -49,7 +49,12 @@ router.get(
     const rows = await db
       .select()
       .from(articles)
-      .where(eq(articles.isPublished, true))
+      .where(
+        and(
+          eq(articles.isPublished, true),
+          ne(articles.category, "Legal")
+        )
+      )
       .orderBy(desc(articles.createdAt));
     res.json(rows);
   })
@@ -95,6 +100,29 @@ router.delete(
   asyncHandler(async (req: any, res: any) => {
     await db.delete(articles).where(eq(articles.id, req.params.id));
     res.json({ ok: true });
+  })
+);
+
+router.get(
+  "/legal/:type",
+  asyncHandler(async (req: any, res: any) => {
+    const [row] = await db
+      .select()
+      .from(articles)
+      .where(
+        and(
+          eq(articles.category, "Legal"),
+          eq(articles.legalType, req.params.type)
+        )
+      );
+
+    if (!row) {
+      return res.status(404).json({
+        message: "Document not found",
+      });
+    }
+
+    res.json(row);
   })
 );
 

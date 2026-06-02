@@ -30,15 +30,44 @@ const ICONS: Record<Resource, any> = {
 };
 
 // Field definitions per resource
-const FIELDS: Record<Resource, { name: string; type: "text" | "textarea" | "number" | "list"; required?: boolean; help?: string }[]> = {
+const FIELDS: Record<Resource, { name: string; type: "text" | "textarea" | "number" | "list" | "select"; required?: boolean; help?: string; options?: string[] }[]> = {
   articles: [
     { name: "title", type: "text", required: true },
-    { name: "category", type: "text", required: true, help: "Training | Equipment | Health | News" },
+    { name: "slug", type: "text", required: true },
+    { name: "category", type: "select", required: true,
+      options: [
+        "Training",
+        "Coaching",
+        "Equipment",
+        "Health",
+        "Fitness",
+        "Nutrition",
+        "Mental Game",
+        "Tournaments",
+        "Travel",
+        "Community",
+        "News",
+        "Legal",
+      ],
+    },
+    { name: "legalType", type: "select",
+      options: [
+        "Privacy Policy",
+        "Terms & Conditions",
+        "Community Guidelines & Safety",
+        "Cookie Policy",
+        "Partner Disclosure & Affiliate Disclosure",
+        "Refund Policy",
+      ],
+    },
     { name: "author", type: "text", required: true },
     { name: "excerpt", type: "textarea", required: true },
     { name: "content", type: "textarea", required: true },
     { name: "coverImage", type: "text", required: true, help: "Image URL" },
     { name: "readTime", type: "number", help: "Minutes" },
+    { name: "seoTitle", type: "text" },
+    { name: "metaDescription", type: "textarea" },
+    { name: "tags", type: "text" },
   ],
   travel: [
     { name: "title", type: "text", required: true },
@@ -313,33 +342,84 @@ export default function AdminPage() {
           </DialogHeader>
 
           <div className="space-y-4">
-            {FIELDS[activeTab].map((f) => (
+          {FIELDS[activeTab].map((f) => {
+
+            if (
+              f.name === "legalType" &&
+              formData.category !== "Legal"
+            ) {
+              return null;
+            }
+
+            return (
               <div key={f.name}>
                 <Label htmlFor={f.name} className="capitalize">
                   {f.name.replace(/([A-Z])/g, " $1")}
-                  {f.required && <span className="text-destructive ml-1">*</span>}
+                  {f.required && (
+                    <span className="text-destructive ml-1">*</span>
+                  )}
                 </Label>
+
                 {f.type === "textarea" ? (
                   <Textarea
                     id={f.name}
                     value={formData[f.name] || ""}
-                    onChange={(e) => setFormData({ ...formData, [f.name]: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        [f.name]: e.target.value,
+                      })
+                    }
                     rows={5}
                     data-testid={`admin-field-${f.name}`}
                   />
+                ) : f.type === "select" ? (
+                  <select
+                    id={f.name}
+                    value={formData[f.name] || ""}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        [f.name]: e.target.value,
+                      })
+                    }
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">Select...</option>
+
+                    {f.options?.map((option) => (
+                      <option
+                        key={option}
+                        value={option}
+                      >
+                        {option}
+                      </option>
+                    ))}
+                  </select>
                 ) : (
                   <Input
                     id={f.name}
                     type={f.type === "number" ? "number" : "text"}
                     value={formData[f.name] || ""}
-                    onChange={(e) => setFormData({ ...formData, [f.name]: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        [f.name]: e.target.value,
+                      })
+                    }
                     data-testid={`admin-field-${f.name}`}
                   />
                 )}
-                {f.help && <p className="text-xs text-muted-foreground mt-1">{f.help}</p>}
+
+                {f.help && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {f.help}
+                  </p>
+                )}
               </div>
-            ))}
-          </div>
+            );
+          })}
+        </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)} className="cursor-pointer">Cancel</Button>

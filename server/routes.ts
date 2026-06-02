@@ -199,7 +199,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       });
 
       // Send email via Supabase
-      const resetUrl = `${req.headers.origin || 'https://tennisconnect.au'}/reset-password?token=${token}`;
+      const resetUrl = `${req.headers.origin || 'https://tennisconnect.com.au'}/reset-password?token=${token}`;
       
       // Use Supabase to send email
       const { error: emailError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {

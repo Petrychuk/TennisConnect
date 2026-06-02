@@ -125,7 +125,7 @@ export default function ArticlesPage() {
               >
                 <Link href={`/articles/${a.slug}`}>
                   <Card className="group overflow-hidden border-none shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer h-full">
-                    <div className="relative aspect-[4/3] overflow-hidden bg-secondary/50">
+                    <div className="relative aspect-4/3 overflow-hidden bg-secondary/50">
                       <img
                         src={a.coverImage}
                         alt={a.title}
