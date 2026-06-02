@@ -270,7 +270,7 @@ export default function AdminPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {items.map((item) => (
                     <Card key={item.id} className="overflow-hidden">
-                      <div className="aspect-[16/9] bg-secondary/50 overflow-hidden">
+                      <div className="aspect-video bg-secondary/50 overflow-hidden">
                         <img src={item.coverImage} alt="" className="w-full h-full object-cover" />
                       </div>
                       <CardContent className="p-4">
