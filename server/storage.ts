@@ -7,6 +7,7 @@ import {
   marketplaceItems,
   clubs,
   messages,
+  passwordResetTokens,
   type User, 
   type InsertUser,
   type PlayerProfile,
@@ -23,7 +24,7 @@ import {
   type InsertMessage,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, or } from "drizzle-orm";
 import { supabaseAdmin } from "./supabaseAdmin";
 
 function slugify(text: string) {
@@ -63,6 +64,7 @@ export interface IStorage {
   updateUser(id: string, updates: Partial<User>): Promise<User>;
   updateUserPassword(id: string, hashedPassword: string): Promise<void>;
   getUserBySlug(slug: string): Promise<User | undefined>;
+  deleteUserAccount(userId: string): Promise<void>;
 
   // Player Profiles
   getPlayerProfile(userId: string): Promise<PlayerProfile | undefined>;
@@ -160,6 +162,51 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({ password: hashedPassword })
       .where(eq(users.id, id));
+  }
+
+  async deleteUserAccount(userId: string): Promise<void> {
+    await db.transaction(async (tx) => {
+  
+      // Messages
+      await tx
+        .delete(messages)
+        .where(
+          or(
+            eq(messages.senderUserId, userId),
+            eq(messages.recipientId, userId)
+          )
+        );
+  
+      // Tournament History
+      await tx
+        .delete(tournamentHistory)
+        .where(eq(tournamentHistory.userId, userId));
+  
+      // Marketplace
+      await tx
+        .delete(marketplaceItems)
+        .where(eq(marketplaceItems.userId, userId));
+  
+      // Player Profile
+      await tx
+        .delete(playerProfiles)
+        .where(eq(playerProfiles.userId, userId));
+  
+      // Coach Profile
+      await tx
+        .delete(coachProfiles)
+        .where(eq(coachProfiles.userId, userId));
+  
+      // Password Reset Tokens
+      await tx
+        .delete(passwordResetTokens)
+        .where(eq(passwordResetTokens.userId, userId));
+  
+      // User (всегда последним)
+      await tx
+        .delete(users)
+        .where(eq(users.id, userId));
+    });
   }
 
   // =====================

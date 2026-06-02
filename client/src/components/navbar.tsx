@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Menu, LogOut, User, Bell, Mail, UserCircle, ShieldCheck, Settings } from "lucide-react";
+import { Menu, LogOut, User, Bell, Mail, UserCircle, ShieldCheck, Settings, Trash2, AlertTriangle } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
@@ -14,12 +14,29 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
+
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [location, setLocation] = useLocation();
   const { user, logout, isAuthenticated } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
- 
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  
+  const { toast } = useToast();
+
   const profileHref =
   user?.role && user?.slug
     ? `/${user.role}/${user.slug}`
@@ -165,7 +182,7 @@ export function Navbar() {
                     </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
-                    className="text-destructive focus:text-destructive cursor-pointer" 
+                    className="text-bolt cursor-pointer" 
                     onClick={async () => {
                       await logout();
                       setLocation("/");
@@ -173,6 +190,14 @@ export function Navbar() {
                   >
                     <LogOut className="mr-2 h-4 w-4" />
                     Sign Out
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive cursor-pointer"
+                    onClick={() => setDeleteDialogOpen(true)}
+                    data-testid="navbar-delete-account"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete Account
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -262,6 +287,17 @@ export function Navbar() {
                     >
                       <LogOut className="mr-2 h-4 w-4" /> Sign Out
                     </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-destructive border-destructive/20 cursor-pointer"
+                      onClick={() => {
+                        setDeleteDialogOpen(true);
+                        setIsOpen(false);
+                      }}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete Account
+                    </Button>
                   </>
                 ) : (
                   <Link href="/auth" onClick={() => setIsOpen(false)}>
@@ -275,6 +311,128 @@ export function Navbar() {
           </Sheet>
         </div>
       </div>
+      <Dialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          if (!deleting) {
+            setDeleteDialogOpen(open);
+          }
+        }}
+      >
+  <DialogContent className="w-[95vw]
+    max-w-md
+    p-5d">
+    <DialogHeader>
+      <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10">
+        <AlertTriangle className="h-7 w-7 text-destructive" />
+      </div>
+
+      <DialogTitle className="text-center">
+        Delete Account
+      </DialogTitle>
+
+      <DialogDescription asChild>
+        <div className="text-center space-y-2 text-sm text-muted-foreground">
+          <p>
+            This action is permanent and cannot be undone.
+          </p>
+
+          <p>
+            Your TennisConnect profile, messages,
+            marketplace listings, tournament history
+            and account information will be permanently removed.
+          </p>
+
+          <p>
+            You will no longer appear in the Players
+            or Coaches directory.
+          </p>
+        </div>
+      </DialogDescription>
+    </DialogHeader>
+
+    <div className="flex items-center justify-center gap-2 py-2">
+      <Checkbox
+        id="confirm-delete"
+        checked={confirmDelete}
+        onCheckedChange={(checked) =>
+          setConfirmDelete(checked === true)
+        }
+      />
+
+      <label
+        htmlFor="confirm-delete"
+        className="text-sm leading-relaxed cursor-pointer"
+      >
+        I understand that this action cannot be undone.
+      </label>
+    </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setConfirmDelete(false);
+              }}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              variant="destructive"
+              disabled={!confirmDelete || deleting}
+              onClick={async () => {
+                try {
+                  setDeleting(true);
+
+                  const response = await fetch(
+                    "/api/me/account",
+                    {
+                      method: "DELETE",
+                      credentials: "include",
+                    }
+                  );
+
+                  if (!response.ok) {
+                    throw new Error(
+                      "Failed to delete account"
+                    );
+                  }
+
+                  toast({
+                    title: "Account deleted",
+                    description:
+                      "Your account has been permanently removed.",
+                  });
+
+                  await logout();
+
+                  setLocation("/");
+
+                  window.location.href = "/";
+                } catch (error) {
+                  toast({
+                    title: "Error",
+                    description:
+                      "Failed to delete account.",
+                    variant: "destructive",
+                  });
+                } finally {
+                  setDeleting(false);
+                }
+              }}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+
+              {deleting
+                ? "Deleting..."
+                : "Delete Account"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </nav>
   );
 }

@@ -432,6 +432,35 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   );
 
+  app.delete("/api/me/account", async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          message: "Unauthorized",
+        });
+      }
+  
+      const userId = req.user.id;
+  
+      await storage.deleteUserAccount(userId);
+  
+      req.session?.destroy(() => {});
+  
+      res.clearCookie("connect.sid");
+  
+      return res.json({
+        success: true,
+      });
+  
+    } catch (error) {
+      console.error("Delete account error:", error);
+  
+      return res.status(500).json({
+        message: "Failed to delete account",
+      });
+    }
+  });
+
   /* =========================
      PUBLIC PROFILES
   ========================= */

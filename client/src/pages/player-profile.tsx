@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogDescription, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
@@ -185,13 +185,13 @@ export default function PlayerProfile() {
             setProfile({
               ...DEFAULT_PLAYER_PROFILE,
               name: demoPlayer.name,
-              avatar: demoPlayer.image,
+              avatar: demoPlayer.avatar,
               location: demoPlayer.location,
-              age: demoPlayer.age,
-              country: demoPlayer.country,
-              skillLevel: demoPlayer.level,
+              //age: demoPlayer.age,
+              //country: demoPlayer.country,
+              skillLevel: demoPlayer.skillLevel,
               bio: demoPlayer.bio,
-              preferredCourts: demoPlayer.courts || [],
+              //preferredCourts: demoPlayer.courts || [],
             });
             setIsDemo(true);
           }
@@ -811,6 +811,9 @@ export default function PlayerProfile() {
                     <DialogContent className="max-w-2xl">
                       <DialogHeader>
                         <DialogTitle>Add Tournament Result</DialogTitle>
+                        <DialogDescription>
+                          Add your tournament result and match details.
+                        </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4 py-4">
                         <div className="space-y-2">
