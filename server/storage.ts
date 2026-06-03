@@ -8,6 +8,7 @@ import {
   clubs,
   messages,
   passwordResetTokens,
+  supportRequests,
   type User, 
   type InsertUser,
   type PlayerProfile,
@@ -22,6 +23,8 @@ import {
   type InsertClub,
   type Message,
   type InsertMessage,
+  type SupportRequest,
+  type InsertSupportRequest,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or } from "drizzle-orm";
@@ -109,6 +112,11 @@ export interface IStorage {
   createMessage(message: InsertMessage): Promise<Message>;
   markMessageAsRead(id: string): Promise<Message>;
   deleteMessage(id: string): Promise<void>;
+
+  //Support chat
+  createSupportRequest(
+    request: InsertSupportRequest
+  ): Promise<SupportRequest>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -683,6 +691,17 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMessage(id: string): Promise<void> {
     await db.delete(messages).where(eq(messages.id, id));
+  }
+
+  async createSupportRequest(
+    request: InsertSupportRequest
+  ): Promise<SupportRequest> {
+    const [supportRequest] = await db
+      .insert(supportRequests)
+      .values(request)
+      .returning();
+  
+    return supportRequest;
   }
 }
 

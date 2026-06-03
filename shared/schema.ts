@@ -203,6 +203,24 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+//Support chat
+export const supportRequests = pgTable("support_requests", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  category: text("category").notNull(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  message: text("message").notNull(),
+  status: text("status")
+    .default("new")
+    .notNull(),
+  createdAt: timestamp("created_at")
+    .defaultNow()
+    .notNull(),
+});
+
 // Password Reset Tokens
 export const passwordResetTokens = pgTable("password_reset_tokens", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -348,6 +366,9 @@ export type Club = typeof clubs.$inferSelect;
 
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
+
+export type SupportRequest = typeof supportRequests.$inferSelect;
+export type InsertSupportRequest = typeof supportRequests.$inferInsert;
 
 // Articles / Travel / Recreation / Tournaments schemas
 export const insertArticleSchema = createInsertSchema(articles).omit({
