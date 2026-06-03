@@ -9,6 +9,8 @@ import profileMarketplace from "./routes/profileMarketplace";
 import contentRouter from "./routes/content";
 import passport from "passport";
 import { requireAuth } from "./requireAuth";
+import supportRoutes from "./routes/supportRoutes";
+
 import {
   insertUserSchema,
   insertPlayerProfileSchema,
@@ -64,6 +66,11 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/api/profile/tournament-history", profileTournamentHistoryRouter);
   app.use("/api/profile/marketplace", profileMarketplace);
   app.use("/api", contentRouter);
+  /* =========================
+   SUPPORT CHAT
+  ========================= */
+
+  app.use("/api/support", supportRoutes);
   
   /* =========================
      AUTH
