@@ -6,6 +6,7 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Helmet } from "react-helmet-async";
 
 interface Article {
   id: string;
@@ -60,7 +61,26 @@ export default function ArticleDetailPage() {
   }
 
   return (
+   
     <div className="min-h-screen bg-background font-sans">
+        <Helmet>
+        <title>
+          {article?.seoTitle || article?.title}
+        </title>
+        <meta
+          name="description"
+          content={
+            article?.metaDescription ||
+            article?.excerpt ||
+            ""
+          }
+        />
+        <meta
+          name="keywords"
+          content={article?.tags || ""}
+        />
+      </Helmet>
+      
       <Navbar />
 
       {/* Hero image */}

@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -132,12 +132,21 @@ export default function AdminPage() {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<any>(null);
+
   const isAdmin = !!user?.isAdmin;
 
   const fetchItems = async (resource: Resource) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/${resource}`, { credentials: "include" });
+      const endpoint =
+      resource === "articles"
+        ? "/api/admin/articles"
+        : `/api/${resource}`;
+        const res = await fetch(endpoint, {
+          credentials: "include",
+        });
       const data = await res.json();
       setItems(Array.isArray(data) ? data : []);
     } catch {
@@ -234,18 +243,40 @@ export default function AdminPage() {
     }
   };
 
-  const remove = async (item: any) => {
-    if (!confirm(`Delete "${item.title || item.name}"?`)) return;
+  const remove = (item: any) => {
+    setItemToDelete(item);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!itemToDelete) return;
+  
     try {
-      const res = await fetch(`/api/admin/${activeTab}/${item.id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+      const res = await fetch(
+        `/api/admin/${activeTab}/${itemToDelete.id}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+  
       if (!res.ok) throw new Error("Delete failed");
-      toast({ title: "Deleted" });
+  
+      toast({
+        title: "Deleted successfully",
+        description: `"${itemToDelete.title || itemToDelete.name}" has been removed.`,
+      });
+  
+      setDeleteDialogOpen(false);
+      setItemToDelete(null);
+  
       fetchItems(activeTab);
     } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: e.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -429,6 +460,48 @@ export default function AdminPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Dialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+        >
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+            <DialogTitle>
+              Delete {RESOURCE_LABELS[activeTab].slice(0, -1)}
+            </DialogTitle>
+
+              <DialogDescription>
+                Are you sure you want to delete
+                <strong>
+                  {" "}
+                  "{itemToDelete?.title || itemToDelete?.name}"
+                </strong>
+                ?
+                <br />
+                This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDeleteDialogOpen(false); 
+                  setItemToDelete(null); 
+                }}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                variant="destructive"
+                onClick={confirmDelete}
+              >
+                Delete
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
       <Footer />
     </div>

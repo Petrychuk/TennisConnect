@@ -10,6 +10,7 @@ import {
 } from "@shared/schema";
 
 const router = Router();
+console.log("CONTENT ROUTES LOADED");
 
 function slugify(text: string) {
   return text
@@ -44,6 +45,18 @@ function hasUpdateFields(data: Record<string, any>): boolean {
 
 /* ========== ARTICLES ========== */
 router.get(
+  "/admin/articles",
+  requireAdmin,
+  asyncHandler(async (_req: any, res: any) => {
+    const rows = await db
+      .select()
+      .from(articles)
+      .orderBy(desc(articles.createdAt));
+
+    res.json(rows);
+  })
+);
+router.get(
   "/articles",
   asyncHandler(async (_req: any, res: any) => {
     const rows = await db
@@ -59,7 +72,6 @@ router.get(
     res.json(rows);
   })
 );
-
 router.get(
   "/articles/:slug",
   asyncHandler(async (req: any, res: any) => {
@@ -68,7 +80,6 @@ router.get(
     res.json(row);
   })
 );
-
 router.post(
   "/admin/articles",
   requireAdmin,
