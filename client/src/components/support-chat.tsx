@@ -68,6 +68,32 @@ export function SupportChat() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const handleOpenChat = () => {
+      window.scrollTo({
+        top: document.body.scrollHeight,
+        behavior: "smooth",
+      });
+    
+      setTimeout(() => {
+        setIsOpen(true);
+        setIsMinimized(false);
+      }, 300);
+    };
+  
+    window.addEventListener(
+      "open-support-chat",
+      handleOpenChat
+    );
+  
+    return () => {
+      window.removeEventListener(
+        "open-support-chat",
+        handleOpenChat
+      );
+    };
+  }, []);
+
+  useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: "smooth" });
     }

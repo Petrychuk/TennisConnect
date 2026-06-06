@@ -28,6 +28,13 @@ const registerSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
   confirmPassword: z.string(),
+  agreeToTerms: z.boolean().refine(
+    (value) => value === true,
+    {
+      message:
+        "You must accept the Terms of Service and Privacy Policy",
+    }
+  ),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords do not match",
   path: ["confirmPassword"],
@@ -50,7 +57,7 @@ export default function AuthPage() {
 
   const registerForm = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { role: "player", name: "", email: "", password: "", confirmPassword: "" },
+    defaultValues: { role: "player", name: "", email: "", password: "", confirmPassword: "", agreeToTerms: false },
   });
 
   const onLogin = async (data: z.infer<typeof loginSchema>) => {
@@ -401,14 +408,52 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                   Create Account
                 </Button>
                 
-                <p className="text-xs text-center text-muted-foreground mt-4">
-                  By clicking Create Account, you agree to our <a href="#" className="underline hover:text-primary cursor-pointer">Terms of Service</a> and <a href="#" className="underline hover:text-primary cursor-pointer">Privacy Policy</a>.
-                </p>
+                <div className="flex items-start space-x-2 mt-4">
+                  <Checkbox
+                    id="agreeToTerms"
+                    checked={registerForm.watch("agreeToTerms")}
+                    onCheckedChange={(checked) =>
+                      registerForm.setValue("agreeToTerms", !!checked, {
+                        shouldValidate: true,
+                      })
+                    }
+                  />
+
+                  <label
+                    htmlFor="agreeToTerms"
+                    className="text-xs text-muted-foreground leading-relaxed"
+                  >
+                    I agree to the{" "}
+                    <a
+                      href="/articles/terms-of-service"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline hover:text-primary"
+                    >
+                      Terms of Service
+                    </a>{" "}
+                    and{" "}
+                    <a
+                      href="/articles/privacy-policy"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline hover:text-primary"
+                    >
+                      Privacy Policy
+                    </a>
+                  </label>
+                </div>
+
+                {registerForm.formState.errors.agreeToTerms && (
+                  <p className="text-sm text-destructive">
+                    {registerForm.formState.errors.agreeToTerms.message}
+                  </p>
+                )}
               </form>
             </TabsContent>
           </Tabs>
           
-          <div className="relative">
+          {/* <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <Separator className="w-full" />
             </div>
@@ -417,9 +462,9 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                 Or continue with
               </span>
             </div>
-          </div>
+          </div> */}
           
-          <div className="grid grid-cols-2 gap-4">
+         {/*  <div className="grid grid-cols-2 gap-4">
             <Button variant="outline" className="w-full" onClick={() => handleSocialLogin("Google")} disabled={isLoading}>
               <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                 <path
@@ -447,7 +492,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
               </svg>
               Facebook
             </Button>
-          </div>
+          </div> */}
         </div>
       </div>
 

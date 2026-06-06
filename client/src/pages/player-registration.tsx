@@ -25,7 +25,7 @@ export default function PlayerRegistration() {
   const [isLoading, setIsLoading] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { login, register, updateUser } = useAuth();
+  const { login, register, updateUserProfile } = useAuth();
 
 
   const registerForm = useForm<z.infer<typeof registerSchema>>({
@@ -41,7 +41,7 @@ export default function PlayerRegistration() {
     await register(data.email, data.password, data.name, "player");
 
     // Обновляем аватар после регистрации (если нужен)
-    await updateUser({
+    await updateUserProfile({
       avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop"
     });
 

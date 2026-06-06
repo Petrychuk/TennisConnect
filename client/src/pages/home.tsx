@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Navbar } from "@/components/navbar";
 import { Hero } from "@/components/hero";
 import { Features } from "@/components/features";
@@ -19,6 +20,23 @@ import { motion } from "framer-motion";
 import { Link } from "wouter";
 
 export default function Home() {
+  
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const section = params.get("section");
+  
+    if (!section) return;
+  
+    const element = document.getElementById(section);
+  
+    if (element) {
+      element.scrollIntoView({
+        behavior: "auto",
+        block: "start",
+      });
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-background font-sans">
       <Navbar />
