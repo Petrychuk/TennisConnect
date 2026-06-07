@@ -29,6 +29,13 @@
       "when": 1780383421421,
       "tag": "0003_stale_scrambler",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780754296077,
+      "tag": "0004_public_lockjaw",
+      "breakpoints": true
     }
   ]
 }

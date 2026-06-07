@@ -191,6 +191,8 @@ export const clubs = pgTable("clubs", {
 // Messages - for contact requests and messaging between users
 export const messages = pgTable("messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  parentMessageId: varchar("parent_message_id"),
+  conversationId: varchar("conversation_id"),
   recipientId: varchar("recipient_id").notNull(), // no FK to support demo profiles
   recipientType: text("recipient_type").notNull(), // 'coach' or 'player'
   senderUserId: varchar("sender_user_id").references(() => users.id), // null if unregistered
@@ -366,6 +368,9 @@ export type Club = typeof clubs.$inferSelect;
 
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
+export type MessageWithAvatar = Message & {
+  senderAvatar?: string | null;
+};
 
 export type SupportRequest = typeof supportRequests.$inferSelect;
 export type InsertSupportRequest = typeof supportRequests.$inferInsert;

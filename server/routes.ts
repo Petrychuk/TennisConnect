@@ -661,32 +661,62 @@ return res.json({
         recipientId: z.string(),
         recipientType: z.enum(["coach", "player"]),
         subject: z.string().optional(),
+        phone: z.string().optional(),
         content: z.string().min(1, "Message is required"),
       });
 
       const result = messageSchema.safeParse(req.body);
+
       if (!result.success) {
-        return res.status(400).json({ message: "Invalid input", errors: result.error });
+        return res.status(400).json({
+          message: "Invalid input",
+          errors: result.error,
+        });
       }
 
-      // 🔐 sender ВСЕГДА из auth-сессии
+      // Ищем существующую переписку между пользователями
+      const existingConversation =
+        await storage.findConversationBetweenUsers(
+          req.user!.id,
+          result.data.recipientId
+        );
+
+      // Создаем сообщение
       const message = await storage.createMessage({
         recipientId: result.data.recipientId,
         recipientType: result.data.recipientType,
+
+        parentMessageId: null,
+
+        conversationId:
+          existingConversation?.conversationId || null,
+
         subject: result.data.subject,
         content: result.data.content,
 
         senderUserId: req.user!.id,
         senderName: req.user!.name,
         senderEmail: req.user!.email,
+        senderPhone: result.data.phone,
       });
 
+      // Если это первая переписка —
+      // создаем conversationId = id первого сообщения
+      if (!existingConversation) {
+        await storage.updateMessageConversation(
+          message.id,
+          message.id
+        );
+
+        message.conversationId = message.id;
+      }
+
       res.json(message);
+
     } catch (error: any) {
       next(error);
     }
   });
-
 
   // Mark message as read (requires auth + ownership)
   app.put("/api/messages/:id/read", requireAuth, async (req, res, next) => {
@@ -715,4 +745,118 @@ return res.json({
       next(error);
     }
   });
+
+  app.get(
+    "/api/messages/conversation/:conversationId",
+    requireAuth,
+    async (req, res, next) => {
+      try {
+        const conversation = await storage.getConversationMessages(
+          req.params.conversationId
+        );
+  
+        const hasAccess = conversation.some(
+          (msg) =>
+            msg.recipientId === req.user!.id ||
+            msg.senderUserId === req.user!.id
+        );
+  
+        if (!hasAccess) {
+          return res.status(403).json({
+            message: "Forbidden",
+          });
+        }
+  
+        res.json(conversation);
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  app.get(
+    "/api/messages/conversations",
+    requireAuth,
+    async (req, res, next) => {
+      try {
+        const conversations =
+          await storage.getUserConversations(
+            req.user!.id
+          );
+  
+        res.json(conversations);
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  app.post(
+    "/api/messages/reply",
+    requireAuth,
+    async (req, res, next) => {
+      try {
+        const replySchema = z.object({
+          originalMessageId: z.string(),
+          content: z.string().min(1, "Reply is required"),
+        });
+  
+        const result = replySchema.safeParse(req.body);
+  
+        if (!result.success) {
+          return res.status(400).json({
+            message: "Invalid input",
+            errors: result.error,
+          });
+        }
+  
+        const originalMessage = await storage.getMessageById(
+          result.data.originalMessageId
+        );
+        
+        // ✅ Проверяем что сообщение существует
+        if (!originalMessage) {
+          return res.status(404).json({
+            message: "Original message not found",
+          });
+        }
+        
+        // ✅ Проверяем что можно ответить
+        if (!originalMessage.senderUserId) {
+          return res.status(400).json({
+            message: "Cannot reply to this message",
+          });
+        }
+        
+        const conversationId =
+          originalMessage.conversationId ||
+          originalMessage.id;
+  
+        const reply = await storage.createMessage({
+          parentMessageId: originalMessage.id,
+          conversationId,
+  
+          recipientId: originalMessage.senderUserId!,
+          recipientType:
+            originalMessage.recipientType === "coach"
+              ? "player"
+              : "coach",
+  
+          senderUserId: req.user!.id,
+          senderName: req.user!.name,
+          senderEmail: req.user!.email,
+  
+          subject: originalMessage.subject
+            ? `Re: ${originalMessage.subject}`
+            : "Reply",
+  
+          content: result.data.content,
+        });
+  
+        res.json(reply);
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
 }

@@ -191,6 +191,7 @@ export default function CoachProfile() {
 
   const [profile, setProfile] = useState<CoachProfile>(DEFAULT_COACH_PROFILE);
   const [profileData, setProfileData] = useState<any>(null);
+  const [coachUserId, setCoachUserId] = useState<string>("");
   const [marketplaceItems, setMarketplaceItems] = useState<any[]>([]);
 
   const isOwnProfile =
@@ -212,12 +213,15 @@ export default function CoachProfile() {
   const [buyPhone, setBuyPhone] = useState("");
   const [buyMessage, setBuyMessage] = useState("");
 
-  const [contactName, setContactName] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
+  const [contactSubject, setContactSubject] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
   const [contactMessage, setContactMessage] = useState("");
+  const [isSending, setIsSending] = useState(false);
 
   const [showCoachEmail, setShowCoachEmail] = useState(false);
   const [showCoachPhone, setShowCoachPhone] = useState(false);
+
+  const [activeTab, setActiveTab] = useState("about");
 
   /* =========================
      MODALS
@@ -394,15 +398,74 @@ export default function CoachProfile() {
   };
 
   /* =========================
-     CONTACT / SAVE
+   CONTACT / SAVE
   ========================= */
-  const handleContactSubmit = () => {
-    if (!contactName || !contactEmail || !contactMessage) {
-      toast({ variant: "destructive", title: "Fill all fields" });
+  const handleContactSubmit = async () => {
+    if (!contactSubject || !contactMessage) {
+      toast({
+        variant: "destructive",
+        title: "Fill all fields",
+      });
       return;
     }
-    toast({ title: "Message sent" });
-    setContactMessage("");
+
+    // Проверяем что получили ID коуча
+    if (!coachUserId) {
+      console.error("coachUserId is empty");
+
+      toast({
+        variant: "destructive",
+        title: "Coach not found",
+      });
+      return;
+    }
+
+    try {
+      console.log("Sending message to coach:", coachUserId);
+      
+      setIsSending(true);
+      const res = await fetch("/api/messages", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          recipientId: coachUserId,
+          recipientType: "coach",
+          subject: contactSubject,
+          phone: contactPhone,
+          content: contactMessage,
+        }),
+      });
+
+      const data = await res.json();
+
+      console.log("Message API response:", data);
+
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to send");
+      }
+
+      toast({
+        title: "Message sent",
+        description: "The coach will receive your message shortly.",
+      });
+
+      setContactMessage("");
+
+    } catch (error) {
+      console.error("Message send error:", error);
+
+      toast({
+        variant: "destructive",
+        title: "Failed to send message",
+        description: "Please try again later.",
+      });
+    }
+    finally {
+      setIsSending(false);
+    }
   };
 
   const handleSave = async () => {
@@ -626,6 +689,8 @@ export default function CoachProfile() {
           if (!res.ok) throw new Error("Not found");
 
           const data = await res.json();
+          setCoachUserId(data.user.id);
+          console.log("Coach ID:", data.user.id);
 
           setProfile(prev => ({
             ...DEFAULT_COACH_PROFILE,
@@ -834,9 +899,23 @@ export default function CoachProfile() {
                     )
                   )}
                   {!isOwnProfile && (
-                      <Button size="lg" className="w-full md:w-auto bg-primary text-primary-foreground font-bold shadow-md gap-2">
-                        <MessageCircle className="w-5 h-5" /> Contact Coach
-                      </Button>
+                      <Button
+                      size="lg"
+                      className="w-full md:w-auto bg-primary text-primary-foreground font-bold shadow-md gap-2"
+                      onClick={() => {
+                        setActiveTab("contact");
+                    
+                        document
+                          .querySelector('[data-state="active"]')
+                          ?.scrollIntoView({
+                            behavior: "smooth",
+                            block: "start",
+                          });
+                      }}
+                    >
+                      <MessageCircle className="w-5 h-5" />
+                      Contact Coach
+                    </Button>
                   )}
                 </div>
               </div>
@@ -845,7 +924,11 @@ export default function CoachProfile() {
 
           {/* Main Content Tabs */}
           <div className="mt-12 pointer-events-auto">
-            <Tabs defaultValue="about" className="w-full">
+          <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="w-full"
+            >
               <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent gap-6">
                 <TabsTrigger value="about" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">About</TabsTrigger>
                 <TabsTrigger value="photos" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Photos</TabsTrigger>
@@ -1757,21 +1840,22 @@ export default function CoachProfile() {
 
                         <div className="space-y-4 pt-4 border-t">
                           <h3 className="font-bold text-lg">Send a Message</h3>
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                              <Label>Your Name</Label>
-                              <Input 
-                                placeholder="John Doe" 
-                                value={contactName}
-                                onChange={(e) => setContactName(e.target.value)}
+                              <Label>Subject *</Label>
+                              <Input
+                                placeholder="Lesson enquiry"
+                                value={contactSubject}
+                                onChange={(e) => setContactSubject(e.target.value)}
                               />
                             </div>
+
                             <div className="space-y-2">
-                              <Label>Your Email</Label>
-                              <Input 
-                                placeholder="john@example.com" 
-                                value={contactEmail}
-                                onChange={(e) => setContactEmail(e.target.value)}
+                              <Label>Phone (optional)</Label>
+                              <Input
+                                placeholder="+61 4XX XXX XXX"
+                                value={contactPhone}
+                                onChange={(e) => setContactPhone(e.target.value)}
                               />
                             </div>
                           </div>
@@ -1784,8 +1868,17 @@ export default function CoachProfile() {
                               onChange={(e) => setContactMessage(e.target.value)}
                             />
                           </div>
-                          <Button className="w-full font-bold gap-2" onClick={handleContactSubmit}>
-                            <Send className="w-4 h-4" /> Send Message
+                          <Button
+                            onClick={handleContactSubmit}
+                            disabled={
+                              isSending ||
+                              !contactSubject.trim() ||
+                              !contactMessage.trim()
+                            }
+                          >
+                            <Send className="w-4 h-4 mr-2" />
+
+                            {isSending ? "Sending..." : "Send Message"}
                           </Button>
                         </div>
                       </CardContent>

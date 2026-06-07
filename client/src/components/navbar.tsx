@@ -42,27 +42,44 @@ export function Navbar() {
     ? `/${user.role}/${user.slug}`
     : "/";
 
-  useEffect(() => {
-    if (isAuthenticated) {
+    useEffect(() => {
+      if (!user?.id) return;
+    
       fetchUnreadCount();
-      const interval = setInterval(fetchUnreadCount, 30000);
+    
+      const interval = setInterval(
+        fetchUnreadCount,
+        30000
+      );
+    
       return () => clearInterval(interval);
-    }
-  }, [isAuthenticated]);
+    }, [user?.id]);
 
-  const fetchUnreadCount = async () => {
-    try {
-      const res = await fetch("/api/messages/unread-count", {
-        credentials: "include",
-      });
-      if (res.ok) {
+    const fetchUnreadCount = async () => {
+      console.log("user:", user);
+      console.log("user id:", user?.id);
+    
+      try {
+        const res = await fetch(
+          "/api/messages/unread-count",
+          {
+            credentials: "include",
+          }
+        );
+    
+        console.log("status:", res.status);
+    
+        if (res.status === 401) {
+          console.log("Unauthorized request");
+          return;
+        }
+    
         const data = await res.json();
         setUnreadCount(data.count);
+      } catch (err) {
+        console.error(err);
       }
-    } catch (error) {
-      console.error("Failed to fetch unread count:", error);
-    }
-  };
+    };
 
   const navLinks = [
     { name: "Partners", href: "/partners" },

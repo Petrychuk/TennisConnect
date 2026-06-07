@@ -22,12 +22,13 @@ import {
   type Club,
   type InsertClub,
   type Message,
+  type MessageWithAvatar,
   type InsertMessage,
   type SupportRequest,
   type InsertSupportRequest,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, or } from "drizzle-orm";
+import { eq, desc, and, or, asc } from "drizzle-orm";
 import { supabaseAdmin } from "./supabaseAdmin";
 
 function slugify(text: string) {
@@ -106,11 +107,15 @@ export interface IStorage {
   createClub(club: InsertClub): Promise<Club>;
   
   // Messages
-  getUserMessages(userId: string): Promise<Message[]>;
+  getUserMessages(userId: string): Promise<MessageWithAvatar[]>;
   getUnreadMessageCount(userId: string): Promise<number>;
   getMessageById(id: string): Promise<Message | undefined>;
   createMessage(message: InsertMessage): Promise<Message>;
   markMessageAsRead(id: string): Promise<Message>;
+  getConversationMessages(conversationId: string): Promise<MessageWithAvatar[]>;
+  getUserConversations(userId: string): Promise<MessageWithAvatar[]>;
+  findConversationBetweenUsers(userA: string, userB: string): Promise<MessageWithAvatar | undefined>;
+  updateMessageConversation(messageId: string, conversationId: string): Promise<void>;
   deleteMessage(id: string): Promise<void>;
 
   //Support chat
@@ -118,7 +123,6 @@ export interface IStorage {
     request: InsertSupportRequest
   ): Promise<SupportRequest>;
 }
-
 export class DatabaseStorage implements IStorage {
   // =====================
   // USERS
@@ -639,12 +643,75 @@ export class DatabaseStorage implements IStorage {
   // MESSAGES
   // =====================
 
-  async getUserMessages(userId: string): Promise<Message[]> {
+  async getUserMessages(userId: string): Promise<MessageWithAvatar[]> {
+    
     return db
-      .select()
+      .select({
+        id: messages.id,
+        parentMessageId: messages.parentMessageId,
+        conversationId: messages.conversationId,
+        recipientId: messages.recipientId,
+        recipientType: messages.recipientType,
+        senderUserId: messages.senderUserId,
+        senderName: messages.senderName,
+        senderEmail: messages.senderEmail,
+        senderPhone: messages.senderPhone,
+        subject: messages.subject,
+        content: messages.content,
+        isRead: messages.isRead,
+        createdAt: messages.createdAt,
+  
+        senderAvatar: users.avatar,
+      })
       .from(messages)
+      .leftJoin(users, eq(messages.senderUserId, users.id))
       .where(eq(messages.recipientId, userId))
       .orderBy(desc(messages.createdAt));
+  }
+
+  async getUserConversations(
+    userId: string
+  ): Promise<MessageWithAvatar[]> {
+  
+    const allMessages = await db
+      .select({
+        id: messages.id,
+        parentMessageId: messages.parentMessageId,
+        conversationId: messages.conversationId,
+  
+        recipientId: messages.recipientId,
+        recipientType: messages.recipientType,
+  
+        senderUserId: messages.senderUserId,
+        senderName: messages.senderName,
+        senderEmail: messages.senderEmail,
+        senderPhone: messages.senderPhone,
+  
+        subject: messages.subject,
+        content: messages.content,
+  
+        isRead: messages.isRead,
+        createdAt: messages.createdAt,
+  
+        senderAvatar: users.avatar,
+      })
+      .from(messages)
+      .leftJoin(users, eq(messages.senderUserId, users.id))
+      .where(eq(messages.recipientId, userId))
+      .orderBy(desc(messages.createdAt));
+  
+    const uniqueConversations = new Map();
+  
+    for (const message of allMessages) {
+      const key =
+        message.conversationId || message.id;
+  
+      if (!uniqueConversations.has(key)) {
+        uniqueConversations.set(key, message);
+      }
+    }
+  
+    return Array.from(uniqueConversations.values());
   }
 
   async getUnreadMessageCount(userId: string): Promise<number> {
@@ -691,6 +758,105 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMessage(id: string): Promise<void> {
     await db.delete(messages).where(eq(messages.id, id));
+  }
+  
+  async findConversationBetweenUsers(
+    userA: string,
+    userB: string
+  ): Promise<MessageWithAvatar | undefined> {
+  
+      const [conversation] = await db
+      .select({
+        id: messages.id,
+        parentMessageId: messages.parentMessageId,
+        conversationId: messages.conversationId,
+
+        recipientId: messages.recipientId,
+        recipientType: messages.recipientType,
+
+        senderUserId: messages.senderUserId,
+        senderName: messages.senderName,
+        senderEmail: messages.senderEmail,
+        senderPhone: messages.senderPhone,
+
+        subject: messages.subject,
+        content: messages.content,
+
+        isRead: messages.isRead,
+        createdAt: messages.createdAt,
+
+        senderAvatar: users.avatar,
+      })
+      .from(messages)
+      .leftJoin(
+        users,
+        eq(messages.senderUserId, users.id)
+      )
+      .where(
+        or(
+          and(
+            eq(messages.senderUserId, userA),
+            eq(messages.recipientId, userB)
+          ),
+          and(
+            eq(messages.senderUserId, userB),
+            eq(messages.recipientId, userA)
+          )
+        )
+      )
+      .orderBy(asc(messages.createdAt))
+      .limit(1);
+    return conversation;
+  }
+
+  async getConversationMessages(
+    conversationId: string
+  ): Promise<MessageWithAvatar[]> {
+  
+    return db
+      .select({
+        id: messages.id,
+  
+        parentMessageId: messages.parentMessageId,
+        conversationId: messages.conversationId,
+  
+        recipientId: messages.recipientId,
+        recipientType: messages.recipientType,
+  
+        senderUserId: messages.senderUserId,
+        senderName: messages.senderName,
+        senderEmail: messages.senderEmail,
+        senderPhone: messages.senderPhone,
+  
+        subject: messages.subject,
+        content: messages.content,
+  
+        isRead: messages.isRead,
+        createdAt: messages.createdAt,
+  
+        senderAvatar: users.avatar,
+      })
+      .from(messages)
+      .leftJoin(
+        users,
+        eq(messages.senderUserId, users.id)
+      )
+      .where(
+        eq(messages.conversationId, conversationId)
+      )
+      .orderBy(asc(messages.createdAt));
+  }
+
+  async updateMessageConversation(
+    messageId: string,
+    conversationId: string
+  ): Promise<void> {
+    await db
+      .update(messages)
+      .set({
+        conversationId,
+      })
+      .where(eq(messages.id, messageId));
   }
 
   async createSupportRequest(
