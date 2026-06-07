@@ -262,18 +262,32 @@ export default function MessagesPage() {
           setSelectedMessage(null);
         }
         toast({
-          title: "Message deleted",
-          description: "The message has been removed from your inbox.",
+          title: "Conversation deleted",
+          description: "All messages in this conversation have been removed.",
         });
       }
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to delete message",
+        description: "Failed to delete conversation",
         variant: "destructive",
       });
     }
   };
+
+  /* const remainingMessages = messages.filter(
+    (m) => m.id !== messageId
+  );
+  
+  setMessages(remainingMessages);
+  
+  if (selectedMessage?.id === messageId) {
+    setSelectedMessage(
+      remainingMessages.length > 0
+        ? remainingMessages[0]
+        : null
+    );
+  } */
 
   const loadConversation = async (
     conversationId: string
