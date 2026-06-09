@@ -18,6 +18,7 @@ import { HomeClubs } from "@/components/home-clubs";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
+import SEO from "@/components/seo";
 
 export default function Home() {
   
@@ -38,6 +39,22 @@ export default function Home() {
   }, []);
 
   return (
+    <>
+    <SEO
+      title="TennisConnect - Find Tennis Partners in Australia"
+      description="Connect with tennis players, coaches, clubs and tournaments across Australia."
+      canonical="/"
+      tags={[
+        "tennis",
+        "tennis partners",
+        "tennis coaches",
+        "tennis clubs",
+        "tennis tournaments",
+        "Australia",
+        "Sydney tennis",
+      ]}
+    />
+    
     <div className="min-h-screen bg-background font-sans">
       <Navbar />
       
@@ -92,6 +109,7 @@ export default function Home() {
       </main>
 
       <Footer />
-    </div>
+     </div>
+    </>
   );
 }

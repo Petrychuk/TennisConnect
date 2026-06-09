@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import { format } from "date-fns";
+import SEO from "@/components/seo";
 interface Message {
   id: string;
 
@@ -382,366 +383,374 @@ export default function MessagesPage() {
   }
 
   return(
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      
-      <div className="container mx-auto px-4 pt-24 pb-12">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold font-display" data-testid="text-page-title">Messages</h1>
-        </div>
+   <>
+    <SEO
+      title="Messages | TennisConnect"
+      description="Private messages."
+      canonical="/messages"
+      noIndex
+    />
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        
+        <div className="container mx-auto px-4 pt-24 pb-12">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold font-display" data-testid="text-page-title">Messages</h1>
+          </div>
 
-        {messagesLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-            </div>
-          ) : !selectedMessage ? (
-            <Card className="max-w-md mx-auto">
-              <CardContent className="pt-6 text-center">
-                <MailOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                <h2 className="text-xl font-bold mb-2">
-                  No messages yet
-                </h2>
-                <p className="text-muted-foreground">
-                  When someone sends you a message, it will appear here.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Message List */}
-            {(mobileView === "list" || window.innerWidth >= 1024) && (
-                
-              <Card className="lg:col-span-1">
-                               
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Mail className="w-5 h-5" />
-
-                    Inbox
-
-                    {messages.filter((m) => !m.isRead).length > 0 && (
-                      <Badge
-                        variant="destructive"
-                        className="ml-auto"
-                      >
-                        {messages.filter((m) => !m.isRead).length} new
-                      </Badge>
-                    )}
-                  </CardTitle>
-                </CardHeader>
-                 
-                <div className="h-px w-full bg-linear-to-r from-transparent via-[hsl(var(--tennis-ball))] to-transparent" />
-                <ScrollArea             
-                  className="
-                    h-[52vh]"
-                    onWheel={(e) => e.stopPropagation()}
-                  
-                >
-                  
-                  <div className="p-2">
-                    <AnimatePresence>
-                      {uniqueConversations.map((message) => (
-                        <motion.div
-                          key={message.conversationId || message.id}
-                          animate={{ opacity: 1, x: 0 }}
-                        >
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              selectMessage(message);
-                            }}
-                            className={`
-                              w-full
-                              text-left
-                              p-3
-                              rounded-xl
-                              transition-all
-                              duration-200
-                              mb-2
-                              cursor-pointer
-
-                              ${
-                                selectedMessage?.conversationId ===
-                                  message.conversationId ||
-                                selectedMessage?.id === message.id
-                                  ? "bg-primary/10 border border-primary/20 shadow-sm"
-                                  : message.isRead
-                                  ? "hover:bg-muted/50"
-                                  : "bg-muted hover:bg-muted/80"
-                              }
-                            `}
-                            data-testid={`message-item-${message.id}`}
-                          >
-                            <div className="flex items-start gap-3">
-                              <Avatar className="h-10 w-10 shrink-0 border">
-                                <AvatarImage
-                                  src={message.senderAvatar || undefined}
-                                />
-
-                                <AvatarFallback
-                                  className={
-                                    !message.isRead
-                                      ? "bg-primary text-primary-foreground"
-                                      : "bg-primary/10 text-primary"
-                                  }
-                                >
-                                  {message.senderName?.[0]}
-                                </AvatarFallback>
-                              </Avatar>
-
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <p
-                                    className={`
-                                      truncate
-                                      ${
-                                        !message.isRead
-                                          ? "font-semibold"
-                                          : "font-medium"
-                                      }
-                                    `}
-                                  >
-                                    {message.senderName}
-                                  </p>
-
-                                  {!message.isRead && (
-                                    <div className="w-2 h-2 rounded-full bg-primary shrink-0 animate-pulse" />
-                                  )}
-                                </div>
-
-                                <p className="text-sm text-muted-foreground truncate mt-0.5">
-                                  {message.content}
-                                </p>
-
-                                <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                                  <Clock className="w-3 h-3" />
-                                  {format(
-                                    new Date(message.createdAt),
-                                    "MMM d, h:mm a"
-                                  )}
-                                </p>
-                              </div>
-                            </div>
-                          </button>
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
-                  </div>
-                </ScrollArea>
+          {messagesLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+              </div>
+            ) : !selectedMessage ? (
+              <Card className="max-w-md mx-auto">
+                <CardContent className="pt-6 text-center">
+                  <MailOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                  <h2 className="text-xl font-bold mb-2">
+                    No messages yet
+                  </h2>
+                  <p className="text-muted-foreground">
+                    When someone sends you a message, it will appear here.
+                  </p>
+                </CardContent>
               </Card>
-            )}
-            {/* Message Detail */}
-            {(mobileView === "chat" || window.innerWidth >= 1024) && (
-              <Card className="lg:col-span-2">
-                {selectedMessage ? (
-                  <>
-                    <CardHeader className="pb-2">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="lg:hidden"
-                            onClick={() => {
-                              setMobileView("list");
-                            }}
-                          >
-                            <ArrowLeft className="w-5 h-5" />
-                          </Button>
-                          <Avatar className="h-12 w-12">
-                            <AvatarImage
-                              src={selectedMessage.senderAvatar || undefined}
-                            />
-                            <AvatarFallback className="bg-primary/10 text-primary">
-                              {selectedMessage.senderName?.[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <CardTitle className="text-lg">{selectedMessage.senderName}</CardTitle>
-                            <p className="text-sm text-muted-foreground">{selectedMessage.senderEmail}</p>
-                            {selectedMessage.senderPhone && (
-                              <p className="text-sm text-muted-foreground">{selectedMessage.senderPhone}</p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                        {/*  {selectedMessage.senderUserId && (
-                            <Badge variant="secondary" className="flex items-center gap-1">
-                              <User className="w-3 h-3" />
-                              Registered User
-                            </Badge>
-                          )} */}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => handleDeleteMessage(selectedMessage.id)}
-                            data-testid="button-delete-message"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <Separator className="h-px w-full bg-linear-to-r from-transparent via-[hsl(var(--tennis-ball))] to-transparent my-4" />
-                    <CardContent className="pt-4">
-                    <ScrollArea
-                        className="h-[45vh] pr-4"
-                        type="always"
-                        onWheel={(e) => e.stopPropagation()}
-                      >
-                        <div className="space-y-4 pr-2">
-                          {conversation.map((msg) => {
-                          const isMe = msg.senderUserId === user?.id;
+            ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Message List */}
+              {(mobileView === "list" || window.innerWidth >= 1024) && (
+                  
+                <Card className="lg:col-span-1">
+                                
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Mail className="w-5 h-5" />
 
-                          return (
-                            <div
-                              key={msg.id}
-                              className={`flex ${
-                                isMe ? "justify-end" : "justify-start"
-                              }`}
+                      Inbox
+
+                      {messages.filter((m) => !m.isRead).length > 0 && (
+                        <Badge
+                          variant="destructive"
+                          className="ml-auto"
+                        >
+                          {messages.filter((m) => !m.isRead).length} new
+                        </Badge>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  
+                  <div className="h-px w-full bg-linear-to-r from-transparent via-[hsl(var(--tennis-ball))] to-transparent" />
+                  <ScrollArea             
+                    className="
+                      h-[52vh]"
+                      onWheel={(e) => e.stopPropagation()}
+                    
+                  >
+                    
+                    <div className="p-2">
+                      <AnimatePresence>
+                        {uniqueConversations.map((message) => (
+                          <motion.div
+                            key={message.conversationId || message.id}
+                            animate={{ opacity: 1, x: 0 }}
+                          >
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                selectMessage(message);
+                              }}
+                              className={`
+                                w-full
+                                text-left
+                                p-3
+                                rounded-xl
+                                transition-all
+                                duration-200
+                                mb-2
+                                cursor-pointer
+
+                                ${
+                                  selectedMessage?.conversationId ===
+                                    message.conversationId ||
+                                  selectedMessage?.id === message.id
+                                    ? "bg-primary/10 border border-primary/20 shadow-sm"
+                                    : message.isRead
+                                    ? "hover:bg-muted/50"
+                                    : "bg-muted hover:bg-muted/80"
+                                }
+                              `}
+                              data-testid={`message-item-${message.id}`}
                             >
-                              <div
-                                className={`flex gap-3 max-w-[90%] sm:max-w-[80%] ${
-                                  isMe ? "flex-row-reverse gap-4" : "gap-3"
-                                }`}
-                              >
-                                <Avatar className="h-10 w-10 shrink-0 ml-1">
+                              <div className="flex items-start gap-3">
+                                <Avatar className="h-10 w-10 shrink-0 border">
                                   <AvatarImage
-                                    src={msg.senderAvatar || undefined}
-                                    alt={msg.senderName}
+                                    src={message.senderAvatar || undefined}
                                   />
-                                  <AvatarFallback className="bg-primary/10 text-primary">
-                                    {msg.senderName?.charAt(0)?.toUpperCase()}
+
+                                  <AvatarFallback
+                                    className={
+                                      !message.isRead
+                                        ? "bg-primary text-primary-foreground"
+                                        : "bg-primary/10 text-primary"
+                                    }
+                                  >
+                                    {message.senderName?.[0]}
                                   </AvatarFallback>
                                 </Avatar>
 
-                                <div>
-                                  <div
-                                    className={`text-xs mb-1 px-1 ${
-                                      isMe
-                                        ? "text-right text-muted-foreground"
-                                        : "text-muted-foreground"
-                                    }`}
-                                  >
-                                    {msg.senderName}
-                                  </div>
-
-                                  <div
-                                    className={`
-                                      rounded-2xl px-4 py-3 shadow-sm transition-all
-                                      ${
-                                        isMe
-                                          ? "bg-primary text-primary-foreground rounded-br-md"
-                                          : "bg-muted hover:bg-muted/80 rounded-bl-md"
-                                      }
-                                    `}
-                                  >
-                                    <p className="whitespace-pre-wrap wrap-break-word text-sm leading-relaxed">
-                                      {msg.content}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <p
+                                      className={`
+                                        truncate
+                                        ${
+                                          !message.isRead
+                                            ? "font-semibold"
+                                            : "font-medium"
+                                        }
+                                      `}
+                                    >
+                                      {message.senderName}
                                     </p>
+
+                                    {!message.isRead && (
+                                      <div className="w-2 h-2 rounded-full bg-primary shrink-0 animate-pulse" />
+                                    )}
                                   </div>
 
-                                  <div
-                                    className={`mt-1 text-xs text-muted-foreground px-1 ${
-                                      isMe ? "text-right" : ""
-                                    }`}
-                                  >
+                                  <p className="text-sm text-muted-foreground truncate mt-0.5">
+                                    {message.content}
+                                  </p>
+
+                                  <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
                                     {format(
-                                      new Date(msg.createdAt),
+                                      new Date(message.createdAt),
                                       "MMM d, h:mm a"
                                     )}
+                                  </p>
+                                </div>
+                              </div>
+                            </button>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                  </ScrollArea>
+                </Card>
+              )}
+              {/* Message Detail */}
+              {(mobileView === "chat" || window.innerWidth >= 1024) && (
+                <Card className="lg:col-span-2">
+                  {selectedMessage ? (
+                    <>
+                      <CardHeader className="pb-2">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="lg:hidden"
+                              onClick={() => {
+                                setMobileView("list");
+                              }}
+                            >
+                              <ArrowLeft className="w-5 h-5" />
+                            </Button>
+                            <Avatar className="h-12 w-12">
+                              <AvatarImage
+                                src={selectedMessage.senderAvatar || undefined}
+                              />
+                              <AvatarFallback className="bg-primary/10 text-primary">
+                                {selectedMessage.senderName?.[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <CardTitle className="text-lg">{selectedMessage.senderName}</CardTitle>
+                              <p className="text-sm text-muted-foreground">{selectedMessage.senderEmail}</p>
+                              {selectedMessage.senderPhone && (
+                                <p className="text-sm text-muted-foreground">{selectedMessage.senderPhone}</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                          {/*  {selectedMessage.senderUserId && (
+                              <Badge variant="secondary" className="flex items-center gap-1">
+                                <User className="w-3 h-3" />
+                                Registered User
+                              </Badge>
+                            )} */}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => handleDeleteMessage(selectedMessage.id)}
+                              data-testid="button-delete-message"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <Separator className="h-px w-full bg-linear-to-r from-transparent via-[hsl(var(--tennis-ball))] to-transparent my-4" />
+                      <CardContent className="pt-4">
+                      <ScrollArea
+                          className="h-[45vh] pr-4"
+                          type="always"
+                          onWheel={(e) => e.stopPropagation()}
+                        >
+                          <div className="space-y-4 pr-2">
+                            {conversation.map((msg) => {
+                            const isMe = msg.senderUserId === user?.id;
+
+                            return (
+                              <div
+                                key={msg.id}
+                                className={`flex ${
+                                  isMe ? "justify-end" : "justify-start"
+                                }`}
+                              >
+                                <div
+                                  className={`flex gap-3 max-w-[90%] sm:max-w-[80%] ${
+                                    isMe ? "flex-row-reverse gap-4" : "gap-3"
+                                  }`}
+                                >
+                                  <Avatar className="h-10 w-10 shrink-0 ml-1">
+                                    <AvatarImage
+                                      src={msg.senderAvatar || undefined}
+                                      alt={msg.senderName}
+                                    />
+                                    <AvatarFallback className="bg-primary/10 text-primary">
+                                      {msg.senderName?.charAt(0)?.toUpperCase()}
+                                    </AvatarFallback>
+                                  </Avatar>
+
+                                  <div>
+                                    <div
+                                      className={`text-xs mb-1 px-1 ${
+                                        isMe
+                                          ? "text-right text-muted-foreground"
+                                          : "text-muted-foreground"
+                                      }`}
+                                    >
+                                      {msg.senderName}
+                                    </div>
+
+                                    <div
+                                      className={`
+                                        rounded-2xl px-4 py-3 shadow-sm transition-all
+                                        ${
+                                          isMe
+                                            ? "bg-primary text-primary-foreground rounded-br-md"
+                                            : "bg-muted hover:bg-muted/80 rounded-bl-md"
+                                        }
+                                      `}
+                                    >
+                                      <p className="whitespace-pre-wrap wrap-break-word text-sm leading-relaxed">
+                                        {msg.content}
+                                      </p>
+                                    </div>
+
+                                    <div
+                                      className={`mt-1 text-xs text-muted-foreground px-1 ${
+                                        isMe ? "text-right" : ""
+                                      }`}
+                                    >
+                                      {format(
+                                        new Date(msg.createdAt),
+                                        "MMM d, h:mm a"
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                          );
-                        })}
-                      <div ref={messagesEndRef} /> 
-                      </div>
-                    </ScrollArea>
-
-                      <Separator className="h-px w-full bg-linear-to-r from-transparent via-[hsl(var(--tennis-ball))] to-transparent my-4" />                    
-                      {!showReplyForm && (
-                        <div className="flex flex-col sm:flex-row gap-2 mt-6">
-                          <Button
-                            onClick={() => setShowReplyForm(true)}
-                          >
-                            <Reply className="w-4 h-4 mr-2" />
-                            Reply
-                          </Button>
-
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              window.location.href = `mailto:${selectedMessage.senderEmail}`;
-                            }}
-                            data-testid="button-reply-email"
-                          >
-                            <Mail className="w-4 h-4 mr-2" />
-                            Reply via Email
-                          </Button>
+                            );
+                          })}
+                        <div ref={messagesEndRef} /> 
                         </div>
-                      )}
-                      {showReplyForm && (
-                        <div className="mt-6 pt-6 space-y-4">
-                          <Textarea
-                            value={replyContent}
-                            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                              setReplyContent(e.target.value)
-                            }
-                            placeholder="Type your reply..."
-                            rows={1}
-                            maxLength={1000}
-                          />
+                      </ScrollArea>
 
-                          <div className="grid grid-cols-2 gap-2">
-                          <Button
-                              onClick={handleReply}
-                              disabled={
-                                !replyContent.trim() ||
-                                replyMutation.isPending
-                              }
+                        <Separator className="h-px w-full bg-linear-to-r from-transparent via-[hsl(var(--tennis-ball))] to-transparent my-4" />                    
+                        {!showReplyForm && (
+                          <div className="flex flex-col sm:flex-row gap-2 mt-6">
+                            <Button
+                              onClick={() => setShowReplyForm(true)}
                             >
-                              <Send className="w-4 h-4 mr-2" />
-                              {replyMutation.isPending
-                                ? "Sending..."
-                                : "Send Reply"}
+                              <Reply className="w-4 h-4 mr-2" />
+                              Reply
                             </Button>
 
                             <Button
                               variant="outline"
                               onClick={() => {
-                                setShowReplyForm(false);
-                                setReplyContent("");
+                                window.location.href = `mailto:${selectedMessage.senderEmail}`;
                               }}
+                              data-testid="button-reply-email"
                             >
-                              <X className="w-4 h-4 mr-2" />
-                              Cancel
+                              <Mail className="w-4 h-4 mr-2" />
+                              Reply via Email
                             </Button>
-
                           </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </>
-                ) : (
-                  <CardContent className="flex items-center justify-center h-[500px]">
-                    <div className="text-center text-muted-foreground">
-                      <Mail className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>Select a message to view its contents</p>
-                    </div>
-                  </CardContent>
-                )}
-              </Card>
-            )}
-          </div>
-        )}
-      </div>
+                        )}
+                        {showReplyForm && (
+                          <div className="mt-6 pt-6 space-y-4">
+                            <Textarea
+                              value={replyContent}
+                              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                                setReplyContent(e.target.value)
+                              }
+                              placeholder="Type your reply..."
+                              rows={1}
+                              maxLength={1000}
+                            />
 
-      <Footer />
-    </div>
+                            <div className="grid grid-cols-2 gap-2">
+                            <Button
+                                onClick={handleReply}
+                                disabled={
+                                  !replyContent.trim() ||
+                                  replyMutation.isPending
+                                }
+                              >
+                                <Send className="w-4 h-4 mr-2" />
+                                {replyMutation.isPending
+                                  ? "Sending..."
+                                  : "Send Reply"}
+                              </Button>
+
+                              <Button
+                                variant="outline"
+                                onClick={() => {
+                                  setShowReplyForm(false);
+                                  setReplyContent("");
+                                }}
+                              >
+                                <X className="w-4 h-4 mr-2" />
+                                Cancel
+                              </Button>
+
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </>
+                  ) : (
+                    <CardContent className="flex items-center justify-center h-[500px]">
+                      <div className="text-center text-muted-foreground">
+                        <Mail className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p>Select a message to view its contents</p>
+                      </div>
+                    </CardContent>
+                  )}
+                </Card>
+              )}
+            </div>
+          )}
+        </div>
+
+        <Footer />
+      </div>
+    </> 
   );
 } 

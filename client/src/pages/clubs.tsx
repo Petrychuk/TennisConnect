@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { MapPin, Search, Filter, Phone, Globe, DollarSign, Trophy, ArrowRight, Building2, Star, CheckCircle } from "lucide-react";
 import { CLUBS_DATA } from "@/lib/dummy-data";
 import { motion } from "framer-motion";
+import SEO from "@/components/seo";
 
 export default function ClubsPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -151,212 +152,227 @@ export default function ClubsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-background font-sans">
-      <Navbar />
-      
-      {/* Intro / Hero Section */}
-      <div className="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
-        <div 
-          className="absolute inset-0 z-0 opacity-50"
-          style={{
-            backgroundImage: "url(/assets/images/tennisClubs.png)",
-            //backgroundImage: "url(https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?q=80&w=2000&auto=format&fit=crop)",
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-        />
-        <div className="absolute inset-0 bg-linear-to-b from-background/30 via-background/10 to-background z-10" />
+   <>
+      <SEO
+      title="Tennis Clubs in Australia | TennisConnect"
+      description="Discover tennis clubs across Australia. Find courts, social competitions, memberships and local tennis communities."
+      canonical="/clubs"
+      tags={[
+        "tennis clubs",
+        "tennis courts",
+        "tennis membership",
+        "Sydney tennis club",
+        "Melbourne tennis club",
+        "Australia tennis clubs",
+      ]}
+    />
+      <div className="min-h-screen bg-background font-sans">
+        <Navbar />
         
-        <div className="relative z-20 container mx-auto px-4 text-center mt-20">
-          <motion.div 
-             initial={{ opacity: 0, y: 30 }}
-             animate={{ opacity: 1, y: 0 }}
-             transition={{ duration: 0.8 }}
-          >
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-display font-bold mb-6 tracking-tight">
-              Find Your <span className="text-primary relative inline-block">
-                Court
-                <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none">
-                  <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" />
-                </svg>
-              </span>
-            </h1>
-            <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto font-light leading-relaxed">
-              Discover premier tennis clubs, book courts, and join competitive tournaments in your area.
-            </p>
-          </motion.div>
+        {/* Intro / Hero Section */}
+        <div className="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
+          <div 
+            className="absolute inset-0 z-0 opacity-50"
+            style={{
+              backgroundImage: "url(/assets/images/tennisClubs.png)",
+              //backgroundImage: "url(https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?q=80&w=2000&auto=format&fit=crop)",
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          />
+          <div className="absolute inset-0 bg-linear-to-b from-background/30 via-background/10 to-background z-10" />
+          
+          <div className="relative z-20 container mx-auto px-4 text-center mt-20">
+            <motion.div 
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+            >
+              <h1 className="text-5xl md:text-7xl lg:text-8xl font-display font-bold mb-6 tracking-tight">
+                Find Your <span className="text-primary relative inline-block">
+                  Court
+                  <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none">
+                    <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" />
+                  </svg>
+                </span>
+              </h1>
+              <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto font-light leading-relaxed">
+                Discover premier tennis clubs, book courts, and join competitive tournaments in your area.
+              </p>
+            </motion.div>
+          </div>
         </div>
-      </div>
 
-      {/* Filter Bar (Sticky) */}
-      <div className="sticky top-16 z-40 bg-background/80 backdrop-blur-lg border-y border-border/50 py-4 shadow-sm">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="relative w-full md:w-96 group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-              <Input 
-                placeholder="Search by name or location..." 
-                className="pl-10 h-11 bg-secondary/50 border-transparent focus:border-primary focus:bg-background transition-all rounded-xl"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            
-            <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-hide">
-              {["Grass Courts", "Hard Courts", "Coaching", "Pro Shop", "Night Tennis"].map((tag) => (
-                <button
-                  key={tag}
-                  onClick={() => setFilterService(filterService === tag ? "" : tag)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border cursor-pointer ${
-                    filterService === tag 
-                      ? "bg-primary text-primary-foreground border-primary" 
-                      : "bg-background hover:bg-secondary border-input hover:border-primary/50"
-                  }`}
-                >
-                  {tag}
-                </button>
-              ))}
+        {/* Filter Bar (Sticky) */}
+        <div className="sticky top-16 z-40 bg-background/80 backdrop-blur-lg border-y border-border/50 py-4 shadow-sm">
+          <div className="container mx-auto px-4">
+            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+              <div className="relative w-full md:w-96 group">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                <Input 
+                  placeholder="Search by name or location..." 
+                  className="pl-10 h-11 bg-secondary/50 border-transparent focus:border-primary focus:bg-background transition-all rounded-xl"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              
+              <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-hide">
+                {["Grass Courts", "Hard Courts", "Coaching", "Pro Shop", "Night Tennis"].map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => setFilterService(filterService === tag ? "" : tag)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border cursor-pointer ${
+                      filterService === tag 
+                        ? "bg-primary text-primary-foreground border-primary" 
+                        : "bg-background hover:bg-secondary border-input hover:border-primary/50"
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Clubs List Section */}
-      <div className="container mx-auto px-4 py-16">
-        <div className="max-w-6xl mx-auto space-y-16">
-          {currentClubs.map((club, index) => (
-             <div key={club.id}>
-               <ClubCard club={club} />
-               
-               {/* Insert Partner Block after 1st item (or every 5th) for prototype demonstration */}
-               {(index === 2 || (index === currentClubs.length - 1 && index < 2)) && (
-                 <motion.div 
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    className="my-16 bg-primary text-primary-foreground rounded-3xl p-8 md:p-16 relative overflow-hidden"
-                 >
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-                    <div className="absolute bottom-0 left-0 w-96 h-96 bg-black/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-                    
-                    <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
-                      <div className="max-w-2xl">
-                         <div className="inline-flex items-center gap-2 bg-white/20 px-3 py-1 rounded-full text-sm font-bold mb-4 backdrop-blur-sm">
-                           <Building2 className="w-4 h-4" /> Partner With Us
-                         </div>
-                         <h3 className="text-3xl md:text-5xl font-display font-bold mb-4">Own a Tennis Club?</h3>
-                         <p className="text-lg opacity-90 mb-8 max-w-xl">
-                           Join our network to manage bookings, attract new players, and streamline your operations. Get listed today!
-                         </p>
-                         <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button size="lg" variant="secondary" className="font-bold text-primary h-12 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer">
-                                  Become a Partner
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>Partner Inquiry</DialogTitle>
-                                  <DialogDescription>Fill out this form and our team will contact you within 24 hours.</DialogDescription>
-                                </DialogHeader>
-                                <div className="space-y-4 py-4">
-                                  <div className="space-y-2">
-                                    <Label>Club Name</Label>
-                                    <Input placeholder="e.g. Grand Slam Tennis Centre" />
+        {/* Clubs List Section */}
+        <div className="container mx-auto px-4 py-16">
+          <div className="max-w-6xl mx-auto space-y-16">
+            {currentClubs.map((club, index) => (
+              <div key={club.id}>
+                <ClubCard club={club} />
+                
+                {/* Insert Partner Block after 1st item (or every 5th) for prototype demonstration */}
+                {(index === 2 || (index === currentClubs.length - 1 && index < 2)) && (
+                  <motion.div 
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      whileInView={{ opacity: 1, scale: 1 }}
+                      className="my-16 bg-primary text-primary-foreground rounded-3xl p-8 md:p-16 relative overflow-hidden"
+                  >
+                      <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                      <div className="absolute bottom-0 left-0 w-96 h-96 bg-black/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+                      
+                      <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
+                        <div className="max-w-2xl">
+                          <div className="inline-flex items-center gap-2 bg-white/20 px-3 py-1 rounded-full text-sm font-bold mb-4 backdrop-blur-sm">
+                            <Building2 className="w-4 h-4" /> Partner With Us
+                          </div>
+                          <h3 className="text-3xl md:text-5xl font-display font-bold mb-4">Own a Tennis Club?</h3>
+                          <p className="text-lg opacity-90 mb-8 max-w-xl">
+                            Join our network to manage bookings, attract new players, and streamline your operations. Get listed today!
+                          </p>
+                          <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button size="lg" variant="secondary" className="font-bold text-primary h-12 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer">
+                                    Become a Partner
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>Partner Inquiry</DialogTitle>
+                                    <DialogDescription>Fill out this form and our team will contact you within 24 hours.</DialogDescription>
+                                  </DialogHeader>
+                                  <div className="space-y-4 py-4">
+                                    <div className="space-y-2">
+                                      <Label>Club Name</Label>
+                                      <Input placeholder="e.g. Grand Slam Tennis Centre" />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label>Contact Person</Label>
+                                      <Input placeholder="Your Name" />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label>Phone Number</Label>
+                                      <Input placeholder="+61 ..." />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label>Message</Label>
+                                      <Textarea placeholder="Tell us about your facilities..." />
+                                    </div>
                                   </div>
-                                  <div className="space-y-2">
-                                    <Label>Contact Person</Label>
-                                    <Input placeholder="Your Name" />
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label>Phone Number</Label>
-                                    <Input placeholder="+61 ..." />
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label>Message</Label>
-                                    <Textarea placeholder="Tell us about your facilities..." />
-                                  </div>
-                                </div>
-                                <DialogFooter>
-                                  <Button className="w-full cursor-pointer">Send Inquiry</Button>
-                                </DialogFooter>
-                              </DialogContent>
-                            </Dialog>
-                            <Button size="lg" variant="outline" className="bg-transparent border-white/30 text-white hover:bg-white/10 h-12 px-8 rounded-xl backdrop-blur-sm cursor-pointer">
-                               <Phone className="w-4 h-4 mr-2" /> Call Sales
-                            </Button>
-                         </div>
+                                  <DialogFooter>
+                                    <Button className="w-full cursor-pointer">Send Inquiry</Button>
+                                  </DialogFooter>
+                                </DialogContent>
+                              </Dialog>
+                              <Button size="lg" variant="outline" className="bg-transparent border-white/30 text-white hover:bg-white/10 h-12 px-8 rounded-xl backdrop-blur-sm cursor-pointer">
+                                <Phone className="w-4 h-4 mr-2" /> Call Sales
+                              </Button>
+                          </div>
+                        </div>
+                        <div className="hidden md:block p-8 bg-white/10 rounded-2xl backdrop-blur-md border border-white/20 rotate-3 hover:rotate-0 transition-transform duration-500">
+                          <div className="flex items-center gap-3 mb-4">
+                              <CheckCircle className="w-8 h-8 text-white" />
+                              <div className="text-left">
+                                <p className="font-bold text-2xl">200+</p>
+                                <p className="text-xs opacity-75">Active Clubs</p>
+                              </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                              <CheckCircle className="w-8 h-8 text-white" />
+                              <div className="text-left">
+                                <p className="font-bold text-2xl">50k+</p>
+                                <p className="text-xs opacity-75">Monthly Bookings</p>
+                              </div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="hidden md:block p-8 bg-white/10 rounded-2xl backdrop-blur-md border border-white/20 rotate-3 hover:rotate-0 transition-transform duration-500">
-                         <div className="flex items-center gap-3 mb-4">
-                            <CheckCircle className="w-8 h-8 text-white" />
-                            <div className="text-left">
-                              <p className="font-bold text-2xl">200+</p>
-                              <p className="text-xs opacity-75">Active Clubs</p>
-                            </div>
-                         </div>
-                         <div className="flex items-center gap-3">
-                            <CheckCircle className="w-8 h-8 text-white" />
-                            <div className="text-left">
-                              <p className="font-bold text-2xl">50k+</p>
-                              <p className="text-xs opacity-75">Monthly Bookings</p>
-                            </div>
-                         </div>
-                      </div>
-                    </div>
-                 </motion.div>
-               )}
-             </div>
-          ))}
-
-          {filteredClubs.length === 0 && (
-            <div className="text-center py-20">
-              <div className="inline-flex p-4 rounded-full bg-muted mb-4">
-                <Search className="w-8 h-8 text-muted-foreground" />
+                  </motion.div>
+                )}
               </div>
-              <h3 className="text-xl font-bold mb-2">No clubs found</h3>
-              <p className="text-muted-foreground">Try adjusting your search or filters.</p>
-              <Button 
-                variant="link" 
-                onClick={() => { setSearchTerm(""); setFilterService(""); }}
-                className="mt-2"
-              >
-                Clear all filters
-              </Button>
-            </div>
-          )}
+            ))}
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex justify-center mt-12 gap-2">
-              <Button 
-                variant="outline" 
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-              >
-                Previous
-              </Button>
-              {Array.from({ length: totalPages }).map((_, i) => (
-                <Button
-                  key={i}
-                  variant={currentPage === i + 1 ? "default" : "outline"}
-                  onClick={() => setCurrentPage(i + 1)}
+            {filteredClubs.length === 0 && (
+              <div className="text-center py-20">
+                <div className="inline-flex p-4 rounded-full bg-muted mb-4">
+                  <Search className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-xl font-bold mb-2">No clubs found</h3>
+                <p className="text-muted-foreground">Try adjusting your search or filters.</p>
+                <Button 
+                  variant="link" 
+                  onClick={() => { setSearchTerm(""); setFilterService(""); }}
+                  className="mt-2"
                 >
-                  {i + 1}
+                  Clear all filters
                 </Button>
-              ))}
-              <Button 
-                variant="outline" 
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-              >
-                Next
-              </Button>
-            </div>
-          )}
+              </div>
+            )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex justify-center mt-12 gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                {Array.from({ length: totalPages }).map((_, i) => (
+                  <Button
+                    key={i}
+                    variant={currentPage === i + 1 ? "default" : "outline"}
+                    onClick={() => setCurrentPage(i + 1)}
+                  >
+                    {i + 1}
+                  </Button>
+                ))}
+                <Button 
+                  variant="outline" 
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
+        <Footer />
       </div>
-      <Footer />
-    </div>
+    </>
   );
 }

@@ -7,6 +7,7 @@ import { Footer } from "@/components/footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import SEO from "@/components/seo";
 
 interface TravelPackage {
   id: string;
@@ -44,6 +45,20 @@ export default function TravelPage() {
     s ? new Date(s).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" }) : "TBA";
 
   return (
+    <>
+        <SEO
+        title="Tennis Travel Packages | TennisConnect"
+        description="Discover tennis holidays, tennis camps and travel experiences for players looking to combine travel with their passion for tennis."
+        canonical="/travel"
+        tags={[
+          "tennis travel",
+          "tennis holiday",
+          "tennis camp",
+          "tennis trips",
+          "sports travel",
+          "tennis vacation",
+        ]}
+      />
     <div className="min-h-screen bg-background font-sans">
       <Navbar />
 
@@ -105,7 +120,7 @@ export default function TravelPage() {
               >
                 <Link href={`/travel/${p.slug}`}>
                   <Card className="group overflow-hidden border-none shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer h-full">
-                    <div className="relative aspect-[4/3] overflow-hidden bg-secondary/50">
+                    <div className="relative aspect-4/3 overflow-hidden bg-secondary/50">
                       <img
                         src={p.coverImage}
                         alt={p.title}
@@ -157,5 +172,6 @@ export default function TravelPage() {
 
       <Footer />
     </div>
+    </>
   );
 }

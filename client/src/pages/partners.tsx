@@ -15,6 +15,7 @@ import { MapPin, Search, MessageCircle, User, Activity, Send, Camera } from "luc
 import { PARTNERS_DATA } from "@/lib/dummy-data";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
+import SEO from "@/components/seo";
 
 interface PartnerData {
     id: string;
@@ -179,6 +180,22 @@ export default function PartnersPage() {
   });
   
   return (
+    <>
+      <SEO
+        title="Find Tennis Partners in Australia | TennisConnect"
+        description="Connect with local tennis players across Australia. Find hitting partners, doubles teammates and tennis friends based on skill level, location and availability."
+        canonical="/partners"
+        tags={[
+          "tennis partners",
+          "find tennis partner",
+          "tennis players Australia",
+          "tennis community",
+          "Sydney tennis",
+          "Melbourne tennis",
+          "Brisbane tennis",
+          "social tennis",
+        ]}
+      />
     <div className="min-h-screen bg-background font-sans">
       <Navbar />
 
@@ -447,5 +464,6 @@ export default function PartnersPage() {
 
       <Footer />
     </div>
+   </>
   );
 }

@@ -25,6 +25,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { db } from "./db";
 import { eq, and, gt } from "drizzle-orm";
+import sitemapRoutes from "./routes/sitemapRoutes";
 
 /* =========================
    HELPERS & MIDDLEWARE
@@ -66,6 +67,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/api/profile/tournament-history", profileTournamentHistoryRouter);
   app.use("/api/profile/marketplace", profileMarketplace);
   app.use("/api", contentRouter);
+  app.use("/", sitemapRoutes);
   /* =========================
    SUPPORT CHAT
   ========================= */

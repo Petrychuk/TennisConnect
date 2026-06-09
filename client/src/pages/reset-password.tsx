@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Lock, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import heroImage from "/assets/images/tennis_main.jpg";
+import SEO from "@/components/seo";
 
 export default function ResetPasswordPage() {
   const [, setLocation] = useLocation();
@@ -152,87 +153,95 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left Panel - Form */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 lg:px-16 py-12 bg-background">
-        <div className="max-w-md mx-auto w-full">
-          <Link href="/auth" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors">
-            <ArrowLeft className="w-4 h-4" />
-            Back to Sign In
-          </Link>
+    <>
+     <SEO
+        title="Reset Password | TennisConnect"
+        description="Reset your TennisConnect password."
+        canonical="/reset-password"
+        noIndex
+      />
+      <div className="min-h-screen flex">
+        {/* Left Panel - Form */}
+        <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 lg:px-16 py-12 bg-background">
+          <div className="max-w-md mx-auto w-full">
+            <Link href="/auth" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors">
+              <ArrowLeft className="w-4 h-4" />
+              Back to Sign In
+            </Link>
 
-          <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-6">
-            <Lock className="w-6 h-6 text-primary" />
+            <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-6">
+              <Lock className="w-6 h-6 text-primary" />
+            </div>
+
+            <h1 className="text-3xl font-display font-bold mb-2">
+              Reset Your Password
+            </h1>
+            <p className="text-muted-foreground mb-8">
+              Enter your new password below.
+            </p>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="password">New Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter new password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  data-testid="new-password-input"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="Confirm new password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  data-testid="confirm-password-input"
+                />
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full h-12"
+                disabled={isLoading}
+                data-testid="reset-password-button"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Resetting...
+                  </>
+                ) : (
+                  "Reset Password"
+                )}
+              </Button>
+            </form>
           </div>
+        </div>
 
-          <h1 className="text-3xl font-display font-bold mb-2">
-            Reset Your Password
-          </h1>
-          <p className="text-muted-foreground mb-8">
-            Enter your new password below.
-          </p>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="password">New Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Enter new password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                data-testid="new-password-input"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="Confirm new password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                minLength={6}
-                data-testid="confirm-password-input"
-              />
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full h-12"
-              disabled={isLoading}
-              data-testid="reset-password-button"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Resetting...
-                </>
-              ) : (
-                "Reset Password"
-              )}
-            </Button>
-          </form>
+        {/* Right Panel - Image */}
+        <div
+          className="hidden lg:block lg:w-1/2 bg-cover bg-center relative"
+          style={{ backgroundImage: `url(${heroImage})` }}
+        >
+          <div className="absolute inset-0 bg-black/50" />
+          <div className="absolute bottom-12 left-12 right-12 text-white">
+            <p className="text-2xl font-display font-bold mb-4">
+              "Security is not a product, but a process."
+            </p>
+            <p className="text-white/80">— Bruce Schneier</p>
+          </div>
         </div>
       </div>
-
-      {/* Right Panel - Image */}
-      <div
-        className="hidden lg:block lg:w-1/2 bg-cover bg-center relative"
-        style={{ backgroundImage: `url(${heroImage})` }}
-      >
-        <div className="absolute inset-0 bg-black/50" />
-        <div className="absolute bottom-12 left-12 right-12 text-white">
-          <p className="text-2xl font-display font-bold mb-4">
-            "Security is not a product, but a process."
-          </p>
-          <p className="text-white/80">— Bruce Schneier</p>
-        </div>
-      </div>
-    </div>
+    </>
   );
 }

@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, ShieldCheck, FileText, Plane, Heart, Trophy } from "lucide-react";
+import SEO from "@/components/seo";
 
 type Resource = "articles" | "travel" | "recreation" | "event-tournaments";
 
@@ -283,227 +284,235 @@ export default function AdminPage() {
   const ActiveIcon = ICONS[activeTab];
 
   return (
-    <div className="min-h-screen bg-background font-sans">
-      <Navbar />
+    <>
+      <SEO
+        title="Admin Panel | TennisConnect"
+        description="Administration panel."
+        canonical="/admin"
+        noIndex
+      />
+      <div className="min-h-screen bg-background font-sans">
+        <Navbar />
 
-      <div className="container mx-auto px-4 py-12 mt-16">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
-          <div>
-            <Badge className="mb-3 bg-primary text-primary-foreground">
-              <ShieldCheck className="w-3 h-3 mr-1" /> Admin
-            </Badge>
-            <h1 className="text-4xl md:text-5xl font-display font-bold">Content Manager</h1>
-            <p className="text-muted-foreground mt-2">Manage articles, travel, recreation and tournaments.</p>
-          </div>
-          <Button
-            onClick={openCreate}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
-            data-testid="admin-create-button"
-          >
-            <Plus className="w-4 h-4 mr-2" /> New {RESOURCE_LABELS[activeTab]}
-          </Button>
-        </div>
-
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Resource)}>
-          <TabsList className="grid grid-cols-2 md:grid-cols-4 mb-8 w-full max-w-3xl">
-            {(Object.keys(RESOURCE_LABELS) as Resource[]).map((r) => {
-              const Icon = ICONS[r];
-              return (
-                <TabsTrigger key={r} value={r} className="cursor-pointer" data-testid={`admin-tab-${r}`}>
-                  <Icon className="w-4 h-4 mr-2" /> {RESOURCE_LABELS[r]}
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
-
-          {(Object.keys(RESOURCE_LABELS) as Resource[]).map((r) => (
-            <TabsContent key={r} value={r}>
-              {loading ? (
-                <div className="text-center py-12 text-muted-foreground">Loading…</div>
-              ) : items.length === 0 ? (
-                <div className="text-center py-20">
-                  <ActiveIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-xl font-bold mb-2">No items yet</h3>
-                  <Button onClick={openCreate} variant="outline">Create first {RESOURCE_LABELS[r].toLowerCase()}</Button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {items.map((item) => (
-                    <Card key={item.id} className="overflow-hidden">
-                      <div className="aspect-video bg-secondary/50 overflow-hidden">
-                        <img src={item.coverImage} alt="" className="w-full h-full object-cover" />
-                      </div>
-                      <CardContent className="p-4">
-                        <h3 className="font-bold text-base mb-1 line-clamp-1">{item.title || item.name}</h3>
-                        <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{item.excerpt || item.description}</p>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex-1 cursor-pointer"
-                            onClick={() => openEdit(item)}
-                            data-testid={`admin-edit-${item.id}`}
-                          >
-                            <Edit className="w-3 h-3 mr-1" /> Edit
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="cursor-pointer hover:text-destructive hover:border-destructive"
-                            onClick={() => remove(item)}
-                            data-testid={`admin-delete-${item.id}`}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-          ))}
-        </Tabs>
-      </div>
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editing ? "Edit" : "Create"} {RESOURCE_LABELS[activeTab]}</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4">
-          {FIELDS[activeTab].map((f) => {
-
-            if (
-              f.name === "legalType" &&
-              formData.category !== "Legal"
-            ) {
-              return null;
-            }
-
-            return (
-              <div key={f.name}>
-                <Label htmlFor={f.name} className="capitalize">
-                  {f.name.replace(/([A-Z])/g, " $1")}
-                  {f.required && (
-                    <span className="text-destructive ml-1">*</span>
-                  )}
-                </Label>
-
-                {f.type === "textarea" ? (
-                  <Textarea
-                    id={f.name}
-                    value={formData[f.name] || ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        [f.name]: e.target.value,
-                      })
-                    }
-                    rows={5}
-                    data-testid={`admin-field-${f.name}`}
-                  />
-                ) : f.type === "select" ? (
-                  <select
-                    id={f.name}
-                    value={formData[f.name] || ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        [f.name]: e.target.value,
-                      })
-                    }
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="">Select...</option>
-
-                    {f.options?.map((option) => (
-                      <option
-                        key={option}
-                        value={option}
-                      >
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <Input
-                    id={f.name}
-                    type={f.type === "number" ? "number" : "text"}
-                    value={formData[f.name] || ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        [f.name]: e.target.value,
-                      })
-                    }
-                    data-testid={`admin-field-${f.name}`}
-                  />
-                )}
-
-                {f.help && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {f.help}
-                  </p>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)} className="cursor-pointer">Cancel</Button>
-            <Button onClick={submit} className="bg-primary text-primary-foreground cursor-pointer" data-testid="admin-save-button">
-              {editing ? "Update" : "Create"}
+        <div className="container mx-auto px-4 py-12 mt-16">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+            <div>
+              <Badge className="mb-3 bg-primary text-primary-foreground">
+                <ShieldCheck className="w-3 h-3 mr-1" /> Admin
+              </Badge>
+              <h1 className="text-4xl md:text-5xl font-display font-bold">Content Manager</h1>
+              <p className="text-muted-foreground mt-2">Manage articles, travel, recreation and tournaments.</p>
+            </div>
+            <Button
+              onClick={openCreate}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
+              data-testid="admin-create-button"
+            >
+              <Plus className="w-4 h-4 mr-2" /> New {RESOURCE_LABELS[activeTab]}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog
-          open={deleteDialogOpen}
-          onOpenChange={setDeleteDialogOpen}
-        >
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-            <DialogTitle>
-              Delete {RESOURCE_LABELS[activeTab].slice(0, -1)}
-            </DialogTitle>
+          </div>
 
-              <DialogDescription>
-                Are you sure you want to delete
-                <strong>
-                  {" "}
-                  "{itemToDelete?.title || itemToDelete?.name}"
-                </strong>
-                ?
-                <br />
-                This action cannot be undone.
-              </DialogDescription>
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Resource)}>
+            <TabsList className="grid grid-cols-2 md:grid-cols-4 mb-8 w-full max-w-3xl">
+              {(Object.keys(RESOURCE_LABELS) as Resource[]).map((r) => {
+                const Icon = ICONS[r];
+                return (
+                  <TabsTrigger key={r} value={r} className="cursor-pointer" data-testid={`admin-tab-${r}`}>
+                    <Icon className="w-4 h-4 mr-2" /> {RESOURCE_LABELS[r]}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+
+            {(Object.keys(RESOURCE_LABELS) as Resource[]).map((r) => (
+              <TabsContent key={r} value={r}>
+                {loading ? (
+                  <div className="text-center py-12 text-muted-foreground">Loading…</div>
+                ) : items.length === 0 ? (
+                  <div className="text-center py-20">
+                    <ActiveIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-xl font-bold mb-2">No items yet</h3>
+                    <Button onClick={openCreate} variant="outline">Create first {RESOURCE_LABELS[r].toLowerCase()}</Button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {items.map((item) => (
+                      <Card key={item.id} className="overflow-hidden">
+                        <div className="aspect-video bg-secondary/50 overflow-hidden">
+                          <img src={item.coverImage} alt="" className="w-full h-full object-cover" />
+                        </div>
+                        <CardContent className="p-4">
+                          <h3 className="font-bold text-base mb-1 line-clamp-1">{item.title || item.name}</h3>
+                          <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{item.excerpt || item.description}</p>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 cursor-pointer"
+                              onClick={() => openEdit(item)}
+                              data-testid={`admin-edit-${item.id}`}
+                            >
+                              <Edit className="w-3 h-3 mr-1" /> Edit
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="cursor-pointer hover:text-destructive hover:border-destructive"
+                              onClick={() => remove(item)}
+                              data-testid={`admin-delete-${item.id}`}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+            ))}
+          </Tabs>
+        </div>
+
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{editing ? "Edit" : "Create"} {RESOURCE_LABELS[activeTab]}</DialogTitle>
             </DialogHeader>
 
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setDeleteDialogOpen(false); 
-                  setItemToDelete(null); 
-                }}
-              >
-                Cancel
-              </Button>
+            <div className="space-y-4">
+            {FIELDS[activeTab].map((f) => {
 
-              <Button
-                variant="destructive"
-                onClick={confirmDelete}
-              >
-                Delete
+              if (
+                f.name === "legalType" &&
+                formData.category !== "Legal"
+              ) {
+                return null;
+              }
+
+              return (
+                <div key={f.name}>
+                  <Label htmlFor={f.name} className="capitalize">
+                    {f.name.replace(/([A-Z])/g, " $1")}
+                    {f.required && (
+                      <span className="text-destructive ml-1">*</span>
+                    )}
+                  </Label>
+
+                  {f.type === "textarea" ? (
+                    <Textarea
+                      id={f.name}
+                      value={formData[f.name] || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          [f.name]: e.target.value,
+                        })
+                      }
+                      rows={5}
+                      data-testid={`admin-field-${f.name}`}
+                    />
+                  ) : f.type === "select" ? (
+                    <select
+                      id={f.name}
+                      value={formData[f.name] || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          [f.name]: e.target.value,
+                        })
+                      }
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="">Select...</option>
+
+                      {f.options?.map((option) => (
+                        <option
+                          key={option}
+                          value={option}
+                        >
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <Input
+                      id={f.name}
+                      type={f.type === "number" ? "number" : "text"}
+                      value={formData[f.name] || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          [f.name]: e.target.value,
+                        })
+                      }
+                      data-testid={`admin-field-${f.name}`}
+                    />
+                  )}
+
+                  {f.help && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {f.help}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDialogOpen(false)} className="cursor-pointer">Cancel</Button>
+              <Button onClick={submit} className="bg-primary text-primary-foreground cursor-pointer" data-testid="admin-save-button">
+                {editing ? "Update" : "Create"}
               </Button>
-            </div>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
+        <Dialog
+            open={deleteDialogOpen}
+            onOpenChange={setDeleteDialogOpen}
+          >
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+              <DialogTitle>
+                Delete {RESOURCE_LABELS[activeTab].slice(0, -1)}
+              </DialogTitle>
 
-      <Footer />
-    </div>
+                <DialogDescription>
+                  Are you sure you want to delete
+                  <strong>
+                    {" "}
+                    "{itemToDelete?.title || itemToDelete?.name}"
+                  </strong>
+                  ?
+                  <br />
+                  This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setDeleteDialogOpen(false); 
+                    setItemToDelete(null); 
+                  }}
+                >
+                  Cancel
+                </Button>
+
+                <Button
+                  variant="destructive"
+                  onClick={confirmDelete}
+                >
+                  Delete
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+        <Footer />
+      </div>
+    </>
   );
 }

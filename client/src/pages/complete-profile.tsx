@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Loader2, User, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
+import SEO from "@/components/seo";
 
 const playerProfileSchema = z.object({
   age: z.string().min(1, "Age is required"),
@@ -234,202 +235,210 @@ export default function CompleteProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-background to-muted/20 py-12 px-4">
-      <div className="max-w-2xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Complete Your Profile</h1>
-          <p className="text-muted-foreground">
-            Fill in the details below to start connecting with {user?.role === "coach" ? "students" : "other players"}
-          </p>
-        </div>
+    <>
+      <SEO
+        title="Complete Your Profile | TennisConnect"
+        description="Complete your TennisConnect profile."
+        canonical="/complete-profile"
+        noIndex
+      />
+      <div className="min-h-screen bg-linear-to-b from-background to-muted/20 py-12 px-4">
+        <div className="max-w-2xl mx-auto">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold mb-2">Complete Your Profile</h1>
+            <p className="text-muted-foreground">
+              Fill in the details below to start connecting with {user?.role === "coach" ? "students" : "other players"}
+            </p>
+          </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="w-5 h-5" />
-              {user?.role === "coach" ? "Coach Profile" : "Player Profile"}
-            </CardTitle>
-            <CardDescription>
-              This information will be shown on your public profile
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {user?.role === "player" ? (
-              <form onSubmit={playerForm.handleSubmit(onPlayerSubmit)} className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="w-5 h-5" />
+                {user?.role === "coach" ? "Coach Profile" : "Player Profile"}
+              </CardTitle>
+              <CardDescription>
+                This information will be shown on your public profile
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {user?.role === "player" ? (
+                <form onSubmit={playerForm.handleSubmit(onPlayerSubmit)} className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="age">Age</Label>
+                      <Input
+                        id="age"
+                        type="number"
+                        placeholder="25"
+                        {...playerForm.register("age")}
+                        data-testid="input-age"
+                      />
+                      {playerForm.formState.errors.age && (
+                        <p className="text-sm text-destructive">{playerForm.formState.errors.age.message}</p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="country">Country</Label>
+                      <Select
+                        defaultValue="Australia"
+                        onValueChange={(value) => playerForm.setValue("country", value)}
+                      >
+                        <SelectTrigger data-testid="select-country">
+                          <SelectValue placeholder="Select country" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Australia">Australia</SelectItem>
+                          <SelectItem value="USA">USA</SelectItem>
+                          <SelectItem value="UK">UK</SelectItem>
+                          <SelectItem value="Canada">Canada</SelectItem>
+                          <SelectItem value="New Zealand">New Zealand</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="age">Age</Label>
-                    <Input
-                      id="age"
-                      type="number"
-                      placeholder="25"
-                      {...playerForm.register("age")}
-                      data-testid="input-age"
-                    />
-                    {playerForm.formState.errors.age && (
-                      <p className="text-sm text-destructive">{playerForm.formState.errors.age.message}</p>
+                    <Label htmlFor="location">City</Label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="location"
+                        className="pl-10"
+                        placeholder="Sydney, NSW"
+                        {...playerForm.register("location")}
+                        data-testid="input-location"
+                      />
+                    </div>
+                    {playerForm.formState.errors.location && (
+                      <p className="text-sm text-destructive">{playerForm.formState.errors.location.message}</p>
                     )}
                   </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="country">Country</Label>
+                    <Label htmlFor="skillLevel">Skill Level</Label>
                     <Select
-                      defaultValue="Australia"
-                      onValueChange={(value) => playerForm.setValue("country", value)}
+                      defaultValue="Beginner"
+                      onValueChange={(value) => playerForm.setValue("skillLevel", value)}
                     >
-                      <SelectTrigger data-testid="select-country">
-                        <SelectValue placeholder="Select country" />
+                      <SelectTrigger data-testid="select-skill">
+                        <SelectValue placeholder="Select skill level" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Australia">Australia</SelectItem>
-                        <SelectItem value="USA">USA</SelectItem>
-                        <SelectItem value="UK">UK</SelectItem>
-                        <SelectItem value="Canada">Canada</SelectItem>
-                        <SelectItem value="New Zealand">New Zealand</SelectItem>
+                        <SelectItem value="Beginner">Beginner</SelectItem>
+                        <SelectItem value="Intermediate">Intermediate</SelectItem>
+                        <SelectItem value="Advanced">Advanced</SelectItem>
+                        <SelectItem value="Professional">Professional</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="location">City</Label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="location"
-                      className="pl-10"
-                      placeholder="Sydney, NSW"
-                      {...playerForm.register("location")}
-                      data-testid="input-location"
-                    />
-                  </div>
-                  {playerForm.formState.errors.location && (
-                    <p className="text-sm text-destructive">{playerForm.formState.errors.location.message}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="skillLevel">Skill Level</Label>
-                  <Select
-                    defaultValue="Beginner"
-                    onValueChange={(value) => playerForm.setValue("skillLevel", value)}
-                  >
-                    <SelectTrigger data-testid="select-skill">
-                      <SelectValue placeholder="Select skill level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Beginner">Beginner</SelectItem>
-                      <SelectItem value="Intermediate">Intermediate</SelectItem>
-                      <SelectItem value="Advanced">Advanced</SelectItem>
-                      <SelectItem value="Professional">Professional</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="preferredCourts">Preferred Locations (comma separated)</Label>
-                  <Input
-                    id="preferredCourts"
-                    placeholder="Bondi Beach, Manly, Sydney CBD"
-                    {...playerForm.register("preferredCourts")}
-                    data-testid="input-courts"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="bio">Bio</Label>
-                  <Textarea
-                    id="bio"
-                    placeholder="Tell other players about yourself, your playing style, and what you're looking for..."
-                    rows={4}
-                    {...playerForm.register("bio")}
-                    data-testid="textarea-bio"
-                  />
-                  {playerForm.formState.errors.bio && (
-                    <p className="text-sm text-destructive">{playerForm.formState.errors.bio.message}</p>
-                  )}
-                </div>
-
-                <Button type="submit" className="w-full" disabled={isLoading} data-testid="button-save">
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Save Profile
-                </Button>
-              </form>
-            ) : (
-              <form onSubmit={coachForm.handleSubmit(onCoachSubmit)} className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Title</Label>
-                  <Input
-                    id="title"
-                    placeholder="Head Tennis Coach"
-                    {...coachForm.register("title")}
-                    data-testid="input-title"
-                  />
-                  {coachForm.formState.errors.title && (
-                    <p className="text-sm text-destructive">{coachForm.formState.errors.title.message}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="location">Location</Label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="location"
-                      className="pl-10"
-                      placeholder="Sydney, NSW"
-                      {...coachForm.register("location")}
-                      data-testid="input-location"
-                    />
-                  </div>
-                  {coachForm.formState.errors.location && (
-                    <p className="text-sm text-destructive">{coachForm.formState.errors.location.message}</p>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="experience">Years of Experience</Label>
+                    <Label htmlFor="preferredCourts">Preferred Locations (comma separated)</Label>
                     <Input
-                      id="experience"
-                      placeholder="10+ years"
-                      {...coachForm.register("experience")}
-                      data-testid="input-experience"
+                      id="preferredCourts"
+                      placeholder="Bondi Beach, Manly, Sydney CBD"
+                      {...playerForm.register("preferredCourts")}
+                      data-testid="input-courts"
                     />
                   </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="rate">Hourly Rate</Label>
-                    <Input
-                      id="rate"
-                      placeholder="$80/hour"
-                      {...coachForm.register("rate")}
-                      data-testid="input-rate"
+                    <Label htmlFor="bio">Bio</Label>
+                    <Textarea
+                      id="bio"
+                      placeholder="Tell other players about yourself, your playing style, and what you're looking for..."
+                      rows={4}
+                      {...playerForm.register("bio")}
+                      data-testid="textarea-bio"
                     />
+                    {playerForm.formState.errors.bio && (
+                      <p className="text-sm text-destructive">{playerForm.formState.errors.bio.message}</p>
+                    )}
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="bio">Bio</Label>
-                  <Textarea
-                    id="bio"
-                    placeholder="Tell potential students about your coaching style, experience, and what they can expect..."
-                    rows={4}
-                    {...coachForm.register("bio")}
-                    data-testid="textarea-bio"
-                  />
-                  {coachForm.formState.errors.bio && (
-                    <p className="text-sm text-destructive">{coachForm.formState.errors.bio.message}</p>
-                  )}
-                </div>
+                  <Button type="submit" className="w-full" disabled={isLoading} data-testid="button-save">
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Save Profile
+                  </Button>
+                </form>
+              ) : (
+                <form onSubmit={coachForm.handleSubmit(onCoachSubmit)} className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Title</Label>
+                    <Input
+                      id="title"
+                      placeholder="Head Tennis Coach"
+                      {...coachForm.register("title")}
+                      data-testid="input-title"
+                    />
+                    {coachForm.formState.errors.title && (
+                      <p className="text-sm text-destructive">{coachForm.formState.errors.title.message}</p>
+                    )}
+                  </div>
 
-                <Button type="submit" className="w-full" disabled={isLoading} data-testid="button-save">
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Save Profile
-                </Button>
-              </form>
-            )}
-          </CardContent>
-        </Card>
+                  <div className="space-y-2">
+                    <Label htmlFor="location">Location</Label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="location"
+                        className="pl-10"
+                        placeholder="Sydney, NSW"
+                        {...coachForm.register("location")}
+                        data-testid="input-location"
+                      />
+                    </div>
+                    {coachForm.formState.errors.location && (
+                      <p className="text-sm text-destructive">{coachForm.formState.errors.location.message}</p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="experience">Years of Experience</Label>
+                      <Input
+                        id="experience"
+                        placeholder="10+ years"
+                        {...coachForm.register("experience")}
+                        data-testid="input-experience"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="rate">Hourly Rate</Label>
+                      <Input
+                        id="rate"
+                        placeholder="$80/hour"
+                        {...coachForm.register("rate")}
+                        data-testid="input-rate"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="bio">Bio</Label>
+                    <Textarea
+                      id="bio"
+                      placeholder="Tell potential students about your coaching style, experience, and what they can expect..."
+                      rows={4}
+                      {...coachForm.register("bio")}
+                      data-testid="textarea-bio"
+                    />
+                    {coachForm.formState.errors.bio && (
+                      <p className="text-sm text-destructive">{coachForm.formState.errors.bio.message}</p>
+                    )}
+                  </div>
+
+                  <Button type="submit" className="w-full" disabled={isLoading} data-testid="button-save">
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Save Profile
+                  </Button>
+                </form>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

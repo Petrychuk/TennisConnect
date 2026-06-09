@@ -16,6 +16,7 @@ import { useLocation, useRoute } from "wouter";
 import { MapPin, Calendar, Trophy, Edit2, Save, ShoppingBag, Plus, Trash2, Camera, Globe } from "lucide-react";
 import { COACHES_DATA, PARTNERS_DATA } from "@/lib/dummy-data";
 import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.png";
+import SEO from "@/components/seo";
 import { TennisLoader } from "@/components/ui/tennisLoader";
 
 type MarketplaceDraft = {
@@ -589,436 +590,211 @@ export default function PlayerProfile() {
   const myCoaches = COACHES_DATA.filter(coach => profile.coaches.includes(coach.id));
 
   return (
-    <div className="min-h-screen bg-background font-sans relative pb-20">
-       <div 
-        className="fixed inset-0 z-0 pointer-events-none opacity-[0.15]" 
-        style={{
-          backgroundImage: `url(${bgImage})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundAttachment: 'fixed',
-          mixBlendMode: 'multiply'
-        }}
+    <>
+      <SEO
+        title={`${profile.name} | TennisConnect`}
+        description={
+          profile.bio ||
+          `Tennis player from ${profile.location}`
+        }
+        canonical={`/player/${profileSlug}`}
       />
-      
-      <div className="relative z-10">
-        <Navbar />
-        <input
-          type="file"
-          id="avatar-upload"
-          className="hidden"
-          accept="image/*"
-          onChange={(e) => handleFileChange(e, "avatar")}
-        />
-
-        <input
-          type="file"
-          id="cover-upload"
-          className="hidden"
-          accept="image/*"
-          onChange={(e) => handleFileChange(e, "cover")}
-        />
-
-        {/* Cover Photo Section */}
-        <div className="relative h-[250px] md:h-[350px] w-full overflow-hidden group">
-          <div className="absolute inset-0 bg-black/20 z-10" />
-          <img 
-            src={profile.cover ?? undefined} 
-            alt="Cover" 
-            className="w-full h-full object-cover transition-transform duration-700"
+        <div className="min-h-screen bg-background font-sans relative pb-20">
+          <div 
+            className="fixed inset-0 z-0 pointer-events-none opacity-[0.15]" 
+            style={{
+              backgroundImage: `url(${bgImage})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundAttachment: 'fixed',
+              mixBlendMode: 'multiply'
+            }}
           />
-          {isEditing && (
-             <div 
-               onClick={() => {
-                console.log("CLICK COVER");
-                document.getElementById('cover-upload')?.click();
-              }}
-               className="absolute inset-0 z-20 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-             >
-               <Button variant="secondary" className="gap-2">
-                 <Camera className="w-5 h-5" /> Change Cover Photo
-               </Button>
-             </div>
-          )}
-          <div className="absolute bottom-0 left-0 w-full h-24 bg-linear-to-t from-background to-transparent z-10" />
-        </div>
+          
+          <div className="relative z-10">
+            <Navbar />
+            <input
+              type="file"
+              id="avatar-upload"
+              className="hidden"
+              accept="image/*"
+              onChange={(e) => handleFileChange(e, "avatar")}
+            />
 
-        <div className="container mx-auto px-4 -mt-20 relative z-30 max-w-6xl">
-          {/* Header Section */}
-          <div className="flex flex-col md:flex-row gap-8 mb-12">
-          <div className="shrink-0 mx-auto md:mx-0 relative group">
-            <Avatar className="w-40 h-40 border-4 border-background shadow-xl">
-              <AvatarImage
-                src={profile.avatar ?? undefined}
-                className="object-cover"
+            <input
+              type="file"
+              id="cover-upload"
+              className="hidden"
+              accept="image/*"
+              onChange={(e) => handleFileChange(e, "cover")}
+            />
+
+            {/* Cover Photo Section */}
+            <div className="relative h-[250px] md:h-[350px] w-full overflow-hidden group">
+              <div className="absolute inset-0 bg-black/20 z-10" />
+              <img 
+                src={profile.cover ?? undefined} 
+                alt="Cover" 
+                className="w-full h-full object-cover transition-transform duration-700"
               />
-              <AvatarFallback>
-                {profile.name.charAt(0)}
-              </AvatarFallback>
-            </Avatar>
+              {isEditing && (
+                <div 
+                  onClick={() => {
+                    console.log("CLICK COVER");
+                    document.getElementById('cover-upload')?.click();
+                  }}
+                  className="absolute inset-0 z-20 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                >
+                  <Button variant="secondary" className="gap-2">
+                    <Camera className="w-5 h-5" /> Change Cover Photo
+                  </Button>
+                </div>
+              )}
+              <div className="absolute bottom-0 left-0 w-full h-24 bg-linear-to-t from-background to-transparent z-10" />
+            </div>
 
-            {isEditing && (
-              <div
-                onClick={() =>
-                  document.getElementById("avatar-upload")?.click()
-                }
-                className="absolute inset-0 bg-black/50 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity rounded-full"
-              >
-                <Camera className="w-8 h-8 text-white" />
+            <div className="container mx-auto px-4 -mt-20 relative z-30 max-w-6xl">
+              {/* Header Section */}
+              <div className="flex flex-col md:flex-row gap-8 mb-12">
+              <div className="shrink-0 mx-auto md:mx-0 relative group">
+                <Avatar className="w-40 h-40 border-4 border-background shadow-xl">
+                  <AvatarImage
+                    src={profile.avatar ?? undefined}
+                    className="object-cover"
+                  />
+                  <AvatarFallback>
+                    {profile.name.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+
+                {isEditing && (
+                  <div
+                    onClick={() =>
+                      document.getElementById("avatar-upload")?.click()
+                    }
+                    className="absolute inset-0 bg-black/50 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity rounded-full"
+                  >
+                    <Camera className="w-8 h-8 text-white" />
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-            
-            <div className="grow text-center md:text-left space-y-4">
-              <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-4">
-                <div>
-                  {isEditing ? (
-                    <div className="space-y-2">
-                       <Input 
-                        value={profile.name} 
-                        onChange={(e) => setProfile({...profile, name: e.target.value})}
-                        className="text-3xl font-bold h-auto py-2"
-                      />
-                      <div className="flex gap-2">
-                         <Input 
-                          value={profile.country} 
-                          placeholder="Country"
-                          onChange={(e) => setProfile({...profile, country: e.target.value})}
-                          className="w-40"
-                        />
-                         <Input 
-                          value={profile.age} 
-                          placeholder="Age"
-                          onChange={(e) => setProfile({...profile, age: e.target.value})}
-                          className="w-20"
-                        />
-                      </div>
+                
+                <div className="grow text-center md:text-left space-y-4">
+                  <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-4">
+                    <div>
+                      {isEditing ? (
+                        <div className="space-y-2">
+                          <Input 
+                            value={profile.name} 
+                            onChange={(e) => setProfile({...profile, name: e.target.value})}
+                            className="text-3xl font-bold h-auto py-2"
+                          />
+                          <div className="flex gap-2">
+                            <Input 
+                              value={profile.country} 
+                              placeholder="Country"
+                              onChange={(e) => setProfile({...profile, country: e.target.value})}
+                              className="w-40"
+                            />
+                            <Input 
+                              value={profile.age} 
+                              placeholder="Age"
+                              onChange={(e) => setProfile({...profile, age: e.target.value})}
+                              className="w-20"
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <h1 className="text-4xl font-display font-bold text-primary mb-2">{profile.name}</h1>
+                          <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Globe className="w-4 h-4" />
+                              <span>{profile.country}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-4 h-4" />
+                              <span>{profile.age} years old</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <MapPin className="w-4 h-4" />
+                              <span>{profile.location}</span>
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
+
+                    {isOwnProfile && (
+                      <Button onClick={isEditing ? handleSave : () => setIsEditing(true)} variant={isEditing ? "default" : "outline"}>
+                        {isEditing ? <Save className="w-4 h-4 mr-2" /> : <Edit2 className="w-4 h-4 mr-2" />}
+                        {isEditing ? "Save Profile" : "Edit Profile"}
+                      </Button>
+                    )}
+                  </div>
+
+                  {isEditing ? (
+                    <Textarea 
+                      value={profile.bio} 
+                      onChange={(e) => setProfile({...profile, bio: e.target.value})} 
+                      className="mt-4"
+                    />
                   ) : (
-                    <>
-                      <h1 className="text-4xl font-display font-bold text-primary mb-2">{profile.name}</h1>
-                      <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Globe className="w-4 h-4" />
-                          <span>{profile.country}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          <span>{profile.age} years old</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <MapPin className="w-4 h-4" />
-                          <span>{profile.location}</span>
-                        </div>
-                      </div>
-                    </>
+                    <p className="text-lg leading-relaxed max-w-2xl">{profile.bio}</p>
                   )}
                 </div>
-
-                {isOwnProfile && (
-                  <Button onClick={isEditing ? handleSave : () => setIsEditing(true)} variant={isEditing ? "default" : "outline"}>
-                    {isEditing ? <Save className="w-4 h-4 mr-2" /> : <Edit2 className="w-4 h-4 mr-2" />}
-                    {isEditing ? "Save Profile" : "Edit Profile"}
-                  </Button>
-                )}
               </div>
 
-              {isEditing ? (
-                <Textarea 
-                  value={profile.bio} 
-                  onChange={(e) => setProfile({...profile, bio: e.target.value})} 
-                  className="mt-4"
-                />
-              ) : (
-                <p className="text-lg leading-relaxed max-w-2xl">{profile.bio}</p>
-              )}
-            </div>
-          </div>
+              <Tabs defaultValue="overview" className="space-y-8">
+                <TabsList className="bg-transparent border-b w-full justify-start rounded-none h-auto p-0 gap-6">
+                  <TabsTrigger value="overview" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none pb-2 text-lg">Overview</TabsTrigger>
+                  <TabsTrigger value="tournaments" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none pb-2 text-lg">Tournaments</TabsTrigger>
+                  <TabsTrigger value="coaches" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none pb-2 text-lg">My Coaches</TabsTrigger>
+                  <TabsTrigger value="marketplace" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none pb-2 text-lg">Selling ({marketplaceItems.length})</TabsTrigger>
+                </TabsList>
 
-          <Tabs defaultValue="overview" className="space-y-8">
-            <TabsList className="bg-transparent border-b w-full justify-start rounded-none h-auto p-0 gap-6">
-              <TabsTrigger value="overview" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none pb-2 text-lg">Overview</TabsTrigger>
-              <TabsTrigger value="tournaments" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none pb-2 text-lg">Tournaments</TabsTrigger>
-              <TabsTrigger value="coaches" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none pb-2 text-lg">My Coaches</TabsTrigger>
-              <TabsTrigger value="marketplace" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none pb-2 text-lg">Selling ({marketplaceItems.length})</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="overview" className="space-y-8">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Playing Preferences</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <Label className="text-muted-foreground mb-2 block">Skill Level</Label>
-                      {isEditing ? (
-                         <Select 
-                           value={profile.skillLevel} 
-                           onValueChange={(val) => setProfile({...profile, skillLevel: val})}
-                         >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select level" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Beginner">Beginner</SelectItem>
-                            <SelectItem value="Intermediate">Intermediate</SelectItem>
-                            <SelectItem value="Advanced">Advanced</SelectItem>
-                            <SelectItem value="Pro">Pro</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <div className="text-xl font-medium">{profile.skillLevel}</div>
-                      )}
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground mb-2 block">Preferred Locations</Label>
-                      {isEditing ? (
-                        <Input 
-                          value={profile.preferredCourts.join(", ")} 
-                          onChange={(e) => setProfile({...profile, preferredCourts: e.target.value.split(", ")})}
-                          placeholder="e.g. Bondi, Manly"
-                        />
-                      ) : (
-                        <div className="flex flex-wrap gap-2">
-                          {profile.preferredCourts.map((court, i) => (
-                            <Badge key={i} variant="secondary" className="text-base py-1 px-3">
-                              <MapPin className="w-3 h-3 mr-1" /> {court}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="tournaments" className="space-y-8">
-              <div className="flex justify-between items-center">
-                <h3 className="text-xl font-bold">Tournament History</h3>
-                {isOwnProfile && (
-                  <Dialog
-                    open={isTournamentModalOpen}
-                    onOpenChange={(open) => {
-                      setIsTournamentModalOpen(open);
-                      if (!open) resetTournamentForm();
-                    }}
-                  >
-                    <DialogTrigger asChild>
-                      <Button><Plus className="w-4 h-4 mr-2" /> Add Entry</Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl">
-                      <DialogHeader>
-                        <DialogTitle>Add Tournament Result</DialogTitle>
-                        <DialogDescription>
-                          Add your tournament result and match details.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                          <Label>Tournament Name</Label>
-                          <Input 
-                            value={newTournament.name} 
-                            onChange={(e) => setNewTournament({...newTournament, name: e.target.value})} 
-                            placeholder="e.g. Sydney Open 2024" 
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                           <div className="space-y-2">
-                            <Label>Date</Label>
-                            <Input 
-                              type="date"
-                              value={newTournament.date} 
-                              onChange={(e) => setNewTournament({...newTournament, date: e.target.value})} 
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Location</Label>
-                            <Input 
-                              value={newTournament.location} 
-                              onChange={(e) => setNewTournament({...newTournament, location: e.target.value})} 
-                              placeholder="e.g. Homebush" 
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                           <div className="space-y-2">
-                            <Label>Result</Label>
+                <TabsContent value="overview" className="space-y-8">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Playing Preferences</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <Label className="text-muted-foreground mb-2 block">Skill Level</Label>
+                          {isEditing ? (
                             <Select 
-                              value={newTournament.result} 
-                              onValueChange={(val) => setNewTournament({...newTournament, result: val})}
+                              value={profile.skillLevel} 
+                              onValueChange={(val) => setProfile({...profile, skillLevel: val})}
                             >
                               <SelectTrigger>
-                                <SelectValue placeholder="Select Result" />
+                                <SelectValue placeholder="Select level" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="Winner">Winner</SelectItem>
-                                <SelectItem value="Runner Up">Runner Up</SelectItem>
-                                <SelectItem value="Semi-Finalist">Semi-Finalist</SelectItem>
-                                <SelectItem value="Quarter-Finalist">Quarter-Finalist</SelectItem>
-                                <SelectItem value="Round of 16">Round of 16</SelectItem>
-                                <SelectItem value="Round of 32">Round of 32</SelectItem>
-                                <SelectItem value="Participation">Participation</SelectItem>
+                                <SelectItem value="Beginner">Beginner</SelectItem>
+                                <SelectItem value="Intermediate">Intermediate</SelectItem>
+                                <SelectItem value="Advanced">Advanced</SelectItem>
+                                <SelectItem value="Pro">Pro</SelectItem>
                               </SelectContent>
                             </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Award/Prize (Optional)</Label>
+                          ) : (
+                            <div className="text-xl font-medium">{profile.skillLevel}</div>
+                          )}
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground mb-2 block">Preferred Locations</Label>
+                          {isEditing ? (
                             <Input 
-                              value={newTournament.award} 
-                              onChange={(e) => setNewTournament({...newTournament, award: e.target.value})} 
-                              placeholder="e.g. Gold Trophy" 
+                              value={profile.preferredCourts.join(", ")} 
+                              onChange={(e) => setProfile({...profile, preferredCourts: e.target.value.split(", ")})}
+                              placeholder="e.g. Bondi, Manly"
                             />
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label>
-                            Tournament Photos (Max 5)
-                            {!newTournament.id && (
-                              <span className="text-xs text-muted-foreground block">
-                                Save tournament first to upload photos
-                              </span>
-                            )}
-                          </Label>
-                          <div className="flex flex-wrap gap-4">
-                            {newTournament.photos.map((photo, index) => (
-                              <div key={index} className="relative w-20 h-20 group">
-                                <img src={photo} alt={`Upload ${index}`} className="w-full h-full object-cover rounded-md border" />
-                                <button 
-                                  onClick={() => removeTournamentPhoto(index)}
-                                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                              </div>
-                            ))}
-                            {newTournament.photos.length < 5 && (
-                              <label
-                                className={`
-                                  w-20 h-20 border-2 border-dashed rounded-md flex flex-col items-center justify-center
-                                  transition-colors
-                                  ${
-                                    newTournament.id
-                                      ? "cursor-pointer hover:bg-muted/50 border-muted-foreground/30"
-                                      : "cursor-not-allowed opacity-50 border-muted-foreground/20"
-                                  }
-                                `}
-                              >
-                                <Camera className="w-6 h-6 text-muted-foreground mb-1" />
-                                <span className="text-[10px] text-muted-foreground">Add Photo</span>
-                                <input 
-                                  type="file" 
-                                  accept="image/*" 
-                                  multiple 
-                                  className="hidden"
-                                  disabled={!newTournament.id} 
-                                  onChange={handleTournamentPhotoUpload}
-                                />
-                              </label>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <Button onClick={handleSaveTournament}>{editingTournament ? "Update Entry" : "Save Entry"}</Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                )}
-              </div>
-
-              {/* Tournament Lists */}
-              {(() => {
-                const today = new Date().toISOString().split('T')[0];
-                const sortedTournaments = [...tournaments].sort((a, b) => {
-                   // Sort descending by date
-                   return new Date(b.date).getTime() - new Date(a.date).getTime();
-                });
-
-                const upcoming = sortedTournaments.filter(t => t.date > today);
-                const past = sortedTournaments.filter(t => t.date <= today);
-
-                const TournamentCard = ({ t }: { t: any }) => (
-                  <Card key={t.id} className="overflow-hidden">
-                    <CardContent className="p-0">
-                      <div className="flex flex-col md:flex-row">
-                        {/* Image Gallery Column - Only if photos exist */}
-                        {t.photos && t.photos.length > 0 && (
-                          <div className="w-full md:w-48 h-48 md:h-auto shrink-0 bg-muted relative">
-                             <img src={t.photos[0]} alt={t.name} className="w-full h-full object-cover" />
-                             {t.photos.length > 1 && (
-                               <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
-                                 +{t.photos.length - 1} more
-                               </div>
-                             )}
-                          </div>
-                        )}
-                        
-                        {/* Content Column */}
-                        <div className="grow p-6 flex flex-col justify-between">
-                          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4">
-                             <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                   <h4 className="font-bold text-xl">{t.name}</h4>
-                                   {(t.result === 'Winner' || t.result === 'Champion') && (
-                                      <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white gap-1 pl-1 pr-2">
-                                        <Trophy className="w-3 h-3 fill-current" /> Winner
-                                      </Badge>
-                                   )}
-                                   {(t.result === 'Finalist' || t.result === 'Runner-up') && (
-                                      <Badge variant="secondary" className="bg-slate-300 text-slate-800 gap-1 pl-1 pr-2">
-                                        <Trophy className="w-3 h-3" /> Finalist
-                                      </Badge>
-                                   )}
-                                </div>
-                                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                   <div className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {new Date(t.date).toLocaleDateString()}</div>
-                                   <div className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {t.location}</div>
-                                </div>
-                             </div>
-                             
-                             <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-                                <div className="text-right">
-                                  <div className="font-bold text-primary text-lg">{t.result}</div>
-                                  {t.award && <div className="text-sm text-muted-foreground">{t.award}</div>}
-                                </div>
-                                {isOwnProfile && (
-                                  
-                                  <div className="flex gap-2">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => {
-                                      setNewTournament(t);
-                                      setEditingTournament(t);
-                                      setIsTournamentModalOpen(true);
-                                    }}
-                                  >
-                                    <Edit2 className="w-4 h-4" />
-                                  </Button>
-
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handledeleteTournamentHistory(t.id)}
-                                    className="text-destructive"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                                )}
-                             </div>
-                          </div>
-                          
-                          {/* Photo Preview Strip (if more than 1 photo) */}
-                          {t.photos && t.photos.length > 0 && (
-                            <div className="flex gap-2 overflow-x-auto pb-2 pt-2 border-t mt-2">
-                              {t.photos.map((photo: string, i: number) => (
-                                <div key={i} className="w-12 h-12 rounded-md overflow-hidden shrink-0 border bg-muted cursor-pointer hover:opacity-80 transition-opacity">
-                                  <img src={photo} className="w-full h-full object-cover" alt={`Gallery ${i}`} />
-                                </div>
+                          ) : (
+                            <div className="flex flex-wrap gap-2">
+                              {profile.preferredCourts.map((court, i) => (
+                                <Badge key={i} variant="secondary" className="text-base py-1 px-3">
+                                  <MapPin className="w-3 h-3 mr-1" /> {court}
+                                </Badge>
                               ))}
                             </div>
                           )}
@@ -1026,230 +802,465 @@ export default function PlayerProfile() {
                       </div>
                     </CardContent>
                   </Card>
-                );
+                </TabsContent>
 
-                return (
-                  <div className="space-y-8">
-                     {/* Upcoming Section */}
-                     {upcoming.length > 0 && (
-                        <div className="space-y-4">
-                          <h4 className="text-lg font-semibold flex items-center gap-2 text-primary">
-                            <Calendar className="w-5 h-5" /> Upcoming Tournaments
-                          </h4>
-                          <div className="grid grid-cols-1 gap-4">
-                            {upcoming.map(t => <TournamentCard key={t.id} t={t} />)}
-                          </div>
-                        </div>
-                     )}
-
-                     {/* Past Section */}
-                     <div className="space-y-4">
-                        <h4 className="text-lg font-semibold flex items-center gap-2 text-muted-foreground">
-                          <Trophy className="w-5 h-5" /> Past Tournaments
-                        </h4>
-                        <div className="grid grid-cols-1 gap-4">
-                          {past.map(t => <TournamentCard key={t.id} t={t} />)}
-                        </div>
-                        {past.length === 0 && upcoming.length === 0 && (
-                          <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-xl border-2 border-dashed">
-                            <Trophy className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                            <p>No tournament history added yet.</p>
-                          </div>
-                        )}
-                     </div>
-                  </div>
-                );
-              })()}
-            </TabsContent>
-
-            <TabsContent value="coaches" className="space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {myCoaches.map(coach => (
-                  <Card key={coach.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                    <div className="aspect-video relative">
-                      <img src={coach.cover} alt={coach.name} className="w-full h-full object-cover" />
-                      <div className="absolute bottom-4 left-4 flex items-center gap-3">
-                        <Avatar className="border-2 border-background">
-                          <AvatarImage src={coach.image} />
-                          <AvatarFallback>{coach.name[0]}</AvatarFallback>
-                        </Avatar>
-                        <div className="text-white drop-shadow-md">
-                          <div className="font-bold">{coach.name}</div>
-                          <div className="text-xs opacity-90">{coach.title}</div>
-                        </div>
-                      </div>
-                    </div>
-                    <CardContent className="p-4 pt-4">
-                      <Button className="w-full" variant="secondary">Book Session</Button>
-                    </CardContent>
-                  </Card>
-                ))}
-                {myCoaches.length === 0 && (
-                  <div className="col-span-full text-center py-12 text-muted-foreground">
-                    <p>No coaches connected yet.</p>
-                    <Button variant="link" onClick={() => setLocation("/coaches")}>Find a Coach</Button>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="marketplace" className="space-y-8">
-              <div className="flex justify-between items-center">
-                <h3 className="text-xl font-bold">My Items for Sale</h3>
-                {isOwnProfile && (
-                  <Dialog open={isItemModalOpen} onOpenChange={setIsItemModalOpen}>
-                    <DialogTrigger asChild>
-                      <Button><Plus className="w-4 h-4 mr-2" /> Add Item</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Sell an Item</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                          <Label>Item Name</Label>
-                          <Input 
-                            value={newItem.name} 
-                            onChange={(e) => setNewItem({...newItem, name: e.target.value})} 
-                            placeholder="e.g. Wilson Racket" 
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Price (AUD)</Label>
-                          <Input 
-                            value={newItem.price} 
-                            onChange={(e) => setNewItem({...newItem, price: e.target.value})} 
-                            placeholder="e.g. 150" 
-                            type="number" 
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Condition</Label>
-                          <Select 
-                            value={newItem.condition} 
-                            onValueChange={(val) => setNewItem({...newItem, condition: val})}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="New">New</SelectItem>
-                              <SelectItem value="Like New">Like New</SelectItem>
-                              <SelectItem value="Used - Good">Used - Good</SelectItem>
-                              <SelectItem value="Used - Fair">Used - Fair</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Description</Label>
-                          <Textarea 
-                            value={newItem.description} 
-                            onChange={(e) => setNewItem({...newItem, description: e.target.value})} 
-                            placeholder="Tell potential buyers about your item..." 
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Location</Label>
-                          <Input
-                            value={newItem.location}
-                            onChange={(e) =>
-                              setNewItem({ ...newItem, location: e.target.value })
-                            }
-                            placeholder="e.g. Sydney"
-                          />
-                        </div>
-                        <div className="flex gap-2 flex-wrap">
-                          {newItem.photos.map((photo, i) => (
-                            <div key={i} className="w-20 h-20 relative">
-                              <img
-                                src={photo}
-                                className="w-full h-full object-cover rounded"
+                <TabsContent value="tournaments" className="space-y-8">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-xl font-bold">Tournament History</h3>
+                    {isOwnProfile && (
+                      <Dialog
+                        open={isTournamentModalOpen}
+                        onOpenChange={(open) => {
+                          setIsTournamentModalOpen(open);
+                          if (!open) resetTournamentForm();
+                        }}
+                      >
+                        <DialogTrigger asChild>
+                          <Button><Plus className="w-4 h-4 mr-2" /> Add Entry</Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl">
+                          <DialogHeader>
+                            <DialogTitle>Add Tournament Result</DialogTitle>
+                            <DialogDescription>
+                              Add your tournament result and match details.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                              <Label>Tournament Name</Label>
+                              <Input 
+                                value={newTournament.name} 
+                                onChange={(e) => setNewTournament({...newTournament, name: e.target.value})} 
+                                placeholder="e.g. Sydney Open 2024" 
                               />
                             </div>
-                          ))}
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label>Date</Label>
+                                <Input 
+                                  type="date"
+                                  value={newTournament.date} 
+                                  onChange={(e) => setNewTournament({...newTournament, date: e.target.value})} 
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Location</Label>
+                                <Input 
+                                  value={newTournament.location} 
+                                  onChange={(e) => setNewTournament({...newTournament, location: e.target.value})} 
+                                  placeholder="e.g. Homebush" 
+                                />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label>Result</Label>
+                                <Select 
+                                  value={newTournament.result} 
+                                  onValueChange={(val) => setNewTournament({...newTournament, result: val})}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select Result" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Winner">Winner</SelectItem>
+                                    <SelectItem value="Runner Up">Runner Up</SelectItem>
+                                    <SelectItem value="Semi-Finalist">Semi-Finalist</SelectItem>
+                                    <SelectItem value="Quarter-Finalist">Quarter-Finalist</SelectItem>
+                                    <SelectItem value="Round of 16">Round of 16</SelectItem>
+                                    <SelectItem value="Round of 32">Round of 32</SelectItem>
+                                    <SelectItem value="Participation">Participation</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Award/Prize (Optional)</Label>
+                                <Input 
+                                  value={newTournament.award} 
+                                  onChange={(e) => setNewTournament({...newTournament, award: e.target.value})} 
+                                  placeholder="e.g. Gold Trophy" 
+                                />
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <Label>
+                                Tournament Photos (Max 5)
+                                {!newTournament.id && (
+                                  <span className="text-xs text-muted-foreground block">
+                                    Save tournament first to upload photos
+                                  </span>
+                                )}
+                              </Label>
+                              <div className="flex flex-wrap gap-4">
+                                {newTournament.photos.map((photo, index) => (
+                                  <div key={index} className="relative w-20 h-20 group">
+                                    <img src={photo} alt={`Upload ${index}`} className="w-full h-full object-cover rounded-md border" />
+                                    <button 
+                                      onClick={() => removeTournamentPhoto(index)}
+                                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                ))}
+                                {newTournament.photos.length < 5 && (
+                                  <label
+                                    className={`
+                                      w-20 h-20 border-2 border-dashed rounded-md flex flex-col items-center justify-center
+                                      transition-colors
+                                      ${
+                                        newTournament.id
+                                          ? "cursor-pointer hover:bg-muted/50 border-muted-foreground/30"
+                                          : "cursor-not-allowed opacity-50 border-muted-foreground/20"
+                                      }
+                                    `}
+                                  >
+                                    <Camera className="w-6 h-6 text-muted-foreground mb-1" />
+                                    <span className="text-[10px] text-muted-foreground">Add Photo</span>
+                                    <input 
+                                      type="file" 
+                                      accept="image/*" 
+                                      multiple 
+                                      className="hidden"
+                                      disabled={!newTournament.id} 
+                                      onChange={handleTournamentPhotoUpload}
+                                    />
+                                  </label>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button onClick={handleSaveTournament}>{editingTournament ? "Update Entry" : "Save Entry"}</Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    )}
+                  </div>
 
-                          {newItem.photos.length < 3 && (
-                            <label className="w-20 h-20 border-dashed border flex items-center justify-center cursor-pointer">
-                              +
-                              <input
-                                type="file"
-                                multiple
-                                accept="image/*"
-                                onChange={(e) =>
-                                  setNewItem(prev => ({
-                                    ...prev,
-                                    files: Array.from(e.target.files || []),
-                                  }))
-                                }
-                              />
-                            </label>
-                          )}
+                  {/* Tournament Lists */}
+                  {(() => {
+                    const today = new Date().toISOString().split('T')[0];
+                    const sortedTournaments = [...tournaments].sort((a, b) => {
+                      // Sort descending by date
+                      return new Date(b.date).getTime() - new Date(a.date).getTime();
+                    });
+
+                    const upcoming = sortedTournaments.filter(t => t.date > today);
+                    const past = sortedTournaments.filter(t => t.date <= today);
+
+                    const TournamentCard = ({ t }: { t: any }) => (
+                      <Card key={t.id} className="overflow-hidden">
+                        <CardContent className="p-0">
+                          <div className="flex flex-col md:flex-row">
+                            {/* Image Gallery Column - Only if photos exist */}
+                            {t.photos && t.photos.length > 0 && (
+                              <div className="w-full md:w-48 h-48 md:h-auto shrink-0 bg-muted relative">
+                                <img src={t.photos[0]} alt={t.name} className="w-full h-full object-cover" />
+                                {t.photos.length > 1 && (
+                                  <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
+                                    +{t.photos.length - 1} more
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            
+                            {/* Content Column */}
+                            <div className="grow p-6 flex flex-col justify-between">
+                              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4">
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                      <h4 className="font-bold text-xl">{t.name}</h4>
+                                      {(t.result === 'Winner' || t.result === 'Champion') && (
+                                          <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white gap-1 pl-1 pr-2">
+                                            <Trophy className="w-3 h-3 fill-current" /> Winner
+                                          </Badge>
+                                      )}
+                                      {(t.result === 'Finalist' || t.result === 'Runner-up') && (
+                                          <Badge variant="secondary" className="bg-slate-300 text-slate-800 gap-1 pl-1 pr-2">
+                                            <Trophy className="w-3 h-3" /> Finalist
+                                          </Badge>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                      <div className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {new Date(t.date).toLocaleDateString()}</div>
+                                      <div className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {t.location}</div>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
+                                    <div className="text-right">
+                                      <div className="font-bold text-primary text-lg">{t.result}</div>
+                                      {t.award && <div className="text-sm text-muted-foreground">{t.award}</div>}
+                                    </div>
+                                    {isOwnProfile && (
+                                      
+                                      <div className="flex gap-2">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => {
+                                          setNewTournament(t);
+                                          setEditingTournament(t);
+                                          setIsTournamentModalOpen(true);
+                                        }}
+                                      >
+                                        <Edit2 className="w-4 h-4" />
+                                      </Button>
+
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => handledeleteTournamentHistory(t.id)}
+                                        className="text-destructive"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                    )}
+                                </div>
+                              </div>
+                              
+                              {/* Photo Preview Strip (if more than 1 photo) */}
+                              {t.photos && t.photos.length > 0 && (
+                                <div className="flex gap-2 overflow-x-auto pb-2 pt-2 border-t mt-2">
+                                  {t.photos.map((photo: string, i: number) => (
+                                    <div key={i} className="w-12 h-12 rounded-md overflow-hidden shrink-0 border bg-muted cursor-pointer hover:opacity-80 transition-opacity">
+                                      <img src={photo} className="w-full h-full object-cover" alt={`Gallery ${i}`} />
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+
+                    return (
+                      <div className="space-y-8">
+                        {/* Upcoming Section */}
+                        {upcoming.length > 0 && (
+                            <div className="space-y-4">
+                              <h4 className="text-lg font-semibold flex items-center gap-2 text-primary">
+                                <Calendar className="w-5 h-5" /> Upcoming Tournaments
+                              </h4>
+                              <div className="grid grid-cols-1 gap-4">
+                                {upcoming.map(t => <TournamentCard key={t.id} t={t} />)}
+                              </div>
+                            </div>
+                        )}
+
+                        {/* Past Section */}
+                        <div className="space-y-4">
+                            <h4 className="text-lg font-semibold flex items-center gap-2 text-muted-foreground">
+                              <Trophy className="w-5 h-5" /> Past Tournaments
+                            </h4>
+                            <div className="grid grid-cols-1 gap-4">
+                              {past.map(t => <TournamentCard key={t.id} t={t} />)}
+                            </div>
+                            {past.length === 0 && upcoming.length === 0 && (
+                              <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-xl border-2 border-dashed">
+                                <Trophy className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                                <p>No tournament history added yet.</p>
+                              </div>
+                            )}
                         </div>
                       </div>
-                      <DialogFooter>
-                        <Button onClick={handleSaveItem}>
-                        {newItem.id ? "Update Item" : "List Item"}
-                      </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                )}
-              </div>
+                    );
+                  })()}
+                </TabsContent>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {marketplaceItems.map(item => (
-                  <Card key={item.id}>
-                    <div className="aspect-square bg-muted relative">
-                      <img src={item.photos?.[0]} alt={item.title} className="w-full h-full object-cover" />
-                    </div>
-                    <CardHeader>
-                      <CardTitle className="flex justify-between items-start text-lg">
-                        <span>{item.title}</span>
-                        <span className="text-primary">${item.price}</span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{item.description}</p>
-                      <div className="flex justify-between items-center">
-                        <Badge variant="outline">{item.condition}</Badge>
-                        {isOwnProfile && (
-                          <><Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setNewItem({
-                                id: item.id,
-                                name: item.title,
-                                price: item.price,
-                                description: item.description,
-                                condition: item.condition,
-                                location: item.location,
-                                photos: item.photos || [],
-                              });
-                              setIsItemModalOpen(true);
-                            } }
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </Button><Button variant="ghost" size="icon" onClick={() => handleDeleteItem(item.id)} className="text-destructive hover:text-destructive hover:bg-destructive/10">
-                              <Trash2 className="w-4 h-4" />
-                            </Button></>
-                        )}
+                <TabsContent value="coaches" className="space-y-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {myCoaches.map(coach => (
+                      <Card key={coach.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                        <div className="aspect-video relative">
+                          <img src={coach.cover} alt={coach.name} className="w-full h-full object-cover" />
+                          <div className="absolute bottom-4 left-4 flex items-center gap-3">
+                            <Avatar className="border-2 border-background">
+                              <AvatarImage src={coach.image} />
+                              <AvatarFallback>{coach.name[0]}</AvatarFallback>
+                            </Avatar>
+                            <div className="text-white drop-shadow-md">
+                              <div className="font-bold">{coach.name}</div>
+                              <div className="text-xs opacity-90">{coach.title}</div>
+                            </div>
+                          </div>
+                        </div>
+                        <CardContent className="p-4 pt-4">
+                          <Button className="w-full" variant="secondary">Book Session</Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                    {myCoaches.length === 0 && (
+                      <div className="col-span-full text-center py-12 text-muted-foreground">
+                        <p>No coaches connected yet.</p>
+                        <Button variant="link" onClick={() => setLocation("/coaches")}>Find a Coach</Button>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                {marketplaceItems.length === 0 && (
-                  <div className="col-span-full text-center py-12 text-muted-foreground bg-muted/20 rounded-xl border-2 border-dashed">
-                    <ShoppingBag className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                    <p>You haven't listed any items yet.</p>
+                    )}
                   </div>
-                )}
-              </div>
-            </TabsContent>
-          </Tabs>
+                </TabsContent>
+
+                <TabsContent value="marketplace" className="space-y-8">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-xl font-bold">My Items for Sale</h3>
+                    {isOwnProfile && (
+                      <Dialog open={isItemModalOpen} onOpenChange={setIsItemModalOpen}>
+                        <DialogTrigger asChild>
+                          <Button><Plus className="w-4 h-4 mr-2" /> Add Item</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Sell an Item</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                              <Label>Item Name</Label>
+                              <Input 
+                                value={newItem.name} 
+                                onChange={(e) => setNewItem({...newItem, name: e.target.value})} 
+                                placeholder="e.g. Wilson Racket" 
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Price (AUD)</Label>
+                              <Input 
+                                value={newItem.price} 
+                                onChange={(e) => setNewItem({...newItem, price: e.target.value})} 
+                                placeholder="e.g. 150" 
+                                type="number" 
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Condition</Label>
+                              <Select 
+                                value={newItem.condition} 
+                                onValueChange={(val) => setNewItem({...newItem, condition: val})}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="New">New</SelectItem>
+                                  <SelectItem value="Like New">Like New</SelectItem>
+                                  <SelectItem value="Used - Good">Used - Good</SelectItem>
+                                  <SelectItem value="Used - Fair">Used - Fair</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Description</Label>
+                              <Textarea 
+                                value={newItem.description} 
+                                onChange={(e) => setNewItem({...newItem, description: e.target.value})} 
+                                placeholder="Tell potential buyers about your item..." 
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Location</Label>
+                              <Input
+                                value={newItem.location}
+                                onChange={(e) =>
+                                  setNewItem({ ...newItem, location: e.target.value })
+                                }
+                                placeholder="e.g. Sydney"
+                              />
+                            </div>
+                            <div className="flex gap-2 flex-wrap">
+                              {newItem.photos.map((photo, i) => (
+                                <div key={i} className="w-20 h-20 relative">
+                                  <img
+                                    src={photo}
+                                    className="w-full h-full object-cover rounded"
+                                  />
+                                </div>
+                              ))}
+
+                              {newItem.photos.length < 3 && (
+                                <label className="w-20 h-20 border-dashed border flex items-center justify-center cursor-pointer">
+                                  +
+                                  <input
+                                    type="file"
+                                    multiple
+                                    accept="image/*"
+                                    onChange={(e) =>
+                                      setNewItem(prev => ({
+                                        ...prev,
+                                        files: Array.from(e.target.files || []),
+                                      }))
+                                    }
+                                  />
+                                </label>
+                              )}
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button onClick={handleSaveItem}>
+                            {newItem.id ? "Update Item" : "List Item"}
+                          </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {marketplaceItems.map(item => (
+                      <Card key={item.id}>
+                        <div className="aspect-square bg-muted relative">
+                          <img src={item.photos?.[0]} alt={item.title} className="w-full h-full object-cover" />
+                        </div>
+                        <CardHeader>
+                          <CardTitle className="flex justify-between items-start text-lg">
+                            <span>{item.title}</span>
+                            <span className="text-primary">${item.price}</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{item.description}</p>
+                          <div className="flex justify-between items-center">
+                            <Badge variant="outline">{item.condition}</Badge>
+                            {isOwnProfile && (
+                              <><Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  setNewItem({
+                                    id: item.id,
+                                    name: item.title,
+                                    price: item.price,
+                                    description: item.description,
+                                    condition: item.condition,
+                                    location: item.location,
+                                    photos: item.photos || [],
+                                  });
+                                  setIsItemModalOpen(true);
+                                } }
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </Button><Button variant="ghost" size="icon" onClick={() => handleDeleteItem(item.id)} className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                                  <Trash2 className="w-4 h-4" />
+                                </Button></>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                    {marketplaceItems.length === 0 && (
+                      <div className="col-span-full text-center py-12 text-muted-foreground bg-muted/20 rounded-xl border-2 border-dashed">
+                        <ShoppingBag className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                        <p>You haven't listed any items yet.</p>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+    </>
   );
  }
 

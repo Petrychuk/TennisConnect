@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
+import SEO from "@/components/seo";
 
 interface TravelPackage {
   id: string;
@@ -87,109 +88,125 @@ export default function TravelDetailPage() {
     s ? new Date(s).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" }) : "TBA";
 
   return (
-    <div className="min-h-screen bg-background font-sans">
-      <Navbar />
+    <>
+      {/* <SEO !not done yet
+        title={`${travelPackage.title} | Tennis Travel | TennisConnect`}
+        description={
+          travelPackage.description ||
+          "Tennis travel package."
+        }
+        canonical={`/travel/${travelPackage.slug}`}
+        tags={[
+          "tennis travel",
+          "tennis holiday",
+          "tennis camp",
+          "Australia",
+        ]}
+      /> */}
+      <div className="min-h-screen bg-background font-sans">
+        <Navbar />
 
-      <div className="relative h-[60vh] mt-16 overflow-hidden">
-        <img src={pkg.coverImage} alt={pkg.title} className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-linear-to-t from-background via-background/40 to-transparent" />
-        <div className="absolute bottom-8 left-0 right-0 container mx-auto px-4">
-          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
-            {pkg.isFeatured && (
-              <Badge className="mb-3 bg-primary text-primary-foreground font-bold">Featured</Badge>
-            )}
-            <h1 className="text-4xl md:text-6xl font-display font-bold text-white mb-3" data-testid="travel-title">
-              {pkg.title}
-            </h1>
-            <div className="flex flex-wrap gap-4 text-white/90">
-              <span className="flex items-center gap-1"><MapPin className="w-4 h-4" /> {pkg.destination}</span>
-              <span className="flex items-center gap-1"><Calendar className="w-4 h-4" /> {formatDate(pkg.startDate)}</span>
-              <span className="flex items-center gap-1"><Users className="w-4 h-4" /> {pkg.duration}</span>
-            </div>
-          </motion.div>
-        </div>
-      </div>
-
-      <div className="container mx-auto px-4 py-12">
-        <Link href="/travel">
-          <Button variant="ghost" className="mb-6 gap-2 cursor-pointer">
-            <ArrowLeft className="w-4 h-4" /> All Packages
-          </Button>
-        </Link>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-          <div className="lg:col-span-2">
-            <h2 className="text-2xl font-display font-bold mb-4">About this trip</h2>
-            <p className="text-lg text-muted-foreground mb-8 leading-relaxed">{pkg.description}</p>
-
-            {pkg.highlights && pkg.highlights.length > 0 && (
-              <div className="mb-8">
-                <h3 className="text-xl font-bold mb-4">Highlights</h3>
-                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {pkg.highlights.map((h) => (
-                    <li key={h} className="flex items-start gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 shrink-0" />
-                      <span>{h}</span>
-                    </li>
-                  ))}
-                </ul>
+        <div className="relative h-[60vh] mt-16 overflow-hidden">
+          <img src={pkg.coverImage} alt={pkg.title} className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-linear-to-t from-background via-background/40 to-transparent" />
+          <div className="absolute bottom-8 left-0 right-0 container mx-auto px-4">
+            <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
+              {pkg.isFeatured && (
+                <Badge className="mb-3 bg-primary text-primary-foreground font-bold">Featured</Badge>
+              )}
+              <h1 className="text-4xl md:text-6xl font-display font-bold text-white mb-3" data-testid="travel-title">
+                {pkg.title}
+              </h1>
+              <div className="flex flex-wrap gap-4 text-white/90">
+                <span className="flex items-center gap-1"><MapPin className="w-4 h-4" /> {pkg.destination}</span>
+                <span className="flex items-center gap-1"><Calendar className="w-4 h-4" /> {formatDate(pkg.startDate)}</span>
+                <span className="flex items-center gap-1"><Users className="w-4 h-4" /> {pkg.duration}</span>
               </div>
-            )}
-
-            {pkg.includes && pkg.includes.length > 0 && (
-              <div>
-                <h3 className="text-xl font-bold mb-4">What's included</h3>
-                <ul className="space-y-2">
-                  {pkg.includes.map((i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 shrink-0" />
-                      <span>{i}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-
-          <div>
-            <div className="sticky top-24 bg-gradient-to-br from-primary/10 to-primary/5 rounded-3xl p-6">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Starts at</p>
-              <p className="text-4xl font-display font-bold mb-1">
-                ${pkg.price}
-                <span className="text-base text-muted-foreground font-normal ml-1">{pkg.currency}</span>
-              </p>
-              <p className="text-sm text-muted-foreground mb-6">per person</p>
-
-              <div className="space-y-3 mb-6 text-sm border-t pt-4">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Duration</span>
-                  <span className="font-bold">{pkg.duration}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Start date</span>
-                  <span className="font-bold">{formatDate(pkg.startDate)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Spots left</span>
-                  <span className={`font-bold ${pkg.spotsLeft <= 5 ? "text-red-500" : ""}`}>
-                    {pkg.spotsLeft}
-                  </span>
-                </div>
-              </div>
-
-              <Button
-                onClick={handleBook}
-                className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full cursor-pointer"
-                data-testid="travel-reserve-button"
-              >
-                Reserve My Spot
-              </Button>
-            </div>
+            </motion.div>
           </div>
         </div>
-      </div>
 
-      <Footer />
-    </div>
+        <div className="container mx-auto px-4 py-12">
+          <Link href="/travel">
+            <Button variant="ghost" className="mb-6 gap-2 cursor-pointer">
+              <ArrowLeft className="w-4 h-4" /> All Packages
+            </Button>
+          </Link>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+            <div className="lg:col-span-2">
+              <h2 className="text-2xl font-display font-bold mb-4">About this trip</h2>
+              <p className="text-lg text-muted-foreground mb-8 leading-relaxed">{pkg.description}</p>
+
+              {pkg.highlights && pkg.highlights.length > 0 && (
+                <div className="mb-8">
+                  <h3 className="text-xl font-bold mb-4">Highlights</h3>
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {pkg.highlights.map((h) => (
+                      <li key={h} className="flex items-start gap-2">
+                        <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                        <span>{h}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {pkg.includes && pkg.includes.length > 0 && (
+                <div>
+                  <h3 className="text-xl font-bold mb-4">What's included</h3>
+                  <ul className="space-y-2">
+                    {pkg.includes.map((i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                        <span>{i}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div className="sticky top-24 bg-linear-to-br from-primary/10 to-primary/5 rounded-3xl p-6">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Starts at</p>
+                <p className="text-4xl font-display font-bold mb-1">
+                  ${pkg.price}
+                  <span className="text-base text-muted-foreground font-normal ml-1">{pkg.currency}</span>
+                </p>
+                <p className="text-sm text-muted-foreground mb-6">per person</p>
+
+                <div className="space-y-3 mb-6 text-sm border-t pt-4">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Duration</span>
+                    <span className="font-bold">{pkg.duration}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Start date</span>
+                    <span className="font-bold">{formatDate(pkg.startDate)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Spots left</span>
+                    <span className={`font-bold ${pkg.spotsLeft <= 5 ? "text-red-500" : ""}`}>
+                      {pkg.spotsLeft}
+                    </span>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={handleBook}
+                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full cursor-pointer"
+                  data-testid="travel-reserve-button"
+                >
+                  Reserve My Spot
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <Footer />
+      </div>
+    </>
   );
 }
