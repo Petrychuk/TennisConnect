@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Lock, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import heroImage from "/assets/images/tennis_main.jpg";
 import SEO from "@/components/seo";
+import { resetPasswordSchema } from "@/lib/validations/auth";
 
 export default function ResetPasswordPage() {
   const [, setLocation] = useLocation();

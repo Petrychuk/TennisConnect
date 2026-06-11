@@ -16,6 +16,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import SEO from "@/components/seo";
+import { replySchema } from "@/lib/validations/messages";
+
 interface Message {
   id: string;
 
@@ -163,7 +165,21 @@ export default function MessagesPage() {
     if (!replyContent.trim()) {
       return;
     }
-  
+    
+    const result = replySchema.safeParse({
+      content: replyContent,
+    });
+    
+    if (!result.success) {
+      toast({
+        variant: "destructive",
+        title: "Validation error",
+        description: result.error.errors[0].message,
+      });
+    
+      return;
+    } 
+    
     replyMutation.mutate();
   };
 

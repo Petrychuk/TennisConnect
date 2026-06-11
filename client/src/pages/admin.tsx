@@ -13,6 +13,10 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, ShieldCheck, FileText, Plane, Heart, Trophy } from "lucide-react";
 import SEO from "@/components/seo";
+import { articleSchema } from "@/lib/validations/articles";
+import { travelSchema } from "@/lib/validations/travel";
+import { recreationSchema } from "@/lib/validations/recreations";
+import { tournamentSchema } from "@/lib/validations/tournaments";
 
 type Resource = "articles" | "travel" | "recreation" | "event-tournaments";
 
@@ -212,19 +216,66 @@ export default function AdminPage() {
 
   const submit = async () => {
     const payload: Record<string, any> = {};
+  
     FIELDS[activeTab].forEach((f) => {
       let v = formData[f.name];
+  
       if (v === "" || v === undefined || v === null) return;
+  
       if (f.type === "number") v = Number(v);
-      if (f.type === "list") v = String(v).split(",").map((s) => s.trim()).filter(Boolean);
+  
+      if (f.type === "list") {
+        v = String(v)
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+  
       payload[f.name] = v;
     });
-
+  
+    // VALIDATION
+  
+    let validation;
+  
+    switch (activeTab) {
+      case "articles":
+        validation = articleSchema.safeParse(payload);
+        break;
+  
+      case "travel":
+        validation = travelSchema.safeParse(payload);
+        break;
+  
+      case "recreation":
+        validation = recreationSchema.safeParse(payload);
+        break;
+  
+      case "event-tournaments":
+        validation = tournamentSchema.safeParse(payload);
+        break;
+    }
+  
+    if (!validation?.success) {
+      toast({
+        title: "Validation Error",
+        description:
+          validation?.error?.errors?.[0]?.message ||
+          "Invalid form data",
+        variant: "destructive",
+      });
+  
+      return;
+    }
+  
+    // EXISTING CODE
+  
     const url = editing
       ? `/api/admin/${activeTab}/${editing.id}`
       : `/api/admin/${activeTab}`;
+  
     const method = editing ? "PUT" : "POST";
-
+  
     try {
       const res = await fetch(url, {
         method,
@@ -232,15 +283,26 @@ export default function AdminPage() {
         credentials: "include",
         body: JSON.stringify(payload),
       });
+  
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.message || "Save failed");
       }
-      toast({ title: editing ? "Updated" : "Created", description: `${RESOURCE_LABELS[activeTab]} saved successfully.` });
+  
+      toast({
+        title: editing ? "Updated" : "Created",
+        description: `${RESOURCE_LABELS[activeTab]} saved successfully.`,
+      });
+  
       setDialogOpen(false);
       fetchItems(activeTab);
+  
     } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: e.message,
+        variant: "destructive",
+      });
     }
   };
 

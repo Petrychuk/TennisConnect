@@ -3,9 +3,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, X, Minus, Lock, UserRound, Users, Building2, Handshake, Bug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { supportSchema } from "@/lib/validations/support";
 
 const SUPPORT_AGENT = {
   name: "Nataliia from Support",
@@ -66,6 +68,7 @@ export function SupportChat() {
     message: "",
   });
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     const handleOpenChat = () => {
@@ -234,18 +237,22 @@ export function SupportChat() {
                       <Button
                         className="w-full"
                         onClick={async () => {
-                          if (!formData.name.trim()) {
-                            alert("Please enter your name");
-                            return;
-                          }
 
-                          if (!formData.email.trim()) {
-                            alert("Please enter your email");
-                            return;
-                          }
+                          const validation = supportSchema.safeParse({
+                            category: selectedCategory,
+                            name: formData.name,
+                            email: formData.email,
+                            phone: formData.phone,
+                            message: formData.message,
+                          });
+                          
+                          if (!validation.success) {
+                            toast({
+                              variant: "destructive",
+                              title: "Validation Error",
+                              description: validation.error.errors[0].message,
+                            });
 
-                          if (!formData.message.trim()) {
-                            alert("Please enter your message");
                             return;
                           }
 
@@ -271,7 +278,11 @@ export function SupportChat() {
                             setSubmitted(true);
                           } catch (error) {
                             console.error(error);
-                            alert("Failed to send request. Please try again.");
+                            toast({
+                            variant: "destructive",
+                            title: "Validation Error",
+                            description: "Please try again later.",
+                          });
                           }
                         }}
                       >

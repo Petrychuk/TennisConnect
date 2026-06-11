@@ -13,23 +13,7 @@ import { Loader2, User, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import SEO from "@/components/seo";
-
-const playerProfileSchema = z.object({
-  age: z.string().min(1, "Age is required"),
-  country: z.string().min(1, "Country is required"),
-  location: z.string().min(1, "City is required"),
-  bio: z.string().min(10, "Bio must be at least 10 characters"),
-  skillLevel: z.string().min(1, "Skill level is required"),
-  preferredCourts: z.string().optional(),
-});
-
-const coachProfileSchema = z.object({
-  location: z.string().min(1, "City is required"),
-  bio: z.string().min(10, "Bio must be at least 10 characters"),
-  title: z.string().min(1, "Title is required"),
-  experience: z.string().optional(),
-  rate: z.string().optional(),
-});
+import { playerProfileSchema, coachProfileSchema } from "@/lib/validations/profile"
 
 export default function CompleteProfilePage() {
   const [isLoading, setIsLoading] = useState(false);

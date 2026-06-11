@@ -16,6 +16,7 @@ import { PARTNERS_DATA } from "@/lib/dummy-data";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import SEO from "@/components/seo";
+import { quickMessageSchema } from "@/lib/validations/messages";
 
 interface PartnerData {
     id: string;
@@ -46,14 +47,19 @@ export default function PartnersPage() {
   const { user, isAuthenticated } = useAuth();
   
   const handleSendMessage = async () => {
-  if (!messageText.trim()) {
-    toast({
-      title: "Error",
-      description: "Please enter a message",
-      variant: "destructive"
+    const validation = quickMessageSchema.safeParse({
+      content: messageText,
     });
-    return;
-  }
+    
+    if (!validation.success) {
+      toast({
+        title: "Validation Error",
+        description: validation.error.errors[0].message,
+        variant: "destructive",
+      });
+      return;
+    }
+    
   setSending(true);
 
   try {

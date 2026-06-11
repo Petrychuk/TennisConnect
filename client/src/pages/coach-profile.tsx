@@ -54,6 +54,14 @@ import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_wit
 import { resizeImage } from "@/lib/image";
 import { uploadImage } from "@/lib/uploadImage";
 import { deleteImage } from "@/lib/deleteImage";
+import { useRoute } from "wouter";
+
+import { Switch } from "@/components/ui/switch";
+import racketImg from "/assets/images/professional_tennis_racket_on_a_court_bench.png";
+import bagImg from "/assets/images/modern_tennis_gear_bag.png";
+import ballsImg from "/assets/images/can_of_new_tennis_balls.png";
+
+import { messageSchema } from "@/lib/validations/messages";
 
 interface MarketplaceItemForm {
   id: string;
@@ -169,33 +177,19 @@ const ALL_SYDNEY_SUBURBS = [
   "Baulkham Hills", "Beaumont Hills", "Bella Vista", "Castle Hill", "Cherrybrook", "Dural", "Glenhaven", "Kellyville", "Kenthurst", "North Rocks", "Pennant Hills", "Rouse Hill", "Seven Hills", "West Pennant Hills", "Winston Hills"
 ].sort();
 
-import { useRoute } from "wouter";
-
-import { Switch } from "@/components/ui/switch";
-
-import racketImg from "/assets/images/professional_tennis_racket_on_a_court_bench.png";
-import bagImg from "/assets/images/modern_tennis_gear_bag.png";
-import ballsImg from "/assets/images/can_of_new_tennis_balls.png";
-
 export default function CoachProfile() {
   const [match, params] = useRoute("/coach/:slug");
   const profileSlug = params?.slug;
-  
   const { user, isAuthenticated, updateUserLocal, fetchCurrentUser} = useAuth();
   const [, setLocation] = useLocation();
-
   const { toast } = useToast();
-
   const [openCombobox, setOpenCombobox] = useState(false);
-
   const [isDemo, setIsDemo] = useState(false);
   const [loading, setLoading] = useState(true);
-
   const [profile, setProfile] = useState<CoachProfile>(DEFAULT_COACH_PROFILE);
   const [profileData, setProfileData] = useState<any>(null);
   const [coachUserId, setCoachUserId] = useState<string>("");
   const [marketplaceItems, setMarketplaceItems] = useState<any[]>([]);
-
   const isOwnProfile =
     isAuthenticated &&
     user?.role === "coach" &&
@@ -247,7 +241,6 @@ export default function CoachProfile() {
     files: [],
   });
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-
 
   /* =========================
      HANDLERS — FILE UPLOAD
@@ -403,10 +396,17 @@ export default function CoachProfile() {
    CONTACT / SAVE
   ========================= */
   const handleContactSubmit = async () => {
-    if (!contactSubject || !contactMessage) {
+    const validation = messageSchema.safeParse({
+      subject: contactSubject,
+      message: contactMessage,
+      phone: contactPhone,
+    });
+  
+    if (!validation.success) {
       toast({
         variant: "destructive",
-        title: "Fill all fields",
+        title: "Validation Error",
+        description: validation.error.errors[0].message,
       });
       return;
     }
