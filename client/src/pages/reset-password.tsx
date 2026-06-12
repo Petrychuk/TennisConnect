@@ -47,21 +47,18 @@ export default function ResetPasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (password !== confirmPassword) {
+    const validation = resetPasswordSchema.safeParse({
+      password,
+      confirmPassword,
+    });
+    
+    if (!validation.success) {
       toast({
         variant: "destructive",
-        title: "Passwords don't match",
-        description: "Please make sure both passwords are the same.",
+        title: "Validation Error",
+        description: validation.error.errors[0].message,
       });
-      return;
-    }
-
-    if (password.length < 6) {
-      toast({
-        variant: "destructive",
-        title: "Password too short",
-        description: "Password must be at least 6 characters.",
-      });
+    
       return;
     }
 
@@ -194,7 +191,7 @@ export default function ResetPasswordPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  minLength={6}
+                  minLength={8}
                   data-testid="new-password-input"
                   className="pr-10"
                 />
@@ -224,7 +221,7 @@ export default function ResetPasswordPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  minLength={6}
+                  minLength={8}
                   data-testid="confirm-password-input"
                   className="pr-10"
                 />
