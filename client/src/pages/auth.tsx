@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { ArrowLeft, Loader2, User, Trophy, Mail, CheckCircle } from "lucide-react";
+import { ArrowLeft, Loader2, User, Trophy, Mail, CheckCircle, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import heroImage from "/assets/images/tennis_main.jpg";
@@ -19,6 +19,9 @@ import { registerSchema, loginSchema } from "@/lib/validations/auth";
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
   const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
@@ -90,12 +93,12 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
   }
 };
 
-  const handleSocialLogin = (provider: string) => {
+  /* const handleSocialLogin = (provider: string) => {
     toast({
       title: "Coming Soon",
       description: `${provider} login will be available soon.`,
     });
-  };
+  }; */
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -276,12 +279,31 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                         Forgot password?
                       </button>
                     </div>
-                    <Input 
-                      id="password" 
-                      type="password" 
-                      {...loginForm.register("password")} 
-                      className={loginForm.formState.errors.password ? "border-destructive focus-visible:ring-destructive" : ""}
-                    />
+                    <div className="relative">
+                        <Input
+                          id="password"
+                          type={showLoginPassword ? "text" : "password"}
+                          {...loginForm.register("password")}
+                          className={`pr-10 ${
+                            loginForm.formState.errors.password
+                              ? "border-destructive focus-visible:ring-destructive"
+                              : ""
+                          }`}
+                        />
+
+                        <button
+                          type="button"
+                          aria-label={showLoginPassword ? "Hide password" : "Show password"}
+                          onClick={() => setShowLoginPassword(!showLoginPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showLoginPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
                     {loginForm.formState.errors.password && (
                       <p className="text-sm text-destructive">{loginForm.formState.errors.password.message}</p>
                     )}
@@ -365,24 +387,66 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="reg-password">Password</Label>
-                    <Input 
-                      id="reg-password" 
-                      type="password" 
-                      {...registerForm.register("password")} 
-                      className={registerForm.formState.errors.password ? "border-destructive focus-visible:ring-destructive" : ""}
-                    />
+                    <div className="relative">
+                      <Input
+                        id="reg-password"
+                        type={showRegisterPassword ? "text" : "password"}
+                        {...registerForm.register("password")}
+                        className={`pr-10 ${
+                          registerForm.formState.errors.password
+                            ? "border-destructive focus-visible:ring-destructive"
+                            : ""
+                        }`}
+                      />
+
+                      <button
+                        type="button"
+                        aria-label={showLoginPassword ? "Hide password" : "Show password"}
+                        onClick={() =>
+                          setShowRegisterPassword(!showRegisterPassword)
+                        }
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showRegisterPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
                     {registerForm.formState.errors.password && (
                       <p className="text-sm text-destructive">{registerForm.formState.errors.password.message}</p>
                     )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="confirm-password">Confirm Password</Label>
-                    <Input 
-                      id="confirm-password" 
-                      type="password" 
-                      {...registerForm.register("confirmPassword")} 
-                      className={registerForm.formState.errors.confirmPassword ? "border-destructive focus-visible:ring-destructive" : ""}
-                    />
+                    <div className="relative">
+                      <Input
+                        id="confirm-password"
+                        type={showConfirmPassword ? "text" : "password"}
+                        {...registerForm.register("confirmPassword")}
+                        className={`pr-10 ${
+                          registerForm.formState.errors.confirmPassword
+                            ? "border-destructive focus-visible:ring-destructive"
+                            : ""
+                        }`}
+                      />
+
+                      <button
+                        type="button"
+                        aria-label={showLoginPassword ? "Hide password" : "Show password"}
+                        onClick={() =>
+                          setShowConfirmPassword(!showConfirmPassword)
+                        }
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
                     {registerForm.formState.errors.confirmPassword && (
                       <p className="text-sm text-destructive">{registerForm.formState.errors.confirmPassword.message}</p>
                     )}
