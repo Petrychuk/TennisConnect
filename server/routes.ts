@@ -352,8 +352,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   }
   res.json({ user: req.user });
 });
-  app.get(
-    "/api/me/player-profile",
+  app.get("/api/me/player-profile",
     requireAuth,
     requireRole("player"),
     requireCompletedProfile,
@@ -363,8 +362,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   );
 
-  app.put(
-    "/api/me/player-profile",
+  app.put("/api/me/player-profile",
     requireAuth,
     requireRole("player"),
     async (req, res) => {
@@ -392,8 +390,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   );
 
-  app.get(
-    "/api/me/coach-profile",
+  app.get("/api/me/coach-profile",
     requireAuth,
     requireRole("coach"),
     requireCompletedProfile,
@@ -403,8 +400,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   );
 
-  app.put(
-    "/api/me/coach-profile",
+  app.put("/api/me/coach-profile",
     requireAuth,
     requireRole("coach"),
     async (req, res) => {
@@ -748,8 +744,7 @@ return res.json({
     }
   });
 
-  app.get(
-    "/api/messages/conversation/:conversationId",
+  app.get("/api/messages/conversation/:conversationId",
     requireAuth,
     async (req, res, next) => {
       try {
@@ -776,8 +771,7 @@ return res.json({
     }
   );
 
-  app.get(
-    "/api/messages/conversations",
+  app.get("/api/messages/conversations",
     requireAuth,
     async (req, res, next) => {
       try {
@@ -793,8 +787,7 @@ return res.json({
     }
   );
 
-  app.post(
-    "/api/messages/reply",
+  app.post("/api/messages/reply",
     requireAuth,
     async (req, res, next) => {
       try {
@@ -861,4 +854,19 @@ return res.json({
       }
     }
   );
+
+  // ===== STATS HOMEPAGE ROUTES =====
+  app.get("/api/stats", async (_req, res) => {
+    try {
+      const stats = await storage.getPlatformStats();
+  
+      res.json(stats);
+    } catch (error) {
+      console.error("Failed to load platform stats:", error);
+  
+      res.status(500).json({
+        message: "Failed to load platform stats",
+      });
+    }
+  });
 }

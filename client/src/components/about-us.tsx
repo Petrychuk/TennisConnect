@@ -1,37 +1,75 @@
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Users, Heart, Target, Award } from "lucide-react";
-
-const stats = [
-  { number: "5000+", label: "Active Players" },
-  { number: "200+", label: "Coaches" },
-  { number: "50+", label: "Partner Clubs" },
-  { number: "100+", label: "Tournaments/Year" },
-];
 
 const values = [
   {
     icon: Users,
     title: "Community",
-    description: "We unite people who love tennis, regardless of age or skill level."
+    description: "Bringing tennis players together across Australia"
   },
   {
     icon: Heart,
     title: "Passion for the Game",
-    description: "Tennis is more than a sport - it's a lifestyle and path to health."
+    description: "Celebrating the sport that connects people of all backgrounds and skill levels"
   },
   {
     icon: Target,
     title: "Accessibility",
-    description: "We make tennis accessible to everyone, helping find partners and coaches near you."
+    description: "Helping players find partners, coaches, clubs, and events near them"
   },
   {
     icon: Award,
     title: "Quality",
-    description: "All coaches and clubs are verified to ensure high-quality services."
+    description: "Supporting trusted coaches, clubs, and tennis services"
   },
 ];
 
 export function AboutUs() {
+  const [stats, setStats] = useState({
+    players: 0,
+    coaches: 0,
+    clubs: 0,
+    tournaments: 0,
+  });
+  
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const res = await fetch("/api/stats");
+  
+        if (!res.ok) return;
+  
+        const data = await res.json();
+  
+        setStats(data);
+      } catch (error) {
+        console.error("Failed to load stats", error);
+      }
+    }
+  
+    loadStats();
+  }, []);
+  
+  const statsCards = [
+    {
+      number: stats.players,
+      label: "Players",
+    },
+    {
+      number: stats.coaches,
+      label: "Coaches",
+    },
+    {
+      number: stats.clubs,
+      label: "Clubs",
+    },
+    {
+      number: stats.tournaments,
+      label: "Tournaments",
+    },
+  ];
+
   return (
     <section className="py-24 bg-background relative overflow-hidden" id="about">
       <div className="absolute top-0 left-0 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl -translate-y-1/2 -translate-x-1/2 pointer-events-none" />
@@ -53,14 +91,11 @@ export function AboutUs() {
             </h2>
             
             <p className="text-muted-foreground text-lg leading-relaxed mb-8">
-              We've built a platform that unites Australia's tennis community. 
-              Our mission is to help everyone find the perfect playing partner, 
-              professional coach, or convenient court near home.
+             Launched in Sydney in 2026, TennisConnect was created to bring tennis players, coaches, clubs, and events together in one community-driven platform.
             </p>
             
             <p className="text-muted-foreground text-lg leading-relaxed">
-              Since 2020, we've helped thousands of players develop their skills, 
-              make friends, and enjoy their favorite sport. Join our community!
+             Whether you're looking for a hitting partner, a professional coach, local tournaments, or new tennis experiences, TennisConnect helps you discover opportunities both on and off the court.
             </p>
           </motion.div>
 
@@ -97,7 +132,7 @@ export function AboutUs() {
           transition={{ duration: 0.6, delay: 0.4 }}
           className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-6"
         >
-          {stats.map((stat, index) => (
+          {statsCards.map((stat) => (
             <div key={stat.label} className="text-center p-6 rounded-2xl bg-secondary/50">
               <div className="text-4xl md:text-5xl font-display font-bold text-primary mb-2">
                 {stat.number}

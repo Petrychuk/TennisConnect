@@ -1,4 +1,3 @@
-// Referenced: blueprint:javascript_database
 import { 
   users, 
   playerProfiles,
@@ -9,6 +8,7 @@ import {
   messages,
   passwordResetTokens,
   supportRequests,
+  tournaments,
   type User, 
   type InsertUser,
   type PlayerProfile,
@@ -28,7 +28,7 @@ import {
   type InsertSupportRequest,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, or, asc } from "drizzle-orm";
+import { eq, desc, and, or, asc, sql } from "drizzle-orm";
 import { supabaseAdmin } from "./supabaseAdmin";
 
 function slugify(text: string) {
@@ -122,6 +122,15 @@ export interface IStorage {
   createSupportRequest(
     request: InsertSupportRequest
   ): Promise<SupportRequest>;
+
+  //Dynamic data
+  getPlatformStats(): Promise<{
+    players: number;
+    coaches: number;
+    clubs: number;
+    tournaments: number;
+  }>;
+
 }
 export class DatabaseStorage implements IStorage {
   // =====================
@@ -868,6 +877,37 @@ export class DatabaseStorage implements IStorage {
       .returning();
   
     return supportRequest;
+  }
+
+   // =====================
+  // Dynamic data for blocks
+  // =====================
+
+  async getPlatformStats() {
+    const [playersResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(playerProfiles)
+      .where(eq(playerProfiles.isDraft, false));
+  
+    const [coachesResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(coachProfiles)
+      .where(eq(coachProfiles.isDraft, false));
+  
+    const [clubsResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(clubs);
+  
+    const [tournamentsResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(tournaments);
+  
+    return {
+      players: Number(playersResult.count),
+      coaches: Number(coachesResult.count),
+      clubs: Number(clubsResult.count),
+      tournaments: Number(tournamentsResult.count),
+    };
   }
 }
 
