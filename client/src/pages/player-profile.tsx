@@ -17,6 +17,7 @@ import { MapPin, Calendar, Trophy, Edit2, Save, ShoppingBag, Plus, Trash2, Camer
 import { COACHES_DATA, PARTNERS_DATA } from "@/lib/dummy-data";
 import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.png";
 import SEO from "@/components/seo";
+import { Footer } from "@/components/footer";
 import { TennisLoader } from "@/components/ui/tennisLoader";
 
 type MarketplaceDraft = {
@@ -679,43 +680,59 @@ export default function PlayerProfile() {
                 )}
               </div>
                 
-                <div className="grow text-center md:text-left space-y-4">
-                  <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-4">
-                    <div>
+              <div className="grow space-y-4">
+                <div className="bg-background/30 backdrop-blur-md rounded-2xl p-4 md:p-6 shadow-xl">
+                  
+                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+
+                    <div className="text-center lg:text-left">
                       {isEditing ? (
-                        <div className="space-y-2">
-                          <Input 
-                            value={profile.name} 
-                            onChange={(e) => setProfile({...profile, name: e.target.value})}
-                            className="text-3xl font-bold h-auto py-2"
+                        <div className="space-y-3">
+                          <Input
+                            value={profile.name}
+                            onChange={(e) =>
+                              setProfile({ ...profile, name: e.target.value })
+                            }
+                            className="text-2xl md:text-3xl font-bold h-auto py-2"
                           />
-                          <div className="flex gap-2">
-                            <Input 
-                              value={profile.country} 
+
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <Input
+                              value={profile.country}
                               placeholder="Country"
-                              onChange={(e) => setProfile({...profile, country: e.target.value})}
-                              className="w-40"
+                              onChange={(e) =>
+                                setProfile({ ...profile, country: e.target.value })
+                              }
+                              className="w-full sm:w-40"
                             />
-                            <Input 
-                              value={profile.age} 
+
+                            <Input
+                              value={profile.age}
                               placeholder="Age"
-                              onChange={(e) => setProfile({...profile, age: e.target.value})}
-                              className="w-20"
+                              onChange={(e) =>
+                                setProfile({ ...profile, age: e.target.value })
+                              }
+                              className="w-full sm:w-20"
                             />
                           </div>
                         </div>
                       ) : (
                         <>
-                          <h1 className="text-4xl font-display font-bold text-primary mb-2">{profile.name}</h1>
-                          <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-muted-foreground">
+                          <h1 className="text-3xl sm:text-4xl md:text-4xl lg:text-4xl xl:text-5xl font-display font-bold text-primary mb-3">
+                            {profile.name}
+                          </h1>
+
+                          <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center lg:justify-start gap-2 sm:gap-4 text-muted-foreground">
                             <div className="flex items-center gap-1">
                               <Globe className="w-4 h-4" />
                               <span>{profile.country}</span>
                             </div>
+
                             <div className="flex items-center gap-1">
                               <Calendar className="w-4 h-4" />
                               <span>{profile.age} years old</span>
                             </div>
+
                             <div className="flex items-center gap-1">
                               <MapPin className="w-4 h-4" />
                               <span>{profile.location}</span>
@@ -726,31 +743,63 @@ export default function PlayerProfile() {
                     </div>
 
                     {isOwnProfile && (
-                      <Button onClick={isEditing ? handleSave : () => setIsEditing(true)} variant={isEditing ? "default" : "outline"}>
-                        {isEditing ? <Save className="w-4 h-4 mr-2" /> : <Edit2 className="w-4 h-4 mr-2" />}
-                        {isEditing ? "Save Profile" : "Edit Profile"}
-                      </Button>
+                      <div className="flex justify-center lg:justify-end mt-2 ">
+                        <Button
+                          onClick={
+                            isEditing
+                              ? handleSave
+                              : () => setIsEditing(true)
+                          }
+                          variant={isEditing ? "default" : "outline"}
+                          size="sm"
+                          className="px-4"
+                        >
+                          {isEditing ? (
+                            <Save className="w-2 h-2 mr-2" />
+                          ) : (
+                            <Edit2 className="w-2 h-2 mr-2" />
+                          )}
+
+                          {isEditing ? "Save Profile" : "Edit Profile"}
+                        </Button>
+                      </div>
                     )}
                   </div>
 
                   {isEditing ? (
-                    <Textarea 
-                      value={profile.bio} 
-                      onChange={(e) => setProfile({...profile, bio: e.target.value})} 
+                    <Textarea
+                      value={profile.bio}
+                      onChange={(e) =>
+                        setProfile({ ...profile, bio: e.target.value })
+                      }
                       className="mt-4"
                     />
                   ) : (
-                    <p className="text-lg leading-relaxed max-w-2xl">{profile.bio}</p>
+                    <p className="mt-4 text-base md:text-lg leading-relaxed max-w-3xl text-center lg:text-left">
+                      {profile.bio}
+                    </p>
                   )}
                 </div>
               </div>
+              </div>
 
               <Tabs defaultValue="overview" className="space-y-8">
-                <TabsList className="bg-transparent border-b w-full justify-start rounded-none h-auto p-0 gap-6">
-                  <TabsTrigger value="overview" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none pb-2 text-lg">Overview</TabsTrigger>
-                  <TabsTrigger value="tournaments" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none pb-2 text-lg">Tournaments</TabsTrigger>
-                  <TabsTrigger value="coaches" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none pb-2 text-lg">My Coaches</TabsTrigger>
-                  <TabsTrigger value="marketplace" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none pb-2 text-lg">Selling ({marketplaceItems.length})</TabsTrigger>
+                <TabsList className="w-full
+                      flex
+                      overflow-x-auto
+                      whitespace-nowrap
+                      justify-start
+                      border-b
+                      rounded-none
+                      h-auto
+                      p-0
+                      bg-transparent
+                      gap-2
+                      scrollbar-hide">
+                  <TabsTrigger value="overview" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">Overview</TabsTrigger>
+                  <TabsTrigger value="tournaments" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">Tournaments</TabsTrigger>
+                  <TabsTrigger value="coaches" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">My Coaches</TabsTrigger>
+                  <TabsTrigger value="marketplace" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">Selling ({marketplaceItems.length})</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-8">
@@ -1260,6 +1309,7 @@ export default function PlayerProfile() {
             </div>
           </div>
         </div>
+        <Footer />
     </>
   );
  }
