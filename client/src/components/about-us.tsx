@@ -82,8 +82,11 @@ export function AboutUs() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 mb-6">
-              <span className="text-xs font-bold uppercase tracking-wider">About Us</span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary border border-primary/20 mb-6">
+              <Target className="w-4 h-4" />
+              <span className="text-xs font-bold uppercase tracking-wider">
+                OUR STORY
+              </span>
             </div>
             
             <h2 className="text-3xl md:text-5xl font-display font-bold mb-6 leading-tight">
@@ -133,7 +136,7 @@ export function AboutUs() {
           className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-6"
         >
           {statsCards.map((stat) => (
-            <div key={stat.label} className="text-center p-6 rounded-2xl bg-secondary/50">
+            <div key={stat.label} className="text-center p-6 rounded-2xl bg-primary/10 border border-primary/10">
               <div className="text-4xl md:text-5xl font-display font-bold text-primary mb-2">
                 {stat.number}
               </div>

@@ -6,18 +6,18 @@ import { Link } from "wouter";
 const partnerBenefits = [
   {
     icon: Users,
-    title: "New Clients",
-    description: "Get access to thousands of active tennis players in your area"
+    title: "Reach More Players",
+    description: "Connect with active tennis players looking for partners, coaches, clubs, and experiences"
   },
   {
     icon: TrendingUp,
     title: "Business Growth",
-    description: "Increase court utilization and training bookings"
+    description: "Increase visibility, bookings, and engagement through TennisConnect"
   },
   {
     icon: Building2,
-    title: "Promotion",
-    description: "Your club will be featured in our catalog with premium placement"
+    title: "Featured Exposure",
+    description: "Highlight your business across our directories, articles, and partner network"
   },
 ];
 
@@ -42,12 +42,11 @@ export function Partnership() {
             </div>
             
             <h2 className="text-3xl md:text-5xl font-display font-bold mb-6 leading-tight">
-              Become Our <span className="text-primary">Partner</span>
+              Let's Grow <span className="text-primary">Tennis Together</span>
             </h2>
             
             <p className="text-gray-300 text-lg leading-relaxed mb-8">
-              We invite tennis clubs, coaches, and tournament organizers to collaborate. 
-              Together we can grow the tennis community and attract new players.
+            Showcase your services, reach new customers, and become part of a platform built for the tennis community.
             </p>
 
             <div className="space-y-4 mb-8">
@@ -71,27 +70,32 @@ export function Partnership() {
               ))}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Button 
-                size="lg" 
-                className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full cursor-pointer"
-                asChild
+            <div className="flex flex-col items-start gap-3">
+            <Button
+                size="lg"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-8 cursor-pointer"
+                onClick={() =>
+                  window.dispatchEvent(
+                    new CustomEvent("open-support-chat", {
+                      detail: {
+                        category: "Partnership Opportunities",
+                      },
+                    })
+                  )
+                }
               >
-                <a href="mailto:partners@tennisconnect.au">
-                  <Mail className="w-4 h-4 mr-2" />
-                  Contact Us
+                <Mail className="w-4 h-4 mr-2" />
+                Become a Partner
+              </Button>
+              <p className="text-sm text-gray-300">
+                Or email us directly at{" "}
+                <a
+                  href="mailto:makeinfosense@gmail.com"
+                  className="text-primary hover:underline"
+                >
+                  makeinfosense@gmail.com
                 </a>
-              </Button>
-              <Button 
-                size="lg" 
-                variant="outline" 
-                className="border-white/30 text-white hover:bg-white/10 font-bold rounded-full cursor-pointer"
-                asChild
-              >
-                <Link href="/clubs">
-                  View Partners <ArrowRight className="w-4 h-4 ml-2" />
-                </Link>
-              </Button>
+              </p>
             </div>
           </motion.div>
 
@@ -108,12 +112,12 @@ export function Partnership() {
                 <h3 className="text-2xl font-bold mb-6">What We Offer</h3>
                 <ul className="space-y-4">
                   {[
-                    "Club catalog listing with full description",
-                    "Court booking system integration",
-                    "Tournament and event promotion",
-                    "Access to analytics and statistics",
-                    "Marketing support and joint promotions",
-                    "Priority technical support"
+                    "Business profile and directory listing",
+                    "Featured partner placement",
+                    "Event and tournament promotion",
+                    "Travel and experience partnerships",
+                    "Community exposure and branding",
+                    "Dedicated partner support"
                   ].map((item, index) => (
                     <li key={index} className="flex items-center gap-3">
                       <div className="w-2 h-2 rounded-full bg-primary" />
@@ -124,7 +128,7 @@ export function Partnership() {
                 
                 <div className="mt-8 p-4 rounded-xl bg-primary/10 border border-primary/20">
                   <p className="text-sm text-gray-300">
-                    <span className="text-primary font-bold">50+ clubs</span> are already growing their business with TennisConnect
+                    <span className="text-primary font-bold">Connecting</span>  players, coaches, clubs, and tennis businesses in one place.
                   </p>
                 </div>
               </div>

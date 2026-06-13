@@ -1,5 +1,7 @@
 import { motion } from "framer-motion";
 
+const isMobile = window.innerWidth < 768;
+
 // Brand logos as inline SVGs for reliability
 const brands = [
   {
@@ -33,7 +35,7 @@ const brands = [
     name: "Nike",
     light: false,
     logo: (
-      <svg viewBox="0 0 100 35" className="h-5 w-auto">
+      <svg viewBox="0 0 100 35" className="h-6 md:h-7 w-auto">
         <path className="fill-current" d="M21 0c-1.2 0-2.3.2-3.4.6L.5 30.8c-.3.9-.5 1.8-.5 2.7 0 .9.7 1.5 1.5 1.5.7 0 1.4-.4 1.9-1l45.6-25.8c1.5-.8 3.1-1.2 4.7-1.2 1.5 0 3 .4 4.3 1.1L100 30.5V8.9L58.4.7C55.8.2 53.1 0 50.5 0H21z"/>
       </svg>
     )
@@ -42,7 +44,7 @@ const brands = [
     name: "Adidas",
     light: false,
     logo: (
-      <svg viewBox="0 0 100 60" className="h-6 w-auto">
+      <svg viewBox="0 0 100 60" className="h-6 md:h-7 w-auto">
         <path className="fill-current" d="M50 0L0 60h20l30-36 30 36h20L50 0zm0 18l18 22H32l18-22z"/>
       </svg>
     )
@@ -51,7 +53,7 @@ const brands = [
     name: "Yonex",
     light: false,
     logo: (
-      <svg viewBox="0 0 80 24" className="h-5 w-auto">
+      <svg viewBox="0 0 80 24" className="h-6 md:h-7 w-auto">
         <text x="0" y="18" className="fill-current font-bold text-[16px]" style={{fontFamily: 'Arial, sans-serif'}}>YONEX</text>
       </svg>
     )
@@ -60,7 +62,7 @@ const brands = [
     name: "Prince",
     light: false,
     logo: (
-      <svg viewBox="0 0 80 24" className="h-5 w-auto">
+      <svg viewBox="0 0 80 24" className="h-6 md:h-7 w-auto">
         <text x="0" y="18" className="fill-current font-bold text-[15px]" style={{fontFamily: 'Georgia, serif'}}>PRINCE</text>
       </svg>
     )
@@ -69,7 +71,7 @@ const brands = [
     name: "Tecnifibre",
     light: false,
     logo: (
-      <svg viewBox="0 0 100 20" className="h-4 w-auto">
+      <svg viewBox="0 0 100 20" className="h-6 md:h-7 w-auto">
         <text x="0" y="15" className="fill-current font-semibold text-[12px]" style={{fontFamily: 'Arial, sans-serif'}}>TECNIFIBRE</text>
       </svg>
     )
@@ -78,7 +80,7 @@ const brands = [
     name: "Dunlop",
     light: true,
     logo: (
-      <svg viewBox="0 0 90 24" className="h-5 w-auto">
+      <svg viewBox="0 0 90 24" className="h-6 md:h-7 w-auto">
         <text x="0" y="18" className="fill-current font-bold text-[16px]" style={{fontFamily: 'Arial Black, sans-serif'}}>DUNLOP</text>
       </svg>
     )
@@ -87,7 +89,7 @@ const brands = [
     name: "Asics",
     light: false,
     logo: (
-      <svg viewBox="0 0 70 24" className="h-5 w-auto">
+      <svg viewBox="0 0 70 24" className="h-6 md:h-7 w-auto">
         <text x="0" y="18" className="fill-current font-bold italic text-[16px]" style={{fontFamily: 'Arial, sans-serif'}}>ASICS</text>
       </svg>
     )
@@ -96,7 +98,7 @@ const brands = [
     name: "Lacoste",
     light: false,
     logo: (
-      <svg viewBox="0 0 24 24" className="h-6 w-auto">
+      <svg viewBox="0 0 24 24" className="h-6 md:h-7 w-auto">
         <path className="fill-[#00703C]" d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.5 14c-1 1-2.5 1.5-4 1.5s-3-.5-4-1.5c-.5-.5-.5-1 0-1.5.5-.5 1-.5 1.5 0 .5.5 1.5 1 2.5 1s2-.5 2.5-1c.5-.5 1-.5 1.5 0s.5 1 0 1.5zM8 11c-.5 0-1-.5-1-1s.5-1 1-1 1 .5 1 1-.5 1-1 1zm8 0c-.5 0-1-.5-1-1s.5-1 1-1 1 .5 1 1-.5 1-1 1z"/>
       </svg>
     )
@@ -105,7 +107,7 @@ const brands = [
     name: "New Balance",
     light: false,
     logo: (
-      <svg viewBox="0 0 100 24" className="h-5 w-auto">
+      <svg viewBox="0 0 100 24" className="h-6 md:h-7 w-auto">
         <text x="0" y="17" className="fill-current font-bold text-[13px]" style={{fontFamily: 'Arial, sans-serif'}}>NEW BALANCE</text>
       </svg>
     )
@@ -113,14 +115,13 @@ const brands = [
 ];
 
 // Duplicate for seamless infinite scroll
-const duplicatedBrands = [...brands, ...brands, ...brands];
+const duplicatedBrands = [...brands, ...brands];
 
 export function BrandMarquee() {
   return (
-    <section className="py-6 bg-secondary/30 overflow-hidden relative">
+    <section className="py-8 bg-secondary/30">
+      <div className="container mx-auto px-4 max-w-7xl">
       {/* Gradient Overlays */}
-      <div className="absolute left-0 top-0 bottom-0 w-20 md:w-32 bg-gradient-to-r from-secondary/30 to-transparent z-10 pointer-events-none" />
-      <div className="absolute right-0 top-0 bottom-0 w-20 md:w-32 bg-gradient-to-l from-secondary/30 to-transparent z-10 pointer-events-none" />
       
       <div className="container mx-auto px-4 mb-4">
         <motion.p
@@ -129,7 +130,7 @@ export function BrandMarquee() {
           viewport={{ once: true }}
           className="text-center text-xs uppercase tracking-widest text-muted-foreground font-medium"
         >
-          Trusted by the world's leading tennis brands
+          THE WORLD'S LEADING TENNIS BRANDS
         </motion.p>
       </div>
 
@@ -137,9 +138,13 @@ export function BrandMarquee() {
       <div className="relative">
         <motion.div
           className="flex gap-6 md:gap-10 items-center"
-          animate={{
-            x: [0, -120 * brands.length],
-          }}
+          animate={
+            isMobile
+              ? undefined
+              : {
+                  x: [0, -120 * brands.length],
+                }
+          }
           transition={{
             x: {
               duration: 100,
@@ -151,7 +156,15 @@ export function BrandMarquee() {
           {duplicatedBrands.map((brand, index) => (
             <div
               key={`${brand.name}-${index}`}
-              className={`shrink-0 px-5 md:px-6 py-2.5 rounded-full backdrop-blur-sm border transition-all duration-300 group flex items-center gap-2 ${
+              className={`shrink-0 px-4 md:px-5
+                  py-2
+                  rounded-full
+                  bg-background
+                  border
+                  border-border/20
+                  hover:border-primary/40
+                  transition-all
+                  duration-300 ${
                 brand.light 
                   ? 'bg-gray-800 border-gray-700 hover:border-primary/60 text-white' 
                   : 'bg-background/70 border-border/30 hover:border-primary/40 hover:bg-background/90 text-foreground'
@@ -163,6 +176,7 @@ export function BrandMarquee() {
             </div>
           ))}
         </motion.div>
+       </div>
       </div>
     </section>
   );

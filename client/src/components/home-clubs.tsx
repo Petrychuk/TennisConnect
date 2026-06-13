@@ -17,7 +17,7 @@ interface Club {
   phone: string;
   website: string | null;
   image: string | null;
-  rating: string | null;
+  rating: number | null;
 }
 
 export function HomeClubs() {
@@ -55,7 +55,7 @@ export function HomeClubs() {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground mb-4"
             >
               <Building2 className="w-4 h-4" />
-              <span className="text-xs font-bold uppercase tracking-wider">Find a Home Court</span>
+              <span className="text-xs font-bold uppercase tracking-wider">FIND YOUR TENNIS HOME</span>
             </motion.div>
 
             <motion.h2
@@ -65,7 +65,7 @@ export function HomeClubs() {
               transition={{ delay: 0.1 }}
               className="text-3xl md:text-5xl font-display font-bold"
             >
-              Tennis <span className="text-primary">Club</span>
+              Tennis <span className="text-primary">Clubs</span>
             </motion.h2>
 
             <motion.p
@@ -75,7 +75,7 @@ export function HomeClubs() {
               transition={{ delay: 0.2 }}
               className="text-gray-300 mt-4 max-w-xl text-lg"
             >
-              Top tennis clubs across Australia — book courts, join socials, find your home court.
+              Explore Australia's most inspiring tennis clubs — from iconic city venues to local community courts where players connect, compete, and grow.
             </motion.p>
           </div>
 
@@ -90,7 +90,7 @@ export function HomeClubs() {
                 className="hidden md:flex gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
                 data-testid="clubs-view-all-button"
               >
-                Explore Clubs <ArrowRight className="w-4 h-4" />
+                Discover Clubs <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>
           </motion.div>
@@ -110,7 +110,7 @@ export function HomeClubs() {
                   className="group overflow-hidden border-none shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer h-full bg-zinc-900 text-white"
                   data-testid={`club-card-${club.id}`}
                 >
-                  <div className="relative aspect-[16/10] overflow-hidden bg-secondary/50">
+                  <div className="relative aspect-16/10 overflow-hidden bg-secondary/50">
                     {club.image && (
                       <img
                         src={club.image}

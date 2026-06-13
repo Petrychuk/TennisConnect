@@ -57,7 +57,7 @@ export function HomeTournaments({ variant }: Props) {
   return (
     <section
       className={`py-24 relative overflow-hidden ${
-        isRecent ? "bg-black text-white" : "bg-gradient-to-b from-background to-secondary/30"
+        isRecent ? "bg-black text-white" : "bg-linear-to-b from-background to-secondary/30"
       }`}
       id={sectionId}
     >
@@ -81,7 +81,7 @@ export function HomeTournaments({ variant }: Props) {
             >
               <Trophy className="w-4 h-4" />
               <span className="text-xs font-bold uppercase tracking-wider">
-                {isRecent ? "Just Announced" : "Coming Up"}
+                {isRecent ? "Just Announced" : "COMPETE & CONNECT"}
               </span>
             </motion.div>
 
@@ -98,7 +98,7 @@ export function HomeTournaments({ variant }: Props) {
                 </>
               ) : (
                 <>
-                  Upcoming <span className="text-primary">Tournaments</span>
+                  Challenge Your <span className="text-primary">Game</span>
                 </>
               )}
             </motion.h2>
@@ -112,7 +112,7 @@ export function HomeTournaments({ variant }: Props) {
             >
               {isRecent
                 ? "Freshly announced tournaments across Australia — get in before the brackets fill up."
-                : "Compete, climb the rankings, and meet the community. Filtered for what's happening soonest."}
+                : "From local competitions to major tournaments, discover opportunities to test your skills and climb the rankings."}
             </motion.p>
           </div>
 
@@ -131,7 +131,7 @@ export function HomeTournaments({ variant }: Props) {
                 }`}
                 data-testid={`${sectionId}-view-all-button`}
               >
-                View All <ArrowRight className="w-4 h-4" />
+                Find Events <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>
           </motion.div>
@@ -153,7 +153,7 @@ export function HomeTournaments({ variant }: Props) {
                   }`}
                   data-testid={`${sectionId}-card-${t.slug}`}
                 >
-                  <div className="relative aspect-[16/10] overflow-hidden bg-secondary/50">
+                  <div className="relative aspect-16/10 overflow-hidden bg-secondary/50">
                     <img
                       src={t.coverImage}
                       alt={t.name}

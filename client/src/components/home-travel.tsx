@@ -37,7 +37,7 @@ export function HomeTravel() {
     s ? new Date(s).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" }) : "TBA";
 
   return (
-    <section className="py-24 bg-gradient-to-b from-secondary/20 to-background relative overflow-hidden" id="travel">
+    <section className="py-24 bg-linear-to-b from-secondary/20 to-background relative overflow-hidden" id="travel">
       <div className="absolute -top-40 right-0 w-[500px] h-[500px] bg-primary/10 rounded-full blur-3xl pointer-events-none" />
 
       <div className="container mx-auto px-4 relative z-10">
@@ -70,7 +70,7 @@ export function HomeTravel() {
               transition={{ delay: 0.2 }}
               className="text-muted-foreground mt-4 max-w-xl text-lg"
             >
-              Curated tennis getaways — from Mallorca to Bali. Train with pros, recover in paradise.
+              More than a holiday — elevate your game, explore extraordinary destinations, and create memories on and off the court.
             </motion.p>
           </div>
 
@@ -85,7 +85,7 @@ export function HomeTravel() {
                 className="hidden md:flex gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
                 data-testid="travel-view-all-button"
               >
-                Browse Packages <ArrowRight className="w-4 h-4" />
+                Discover Retreats <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>
           </motion.div>
@@ -105,7 +105,7 @@ export function HomeTravel() {
                   className="group overflow-hidden border-none shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer h-full"
                   data-testid={`travel-card-${pkg.slug}`}
                 >
-                  <div className="relative aspect-[4/3] overflow-hidden bg-secondary/50">
+                  <div className="relative aspect-4/3 overflow-hidden bg-secondary/50">
                     <img
                       src={pkg.coverImage}
                       alt={pkg.title}

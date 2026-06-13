@@ -64,7 +64,7 @@ export function HomeRecreation() {
               transition={{ delay: 0.1 }}
               className="text-3xl md:text-5xl font-display font-bold"
             >
-              Body. Mind. <span className="text-primary">Performance.</span>
+              Recovery, Wellness & <span className="text-primary">Performance.</span>
             </motion.h2>
 
             <motion.p
@@ -74,7 +74,7 @@ export function HomeRecreation() {
               transition={{ delay: 0.2 }}
               className="text-muted-foreground mt-4 max-w-xl text-lg"
             >
-              Sports massage, cryotherapy, physio and yoga — designed for tennis bodies and booked through TennisConnect.
+              Recovery, wellness, and performance services designed to help tennis players stay healthy, active, and match ready.
             </motion.p>
           </div>
 
@@ -89,7 +89,7 @@ export function HomeRecreation() {
                 className="hidden md:flex gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
                 data-testid="recreation-view-all-button"
               >
-                All Services <ArrowRight className="w-4 h-4" />
+                Start Recovery <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>
           </motion.div>

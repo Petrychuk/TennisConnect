@@ -43,7 +43,7 @@ export function HomeArticles() {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary border border-primary/20 mb-4"
             >
               <BookOpen className="w-4 h-4" />
-              <span className="text-xs font-bold uppercase tracking-wider">Tennis Journal</span>
+              <span className="text-xs font-bold uppercase tracking-wider">TENNIS INSIGHTS</span>
             </motion.div>
 
             <motion.h2
@@ -53,7 +53,7 @@ export function HomeArticles() {
               transition={{ delay: 0.1 }}
               className="text-3xl md:text-5xl font-display font-bold"
             >
-              Stories from <span className="text-primary">the Baseline</span>
+              Your Tennis <span className="text-primary">Knowledge Hub</span>
             </motion.h2>
 
             <motion.p
@@ -63,7 +63,7 @@ export function HomeArticles() {
               transition={{ delay: 0.2 }}
               className="text-muted-foreground mt-4 max-w-xl text-lg"
             >
-              Tactics, gear reviews, mental game and recovery — written by coaches and players who live the sport.
+              Your destination for tennis knowledge, inspiration, and insights — from the court to the wider tennis community.
             </motion.p>
           </div>
 
@@ -78,7 +78,7 @@ export function HomeArticles() {
                 className="hidden md:flex gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
                 data-testid="articles-view-all-button"
               >
-                All Articles <ArrowRight className="w-4 h-4" />
+                Explore Articles <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>
           </motion.div>
@@ -98,7 +98,7 @@ export function HomeArticles() {
                   className="group overflow-hidden border-none shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer h-full"
                   data-testid={`article-card-${article.slug}`}
                 >
-                  <div className="relative aspect-[4/3] overflow-hidden bg-secondary/50">
+                  <div className="relative aspect-4/3 overflow-hidden bg-secondary/50">
                     <img
                       src={article.coverImage}
                       alt={article.title}

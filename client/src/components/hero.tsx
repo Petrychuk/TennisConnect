@@ -52,13 +52,42 @@ export function Hero() {
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
               <Link href="/partners">
-                <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-lg h-14 px-8 rounded-full shadow-[0_0_20px_rgba(223,255,0,0.3)] hover:shadow-[0_0_30px_rgba(223,255,0,0.5)] transition-all duration-300 group cursor-pointer">
+                <Button size="lg" className="h-14
+                  bg-primary
+                  text-primary-foreground
+                  hover:bg-primary/90
+                  font-bold
+                  text-lg
+                  px-8
+                  rounded-full
+                  shadow-[0_0_20px_rgba(223,255,0,0.3)]
+                  hover:shadow-[0_0_30px_rgba(223,255,0,0.5)]
+                  transition-all
+                  duration-300
+                  group
+                  cursor-pointer">
                   Find a Partner
                   <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
               <Link href="/coaches">
-                <Button size="lg" variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20 font-bold text-lg h-14 px-8 rounded-full backdrop-blur-md cursor-pointer">
+                <Button size="lg" variant="outline" className="
+                    bg-[rgba(163,230,53,0.08)]
+                    border-primary/30
+                    text-white
+                    hover:bg-black/90
+                    hover:border-primary/60
+                    hover:shadow-[0_0_25px_hsl(var(--tennis-ball)/0.25)]
+                    font-bold
+                    text-lg
+                    h-14
+                    px-8
+                    rounded-full
+                    backdrop-blur-md
+                    transition-all
+                    duration-300
+                    cursor-pointer
+                  ">
                   Choose a Coach
                   <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Button>

@@ -4,7 +4,7 @@ import { Hero } from "@/components/hero";
 import { Features } from "@/components/features";
 import { AboutUs } from "@/components/about-us";
 import { ProShop } from "@/components/pro-shop";
-import { BrandMarquee } from "@/components/brand-marquee";
+//import { BrandMarquee } from "@/components/brand-marquee";
 import { Marketplace } from "@/components/marketplace";
 import { Partnership } from "@/components/partnership";
 import { Gallery } from "@/components/gallery";
@@ -64,13 +64,13 @@ export default function Home() {
         <HomeClubs />
         <HomeArticles />
         <ProShop />
-        <BrandMarquee />
+        {/* <BrandMarquee /> */}
         <HomeTravel />
         <HomeRecreation />
         <HomeTournaments variant="upcoming" />
         <Gallery />
         <Marketplace />
-        <Testimonials /> 
+        {/* <Testimonials />  */}
         <Features />          
         <Partnership />
         
@@ -92,14 +92,14 @@ export default function Home() {
                 className="relative z-10"
               >
                 <h2 className="text-3xl md:text-5xl font-display font-bold text-white mb-6">
-                  Ready to Hit the Court?
+                Join Sydney's Growing Tennis Community
                 </h2>
                 <p className="text-xl text-gray-300 max-w-2xl mx-auto mb-10">
-                  Create your profile in 2 minutes, set your skill level, and start receiving match invitations today.
+                 Connect with players, coaches, clubs, tournaments, and tennis experiences across Australia.
                 </p>
                 <Link href="/auth">
                   <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-lg h-14 px-10 rounded-full shadow-[0_0_20px_rgba(223,255,0,0.4)] hover:shadow-[0_0_30px_rgba(223,255,0,0.6)] transition-all duration-300 transform hover:-translate-y-1 cursor-pointer">
-                    Create Profile
+                    Join TennisConnect
                   </Button>
                 </Link>
               </motion.div>
