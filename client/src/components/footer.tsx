@@ -18,7 +18,7 @@ export function Footer() {
           {/* Brand */}
           <div className="col-span-2 lg:col-span-1 space-y-5">
            <div>
-            <div className="flex items-center justify-start lg:justify-between">
+           <div className="flex flex-col items-center text-center gap-3">
               <h3 className="text-2xl font-display font-bold flex items-center gap-1">
                 Tennis
                 <span className="text-[hsl(var(--tennis-ball))]">
@@ -31,19 +31,18 @@ export function Footer() {
                 href="https://sensepowerdigital.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="ml-16 lg:ml-3 shrink-0"
               >
                 <img
                   src="/assets/images/sensepower_logo.png"
                   alt="SensePower Digital"
-                  className="h-14 w-14 rounded-xl object-cover hover:opacity-90 transition-opacity translate-y-3"
+                  className="h-10 w-10 rounded-xl object-cover hover:opacity-90 transition-opacity"
                 />
               </a>
-          </div>
 
-          <p className="text-xs text-[hsl(var(--tennis-ball))] mt-1 font-medium">
-            Powered by SensePower Digital 
-          </p>
+              <p className="text-[hsl(var(--tennis-ball))] text-sm font-medium">
+                Powered by SensePower Digital
+              </p>
+            </div>
            </div>
 
             <p className="text-gray-400 text-sm leading-relaxed">
@@ -96,7 +95,7 @@ export function Footer() {
 
           {/* Platform */}
           <div>
-            <h4 className="font-bold text-primary text-lg mb-6 mt-2">Platform</h4>
+            <h4 className="font-bold text-primary text-lg mb-6 mt-1">Platform</h4>
 
             <ul className="space-y-3 text-gray-400">
               <li>
@@ -104,7 +103,7 @@ export function Footer() {
                   href="/partners"
                   className="hover:text-primary transition-colors"
                 >
-                  Partners
+                  Players
                 </Link>
               </li>
 
@@ -126,23 +125,22 @@ export function Footer() {
                 </Link>
               </li>
 
-              <li>
+             {/*  <li>
                 <Link
                   href="/tournaments"
                   className="hover:text-primary transition-colors"
                 >
                   Tournaments
                 </Link>
-              </li>
+              </li> */}
 
-              <li>
-                <Link
-                  href="/marketplace"
+              {/* <li>
+                <Link href="/marketplace"
                   className="hover:text-primary transition-colors"
                 >
                   Marketplace
                 </Link>
-              </li>
+              </li> */}
 
               <li>
                 <Link
@@ -153,12 +151,20 @@ export function Footer() {
                 </Link>
               </li>
 
-              <li>
+              {/* <li>
                 <Link
                   href="/recreation"
                   className="hover:text-primary transition-colors"
                 >
                   Recreation
+                </Link>
+              </li> */}
+              <li>
+                <Link
+                  href="/articles"
+                  className="hover:text-primary transition-colors"
+                >
+                  Tennis IQ
                 </Link>
               </li>
             </ul>
@@ -166,10 +172,10 @@ export function Footer() {
 
           {/* Company */}
           <div>
-            <h4 className="font-bold text-primary text-lg mb-6 mt-2">Company</h4>
+            <h4 className="font-bold text-primary text-lg mb-6 mt-1">Company</h4>
 
             <ul className="space-y-3 text-gray-400">
-              <li>
+              {/* <li>
                 <a
                   href="https://shop.tennisconnect.com.au"
                   target="_blank"
@@ -178,7 +184,7 @@ export function Footer() {
                 >
                   Shop
                 </a>
-              </li>
+              </li> */}
               <li>
                 <a
                   href="/?section=about"
@@ -223,7 +229,7 @@ export function Footer() {
 
           {/* Legal */}
           <div>
-            <h4 className="font-bold text-primary text-lg mb-6 mt-2">Legal</h4>
+            <h4 className="font-bold text-primary text-lg mb-6 mt-1">Legal</h4>
 
             <ul className="space-y-3 text-gray-400">
               <li>

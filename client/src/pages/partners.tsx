@@ -188,7 +188,7 @@ export default function PartnersPage() {
   return (
     <>
       <SEO
-        title="Find Tennis Partners in Australia | TennisConnect"
+        title="Find Tennis Players in Australia | TennisConnect"
         description="Connect with local tennis players across Australia. Find hitting partners, doubles teammates and tennis friends based on skill level, location and availability."
         canonical="/partners"
         tags={[

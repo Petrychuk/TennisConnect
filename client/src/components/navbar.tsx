@@ -82,14 +82,15 @@ export function Navbar() {
     };
 
   const navLinks = [
-    { name: "Partners", href: "/partners" },
+    { name: "Players", href: "/partners" },
     { name: "Coaches", href: "/coaches" },
-    { name: "Tournaments", href: "/tournaments" },
+    /* { name: "Tournaments", href: "/tournaments" }, */
     { name: "Clubs", href: "/clubs" },
     { name: "Travel", href: "/travel" },
-    { name: "Recreation", href: "/recreation" },
+    { name: "Tennis IQ", href: "/articles" },
+    /* { name: "Recreation", href: "/recreation" },
     { name: "Marketplace", href: "/marketplace" }, 
-    { name: "Shop", href: "https://shop.tennisconnect.com.au", external: true },
+    { name: "Shop", href: "https://shop.tennisconnect.com.au", external: true }, */
   ];
 
   if (location === "/auth") return null;
@@ -106,7 +107,7 @@ export function Navbar() {
         {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => (
-            link.external ? (
+           /*  link.external ? (
               <a
                 key={link.name}
                 href={link.href}
@@ -126,8 +127,14 @@ export function Navbar() {
                 className="text-sm font-medium hover:text-lime-600 transition-colors cursor-pointer"
               >
                 {link.name}
-              </Link>
-            )
+              </Link> ) */
+              <Link
+              key={link.name}
+              href={link.href}
+              className="text-sm font-medium hover:text-lime-600 transition-colors cursor-pointer"
+            >
+              {link.name}
+            </Link>  
           ))}
         </div>
 
@@ -249,7 +256,7 @@ export function Navbar() {
                    </div>
                 )}
 
-                {navLinks.map((link) => (
+                {/* {navLinks.map((link) => (
                   link.external ? (
                     <a
                       key={link.name}
@@ -274,6 +281,16 @@ export function Navbar() {
                       {link.name}
                     </Link>
                   )
+                ))} */}
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.name}
+                    href={link.href}
+                    className="text-lg font-medium hover:text-lime-600 transition-colors cursor-pointer"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    {link.name}
+                  </Link>
                 ))}
                 
                 {isAuthenticated ? (

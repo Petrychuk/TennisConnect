@@ -23,7 +23,7 @@ export function Hero() {
 
       {/* Content */}
       <div className="container relative z-10 px-4 mx-auto text-center md:text-left">
-        <div className="max-w-3xl mx-auto md:mx-0">
+        <div className="max-w-2xl xl:max-w-3xl mx-auto md:mx-0">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -36,7 +36,17 @@ export function Hero() {
               </span>
             </div>
             
-            <h1 className="text-4xl md:text-7xl font-display font-bold text-white leading-[1.1] mb-6 drop-shadow-xl">
+            <h1 className="
+              text-[2.2rem]
+                sm:text-5xl
+                md:text-6xl
+                lg:text-7xl
+                font-display
+                font-bold
+                text-white
+                leading-[1.1]
+                mb-6
+                drop-shadow-xl">
               Find Your Perfect <br />
               <span className="text-primary relative inline-block">
               Tennis Community
@@ -47,7 +57,7 @@ export function Hero() {
             </h1>
             
             <p className="text-lg md:text-xl text-gray-200 mb-8 max-w-xl leading-relaxed drop-shadow-md">
-            Where tennis creates connections. Find partners, coaches, clubs, events, and a community that brings people together on and off the court.
+            Where tennis creates connections. Find players, coaches, clubs, events, and a community that brings people together on and off the court.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
@@ -66,7 +76,7 @@ export function Hero() {
                   duration-300
                   group
                   cursor-pointer">
-                  Find a Partner
+                  Find a Player
                   <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>

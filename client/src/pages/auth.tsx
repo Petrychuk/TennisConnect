@@ -13,6 +13,7 @@ import { ArrowLeft, Loader2, User, Trophy, Mail, CheckCircle, Eye, EyeOff } from
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import heroImage from "/assets/images/tennis_main.jpg";
+import loginImage from "/assets/images/me_attack.jpg";
 import SEO from "@/components/seo";
 import { registerSchema, loginSchema } from "@/lib/validations/auth";
 
@@ -549,7 +550,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
         <div className="hidden lg:block lg:w-1/2 relative">
           <div className="absolute inset-0 bg-black">
             <img 
-              src={heroImage} 
+              src={loginImage} 
               alt="Tennis match" 
               className="w-full h-full object-cover object-[50%_0%] opacity-80"
             />
@@ -557,15 +558,15 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
             
             <div className="absolute bottom-16 left-12 right-12 text-white">
               <blockquote className="text-2xl font-display font-bold leading-relaxed mb-6">
-                "TennisConnect helped me find a training partner within a week of moving to Sydney. Now we play every Tuesday!"
+                "Tennis is more than a game. It's friendship, community and a sense of belonging. I created TennisConnect to help players across Sydney find their people through tennis."
               </blockquote>
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg">
-                  MC
+                  TC
                 </div>
                 <div>
-                  <div className="font-bold">Michael Chen</div>
-                  <div className="text-primary text-sm">Member since 2024</div>
+                  <div className="font-bold">Nataliia Petrychuk</div>
+                  <div className="text-primary text-sm">Founder, TennisConnect</div>
                 </div>
               </div>
             </div>

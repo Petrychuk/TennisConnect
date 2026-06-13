@@ -19,16 +19,16 @@ const SUPPORT_CATEGORIES = [
     label: "Account & Login Issues",
     icon: Lock,
   },
-  {
+  /* {
     id: "coach",
     label: "Help Finding a Coach",
     icon: UserRound,
   },
   {
     id: "partner",
-    label: "Help Finding a Tennis Partner",
+    label: "Help Finding a Tennis Player",
     icon: Users,
-  },
+  }, */
   {
     id: "join-coach",
     label: "Join as a Coach",
