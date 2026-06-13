@@ -823,7 +823,7 @@ export default function CoachProfile() {
           />
 
           {/* Profile Header / Hero */}
-          <div className="relative h-[300px] md:h-[400px] w-full overflow-hidden group">
+          <div className="relative h-[220px] sm:h-[280px] lg:h-[400px] w-full overflow-hidden group">
             <div className="absolute inset-0 bg-black/40 z-10" />
             <img 
               src={profile.cover ?? undefined} 
@@ -844,7 +844,7 @@ export default function CoachProfile() {
           </div>
 
           <div className="container mx-auto px-4 relative z-40 -mt-20 pointer-events-none">
-            <div className="flex flex-col md:flex-row gap-8 items-start pointer-events-auto">
+            <div className="flex flex-col lg:flex-row gap-8 items-start pointer-events-auto">
               {/* Avatar Column */}
               <div className="shrink-0 relative">
                 <div className="w-32 h-32 md:w-48 md:h-48 rounded-full border-4 border-background shadow-2xl overflow-hidden bg-muted relative group">
@@ -894,7 +894,7 @@ export default function CoachProfile() {
                       </div>
                     ) : (
                       <>
-                        <h1 className="text-3xl md:text-5xl font-display font-bold">{profile.name}</h1>
+                        <h1 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold">{profile.name}</h1>
                         <p className="text-xl text-muted-foreground">{profile.title}</p>
                       </>
                     )}
@@ -944,14 +944,25 @@ export default function CoachProfile() {
                 onValueChange={setActiveTab}
                 className="w-full"
               >
-                <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent gap-6">
-                  <TabsTrigger value="about" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">About</TabsTrigger>
-                  <TabsTrigger value="photos" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Photos</TabsTrigger>
-                  <TabsTrigger value="schedule" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Schedule & Locations</TabsTrigger>
-                  <TabsTrigger value="practice" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Hitting Partner</TabsTrigger>
-                  <TabsTrigger value="students" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">My Students</TabsTrigger>
-                  <TabsTrigger value="marketplace" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Marketplace</TabsTrigger>
-                  <TabsTrigger value="contact" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 text-lg">Contact</TabsTrigger>
+                <TabsList className="w-full
+                    overflow-x-auto
+                    whitespace-nowrap
+                    flex
+                    justify-start
+                    border-b
+                    rounded-none
+                    h-auto
+                    p-0
+                    bg-transparent
+                    gap-2
+                    scrollbar-hide">
+                  <TabsTrigger value="about" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">About</TabsTrigger>
+                  <TabsTrigger value="photos" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Photos</TabsTrigger>
+                  <TabsTrigger value="schedule" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Schedule & Locations</TabsTrigger>
+                  <TabsTrigger value="practice" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Hitting Partner</TabsTrigger>
+                  <TabsTrigger value="students" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">My Students</TabsTrigger>
+                  <TabsTrigger value="marketplace" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-baseg">Marketplace</TabsTrigger>
+                  <TabsTrigger value="contact" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Contact</TabsTrigger>
                 </TabsList>
 
                 <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -1903,7 +1914,7 @@ export default function CoachProfile() {
 
                   {/* Right Sidebar */}
                   <div className="space-y-6">
-                    <Card className="bg-card border-border/50 sticky top-24 shadow-sm">
+                    <Card className="bg-card border-border/50 sticky lg:sticky md:static shadow-sm">
                       <CardHeader>
                         <CardTitle className="text-xl flex items-center gap-2">
                           <Check className="w-5 h-5 text-primary" />
