@@ -85,7 +85,7 @@ export function Navbar() {
     { name: "Players", href: "/partners" },
     { name: "Coaches", href: "/coaches" },
     /* { name: "Tournaments", href: "/tournaments" }, */
-    { name: "Clubs", href: "/clubs" },
+    { name: "Club Communities", href: "/clubs" },
     { name: "Travel", href: "/travel" },
     { name: "Tennis IQ", href: "/articles" },
     /* { name: "Recreation", href: "/recreation" },

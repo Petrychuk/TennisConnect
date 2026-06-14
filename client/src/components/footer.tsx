@@ -121,7 +121,7 @@ export function Footer() {
                   href="/clubs"
                   className="hover:text-primary transition-colors"
                 >
-                  Clubs
+                  Club Communities
                 </Link>
               </li>
 
