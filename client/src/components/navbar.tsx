@@ -244,7 +244,7 @@ export function Navbar() {
             <SheetContent>
               <div className="flex flex-col gap-6 mt-8">
                 {isAuthenticated && (
-                   <div className="flex items-center gap-3 pb-6 border-b">
+                   <div className="flex items-center gap-3 pb-6">
                      <Avatar key={user?.avatar} className="h-10 w-10">
                         <AvatarImage src={user?.avatar || undefined} />
                         <AvatarFallback>{user?.name?.[0] || "U"}</AvatarFallback>
@@ -255,7 +255,7 @@ export function Navbar() {
                      </div>
                    </div>
                 )}
-
+                
                 {/* {navLinks.map((link) => (
                   link.external ? (
                     <a
@@ -282,6 +282,11 @@ export function Navbar() {
                     </Link>
                   )
                 ))} */}
+                <div className="border-t border-[hsl(var(--tennis-ball))]/70 pt-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-[hsl(var(--tennis-ball))] mb-3">
+                       EXPLORE
+                    </p>
+                  </div>
                 {navLinks.map((link) => (
                   <Link
                     key={link.name}
@@ -293,24 +298,37 @@ export function Navbar() {
                   </Link>
                 ))}
                 
+                
                 {isAuthenticated ? (
                   <>
-                    <Link href="/messages" onClick={() => setIsOpen(false)}>
-                      <Button variant="outline" className="w-full font-bold rounded-full cursor-pointer flex items-center gap-2">
-                        <Mail className="w-4 h-4" />
-                        Messages
-                        {unreadCount > 0 && (
-                          <Badge variant="destructive" className="ml-auto">
-                            {unreadCount}
-                          </Badge>
-                        )}
-                      </Button>
+                    <div className="border-t border-[hsl(var(--tennis-ball))]/70 pt-4">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-[hsl(var(--tennis-ball))] mb-3">
+                        My Account
+                      </p>
+                    </div>
+                    <Link
+                      href="/messages"
+                      className="flex items-center gap-3 text-lg font-medium"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      <Mail className="w-5 h-5" />
+                      Messages
+
+                      {unreadCount > 0 && (
+                        <Badge className="ml-auto">
+                          {unreadCount}
+                        </Badge>
+                      )}
                     </Link>
-                    <Link href={profileHref} onClick={() => setIsOpen(false)}>
-                      <Button variant="outline" className="w-full font-bold rounded-full cursor-pointer">
+                    <Link
+                        href={profileHref}
+                        className="flex items-center gap-3 text-lg font-medium"
+                        onClick={() => setIsOpen(false)}
+                      >
+                        <UserCircle className="w-5 h-5" />
                         My Profile
-                      </Button>
-                    </Link>
+                      </Link>
+                    <div className="border-t border-[hsl(var(--tennis-ball))]/70 pt-4 mt-2"></div>
                     <Button 
                       variant="ghost" 
                       className="w-full justify-start text-destructive hover:text-destructive cursor-pointer"
@@ -323,8 +341,8 @@ export function Navbar() {
                       <LogOut className="mr-2 h-4 w-4" /> Sign Out
                     </Button>
                     <Button
-                      variant="outline"
-                      className="w-full justify-start text-destructive border-destructive/20 cursor-pointer"
+                      variant="ghost"
+                      className="w-full justify-start text-destructive hover:text-destructive cursor-pointer"
                       onClick={() => {
                         setDeleteDialogOpen(true);
                         setIsOpen(false);

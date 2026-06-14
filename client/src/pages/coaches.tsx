@@ -123,53 +123,121 @@ export default function CoachesPage() {
         
         <main>
           {/* Modern Hero Section */}
-          <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden bg-black text-white">
+          <section className="relative min-h-[30vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-center overflow-hidden">
             {/* Background Image with Overlay */}
             <div className="absolute inset-0 z-0">
               <img 
                 src={heroImage}
-                alt="Tennis court" 
-                className="w-full h-full object-cover object-[50%_25%] opacity-40"
+                alt="Tennis coach" 
+                className="w-full
+                h-full
+                object-cover
+                object-[60%_20%]
+                opacity-70"
               />
-              <div className="absolute inset-0 bg-linear-to-b from-black/60 via-black/40 to-background" />
+              <div className="absolute inset-0 bg-linear-to-b from-black/30 via-black/10 to-background/90" />
             </div>
 
-            <div className="container mx-auto px-4 relative z-10">
+            <div className="container mx-auto px-2 relative z-10">
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
-                className="max-w-3xl"
+                className="max-w-3xl
+                  pt-30
+                  md:pt-12
+                  lg:pt-0
+                  px-4
+                  md:pl-8
+                  lg:pl-0
+                  text-center
+                  md:text-left
+                  md:translate-y-10
+                  lg:translate-y-2
+                  xl:translate-y-6
+                  xl:pt-20"
               >
-                <Badge className="mb-6 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-1.5 text-sm font-bold uppercase tracking-wider cursor-default">
-                  Find Your Coach
+                <Badge className="mb-3
+                  md:mb-6
+                  px-3
+                  md:px-4
+                  py-1
+                  text-[10px]
+                  sm:text-xs
+                  md:text-sm
+                  font-bold
+                  uppercase
+                  tracking-wider">
+                  Find Best Coach
                 </Badge>
-                <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold leading-tight mb-6">
-                  Elevate your game with <span className="text-primary">pro coaching.</span>
-                </h1>
-                <p className="text-xl text-gray-300 max-w-xl mb-8 leading-relaxed">
-                  Connect with certified tennis coaches in Sydney who can take your skills to the next level, whether you're a beginner or a tournament player.
+                <h1 className="text-3xl
+                  sm:text-4xl
+                  md:text-5xl
+                  lg:text-6xl
+                  font-display
+                  font-bold
+                  leading-[0.95]
+                  mb-3">
+                Level Up <span className="text-primary relative inline-block">Your Game<svg
+                  className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40"
+                  viewBox="0 0 100 10"
+                  preserveAspectRatio="none"
+                >
+                  <path
+                    d="M0 5 Q 50 10 100 5"
+                    stroke="currentColor"
+                    strokeWidth="8"
+                    fill="none"
+                  />
+                </svg>
+                </span>
+                  </h1>
+                <p className="
+                    text-sm
+                    sm:text-base
+                    md:text-lg
+                    text-muted-foreground
+                    leading-[1.2]
+                    md:leading-relaxed
+                    max-w-xl
+                    mx-auto
+                    md:mx-0">
+                  Connect with certified tennis coaches in Sydney to take your game to the next level, whether you're a beginner or a tournament player.
                 </p>
               </motion.div>
             </div>
           </section>
 
           {/* Filter & Search Bar - Floating */}
-          <div className="container mx-auto px-4 -mt-8 relative z-20 mb-16">
-            <div className="bg-card border border-border/50 shadow-xl rounded-2xl p-4 md:p-6 flex flex-col md:flex-row gap-4 items-center justify-between">
-              <div className="relative w-full md:w-[400px] lg:w-[500px]">
+          <div className="container mx-auto px-2 mt-0 md:pt-2 md:-mt-2 relative z-20 mb-8 md:mb-14">
+            <div className="bg-card/95
+              backdrop-blur-sm
+              border border-border/40
+              shadow-lg
+              rounded-2xl
+              p-2.5 md:p-4 lg:p-4
+              flex flex-col md:flex-row
+              gap-3 md:gap-4
+              items-center
+              justify-between">
+              <div className="relative w-full md:w-[280px] lg:w-[380px] xl:w-[450px]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
                 <Input 
                   placeholder="Search by name or specialty..." 
-                  className="pl-10 h-12 text-lg bg-background w-full"
+                  className="pl-10
+                    h-11 md:h-12
+                    text-sm md:text-base
+                    bg-background
+                    w-full
+                    rounded-xl"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
               
-              <div className="flex flex-col md:flex-row w-full md:w-auto gap-4">
+              <div className="flex flex-row md:flex-row w-full md:w-auto gap-2">
                 <Select value={locationFilter} onValueChange={setLocationFilter}>
-                  <SelectTrigger className="w-full md:w-[200px] h-12 bg-background cursor-pointer">
+                  <SelectTrigger className="w-full flex-1 sm:w-full md:w-[180px] lg:w-[190px] h-11 md:h-12 bg-background cursor-pointer">
                     <div className="flex items-center gap-2">
                       <MapPin className="w-4 h-4 text-primary" />
                       <SelectValue placeholder="Location" />
@@ -185,7 +253,7 @@ export default function CoachesPage() {
 
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className={`h-12 w-full md:w-auto px-4 shrink-0 bg-background cursor-pointer ${activeFiltersCount > 0 ? 'border-primary text-primary' : ''}`}>
+                    <Button variant="outline" className={`h-11 md:h-12 w-auto px-3 md:px-4 shrink-0 bg-background cursor-pointer ${activeFiltersCount > 0 ? 'border-primary text-primary' : ''}`}>
                       <Filter className="w-5 h-5 mr-2" />
                       Filters
                       {activeFiltersCount > 0 && (
@@ -262,7 +330,7 @@ export default function CoachesPage() {
 
           {/* Coaches Grid */}
           <section className="container mx-auto px-4 pb-24">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
               {filteredCoaches.map((coach, index) => (
                 <motion.div
                   key={coach.id}
@@ -273,34 +341,63 @@ export default function CoachesPage() {
                 >
                   <Card className="h-full overflow-hidden hover:shadow-lg transition-shadow duration-300 border-border/60 group cursor-pointer">
                     {/* Card Header with Image */}
-                    <div className="relative h-64 overflow-hidden">
+                    <div className="relative h-36 md:h-52 lg:h-60 overflow-hidden">
                       <img 
                         src={coach.image} 
                         alt={coach.name} 
                         className="w-full h-full object-cover object-[50%_35%] transition-transform duration-500 group-hover:scale-105"
                       />
-                      <div className="absolute top-4 right-4 bg-background/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm">
+                      <div className="absolute
+                          top-1
+                          right-1
+                          md:top-4
+                          md:right-4
+                          bg-background/90
+                          backdrop-blur-sm
+                          px-1
+                          md:px-3
+                          py-0.5
+                          md:py-1
+                          rounded-full
+                          text-[10px]
+                          md:text-xs
+                          font-bold
+                          flex
+                          items-center
+                          gap-1
+                          shadow-sm">
                         <Star className="w-3 h-3 text-primary fill-primary" />
                         {coach.rating} ({coach.reviews})
                       </div>
                     </div>
 
-                    <CardHeader className="pb-2">
+                    <CardHeader className="px-3 pt-3 pb-1 md:px-6 md:pb-2">
                       <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="text-xl font-bold font-display group-hover:text-primary transition-colors">{coach.name}</h3>
+                        <div className="min-h-[56px] md:min-h-[85px]">
+                          <h3 className="text-base md:text-lg lg:text-xl
+                            font-bold
+                            font-display
+                            group-hover:text-primary
+                            transition-colors
+
+                            line-clamp-2
+                            min-h-[48px]
+                            md:min-h-[56px]">{coach.name}</h3>
                           <p className="text-sm text-muted-foreground line-clamp-1">{coach.title}</p>
                         </div>
                       </div>
                     </CardHeader>
 
-                    <CardContent className="space-y-4">
+                    <CardContent className="px-3 pb-3 space-y-1.5 md:space-y-4">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <MapPin className="w-4 h-4 text-primary" />
                         {coach.location}
                       </div>
 
-                      <div className="flex flex-wrap gap-2">
+                      <div className="hidden md:flex
+                          flex-wrap
+                          gap-2
+                          min-h-[56px]">
                         {coach.tags.map(tag => (
                           <Badge key={tag} variant="secondary" className="font-normal text-xs bg-muted/50">
                             {tag}
@@ -308,19 +405,25 @@ export default function CoachesPage() {
                         ))}
                       </div>
 
-                      <div className="flex items-center justify-between pt-4 border-t border-border/50">
+                      <div className="flex
+                          items-center
+                          justify-between
+                          pt-2
+                          md:pt-4
+                          border-t
+                          border-border/50">
                         <div className="flex flex-col">
-                          <span className="text-xs text-muted-foreground">Hourly Rate</span>
-                          <div className="flex items-center font-bold text-lg">
-                            <DollarSign className="w-4 h-4 text-primary" />
+                          <span className="text-[10px] md:text-xs text-muted-foreground">Hourly Rate</span>
+                          <div className="flex items-center font-bold text-base md:text-lg">
+                            <DollarSign className="w-3 h-3 md:w-4 md:h-4 text-primary" />
                             {coach.rate}
-                            <span className="text-sm font-normal text-muted-foreground ml-1">AUD</span>
+                            <span className="text-xs md:text-sm font-normal text-muted-foreground ml-1">AUD</span>
                           </div>
                         </div>
                         
                         {/* Schedule Indicator */}
                         {coach.schedule && (
-                          <div className="flex flex-col items-end">
+                          <div className="hidden md:flex flex-col items-end">
                               <span className="text-xs text-muted-foreground flex items-center gap-1">
                                 <Calendar className="w-3 h-3" /> Today
                               </span>
@@ -347,9 +450,9 @@ export default function CoachesPage() {
                       </div>
                     </CardContent>
 
-                    <CardFooter className="pt-0">
+                    <CardFooter className="px-3 pb-3 pt-0 md:px-6 md:pb-6">
                       <Link href={`/coach/${coach.slug}`}>
-                        <Button className="w-full font-bold group-hover:bg-primary group-hover:text-primary-foreground transition-all cursor-pointer">
+                        <Button className="w-full h-9 md:h-10 text-xs md:text-sm font-bold group-hover:bg-primary group-hover:text-primary-foreground transition-all cursor-pointer">
                           View Profile <ArrowRight className="w-4 h-4 ml-2" />
                         </Button>
                       </Link>
