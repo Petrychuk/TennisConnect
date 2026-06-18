@@ -32,9 +32,11 @@ export function TravelHero({
   return (
     <section className="relative mt-16 overflow-hidden">
       {/* Background Image */}
-      <div className="relative h-[340px]
-        sm:h-[420px]
-        lg:h-[620px]">
+      <div className="relative 
+        h-[420px]
+        sm:h-[500px]
+        md:h-[600px]
+        lg:h-[700px]">
         <img
           src={coverImage}
           alt={title}
@@ -55,7 +57,7 @@ export function TravelHero({
           </div>
 
           {/* Content */}
-          <div className="h-full flex items-end pb-24 lg:pb-28 md:pb-14">
+          <div className="h-full flex items-end pb-28 md:pb-24 lg:pb-36">
             <motion.div
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
@@ -78,23 +80,21 @@ export function TravelHero({
 
               <h1
                 className="
-                 text-[38px]
-                  sm:text-4xl
-                  md:text-5xl
-                  xl:text-6xl
+                text-[28px]
+                leading-[0.95]
 
-                  max-w-[340px]
-                  sm:max-w-xl
-                  lg:max-w-3xl
+                sm:text-[42px]
+                md:text-5xl
+                xl:text-6xl
 
-                  font-display
-                  font-bold
-                  tracking-tight
-                  leading-[0.95]
+                font-display
+                font-bold
+                text-white
 
-                  text-white
-                  mb-5
-                "
+                max-w-[260px]
+                sm:max-w-[320px]
+                md:max-w-3xl
+              "
               >
                 {title}
               </h1>

@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import SEO from "@/components/seo";
 import { TravelHero } from "@/components/travel/travel-hero";
+import TravelHighlights from "@/components/travel/travel-highlights";
 
 interface TravelPackage {
   id: string;
@@ -125,14 +126,11 @@ export default function TravelDetailPage() {
           providerName={pkg.providerName}
           isFeatured={pkg.isFeatured}
         /> 
+        <TravelHighlights
+          highlights={pkg.highlights}
+        />
 
         <div className="container mx-auto px-4 py-12">
-          <Link href="/travel">
-            <Button variant="ghost" className="mb-6 gap-2 cursor-pointer">
-              <ArrowLeft className="w-4 h-4" /> All Packages
-            </Button>
-          </Link>
-
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
             <div className="lg:col-span-2">
               <h2 className="text-2xl font-display font-bold mb-4">About this trip</h2>
