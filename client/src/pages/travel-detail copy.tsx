@@ -9,7 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import SEO from "@/components/seo";
-import { TravelHero } from "@/components/travel/travel-hero";
 
 interface TravelPackage {
   id: string;
@@ -117,14 +116,25 @@ export default function TravelDetailPage() {
       <div className="min-h-screen bg-background font-sans">
         <Navbar />
 
-        <TravelHero
-          title={pkg.title}
-          destination={pkg.destination}
-          startDate={pkg.startDate}
-          coverImage={pkg.coverImage}
-          providerName={pkg.providerName}
-          isFeatured={pkg.isFeatured}
-        /> 
+        <div className="relative h-[60vh] mt-16 overflow-hidden">
+          <img src={pkg.coverImage} alt={pkg.title} className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-linear-to-t from-background via-background/40 to-transparent" />
+          <div className="absolute bottom-8 left-0 right-0 container mx-auto px-4">
+            <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
+              {pkg.isFeatured && (
+                <Badge className="mb-3 bg-primary text-primary-foreground font-bold">Featured</Badge>
+              )}
+              <h1 className="text-4xl md:text-6xl font-display font-bold text-white mb-3" data-testid="travel-title">
+                {pkg.title}
+              </h1>
+              <div className="flex flex-wrap gap-4 text-white/90">
+                <span className="flex items-center gap-1"><MapPin className="w-4 h-4" /> {pkg.destination}</span>
+                <span className="flex items-center gap-1"><Calendar className="w-4 h-4" /> {formatDate(pkg.startDate)}</span>
+                <span className="flex items-center gap-1"><Users className="w-4 h-4" /> {pkg.duration}</span>
+              </div>
+            </motion.div>
+          </div>
+        </div>
 
         <div className="container mx-auto px-4 py-12">
           <Link href="/travel">

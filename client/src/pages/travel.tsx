@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import SEO from "@/components/seo";
+import travelHero from "/assets/images/hurbord_tennis.png";
 
 interface TravelPackage {
   id: string;
@@ -18,10 +19,23 @@ interface TravelPackage {
   price: number;
   currency: string;
   description: string;
+  content?: string;
+  highlights?: string[];
+  includes?: string[];
   coverImage: string;
+  gallery?: string[];
   startDate: string | null;
   spotsLeft: number;
+  providerName?: string;
+  providerWebsite?: string;
+  providerLogo?: string;
+  ctaText?: string;
+  ctaUrl?: string;
+  tags?: string[];
+  seoTitle?: string;
+  metaDescription?: string;
   isFeatured: boolean;
+  isActive?: boolean;
 }
 
 export default function TravelPage() {
@@ -64,10 +78,9 @@ export default function TravelPage() {
 
       <div className="relative min-h-[40vh] flex items-center justify-center overflow-hidden bg-black">
         <div
-          className="absolute inset-0 z-0 opacity-30"
+          className="absolute inset-0 z-0 opacity-80"
           style={{
-            backgroundImage:
-              "url(https://images.unsplash.com/photo-1529693662653-9d480530a697?q=80&w=2000&auto=format&fit=crop)",
+            backgroundImage: `url(${travelHero})`,
             backgroundSize: "cover",
             backgroundPosition: "center",
           }}
@@ -79,7 +92,22 @@ export default function TravelPage() {
               <Plane className="w-4 h-4 mr-2" /> Tennis Travel
             </Badge>
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold mb-4 tracking-tight text-white">
-              Train. Travel. <span className="text-primary">Transform.</span>
+              Train. Travel.{" "}
+              <span className="relative inline-block text-primary">
+                Transform.
+                <svg
+                  className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40"
+                  viewBox="0 0 100 10"
+                  preserveAspectRatio="none"
+                >
+                  <path
+                    d="M0 5 Q 50 10 100 5"
+                    stroke="currentColor"
+                    strokeWidth="8"
+                    fill="none"
+                  />
+                </svg>
+              </span>
             </h1>
             <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto font-light">
               Curated tennis getaways. Train with pros, recover in paradise.

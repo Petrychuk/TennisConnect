@@ -44,19 +44,38 @@ export const travelPackages = pgTable("travel_packages", {
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   title: text("title").notNull(),
   destination: text("destination").notNull(),
-  duration: text("duration").notNull(), // e.g. "7 days"
+  duration: text("duration").notNull(),
   price: integer("price").notNull(),
-  currency: varchar("currency", { length: 8 }).default("AUD").notNull(),
+  currency: varchar("currency", { length: 8 })
+    .default("AUD")
+    .notNull(),
   description: text("description").notNull(),
+  content: text("content"),
   highlights: json("highlights").$type<string[]>().default([]),
   includes: json("includes").$type<string[]>().default([]),
   coverImage: text("cover_image").notNull(),
   gallery: json("gallery").$type<string[]>().default([]),
+  providerName: text("provider_name"),
+  providerWebsite: text("provider_website"),
+  providerLogo: text("provider_logo"),
+  tags: json("tags").$type<string[]>().default([]),
+  ctaText: text("cta_text"),
+  ctaUrl: text("cta_url"),
+  seoTitle: text("seo_title"),
+  metaDescription: text("meta_description"),
   startDate: text("start_date"),
-  spotsLeft: integer("spots_left").default(10).notNull(),
-  isFeatured: boolean("is_featured").default(false).notNull(),
-  isActive: boolean("is_active").default(true).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  spotsLeft: integer("spots_left")
+    .default(10)
+    .notNull(),
+  isFeatured: boolean("is_featured")
+    .default(false)
+    .notNull(),
+  isActive: boolean("is_active")
+    .default(true)
+    .notNull(),
+  createdAt: timestamp("created_at")
+    .defaultNow()
+    .notNull(),
 });
 
 // Recreation Services - massage / recovery / wellness
@@ -390,6 +409,15 @@ export const insertTravelPackageSchema = createInsertSchema(travelPackages).omit
   highlights: z.array(z.string()).optional().default([]),
   includes: z.array(z.string()).optional().default([]),
   gallery: z.array(z.string()).optional().default([]),
+  tags: z.array(z.string()).optional().default([]),
+  providerName: z.string().max(150).optional(),
+  providerWebsite: z.string().url().optional(),
+  providerLogo: z.string().url().optional(),
+  ctaText: z.string().max(100).optional(),
+  ctaUrl: z.string().url().optional(),
+  seoTitle: z.string().max(255).optional(),
+  metaDescription: z.string().max(500).optional(),
+  content: z.string().optional(),
 });
 export const insertRecreationServiceSchema = createInsertSchema(recreationServices).omit({
   id: true,

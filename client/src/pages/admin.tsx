@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -35,7 +36,7 @@ const ICONS: Record<Resource, any> = {
 };
 
 // Field definitions per resource
-const FIELDS: Record<Resource, { name: string; type: "text" | "textarea" | "number" | "list" | "select"; required?: boolean; help?: string; options?: string[] }[]> = {
+const FIELDS: Record<Resource, { name: string; label?: string; type: "text" | "textarea" | "number" | "list" | "select" | "checkbox"; required?: boolean; help?: string; options?: string[] }[]> = {
   articles: [
     { name: "title", type: "text", required: true },
     { name: "slug", type: "text", required: true },
@@ -76,6 +77,7 @@ const FIELDS: Record<Resource, { name: string; type: "text" | "textarea" | "numb
   ],
   travel: [
     { name: "title", type: "text", required: true },
+    { name: "slug", type: "text", required: false, help: "Leave blank to auto-generate"},
     { name: "destination", type: "text", required: true },
     { name: "duration", type: "text", required: true, help: "e.g. 7 days" },
     { name: "price", type: "number", required: true },
@@ -84,8 +86,30 @@ const FIELDS: Record<Resource, { name: string; type: "text" | "textarea" | "numb
     { name: "highlights", type: "list", help: "Comma separated" },
     { name: "includes", type: "list", help: "Comma separated" },
     { name: "coverImage", type: "text", required: true, help: "Image URL" },
+    { name: "gallery", type: "list", help: "Image URLs (max 10)" },
+    { name: "providerName", type: "text" },
+    { name: "providerWebsite", type: "text" },
+    { name: "providerLogo", type: "text", help: "Logo URL" },
+    { name: "ctaText", type: "text", help: "Book Now / Learn More" },
+    { name: "ctaUrl", type: "text", help: "External booking page" },
+    { name: "tags", type: "list", help: "Comma separated" },
+    { name: "seoTitle", type: "text" },
+    {
+      name: "metaDescription",
+      type: "textarea",
+    },
+    {
+      name: "content",
+      type: "textarea",
+      help: "Full package details",
+    },
     { name: "startDate", type: "text", help: "YYYY-MM-DD" },
     { name: "spotsLeft", type: "number" },
+    {
+      name: "isFeatured",
+      label: "Featured Package",
+      type: "checkbox",
+    }
   ],
   recreation: [
     { name: "name", type: "text", required: true },
@@ -131,6 +155,7 @@ export default function AdminPage() {
   const { user, isAuthenticated, loading: isLoading } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<Resource>("articles");
+  const ActiveIcon = ICONS[activeTab];
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
@@ -194,10 +219,17 @@ export default function AdminPage() {
     );
   }
 
+
   const openCreate = () => {
     setEditing(null);
     const blank: Record<string, any> = {};
-    FIELDS[activeTab].forEach((f) => (blank[f.name] = ""));
+    FIELDS[activeTab].forEach((f) => {
+      blank[f.name] =
+        f.type === "checkbox"
+          ? false
+          : "";
+    });
+
     setFormData(blank);
     setDialogOpen(true);
   };
@@ -208,7 +240,12 @@ export default function AdminPage() {
     FIELDS[activeTab].forEach((f) => {
       const v = item[f.name];
       if (f.type === "list") data[f.name] = Array.isArray(v) ? v.join(", ") : (v || "");
-      else data[f.name] = v ?? "";
+      else if (f.type === "checkbox") {
+          data[f.name] = !!v;
+        }
+        else {
+          data[f.name] = v ?? "";
+        }
     });
     setFormData(data);
     setDialogOpen(true);
@@ -230,8 +267,13 @@ export default function AdminPage() {
           .map((s) => s.trim())
           .filter(Boolean);
       }
+
+      if (f.type === "checkbox") {
+        payload[f.name] = !!v;
+      } else {
+        payload[f.name] = v;
+      }
   
-      payload[f.name] = v;
     });
   
     // VALIDATION
@@ -342,8 +384,6 @@ export default function AdminPage() {
       });
     }
   };
-
-  const ActiveIcon = ICONS[activeTab];
 
   return (
     <>
@@ -460,8 +500,30 @@ export default function AdminPage() {
                       <span className="text-destructive ml-1">*</span>
                     )}
                   </Label>
+     
+                  {activeTab === "travel" && f.type === "checkbox" ? (
+                      <div className="flex items-center justify-between rounded-lg border p-4">
+                        <div>
+                          <Label htmlFor={f.name}>
+                            {f.label || f.name}
+                          </Label>
 
-                  {f.type === "textarea" ? (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Show this package as Featured on TennisConnect.
+                          </p>
+                        </div>
+
+                        <Switch
+                            checked={!!formData[f.name]}
+                            onCheckedChange={(checked) =>
+                              setFormData({
+                                ...formData,
+                                [f.name]: checked,
+                              })
+                            }
+                          />
+                      </div>
+                    ) : f.type === "textarea" ? (
                     <Textarea
                       id={f.name}
                       value={formData[f.name] || ""}
