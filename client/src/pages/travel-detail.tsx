@@ -11,6 +11,12 @@ import { useAuth } from "@/lib/auth-context";
 import SEO from "@/components/seo";
 import { TravelHero } from "@/components/travel/travel-hero";
 import TravelHighlights from "@/components/travel/travel-highlights";
+import { TravelGallery } from "@/components/travel/travel-gallery";
+import { TravelAbout } from "@/components/travel/travel-about";
+import { TravelFullExperience } from "@/components/travel/travel-full-experience";
+import { TravelWhatsIncluded } from "@/components/travel/travel-whats-included";
+import { TravelPriceCard } from "@/components/travel/travel-price-card";
+import { TravelProviderCard } from "@/components/travel/travel-provider-card";
 
 interface TravelPackage {
   id: string;
@@ -56,7 +62,7 @@ export default function TravelDetailPage() {
       .catch(() => setNotFound(true));
   }, [params?.slug]);
 
-  const handleBook = () => {
+  /* const handleBook = () => {
     if (!isAuthenticated) {
       toast({
         title: "Sign in required",
@@ -69,7 +75,7 @@ export default function TravelDetailPage() {
       title: "Reservation request sent!",
       description: `We'll be in touch about ${pkg?.title}.`,
     });
-  };
+  }; */
 
   if (notFound) {
     return (
@@ -101,20 +107,24 @@ export default function TravelDetailPage() {
 
   return (
     <>
-      {/* <SEO !not done yet
-        title={`${travelPackage.title} | Tennis Travel | TennisConnect`}
-        description={
-          travelPackage.description ||
-          "Tennis travel package."
+       <SEO
+        title={
+          pkg.seoTitle ||
+          `${pkg.title} | Tennis Travel | TennisConnect`
         }
-        canonical={`/travel/${travelPackage.slug}`}
+        description={
+          pkg.metaDescription ||
+          pkg.description
+        }
+        canonical={`/travel/${pkg.slug}`}
         tags={[
           "tennis travel",
           "tennis holiday",
-          "tennis camp",
-          "Australia",
+          "tennis retreat",
+          pkg.destination,
+          pkg.providerName || "",
         ]}
-      /> */}
+      /> 
       <div className="min-h-screen bg-background font-sans">
         <Navbar />
 
@@ -129,79 +139,72 @@ export default function TravelDetailPage() {
         <TravelHighlights
           highlights={pkg.highlights}
         />
+          <div className="container mx-auto px-4 pt-4 md:pt-6 pb-10">
+            <div className="grid lg:grid-cols-4 gap-10">
 
-        <div className="container mx-auto px-4 py-12">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-            <div className="lg:col-span-2">
-              <h2 className="text-2xl font-display font-bold mb-4">About this trip</h2>
-              <p className="text-lg text-muted-foreground mb-8 leading-relaxed">{pkg.description}</p>
-
-              {pkg.highlights && pkg.highlights.length > 0 && (
-                <div className="mb-8">
-                  <h3 className="text-xl font-bold mb-4">Highlights</h3>
-                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {pkg.highlights.map((h) => (
-                      <li key={h} className="flex items-start gap-2">
-                        <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 shrink-0" />
-                        <span>{h}</span>
-                      </li>
-                    ))}
-                  </ul>
+              <div className="lg:col-span-3">
+                
+                <TravelAbout
+                  description={pkg.description}
+                />
+                <div className="lg:hidden container mx-auto px-4 -mt-0 mb-4">
+                  <TravelPriceCard
+                    price={pkg.price}
+                    currency={pkg.currency}
+                    duration={pkg.duration}
+                    startDate={pkg.startDate}
+                    spotsLeft={pkg.spotsLeft}
+                    ctaText={pkg.ctaText}
+                    ctaUrl={pkg.ctaUrl}
+                  />
                 </div>
-              )}
-
-              {pkg.includes && pkg.includes.length > 0 && (
-                <div>
-                  <h3 className="text-xl font-bold mb-4">What's included</h3>
-                  <ul className="space-y-2">
-                    {pkg.includes.map((i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 shrink-0" />
-                        <span>{i}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            <div>
-              <div className="sticky top-24 bg-linear-to-br from-primary/10 to-primary/5 rounded-3xl p-6">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Starts at</p>
-                <p className="text-4xl font-display font-bold mb-1">
-                  ${pkg.price}
-                  <span className="text-base text-muted-foreground font-normal ml-1">{pkg.currency}</span>
-                </p>
-                <p className="text-sm text-muted-foreground mb-6">per person</p>
-
-                <div className="space-y-3 mb-6 text-sm border-t pt-4">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Duration</span>
-                    <span className="font-bold">{pkg.duration}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Start date</span>
-                    <span className="font-bold">{formatDate(pkg.startDate)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Spots left</span>
-                    <span className={`font-bold ${pkg.spotsLeft <= 5 ? "text-red-500" : ""}`}>
-                      {pkg.spotsLeft}
-                    </span>
-                  </div>
-                </div>
-
-                <Button
-                  onClick={handleBook}
-                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full cursor-pointer"
-                  data-testid="travel-reserve-button"
-                >
-                  Reserve My Spot
-                </Button>
+                <TravelGallery
+                  images={pkg.gallery?.length
+                    ? pkg.gallery
+                    : [pkg.coverImage]
+                  }
+                />
+              
+              <TravelFullExperience
+                content={pkg.content}
+              />
+               <TravelWhatsIncluded
+                  includes={pkg.includes}
+                />
               </div>
+              
+              <div className="lg:hidden mt-8">
+                <TravelProviderCard
+                  providerName={pkg.providerName}
+                  providerLogo={pkg.providerLogo}
+                  providerWebsite={pkg.providerWebsite}
+                />
+              </div>
+
+            {/* RIGHT */}
+
+              <div className="hidden lg:block">
+                <div className="sticky top-24 space-y-6">
+
+                  <TravelPriceCard
+                    price={pkg.price}
+                    currency={pkg.currency}
+                    duration={pkg.duration}
+                    startDate={pkg.startDate}
+                    spotsLeft={pkg.spotsLeft}
+                    ctaText={pkg.ctaText}
+                    ctaUrl={pkg.ctaUrl}
+                  />
+                  <TravelProviderCard
+                    providerName={pkg.providerName}
+                    providerLogo={pkg.providerLogo}
+                    providerWebsite={pkg.providerWebsite}
+                  />
+
+                </div>
+              </div>             
             </div>
           </div>
-        </div>
 
         <Footer />
       </div>

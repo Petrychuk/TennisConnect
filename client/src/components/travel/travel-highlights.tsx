@@ -80,7 +80,8 @@ import {
           -mt-4
           md:-mt-6
           lg:-mt-8
-          mb-10
+          mb-6 
+          md:mb-8
         "
       >
         <div className="container mx-auto px-4">
