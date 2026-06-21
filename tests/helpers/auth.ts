@@ -62,8 +62,9 @@ export async function login(
   await page.getByRole('button', {
     name: /sign in/i,
   }).click();
-  
-  await page.waitForLoadState('networkidle');
+
+  // ждём пока уйдём со страницы auth
+  await expect(page).not.toHaveURL(/auth/);
 }
 
 export async function logout(page: Page) {

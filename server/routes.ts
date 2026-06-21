@@ -107,7 +107,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       const defaultCover = parsed.data.role === 'coach'
         ? 'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=1200&h=400&fit=crop'
         : 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=1200&h=400&fit=crop';
-      
+            
       const user = await storage.createUser({
         ...parsed.data,
         password: hashedPassword,
