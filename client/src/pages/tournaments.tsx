@@ -11,6 +11,7 @@ import { Calendar, MapPin, Users, Trophy, DollarSign, Phone, Mail, Globe, Search
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
+import SEO from "@/components/seo";
 
 interface DBTournament {
   id: string;
@@ -203,197 +204,212 @@ export default function TournamentsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-background font-sans">
-      <Navbar />
+    <>
+      <SEO
+      title="Tennis Tournaments in Australia | TennisConnect"
+      description="Explore upcoming tennis tournaments, social competitions and local tennis events across Australia."
+      canonical="/tournaments"
+      tags={[
+        "tennis tournaments",
+        "tennis events",
+        "social tennis",
+        "tennis competitions",
+        "Sydney tournaments",
+        "Australia tennis",
+      ]}
+    />
+      <div className="min-h-screen bg-background font-sans">
+        <Navbar />
 
-      <div className="relative min-h-[50vh] flex items-center justify-center overflow-hidden bg-black">
-        <div
-          className="absolute inset-0 z-0 opacity-40"
-          style={{
-            backgroundImage: "url(https://images.unsplash.com/photo-1554068865-24cecd4e34b8?q=80&w=2000&auto=format&fit=crop)",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        />
-        <div className="absolute inset-0 bg-linear-to-b from-black/60 via-black/40 to-background z-10" />
-        <div className="relative z-20 container mx-auto px-4 text-center mt-20">
-          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
-            <Badge className="mb-6 bg-primary text-primary-foreground px-4 py-1.5 text-sm font-bold">
-              <Trophy className="w-4 h-4 mr-2" /> Official Tournaments
-            </Badge>
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold mb-6 tracking-tight text-white">
-              Tennis <span className="text-primary">Tournaments</span>
-            </h1>
-            <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto font-light leading-relaxed">
-              Compete in tournaments, test your skills, and climb the rankings among Australia's best players.
-            </p>
-          </motion.div>
+        <div className="relative min-h-[50vh] flex items-center justify-center overflow-hidden bg-black">
+          <div
+            className="absolute inset-0 z-0 opacity-40"
+            style={{
+              backgroundImage: "url(https://images.unsplash.com/photo-1554068865-24cecd4e34b8?q=80&w=2000&auto=format&fit=crop)",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          />
+          <div className="absolute inset-0 bg-linear-to-b from-black/60 via-black/40 to-background z-10" />
+          <div className="relative z-20 container mx-auto px-4 text-center mt-20">
+            <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
+              <Badge className="mb-6 bg-primary text-primary-foreground px-4 py-1.5 text-sm font-bold">
+                <Trophy className="w-4 h-4 mr-2" /> Official Tournaments
+              </Badge>
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold mb-6 tracking-tight text-white">
+                Tennis <span className="text-primary">Tournaments</span>
+              </h1>
+              <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto font-light leading-relaxed">
+                Compete in tournaments, test your skills, and climb the rankings among Australia's best players.
+              </p>
+            </motion.div>
+          </div>
         </div>
-      </div>
 
-      <div className="sticky top-16 z-40 bg-background/80 backdrop-blur-lg border-b py-4 shadow-sm">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="relative w-full md:w-96 group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search tournaments..."
-                className="pl-10 h-11 bg-secondary/50 border-transparent focus:border-primary rounded-xl"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
-              {[
-                { value: "", label: "All Levels" },
-                { value: "Beginner", label: "Beginner" },
-                { value: "Intermediate", label: "Intermediate" },
-                { value: "Advanced", label: "Advanced" },
-              ].map((level) => (
-                <button
-                  key={level.value}
-                  onClick={() => setFilterLevel(filterLevel === level.value ? "" : level.value)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border cursor-pointer ${
-                    filterLevel === level.value
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-background hover:bg-secondary border-input"
-                  }`}
-                >
-                  {level.label}
-                </button>
-              ))}
+        <div className="sticky top-16 z-40 bg-background/80 backdrop-blur-lg border-b py-4 shadow-sm">
+          <div className="container mx-auto px-4">
+            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+              <div className="relative w-full md:w-96 group">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search tournaments..."
+                  className="pl-10 h-11 bg-secondary/50 border-transparent focus:border-primary rounded-xl"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
+                {[
+                  { value: "", label: "All Levels" },
+                  { value: "Beginner", label: "Beginner" },
+                  { value: "Intermediate", label: "Intermediate" },
+                  { value: "Advanced", label: "Advanced" },
+                ].map((level) => (
+                  <button
+                    key={level.value}
+                    onClick={() => setFilterLevel(filterLevel === level.value ? "" : level.value)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border cursor-pointer ${
+                      filterLevel === level.value
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background hover:bg-secondary border-input"
+                    }`}
+                  >
+                    {level.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="container mx-auto px-4 py-12">
-        <Tabs defaultValue="upcoming" className="w-full">
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
-            <TabsTrigger value="upcoming" className="cursor-pointer"><Calendar className="w-4 h-4 mr-2" /> Upcoming</TabsTrigger>
-            <TabsTrigger value="past" className="cursor-pointer"><Trophy className="w-4 h-4 mr-2" /> Past</TabsTrigger>
-          </TabsList>
+        <div className="container mx-auto px-4 py-12">
+          <Tabs defaultValue="upcoming" className="w-full">
+            <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
+              <TabsTrigger value="upcoming" className="cursor-pointer"><Calendar className="w-4 h-4 mr-2" /> Upcoming</TabsTrigger>
+              <TabsTrigger value="past" className="cursor-pointer"><Trophy className="w-4 h-4 mr-2" /> Past</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="upcoming">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {filterTournaments(upcomingTournaments).map((t) => (<TournamentCard key={t.id} tournament={t} />))}
-            </div>
-            {filterTournaments(upcomingTournaments).length === 0 && (
-              <div className="text-center py-20">
-                <Trophy className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-xl font-bold mb-2">No tournaments found</h3>
-                <p className="text-muted-foreground">Try adjusting your search criteria</p>
+            <TabsContent value="upcoming">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {filterTournaments(upcomingTournaments).map((t) => (<TournamentCard key={t.id} tournament={t} />))}
               </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="past">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {filterTournaments(pastTournaments).map((t) => (<TournamentCard key={t.id} tournament={t} isPast />))}
-            </div>
-            {filterTournaments(pastTournaments).length === 0 && (
-              <div className="text-center py-20">
-                <Trophy className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-xl font-bold mb-2">No tournaments found</h3>
-                <p className="text-muted-foreground">Try adjusting your search criteria</p>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
-      </div>
-
-      <Dialog open={registerModalOpen} onOpenChange={setRegisterModalOpen}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Tournament Registration</DialogTitle>
-            <DialogDescription>{selectedTournament?.name}</DialogDescription>
-          </DialogHeader>
-
-          {selectedTournament && (
-            <div className="space-y-4">
-              <div className="bg-secondary/50 rounded-lg p-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div><p className="text-muted-foreground">Date</p><p className="font-bold">{formatDate(selectedTournament.startDate)}</p></div>
-                  <div><p className="text-muted-foreground">Entry Fee</p><p className="font-bold">{selectedTournament.price} AUD</p></div>
-                  <div><p className="text-muted-foreground">Level</p><p className="font-bold">{selectedTournament.level}</p></div>
-                  <div><p className="text-muted-foreground">Spots Left</p><p className="font-bold">{selectedTournament.maxParticipants - selectedTournament.currentParticipants}</p></div>
+              {filterTournaments(upcomingTournaments).length === 0 && (
+                <div className="text-center py-20">
+                  <Trophy className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-xl font-bold mb-2">No tournaments found</h3>
+                  <p className="text-muted-foreground">Try adjusting your search criteria</p>
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Organizer Contact:</p>
-                <div className="text-sm space-y-1">
-                  {selectedTournament.phone && <p className="flex items-center gap-2"><Phone className="w-4 h-4 text-muted-foreground" />{selectedTournament.phone}</p>}
-                  {selectedTournament.email && <p className="flex items-center gap-2"><Mail className="w-4 h-4 text-muted-foreground" />{selectedTournament.email}</p>}
-                  {selectedTournament.address && <p className="flex items-center gap-2"><MapPin className="w-4 h-4 text-muted-foreground" />{selectedTournament.address}</p>}
-                </div>
-              </div>
-            </div>
-          )}
-
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setRegisterModalOpen(false)} className="cursor-pointer">Cancel</Button>
-            <Button onClick={handleRegister} className="bg-primary text-primary-foreground cursor-pointer">Confirm Registration</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!selectedTournament && !registerModalOpen} onOpenChange={() => setSelectedTournament(null)}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-2xl">{selectedTournament?.name}</DialogTitle>
-          </DialogHeader>
-
-          {selectedTournament && (
-            <div className="space-y-6">
-              <img src={selectedTournament.coverImage} alt={selectedTournament.name} className="w-full h-48 object-cover rounded-lg" />
-              <p className="text-muted-foreground">{selectedTournament.description}</p>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                  <Calendar className="w-5 h-5 mx-auto mb-1 text-primary" />
-                  <p className="font-bold text-sm">{formatDate(selectedTournament.startDate)}</p>
-                  <p className="text-xs text-muted-foreground">Start Date</p>
-                </div>
-                <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                  <DollarSign className="w-5 h-5 mx-auto mb-1 text-primary" />
-                  <p className="font-bold">{selectedTournament.price} AUD</p>
-                  <p className="text-xs text-muted-foreground">Entry Fee</p>
-                </div>
-                <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                  <Trophy className="w-5 h-5 mx-auto mb-1 text-primary" />
-                  <p className="font-bold">{selectedTournament.prizePool || "—"}</p>
-                  <p className="text-xs text-muted-foreground">Prizes</p>
-                </div>
-                <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                  <Users className="w-5 h-5 mx-auto mb-1 text-primary" />
-                  <p className="font-bold">{selectedTournament.currentParticipants}/{selectedTournament.maxParticipants}</p>
-                  <p className="text-xs text-muted-foreground">Participants</p>
-                </div>
-              </div>
-
-              <div className="border-t pt-4">
-                <h4 className="font-bold mb-3">Organizer</h4>
-                <p className="font-medium">{selectedTournament.organizer}</p>
-                <div className="mt-2 space-y-2 text-sm">
-                  {selectedTournament.phone && <p className="flex items-center gap-2"><Phone className="w-4 h-4 text-muted-foreground" /><a href={`tel:${selectedTournament.phone}`} className="hover:text-primary">{selectedTournament.phone}</a></p>}
-                  {selectedTournament.email && <p className="flex items-center gap-2"><Mail className="w-4 h-4 text-muted-foreground" /><a href={`mailto:${selectedTournament.email}`} className="hover:text-primary">{selectedTournament.email}</a></p>}
-                  {selectedTournament.website && <p className="flex items-center gap-2"><Globe className="w-4 h-4 text-muted-foreground" /><a href={selectedTournament.website} target="_blank" className="hover:text-primary">{selectedTournament.website}</a></p>}
-                  {selectedTournament.address && <p className="flex items-center gap-2"><MapPin className="w-4 h-4 text-muted-foreground" />{selectedTournament.address}</p>}
-                </div>
-              </div>
-
-              {selectedTournament.status === "upcoming" && (
-                <Button className="w-full bg-primary text-primary-foreground font-bold cursor-pointer" onClick={() => setRegisterModalOpen(true)}>
-                  Register for Tournament
-                </Button>
               )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+            </TabsContent>
 
-      <Footer />
-    </div>
+            <TabsContent value="past">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {filterTournaments(pastTournaments).map((t) => (<TournamentCard key={t.id} tournament={t} isPast />))}
+              </div>
+              {filterTournaments(pastTournaments).length === 0 && (
+                <div className="text-center py-20">
+                  <Trophy className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-xl font-bold mb-2">No tournaments found</h3>
+                  <p className="text-muted-foreground">Try adjusting your search criteria</p>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        <Dialog open={registerModalOpen} onOpenChange={setRegisterModalOpen}>
+          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Tournament Registration</DialogTitle>
+              <DialogDescription>{selectedTournament?.name}</DialogDescription>
+            </DialogHeader>
+
+            {selectedTournament && (
+              <div className="space-y-4">
+                <div className="bg-secondary/50 rounded-lg p-4">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div><p className="text-muted-foreground">Date</p><p className="font-bold">{formatDate(selectedTournament.startDate)}</p></div>
+                    <div><p className="text-muted-foreground">Entry Fee</p><p className="font-bold">{selectedTournament.price} AUD</p></div>
+                    <div><p className="text-muted-foreground">Level</p><p className="font-bold">{selectedTournament.level}</p></div>
+                    <div><p className="text-muted-foreground">Spots Left</p><p className="font-bold">{selectedTournament.maxParticipants - selectedTournament.currentParticipants}</p></div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Organizer Contact:</p>
+                  <div className="text-sm space-y-1">
+                    {selectedTournament.phone && <p className="flex items-center gap-2"><Phone className="w-4 h-4 text-muted-foreground" />{selectedTournament.phone}</p>}
+                    {selectedTournament.email && <p className="flex items-center gap-2"><Mail className="w-4 h-4 text-muted-foreground" />{selectedTournament.email}</p>}
+                    {selectedTournament.address && <p className="flex items-center gap-2"><MapPin className="w-4 h-4 text-muted-foreground" />{selectedTournament.address}</p>}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button variant="outline" onClick={() => setRegisterModalOpen(false)} className="cursor-pointer">Cancel</Button>
+              <Button onClick={handleRegister} className="bg-primary text-primary-foreground cursor-pointer">Confirm Registration</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!selectedTournament && !registerModalOpen} onOpenChange={() => setSelectedTournament(null)}>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-2xl">{selectedTournament?.name}</DialogTitle>
+            </DialogHeader>
+
+            {selectedTournament && (
+              <div className="space-y-6">
+                <img src={selectedTournament.coverImage} alt={selectedTournament.name} className="w-full h-48 object-cover rounded-lg" />
+                <p className="text-muted-foreground">{selectedTournament.description}</p>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center p-3 bg-secondary/50 rounded-lg">
+                    <Calendar className="w-5 h-5 mx-auto mb-1 text-primary" />
+                    <p className="font-bold text-sm">{formatDate(selectedTournament.startDate)}</p>
+                    <p className="text-xs text-muted-foreground">Start Date</p>
+                  </div>
+                  <div className="text-center p-3 bg-secondary/50 rounded-lg">
+                    <DollarSign className="w-5 h-5 mx-auto mb-1 text-primary" />
+                    <p className="font-bold">{selectedTournament.price} AUD</p>
+                    <p className="text-xs text-muted-foreground">Entry Fee</p>
+                  </div>
+                  <div className="text-center p-3 bg-secondary/50 rounded-lg">
+                    <Trophy className="w-5 h-5 mx-auto mb-1 text-primary" />
+                    <p className="font-bold">{selectedTournament.prizePool || "—"}</p>
+                    <p className="text-xs text-muted-foreground">Prizes</p>
+                  </div>
+                  <div className="text-center p-3 bg-secondary/50 rounded-lg">
+                    <Users className="w-5 h-5 mx-auto mb-1 text-primary" />
+                    <p className="font-bold">{selectedTournament.currentParticipants}/{selectedTournament.maxParticipants}</p>
+                    <p className="text-xs text-muted-foreground">Participants</p>
+                  </div>
+                </div>
+
+                <div className="border-t pt-4">
+                  <h4 className="font-bold mb-3">Organizer</h4>
+                  <p className="font-medium">{selectedTournament.organizer}</p>
+                  <div className="mt-2 space-y-2 text-sm">
+                    {selectedTournament.phone && <p className="flex items-center gap-2"><Phone className="w-4 h-4 text-muted-foreground" /><a href={`tel:${selectedTournament.phone}`} className="hover:text-primary">{selectedTournament.phone}</a></p>}
+                    {selectedTournament.email && <p className="flex items-center gap-2"><Mail className="w-4 h-4 text-muted-foreground" /><a href={`mailto:${selectedTournament.email}`} className="hover:text-primary">{selectedTournament.email}</a></p>}
+                    {selectedTournament.website && <p className="flex items-center gap-2"><Globe className="w-4 h-4 text-muted-foreground" /><a href={selectedTournament.website} target="_blank" className="hover:text-primary">{selectedTournament.website}</a></p>}
+                    {selectedTournament.address && <p className="flex items-center gap-2"><MapPin className="w-4 h-4 text-muted-foreground" />{selectedTournament.address}</p>}
+                  </div>
+                </div>
+
+                {selectedTournament.status === "upcoming" && (
+                  <Button className="w-full bg-primary text-primary-foreground font-bold cursor-pointer" onClick={() => setRegisterModalOpen(true)}>
+                    Register for Tournament
+                  </Button>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        <Footer />
+      </div>
+    </>
   );
 }

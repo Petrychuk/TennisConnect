@@ -16,6 +16,13 @@ export const users = pgTable("users", {
   status: varchar("status", { length: 50 }).default("active"),
   profileCompleted: boolean("profile_completed").default(false).notNull(),
   isAdmin: boolean("is_admin").default(false).notNull(),
+  isApproved: boolean("is_approved")
+  .default(false)
+  .notNull(),
+  isTestUser: boolean("is_test_user")
+  .default(false)
+  .notNull(),
+  isHidden: boolean("is_hidden").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -44,19 +51,38 @@ export const travelPackages = pgTable("travel_packages", {
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   title: text("title").notNull(),
   destination: text("destination").notNull(),
-  duration: text("duration").notNull(), // e.g. "7 days"
+  duration: text("duration").notNull(),
   price: integer("price").notNull(),
-  currency: varchar("currency", { length: 8 }).default("AUD").notNull(),
+  currency: varchar("currency", { length: 8 })
+    .default("AUD")
+    .notNull(),
   description: text("description").notNull(),
+  content: text("content"),
   highlights: json("highlights").$type<string[]>().default([]),
   includes: json("includes").$type<string[]>().default([]),
   coverImage: text("cover_image").notNull(),
   gallery: json("gallery").$type<string[]>().default([]),
+  providerName: text("provider_name"),
+  providerWebsite: text("provider_website"),
+  providerLogo: text("provider_logo"),
+  tags: json("tags").$type<string[]>().default([]),
+  ctaText: text("cta_text"),
+  ctaUrl: text("cta_url"),
+  seoTitle: text("seo_title"),
+  metaDescription: text("meta_description"),
   startDate: text("start_date"),
-  spotsLeft: integer("spots_left").default(10).notNull(),
-  isFeatured: boolean("is_featured").default(false).notNull(),
-  isActive: boolean("is_active").default(true).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  spotsLeft: integer("spots_left")
+    .default(10)
+    .notNull(),
+  isFeatured: boolean("is_featured")
+    .default(false)
+    .notNull(),
+  isActive: boolean("is_active")
+    .default(true)
+    .notNull(),
+  createdAt: timestamp("created_at")
+    .defaultNow()
+    .notNull(),
 });
 
 // Recreation Services - massage / recovery / wellness
@@ -191,6 +217,8 @@ export const clubs = pgTable("clubs", {
 // Messages - for contact requests and messaging between users
 export const messages = pgTable("messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  parentMessageId: varchar("parent_message_id"),
+  conversationId: varchar("conversation_id"),
   recipientId: varchar("recipient_id").notNull(), // no FK to support demo profiles
   recipientType: text("recipient_type").notNull(), // 'coach' or 'player'
   senderUserId: varchar("sender_user_id").references(() => users.id), // null if unregistered
@@ -366,6 +394,9 @@ export type Club = typeof clubs.$inferSelect;
 
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
+export type MessageWithAvatar = Message & {
+  senderAvatar?: string | null;
+};
 
 export type SupportRequest = typeof supportRequests.$inferSelect;
 export type InsertSupportRequest = typeof supportRequests.$inferInsert;
@@ -385,6 +416,15 @@ export const insertTravelPackageSchema = createInsertSchema(travelPackages).omit
   highlights: z.array(z.string()).optional().default([]),
   includes: z.array(z.string()).optional().default([]),
   gallery: z.array(z.string()).optional().default([]),
+  tags: z.array(z.string()).optional().default([]),
+  providerName: z.string().max(150).optional(),
+  providerWebsite: z.string().url().optional(),
+  providerLogo: z.string().url().optional(),
+  ctaText: z.string().max(100).optional(),
+  ctaUrl: z.string().url().optional(),
+  seoTitle: z.string().max(255).optional(),
+  metaDescription: z.string().max(500).optional(),
+  content: z.string().optional(),
 });
 export const insertRecreationServiceSchema = createInsertSchema(recreationServices).omit({
   id: true,

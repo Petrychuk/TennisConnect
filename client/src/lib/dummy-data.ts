@@ -257,7 +257,7 @@ export const CLUBS_DATA = [
     price: "30",
     phone: "+61 2 9411 1500",
     website: "https://www.nstc.com.au",
-    image: "https://images.unsplash.com/photo-1626244422423-4d535130a55c?q=80&w=1600&auto=format&fit=crop",
+    image: "https://images.unsplash.com/photo-1587280501635-68a0e82cd5ff?q=80&w=1600&auto=format&fit=crop",
     rating: 4.6
   },
   {
@@ -281,7 +281,7 @@ export const CLUBS_DATA = [
     price: "40",
     phone: "+61 2 9714 4000",
     website: "https://www.tennisworld.net.au",
-    image: "https://images.unsplash.com/photo-1576617497557-2c8419c72e61?q=80&w=1600&auto=format&fit=crop",
+    image: "https://images.unsplash.com/photo-1587280501635-68a0e82cd5ff?q=80&w=1600&auto=format&fit=crop",
     rating: 4.8
   },
   {

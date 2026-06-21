@@ -39,20 +39,24 @@ export function Marketplace() {
       <div className="container mx-auto px-4">
         <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/10 text-orange-600 border border-orange-500/20 mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 mb-4">
               <Tag className="w-4 h-4" />
-              <span className="text-xs font-bold uppercase tracking-wider">Marketplace</span>
+              <span className="text-xs font-bold uppercase tracking-wider">
+                COMMUNITY MARKETPLACE
+              </span>
             </div>
             <h2 className="text-3xl md:text-5xl font-display font-bold">
-              Tennis <span className="text-primary">Gear Exchange</span>
+             Tennis Gear <span className="text-primary">Marketplace</span>
             </h2>
             <p className="text-muted-foreground mt-4 max-w-xl text-lg">
-              Buy and sell used tennis equipment in Sydney. From rackets to vintage gear — great deals from local players.
+              Discover new and pre-owned tennis gear from the local tennis community.
             </p>
           </div>
           <Link href="/marketplace">
-            <Button variant="outline" className="hidden md:flex gap-2 cursor-pointer">
-                All Listings <ArrowRight className="w-4 h-4" />
+            <Button
+              className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full cursor-pointer"
+            >
+              Browse Gear <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>
         </div>

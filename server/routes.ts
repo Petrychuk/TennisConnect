@@ -8,8 +8,10 @@ import profileTournamentHistoryRouter from "./routes/profileTournamentHistory";
 import profileMarketplace from "./routes/profileMarketplace";
 import contentRouter from "./routes/content";
 import passport from "passport";
-import { requireAuth } from "./requireAuth";
+import { requireAuth, requireAdmin } from "./requireAuth";
 import supportRoutes from "./routes/supportRoutes";
+import { sendSystemMessage } from "./services/systemMessages";
+
 
 import {
   insertUserSchema,
@@ -25,6 +27,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { db } from "./db";
 import { eq, and, gt } from "drizzle-orm";
+import sitemapRoutes from "./routes/sitemapRoutes";
 
 /* =========================
    HELPERS & MIDDLEWARE
@@ -66,6 +69,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/api/profile/tournament-history", profileTournamentHistoryRouter);
   app.use("/api/profile/marketplace", profileMarketplace);
   app.use("/api", contentRouter);
+  app.use("/", sitemapRoutes);
   /* =========================
    SUPPORT CHAT
   ========================= */
@@ -127,6 +131,12 @@ export async function registerRoutes(app: Express): Promise<void> {
           location: "Sydney",
         });
       }
+      await sendSystemMessage(
+        user.id,
+        user.role,
+        "Welcome to TennisConnect",
+        `Welcome to TennisConnect! Thank you for joining our community.Your profile has been submitted and is currently awaiting moderation. Our team will review your profile shortly. Once approved, your profile will become visible to other members on the platform. Thank you for your patience and welcome aboard! - TennisConnect Team`
+        );
 
       req.login(user, (err) => {
         if (err) return next(err);
@@ -323,35 +333,157 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const user = await storage.updateUser(req.user!.id, {
         profileCompleted: true,
+        isApproved: false,
       });
-
-      // OPTIONAL: снять draft
+  
       if (user.role === "player") {
-        await storage.updatePlayerProfileByUserId(user.id, { isDraft: false });
+        await storage.updatePlayerProfileByUserId(user.id, {
+          isDraft: false,
+        });
       }
-
+  
       if (user.role === "coach") {
-        await storage.updateCoachProfileByUserId(user.id, { isDraft: false });
+        await storage.updateCoachProfileByUserId(user.id, {
+          isDraft: false,
+        });
       }
-
+  
       res.json(user);
     } catch (e) {
       next(e);
     }
   });
 
+  // ===== ADMIN USERS =====
+    app.get("/api/admin/users",
+      requireAdmin,
+      async (_req, res) => {
+        const users = await storage.getAllUsers();
+
+        res.json(users);
+      }
+    );
+
+    app.patch("/api/admin/users/:id/approve",
+      requireAdmin,
+      async (req, res) => {
+        const user = await storage.approveUser(req.params.id);
+
+          if (!user) {
+            return res.status(404).json({
+              message: "User not found",
+            });
+          }
+
+        await sendSystemMessage(
+          user.id,
+          user.role,
+          "Profile Approved",
+          `Congratulations! Your TennisConnect profile has been approved and is now visible to the community
+            You can now:
+            • Connect with players and coaches
+            • Receive messages
+            • Participate in community activities
+
+          Welcome to TennisConnect and enjoy your tennis journey! — TennisConnect Team`
+        );
+
+        res.json(user);
+      }
+    );
+
+    app.delete("/api/admin/users/:id",
+      requireAdmin,
+      async (req, res) => {
+        try {
+          const userId = req.params.id;
+    
+          // защита от удаления самого себя
+          if (req.user?.id === userId) {
+            return res.status(400).json({
+              message: "You cannot delete yourself",
+            });
+          }
+    
+          await storage.deleteUserByAdmin(userId);
+    
+          return res.json({
+            success: true,
+          });
+    
+        } catch (error) {
+          console.error(error);
+    
+          return res.status(500).json({
+            message: "Failed to delete user",
+          });
+        }
+      }
+    );
+
+    app.patch("/api/admin/users/:id/hide",
+      requireAdmin,
+      async (req, res) => {
+    
+        if (req.user?.id === req.params.id) {
+          return res.status(400).json({
+            message: "You cannot hide yourself",
+          });
+        }
+    
+        const user = await storage.hideUser(req.params.id);
+
+        if (user) {
+          await sendSystemMessage(
+            user.id,
+            user.role,
+            "Profile Hidden",
+            `Your profile has been temporarily hidden from public listings. Your account remains active and your data has not been removed. If you believe this was done in error, please contact support. — TennisConnect Team`
+          );
+        }
+    
+        res.json({
+          success: true,
+        });
+      }
+    );
+
+    app.patch("/api/admin/users/:id/unhide",
+      requireAdmin,
+      async (req, res) => {
+    
+        const user = await storage.unhideUser(req.params.id);
+
+        if (!user) {
+          return res.status(404).json({
+            message: "User not found",
+          });
+        }
+
+        await sendSystemMessage(
+          user.id,
+          user.role,
+          "Profile Restored",
+          `Good news! Your TennisConnect profile has been restored and is once again visible to the community.Other members can now find your profile and connect with you normally. Thank you for being part of TennisConnect. - TennisConnect Team`
+        );
+            
+        res.json({
+          success: true,
+        });
+      }
+    );
+
   /* =========================
      ME (CURRENT USER)
   ========================= */
-
   app.get("/api/me", requireAuth, (req, res) => {
     if (!req.user) {
     return res.status(401).json({ user: null });
   }
   res.json({ user: req.user });
-});
-  app.get(
-    "/api/me/player-profile",
+  });
+
+  app.get("/api/me/player-profile",
     requireAuth,
     requireRole("player"),
     requireCompletedProfile,
@@ -361,8 +493,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   );
 
-  app.put(
-    "/api/me/player-profile",
+  app.put("/api/me/player-profile",
     requireAuth,
     requireRole("player"),
     async (req, res) => {
@@ -390,8 +521,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   );
 
-  app.get(
-    "/api/me/coach-profile",
+  app.get("/api/me/coach-profile",
     requireAuth,
     requireRole("coach"),
     requireCompletedProfile,
@@ -401,8 +531,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   );
 
-  app.put(
-    "/api/me/coach-profile",
+  app.put("/api/me/coach-profile",
     requireAuth,
     requireRole("coach"),
     async (req, res) => {
@@ -444,6 +573,12 @@ export async function registerRoutes(app: Express): Promise<void> {
       if (!req.user) {
         return res.status(401).json({
           message: "Unauthorized",
+        });      
+      }
+      // Защита администратора
+      if (req.user.isAdmin) {
+        return res.status(403).json({
+          message: "Admin accounts cannot be deleted",
         });
       }
   
@@ -458,12 +593,12 @@ export async function registerRoutes(app: Express): Promise<void> {
         });
       });
 
-res.clearCookie("connect.sid");
+  res.clearCookie("connect.sid");
 
-return res.json({
-  success: true,
-});
-  
+  return res.json({
+    success: true,
+  });
+    
     } catch (error) {
       console.error("Delete account error:", error);
   
@@ -536,7 +671,6 @@ return res.json({
       message: "Profile deletion not implemented yet",
     });
   });
-
 
   // ===== MARKETPLACE ROUTES =====
   // CREATE
@@ -661,32 +795,62 @@ return res.json({
         recipientId: z.string(),
         recipientType: z.enum(["coach", "player"]),
         subject: z.string().optional(),
+        phone: z.string().optional(),
         content: z.string().min(1, "Message is required"),
       });
 
       const result = messageSchema.safeParse(req.body);
+
       if (!result.success) {
-        return res.status(400).json({ message: "Invalid input", errors: result.error });
+        return res.status(400).json({
+          message: "Invalid input",
+          errors: result.error,
+        });
       }
 
-      // 🔐 sender ВСЕГДА из auth-сессии
+      // Ищем существующую переписку между пользователями
+      const existingConversation =
+        await storage.findConversationBetweenUsers(
+          req.user!.id,
+          result.data.recipientId
+        );
+
+      // Создаем сообщение
       const message = await storage.createMessage({
         recipientId: result.data.recipientId,
         recipientType: result.data.recipientType,
+
+        parentMessageId: null,
+
+        conversationId:
+          existingConversation?.conversationId || null,
+
         subject: result.data.subject,
         content: result.data.content,
 
         senderUserId: req.user!.id,
         senderName: req.user!.name,
         senderEmail: req.user!.email,
+        senderPhone: result.data.phone,
       });
 
+      // Если это первая переписка —
+      // создаем conversationId = id первого сообщения
+      if (!existingConversation) {
+        await storage.updateMessageConversation(
+          message.id,
+          message.id
+        );
+
+        message.conversationId = message.id;
+      }
+
       res.json(message);
+
     } catch (error: any) {
       next(error);
     }
   });
-
 
   // Mark message as read (requires auth + ownership)
   app.put("/api/messages/:id/read", requireAuth, async (req, res, next) => {
@@ -713,6 +877,132 @@ return res.json({
       res.json({ message: "Message deleted" });
     } catch (error: any) {
       next(error);
+    }
+  });
+
+  app.get("/api/messages/conversation/:conversationId",
+    requireAuth,
+    async (req, res, next) => {
+      try {
+        const conversation = await storage.getConversationMessages(
+          req.params.conversationId
+        );
+  
+        const hasAccess = conversation.some(
+          (msg) =>
+            msg.recipientId === req.user!.id ||
+            msg.senderUserId === req.user!.id
+        );
+  
+        if (!hasAccess) {
+          return res.status(403).json({
+            message: "Forbidden",
+          });
+        }
+  
+        res.json(conversation);
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  app.get("/api/messages/conversations",
+    requireAuth,
+    async (req, res, next) => {
+      try {
+        const conversations =
+          await storage.getUserConversations(
+            req.user!.id
+          );
+  
+        res.json(conversations);
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  app.post("/api/messages/reply",
+    requireAuth,
+    async (req, res, next) => {
+      try {
+        const replySchema = z.object({
+          originalMessageId: z.string(),
+          content: z.string().min(1, "Reply is required"),
+        });
+  
+        const result = replySchema.safeParse(req.body);
+  
+        if (!result.success) {
+          return res.status(400).json({
+            message: "Invalid input",
+            errors: result.error,
+          });
+        }
+  
+        const originalMessage = await storage.getMessageById(
+          result.data.originalMessageId
+        );
+        
+        // ✅ Проверяем что сообщение существует
+        if (!originalMessage) {
+          return res.status(404).json({
+            message: "Original message not found",
+          });
+        }
+        
+        // ✅ Проверяем что можно ответить
+        if (!originalMessage.senderUserId) {
+          return res.status(400).json({
+            message: "Cannot reply to this message",
+          });
+        }
+        
+        const conversationId =
+          originalMessage.conversationId ||
+          originalMessage.id;
+  
+        const reply = await storage.createMessage({
+          parentMessageId: originalMessage.id,
+          conversationId,
+  
+          recipientId: originalMessage.senderUserId!,
+          recipientType:
+            originalMessage.recipientType === "coach"
+              ? "player"
+              : "coach",
+  
+          senderUserId: req.user!.id,
+          senderName: req.user!.name,
+          senderEmail: req.user!.email,
+  
+          subject: originalMessage.subject
+            ? `Re: ${originalMessage.subject}`
+            : "Reply",
+  
+          content: result.data.content,
+        });
+  
+        res.json(reply);
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  // ===== STATS HOMEPAGE ROUTES =====
+  app.get("/api/stats", async (_req, res) => {
+    try {
+      const stats = await storage.getPlatformStats();
+  
+      res.json(stats);
+    } catch (error) {
+      console.error("Failed to load platform stats:", error);
+  
+      res.status(500).json({
+        message: "Failed to load platform stats",
+      });
     }
   });
 }

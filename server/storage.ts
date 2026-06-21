@@ -1,4 +1,3 @@
-// Referenced: blueprint:javascript_database
 import { 
   users, 
   playerProfiles,
@@ -9,6 +8,7 @@ import {
   messages,
   passwordResetTokens,
   supportRequests,
+  tournaments,
   type User, 
   type InsertUser,
   type PlayerProfile,
@@ -22,12 +22,13 @@ import {
   type Club,
   type InsertClub,
   type Message,
+  type MessageWithAvatar,
   type InsertMessage,
   type SupportRequest,
   type InsertSupportRequest,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, or } from "drizzle-orm";
+import { eq, desc, and, or, asc, sql } from "drizzle-orm";
 import { supabaseAdmin } from "./supabaseAdmin";
 
 function slugify(text: string) {
@@ -68,7 +69,12 @@ export interface IStorage {
   updateUserPassword(id: string, hashedPassword: string): Promise<void>;
   getUserBySlug(slug: string): Promise<User | undefined>;
   deleteUserAccount(userId: string): Promise<void>;
-
+  getAllUsers(): Promise<typeof users.$inferSelect[]>;
+  approveUser(id: string): Promise<typeof users.$inferSelect>;
+  deleteUserByAdmin(userId: string): Promise<void>;
+  hideUser(id: string): Promise<typeof users.$inferSelect>;
+  unhideUser(id: string): Promise<typeof users.$inferSelect>;
+  
   // Player Profiles
   getPlayerProfile(userId: string): Promise<PlayerProfile | undefined>;
   getAllPlayers(): Promise<
@@ -106,19 +112,31 @@ export interface IStorage {
   createClub(club: InsertClub): Promise<Club>;
   
   // Messages
-  getUserMessages(userId: string): Promise<Message[]>;
+  getUserMessages(userId: string): Promise<MessageWithAvatar[]>;
   getUnreadMessageCount(userId: string): Promise<number>;
   getMessageById(id: string): Promise<Message | undefined>;
   createMessage(message: InsertMessage): Promise<Message>;
   markMessageAsRead(id: string): Promise<Message>;
+  getConversationMessages(conversationId: string): Promise<MessageWithAvatar[]>;
+  getUserConversations(userId: string): Promise<MessageWithAvatar[]>;
+  findConversationBetweenUsers(userA: string, userB: string): Promise<MessageWithAvatar | undefined>;
+  updateMessageConversation(messageId: string, conversationId: string): Promise<void>;
   deleteMessage(id: string): Promise<void>;
 
   //Support chat
   createSupportRequest(
     request: InsertSupportRequest
   ): Promise<SupportRequest>;
-}
 
+  //Dynamic data
+  getPlatformStats(): Promise<{
+    players: number;
+    coaches: number;
+    clubs: number;
+    tournaments: number;
+  }>;
+
+}
 export class DatabaseStorage implements IStorage {
   // =====================
   // USERS
@@ -217,6 +235,53 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
+  // ===== ADMIN USERS =====
+
+  async getAllUsers() {
+    return await db
+      .select()
+      .from(users)
+      .orderBy(desc(users.createdAt));
+  }
+
+  async approveUser(id: string) {
+    const [user] = await db
+      .update(users)
+      .set({
+        isApproved: true,
+      })
+      .where(eq(users.id, id))
+      .returning();
+  
+    return user;
+  }
+
+  async deleteUserByAdmin(userId: string): Promise<void> {
+    await this.deleteUserAccount(userId);
+  }
+
+  async hideUser(id: string) {
+    const [user] = await db
+      .update(users)
+      .set({ isHidden: true })
+      .where(eq(users.id, id))
+      .returning();
+  
+    return user;
+  }
+  
+  async unhideUser(id: string) {
+    const [user] = await db
+      .update(users)
+      .set({
+        isHidden: false,
+      })
+      .where(eq(users.id, id))
+      .returning();
+  
+    return user;
+  }
+
   // =====================
   // PLAYER PROFILES
   // =====================
@@ -249,7 +314,9 @@ export class DatabaseStorage implements IStorage {
           and(
             eq(users.role, "player"),
             eq(playerProfiles.isDraft, false),
-            eq(users.profileCompleted, true)
+            eq(users.profileCompleted, true),
+            eq(users.isApproved, true),
+            eq(users.isHidden, false)
           )
         );
     }
@@ -341,7 +408,9 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(users.role, "coach"),
           eq(coachProfiles.isDraft, false),
-          eq(users.profileCompleted, true)
+          eq(users.profileCompleted, true),
+          eq(users.isApproved, true),
+          eq(users.isHidden, false)
         )
       );
   }
@@ -639,12 +708,75 @@ export class DatabaseStorage implements IStorage {
   // MESSAGES
   // =====================
 
-  async getUserMessages(userId: string): Promise<Message[]> {
+  async getUserMessages(userId: string): Promise<MessageWithAvatar[]> {
+    
     return db
-      .select()
+      .select({
+        id: messages.id,
+        parentMessageId: messages.parentMessageId,
+        conversationId: messages.conversationId,
+        recipientId: messages.recipientId,
+        recipientType: messages.recipientType,
+        senderUserId: messages.senderUserId,
+        senderName: messages.senderName,
+        senderEmail: messages.senderEmail,
+        senderPhone: messages.senderPhone,
+        subject: messages.subject,
+        content: messages.content,
+        isRead: messages.isRead,
+        createdAt: messages.createdAt,
+  
+        senderAvatar: users.avatar,
+      })
       .from(messages)
+      .leftJoin(users, eq(messages.senderUserId, users.id))
       .where(eq(messages.recipientId, userId))
       .orderBy(desc(messages.createdAt));
+  }
+
+  async getUserConversations(
+    userId: string
+  ): Promise<MessageWithAvatar[]> {
+  
+    const allMessages = await db
+      .select({
+        id: messages.id,
+        parentMessageId: messages.parentMessageId,
+        conversationId: messages.conversationId,
+  
+        recipientId: messages.recipientId,
+        recipientType: messages.recipientType,
+  
+        senderUserId: messages.senderUserId,
+        senderName: messages.senderName,
+        senderEmail: messages.senderEmail,
+        senderPhone: messages.senderPhone,
+  
+        subject: messages.subject,
+        content: messages.content,
+  
+        isRead: messages.isRead,
+        createdAt: messages.createdAt,
+  
+        senderAvatar: users.avatar,
+      })
+      .from(messages)
+      .leftJoin(users, eq(messages.senderUserId, users.id))
+      .where(eq(messages.recipientId, userId))
+      .orderBy(desc(messages.createdAt));
+  
+    const uniqueConversations = new Map();
+  
+    for (const message of allMessages) {
+      const key =
+        message.conversationId || message.id;
+  
+      if (!uniqueConversations.has(key)) {
+        uniqueConversations.set(key, message);
+      }
+    }
+  
+    return Array.from(uniqueConversations.values());
   }
 
   async getUnreadMessageCount(userId: string): Promise<number> {
@@ -692,6 +824,105 @@ export class DatabaseStorage implements IStorage {
   async deleteMessage(id: string): Promise<void> {
     await db.delete(messages).where(eq(messages.id, id));
   }
+  
+  async findConversationBetweenUsers(
+    userA: string,
+    userB: string
+  ): Promise<MessageWithAvatar | undefined> {
+  
+      const [conversation] = await db
+      .select({
+        id: messages.id,
+        parentMessageId: messages.parentMessageId,
+        conversationId: messages.conversationId,
+
+        recipientId: messages.recipientId,
+        recipientType: messages.recipientType,
+
+        senderUserId: messages.senderUserId,
+        senderName: messages.senderName,
+        senderEmail: messages.senderEmail,
+        senderPhone: messages.senderPhone,
+
+        subject: messages.subject,
+        content: messages.content,
+
+        isRead: messages.isRead,
+        createdAt: messages.createdAt,
+
+        senderAvatar: users.avatar,
+      })
+      .from(messages)
+      .leftJoin(
+        users,
+        eq(messages.senderUserId, users.id)
+      )
+      .where(
+        or(
+          and(
+            eq(messages.senderUserId, userA),
+            eq(messages.recipientId, userB)
+          ),
+          and(
+            eq(messages.senderUserId, userB),
+            eq(messages.recipientId, userA)
+          )
+        )
+      )
+      .orderBy(asc(messages.createdAt))
+      .limit(1);
+    return conversation;
+  }
+
+  async getConversationMessages(
+    conversationId: string
+  ): Promise<MessageWithAvatar[]> {
+  
+    return db
+      .select({
+        id: messages.id,
+  
+        parentMessageId: messages.parentMessageId,
+        conversationId: messages.conversationId,
+  
+        recipientId: messages.recipientId,
+        recipientType: messages.recipientType,
+  
+        senderUserId: messages.senderUserId,
+        senderName: messages.senderName,
+        senderEmail: messages.senderEmail,
+        senderPhone: messages.senderPhone,
+  
+        subject: messages.subject,
+        content: messages.content,
+  
+        isRead: messages.isRead,
+        createdAt: messages.createdAt,
+  
+        senderAvatar: users.avatar,
+      })
+      .from(messages)
+      .leftJoin(
+        users,
+        eq(messages.senderUserId, users.id)
+      )
+      .where(
+        eq(messages.conversationId, conversationId)
+      )
+      .orderBy(asc(messages.createdAt));
+  }
+
+  async updateMessageConversation(
+    messageId: string,
+    conversationId: string
+  ): Promise<void> {
+    await db
+      .update(messages)
+      .set({
+        conversationId,
+      })
+      .where(eq(messages.id, messageId));
+  }
 
   async createSupportRequest(
     request: InsertSupportRequest
@@ -702,6 +933,67 @@ export class DatabaseStorage implements IStorage {
       .returning();
   
     return supportRequest;
+  }
+
+   // =====================
+  // Dynamic data for blocks
+  // =====================
+
+  async getPlatformStats() {
+    const [playersResult] = await db
+      .select({
+        count: sql<number>`count(*)`,
+      })
+      .from(users)
+      .innerJoin(
+        playerProfiles,
+        eq(users.id, playerProfiles.userId)
+      )
+      .where(
+        and(
+          eq(users.role, "player"),
+          eq(users.profileCompleted, true),
+          eq(users.isApproved, true),
+          eq(users.isTestUser, false),
+          eq(playerProfiles.isDraft, false),
+          eq(users.isHidden, false)
+        )
+      );
+  
+      const [coachesResult] = await db
+        .select({
+          count: sql<number>`count(*)`,
+        })
+        .from(users)
+        .innerJoin(
+          coachProfiles,
+          eq(users.id, coachProfiles.userId)
+        )
+        .where(
+          and(
+            eq(users.role, "coach"),
+            eq(users.profileCompleted, true),
+            eq(users.isApproved, true),
+            eq(users.isTestUser, false),
+            eq(coachProfiles.isDraft, false),
+            eq(users.isHidden, false)
+          )
+        );
+  
+    const [clubsResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(clubs);
+  
+    const [tournamentsResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(tournaments);
+  
+    return {
+      players: Number(playersResult.count),
+      coaches: Number(coachesResult.count),
+      clubs: Number(clubsResult.count),
+      tournaments: Number(tournamentsResult.count),
+    };
   }
 }
 

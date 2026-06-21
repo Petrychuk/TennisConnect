@@ -3,9 +3,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, X, Minus, Lock, UserRound, Users, Building2, Handshake, Bug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { supportSchema } from "@/lib/validations/support";
 
 const SUPPORT_AGENT = {
   name: "Nataliia from Support",
@@ -17,16 +19,16 @@ const SUPPORT_CATEGORIES = [
     label: "Account & Login Issues",
     icon: Lock,
   },
-  {
+  /* {
     id: "coach",
     label: "Help Finding a Coach",
     icon: UserRound,
   },
   {
     id: "partner",
-    label: "Help Finding a Tennis Partner",
+    label: "Help Finding a Tennis Player",
     icon: Users,
-  },
+  }, */
   {
     id: "join-coach",
     label: "Join as a Coach",
@@ -66,6 +68,33 @@ export function SupportChat() {
     message: "",
   });
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const handleOpenChat = () => {
+      window.scrollTo({
+        top: document.body.scrollHeight,
+        behavior: "smooth",
+      });
+    
+      setTimeout(() => {
+        setIsOpen(true);
+        setIsMinimized(false);
+      }, 300);
+    };
+  
+    window.addEventListener(
+      "open-support-chat",
+      handleOpenChat
+    );
+  
+    return () => {
+      window.removeEventListener(
+        "open-support-chat",
+        handleOpenChat
+      );
+    };
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -208,18 +237,22 @@ export function SupportChat() {
                       <Button
                         className="w-full"
                         onClick={async () => {
-                          if (!formData.name.trim()) {
-                            alert("Please enter your name");
-                            return;
-                          }
 
-                          if (!formData.email.trim()) {
-                            alert("Please enter your email");
-                            return;
-                          }
+                          const validation = supportSchema.safeParse({
+                            category: selectedCategory,
+                            name: formData.name,
+                            email: formData.email,
+                            phone: formData.phone,
+                            message: formData.message,
+                          });
+                          
+                          if (!validation.success) {
+                            toast({
+                              variant: "destructive",
+                              title: "Validation Error",
+                              description: validation.error.errors[0].message,
+                            });
 
-                          if (!formData.message.trim()) {
-                            alert("Please enter your message");
                             return;
                           }
 
@@ -245,7 +278,11 @@ export function SupportChat() {
                             setSubmitted(true);
                           } catch (error) {
                             console.error(error);
-                            alert("Failed to send request. Please try again.");
+                            toast({
+                            variant: "destructive",
+                            title: "Validation Error",
+                            description: "Please try again later.",
+                          });
                           }
                         }}
                       >

@@ -42,37 +42,55 @@ export function Navbar() {
     ? `/${user.role}/${user.slug}`
     : "/";
 
-  useEffect(() => {
-    if (isAuthenticated) {
+    useEffect(() => {
+      if (!user?.id) return;
+    
       fetchUnreadCount();
-      const interval = setInterval(fetchUnreadCount, 30000);
+    
+      const interval = setInterval(
+        fetchUnreadCount,
+        30000
+      );
+    
       return () => clearInterval(interval);
-    }
-  }, [isAuthenticated]);
+    }, [user?.id]);
 
-  const fetchUnreadCount = async () => {
-    try {
-      const res = await fetch("/api/messages/unread-count", {
-        credentials: "include",
-      });
-      if (res.ok) {
+    const fetchUnreadCount = async () => {
+      console.log("user:", user);
+      console.log("user id:", user?.id);
+    
+      try {
+        const res = await fetch(
+          "/api/messages/unread-count",
+          {
+            credentials: "include",
+          }
+        );
+    
+        console.log("status:", res.status);
+    
+        if (res.status === 401) {
+          console.log("Unauthorized request");
+          return;
+        }
+    
         const data = await res.json();
         setUnreadCount(data.count);
+      } catch (err) {
+        console.error(err);
       }
-    } catch (error) {
-      console.error("Failed to fetch unread count:", error);
-    }
-  };
+    };
 
   const navLinks = [
-    { name: "Partners", href: "/partners" },
+    { name: "Players", href: "/partners" },
     { name: "Coaches", href: "/coaches" },
-    { name: "Tournaments", href: "/tournaments" },
-    { name: "Clubs", href: "/clubs" },
+    /* { name: "Tournaments", href: "/tournaments" }, */
+    { name: "Club Communities", href: "/clubs" },
     { name: "Travel", href: "/travel" },
-    { name: "Recreation", href: "/recreation" },
+    { name: "Tennis IQ", href: "/articles" },
+    /* { name: "Recreation", href: "/recreation" },
     { name: "Marketplace", href: "/marketplace" }, 
-    { name: "Shop", href: "https://shop.tennisconnect.com.au", external: true },
+    { name: "Shop", href: "https://shop.tennisconnect.com.au", external: true }, */
   ];
 
   if (location === "/auth") return null;
@@ -89,7 +107,7 @@ export function Navbar() {
         {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => (
-            link.external ? (
+           /*  link.external ? (
               <a
                 key={link.name}
                 href={link.href}
@@ -109,8 +127,14 @@ export function Navbar() {
                 className="text-sm font-medium hover:text-lime-600 transition-colors cursor-pointer"
               >
                 {link.name}
-              </Link>
-            )
+              </Link> ) */
+              <Link
+              key={link.name}
+              href={link.href}
+              className="text-sm font-medium hover:text-lime-600 transition-colors cursor-pointer"
+            >
+              {link.name}
+            </Link>  
           ))}
         </div>
 
@@ -220,7 +244,7 @@ export function Navbar() {
             <SheetContent>
               <div className="flex flex-col gap-6 mt-8">
                 {isAuthenticated && (
-                   <div className="flex items-center gap-3 pb-6 border-b">
+                   <div className="flex items-center gap-3 pb-6">
                      <Avatar key={user?.avatar} className="h-10 w-10">
                         <AvatarImage src={user?.avatar || undefined} />
                         <AvatarFallback>{user?.name?.[0] || "U"}</AvatarFallback>
@@ -231,8 +255,8 @@ export function Navbar() {
                      </div>
                    </div>
                 )}
-
-                {navLinks.map((link) => (
+                
+                {/* {navLinks.map((link) => (
                   link.external ? (
                     <a
                       key={link.name}
@@ -257,26 +281,54 @@ export function Navbar() {
                       {link.name}
                     </Link>
                   )
+                ))} */}
+                <div className="border-t border-[hsl(var(--tennis-ball))]/70 pt-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-[hsl(var(--tennis-ball))] mb-3">
+                       EXPLORE
+                    </p>
+                  </div>
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.name}
+                    href={link.href}
+                    className="text-lg font-medium hover:text-lime-600 transition-colors cursor-pointer"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    {link.name}
+                  </Link>
                 ))}
+                
                 
                 {isAuthenticated ? (
                   <>
-                    <Link href="/messages" onClick={() => setIsOpen(false)}>
-                      <Button variant="outline" className="w-full font-bold rounded-full cursor-pointer flex items-center gap-2">
-                        <Mail className="w-4 h-4" />
-                        Messages
-                        {unreadCount > 0 && (
-                          <Badge variant="destructive" className="ml-auto">
-                            {unreadCount}
-                          </Badge>
-                        )}
-                      </Button>
+                    <div className="border-t border-[hsl(var(--tennis-ball))]/70 pt-4">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-[hsl(var(--tennis-ball))] mb-3">
+                        My Account
+                      </p>
+                    </div>
+                    <Link
+                      href="/messages"
+                      className="flex items-center gap-3 text-lg font-medium"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      <Mail className="w-5 h-5" />
+                      Messages
+
+                      {unreadCount > 0 && (
+                        <Badge className="ml-auto">
+                          {unreadCount}
+                        </Badge>
+                      )}
                     </Link>
-                    <Link href={profileHref} onClick={() => setIsOpen(false)}>
-                      <Button variant="outline" className="w-full font-bold rounded-full cursor-pointer">
+                    <Link
+                        href={profileHref}
+                        className="flex items-center gap-3 text-lg font-medium"
+                        onClick={() => setIsOpen(false)}
+                      >
+                        <UserCircle className="w-5 h-5" />
                         My Profile
-                      </Button>
-                    </Link>
+                      </Link>
+                    <div className="border-t border-[hsl(var(--tennis-ball))]/70 pt-4 mt-2"></div>
                     <Button 
                       variant="ghost" 
                       className="w-full justify-start text-destructive hover:text-destructive cursor-pointer"
@@ -289,8 +341,8 @@ export function Navbar() {
                       <LogOut className="mr-2 h-4 w-4" /> Sign Out
                     </Button>
                     <Button
-                      variant="outline"
-                      className="w-full justify-start text-destructive border-destructive/20 cursor-pointer"
+                      variant="ghost"
+                      className="w-full justify-start text-destructive hover:text-destructive cursor-pointer"
                       onClick={() => {
                         setDeleteDialogOpen(true);
                         setIsOpen(false);

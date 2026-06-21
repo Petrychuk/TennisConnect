@@ -29,6 +29,34 @@
       "when": 1780383421421,
       "tag": "0003_stale_scrambler",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780754296077,
+      "tag": "0004_public_lockjaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1781501822292,
+      "tag": "0005_cold_epoch",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1781934781616,
+      "tag": "0006_mixed_smasher",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1781963291584,
+      "tag": "0007_free_zeigeist",
+      "breakpoints": true
     }
   ]
 }

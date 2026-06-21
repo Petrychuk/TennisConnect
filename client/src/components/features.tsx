@@ -1,31 +1,35 @@
 import { motion } from "framer-motion";
-import { Users, Trophy, MapPin, Star } from "lucide-react";
+import { Users, Trophy, GraduationCap, MapPin, Star, Plane, ShoppingBag } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 const features = [
   {
     icon: Users,
     title: "Playing Partners",
-    description: "Find players at your level in your area. Filter by NTRP rating.",
+    description: "Find players at your level and organise your next hit",
     color: "bg-blue-500",
+    bgColor: "bg-blue-500/10",
   },
   {
-    icon: Star,
-    title: "Professional Coaches",
-    description: "Private and group lessons for kids and adults. Verified reviews.",
+    icon: GraduationCap,
+    title: "Coaches",
+    description: "Discover experienced coaches for private and group lessons.",
     color: "bg-primary",
+    bgColor: "bg-primary/10",
   },
   {
-    icon: Trophy,
-    title: "Local Tournaments",
-    description: "Compete in Sydney amateur leagues, climb the rankings, and win prizes.",
+    icon: Plane,
+    title: "Travel Experiences",
+    description: "Explore tennis holidays, retreats, and unique experiences.",
     color: "bg-purple-500",
+    bgColor: "bg-purple-500/10",
   },
   {
-    icon: MapPin,
-    title: "Court Booking",
-    description: "Easy search for available courts and instant online booking.",
+    icon: ShoppingBag,
+    title: "Marketplace",
+    description: "Buy, sell, and discover tennis gear within the community.",
     color: "bg-orange-500",
+    bgColor: "bg-orange-500/10",
   },
 ];
 
@@ -38,10 +42,10 @@ export function Features() {
       <div className="container mx-auto px-4 relative z-10">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">
-           Everything for tennis in <span className="text-primary">One Place</span>
+          Everything You Need for Tennis — <span className="text-primary">In One Place</span>
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-            We've built an ecosystem that helps players of all levels grow in Australian tennis.
+            Connect, compete, learn, and explore — all within one growing tennis community.
           </p>
         </div>
 

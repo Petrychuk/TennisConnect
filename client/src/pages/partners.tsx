@@ -15,6 +15,9 @@ import { MapPin, Search, MessageCircle, User, Activity, Send, Camera } from "luc
 import { PARTNERS_DATA } from "@/lib/dummy-data";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
+import SEO from "@/components/seo";
+import { quickMessageSchema } from "@/lib/validations/messages";
+import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.png";
 
 interface PartnerData {
     id: string;
@@ -45,14 +48,19 @@ export default function PartnersPage() {
   const { user, isAuthenticated } = useAuth();
   
   const handleSendMessage = async () => {
-  if (!messageText.trim()) {
-    toast({
-      title: "Error",
-      description: "Please enter a message",
-      variant: "destructive"
+    const validation = quickMessageSchema.safeParse({
+      content: messageText,
     });
-    return;
-  }
+    
+    if (!validation.success) {
+      toast({
+        title: "Validation Error",
+        description: validation.error.errors[0].message,
+        variant: "destructive",
+      });
+      return;
+    }
+    
   setSending(true);
 
   try {
@@ -179,13 +187,40 @@ export default function PartnersPage() {
   });
   
   return (
-    <div className="min-h-screen bg-background font-sans">
+    <>
+      <SEO
+        title="Find Tennis Players in Australia | TennisConnect"
+        description="Connect with local tennis players across Australia. Find hitting partners, doubles teammates and tennis friends based on skill level, location and availability."
+        canonical="/partners"
+        tags={[
+          "tennis partners",
+          "find tennis partner",
+          "tennis players Australia",
+          "tennis community",
+          "Sydney tennis",
+          "Melbourne tennis",
+          "Brisbane tennis",
+          "social tennis",
+        ]}
+      />
+    <div className="min-h-screen font-sans relative">
+    <div
+      className="fixed inset-0 z-0 pointer-events-none opacity-[0.06]"
+      style={{
+        backgroundImage: `url(${bgImage})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundAttachment: "fixed",
+        mixBlendMode: "multiply",
+      }}
+    />
+
       <Navbar />
 
       {/* Intro / Hero Section */}
-      <div className="relative min-h-[50vh] flex items-center justify-center overflow-hidden">
+      <div className="relative min-h-[24vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-center overflow-hidden">
         <div 
-          className="absolute inset-0 z-0 opacity-30"
+          className="absolute inset-0 z-0"
           style={{
             backgroundImage: "url(https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?q=80&w=2000&auto=format&fit=crop)",
             backgroundSize: 'cover',
@@ -194,65 +229,116 @@ export default function PartnersPage() {
         />
         <div className="absolute inset-0 bg-linear-to-b from-background/80 via-background/20 to-background z-10" />
         
-        <div className="relative z-20 container mx-auto px-4 text-center mt-20">
+        <div className="relative z-20 container mx-auto px-4 text-center mt-16 md:mt-20">
           <motion.div 
              initial={{ opacity: 0, y: 30 }}
              animate={{ opacity: 1, y: 0 }}
              transition={{ duration: 0.8 }}
           >
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-display font-bold mb-6 tracking-tight">
+            <Badge className="mb-3
+                  md:mb-6
+                  px-3
+                  md:px-4
+                  py-1
+                  text-[10px]
+                  sm:text-xs
+                  md:text-sm
+                  font-bold
+                  uppercase
+                  tracking-wider">
+                  Find Best Player
+            </Badge>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold mb-2 md:mb-6 tracking-tight">
               Find Your <span className="text-primary relative inline-block">
-                Partner
+                Player
                 <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none">
                   <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" />
                 </svg>
               </span>
             </h1>
-            <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto font-light leading-relaxed">
+            <p className="text-base
+              sm:text-lg
+              md:text-2xl
+              text-muted-foreground
+              max-w-2xl
+              mx-auto
+              font-normal
+              leading-snug
+              md:leading-relaxed">
               Connect with partners for games, join local matches, and expand your tennis network.
             </p>
           </motion.div>
         </div>
       </div>
 
-      {/* Filter Bar (Sticky) */}
-      <div className="sticky top-16 z-40 bg-background/80 backdrop-blur-lg border-y border-border/50 py-4 shadow-sm">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="relative w-full md:w-96 group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-              <Input 
-                placeholder="Search by name or location..." 
-                className="pl-10 h-11 bg-secondary/50 border-transparent focus:border-primary focus:bg-background transition-all rounded-xl"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                data-testid="input-search"
-              />
-            </div>
-            
-            <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-hide">
-              {["Beginner", "Intermediate", "Advanced"].map((level) => (
-                <button
-                  key={level}
-                  onClick={() => setFilterLevel(filterLevel === level ? "" : level)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border cursor-pointer ${
-                    filterLevel === level 
-                      ? "bg-primary text-primary-foreground border-primary" 
-                      : "bg-background hover:bg-secondary border-input hover:border-primary/50"
-                  }`}
-                  data-testid={`button-filter-${level.toLowerCase()}`}
-                >
-                  {level}
-                </button>
-              ))}
+      {/* Filter Bar */}
+      <div className="bg-background/80 backdrop-blur-lg border-y border-border/50 py-2 md:py-4 shadow-sm">
+      <div className="container mx-auto px-2 mt-0 mb-3 md:mb-6">
+          <div
+            className="
+              bg-card/95
+              backdrop-blur-sm
+              border border-border/40
+              shadow-lg
+              rounded-2xl
+              p-3 md:p-4
+            "
+          >
+            <div className="flex flex-col md:flex-row gap-3 md:gap-4 items-center justify-between">
+
+              <div className="relative w-full md:w-80 lg:w-96 group">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+
+                <Input
+                  placeholder="Search by name or location..."
+                  className="
+                    pl-10
+                    h-11
+                    rounded-xl
+                    bg-background
+                  "
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+
+              <div className="flex w-full md:w-auto gap-2 overflow-x-auto scrollbar-hide">
+                {["Beginner", "Intermediate", "Advanced"].map((level) => (
+                  <button
+                    key={level}
+                    onClick={() =>
+                      setFilterLevel(filterLevel === level ? "" : level)
+                    }
+                    className={`
+                      h-11
+                      px-4
+                      rounded-full
+                      text-sm
+                      font-medium
+                      whitespace-nowrap
+                      transition-all
+                      border
+                      cursor-pointer
+                      ${
+                        filterLevel === level
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background border-input hover:border-primary/50"
+                      }
+                    `}
+                  >
+                    {level}
+                  </button>
+                ))}
+              </div>
+
             </div>
           </div>
         </div>
       </div>
 
       {/* Partners Grid */}
-      <div className="container mx-auto px-4 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="container mx-auto px-4 py-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           {filteredPartners.map((partner, index) => {
 
             const isMe =
@@ -268,51 +354,67 @@ export default function PartnersPage() {
                 transition={{ duration: 0.4, delay: index * 0.1 }}
                 viewport={{ once: true }}
               >
-                <Card className="h-full flex flex-col overflow-hidden hover:shadow-lg transition-all duration-300 border-border/50 group">
+                <Card className="h-full
+                    flex
+                    flex-col
+                    overflow-hidden
+                    border-border/50
+                    hover:shadow-xl
+                    hover:-translate-y-1
+                    transition-all
+                    duration-300
+                    group">
                   
-                  <CardContent className="p-6 grow flex flex-col items-center text-center">
-                    <div className="relative mb-4 group">
-                      <Avatar className="w-24 h-24 border-4 border-background shadow-lg">
-                        <AvatarImage
-                          src={
-                            isMe && user?.avatar
-                              ? user.avatar
-                              : partner.avatar
-                          }
-                          className="object-cover"
-                        />
-                      <AvatarFallback>{partner.name[0]}</AvatarFallback>
-                      </Avatar>
+                  <CardContent className="p-2 md:p-6 grow flex flex-col items-center text-center">
+                  <div className="relative w-full h-36 sm:h-44 md:h-56 mb-4 overflow-hidden rounded-xl">
+                    <img
+                      src={
+                        isMe && user?.avatar
+                          ? user.avatar
+                          : partner.avatar
+                      }
+                      alt={partner.name}
+                      className="
+                        w-full
+                        h-full
+                        object-cover
+                        object-center
+                        transition-transform
+                        duration-300
+                        group-hover:scale-105
+                      "
+                    />
 
-                      {isMe && (
-                        <>
-                          <Badge className="absolute top-0 right-0 bg-primary text-primary-foreground z-10">
-                            You
-                          </Badge>
-                          <div className="absolute inset-0 w-24 h-24 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                            <Camera className="w-6 h-6 text-white" />
-                          </div>
-                        </>
-                      )}
-                    </div>
+                    {isMe && (
+                      <Badge className="absolute top-2 right-2 bg-primary text-primary-foreground z-10">
+                        You
+                      </Badge>
+                    )}
+                  </div>
 
-                    <h3 className="text-xl font-bold mb-1">{partner.name}</h3>
+                    <h3 className="text-sm md:text-lg font-bold mb-2 line-clamp-1">{partner.name}</h3>
 
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground mb-4">
+                    <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground mb-1 md:mb-2">
                       <MapPin className="w-3 h-3" /> {partner.location}
                     </div>
 
-                    <Badge variant="secondary" className="mb-4">
+                    <Badge variant="secondary" className="mb-1 md:mb-3 text-xs">
                       <Activity className="w-3 h-3 mr-1" />
                       {partner.skillLevel}
                     </Badge>
 
-                    <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-                      {partner.bio}
+                    <p className="hidden
+                        md:block
+                        text-sm
+                        text-muted-foreground
+                        line-clamp-2
+                        min-h-[40px]
+                        mb-4">
+                    {partner.bio}
                     </p>
                   </CardContent>
 
-                  <CardFooter className="p-4 pt-0 grid grid-cols-2 gap-3">
+                  <CardFooter className="p-2 md:p-4 pt-0 grid grid-cols-2 gap-3">
                     <Link
                       href={
                         partner.isDemo
@@ -324,21 +426,39 @@ export default function PartnersPage() {
                     >
                       <Button
                         variant="outline"
-                        className="w-full text-xs font-bold h-9 cursor-pointer"
+                        className="
+                          w-full
+                          h-9
+                          font-bold
+                          cursor-pointer
+                        "
                       >
-                        <User className="w-3 h-3 mr-1" />
-                        Profile
+                        <User className="w-4 h-4" />
+
+                        <span className="hidden sm:inline ml-1">
+                          Profile
+                        </span>
                       </Button>
                     </Link>
 
                     {!isMe && (
                       <Button
-                        className="w-full text-xs font-bold h-9 bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
-                        onClick={() => openMessageModal(partner)}
-                      >
-                        <MessageCircle className="w-3 h-3 mr-1" />
+                      className="
+                        w-full
+                        h-9
+                        bg-primary
+                        text-primary-foreground
+                        hover:bg-primary/90
+                        cursor-pointer
+                      "
+                      onClick={() => openMessageModal(partner)}
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                    
+                      <span className="hidden sm:inline ml-1">
                         Message
-                      </Button>
+                      </span>
+                    </Button>
                     )}
                   </CardFooter>
 
@@ -447,5 +567,6 @@ export default function PartnersPage() {
 
       <Footer />
     </div>
+   </>
   );
 }

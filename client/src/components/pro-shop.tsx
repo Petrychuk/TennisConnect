@@ -48,7 +48,7 @@ export function ProShop() {
   };
 
   return (
-    <section className="py-24 bg-gradient-to-b from-background to-secondary/30 relative overflow-hidden" id="shop">
+    <section className="py-24 bg-linear-to-b from-background to-secondary/30 relative overflow-hidden" id="shop">
       {/* Decorative Elements */}
       <div className="absolute top-20 right-0 w-[400px] h-[400px] bg-primary/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
@@ -64,7 +64,7 @@ export function ProShop() {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary border border-primary/20 mb-4"
             >
               <Sparkles className="w-4 h-4" />
-              <span className="text-xs font-bold uppercase tracking-wider">New Arrivals</span>
+              <span className="text-xs font-bold uppercase tracking-wider">TENNIS SHOP</span>
             </motion.div>
             
             <motion.h2
@@ -84,7 +84,7 @@ export function ProShop() {
               transition={{ delay: 0.2 }}
               className="text-muted-foreground mt-4 max-w-xl text-lg"
             >
-              Premium gear from top brands. Elevate your game with the latest equipment, apparel, and accessories.
+              Discover premium tennis equipment, apparel, footwear, and accessories from the world's leading tennis brands.
             </motion.p>
           </div>
           

@@ -6,14 +6,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, ShieldCheck, FileText, Plane, Heart, Trophy } from "lucide-react";
+import { Plus, Edit, Trash2, ShieldCheck, FileText, Plane, Heart, Trophy, Users } from "lucide-react";
+import SEO from "@/components/seo";
+import { articleSchema } from "@/lib/validations/articles";
+import { travelSchema } from "@/lib/validations/travel";
+import { recreationSchema } from "@/lib/validations/recreations";
+import { tournamentSchema } from "@/lib/validations/tournaments";
+import AdminUsersTab from "@/components/admin/users_tab";
 
-type Resource = "articles" | "travel" | "recreation" | "event-tournaments";
+type Resource = "articles" | "travel" | "recreation" | "event-tournaments" ; 
+type AdminTab = Resource | "users";
+
+function isContentTab(tab: AdminTab): tab is Resource {
+  return tab !== "users";
+}
 
 const RESOURCE_LABELS: Record<Resource, string> = {
   articles: "Articles",
@@ -30,7 +42,7 @@ const ICONS: Record<Resource, any> = {
 };
 
 // Field definitions per resource
-const FIELDS: Record<Resource, { name: string; type: "text" | "textarea" | "number" | "list" | "select"; required?: boolean; help?: string; options?: string[] }[]> = {
+const FIELDS: Record<Resource, { name: string; label?: string; type: "text" | "textarea" | "number" | "list" | "select" | "checkbox"; required?: boolean; help?: string; options?: string[] }[]> = {
   articles: [
     { name: "title", type: "text", required: true },
     { name: "slug", type: "text", required: true },
@@ -71,6 +83,7 @@ const FIELDS: Record<Resource, { name: string; type: "text" | "textarea" | "numb
   ],
   travel: [
     { name: "title", type: "text", required: true },
+    { name: "slug", type: "text", required: false, help: "Leave blank to auto-generate"},
     { name: "destination", type: "text", required: true },
     { name: "duration", type: "text", required: true, help: "e.g. 7 days" },
     { name: "price", type: "number", required: true },
@@ -79,8 +92,30 @@ const FIELDS: Record<Resource, { name: string; type: "text" | "textarea" | "numb
     { name: "highlights", type: "list", help: "Comma separated" },
     { name: "includes", type: "list", help: "Comma separated" },
     { name: "coverImage", type: "text", required: true, help: "Image URL" },
+    { name: "gallery", type: "list", help: "Image URLs (max 10)" },
+    { name: "providerName", type: "text" },
+    { name: "providerWebsite", type: "text" },
+    { name: "providerLogo", type: "text", help: "Logo URL" },
+    { name: "ctaText", type: "text", help: "Book Now / Learn More" },
+    { name: "ctaUrl", type: "text", help: "External booking page" },
+    { name: "tags", type: "list", help: "Comma separated" },
+    { name: "seoTitle", type: "text" },
+    {
+      name: "metaDescription",
+      type: "textarea",
+    },
+    {
+      name: "content",
+      type: "textarea",
+      help: "Full package details",
+    },
     { name: "startDate", type: "text", help: "YYYY-MM-DD" },
     { name: "spotsLeft", type: "number" },
+    {
+      name: "isFeatured",
+      label: "Featured Package",
+      type: "checkbox",
+    }
   ],
   recreation: [
     { name: "name", type: "text", required: true },
@@ -125,13 +160,17 @@ const FIELDS: Record<Resource, { name: string; type: "text" | "textarea" | "numb
 export default function AdminPage() {
   const { user, isAuthenticated, loading: isLoading } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<Resource>("articles");
+  const [activeTab, setActiveTab] = useState<AdminTab>("articles");
+  const ActiveIcon = isContentTab(activeTab)
+  ? ICONS[activeTab]
+  : Users;
+
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [dialogOpen, setDialogOpen] = useState(false);
-
+ 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<any>(null);
 
@@ -158,7 +197,12 @@ export default function AdminPage() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    if (isAdmin) fetchItems(activeTab);
+  
+    if (!isAdmin) return; 
+  
+    if (!isContentTab(activeTab)) return;
+
+    fetchItems(activeTab);
   }, [activeTab, isAdmin]);
 
   if (isLoading) {
@@ -173,17 +217,25 @@ export default function AdminPage() {
     return (
       <div className="min-h-screen bg-background font-sans flex flex-col">
         <Navbar />
-        <div className="flex-1 flex items-center justify-center px-4">
-          <Card className="max-w-md w-full">
-            <CardContent className="p-8 text-center">
-              <ShieldCheck className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <h2 className="text-2xl font-bold mb-2">Admin Access Required</h2>
-              <p className="text-muted-foreground">
-                {isAuthenticated ? "You don't have admin privileges." : "Please sign in with an admin account."}
+
+        <main className="flex-1 flex items-center justify-center px-4 pt-24 md:pt-28 pb-8">
+          <Card className="w-full max-w-md">
+            <CardContent className="p-6 md:p-8 text-center">
+              <ShieldCheck className="w-12 h-12 md:w-14 md:h-14 mx-auto text-muted-foreground mb-4" />
+
+              <h2 className="text-xl md:text-2xl font-bold mb-2">
+                Admin Access Required
+              </h2>
+
+              <p className="text-sm md:text-base text-muted-foreground">
+                {isAuthenticated
+                  ? "You don't have admin privileges."
+                  : "Please sign in with an admin account."}
               </p>
             </CardContent>
           </Card>
-        </div>
+        </main>
+
         <Footer />
       </div>
     );
@@ -192,7 +244,16 @@ export default function AdminPage() {
   const openCreate = () => {
     setEditing(null);
     const blank: Record<string, any> = {};
-    FIELDS[activeTab].forEach((f) => (blank[f.name] = ""));
+    
+    if (!isContentTab(activeTab)) return;
+
+    FIELDS[activeTab].forEach((f) => {
+      blank[f.name] =
+        f.type === "checkbox"
+          ? false
+          : "";
+    });
+
     setFormData(blank);
     setDialogOpen(true);
   };
@@ -200,10 +261,17 @@ export default function AdminPage() {
   const openEdit = (item: any) => {
     setEditing(item);
     const data: Record<string, any> = {};
+
+    if (!isContentTab(activeTab)) return;
     FIELDS[activeTab].forEach((f) => {
       const v = item[f.name];
       if (f.type === "list") data[f.name] = Array.isArray(v) ? v.join(", ") : (v || "");
-      else data[f.name] = v ?? "";
+      else if (f.type === "checkbox") {
+          data[f.name] = !!v;
+        }
+        else {
+          data[f.name] = v ?? "";
+        }
     });
     setFormData(data);
     setDialogOpen(true);
@@ -211,19 +279,72 @@ export default function AdminPage() {
 
   const submit = async () => {
     const payload: Record<string, any> = {};
+
+    if (!isContentTab(activeTab)) return;
+
     FIELDS[activeTab].forEach((f) => {
       let v = formData[f.name];
+  
       if (v === "" || v === undefined || v === null) return;
+  
       if (f.type === "number") v = Number(v);
-      if (f.type === "list") v = String(v).split(",").map((s) => s.trim()).filter(Boolean);
-      payload[f.name] = v;
-    });
+  
+      if (f.type === "list") {
+        v = String(v)
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
 
+      if (f.type === "checkbox") {
+        payload[f.name] = !!v;
+      } else {
+        payload[f.name] = v;
+      }
+  
+    });
+  
+    // VALIDATION
+  
+    let validation;
+  
+    switch (activeTab) {
+      case "articles":
+        validation = articleSchema.safeParse(payload);
+        break;
+  
+      case "travel":
+        validation = travelSchema.safeParse(payload);
+        break;
+  
+      case "recreation":
+        validation = recreationSchema.safeParse(payload);
+        break;
+  
+      case "event-tournaments":
+        validation = tournamentSchema.safeParse(payload);
+        break;
+    }
+  
+    if (!validation?.success) {
+      toast({
+        title: "Validation Error",
+        description:
+          validation?.error?.errors?.[0]?.message ||
+          "Invalid form data",
+        variant: "destructive",
+      });
+  
+      return;
+    }
+  
+    // EXISTING CODE
     const url = editing
       ? `/api/admin/${activeTab}/${editing.id}`
       : `/api/admin/${activeTab}`;
+  
     const method = editing ? "PUT" : "POST";
-
+  
     try {
       const res = await fetch(url, {
         method,
@@ -231,15 +352,26 @@ export default function AdminPage() {
         credentials: "include",
         body: JSON.stringify(payload),
       });
+  
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.message || "Save failed");
       }
-      toast({ title: editing ? "Updated" : "Created", description: `${RESOURCE_LABELS[activeTab]} saved successfully.` });
+  
+      toast({
+        title: editing ? "Updated" : "Created",
+        description: `${RESOURCE_LABELS[activeTab]} saved successfully.`,
+      });
+  
       setDialogOpen(false);
       fetchItems(activeTab);
+  
     } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: e.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -270,7 +402,9 @@ export default function AdminPage() {
       setDeleteDialogOpen(false);
       setItemToDelete(null);
   
-      fetchItems(activeTab);
+      if (isContentTab(activeTab)) {
+        fetchItems(activeTab);
+      }
     } catch (e: any) {
       toast({
         title: "Error",
@@ -280,230 +414,325 @@ export default function AdminPage() {
     }
   };
 
-  const ActiveIcon = ICONS[activeTab];
+  const activeLabel = isContentTab(activeTab)
+  ? RESOURCE_LABELS[activeTab]
+  : "Users";
+
+  const deleteLabel = isContentTab(activeTab)
+  ? RESOURCE_LABELS[activeTab].slice(0, -1)
+  : "User";
 
   return (
-    <div className="min-h-screen bg-background font-sans">
-      <Navbar />
+    <>
+      <SEO
+        title="Admin Panel | TennisConnect"
+        description="Administration panel."
+        canonical="/admin"
+        noIndex
+      />
+      <div className="min-h-screen bg-background font-sans">
+        <Navbar />
 
-      <div className="container mx-auto px-4 py-12 mt-16">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
-          <div>
-            <Badge className="mb-3 bg-primary text-primary-foreground">
-              <ShieldCheck className="w-3 h-3 mr-1" /> Admin
-            </Badge>
-            <h1 className="text-4xl md:text-5xl font-display font-bold">Content Manager</h1>
-            <p className="text-muted-foreground mt-2">Manage articles, travel, recreation and tournaments.</p>
-          </div>
-          <Button
-            onClick={openCreate}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
-            data-testid="admin-create-button"
-          >
-            <Plus className="w-4 h-4 mr-2" /> New {RESOURCE_LABELS[activeTab]}
-          </Button>
-        </div>
-
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Resource)}>
-          <TabsList className="grid grid-cols-2 md:grid-cols-4 mb-8 w-full max-w-3xl">
-            {(Object.keys(RESOURCE_LABELS) as Resource[]).map((r) => {
-              const Icon = ICONS[r];
-              return (
-                <TabsTrigger key={r} value={r} className="cursor-pointer" data-testid={`admin-tab-${r}`}>
-                  <Icon className="w-4 h-4 mr-2" /> {RESOURCE_LABELS[r]}
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
-
-          {(Object.keys(RESOURCE_LABELS) as Resource[]).map((r) => (
-            <TabsContent key={r} value={r}>
-              {loading ? (
-                <div className="text-center py-12 text-muted-foreground">Loading…</div>
-              ) : items.length === 0 ? (
-                <div className="text-center py-20">
-                  <ActiveIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-xl font-bold mb-2">No items yet</h3>
-                  <Button onClick={openCreate} variant="outline">Create first {RESOURCE_LABELS[r].toLowerCase()}</Button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {items.map((item) => (
-                    <Card key={item.id} className="overflow-hidden">
-                      <div className="aspect-video bg-secondary/50 overflow-hidden">
-                        <img src={item.coverImage} alt="" className="w-full h-full object-cover" />
-                      </div>
-                      <CardContent className="p-4">
-                        <h3 className="font-bold text-base mb-1 line-clamp-1">{item.title || item.name}</h3>
-                        <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{item.excerpt || item.description}</p>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex-1 cursor-pointer"
-                            onClick={() => openEdit(item)}
-                            data-testid={`admin-edit-${item.id}`}
-                          >
-                            <Edit className="w-3 h-3 mr-1" /> Edit
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="cursor-pointer hover:text-destructive hover:border-destructive"
-                            onClick={() => remove(item)}
-                            data-testid={`admin-delete-${item.id}`}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-          ))}
-        </Tabs>
-      </div>
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editing ? "Edit" : "Create"} {RESOURCE_LABELS[activeTab]}</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4">
-          {FIELDS[activeTab].map((f) => {
-
-            if (
-              f.name === "legalType" &&
-              formData.category !== "Legal"
-            ) {
-              return null;
-            }
-
-            return (
-              <div key={f.name}>
-                <Label htmlFor={f.name} className="capitalize">
-                  {f.name.replace(/([A-Z])/g, " $1")}
-                  {f.required && (
-                    <span className="text-destructive ml-1">*</span>
-                  )}
-                </Label>
-
-                {f.type === "textarea" ? (
-                  <Textarea
-                    id={f.name}
-                    value={formData[f.name] || ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        [f.name]: e.target.value,
-                      })
-                    }
-                    rows={5}
-                    data-testid={`admin-field-${f.name}`}
-                  />
-                ) : f.type === "select" ? (
-                  <select
-                    id={f.name}
-                    value={formData[f.name] || ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        [f.name]: e.target.value,
-                      })
-                    }
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="">Select...</option>
-
-                    {f.options?.map((option) => (
-                      <option
-                        key={option}
-                        value={option}
-                      >
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <Input
-                    id={f.name}
-                    type={f.type === "number" ? "number" : "text"}
-                    value={formData[f.name] || ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        [f.name]: e.target.value,
-                      })
-                    }
-                    data-testid={`admin-field-${f.name}`}
-                  />
-                )}
-
-                {f.help && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {f.help}
-                  </p>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)} className="cursor-pointer">Cancel</Button>
-            <Button onClick={submit} className="bg-primary text-primary-foreground cursor-pointer" data-testid="admin-save-button">
-              {editing ? "Update" : "Create"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog
-          open={deleteDialogOpen}
-          onOpenChange={setDeleteDialogOpen}
-        >
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-            <DialogTitle>
-              Delete {RESOURCE_LABELS[activeTab].slice(0, -1)}
-            </DialogTitle>
-
-              <DialogDescription>
-                Are you sure you want to delete
-                <strong>
-                  {" "}
-                  "{itemToDelete?.title || itemToDelete?.name}"
-                </strong>
-                ?
-                <br />
-                This action cannot be undone.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setDeleteDialogOpen(false); 
-                  setItemToDelete(null); 
-                }}
-              >
-                Cancel
-              </Button>
-
-              <Button
-                variant="destructive"
-                onClick={confirmDelete}
-              >
-                Delete
-              </Button>
+        <div className="container mx-auto px-4 py-12 mt-16">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+            <div>
+              <Badge className="mb-3 bg-primary text-primary-foreground">
+                <ShieldCheck className="w-3 h-3 mr-1" /> Admin
+              </Badge>
+              <h1 className="text-4xl md:text-5xl font-display font-bold">Content Manager</h1>
+              <p className="text-muted-foreground mt-2">Manage articles, travel, recreation, users and tournaments.</p>
             </div>
+            {activeTab !== "users" && (
+            <Button
+              onClick={openCreate}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
+              data-testid="admin-create-button"
+            >
+              <Plus className="w-4 h-4 mr-2" /> New {activeLabel}
+            </Button>
+            )}
+          </div>
+
+          <Tabs
+            value={activeTab}
+            onValueChange={(v) => setActiveTab(v as Resource)}
+          >
+            <TabsList className="grid grid-cols-2 md:grid-cols-5 mb-8 w-full max-w-4xl">
+
+              {(Object.keys(RESOURCE_LABELS) as Resource[]).map((r) => {
+                const Icon = ICONS[r];
+
+                return (
+                  <TabsTrigger
+                    key={r}
+                    value={r}
+                    className="cursor-pointer"
+                    data-testid={`admin-tab-${r}`}
+                  >
+                    <Icon className="w-4 h-4 mr-2" />
+                    {RESOURCE_LABELS[r]}
+                  </TabsTrigger>
+                );
+              })}
+
+              <TabsTrigger
+                value="users"
+                className="cursor-pointer"
+                data-testid="admin-tab-users"
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Users
+              </TabsTrigger>
+
+            </TabsList>
+
+            {(Object.keys(RESOURCE_LABELS) as Resource[]).map((r) => (
+              <TabsContent key={r} value={r}>
+
+                {loading ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    Loading…
+                  </div>
+                ) : items.length === 0 ? (
+                  <div className="text-center py-20">
+                    <ActiveIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-xl font-bold mb-2">
+                      No items yet
+                    </h3>
+
+                    <Button
+                      onClick={openCreate}
+                      variant="outline"
+                    >
+                      Create first {RESOURCE_LABELS[r].toLowerCase()}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+                    {items.map((item) => (
+                      <Card
+                        key={item.id}
+                        className="overflow-hidden"
+                      >
+                        <div className="aspect-video bg-secondary/50 overflow-hidden">
+                          <img
+                            src={item.coverImage}
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+
+                        <CardContent className="p-4">
+                          <h3 className="font-bold text-base mb-1 line-clamp-1">
+                            {item.title || item.name}
+                          </h3>
+
+                          <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
+                            {item.excerpt || item.description}
+                          </p>
+
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 cursor-pointer"
+                              onClick={() => openEdit(item)}
+                              data-testid={`admin-edit-${item.id}`}
+                            >
+                              <Edit className="w-3 h-3 mr-1" />
+                              Edit
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="cursor-pointer hover:text-destructive hover:border-destructive"
+                              onClick={() => remove(item)}
+                              data-testid={`admin-delete-${item.id}`}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+
+                  </div>
+                )}
+
+              </TabsContent>
+            ))}
+
+            <TabsContent value="users">
+              <AdminUsersTab />
+            </TabsContent>
+
+          </Tabs>
+
+        </div>
+
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{editing ? "Edit" : "Create"}{" "} {activeLabel}</DialogTitle>
+            </DialogHeader>
+            
+            {isContentTab(activeTab) &&
+              <div className="space-y-4">
+              {FIELDS[activeTab].map((f) => {
+
+                if (
+                  f.name === "legalType" &&
+                  formData.category !== "Legal"
+                ) {
+                  return null;
+                }
+
+                return (
+                  <div key={f.name}>
+                    <Label htmlFor={f.name} className="capitalize">
+                      {f.name.replace(/([A-Z])/g, " $1")}
+                      {f.required && (
+                        <span className="text-destructive ml-1">*</span>
+                      )}
+                    </Label>
+      
+                    {activeTab === "travel" && f.type === "checkbox" ? (
+                        <div className="flex items-center justify-between rounded-lg border p-4">
+                          <div>
+                            <Label htmlFor={f.name}>
+                              {f.label || f.name}
+                            </Label>
+
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Show this package as Featured on TennisConnect.
+                            </p>
+                          </div>
+
+                          <Switch
+                              checked={!!formData[f.name]}
+                              onCheckedChange={(checked) =>
+                                setFormData({
+                                  ...formData,
+                                  [f.name]: checked,
+                                })
+                              }
+                            />
+                        </div>
+                      ) : f.type === "textarea" ? (
+                      <Textarea
+                        id={f.name}
+                        value={formData[f.name] || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            [f.name]: e.target.value,
+                          })
+                        }
+                        rows={5}
+                        data-testid={`admin-field-${f.name}`}
+                      />
+                    ) : f.type === "select" ? (
+                      <select
+                        id={f.name}
+                        value={formData[f.name] || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            [f.name]: e.target.value,
+                          })
+                        }
+                        className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="">Select...</option>
+
+                        {f.options?.map((option) => (
+                          <option
+                            key={option}
+                            value={option}
+                          >
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <Input
+                        id={f.name}
+                        type={f.type === "number" ? "number" : "text"}
+                        value={formData[f.name] || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            [f.name]: e.target.value,
+                          })
+                        }
+                        data-testid={`admin-field-${f.name}`}
+                      />
+                    )}
+
+                    {f.help && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {f.help}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+              </div>
+            }
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDialogOpen(false)} className="cursor-pointer">Cancel</Button>
+              <Button onClick={submit} className="bg-primary text-primary-foreground cursor-pointer" data-testid="admin-save-button">
+                {editing ? "Update" : "Create"}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
+        <Dialog
+            open={deleteDialogOpen}
+            onOpenChange={setDeleteDialogOpen}
+          >
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+              <DialogTitle>
+              Delete {deleteLabel}
+              </DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to delete
+                  <strong>
+                    {" "}
+                    "{itemToDelete?.title || itemToDelete?.name}"
+                  </strong>
+                  ?
+                  <br />
+                  This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
 
-      <Footer />
-    </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setDeleteDialogOpen(false); 
+                    setItemToDelete(null); 
+                  }}
+                >
+                  Cancel
+                </Button>
+
+                <Button
+                  variant="destructive"
+                  onClick={confirmDelete}
+                >
+                  Delete
+                </Button>
+              </div>
+            </DialogContent>
+        </Dialog>
+
+        <Footer />
+      </div>
+    </>
   );
 }
