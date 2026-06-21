@@ -1,16 +1,5 @@
 import { test, expect } from '@playwright/test';
-import {
-    registerPlayer,
-    registerCoach,
-    login,
-    logout,
-  } from '../helpers/auth';
-  
-  import {
-    completePlayerProfile,
-    completeCoachProfile,
-  } from '../helpers/profile';
-
+import { login } from '../helpers/auth'; 
 import { TEST_USERS } from '../fixtures/test-users'; 
 
 test('ACCESS-001 Guest → /messages', async ({ page }) => {

@@ -46,12 +46,12 @@ export const loginSchema = z.object({
     password: z.string().min(6, { message: "Password must be at least 6 characters" }),
   });
 
-  export const resetPasswordSchema = z
+export const resetPasswordSchema = z
   .object({
     password: z
       .string()
       .min(8, "Password must be at least 8 characters")
-      .max(100, "Password is too long"),
+      .max(20, "Password is too long"),
 
     confirmPassword: z.string(),
   })

@@ -103,7 +103,16 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!forgotPasswordEmail) return;
+    
+    if (!forgotPasswordEmail.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Email required",
+        description: "Please enter your email address",
+      });
+  
+      return;
+    }
 
     setForgotPasswordLoading(true);
     try {
