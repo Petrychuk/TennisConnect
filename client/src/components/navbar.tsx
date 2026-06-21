@@ -165,8 +165,9 @@ export function Navbar() {
               </Link>
             
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+                <DropdownMenuTrigger  asChild>
                   <Avatar
+                    data-testid="profile-menu"
                     key={user?.avatar} 
                     className="h-9 w-9 cursor-pointer border-2 border-primary/20 hover:border-primary transition-colors">
                     <AvatarImage src={user?.avatar || undefined} />
@@ -206,6 +207,7 @@ export function Navbar() {
                     </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
+                    data-testid="logout-btn"
                     className="text-destructive focus:text-destructive cursor-pointer" 
                     onClick={async () => {
                       await logout();
@@ -330,6 +332,7 @@ export function Navbar() {
                       </Link>
                     <div className="border-t border-[hsl(var(--tennis-ball))]/70 pt-4 mt-2"></div>
                     <Button 
+                      data-testid="logout-btn"
                       variant="ghost" 
                       className="w-full justify-start text-destructive hover:text-destructive cursor-pointer"
                       onClick={async () => {
