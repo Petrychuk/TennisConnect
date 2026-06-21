@@ -147,7 +147,7 @@ export default function TravelDetailPage() {
                 <TravelAbout
                   description={pkg.description}
                 />
-                <div className="lg:hidden container mx-auto px-4 -mt-0 mb-4">
+                <div className="lg:hidden container mx-auto px-4 mt-0 mb-4">
                   <TravelPriceCard
                     price={pkg.price}
                     currency={pkg.currency}

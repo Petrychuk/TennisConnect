@@ -160,8 +160,8 @@ export default function CompleteProfilePage() {
     console.log("✅ Step 2 SUCCESS");
 
     toast({
-      title: "Profile completed!",
-      description: "Your profile is now visible to students.",
+      title: "Profile submitted",
+      description: "Your profile has been submitted for review and will appear in the directory once approved.",
     });
 
     // 🔹 4. Fetch fresh user

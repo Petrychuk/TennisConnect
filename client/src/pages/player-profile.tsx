@@ -657,8 +657,8 @@ export default function PlayerProfile() {
             <div className="container mx-auto px-4 -mt-20 relative z-30 max-w-6xl">
               {/* Header Section */}
               <div className="flex flex-col md:flex-row gap-8 mb-12">
-              <div className="shrink-0 mx-auto md:mx-0 relative group">
-                <Avatar className="w-40 h-40 border-4 border-background shadow-xl">
+              <div className="relative group w-40 h-40 shrink-0 mx-auto md:mx-0">
+                <Avatar className="w-full h-full border-4 border-background shadow-lg">
                   <AvatarImage
                     src={profile.avatar ?? undefined}
                     className="object-cover"

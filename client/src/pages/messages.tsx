@@ -397,7 +397,6 @@ export default function MessagesPage() {
       </div>
     );
   }
-
   return(
    <>
     <SEO
@@ -535,7 +534,7 @@ export default function MessagesPage() {
                                     )}
                                   </div>
 
-                                  <p className="text-sm text-muted-foreground truncate mt-0.5">
+                                  <p className="text-sm text-muted-foreground line-clamp-2 wrap-break-word mt-0.5">
                                     {message.content}
                                   </p>
 
@@ -619,6 +618,7 @@ export default function MessagesPage() {
                           <div className="space-y-4 pr-2">
                             {conversation.map((msg) => {
                             const isMe = msg.senderUserId === user?.id;
+                            const isSystemMessage = msg.senderName === "Site Admin";
 
                             return (
                               <div
@@ -628,9 +628,13 @@ export default function MessagesPage() {
                                 }`}
                               >
                                 <div
-                                  className={`flex gap-3 max-w-[90%] sm:max-w-[80%] ${
-                                    isMe ? "flex-row-reverse gap-4" : "gap-3"
-                                  }`}
+                                  className={
+                                    isSystemMessage
+                                      ? "flex gap-3 w-full"
+                                      : `flex gap-3 max-w-[90%] sm:max-w-[80%] ${
+                                          isMe ? "flex-row-reverse gap-4" : "gap-3"
+                                        }`
+                                  }
                                 >
                                   <Avatar className="h-10 w-10 shrink-0 ml-1">
                                     <AvatarImage
@@ -656,8 +660,11 @@ export default function MessagesPage() {
                                     <div
                                       className={`
                                         rounded-2xl px-4 py-3 shadow-sm transition-all
+
                                         ${
-                                          isMe
+                                          isSystemMessage
+                                            ? "w-full bg-primary/5 border border-primary/20"
+                                            : isMe
                                             ? "bg-primary text-primary-foreground rounded-br-md"
                                             : "bg-muted hover:bg-muted/80 rounded-bl-md"
                                         }

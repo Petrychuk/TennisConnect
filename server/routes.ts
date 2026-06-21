@@ -8,8 +8,10 @@ import profileTournamentHistoryRouter from "./routes/profileTournamentHistory";
 import profileMarketplace from "./routes/profileMarketplace";
 import contentRouter from "./routes/content";
 import passport from "passport";
-import { requireAuth } from "./requireAuth";
+import { requireAuth, requireAdmin } from "./requireAuth";
 import supportRoutes from "./routes/supportRoutes";
+import { sendSystemMessage } from "./services/systemMessages";
+
 
 import {
   insertUserSchema,
@@ -129,6 +131,12 @@ export async function registerRoutes(app: Express): Promise<void> {
           location: "Sydney",
         });
       }
+      await sendSystemMessage(
+        user.id,
+        user.role,
+        "Welcome to TennisConnect",
+        `Welcome to TennisConnect! Thank you for joining our community.Your profile has been submitted and is currently awaiting moderation. Our team will review your profile shortly. Once approved, your profile will become visible to other members on the platform. Thank you for your patience and welcome aboard! - TennisConnect Team`
+        );
 
       req.login(user, (err) => {
         if (err) return next(err);
@@ -325,33 +333,156 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const user = await storage.updateUser(req.user!.id, {
         profileCompleted: true,
+        isApproved: false,
       });
-
-      // OPTIONAL: снять draft
+  
       if (user.role === "player") {
-        await storage.updatePlayerProfileByUserId(user.id, { isDraft: false });
+        await storage.updatePlayerProfileByUserId(user.id, {
+          isDraft: false,
+        });
       }
-
+  
       if (user.role === "coach") {
-        await storage.updateCoachProfileByUserId(user.id, { isDraft: false });
+        await storage.updateCoachProfileByUserId(user.id, {
+          isDraft: false,
+        });
       }
-
+  
       res.json(user);
     } catch (e) {
       next(e);
     }
   });
 
+  // ===== ADMIN USERS =====
+    app.get("/api/admin/users",
+      requireAdmin,
+      async (_req, res) => {
+        const users = await storage.getAllUsers();
+
+        res.json(users);
+      }
+    );
+
+    app.patch("/api/admin/users/:id/approve",
+      requireAdmin,
+      async (req, res) => {
+        const user = await storage.approveUser(req.params.id);
+
+          if (!user) {
+            return res.status(404).json({
+              message: "User not found",
+            });
+          }
+
+        await sendSystemMessage(
+          user.id,
+          user.role,
+          "Profile Approved",
+          `Congratulations! Your TennisConnect profile has been approved and is now visible to the community
+            You can now:
+            • Connect with players and coaches
+            • Receive messages
+            • Participate in community activities
+
+          Welcome to TennisConnect and enjoy your tennis journey! — TennisConnect Team`
+        );
+
+        res.json(user);
+      }
+    );
+
+    app.delete("/api/admin/users/:id",
+      requireAdmin,
+      async (req, res) => {
+        try {
+          const userId = req.params.id;
+    
+          // защита от удаления самого себя
+          if (req.user?.id === userId) {
+            return res.status(400).json({
+              message: "You cannot delete yourself",
+            });
+          }
+    
+          await storage.deleteUserByAdmin(userId);
+    
+          return res.json({
+            success: true,
+          });
+    
+        } catch (error) {
+          console.error(error);
+    
+          return res.status(500).json({
+            message: "Failed to delete user",
+          });
+        }
+      }
+    );
+
+    app.patch("/api/admin/users/:id/hide",
+      requireAdmin,
+      async (req, res) => {
+    
+        if (req.user?.id === req.params.id) {
+          return res.status(400).json({
+            message: "You cannot hide yourself",
+          });
+        }
+    
+        const user = await storage.hideUser(req.params.id);
+
+        if (user) {
+          await sendSystemMessage(
+            user.id,
+            user.role,
+            "Profile Hidden",
+            `Your profile has been temporarily hidden from public listings. Your account remains active and your data has not been removed. If you believe this was done in error, please contact support. — TennisConnect Team`
+          );
+        }
+    
+        res.json({
+          success: true,
+        });
+      }
+    );
+
+    app.patch("/api/admin/users/:id/unhide",
+      requireAdmin,
+      async (req, res) => {
+    
+        const user = await storage.unhideUser(req.params.id);
+
+        if (!user) {
+          return res.status(404).json({
+            message: "User not found",
+          });
+        }
+
+        await sendSystemMessage(
+          user.id,
+          user.role,
+          "Profile Restored",
+          `Good news! Your TennisConnect profile has been restored and is once again visible to the community.Other members can now find your profile and connect with you normally. Thank you for being part of TennisConnect. - TennisConnect Team`
+        );
+            
+        res.json({
+          success: true,
+        });
+      }
+    );
+
   /* =========================
      ME (CURRENT USER)
   ========================= */
-
   app.get("/api/me", requireAuth, (req, res) => {
     if (!req.user) {
     return res.status(401).json({ user: null });
   }
   res.json({ user: req.user });
-});
+  });
+
   app.get("/api/me/player-profile",
     requireAuth,
     requireRole("player"),
@@ -442,6 +573,12 @@ export async function registerRoutes(app: Express): Promise<void> {
       if (!req.user) {
         return res.status(401).json({
           message: "Unauthorized",
+        });      
+      }
+      // Защита администратора
+      if (req.user.isAdmin) {
+        return res.status(403).json({
+          message: "Admin accounts cannot be deleted",
         });
       }
   
@@ -456,12 +593,12 @@ export async function registerRoutes(app: Express): Promise<void> {
         });
       });
 
-res.clearCookie("connect.sid");
+  res.clearCookie("connect.sid");
 
-return res.json({
-  success: true,
-});
-  
+  return res.json({
+    success: true,
+  });
+    
     } catch (error) {
       console.error("Delete account error:", error);
   
@@ -534,7 +671,6 @@ return res.json({
       message: "Profile deletion not implemented yet",
     });
   });
-
 
   // ===== MARKETPLACE ROUTES =====
   // CREATE

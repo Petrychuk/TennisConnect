@@ -16,6 +16,13 @@ export const users = pgTable("users", {
   status: varchar("status", { length: 50 }).default("active"),
   profileCompleted: boolean("profile_completed").default(false).notNull(),
   isAdmin: boolean("is_admin").default(false).notNull(),
+  isApproved: boolean("is_approved")
+  .default(false)
+  .notNull(),
+  isTestUser: boolean("is_test_user")
+  .default(false)
+  .notNull(),
+  isHidden: boolean("is_hidden").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

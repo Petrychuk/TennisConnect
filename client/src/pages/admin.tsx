@@ -12,14 +12,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, ShieldCheck, FileText, Plane, Heart, Trophy } from "lucide-react";
+import { Plus, Edit, Trash2, ShieldCheck, FileText, Plane, Heart, Trophy, Users } from "lucide-react";
 import SEO from "@/components/seo";
 import { articleSchema } from "@/lib/validations/articles";
 import { travelSchema } from "@/lib/validations/travel";
 import { recreationSchema } from "@/lib/validations/recreations";
 import { tournamentSchema } from "@/lib/validations/tournaments";
+import AdminUsersTab from "@/components/admin/users_tab";
 
-type Resource = "articles" | "travel" | "recreation" | "event-tournaments";
+type Resource = "articles" | "travel" | "recreation" | "event-tournaments" ; 
+type AdminTab = Resource | "users";
+
+function isContentTab(tab: AdminTab): tab is Resource {
+  return tab !== "users";
+}
 
 const RESOURCE_LABELS: Record<Resource, string> = {
   articles: "Articles",
@@ -154,14 +160,17 @@ const FIELDS: Record<Resource, { name: string; label?: string; type: "text" | "t
 export default function AdminPage() {
   const { user, isAuthenticated, loading: isLoading } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<Resource>("articles");
-  const ActiveIcon = ICONS[activeTab];
+  const [activeTab, setActiveTab] = useState<AdminTab>("articles");
+  const ActiveIcon = isContentTab(activeTab)
+  ? ICONS[activeTab]
+  : Users;
+
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [dialogOpen, setDialogOpen] = useState(false);
-
+ 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<any>(null);
 
@@ -188,7 +197,12 @@ export default function AdminPage() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    if (isAdmin) fetchItems(activeTab);
+  
+    if (!isAdmin) return; 
+  
+    if (!isContentTab(activeTab)) return;
+
+    fetchItems(activeTab);
   }, [activeTab, isAdmin]);
 
   if (isLoading) {
@@ -203,26 +217,36 @@ export default function AdminPage() {
     return (
       <div className="min-h-screen bg-background font-sans flex flex-col">
         <Navbar />
-        <div className="flex-1 flex items-center justify-center px-4">
-          <Card className="max-w-md w-full">
-            <CardContent className="p-8 text-center">
-              <ShieldCheck className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <h2 className="text-2xl font-bold mb-2">Admin Access Required</h2>
-              <p className="text-muted-foreground">
-                {isAuthenticated ? "You don't have admin privileges." : "Please sign in with an admin account."}
+
+        <main className="flex-1 flex items-center justify-center px-4 pt-24 md:pt-28 pb-8">
+          <Card className="w-full max-w-md">
+            <CardContent className="p-6 md:p-8 text-center">
+              <ShieldCheck className="w-12 h-12 md:w-14 md:h-14 mx-auto text-muted-foreground mb-4" />
+
+              <h2 className="text-xl md:text-2xl font-bold mb-2">
+                Admin Access Required
+              </h2>
+
+              <p className="text-sm md:text-base text-muted-foreground">
+                {isAuthenticated
+                  ? "You don't have admin privileges."
+                  : "Please sign in with an admin account."}
               </p>
             </CardContent>
           </Card>
-        </div>
+        </main>
+
         <Footer />
       </div>
     );
   }
 
-
   const openCreate = () => {
     setEditing(null);
     const blank: Record<string, any> = {};
+    
+    if (!isContentTab(activeTab)) return;
+
     FIELDS[activeTab].forEach((f) => {
       blank[f.name] =
         f.type === "checkbox"
@@ -237,6 +261,8 @@ export default function AdminPage() {
   const openEdit = (item: any) => {
     setEditing(item);
     const data: Record<string, any> = {};
+
+    if (!isContentTab(activeTab)) return;
     FIELDS[activeTab].forEach((f) => {
       const v = item[f.name];
       if (f.type === "list") data[f.name] = Array.isArray(v) ? v.join(", ") : (v || "");
@@ -253,7 +279,9 @@ export default function AdminPage() {
 
   const submit = async () => {
     const payload: Record<string, any> = {};
-  
+
+    if (!isContentTab(activeTab)) return;
+
     FIELDS[activeTab].forEach((f) => {
       let v = formData[f.name];
   
@@ -311,7 +339,6 @@ export default function AdminPage() {
     }
   
     // EXISTING CODE
-  
     const url = editing
       ? `/api/admin/${activeTab}/${editing.id}`
       : `/api/admin/${activeTab}`;
@@ -375,7 +402,9 @@ export default function AdminPage() {
       setDeleteDialogOpen(false);
       setItemToDelete(null);
   
-      fetchItems(activeTab);
+      if (isContentTab(activeTab)) {
+        fetchItems(activeTab);
+      }
     } catch (e: any) {
       toast({
         title: "Error",
@@ -384,6 +413,14 @@ export default function AdminPage() {
       });
     }
   };
+
+  const activeLabel = isContentTab(activeTab)
+  ? RESOURCE_LABELS[activeTab]
+  : "Users";
+
+  const deleteLabel = isContentTab(activeTab)
+  ? RESOURCE_LABELS[activeTab].slice(0, -1)
+  : "User";
 
   return (
     <>
@@ -403,49 +440,98 @@ export default function AdminPage() {
                 <ShieldCheck className="w-3 h-3 mr-1" /> Admin
               </Badge>
               <h1 className="text-4xl md:text-5xl font-display font-bold">Content Manager</h1>
-              <p className="text-muted-foreground mt-2">Manage articles, travel, recreation and tournaments.</p>
+              <p className="text-muted-foreground mt-2">Manage articles, travel, recreation, users and tournaments.</p>
             </div>
+            {activeTab !== "users" && (
             <Button
               onClick={openCreate}
               className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
               data-testid="admin-create-button"
             >
-              <Plus className="w-4 h-4 mr-2" /> New {RESOURCE_LABELS[activeTab]}
+              <Plus className="w-4 h-4 mr-2" /> New {activeLabel}
             </Button>
+            )}
           </div>
 
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Resource)}>
-            <TabsList className="grid grid-cols-2 md:grid-cols-4 mb-8 w-full max-w-3xl">
+          <Tabs
+            value={activeTab}
+            onValueChange={(v) => setActiveTab(v as Resource)}
+          >
+            <TabsList className="grid grid-cols-2 md:grid-cols-5 mb-8 w-full max-w-4xl">
+
               {(Object.keys(RESOURCE_LABELS) as Resource[]).map((r) => {
                 const Icon = ICONS[r];
+
                 return (
-                  <TabsTrigger key={r} value={r} className="cursor-pointer" data-testid={`admin-tab-${r}`}>
-                    <Icon className="w-4 h-4 mr-2" /> {RESOURCE_LABELS[r]}
+                  <TabsTrigger
+                    key={r}
+                    value={r}
+                    className="cursor-pointer"
+                    data-testid={`admin-tab-${r}`}
+                  >
+                    <Icon className="w-4 h-4 mr-2" />
+                    {RESOURCE_LABELS[r]}
                   </TabsTrigger>
                 );
               })}
+
+              <TabsTrigger
+                value="users"
+                className="cursor-pointer"
+                data-testid="admin-tab-users"
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Users
+              </TabsTrigger>
+
             </TabsList>
 
             {(Object.keys(RESOURCE_LABELS) as Resource[]).map((r) => (
               <TabsContent key={r} value={r}>
+
                 {loading ? (
-                  <div className="text-center py-12 text-muted-foreground">Loading…</div>
+                  <div className="text-center py-12 text-muted-foreground">
+                    Loading…
+                  </div>
                 ) : items.length === 0 ? (
                   <div className="text-center py-20">
                     <ActiveIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-xl font-bold mb-2">No items yet</h3>
-                    <Button onClick={openCreate} variant="outline">Create first {RESOURCE_LABELS[r].toLowerCase()}</Button>
+                    <h3 className="text-xl font-bold mb-2">
+                      No items yet
+                    </h3>
+
+                    <Button
+                      onClick={openCreate}
+                      variant="outline"
+                    >
+                      Create first {RESOURCE_LABELS[r].toLowerCase()}
+                    </Button>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
                     {items.map((item) => (
-                      <Card key={item.id} className="overflow-hidden">
+                      <Card
+                        key={item.id}
+                        className="overflow-hidden"
+                      >
                         <div className="aspect-video bg-secondary/50 overflow-hidden">
-                          <img src={item.coverImage} alt="" className="w-full h-full object-cover" />
+                          <img
+                            src={item.coverImage}
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
                         </div>
+
                         <CardContent className="p-4">
-                          <h3 className="font-bold text-base mb-1 line-clamp-1">{item.title || item.name}</h3>
-                          <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{item.excerpt || item.description}</p>
+                          <h3 className="font-bold text-base mb-1 line-clamp-1">
+                            {item.title || item.name}
+                          </h3>
+
+                          <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
+                            {item.excerpt || item.description}
+                          </p>
+
                           <div className="flex gap-2">
                             <Button
                               size="sm"
@@ -454,8 +540,10 @@ export default function AdminPage() {
                               onClick={() => openEdit(item)}
                               data-testid={`admin-edit-${item.id}`}
                             >
-                              <Edit className="w-3 h-3 mr-1" /> Edit
+                              <Edit className="w-3 h-3 mr-1" />
+                              Edit
                             </Button>
+
                             <Button
                               size="sm"
                               variant="outline"
@@ -469,121 +557,130 @@ export default function AdminPage() {
                         </CardContent>
                       </Card>
                     ))}
+
                   </div>
                 )}
+
               </TabsContent>
             ))}
+
+            <TabsContent value="users">
+              <AdminUsersTab />
+            </TabsContent>
+
           </Tabs>
+
         </div>
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editing ? "Edit" : "Create"} {RESOURCE_LABELS[activeTab]}</DialogTitle>
+              <DialogTitle>{editing ? "Edit" : "Create"}{" "} {activeLabel}</DialogTitle>
             </DialogHeader>
+            
+            {isContentTab(activeTab) &&
+              <div className="space-y-4">
+              {FIELDS[activeTab].map((f) => {
 
-            <div className="space-y-4">
-            {FIELDS[activeTab].map((f) => {
+                if (
+                  f.name === "legalType" &&
+                  formData.category !== "Legal"
+                ) {
+                  return null;
+                }
 
-              if (
-                f.name === "legalType" &&
-                formData.category !== "Legal"
-              ) {
-                return null;
-              }
+                return (
+                  <div key={f.name}>
+                    <Label htmlFor={f.name} className="capitalize">
+                      {f.name.replace(/([A-Z])/g, " $1")}
+                      {f.required && (
+                        <span className="text-destructive ml-1">*</span>
+                      )}
+                    </Label>
+      
+                    {activeTab === "travel" && f.type === "checkbox" ? (
+                        <div className="flex items-center justify-between rounded-lg border p-4">
+                          <div>
+                            <Label htmlFor={f.name}>
+                              {f.label || f.name}
+                            </Label>
 
-              return (
-                <div key={f.name}>
-                  <Label htmlFor={f.name} className="capitalize">
-                    {f.name.replace(/([A-Z])/g, " $1")}
-                    {f.required && (
-                      <span className="text-destructive ml-1">*</span>
-                    )}
-                  </Label>
-     
-                  {activeTab === "travel" && f.type === "checkbox" ? (
-                      <div className="flex items-center justify-between rounded-lg border p-4">
-                        <div>
-                          <Label htmlFor={f.name}>
-                            {f.label || f.name}
-                          </Label>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Show this package as Featured on TennisConnect.
+                            </p>
+                          </div>
 
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Show this package as Featured on TennisConnect.
-                          </p>
+                          <Switch
+                              checked={!!formData[f.name]}
+                              onCheckedChange={(checked) =>
+                                setFormData({
+                                  ...formData,
+                                  [f.name]: checked,
+                                })
+                              }
+                            />
                         </div>
+                      ) : f.type === "textarea" ? (
+                      <Textarea
+                        id={f.name}
+                        value={formData[f.name] || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            [f.name]: e.target.value,
+                          })
+                        }
+                        rows={5}
+                        data-testid={`admin-field-${f.name}`}
+                      />
+                    ) : f.type === "select" ? (
+                      <select
+                        id={f.name}
+                        value={formData[f.name] || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            [f.name]: e.target.value,
+                          })
+                        }
+                        className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="">Select...</option>
 
-                        <Switch
-                            checked={!!formData[f.name]}
-                            onCheckedChange={(checked) =>
-                              setFormData({
-                                ...formData,
-                                [f.name]: checked,
-                              })
-                            }
-                          />
-                      </div>
-                    ) : f.type === "textarea" ? (
-                    <Textarea
-                      id={f.name}
-                      value={formData[f.name] || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          [f.name]: e.target.value,
-                        })
-                      }
-                      rows={5}
-                      data-testid={`admin-field-${f.name}`}
-                    />
-                  ) : f.type === "select" ? (
-                    <select
-                      id={f.name}
-                      value={formData[f.name] || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          [f.name]: e.target.value,
-                        })
-                      }
-                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="">Select...</option>
+                        {f.options?.map((option) => (
+                          <option
+                            key={option}
+                            value={option}
+                          >
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <Input
+                        id={f.name}
+                        type={f.type === "number" ? "number" : "text"}
+                        value={formData[f.name] || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            [f.name]: e.target.value,
+                          })
+                        }
+                        data-testid={`admin-field-${f.name}`}
+                      />
+                    )}
 
-                      {f.options?.map((option) => (
-                        <option
-                          key={option}
-                          value={option}
-                        >
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <Input
-                      id={f.name}
-                      type={f.type === "number" ? "number" : "text"}
-                      value={formData[f.name] || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          [f.name]: e.target.value,
-                        })
-                      }
-                      data-testid={`admin-field-${f.name}`}
-                    />
-                  )}
-
-                  {f.help && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {f.help}
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
+                    {f.help && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {f.help}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+              </div>
+            }
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)} className="cursor-pointer">Cancel</Button>
               <Button onClick={submit} className="bg-primary text-primary-foreground cursor-pointer" data-testid="admin-save-button">
@@ -599,9 +696,8 @@ export default function AdminPage() {
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
               <DialogTitle>
-                Delete {RESOURCE_LABELS[activeTab].slice(0, -1)}
+              Delete {deleteLabel}
               </DialogTitle>
-
                 <DialogDescription>
                   Are you sure you want to delete
                   <strong>
@@ -633,7 +729,7 @@ export default function AdminPage() {
                 </Button>
               </div>
             </DialogContent>
-          </Dialog>
+        </Dialog>
 
         <Footer />
       </div>

@@ -69,7 +69,12 @@ export interface IStorage {
   updateUserPassword(id: string, hashedPassword: string): Promise<void>;
   getUserBySlug(slug: string): Promise<User | undefined>;
   deleteUserAccount(userId: string): Promise<void>;
-
+  getAllUsers(): Promise<typeof users.$inferSelect[]>;
+  approveUser(id: string): Promise<typeof users.$inferSelect>;
+  deleteUserByAdmin(userId: string): Promise<void>;
+  hideUser(id: string): Promise<typeof users.$inferSelect>;
+  unhideUser(id: string): Promise<typeof users.$inferSelect>;
+  
   // Player Profiles
   getPlayerProfile(userId: string): Promise<PlayerProfile | undefined>;
   getAllPlayers(): Promise<
@@ -230,6 +235,53 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
+  // ===== ADMIN USERS =====
+
+  async getAllUsers() {
+    return await db
+      .select()
+      .from(users)
+      .orderBy(desc(users.createdAt));
+  }
+
+  async approveUser(id: string) {
+    const [user] = await db
+      .update(users)
+      .set({
+        isApproved: true,
+      })
+      .where(eq(users.id, id))
+      .returning();
+  
+    return user;
+  }
+
+  async deleteUserByAdmin(userId: string): Promise<void> {
+    await this.deleteUserAccount(userId);
+  }
+
+  async hideUser(id: string) {
+    const [user] = await db
+      .update(users)
+      .set({ isHidden: true })
+      .where(eq(users.id, id))
+      .returning();
+  
+    return user;
+  }
+  
+  async unhideUser(id: string) {
+    const [user] = await db
+      .update(users)
+      .set({
+        isHidden: false,
+      })
+      .where(eq(users.id, id))
+      .returning();
+  
+    return user;
+  }
+
   // =====================
   // PLAYER PROFILES
   // =====================
@@ -262,7 +314,9 @@ export class DatabaseStorage implements IStorage {
           and(
             eq(users.role, "player"),
             eq(playerProfiles.isDraft, false),
-            eq(users.profileCompleted, true)
+            eq(users.profileCompleted, true),
+            eq(users.isApproved, true),
+            eq(users.isHidden, false)
           )
         );
     }
@@ -354,7 +408,9 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(users.role, "coach"),
           eq(coachProfiles.isDraft, false),
-          eq(users.profileCompleted, true)
+          eq(users.profileCompleted, true),
+          eq(users.isApproved, true),
+          eq(users.isHidden, false)
         )
       );
   }
@@ -885,14 +941,44 @@ export class DatabaseStorage implements IStorage {
 
   async getPlatformStats() {
     const [playersResult] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(playerProfiles)
-      .where(eq(playerProfiles.isDraft, false));
+      .select({
+        count: sql<number>`count(*)`,
+      })
+      .from(users)
+      .innerJoin(
+        playerProfiles,
+        eq(users.id, playerProfiles.userId)
+      )
+      .where(
+        and(
+          eq(users.role, "player"),
+          eq(users.profileCompleted, true),
+          eq(users.isApproved, true),
+          eq(users.isTestUser, false),
+          eq(playerProfiles.isDraft, false),
+          eq(users.isHidden, false)
+        )
+      );
   
-    const [coachesResult] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(coachProfiles)
-      .where(eq(coachProfiles.isDraft, false));
+      const [coachesResult] = await db
+        .select({
+          count: sql<number>`count(*)`,
+        })
+        .from(users)
+        .innerJoin(
+          coachProfiles,
+          eq(users.id, coachProfiles.userId)
+        )
+        .where(
+          and(
+            eq(users.role, "coach"),
+            eq(users.profileCompleted, true),
+            eq(users.isApproved, true),
+            eq(users.isTestUser, false),
+            eq(coachProfiles.isDraft, false),
+            eq(users.isHidden, false)
+          )
+        );
   
     const [clubsResult] = await db
       .select({ count: sql<number>`count(*)` })
