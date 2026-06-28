@@ -4,10 +4,10 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { setupAuth } from "./auth";
-import cors from "cors";
 
 const app = express();
 
+// CORS configuration for remote access
 app.use(cors({
   origin: "http://localhost:3000",
   credentials: true
@@ -20,12 +20,6 @@ declare module "http" {
   }
 }
 console.log("🟢 routes.ts loaded");
-
-// CORS configuration for remote access
-app.use(cors({
-  origin: true, // Allow all origins in development
-  credentials: true, // Allow cookies
-}));
 
 app.use(
   express.json({

@@ -13,8 +13,12 @@ test('AUTH-006 Forgot Password Success', async ({ page }) => {
       .click();
   
     await expect(
-      page.getByText(/check your email/i)
-    ).toBeVisible();
+        page.getByTestId('forgot-password-success')
+      ).toBeVisible();
+      
+    await expect(
+        page.getByTestId('back-to-sign-in')
+      ).toBeVisible();
   
   });
  

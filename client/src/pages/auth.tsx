@@ -181,8 +181,8 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
 
             <Tabs defaultValue="login" className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-8">
-                <TabsTrigger value="login" className="cursor-pointer">Sign In</TabsTrigger>
-                <TabsTrigger value="register" className="cursor-pointer">Sign Up</TabsTrigger>
+                <TabsTrigger value="login" data-testid="login-tab" className="cursor-pointer">Sign In</TabsTrigger>
+                <TabsTrigger value="register" data-testid="register-tab" className="cursor-pointer">Sign Up</TabsTrigger>
               </TabsList>
               
               <TabsContent value="login">
@@ -190,7 +190,8 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                   // Forgot Password Form
                   <div className="space-y-6">
                     {forgotPasswordSent ? (
-                      <div className="text-center py-8">
+                      <div className="text-center py-8"
+                           data-testid="forgot-password-success" >
                         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                           <CheckCircle className="w-8 h-8 text-green-500" />
                         </div>
@@ -206,6 +207,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                             setForgotPasswordEmail("");
                           }}
                           className="cursor-pointer"
+                          data-testid="back-to-sign-in"
                         >
                           Back to Sign In
                         </Button>
@@ -268,7 +270,8 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
                     <Input 
-                      id="email" 
+                      id="email"
+                      data-testid="login-email" 
                       placeholder="name@example.com" 
                       {...loginForm.register("email")} 
                       className={loginForm.formState.errors.email ? "border-destructive focus-visible:ring-destructive" : ""}
@@ -292,6 +295,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                     <div className="relative">
                         <Input
                           id="password"
+                          data-testid="login-password"
                           type={showLoginPassword ? "text" : "password"}
                           {...loginForm.register("password")}
                           className={`pr-10 ${
@@ -303,6 +307,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
 
                         <button
                           type="button"
+                          data-testid="toggle-login-password"
                           aria-label={showLoginPassword ? "Hide password" : "Show password"}
                           onClick={() => setShowLoginPassword(!showLoginPassword)}
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
@@ -320,7 +325,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                   </div>
                   
                   <div className="flex items-center space-x-2 py-2">
-                    <Checkbox id="remember" />
+                    <Checkbox id="remember" data-testid="remember-me"/>
                     <label
                       htmlFor="remember"
                       className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
@@ -329,7 +334,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                     </label>
                   </div>
 
-                  <Button type="submit" className="w-full font-bold bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer" disabled={isLoading}>
+                  <Button type="submit"  data-testid="login-button" className="w-full font-bold bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer" disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Sign In
                   </Button>
@@ -347,9 +352,10 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                       className="grid grid-cols-2 gap-4"
                     >
                       <div>
-                        <RadioGroupItem value="player" id="role-player" className="peer sr-only" />
+                        <RadioGroupItem value="player" id="role-player" className="peer sr-only" data-testid="role-player"/>
                         <Label
                           htmlFor="role-player"
+                          data-testid="player-card"
                           className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer transition-all"
                         >
                           <User className="mb-2 w-6 h-6" />
@@ -358,9 +364,10 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                         </Label>
                       </div>
                       <div>
-                        <RadioGroupItem value="coach" id="role-coach" className="peer sr-only" />
+                        <RadioGroupItem value="coach" id="role-coach" className="peer sr-only" data-testid="role-coach"/>
                         <Label
                           htmlFor="role-coach"
+                          data-testid="coach-card"
                           className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer transition-all"
                         >
                           <Trophy className="mb-2 w-6 h-6" />
@@ -375,6 +382,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                     <Label htmlFor="reg-name">Full Name</Label>
                     <Input 
                       id="reg-name" 
+                      data-testid="reg-name"
                       placeholder="John Doe" 
                       {...registerForm.register("name")} 
                       className={registerForm.formState.errors.name ? "border-destructive focus-visible:ring-destructive" : ""}
@@ -386,7 +394,8 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                   <div className="space-y-2">
                     <Label htmlFor="reg-email">Email</Label>
                     <Input 
-                      id="reg-email" 
+                      id="reg-email"
+                      data-testid="reg-email" 
                       placeholder="name@example.com" 
                       {...registerForm.register("email")} 
                       className={registerForm.formState.errors.email ? "border-destructive focus-visible:ring-destructive" : ""}
@@ -400,6 +409,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                     <div className="relative">
                       <Input
                         id="reg-password"
+                        data-testid="reg-password"
                         type={showRegisterPassword ? "text" : "password"}
                         {...registerForm.register("password")}
                         className={`pr-10 ${
@@ -411,6 +421,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
 
                       <button
                         type="button"
+                        data-testid="toggle-register-password"
                         aria-label={showLoginPassword ? "Hide password" : "Show password"}
                         onClick={() =>
                           setShowRegisterPassword(!showRegisterPassword)
@@ -433,6 +444,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                     <div className="relative">
                       <Input
                         id="confirm-password"
+                        data-testid="confirm-password"
                         type={showConfirmPassword ? "text" : "password"}
                         {...registerForm.register("confirmPassword")}
                         className={`pr-10 ${
@@ -444,6 +456,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
 
                       <button
                         type="button"
+                        data-testid="toggle-confirm-password"
                         aria-label={showLoginPassword ? "Hide password" : "Show password"}
                         onClick={() =>
                           setShowConfirmPassword(!showConfirmPassword)
@@ -462,7 +475,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                     )}
                   </div>
 
-                  <Button type="submit" className="w-full font-bold bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer" disabled={isLoading}>
+                  <Button type="submit" data-testid="register-button" className="w-full font-bold bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer" disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Create Account
                   </Button>
@@ -470,6 +483,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                   <div className="flex items-start space-x-2 mt-4">
                     <Checkbox
                       id="agreeToTerms"
+                      data-testid="agree-to-terms"
                       checked={registerForm.watch("agreeToTerms")}
                       onCheckedChange={(checked) =>
                         registerForm.setValue("agreeToTerms", !!checked, {

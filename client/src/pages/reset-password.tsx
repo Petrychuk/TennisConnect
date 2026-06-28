@@ -120,7 +120,7 @@ export default function ResetPasswordPage() {
           <p className="text-muted-foreground mb-6">
             This password reset link is invalid or has expired. Please request a new one.
           </p>
-          <Link href="/auth">
+          <Link href="/auth" >
             <Button className="bg-primary text-primary-foreground">
               Back to Sign In
             </Button>

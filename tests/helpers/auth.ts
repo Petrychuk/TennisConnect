@@ -6,19 +6,17 @@ export async function registerPlayer(page: Page) {
 
   await page.goto('/auth');
 
-  await page.getByText('Sign Up').click();
-  await page.locator('label[for="role-player"]').click();
+  await page.getByTestId('register-tab').click();
+  //await page.getByTestId('player-card').click();
 
-  await page.fill('#reg-name', user.name);
-  await page.fill('#reg-email', user.email);
-  await page.fill('#reg-password', user.password);
-  await page.fill('#confirm-password', user.password);
+  await page.getByTestId('reg-name').fill(user.name);
+  await page.getByTestId('reg-email').fill(user.email);
+  await page.getByTestId('reg-password').fill(user.password);
+  await page.getByTestId('confirm-password').fill(user.password);
 
-  await page.check('#agreeToTerms');
+  await page.getByTestId('agree-to-terms').check();
 
-  await page.getByRole('button', {
-    name: /create account/i,
-  }).click();
+  await page.getByTestId('register-button').click();
 
   return user;
 }
@@ -27,20 +25,18 @@ export async function registerCoach(page: Page) {
   const user = generateTestUser('coach');
 
   await page.goto('/auth');
-  
-  await page.getByText('Sign Up').click();
-  await page.locator('label[for="role-coach"]').click();
 
-  await page.fill('#reg-name', user.name);
-  await page.fill('#reg-email', user.email);
-  await page.fill('#reg-password', user.password);
-  await page.fill('#confirm-password', user.password);
+  await page.getByTestId('register-tab').click();
+  await page.getByTestId('coach-card').click();
 
-  await page.check('#agreeToTerms');
+  await page.getByTestId('reg-name').fill(user.name);
+  await page.getByTestId('reg-email').fill(user.email);
+  await page.getByTestId('reg-password').fill(user.password);
+  await page.getByTestId('confirm-password').fill(user.password);
 
-  await page.getByRole('button', {
-    name: /create account/i,
-  }).click();
+  await page.getByTestId('agree-to-terms').check();
+
+  await page.getByTestId('register-button').click();
 
   return user;
 }
@@ -52,23 +48,34 @@ export async function login(
 ) {
   await page.goto('/auth');
 
-  await page.getByRole('tab', {
-    name: /sign in/i,
-  }).click();
+  await page.getByTestId('login-email').fill(email);
+  await page.getByTestId('login-password').fill(password);
 
-  await page.fill('#email', email);
-  await page.fill('#password', password);
+  await Promise.all([
+    page.waitForResponse(
+      response =>
+        response.url().includes('/api/auth/login') &&
+        response.request().method() === 'POST'
+    ),
+    page.getByTestId('login-button').click(),
+  ]);
 
-  await page.getByRole('button', {
-    name: /sign in/i,
-  }).click();
+  // дождаться окончания редиректа
+  await expect(page).toHaveURL(/\/player\/.+|\/coach\/.+/, {
+    timeout: 15000,
+  });
 
-  // ждём пока уйдём со страницы auth
-  await expect(page).not.toHaveURL(/auth/);
+  // дождаться появления меню пользователя
+  await expect(
+    page.getByTestId('profile-menu')
+  ).toBeVisible({
+    timeout: 15000,
+  });
 }
 
 export async function logout(page: Page) {
   await page.getByTestId('profile-menu').click();
+
   await page.getByTestId('logout-btn').click();
 
   await expect(page).toHaveURL('/');

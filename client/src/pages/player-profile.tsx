@@ -680,7 +680,7 @@ export default function PlayerProfile() {
                 )}
               </div>
                 
-              <div className="grow space-y-4">
+              <div className="grow space-y-4" data-testid="player-header">
                 <div className="bg-background/30 backdrop-blur-md rounded-2xl p-4 md:p-6 shadow-xl">
                   
                   <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
@@ -694,6 +694,7 @@ export default function PlayerProfile() {
                               setProfile({ ...profile, name: e.target.value })
                             }
                             className="text-2xl md:text-3xl font-bold h-auto py-2"
+                            data-testid="player-name"
                           />
 
                           <div className="flex flex-col sm:flex-row gap-2">
@@ -704,6 +705,7 @@ export default function PlayerProfile() {
                                 setProfile({ ...profile, country: e.target.value })
                               }
                               className="w-full sm:w-40"
+                              data-testid="player-country"
                             />
 
                             <Input
@@ -713,6 +715,7 @@ export default function PlayerProfile() {
                                 setProfile({ ...profile, age: e.target.value })
                               }
                               className="w-full sm:w-20"
+                              data-testid="player-age"
                             />
                           </div>
                         </div>
@@ -753,6 +756,11 @@ export default function PlayerProfile() {
                           variant={isEditing ? "default" : "outline"}
                           size="sm"
                           className="px-4"
+                          data-testid={
+                            isEditing
+                              ? "save-profile"
+                              : "edit-profile"
+                          }
                         >
                           {isEditing ? (
                             <Save className="w-2 h-2 mr-2" />
@@ -773,6 +781,7 @@ export default function PlayerProfile() {
                         setProfile({ ...profile, bio: e.target.value })
                       }
                       className="mt-4"
+                      data-testid="player-bio"
                     />
                   ) : (
                     <p className="mt-4 text-base md:text-lg leading-relaxed max-w-3xl text-center lg:text-left">
