@@ -7,13 +7,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { ProfileCover } from "@/components/profile/shared/ProfileCover";
+import { PlayerHero } from "@/components/profile/player/PlayerHero";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogDescription, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { useLocation, useRoute } from "wouter";
-import { MapPin, Calendar, Trophy, Edit2, Save, ShoppingBag, Plus, Trash2, Camera, Globe } from "lucide-react";
+import { MapPin, Calendar, Trophy, Edit2, ShoppingBag, Plus, Trash2, Camera, Globe } from "lucide-react";
 import { COACHES_DATA, PARTNERS_DATA } from "@/lib/dummy-data";
 import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.png";
 import SEO from "@/components/seo";
@@ -463,7 +465,7 @@ export default function PlayerProfile() {
   const removeTournamentPhoto = async (index: number) => {
     if (!newTournament.id) return;
 
-    const res = await fetch(
+      const res = await fetch(
       `/api/profile/tournament-history/${newTournament.id}/photos/${index}`,
       {
         method: "DELETE",
@@ -610,10 +612,10 @@ export default function PlayerProfile() {
               backgroundAttachment: 'fixed',
               mixBlendMode: 'multiply'
             }}
-          />
-          
+          />         
           <div className="relative z-10">
             <Navbar />
+            
             <input
               type="file"
               id="avatar-upload"
@@ -630,168 +632,26 @@ export default function PlayerProfile() {
               onChange={(e) => handleFileChange(e, "cover")}
             />
 
-            {/* Cover Photo Section */}
-            <div className="relative h-[250px] md:h-[350px] w-full overflow-hidden group">
-              <div className="absolute inset-0 bg-black/20 z-10" />
-              <img 
-                src={profile.cover ?? undefined} 
-                alt="Cover" 
-                className="w-full h-full object-cover transition-transform duration-700"
-              />
-              {isEditing && (
-                <div 
-                  onClick={() => {
-                    console.log("CLICK COVER");
-                    document.getElementById('cover-upload')?.click();
-                  }}
-                  className="absolute inset-0 z-20 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                >
-                  <Button variant="secondary" className="gap-2">
-                    <Camera className="w-5 h-5" /> Change Cover Photo
-                  </Button>
-                </div>
-              )}
-              <div className="absolute bottom-0 left-0 w-full h-24 bg-linear-to-t from-background to-transparent z-10" />
-            </div>
-
+            <ProfileCover
+                cover={profile.cover}
+                isOwner={isOwnProfile}
+                onEdit={() =>
+                    document.getElementById("cover-upload")?.click()
+                }
+            />           
             <div className="container mx-auto px-4 -mt-20 relative z-30 max-w-6xl">
-              {/* Header Section */}
-              <div className="flex flex-col md:flex-row gap-8 mb-12">
-              <div className="relative group w-40 h-40 shrink-0 mx-auto md:mx-0">
-                <Avatar className="w-full h-full border-4 border-background shadow-lg">
-                  <AvatarImage
-                    src={profile.avatar ?? undefined}
-                    className="object-cover"
-                  />
-                  <AvatarFallback>
-                    {profile.name.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
-
-                {isEditing && (
-                  <div
-                    onClick={() =>
-                      document.getElementById("avatar-upload")?.click()
-                    }
-                    className="absolute inset-0 bg-black/50 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity rounded-full"
-                  >
-                    <Camera className="w-8 h-8 text-white" />
-                  </div>
-                )}
-              </div>
-                
-              <div className="grow space-y-4" data-testid="player-header">
-                <div className="bg-background/30 backdrop-blur-md rounded-2xl p-4 md:p-6 shadow-xl">
-                  
-                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-
-                    <div className="text-center lg:text-left">
-                      {isEditing ? (
-                        <div className="space-y-3">
-                          <Input
-                            value={profile.name}
-                            onChange={(e) =>
-                              setProfile({ ...profile, name: e.target.value })
-                            }
-                            className="text-2xl md:text-3xl font-bold h-auto py-2"
-                            data-testid="player-name"
-                          />
-
-                          <div className="flex flex-col sm:flex-row gap-2">
-                            <Input
-                              value={profile.country}
-                              placeholder="Country"
-                              onChange={(e) =>
-                                setProfile({ ...profile, country: e.target.value })
-                              }
-                              className="w-full sm:w-40"
-                              data-testid="player-country"
-                            />
-
-                            <Input
-                              value={profile.age}
-                              placeholder="Age"
-                              onChange={(e) =>
-                                setProfile({ ...profile, age: e.target.value })
-                              }
-                              className="w-full sm:w-20"
-                              data-testid="player-age"
-                            />
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <h1 className="text-3xl sm:text-4xl md:text-4xl lg:text-4xl xl:text-5xl font-display font-bold text-primary mb-3">
-                            {profile.name}
-                          </h1>
-
-                          <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center lg:justify-start gap-2 sm:gap-4 text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                              <Globe className="w-4 h-4" />
-                              <span>{profile.country}</span>
-                            </div>
-
-                            <div className="flex items-center gap-1">
-                              <Calendar className="w-4 h-4" />
-                              <span>{profile.age} years old</span>
-                            </div>
-
-                            <div className="flex items-center gap-1">
-                              <MapPin className="w-4 h-4" />
-                              <span>{profile.location}</span>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-
-                    {isOwnProfile && (
-                      <div className="flex justify-center lg:justify-end mt-2 ">
-                        <Button
-                          onClick={
-                            isEditing
-                              ? handleSave
-                              : () => setIsEditing(true)
-                          }
-                          variant={isEditing ? "default" : "outline"}
-                          size="sm"
-                          className="px-4"
-                          data-testid={
-                            isEditing
-                              ? "save-profile"
-                              : "edit-profile"
-                          }
-                        >
-                          {isEditing ? (
-                            <Save className="w-2 h-2 mr-2" />
-                          ) : (
-                            <Edit2 className="w-2 h-2 mr-2" />
-                          )}
-
-                          {isEditing ? "Save Profile" : "Edit Profile"}
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-
-                  {isEditing ? (
-                    <Textarea
-                      value={profile.bio}
-                      onChange={(e) =>
-                        setProfile({ ...profile, bio: e.target.value })
-                      }
-                      className="mt-4"
-                      data-testid="player-bio"
-                    />
-                  ) : (
-                    <p className="mt-4 text-base md:text-lg leading-relaxed max-w-3xl text-center lg:text-left">
-                      {profile.bio}
-                    </p>
-                  )}
-                </div>
-              </div>
-              </div>
-
+            
+            <PlayerHero
+                profile={profile}
+                isEditing={isEditing}
+                isOwnProfile={isOwnProfile}
+                setProfile={setProfile}
+                onAvatarEdit={() =>
+                    document.getElementById("avatar-upload")?.click()
+                }
+                onEdit={() => setIsEditing(true)}
+                onSave={handleSave}
+             />
               <Tabs defaultValue="overview" className="space-y-8">
                 <TabsList className="w-full
                       flex
@@ -1129,8 +989,9 @@ export default function PlayerProfile() {
                     );
                   })()}
                 </TabsContent>
-
-                <TabsContent value="coaches" className="space-y-8">
+                
+                {/* Need to delete Tab Coaches */}
+                {/* <TabsContent value="coaches" className="space-y-8">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {myCoaches.map(coach => (
                       <Card key={coach.id} className="overflow-hidden hover:shadow-md transition-shadow">
@@ -1159,7 +1020,7 @@ export default function PlayerProfile() {
                       </div>
                     )}
                   </div>
-                </TabsContent>
+                </TabsContent> */}
 
                 <TabsContent value="marketplace" className="space-y-8">
                   <div className="flex justify-between items-center">
