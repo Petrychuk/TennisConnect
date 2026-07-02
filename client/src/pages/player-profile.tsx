@@ -86,6 +86,7 @@ export default function PlayerProfile() {
   const isOwnProfile = isAuthenticated && user?.slug === profileSlug; 
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState<PlayerProfile>(DEFAULT_PLAYER_PROFILE);
+  const [originalProfile, setOriginalProfile] = useState<PlayerProfile>(DEFAULT_PLAYER_PROFILE);
   const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState<any>(null);
   
@@ -590,8 +591,6 @@ export default function PlayerProfile() {
     }
   };
 
-  const myCoaches = COACHES_DATA.filter(coach => profile.coaches.includes(coach.id));
-
   return (
     <>
       <SEO
@@ -649,7 +648,14 @@ export default function PlayerProfile() {
                 onAvatarEdit={() =>
                     document.getElementById("avatar-upload")?.click()
                 }
-                onEdit={() => setIsEditing(true)}
+                onEdit={() => {
+                  setOriginalProfile(profile);
+                  setIsEditing(true);
+                }}
+                onCancel={() => {
+                  setProfile(originalProfile);
+                  setIsEditing(false);
+                }}
                 onSave={handleSave}
              />
               <Tabs defaultValue="overview" className="space-y-8">

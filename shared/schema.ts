@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, json } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, json, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -156,7 +156,7 @@ export const coachProfiles = pgTable("coach_profiles", {
   location: text("location").notNull(),
   locations: json("locations").$type<string[]>().default([]),
   bio: text("bio"),
-  rating: text("rating"),
+  rating: real("rating"),
   reviews: integer("reviews").default(0),
   rate: text("rate"),
   experience: text("experience"),

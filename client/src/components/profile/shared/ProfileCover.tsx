@@ -38,36 +38,36 @@ export function ProfileCover({
           onClick={onEdit}
           className="
             absolute
-  right-4
-  bottom-12
-  md:right-6
-  md:bottom-16
-  lg:bottom-20
-  z-30
+            right-4
+            bottom-12
+            md:right-6
+            md:bottom-16
+            lg:bottom-20
+            z-30
 
-  h-9
-  w-9
-  md:h-11
-  md:w-11
+            h-9
+            w-9
+            md:h-11
+            md:w-11
 
-  rounded-full
-  bg-lime-400
-  text-black
+            rounded-full
+            bg-lime-400
+            text-black
 
-  shadow-xl
-  border-2
-  border-white/30
+            shadow-xl
+            border-2
+            border-white/30
 
-  backdrop-blur-sm
+            backdrop-blur-sm
 
-  opacity-100
-  md:opacity-0
-  md:group-hover:opacity-100
+            opacity-100
+            md:opacity-0
+            md:group-hover:opacity-100
 
-  transition-all
-  duration-300
-  hover:bg-lime-300
-  hover:scale-110
+            transition-all
+            duration-300
+            hover:bg-lime-300
+            hover:scale-110
           "
         >
           <Camera className="w-4 h-4 md:w-5 md:h-5" />

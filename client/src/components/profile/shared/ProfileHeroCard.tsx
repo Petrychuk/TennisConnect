@@ -31,7 +31,8 @@ export function ProfileHeroCard({
             md:translate-x-0
             md:-top-10
             lg:-left-[60px]
-            lg:-top-14"
+            lg:-top-14
+            "
             >
           {avatar}
         </div>
@@ -47,7 +48,7 @@ export function ProfileHeroCard({
             backdrop-blur-xl
             border
             shadow-xl
-            pt-24
+            pt-28
             sm:pt-28
             md:pt-8
             pb-5

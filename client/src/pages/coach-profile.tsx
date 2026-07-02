@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/navbar";
+import { ProfileCover } from "@/components/profile/shared/ProfileCover";
+import { CoachHero } from "@/components/profile/coach/CoachHero";
 import { Footer } from "@/components/footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,7 +44,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-import heroImage from "/assets/images/dynamic_tennis_ball_on_court_line_with_dramatic_lighting.png";
+import heroImage from "/assets/images/Coach_default.png";
 import avatarImage from "/assets/images/female_tennis_coach_portrait.png";
 import gallery1 from "/assets/images/kids_tennis_training_session.png";
 import gallery2 from "/assets/images/tennis_match_action_shot_in_sydney.png";
@@ -91,6 +93,7 @@ export type CoachSchedule = {
 };
 
 export type CoachProfile = {
+  hourlyRate: number;
   gallery: any;
   name: string;
   title: string;
@@ -107,7 +110,7 @@ export type CoachProfile = {
   response_time: string;
   accepting_students: boolean;
   active_students: string;
-  rating: number;
+  rating: number | null;
   hours_taught: string;
   attendance: number;
   phone: string;
@@ -150,7 +153,8 @@ export const DEFAULT_COACH_PROFILE: CoachProfile = {
   phone: "",
   email: "",
   marketplace: [],
-  gallery: undefined
+  gallery: undefined,
+  hourlyRate: 0
 };
 
 // Top 10 Popular Locations
@@ -187,6 +191,7 @@ export default function CoachProfile() {
   const [isDemo, setIsDemo] = useState(false);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<CoachProfile>(DEFAULT_COACH_PROFILE);
+  const [originalProfile, setOriginalProfile] = useState<CoachProfile>(DEFAULT_COACH_PROFILE);
   const [profileData, setProfileData] = useState<any>(null);
   const [coachUserId, setCoachUserId] = useState<string>("");
   const [marketplaceItems, setMarketplaceItems] = useState<any[]>([]);
@@ -508,11 +513,15 @@ export default function CoachProfile() {
         if (!res.ok) throw new Error();
 
         const updatedProfile = await res.json();
+
         setProfile(prev => ({
           ...prev,
           ...updatedProfile,
         }));
-        //await fetchCurrentUser();
+
+         await fetchCurrentUser();
+
+        setIsEditing(false);
 
         setIsEditing(false);
 
@@ -765,7 +774,15 @@ export default function CoachProfile() {
 
     const handleBuyRequest = async (itemId: string) => {
       console.log("Buy request for:", itemId);
-    };    
+    };  
+   
+    console.log({
+      isAuthenticated,
+      role: user?.role,
+      userSlug: user?.slug,
+      profileSlug,
+      isOwnProfile,
+    });
 
   return (
     <>
@@ -821,121 +838,49 @@ export default function CoachProfile() {
             accept="image/*,video/*"
             onChange={(e) => handleFileChange(e, 'gallery')}
           />
+         
+         <ProfileCover
+            cover={profile.cover}
+            isOwner={isOwnProfile}
+            onEdit={() =>
+              document.getElementById("cover-upload")?.click()
+            }
+          />
+          <div className="container mx-auto px-4 relative z-40 -mt-20">
+            
+          <CoachHero
+              profile={profile}
+              isEditing={isEditing}
+              isOwnProfile={isOwnProfile}
+              isAuthenticated={!!user}
 
-          {/* Profile Header / Hero */}
-          <div className="relative h-[220px] sm:h-[280px] lg:h-[400px] w-full overflow-hidden group">
-            <div className="absolute inset-0 bg-black/40 z-10" />
-            <img 
-              src={profile.cover ?? undefined} 
-              alt="Cover" 
-              className="w-full h-full object-cover transition-transform duration-700"
+              setProfile={setProfile}
+
+              onAvatarEdit={() =>
+                document.getElementById("avatar-upload")?.click()
+              }
+
+              onEdit={() => {
+                setOriginalProfile(profile);
+                setIsEditing(true);
+              }}
+              onCancel={() => {
+                setProfile(originalProfile);
+                setIsEditing(false);
+              }}
+              onSave={handleSave}
+
+              onContact={() => {
+                setActiveTab("contact");
+
+                document
+                  .querySelector('[data-state="active"]')
+                  ?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
+              }}
             />
-            {isEditing && (
-              <div 
-                onClick={() => document.getElementById('cover-upload')?.click()}
-                className="absolute inset-0 z-20 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-              >
-                <Button variant="secondary" className="gap-2 pointer-events-none">
-                  <Camera className="w-5 h-5" /> Change Cover Photo
-                </Button>
-              </div>
-            )}
-            <div className="absolute bottom-0 left-0 w-full h-32 bg-linear-to-t from-background to-transparent z-20" />
-          </div>
-
-          <div className="container mx-auto px-4 relative z-40 -mt-20 pointer-events-none">
-            <div className="flex flex-col lg:flex-row gap-8 items-start pointer-events-auto">
-              {/* Avatar Column */}
-              <div className="shrink-0 relative">
-                <div className="w-32 h-32 md:w-48 md:h-48 rounded-full border-4 border-background shadow-2xl overflow-hidden bg-muted relative group">
-                  <img src={profile.avatar ?? undefined} alt="Profile" className="w-full h-full object-cover" />
-                  {isEditing && (
-                    <div 
-                      onClick={() => document.getElementById('avatar-upload')?.click()}
-                      className="absolute inset-0 bg-black/50 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Camera className="w-8 h-8 text-white" />
-                    </div>
-                  )}
-                </div>
-                <div className="mt-4 text-center md:text-left">
-                  <div className="flex items-center gap-2 justify-center md:justify-start">
-                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 px-3 py-1">
-                      Verified Coach
-                    </Badge>
-                    <Badge variant="secondary" className="bg-secondary text-secondary-foreground px-3 py-1">
-                      Sydney, AU
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-
-              {/* Info Column */}
-              <div className="grow pt-4 md:pt-12 w-full">
-                <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                  <div className="text-center md:text-left space-y-4 w-full max-w-2xl">
-                    {isEditing ? (
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label>Full Name</Label>
-                          <Input 
-                            value={profile.name} 
-                            onChange={(e) => setProfile({...profile, name: e.target.value})} 
-                            className="text-2xl font-bold font-display"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Professional Title</Label>
-                          <Input 
-                            value={profile.title} 
-                            onChange={(e) => setProfile({...profile, title: e.target.value})} 
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <h1 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold">{profile.name}</h1>
-                        <p className="text-xl text-muted-foreground">{profile.title}</p>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Edit Action Button - Placed here for better UX */}
-                  <div className="shrink-0 w-full md:w-auto mt-4 md:mt-0 flex justify-center md:justify-end">
-                    {isOwnProfile && (
-                      isEditing ? (
-                        <Button onClick={handleSave} size="lg" className="w-full md:w-auto bg-primary text-primary-foreground font-bold shadow-md gap-2 animate-in fade-in zoom-in duration-300">
-                          <Save className="w-5 h-5" /> Save Changes
-                        </Button>
-                      ) : (
-                        <Button onClick={() => setIsEditing(true)} size="lg" variant="outline" className="w-full md:w-auto border-primary/20 hover:bg-primary/5 hover:border-primary/50 font-bold shadow-sm gap-2">
-                          <Edit2 className="w-5 h-5" /> Edit Profile
-                        </Button>
-                      )
-                    )}
-                    {!isOwnProfile && (
-                        <Button
-                        size="lg"
-                        className="w-full md:w-auto bg-primary text-primary-foreground font-bold shadow-md gap-2"
-                        onClick={() => {
-                          setActiveTab("contact");
-                      
-                          document
-                            .querySelector('[data-state="active"]')
-                            ?.scrollIntoView({
-                              behavior: "smooth",
-                              block: "start",
-                            });
-                        }}
-                      >
-                        <MessageCircle className="w-5 h-5" />
-                        Contact Coach
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
 
             {/* Main Content Tabs */}
             <div className="mt-12 pointer-events-auto">
@@ -1982,7 +1927,7 @@ export default function CoachProfile() {
                             <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/50 relative">
                               {isEditing ? (
                                 <Input 
-                                  value={profile.rating}
+                                  value={String(profile.rating)}
                                   onChange={(e) => setProfile({...profile, rating: parseFloat(e.target.value) || 0})}
                                   className="text-center h-8 text-lg font-bold p-0 border-none bg-transparent focus-visible:ring-0 focus-visible:bg-background" 
                                 />

@@ -6,6 +6,7 @@ import { PlayerActions } from "./PlayerActions";
 
 import { ProfileStats } from "../shared/ProfileStats";
 import { StatCard } from "../shared/StatCard";
+import { getMemberSince } from "@/lib/memberSince";
 
 import {
   Users,
@@ -26,6 +27,7 @@ interface PlayerHeroProps {
 
   onEdit: () => void;
   onSave: () => void;
+  onCancel: () => void;
 }
 
 export function PlayerHero({
@@ -36,6 +38,7 @@ export function PlayerHero({
   onAvatarEdit,
   onEdit,
   onSave,
+  onCancel,
 }: PlayerHeroProps) {
   return (
     <ProfileHeroCard
@@ -64,6 +67,7 @@ export function PlayerHero({
           isEditing={isEditing}
           onEdit={onEdit}
           onSave={onSave}
+          onCancel={onCancel}
         />
       }
 
@@ -95,7 +99,7 @@ export function PlayerHero({
 
           <StatCard
             icon={<Calendar className="w-5 h-5" />}
-            value="6 m"
+            value={getMemberSince(profile.createdAt)}
             label="Member"
             subtitle="December 2025"
           />
