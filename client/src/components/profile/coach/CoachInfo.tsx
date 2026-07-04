@@ -41,26 +41,21 @@ export function CoachInfo({
               className="
               h-12
               md:h-13
-
               w-full
               md:max-w-[500px]
-
               text-1xl
               md:text-2xl
               text-base
               font-display
-             
-
               px-0
-
               border-0
               border-b
               rounded-none
               shadow-none
-
               focus-visible:ring-0
               focus-visible:border-primary
               "
+              data-testid="coach-name"
             />
 
           </div>
@@ -86,19 +81,16 @@ export function CoachInfo({
               className="
                 h-11
                 w-full
-
                 border-0
                 border-b
                 rounded-none
-
                 px-0
                 shadow-none
-
                 text-base
-
                 focus-visible:ring-0
                 focus-visible:border-primary
               "
+              data-testid="coach-title"
             />
 
           </div>
@@ -134,6 +126,7 @@ export function CoachInfo({
 
                 focus-visible:ring-0
                 focus-visible:border-primary"
+                data-testid="coach-location"
             />
 
           </div>
@@ -149,13 +142,12 @@ export function CoachInfo({
               className="
                 font-display
                 font-semibold
-
                 text-3xl
                 md:text-[38px]
                 lg:text-[42px]
-
                 leading-none
               "
+              data-testid="coach-name-display"
             >
               {profile.name}
             </h1>
@@ -202,6 +194,7 @@ export function CoachInfo({
 
               text-muted-foreground
             "
+            data-testid="coach-title-display"
           >
             <span className="font-medium">
               Tennis Coach
@@ -227,6 +220,7 @@ export function CoachInfo({
 
               text-muted-foreground
             "
+            data-testid="coach-location-display"
           >
             <MapPin className="w-4 h-4 shrink-0" />
             {profile.location}

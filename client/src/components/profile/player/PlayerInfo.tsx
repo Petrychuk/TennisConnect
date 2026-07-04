@@ -204,6 +204,7 @@ export function PlayerInfo({
 
               leading-none
             "
+            data-testid="player-name-display"
           >
             {profile.name}
 
@@ -240,17 +241,21 @@ export function PlayerInfo({
             "
           >
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5"
+                data-testid="player-country-display"
+            >
               <Globe className="w-4 h-4 shrink-0" />
               {profile.country}
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5"
+                 data-testid="player-age-display">
               <Calendar className="w-4 h-4 shrink-0" />
               {profile.age} years old
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5"
+                 data-testid="player-location-display">
               <MapPin className="w-4 h-4 shrink-0" />
               {profile.location}
             </div>

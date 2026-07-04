@@ -21,6 +21,7 @@ export function ProfileCover({
       <img
         src={cover ?? "/assets/images/default-cover.jpg"}
         alt="Profile Cover"
+        data-testid="profile-cover"
         className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
       />
 
@@ -69,6 +70,7 @@ export function ProfileCover({
             hover:bg-lime-300
             hover:scale-110
           "
+          data-testid="edit-cover-profile"
         >
           <Camera className="w-4 h-4 md:w-5 md:h-5" />
         </Button>

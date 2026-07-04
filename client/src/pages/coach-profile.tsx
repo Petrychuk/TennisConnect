@@ -819,7 +819,8 @@ export default function CoachProfile() {
           {/* Hidden File Inputs */}
           <input 
             type="file" 
-            id="avatar-upload" 
+            id="avatar-upload"
+            data-testid="avatar-upload" 
             className="hidden" 
             accept="image/*"
             onChange={(e) => handleFileChange(e, 'avatar')}
@@ -830,6 +831,7 @@ export default function CoachProfile() {
             className="hidden" 
             accept="image/*"
             onChange={(e) => handleFileChange(e, 'cover')}
+            data-testid="cover-upload"
           />
           <input 
             type="file" 
@@ -853,13 +855,10 @@ export default function CoachProfile() {
               isEditing={isEditing}
               isOwnProfile={isOwnProfile}
               isAuthenticated={!!user}
-
               setProfile={setProfile}
-
               onAvatarEdit={() =>
                 document.getElementById("avatar-upload")?.click()
               }
-
               onEdit={() => {
                 setOriginalProfile(profile);
                 setIsEditing(true);
@@ -869,7 +868,6 @@ export default function CoachProfile() {
                 setIsEditing(false);
               }}
               onSave={handleSave}
-
               onContact={() => {
                 setActiveTab("contact");
 

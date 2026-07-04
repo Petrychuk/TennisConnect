@@ -29,7 +29,7 @@ export function PlayerActions({
             variant="outline"
             onClick={onCancel}
             className="h-10 px-4 gap-2"
-            data-testid="cancel-profile"
+            data-testid="cancel-profile-mobile"
           >
             Cancel
           </Button>
@@ -37,7 +37,7 @@ export function PlayerActions({
           <Button
             onClick={onSave}
             className="h-10 px-4 gap-2"
-            data-testid="save-profile"
+            data-testid="save-profile-mobile"
           >
             <Save className="w-4 h-4" />
             Save

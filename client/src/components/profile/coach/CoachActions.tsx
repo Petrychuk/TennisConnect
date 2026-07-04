@@ -32,6 +32,7 @@ export function CoachActions({
             variant="outline"
             onClick={onCancel}
             className="h-10 px-4 gap-2"
+            data-testid="cancel-coach-mobile"
           >
             Cancel
           </Button>
@@ -39,6 +40,7 @@ export function CoachActions({
           <Button
             onClick={onSave}
             className="flex-1 gap-2"
+            data-testid="save-coach-mobile"
           >
             <Save className="w-4 h-4" />
             Save
@@ -60,7 +62,7 @@ export function CoachActions({
             text-sm
             font-medium
           "
-          data-testid="save-profile"
+          data-testid="save-coach"
         >
           <Save className="w-4 h-4" />
           Save Profile
@@ -78,7 +80,7 @@ export function CoachActions({
             hover:border-primary
             hover:bg-primary/5
           "
-          data-testid="cancel-profile"
+          data-testid="cancel-coach"
         >
           Cancel
         </Button>
@@ -99,7 +101,7 @@ export function CoachActions({
           hover:border-primary
           hover:bg-primary/5
         "
-        data-testid="edit-profile"
+        data-testid="edit-coach"
       >
         <Edit2 className="w-4 h-4" />
         Edit Profile
@@ -118,6 +120,7 @@ export function CoachActions({
           md:w-auto
           gap-2
         "
+        data-testid="contact-coach"
       >
         <MessageCircle className="w-4 h-4" />
         Contact Coach

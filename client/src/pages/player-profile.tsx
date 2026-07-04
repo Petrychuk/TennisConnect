@@ -570,8 +570,6 @@ export default function PlayerProfile() {
         [field]: imageUrl,
       }));
       
-      console.log("UPDATED USER:", updatedUserObject);
-      console.log("NEW IMAGE:", imageUrl);
       updateUserLocal(updatedUserObject);
 
       toast({
@@ -580,7 +578,7 @@ export default function PlayerProfile() {
       });
 
     } catch (err) {
-      console.error("Avatar/Cover upload error:", err);
+      
       toast({
         variant: "destructive",
         title: "Upload failed",
@@ -620,6 +618,7 @@ export default function PlayerProfile() {
               id="avatar-upload"
               className="hidden"
               accept="image/*"
+              data-testid="avatar-upload"
               onChange={(e) => handleFileChange(e, "avatar")}
             />
 
@@ -629,6 +628,7 @@ export default function PlayerProfile() {
               className="hidden"
               accept="image/*"
               onChange={(e) => handleFileChange(e, "cover")}
+              data-testid="cover-upload"
             />
 
             <ProfileCover

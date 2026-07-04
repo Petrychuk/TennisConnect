@@ -34,6 +34,7 @@ export function ProfileAvatar({
           border-background
           shadow-2xl
          bg-white"
+         data-testid="profile-avatar"
       />
 
       {/* Camera Button */}
@@ -42,6 +43,7 @@ export function ProfileAvatar({
           size="icon"
           variant="secondary"
           onClick={onEdit}
+          data-testid="edit-avatar-profile"
           className="
             absolute
             bottom-2
