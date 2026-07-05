@@ -1,0 +1,498 @@
+---
+description: TennisConnect UI & Design System
+alwaysApply: false
+---
+
+# TennisConnect Design System
+
+These rules define the visual identity of TennisConnect.
+
+The goal is to maintain a clean, modern and premium user experience.
+
+---
+
+# Design Philosophy
+
+Every screen should feel:
+
+- Modern
+- Premium
+- Spacious
+- Friendly
+- Professional
+- Sports-oriented
+
+Avoid clutter.
+
+Whitespace is part of the design.
+
+---
+
+# Inspiration
+
+Preferred design references:
+
+- Apple
+- Airbnb
+- Linear
+- Notion
+- Stripe
+
+Avoid outdated dashboard styles.
+
+---
+
+# Visual Language
+
+The interface should feel:
+
+- Light
+- Fresh
+- Fast
+- Elegant
+
+Never over-design.
+
+Less is more.
+
+---
+
+# Responsive Design
+
+Always design for:
+
+- Mobile
+- Tablet
+- Desktop
+
+Mobile first.
+
+Desktop should not simply be a stretched mobile layout.
+
+Tablet requires its own layout adjustments.
+
+---
+
+# Layout
+
+Prefer
+
+max-w-6xl
+
+or
+
+max-w-7xl
+
+for content.
+
+Center major sections.
+
+Use generous spacing.
+
+Avoid full-width content unless necessary.
+
+---
+
+# Spacing
+
+Use consistent spacing.
+
+Prefer
+
+gap-2
+
+gap-3
+
+gap-4
+
+gap-6
+
+gap-8
+
+gap-10
+
+gap-12
+
+Avoid random spacing values.
+
+Whitespace improves readability.
+
+---
+
+# Border Radius
+
+Preferred
+
+rounded-xl
+
+rounded-2xl
+
+rounded-3xl
+
+Avoid mixing many different radius values.
+
+---
+
+# Shadows
+
+Use soft shadows.
+
+Examples
+
+shadow-sm
+
+shadow-md
+
+shadow-lg
+
+Avoid heavy shadows.
+
+---
+
+# Cards
+
+Cards should be:
+
+- rounded
+- clean
+- minimal
+- slightly elevated
+
+Hover:
+
+- subtle shadow
+- slight scale
+- smooth transition
+
+Avoid aggressive animations.
+
+---
+
+# Buttons
+
+Buttons should be:
+
+- rounded
+- readable
+- consistent
+
+Primary button
+
+Green
+
+Secondary
+
+Outline
+
+Danger
+
+Red only when necessary.
+
+Avoid too many button styles.
+
+---
+
+# Colors
+
+Primary accent
+
+Lime Green
+
+The green should feel like a tennis ball.
+
+Use green only as an accent.
+
+Avoid large green backgrounds.
+
+Neutral colors should dominate.
+
+---
+
+# Typography
+
+Readable.
+
+Comfortable.
+
+Large headings.
+
+Good line spacing.
+
+Avoid very long paragraphs.
+
+Hierarchy
+
+H1
+
+H2
+
+H3
+
+Body
+
+Caption
+
+---
+
+# Icons
+
+Use Lucide icons.
+
+Icons should:
+
+- support the text
+- not replace text unnecessarily
+
+Keep icon sizes consistent.
+
+Examples
+
+w-4 h-4
+
+w-5 h-5
+
+w-6 h-6
+
+---
+
+# Images
+
+Images should:
+
+- have rounded corners when appropriate
+- use object-cover
+- maintain aspect ratio
+
+Always provide fallback images.
+
+---
+
+# Avatars
+
+Always circular.
+
+Large enough to recognize.
+
+Hover edit buttons should be subtle.
+
+---
+
+# Cover Images
+
+Use gradient overlays.
+
+Use dark overlay for readability.
+
+Maintain consistent heights.
+
+Desktop:
+
+Large hero.
+
+Mobile:
+
+Reduced height.
+
+---
+
+# Forms
+
+Inputs should be:
+
+clean
+
+minimal
+
+easy to scan
+
+Prefer
+
+border-b
+
+for profile editing.
+
+Avoid heavy borders.
+
+---
+
+# Tables
+
+Keep tables simple.
+
+Readable.
+
+Responsive.
+
+Avoid excessive borders.
+
+---
+
+# Animations
+
+Use Framer Motion only when it improves UX.
+
+Animations should be:
+
+Fast
+
+Smooth
+
+Natural
+
+Avoid flashy animations.
+
+---
+
+# Hover Effects
+
+Hover should be subtle.
+
+Examples
+
+scale-105
+
+shadow-lg
+
+background transition
+
+Avoid large movement.
+
+---
+
+# Loading States
+
+Always show:
+
+Spinner
+
+Skeleton
+
+Placeholder
+
+Avoid blank screens.
+
+---
+
+# Empty States
+
+Every list should have:
+
+Friendly message
+
+Helpful action
+
+Example
+
+"No players found."
+
+Provide next action when possible.
+
+---
+
+# Pagination
+
+Use shared AppPagination component.
+
+Center pagination.
+
+Scroll to top after page change.
+
+Hide pagination when only one page exists.
+
+Responsive on mobile.
+
+---
+
+# Mobile
+
+Touch targets should be comfortable.
+
+Buttons should not be too small.
+
+Avoid horizontal scrolling.
+
+Stack content naturally.
+
+---
+
+# Tablet
+
+Tablet is not desktop.
+
+Adjust:
+
+Typography
+
+Spacing
+
+Grid
+
+Buttons
+
+Specifically for medium screens.
+
+---
+
+# Desktop
+
+Use available space wisely.
+
+Do not stretch content too much.
+
+Prefer centered layouts.
+
+---
+
+# Accessibility
+
+Images require alt.
+
+Buttons require labels.
+
+Maintain sufficient color contrast.
+
+Support keyboard navigation.
+
+---
+
+# UI Consistency
+
+Player pages
+
+Coach pages
+
+Travel pages
+
+Articles
+
+Marketplace
+
+Admin
+
+should all share the same design language.
+
+---
+
+# AI Instructions
+
+When generating UI:
+
+Preserve the TennisConnect visual identity.
+
+Reuse existing components before creating new ones.
+
+Do not redesign existing pages unless requested.
+
+Prefer consistency over creativity.
+
+When multiple UI solutions exist:
+
+Choose the one that best matches the existing TennisConnect style.
+
+---
+
+# Final Principle
+
+Every new screen should look like it was designed by the same designer.
+
+Consistency is more important than originality.

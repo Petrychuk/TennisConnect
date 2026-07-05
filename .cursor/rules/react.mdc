@@ -1,0 +1,334 @@
+---
+description: React + TypeScript Rules
+alwaysApply: false
+---
+
+# React Development Rules
+
+These rules apply only to React components and hooks.
+
+---
+
+# Components
+
+- Use functional components only.
+- Use TypeScript for every component.
+- One component per file.
+- One default export per page component.
+- Shared UI components should use named exports.
+- Keep components under 300 lines whenever possible.
+- Split large components into smaller reusable components.
+
+---
+
+# Component Structure
+
+Use this order inside every component:
+
+1. Imports
+2. Types / Interfaces
+3. Constants
+4. Hooks (useState, useMemo, useRef, etc.)
+5. useEffect
+6. Event handlers
+7. Helper functions
+8. JSX
+9. Export
+
+---
+
+# Props
+
+- Always define an interface for component props.
+- Use descriptive prop names.
+- Avoid passing unnecessary props.
+- Prefer explicit props over generic objects.
+- Destructure props in component parameters.
+
+Example:
+
+```tsx
+interface PlayerCardProps {
+  player: Player;
+  onClick: () => void;
+}
+
+export function PlayerCard({
+  player,
+  onClick,
+}: PlayerCardProps) {
+```
+
+---
+
+# State
+
+- Keep state as local as possible.
+- Don't duplicate state.
+- Don't store derived values in state.
+- Prefer computed values with useMemo when necessary.
+- Group related state logically.
+
+Good
+
+```tsx
+const [page, setPage] = useState(1);
+const [loading, setLoading] = useState(false);
+```
+
+Avoid
+
+```tsx
+const [players, setPlayers] = useState([]);
+const [playersCount, setPlayersCount] = useState(players.length);
+```
+
+---
+
+# useEffect
+
+Use useEffect only for:
+
+- API requests
+- subscriptions
+- timers
+- synchronization
+
+Never use useEffect for calculations.
+
+Always clean up effects when necessary.
+
+Example
+
+```tsx
+// ---------- Fetch Players ----------
+useEffect(() => {
+    fetchPlayers();
+}, [page]);
+```
+
+---
+
+# Event Handlers
+
+Use descriptive names.
+
+Good
+
+```tsx
+handleSave()
+handleDelete()
+handleUpload()
+handlePageChange()
+```
+
+Avoid
+
+```tsx
+save()
+click()
+run()
+```
+
+---
+
+# JSX
+
+Keep JSX clean.
+
+Prefer
+
+```tsx
+<PlayerCard />
+
+<PlayerCard />
+
+<PlayerCard />
+```
+
+Instead of
+
+```tsx
+<PlayerCard /><PlayerCard /><PlayerCard />
+```
+
+Avoid deeply nested JSX.
+
+Extract reusable sections into components.
+
+---
+
+# Conditional Rendering
+
+Prefer early return.
+
+Good
+
+```tsx
+if (loading) {
+    return <Loading />;
+}
+```
+
+Instead of
+
+```tsx
+return (
+    <>
+        {!loading && ...}
+    </>
+)
+```
+
+---
+
+# Lists
+
+Always use stable keys.
+
+Good
+
+```tsx
+key={player.id}
+```
+
+Avoid
+
+```tsx
+key={index}
+```
+
+unless there is no alternative.
+
+---
+
+# API Requests
+
+Keep fetch logic inside hooks or dedicated functions.
+
+Example
+
+```tsx
+async function fetchPlayers() {
+    ...
+}
+```
+
+Not directly inside JSX.
+
+---
+
+# Forms
+
+- Use controlled inputs.
+- Keep validation separate.
+- Use meaningful data-testid values.
+- Keep form handlers together.
+
+---
+
+# Styling
+
+- Tailwind CSS only.
+- No inline styles.
+- Follow TennisConnect design language.
+- Mobile-first.
+- Keep className readable.
+- Group related utility classes together.
+
+Example
+
+```tsx
+className="
+    flex
+    items-center
+    justify-between
+    rounded-xl
+    border
+    p-4
+"
+```
+
+---
+
+# Comments
+
+Add comments only where useful.
+
+Good
+
+```tsx
+// ---------- Fetch Players ----------
+
+// ---------- Save Profile ----------
+
+// ---------- Upload Avatar ----------
+```
+
+Avoid
+
+```tsx
+// Button
+
+// Div
+
+// useState
+```
+
+---
+
+# Performance
+
+- Avoid unnecessary re-renders.
+- Memoize expensive calculations only.
+- Avoid premature optimization.
+- Reuse components whenever possible.
+
+---
+
+# File Organization
+
+Large pages should be split.
+
+Example
+
+pages/
+
+PlayerProfile.tsx
+
+components/
+
+PlayerHero.tsx
+
+PlayerInfo.tsx
+
+PlayerStats.tsx
+
+PlayerGallery.tsx
+
+PlayerActions.tsx
+
+---
+
+# Accessibility
+
+Always include:
+
+- alt for images
+- aria-label where needed
+- semantic HTML
+- keyboard accessibility
+
+---
+
+# AI Instructions
+
+When generating React code:
+
+- Match existing TennisConnect style.
+- Preserve current layout.
+- Do not rewrite working components.
+- Reuse existing components first.
+- Keep code readable.
+- Explain complex logic with short comments.
+- Prefer consistency over introducing new patterns.

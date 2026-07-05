@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/navbar";
@@ -21,61 +21,99 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AppPagination } from "@/components/shared/AppPagination";
 import { Search, MapPin, Star, Filter, ArrowRight, DollarSign, X, Calendar } from "lucide-react";
 import heroImage from "/assets/images/professional_tennis_coaching_session_on_a_sunny_court.png";
-import avatarImage from "/assets/images/female_tennis_coach_portrait.png";
 
 import { COACHES_DATA } from "@/lib/dummy-data";
 
 export default function CoachesPage() {
+  const coachesSectionRef = useRef<HTMLDivElement>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [locationFilter, setLocationFilter] = useState("all");
   const [priceRange, setPriceRange] = useState([150]); // Max price
   const [minRating, setMinRating] = useState(0);
   const [coaches, setCoaches] = useState(COACHES_DATA);
   const [loading, setLoading] = useState(true);
-
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 16,
+    total: 0,
+    totalPages: 0,
+  });
+  
   useEffect(() => {
     async function fetchCoaches() {
       try {
-        const res = await fetch("/api/coaches");
-        
-        if (res.ok) {
-          const data = await res.json();
-          // Transform API data to match UI format
-          if (data.length > 0) {
-            const transformedCoaches = data.map((coach: any) => ({
-              id: coach.id,
-              slug: coach.slug,
-              name: coach.name || coach.title || "Coach",
-              title: coach.title || "Tennis Coach",
-              location: coach.locations?.[0] || coach.location || "Sydney",
-              rate: coach.rate ? parseInt(coach.rate) : 80,
-              rating: coach.rating || "4.9",
-              reviews: coach.reviews || 0,
-              experience: coach.experience || "5 years",
-              image: coach.avatar || "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop",
-              tags: coach.tags || [],
-              schedule: coach.schedule || {},
-            }));
-            setCoaches([...transformedCoaches, ...COACHES_DATA]);
-          } else {
-            setCoaches(COACHES_DATA);
-          }
-        } else {
-          setCoaches(COACHES_DATA);
+        setLoading(true);
+  
+        const res = await fetch(
+          `/api/coaches?page=${page}&limit=16`
+        );
+  
+        if (!res.ok) {
+          throw new Error("Failed to fetch coaches");
         }
+  
+        const data = await res.json();
+  
+        // Pagination
+        setPagination(data.pagination);
+  
+        // API -> UI
+        const transformedCoaches = data.coaches.map((coach: any) => ({
+          id: coach.id,
+          slug: coach.slug,
+  
+          name: coach.name || coach.title || "Coach",
+          title: coach.title || "Tennis Coach",
+  
+          location:
+            coach.locations?.[0] ??
+            coach.location ??
+            "Sydney",
+  
+          rate: coach.rate
+            ? Number(coach.rate)
+            : 80,
+  
+          rating: coach.rating || "4.9",
+  
+          reviews: coach.reviews || 0,
+  
+          experience:
+            coach.experience || "5 years",
+  
+          image:
+            coach.avatar ??
+            "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop",
+  
+          tags: coach.tags || [],
+  
+          schedule: coach.schedule || {},
+        }));
+  
+        setCoaches(transformedCoaches);
       } catch (error) {
         console.error("Failed to fetch coaches:", error);
+  
+        // Temporary fallback
         setCoaches(COACHES_DATA);
+  
+        setPagination({
+          page: 1,
+          limit: 16,
+          total: COACHES_DATA.length,
+          totalPages: 1,
+        });
       } finally {
         setLoading(false);
       }
     }
-
+  
     fetchCoaches();
-  }, []);
+  }, [page]);
 
   // Dynamically get all unique locations from coaches
   const uniqueLocations = useMemo(() => {
@@ -101,6 +139,15 @@ export default function CoachesPage() {
     setPriceRange([150]);
     setMinRating(0);
   };
+
+  useEffect(() => {
+    if (!pagination) return;
+  
+    coachesSectionRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [page]);
 
   return (
     <>
@@ -329,7 +376,8 @@ export default function CoachesPage() {
           </div>
 
           {/* Coaches Grid */}
-          <section className="container mx-auto px-4 pb-24">
+          <section className="container mx-auto px-4 pb-24 scroll-mt-24"
+            ref={coachesSectionRef}>
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
               {filteredCoaches.map((coach, index) => (
                 <motion.div
@@ -474,8 +522,17 @@ export default function CoachesPage() {
                   Clear all filters
                 </Button>
               </div>
+              
             )}
-          </section>
+            {pagination && pagination.totalPages > 1 && (
+              
+              <AppPagination
+                currentPage={page}
+                totalPages={pagination.totalPages}
+                onPageChange={setPage}
+              />
+            )}
+            </section>         
         </main>
 
         <Footer />

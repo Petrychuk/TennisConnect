@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { useAuth } from "@/lib/auth-context";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AppPagination } from "@/components/shared/AppPagination";
 import { MapPin, Search, MessageCircle, User, Activity, Send, Camera } from "lucide-react";
 import { PARTNERS_DATA } from "@/lib/dummy-data";
 import { motion } from "framer-motion";
@@ -33,6 +33,14 @@ interface PartnerData {
   }
 
 export default function PartnersPage() {
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 0,
+  });
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [filterLevel, setFilterLevel] = useState("");
   const [partners, setPartners] = useState<PartnerData[]>([]);
@@ -46,6 +54,7 @@ export default function PartnersPage() {
   const [sending, setSending] = useState(false);
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
+  const playersSectionRef = useRef<HTMLDivElement>(null);
   
   const handleSendMessage = async () => {
     const validation = quickMessageSchema.safeParse({
@@ -149,28 +158,43 @@ export default function PartnersPage() {
     useEffect(() => {
       async function fetchPartners() {
         try {
-          const res = await fetch("/api/players");
-
-          if (!res.ok) throw new Error("API error");
-
+          setLoading(true);
+    
+          const res = await fetch(
+            `/api/players?page=${page}&limit=20`
+          );
+    
+          if (!res.ok) {
+            throw new Error("API error");
+          }
+    
           const data = await res.json();
-
-          if (Array.isArray(data) && data.length > 0) {
-            const realUsers = normalizeApiPlayers(data);
-            const demoUsers = normalizeDemoPartners();
-            setPartners([...realUsers, ...demoUsers]);
+    
+          setPagination(data.pagination);
+    
+          if (data.players.length > 0) {
+            setPartners(normalizeApiPlayers(data.players));
           } else {
             setPartners(normalizeDemoPartners());
           }
-        } catch (e) {
+        } catch (error) {
+          console.error("Failed to fetch players:", error);
+    
           setPartners(normalizeDemoPartners());
+    
+          setPagination({
+            page: 1,
+            limit: 24,
+            total: normalizeDemoPartners().length,
+            totalPages: 1,
+          });
         } finally {
           setLoading(false);
         }
       }
-
+    
       fetchPartners();
-    }, []);
+    }, [page]);
 
   const filteredPartners = partners.filter((partner) => {
     const search = searchTerm.toLowerCase();
@@ -186,6 +210,24 @@ export default function PartnersPage() {
     return matchesSearch && matchesLevel;
   });
   
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+  };
+  
+  useEffect(() => {
+    if (!pagination) return;
+  
+    playersSectionRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [page]);
+
+  console.log(
+    'Pagination:',
+    pagination
+  );
+
   return (
     <>
       <SEO
@@ -337,7 +379,8 @@ export default function PartnersPage() {
       </div>
 
       {/* Partners Grid */}
-      <div className="container mx-auto px-4 py-4">
+      <div className="container mx-auto px-4 py-4 scroll-mt-24"
+      ref={playersSectionRef}>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           {filteredPartners.map((partner, index) => {
 
@@ -479,6 +522,12 @@ export default function PartnersPage() {
           </div>
         )}
       </div>
+     
+        <AppPagination
+          currentPage={page}
+          totalPages={pagination?.totalPages ?? 1}
+          onPageChange={handlePageChange}
+        />
 
       <Dialog open={messageModalOpen} onOpenChange={setMessageModalOpen}>
         <DialogContent className="sm:max-w-md">
@@ -564,7 +613,7 @@ export default function PartnersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
+      
       <Footer />
     </div>
    </>

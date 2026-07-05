@@ -10,6 +10,8 @@ import contentRouter from "./routes/content";
 import passport from "passport";
 import { requireAuth, requireAdmin } from "./requireAuth";
 import supportRoutes from "./routes/supportRoutes";
+import playersRouter from "./routes/players";
+import coachesRouter from "./routes/coaches";
 import { sendSystemMessage } from "./services/systemMessages";
 
 
@@ -70,6 +72,9 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/api/profile/marketplace", profileMarketplace);
   app.use("/api", contentRouter);
   app.use("/", sitemapRoutes);
+  app.use("/api/players", playersRouter);
+  app.use("/api/coaches", coachesRouter);
+
   /* =========================
    SUPPORT CHAT
   ========================= */
@@ -612,7 +617,7 @@ export async function registerRoutes(app: Express): Promise<void> {
      PUBLIC PROFILES
   ========================= */
 
-  app.get("/api/players", async (_req, res) => {
+  /* app.get("/api/players", async (_req, res) => {
     const rows = await storage.getAllPlayers();
 
     const players = rows.map(row => ({
@@ -636,9 +641,9 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
     const profile = await storage.getPlayerProfile(user.id);
     res.json({ user, profile });
-  });
+  }); */
 
-  app.get("/api/coaches", async (_req, res) => {
+  /* app.get("/api/coaches", async (_req, res) => {
     const rows = await storage.getAllCoachesWithProfiles();
 
     const coaches = rows.map(row => ({
@@ -663,7 +668,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
     const profile = await storage.getCoachProfile(user.id);
     res.json({ user, profile });
-  });
+  }); */
 
  app.delete("/api/me/profile", requireAuth, async (_req, res) => {
     //  TODO: implement later

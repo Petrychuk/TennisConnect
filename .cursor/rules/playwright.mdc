@@ -1,0 +1,502 @@
+---
+description: Playwright Testing Rules
+alwaysApply: false
+---
+
+# Playwright Rules
+
+These rules apply to all Playwright tests in TennisConnect.
+
+---
+
+# General Principles
+
+Tests must be:
+
+- Independent
+- Deterministic
+- Readable
+- Stable
+- Fast
+- Easy to debug
+
+Avoid flaky tests.
+
+---
+
+# Test Structure
+
+Every test must follow the same structure.
+
+Example:
+
+// ---------- Login ----------
+
+// ---------- Verify login ----------
+
+// ---------- Test data ----------
+
+// ---------- Open page ----------
+
+// ---------- Actions ----------
+
+// ---------- Save ----------
+
+// ---------- Verify request ----------
+
+// ---------- Reload ----------
+
+// ---------- Final verification ----------
+
+Always separate logical sections with comments.
+
+---
+
+# Naming
+
+Test names must follow:
+
+FEATURE-001 Description
+
+Examples
+
+AUTH-001 Player Registration
+
+PROFILE-003 Edit Player Profile
+
+PROFILE-007 Upload Avatar
+
+ACCESS-002 Guest Cannot Open Admin
+
+MESSAGES-004 Reply To Conversation
+
+---
+
+# Folder Structure
+
+tests/
+
+auth/
+
+profile/
+
+messages/
+
+admin/
+
+access/
+
+security/
+
+helpers/
+
+fixtures/
+
+setup/
+
+Never mix unrelated tests.
+
+---
+
+# Helpers
+
+Reuse helper functions.
+
+Examples
+
+login()
+
+logout()
+
+registerPlayer()
+
+registerCoach()
+
+completePlayerProfile()
+
+completeCoachProfile()
+
+Never duplicate login code.
+
+---
+
+# Selectors
+
+Always prefer
+
+data-testid
+
+Example
+
+```ts
+page.getByTestId("save-profile")
+```
+
+Avoid
+
+```ts
+locator("div:nth-child(3)")
+```
+
+Avoid CSS selectors unless necessary.
+
+---
+
+# Waiting
+
+Never use
+
+```ts
+waitForTimeout()
+```
+
+Use
+
+```ts
+waitForResponse()
+
+waitForRequest()
+
+waitForURL()
+
+expect(locator).toBeVisible()
+```
+
+Wait for application state instead of time.
+
+---
+
+# Network Verification
+
+When saving data always verify:
+
+Request
+
+Response
+
+Payload
+
+Example
+
+```ts
+const [request, response] = await Promise.all([
+    page.waitForRequest(...),
+    page.waitForResponse(...),
+    saveButton.click(),
+]);
+```
+
+Verify
+
+```ts
+expect(response.ok()).toBeTruthy();
+```
+
+Verify payload
+
+```ts
+const body = JSON.parse(request.postData()!);
+
+expect(body.name).toBe(profile.name);
+```
+
+---
+
+# Assertions
+
+Group assertions logically.
+
+Good
+
+```ts
+expect(body.name).toBe(...);
+expect(body.country).toBe(...);
+expect(body.age).toBe(...);
+```
+
+Avoid scattered assertions.
+
+---
+
+# Test Data
+
+Generate unique data.
+
+Example
+
+```ts
+const timestamp = Date.now();
+```
+
+Avoid hardcoded values that can collide.
+
+---
+
+# Reload Verification
+
+Whenever data is saved:
+
+Reload page
+
+Verify persisted values
+
+Example
+
+```ts
+await page.reload({
+    waitUntil: "networkidle",
+});
+```
+
+Never verify only before reload.
+
+---
+
+# Upload Tests
+
+Verify
+
+File selected
+
+Upload request
+
+Response
+
+Image updated
+
+Reload
+
+Image persists
+
+---
+
+# API Verification
+
+Whenever possible verify
+
+HTTP Status
+
+Request payload
+
+Response body
+
+UI
+
+Database behavior (if applicable)
+
+---
+
+# Authentication
+
+Always verify login before continuing.
+
+Example
+
+```ts
+await expect(page).toHaveURL(/player/);
+```
+
+Never assume login succeeded.
+
+---
+
+# Error Handling
+
+Verify
+
+Validation
+
+Error messages
+
+Disabled buttons
+
+Unauthorized access
+
+404 pages
+
+500 errors
+
+---
+
+# Security Tests
+
+Include tests for
+
+SQL Injection
+
+XSS
+
+Invalid input
+
+Long strings
+
+HTML tags
+
+JavaScript injection
+
+Special characters
+
+Empty values
+
+Unexpected file uploads
+
+---
+
+# File Upload Tests
+
+Verify
+
+Allowed image types
+
+Large images
+
+Invalid extensions
+
+No file selected
+
+Upload cancel
+
+Image persists after reload
+
+---
+
+# Pagination Tests
+
+Verify
+
+Next page
+
+Previous page
+
+Page numbers
+
+First page
+
+Last page
+
+URL updates
+
+Scroll position
+
+Mobile layout
+
+---
+
+# Responsive Tests
+
+Verify
+
+Desktop
+
+Tablet
+
+Mobile
+
+Buttons
+
+Cards
+
+Menus
+
+Pagination
+
+---
+
+# Comments
+
+Always use readable section comments.
+
+Good
+
+```ts
+// ---------- Login ----------
+
+// ---------- Save ----------
+
+// ---------- Reload ----------
+
+// ---------- Verify ----------
+```
+
+Avoid unnecessary comments.
+
+---
+
+# Debugging
+
+Temporary debugging
+
+```ts
+console.log(body);
+
+console.log(response.status());
+
+console.log(await response.text());
+```
+
+Remove debug logs before merge unless useful.
+
+---
+
+# Code Style
+
+Prefer
+
+```ts
+const saveButton = ...
+```
+
+Instead of
+
+```ts
+page.getByTestId(...).click();
+```
+
+Store locators in variables.
+
+---
+
+# AI Instructions
+
+When generating Playwright tests:
+
+- Follow existing TennisConnect style.
+- Reuse helpers.
+- Prefer data-testid.
+- Keep sections readable.
+- Verify UI and API together.
+- Verify request payload.
+- Verify response.
+- Reload after save.
+- Prefer stable assertions.
+- Keep tests deterministic.
+- Never use arbitrary timeouts.
+- Generate production-ready automation.
+
+---
+
+# TennisConnect Standards
+
+Every important CRUD test should verify:
+
+✓ Login
+
+✓ Open page
+
+✓ Edit
+
+✓ Save
+
+✓ API request
+
+✓ API response
+
+✓ Request payload
+
+✓ UI updated
+
+✓ Reload
+
+✓ Data persisted
+
+This is the standard for all TennisConnect Playwright tests.

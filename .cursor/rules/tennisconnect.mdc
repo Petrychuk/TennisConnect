@@ -1,0 +1,480 @@
+---
+description: TennisConnect Project Knowledge
+alwaysApply: false
+---
+
+# TennisConnect
+
+TennisConnect is a production-quality tennis community platform for Australia.
+
+The project connects:
+
+- Players
+- Coaches
+- Clubs
+- Communities
+- Tournaments
+- Travel
+- Marketplace
+- Articles
+
+The project follows a clean, scalable architecture.
+
+---
+
+# Project Goals
+
+The codebase should be:
+
+- Clean
+- Reusable
+- Responsive
+- Easy to maintain
+- Easy to understand
+- Production ready
+
+Always preserve the existing architecture.
+
+---
+
+# Frontend Stack
+
+- React
+- TypeScript
+- Vite
+- Wouter
+- Tailwind CSS
+- shadcn/ui
+- Framer Motion
+
+---
+
+# Backend Stack
+
+- Node.js
+- Express
+- PostgreSQL
+- Drizzle ORM
+- Supabase Storage
+
+---
+
+# Testing
+
+Playwright
+
+All important functionality should be testable using data-testid.
+
+Never remove existing test IDs.
+
+When creating new interactive components, always add meaningful data-testid attributes.
+
+Example
+
+data-testid="save-profile"
+
+data-testid="edit-profile"
+
+---
+
+# Folder Structure
+
+client/
+
+components/
+
+pages/
+
+hooks/
+
+lib/
+
+server/
+
+routes/
+
+services/
+
+shared/
+
+schema.ts
+
+tests/
+
+auth/
+
+profile/
+
+helpers/
+
+fixtures/
+
+setup/
+
+---
+
+# API
+
+Use REST endpoints.
+
+Keep API responses consistent.
+
+Typical response
+
+```json
+{
+  "success": true
+}
+```
+
+List endpoints should return
+
+```json
+{
+    "players": [],
+    "pagination": {}
+}
+```
+
+Do not change API shape without request.
+
+---
+
+# Pagination
+
+List pages use backend pagination.
+
+Current standard:
+
+page
+
+limit
+
+pagination object
+
+Example
+
+```json
+{
+    "pagination": {
+        "page": 1,
+        "limit": 24,
+        "total": 120,
+        "totalPages": 5
+    }
+}
+```
+
+Frontend should never paginate locally.
+
+---
+
+# Shared Components
+
+Prefer existing shared components.
+
+Examples
+
+AppPagination
+
+LoadingSpinner
+
+SectionHeader
+
+PlayerCard
+
+CoachCard
+
+Hero
+
+Never duplicate shared UI.
+
+---
+
+# Routing
+
+Wouter is used.
+
+Prefer
+
+```tsx
+<Link href="/players">
+```
+
+Avoid introducing React Router.
+
+---
+
+# Styling
+
+Use Tailwind CSS.
+
+Follow existing TennisConnect spacing.
+
+Rounded corners:
+
+rounded-xl
+
+rounded-2xl
+
+rounded-3xl
+
+Cards should have
+
+shadow
+
+border
+
+hover transition
+
+Avoid inconsistent styling.
+
+---
+
+# Responsive Design
+
+Every page must support
+
+Desktop
+
+Tablet
+
+Mobile
+
+Mobile-first.
+
+Never implement desktop only.
+
+---
+
+# Cards
+
+Player cards
+
+Coach cards
+
+Tournament cards
+
+Travel cards
+
+should all share the same visual language.
+
+Consistent
+
+spacing
+
+buttons
+
+radius
+
+hover
+
+padding
+
+---
+
+# Images
+
+Prefer Supabase Storage.
+
+Fallback images are acceptable.
+
+Always include
+
+alt
+
+loading="lazy"
+
+when appropriate.
+
+---
+
+# Forms
+
+Use controlled inputs.
+
+Validation before submit.
+
+Show friendly error messages.
+
+Do not reset form unexpectedly.
+
+---
+
+# Profile Pages
+
+Player
+
+Coach
+
+have similar architecture.
+
+Prefer reusing logic.
+
+Avoid duplicated code.
+
+---
+
+# Authentication
+
+Authentication is cookie based.
+
+Always include
+
+credentials: "include"
+
+when required.
+
+Do not break authentication flow.
+
+---
+
+# Uploads
+
+Avatar
+
+Cover
+
+Gallery
+
+use upload endpoints.
+
+Do not change upload flow.
+
+Preserve existing response format.
+
+---
+
+# Performance
+
+Reuse API responses.
+
+Avoid unnecessary requests.
+
+Avoid unnecessary re-renders.
+
+Prefer reusable components.
+
+---
+
+# Accessibility
+
+Buttons should have labels.
+
+Images should have alt.
+
+Keyboard navigation should work.
+
+Interactive elements must remain accessible.
+
+---
+
+# Code Evolution
+
+When extending TennisConnect:
+
+Prefer extending existing modules.
+
+Do not rewrite existing architecture.
+
+Do not introduce unnecessary abstractions.
+
+Keep git diffs small.
+
+---
+
+# UI Philosophy
+
+The TennisConnect design language is:
+
+Modern
+
+Clean
+
+Minimal
+
+Premium
+
+Sport oriented
+
+Large whitespace
+
+Rounded cards
+
+Bright green accents
+
+Professional typography
+
+Avoid visual clutter.
+
+---
+
+# AI Instructions
+
+Before writing code:
+
+Search the project for similar implementation.
+
+Prefer consistency over innovation.
+
+Reuse shared components.
+
+Preserve existing API.
+
+Preserve naming conventions.
+
+Avoid unnecessary refactoring.
+
+Generate production-ready code.
+
+When uncertain:
+
+Choose the solution that best matches the existing TennisConnect architecture.
+
+---
+
+# Current Project Standards
+
+Pagination:
+
+✓ Backend pagination
+
+✓ Shared AppPagination component
+
+✓ Scroll to top after page change
+
+✓ Responsive pagination
+
+Uploads:
+
+✓ Avatar
+
+✓ Cover
+
+✓ Gallery
+
+Testing:
+
+✓ Playwright
+
+✓ data-testid
+
+✓ Request verification
+
+✓ Response verification
+
+✓ Reload verification
+
+Code:
+
+✓ TypeScript
+
+✓ Tailwind
+
+✓ Functional Components
+
+✓ Shared Components
+
+✓ Clean Architecture
+
+These standards should always be preserved.

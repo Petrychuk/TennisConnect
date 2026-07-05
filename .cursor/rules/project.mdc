@@ -1,0 +1,342 @@
+---
+description: TennisConnect Project Rules
+alwaysApply: true
+---
+
+# TennisConnect
+
+These are the global engineering rules for the TennisConnect project.
+
+Always prioritize:
+
+- Readability
+- Maintainability
+- Reusability
+- Consistency
+- User Experience
+
+---
+
+# Project Stack
+
+Frontend
+
+- React
+- Vite
+- TypeScript
+- Wouter
+- Tailwind CSS
+- shadcn/ui
+- Framer Motion
+
+Backend
+
+- Node.js
+- Express
+- PostgreSQL
+- Drizzle ORM
+- Supabase
+
+Testing
+
+- Playwright
+
+Deployment
+
+- Railway
+
+Integrations
+
+- Shopify API
+
+---
+
+# General Rules
+
+- Use TypeScript everywhere.
+- Prefer explicit types.
+- Never use `any` unless absolutely necessary.
+- Prefer `const` over `let`.
+- Never use `var`.
+- Use async/await.
+- Use single quotes.
+- Always use semicolons.
+- Keep imports sorted.
+- Prefer early return.
+- Avoid deeply nested conditions.
+- Keep functions focused on one responsibility.
+- Prefer readable code over clever code.
+
+---
+
+# Architecture
+
+- Preserve the existing project architecture.
+- Never modify backend unless explicitly requested.
+- Never modify unrelated files.
+- Never remove existing functionality unless requested.
+- Avoid introducing breaking changes.
+- Prefer extending existing code instead of rewriting it.
+- Reuse existing components whenever possible.
+- Prefer shared components over duplicated code.
+- Extract reusable logic into hooks or helpers.
+- Keep business logic outside JSX.
+
+---
+
+# Components
+
+- Use functional components only.
+- One component per file.
+- Maximum component size: **300 lines**.
+- Split large components into reusable smaller components.
+- Use PascalCase for component names.
+- Use camelCase for variables and functions.
+
+Preferred component order:
+
+1. Imports
+2. Interfaces / Types
+3. Constants
+4. Hooks
+5. useEffect
+6. Event Handlers
+7. Helper Functions
+8. JSX
+
+---
+
+# TypeScript
+
+- Prefer interfaces for component props.
+- Avoid `any`.
+- Use meaningful type names.
+- Prefer explicit return types for exported functions.
+- Keep types reusable.
+
+---
+
+# Naming
+
+Components
+
+- PlayerCard
+- CoachCard
+
+Hooks
+
+- usePlayers
+- useAuth
+- usePagination
+
+Functions
+
+- fetchPlayers
+- saveProfile
+- uploadAvatar
+- deleteAccount
+
+Booleans
+
+- isLoading
+- isEditing
+- isAuthenticated
+- hasAccess
+- canEdit
+
+Constants
+
+- UPPER_CASE
+
+---
+
+# Styling
+
+- Tailwind CSS only.
+- Follow TennisConnect design system.
+- Prefer utility classes.
+- Avoid inline styles.
+- Responsive first.
+- Always support desktop, tablet and mobile.
+- Use consistent spacing.
+- Use consistent rounded corners.
+- Prefer whitespace over clutter.
+
+---
+
+# API
+
+- Never change API response shape unless requested.
+- Preserve existing endpoints.
+- Preserve backward compatibility.
+- Prefer pagination for list endpoints.
+- Return meaningful error messages.
+- Do not break existing frontend integrations.
+
+---
+
+# Error Handling
+
+- Never swallow errors.
+- Always handle async failures.
+- Return meaningful error messages.
+- Log unexpected server errors.
+- Show user-friendly UI messages.
+- Avoid generic "Something went wrong" responses.
+
+---
+
+# Comments
+
+Use comments only where they improve readability.
+
+Good examples:
+
+// ---------- Login ----------
+
+// ---------- Save profile ----------
+
+// ---------- Fetch players ----------
+
+// ---------- Verify response ----------
+
+Avoid obvious comments like:
+
+// Set variable
+
+---
+
+# Playwright
+
+Always structure tests consistently.
+
+// ---------- Login ----------
+
+// ---------- Verify login ----------
+
+// ---------- Test Data ----------
+
+// ---------- Actions ----------
+
+// ---------- Save ----------
+
+// ---------- Reload ----------
+
+// ---------- Final Verification ----------
+
+Rules:
+
+- Prefer data-testid selectors.
+- Avoid brittle CSS selectors.
+- Wait for network requests when appropriate.
+- Use Promise.all() for request + action.
+- Keep tests readable.
+- Group assertions logically.
+
+---
+
+# Code Formatting
+
+- Use Prettier.
+- Keep line length around 80–100 characters.
+- Use empty lines between logical blocks.
+- Keep JSX readable.
+- Avoid deeply nested JSX.
+- Keep git diffs as small as possible.
+
+---
+
+# AI Behaviour
+
+Before generating code:
+
+- Search for existing components.
+- Search for existing hooks.
+- Search for existing helpers.
+- Search for existing utilities.
+- Search for similar API routes.
+- Reuse existing implementation whenever possible.
+
+Never:
+
+- Rename variables without reason.
+- Refactor unrelated code.
+- Rewrite working code.
+- Change backend unless requested.
+- Introduce breaking changes.
+
+Always:
+
+- Generate production-ready code.
+- Follow project conventions.
+- Preserve project style.
+- Keep code consistent.
+
+---
+
+# Editing Existing Files
+
+When editing files:
+
+- Modify only requested functionality.
+- Preserve formatting.
+- Preserve comments.
+- Preserve existing architecture.
+- Preserve existing imports whenever possible.
+- Avoid moving code unnecessarily.
+- Keep commits small and readable.
+
+---
+
+# Performance
+
+- Avoid unnecessary renders.
+- Avoid duplicate API requests.
+- Reuse already fetched data.
+- Memoize only when necessary.
+- Prefer simple optimizations over premature optimization.
+
+---
+
+# Personal Preferences
+
+The project owner is actively learning software engineering.
+
+When generating code:
+
+- Keep code easy to understand.
+- Prefer explicit code over clever abstractions.
+- Explain new architectural decisions.
+- Add short educational comments for complex logic.
+- Keep Playwright tests readable.
+- Preserve existing UI style.
+- Prefer minimal changes over large refactors.
+- Suggest reusable components instead of duplication.
+
+---
+
+# Engineering Principles
+
+When multiple solutions exist:
+
+- Choose the simplest maintainable solution.
+- Optimize for maintainability rather than code golf.
+- Write code that another developer can quickly understand.
+- Prioritize readability over brevity.
+
+---
+
+# TennisConnect Principles
+
+The project prioritizes:
+
+1. Readability
+2. Reusability
+3. Maintainability
+4. Responsive Design
+5. Clean UI
+6. Stable API
+7. Testability
+8. Accessibility
+9. User Experience
+10. Scalability
