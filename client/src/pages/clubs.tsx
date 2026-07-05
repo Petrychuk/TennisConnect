@@ -348,61 +348,54 @@ export default function ClubsPage() {
 
         {/* Clubs List Section */}
         <div className="container mx-auto px-4 py-16">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
-            {currentClubs.map((club, index) => (
-              <div key={club.id}>
-                <ClubCard club={club} />
-              
-              </div>
-            ))}
-            
-            {filteredClubs.length === 0 && (
-              <div className="text-center py-20">
-                <div className="inline-flex p-4 rounded-full bg-muted mb-4">
-                  <Search className="w-8 h-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-xl font-bold mb-2">No clubs found</h3>
-                <p className="text-muted-foreground">Try adjusting your search or filters.</p>
-                <Button 
-                  variant="link" 
-                  onClick={() => { setSearchTerm(""); setFilterService(""); }}
-                  className="mt-2"
-                >
-                  Clear all filters
-                </Button>
-              </div>
-            )}
-            
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex justify-center mt-12 gap-2">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </Button>
-                {Array.from({ length: totalPages }).map((_, i) => (
-                  <Button
-                    key={i}
-                    variant={currentPage === i + 1 ? "default" : "outline"}
-                    onClick={() => setCurrentPage(i + 1)}
-                  >
-                    {i + 1}
-                  </Button>
-                ))}
-                <Button 
-                  variant="outline" 
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </Button>
-              </div>
-            )}
+
+        {filteredClubs.length === 0 ? (
+
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="inline-flex p-5 rounded-full bg-muted mb-5">
+              <Search className="w-9 h-9 text-muted-foreground" />
+            </div>
+
+            <h3 className="text-2xl font-bold mb-2">
+              No clubs found
+            </h3>
+
+            <p className="text-muted-foreground max-w-md">
+              Try adjusting your search or filters.
+            </p>
+
+            <Button
+              variant="link"
+              onClick={() => {
+                setSearchTerm("");
+                setFilterService("");
+              }}
+              className="mt-4"
+            >
+              Clear all filters
+            </Button>
           </div>
-          <PartnerCTA />
+
+        ) : (
+
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+              {currentClubs.map((club) => (
+                <div key={club.id}>
+                  <ClubCard club={club} />
+                </div>
+              ))}
+            </div>
+
+            {totalPages > 1 && (
+              <div className="mt-16">
+                {/* Pagination */}
+              </div>
+            )}
+          </>
+
+        )}
+        <PartnerCTA />
         </div>
         <Footer />
       </div>
