@@ -12,15 +12,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, ShieldCheck, FileText, Plane, Heart, Trophy, Users } from "lucide-react";
+import { Plus, Edit, Trash2, ShieldCheck, FileText, Plane, Heart, Trophy, Users, Building2 } from "lucide-react";
 import SEO from "@/components/seo";
-import { articleSchema } from "@/lib/validations/articles";
-import { travelSchema } from "@/lib/validations/travel";
-import { recreationSchema } from "@/lib/validations/recreations";
-import { tournamentSchema } from "@/lib/validations/tournaments";
+import { ClubForm } from "@/components/admin/clubs/ClubForm";
+import { clubValidationSchema, articleSchema, travelSchema, recreationSchema, tournamentSchema } from "@/lib/validations";
 import AdminUsersTab from "@/components/admin/users_tab";
 
-type Resource = "articles" | "travel" | "recreation" | "event-tournaments" ; 
+type Resource = "articles" | "travel" | "recreation" | "event-tournaments" | "clubs" ; 
 type AdminTab = Resource | "users";
 
 function isContentTab(tab: AdminTab): tab is Resource {
@@ -32,6 +30,7 @@ const RESOURCE_LABELS: Record<Resource, string> = {
   travel: "Travel Packages",
   recreation: "Recreation Services",
   "event-tournaments": "Tournaments",
+  clubs: "Club Communities",
 };
 
 const ICONS: Record<Resource, any> = {
@@ -39,6 +38,7 @@ const ICONS: Record<Resource, any> = {
   travel: Plane,
   recreation: Heart,
   "event-tournaments": Trophy,
+  clubs: Building2,
 };
 
 // Field definitions per resource
@@ -154,6 +154,13 @@ const FIELDS: Record<Resource, { name: string; label?: string; type: "text" | "t
     { name: "ageGroups", type: "list" },
     { name: "winner", type: "text" },
     { name: "finalist", type: "text" },
+  ],
+  clubs: [
+    {
+      name: "name",
+      type: "text",
+      required: true,
+    },
   ],
 };
 
@@ -457,7 +464,7 @@ export default function AdminPage() {
             value={activeTab}
             onValueChange={(v) => setActiveTab(v as Resource)}
           >
-            <TabsList className="grid grid-cols-2 md:grid-cols-5 mb-8 w-full max-w-4xl">
+            <TabsList className="grid grid-cols-2 md:grid-cols-6 mb-8 w-full max-w-5xl">
 
               {(Object.keys(RESOURCE_LABELS) as Resource[]).map((r) => {
                 const Icon = ICONS[r];
@@ -578,115 +585,133 @@ export default function AdminPage() {
               <DialogTitle>{editing ? "Edit" : "Create"}{" "} {activeLabel}</DialogTitle>
             </DialogHeader>
             
-            {isContentTab(activeTab) &&
-              <div className="space-y-4">
-              {FIELDS[activeTab].map((f) => {
 
-                if (
-                  f.name === "legalType" &&
-                  formData.category !== "Legal"
-                ) {
-                  return null;
-                }
+            {activeTab === "clubs" ? (
 
-                return (
-                  <div key={f.name}>
-                    <Label htmlFor={f.name} className="capitalize">
-                      {f.name.replace(/([A-Z])/g, " $1")}
-                      {f.required && (
-                        <span className="text-destructive ml-1">*</span>
-                      )}
-                    </Label>
-      
-                    {activeTab === "travel" && f.type === "checkbox" ? (
-                        <div className="flex items-center justify-between rounded-lg border p-4">
-                          <div>
-                            <Label htmlFor={f.name}>
-                              {f.label || f.name}
-                            </Label>
+            <ClubForm
+              mode={editing ? "edit" : "create"}
+              clubId="" /* {editing ? editingId : ""} */
+              onClose={() => setDialogOpen(false)}
+              onSaved={() => {
+                setDialogOpen(false);
+                // сюда позже добавим refetchClubs();
+              }}
+              />
 
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Show this package as Featured on TennisConnect.
-                            </p>
+            ) : (
+
+              isContentTab(activeTab) &&  (
+                <div className="space-y-4">
+                {FIELDS[activeTab].map((f) => {
+
+                  if (
+                    f.name === "legalType" &&
+                    formData.category !== "Legal"
+                  ) {
+                    return null;
+                  }
+
+                  return (
+                    <div key={f.name}>
+                      <Label htmlFor={f.name} className="capitalize">
+                        {f.name.replace(/([A-Z])/g, " $1")}
+                        {f.required && (
+                          <span className="text-destructive ml-1">*</span>
+                        )}
+                      </Label>
+        
+                      {activeTab === "travel" && f.type === "checkbox" ? (
+                          <div className="flex items-center justify-between rounded-lg border p-4">
+                            <div>
+                              <Label htmlFor={f.name}>
+                                {f.label || f.name}
+                              </Label>
+
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Show this package as Featured on TennisConnect.
+                              </p>
+                            </div>
+
+                            <Switch
+                                checked={!!formData[f.name]}
+                                onCheckedChange={(checked) =>
+                                  setFormData({
+                                    ...formData,
+                                    [f.name]: checked,
+                                  })
+                                }
+                              />
                           </div>
+                        ) : f.type === "textarea" ? (
+                        <Textarea
+                          id={f.name}
+                          value={formData[f.name] || ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              [f.name]: e.target.value,
+                            })
+                          }
+                          rows={5}
+                          data-testid={`admin-field-${f.name}`}
+                        />
+                      ) : f.type === "select" ? (
+                        <select
+                          id={f.name}
+                          value={formData[f.name] || ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              [f.name]: e.target.value,
+                            })
+                          }
+                          className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        >
+                          <option value="">Select...</option>
 
-                          <Switch
-                              checked={!!formData[f.name]}
-                              onCheckedChange={(checked) =>
-                                setFormData({
-                                  ...formData,
-                                  [f.name]: checked,
-                                })
-                              }
-                            />
-                        </div>
-                      ) : f.type === "textarea" ? (
-                      <Textarea
-                        id={f.name}
-                        value={formData[f.name] || ""}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            [f.name]: e.target.value,
-                          })
-                        }
-                        rows={5}
-                        data-testid={`admin-field-${f.name}`}
-                      />
-                    ) : f.type === "select" ? (
-                      <select
-                        id={f.name}
-                        value={formData[f.name] || ""}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            [f.name]: e.target.value,
-                          })
-                        }
-                        className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      >
-                        <option value="">Select...</option>
+                          {f.options?.map((option) => (
+                            <option
+                              key={option}
+                              value={option}
+                            >
+                              {option}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <Input
+                          id={f.name}
+                          type={f.type === "number" ? "number" : "text"}
+                          value={formData[f.name] || ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              [f.name]: e.target.value,
+                            })
+                          }
+                          data-testid={`admin-field-${f.name}`}
+                        />
+                      )}
 
-                        {f.options?.map((option) => (
-                          <option
-                            key={option}
-                            value={option}
-                          >
-                            {option}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <Input
-                        id={f.name}
-                        type={f.type === "number" ? "number" : "text"}
-                        value={formData[f.name] || ""}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            [f.name]: e.target.value,
-                          })
-                        }
-                        data-testid={`admin-field-${f.name}`}
-                      />
-                    )}
-
-                    {f.help && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {f.help}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-              </div>
-            }
+                      {f.help && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {f.help}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+                </div>
+               )
+              )}
+          {activeTab !== "clubs" && (
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)} className="cursor-pointer">Cancel</Button>
               <Button onClick={submit} className="bg-primary text-primary-foreground cursor-pointer" data-testid="admin-save-button">
                 {editing ? "Update" : "Create"}
               </Button>
             </DialogFooter>
+           )}
           </DialogContent>
         </Dialog>
         <Dialog

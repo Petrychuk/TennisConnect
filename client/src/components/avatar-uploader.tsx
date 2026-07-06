@@ -4,7 +4,7 @@ import { uploadImage } from "@/lib/uploadImage";
 import { useAuth } from "@/lib/auth-context";
 
 export function AvatarUploader({ size = 40 }: { size?: number }) {
-  const { user, updateUser } = useAuth();
+  const { user, updateUserProfile } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
 
   if (!user) return null;
@@ -21,7 +21,7 @@ export function AvatarUploader({ size = 40 }: { size?: number }) {
       const avatarUrl = `${url}?v=${Date.now()}`;
 
       // 3️⃣ обновляем AuthContext (хедер + профиль)
-      await updateUser({ avatar: avatarUrl });
+      await updateUserProfile({ avatar: avatarUrl });
 
     } catch (err) {
       console.error("Avatar upload failed", err);

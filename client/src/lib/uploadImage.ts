@@ -1,6 +1,6 @@
 
 export async function uploadImage(
-  type: "avatar" | "cover",
+  type: "avatar" | "cover" ,
   file: File
 ): Promise<{ url: string }> {
   const fd = new FormData();
@@ -18,6 +18,5 @@ export async function uploadImage(
     throw new Error("Upload failed");
   }
   
-  const data = await res.json();
   return res.json();
 }

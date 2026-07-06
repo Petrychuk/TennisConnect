@@ -7,7 +7,9 @@ import {
   insertTravelPackageSchema,
   insertRecreationServiceSchema,
   insertTournamentSchema,
+  insertClubSchema,
 } from "@shared/schema";
+import { storage } from "../storage";
 
 const router = Router();
 console.log("CONTENT ROUTES LOADED");
@@ -44,8 +46,7 @@ function hasUpdateFields(data: Record<string, any>): boolean {
 }
 
 /* ========== ARTICLES ========== */
-router.get(
-  "/admin/articles",
+router.get("/admin/articles",
   requireAdmin,
   asyncHandler(async (_req: any, res: any) => {
     const rows = await db
@@ -56,8 +57,7 @@ router.get(
     res.json(rows);
   })
 );
-router.get(
-  "/articles",
+router.get("/articles",
   asyncHandler(async (_req: any, res: any) => {
     const rows = await db
       .select()
@@ -72,16 +72,14 @@ router.get(
     res.json(rows);
   })
 );
-router.get(
-  "/articles/:slug",
+router.get("/articles/:slug",
   asyncHandler(async (req: any, res: any) => {
     const [row] = await db.select().from(articles).where(eq(articles.slug, req.params.slug));
     if (!row) return res.status(404).json({ message: "Article not found" });
     res.json(row);
   })
 );
-router.post(
-  "/admin/articles",
+router.post("/admin/articles",
   requireAdmin,
   asyncHandler(async (req: any, res: any) => {
     const parsed = insertArticleSchema.safeParse(req.body);
@@ -92,8 +90,7 @@ router.post(
   })
 );
 
-router.put(
-  "/admin/articles/:id",
+router.put("/admin/articles/:id",
   requireAdmin,
   asyncHandler(async (req: any, res: any) => {
     const parsed = insertArticleSchema.partial().safeParse(req.body);
@@ -105,8 +102,7 @@ router.put(
   })
 );
 
-router.delete(
-  "/admin/articles/:id",
+router.delete("/admin/articles/:id",
   requireAdmin,
   asyncHandler(async (req: any, res: any) => {
     await db.delete(articles).where(eq(articles.id, req.params.id));
@@ -114,8 +110,7 @@ router.delete(
   })
 );
 
-router.get(
-  "/legal/:type",
+router.get("/legal/:type",
   asyncHandler(async (req: any, res: any) => {
     const [row] = await db
       .select()
@@ -138,8 +133,7 @@ router.get(
 );
 
 /* ========== TRAVEL PACKAGES ========== */
-router.get(
-  "/travel",
+router.get("/travel",
   asyncHandler(async (_req: any, res: any) => {
     const rows = await db
       .select()
@@ -150,8 +144,7 @@ router.get(
   })
 );
 
-router.get(
-  "/travel/:slug",
+router.get("/travel/:slug",
   asyncHandler(async (req: any, res: any) => {
     const [row] = await db.select().from(travelPackages).where(eq(travelPackages.slug, req.params.slug));
     if (!row) return res.status(404).json({ message: "Package not found" });
@@ -159,8 +152,7 @@ router.get(
   })
 );
 
-router.post(
-  "/admin/travel",
+router.post("/admin/travel",
   requireAdmin,
   asyncHandler(async (req: any, res: any) => {
     const parsed = insertTravelPackageSchema.safeParse(req.body);
@@ -171,8 +163,7 @@ router.post(
   })
 );
 
-router.put(
-  "/admin/travel/:id",
+router.put("/admin/travel/:id",
   requireAdmin,
   asyncHandler(async (req: any, res: any) => {
     const parsed = insertTravelPackageSchema.partial().safeParse(req.body);
@@ -184,8 +175,7 @@ router.put(
   })
 );
 
-router.delete(
-  "/admin/travel/:id",
+router.delete("/admin/travel/:id",
   requireAdmin,
   asyncHandler(async (req: any, res: any) => {
     await db.delete(travelPackages).where(eq(travelPackages.id, req.params.id));
@@ -194,8 +184,7 @@ router.delete(
 );
 
 /* ========== RECREATION SERVICES ========== */
-router.get(
-  "/recreation",
+router.get("/recreation",
   asyncHandler(async (_req: any, res: any) => {
     const rows = await db
       .select()
@@ -206,8 +195,7 @@ router.get(
   })
 );
 
-router.get(
-  "/recreation/:slug",
+router.get("/recreation/:slug",
   asyncHandler(async (req: any, res: any) => {
     const [row] = await db.select().from(recreationServices).where(eq(recreationServices.slug, req.params.slug));
     if (!row) return res.status(404).json({ message: "Service not found" });
@@ -215,8 +203,7 @@ router.get(
   })
 );
 
-router.post(
-  "/admin/recreation",
+router.post("/admin/recreation",
   requireAdmin,
   asyncHandler(async (req: any, res: any) => {
     const parsed = insertRecreationServiceSchema.safeParse(req.body);
@@ -227,8 +214,7 @@ router.post(
   })
 );
 
-router.put(
-  "/admin/recreation/:id",
+router.put("/admin/recreation/:id",
   requireAdmin,
   asyncHandler(async (req: any, res: any) => {
     const parsed = insertRecreationServiceSchema.partial().safeParse(req.body);
@@ -240,8 +226,7 @@ router.put(
   })
 );
 
-router.delete(
-  "/admin/recreation/:id",
+router.delete("/admin/recreation/:id",
   requireAdmin,
   asyncHandler(async (req: any, res: any) => {
     await db.delete(recreationServices).where(eq(recreationServices.id, req.params.id));
@@ -250,16 +235,14 @@ router.delete(
 );
 
 /* ========== TOURNAMENTS (events) ========== */
-router.get(
-  "/event-tournaments",
+router.get("/event-tournaments",
   asyncHandler(async (_req: any, res: any) => {
     const rows = await db.select().from(tournaments).orderBy(desc(tournaments.createdAt));
     res.json(rows);
   })
 );
 
-router.get(
-  "/event-tournaments/:slug",
+router.get("/event-tournaments/:slug",
   asyncHandler(async (req: any, res: any) => {
     const [row] = await db.select().from(tournaments).where(eq(tournaments.slug, req.params.slug));
     if (!row) return res.status(404).json({ message: "Tournament not found" });
@@ -267,8 +250,7 @@ router.get(
   })
 );
 
-router.post(
-  "/admin/event-tournaments",
+router.post("/admin/event-tournaments",
   requireAdmin,
   asyncHandler(async (req: any, res: any) => {
     const parsed = insertTournamentSchema.safeParse(req.body);
@@ -279,8 +261,7 @@ router.post(
   })
 );
 
-router.put(
-  "/admin/event-tournaments/:id",
+router.put("/admin/event-tournaments/:id",
   requireAdmin,
   asyncHandler(async (req: any, res: any) => {
     const parsed = insertTournamentSchema.partial().safeParse(req.body);
@@ -292,8 +273,7 @@ router.put(
   })
 );
 
-router.delete(
-  "/admin/event-tournaments/:id",
+router.delete("/admin/event-tournaments/:id",
   requireAdmin,
   asyncHandler(async (req: any, res: any) => {
     await db.delete(tournaments).where(eq(tournaments.id, req.params.id));
@@ -306,4 +286,214 @@ router.get("/admin/status", (req: any, res: any) => {
   res.json({ isAdmin: !!req.user?.isAdmin, isAuthenticated: !!req.user });
 });
 
+/* ========== CLUBS SERVICES ========== */
+router.get("/admin/clubs",
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const clubs =
+        await storage.getAllClubs();
+      res.json(clubs);
+
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.get("/admin/clubs/:id",
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const club =
+        await storage.getClubById(
+          req.params.id
+        );
+      if (!club) {
+        return res.status(404).json({
+          message: "Club not found",
+        });
+      }
+      res.json(club);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.post("/admin/clubs",
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const result =
+        insertClubSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: result.error.flatten(),
+        });
+      }
+      const club =
+        await storage.createClub(
+          result.data
+        );
+
+      res.status(201).json(club);
+
+    } catch (err) {
+      next(err);
+
+    }
+  }
+);
+
+router.put("/admin/clubs/:id",
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+
+      const result =
+        insertClubSchema.partial().safeParse(req.body);
+
+      if (!result.success) {
+
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: result.error.flatten(),
+        });
+      }
+      const club =
+        await storage.updateClub(
+          req.params.id,
+          result.data
+        );
+      res.json(club);
+
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.delete("/admin/clubs/:id",
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+
+      const club =
+        await storage.getClubById(
+          req.params.id
+        );
+
+      if (!club) {
+        return res.status(404).json({
+          message: "Club not found",
+        });
+
+      }
+
+      await storage.deleteClub(
+        req.params.id
+      );
+      res.json({
+        success: true,
+        message: "Club deleted successfully",
+      });
+
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.patch("/admin/clubs/:id/publish",
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+
+      const club = await storage.publishClub(
+        req.params.id
+      );
+      res.json(club);
+
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.patch("/admin/clubs/:id/unpublish",
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const club = await storage.unpublishClub(
+        req.params.id
+      );
+      res.json(club);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.patch("/admin/clubs/:id/archive",
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const club = await storage.archiveClub(
+        req.params.id
+      );
+      res.json(club);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.patch("/admin/clubs/:id/restore",
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const club = await storage.restoreClub(
+        req.params.id
+      );
+      res.json(club);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.patch("/admin/clubs/:id/listing",
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const { listingType } = req.body;
+
+      if (
+        listingType !== "free" &&
+        listingType !== "premium"
+      ) {
+        return res.status(400).json({
+          message:
+            "Listing type must be 'free' or 'premium'.",
+        });
+      }
+
+      const club =
+        await storage.updateClubListing(
+          req.params.id,
+          listingType
+        );
+
+      res.json(club);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 export default router;
+
+
+

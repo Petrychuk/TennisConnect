@@ -8,7 +8,7 @@ import {
   messages,
   passwordResetTokens,
   supportRequests,
-  tournaments,
+  tournaments, 
   type User, 
   type InsertUser,
   type PlayerProfile,
@@ -60,7 +60,6 @@ async function generateUniqueSlug(name: string): Promise<string> {
 }
 
 export interface IStorage {
- 
   // Users
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
@@ -109,7 +108,23 @@ export interface IStorage {
   
   // Clubs
   getAllClubs(): Promise<Club[]>;
+  getPublishedClubs(): Promise<Club[]>;
+  getPublishedClubBySlug(slug: string): Promise<Club | undefined>;
+  getClubBySlug(slug: string): Promise<Club | undefined>;
+  getClubById(id: string): Promise<Club | undefined>;
   createClub(club: InsertClub): Promise<Club>;
+  updateClub(id: string, club: Partial<InsertClub>): Promise<Club>;
+  deleteClub(id: string): Promise<void>;
+  // Publishing
+  publishClub(id: string): Promise<Club>;
+  unpublishClub(id: string): Promise<Club>;
+  archiveClub(id: string): Promise<Club>;
+  restoreClub(id: string): Promise<Club>;
+  // Listing
+  updateClubListing(
+    id: string,
+    listingType: "free" | "premium"
+  ): Promise<Club>;
   
   // Messages
   getUserMessages(userId: string): Promise<MessageWithAvatar[]>;
@@ -285,7 +300,6 @@ export class DatabaseStorage implements IStorage {
   // =====================
   // PLAYER PROFILES
   // =====================
-
   async getPlayerProfile(userId: string): Promise<PlayerProfile | undefined> {
     const [profile] = await db
       .select()
@@ -687,21 +701,370 @@ export class DatabaseStorage implements IStorage {
   // =====================
   // CLUBS
   // =====================
-
   async getAllClubs(): Promise<Club[]> {
     return db.select().from(clubs);
   }
 
-  async createClub(club: InsertClub): Promise<Club> {
+  async getPublishedClubs(): Promise<Club[]> {
+    return db
+      .select()
+      .from(clubs)
+      .where(eq(clubs.status, "published"));
+  }
+
+  async getPublishedClubBySlug(
+    slug: string
+  ): Promise<Club | undefined> {
+  
+    const [club] = await db
+      .select()
+      .from(clubs)
+      .where(
+        and(
+          eq(clubs.slug, slug),
+          eq(clubs.status, "published")
+        )
+      );
+  
+    return club;
+  }
+
+  async createClub(
+    club: InsertClub
+  ): Promise<Club> {
+  
     const [newClub] = await db
       .insert(clubs)
       .values({
-        ...club,
-        services: club.services as string[] | undefined,
+  
+        // Basic
+        name: club.name,
+        slug: club.slug,
+        category: club.category,
+        shortDescription: club.shortDescription,
+        description: club.description,
+  
+        // Images
+        image: club.image,
+        logo: club.logo,
+        cover: club.cover,
+        gallery: club.gallery as string[] | undefined,
+  
+        // Location
+        location: club.location,
+        state: club.state,
+        suburb: club.suburb,
+        address: club.address,
+        googleMapsUrl: club.googleMapsUrl,
+        hasMultipleLocations: club.hasMultipleLocations,
+        numberOfLocations: club.numberOfLocations,
+  
+        // Contact
+        phone: club.phone,
+        email: club.email,
+        website: club.website,
+        facebook: club.facebook,
+        instagram: club.instagram,
+  
+        contactPersonName: club.contactPersonName,
+        contactPersonRole: club.contactPersonRole,
+        contactPersonEmail: club.contactPersonEmail,
+        contactPersonPhone: club.contactPersonPhone,
+        contactPersonNotes: club.contactPersonNotes,
+        displayContactPerson: club.displayContactPerson,
+  
+        // Features
+        hasCourts: club.hasCourts,
+        hasCommunity: club.hasCommunity,
+        hasCoaching: club.hasCoaching,
+        hostsCompetitions: club.hostsCompetitions,
+  
+        // Courts
+        courtSurfaces:
+          club.courtSurfaces as string[] | undefined,
+  
+        indoorCourts: club.indoorCourts,
+        outdoorCourts: club.outdoorCourts,
+        hasLighting: club.hasLighting,
+        courtBookingAvailable: club.courtBookingAvailable,
+        membershipRequired: club.membershipRequired,
+        publicAccess: club.publicAccess,
+  
+        socialTennisDays:
+          club.socialTennisDays as string[] | undefined,
+  
+        // Services
+        services:
+          club.services as string[] | undefined,
+  
+        // Pricing
+        price: club.price,
+        hourlyPrice: club.hourlyPrice,
+        pricingNotes: club.pricingNotes,
+  
+        // Competitions
+        hostedCompetitions:
+          club.hostedCompetitions as string[] | undefined,
+  
+        // Listing
+        listingType: club.listingType,
+        status: club.status,
+        displayOrder: club.displayOrder,
+  
+        // Trust
+        verified: club.verified,
+        officialPartner: club.officialPartner,
+        claimedListing: club.claimedListing,
+  
+        // SEO
+        seoTitle: club.seoTitle,
+        metaDescription: club.metaDescription,
+        metaKeywords: club.metaKeywords,
+  
+        // CTA
+        ctaText: club.ctaText,
+        ctaUrl: club.ctaUrl,
+  
+        // Rating
+        rating: club.rating,
+  
       })
       .returning();
-
+  
     return newClub;
+  }
+
+  async getClubBySlug(
+    slug: string
+  ): Promise<Club | undefined> {
+  
+    const [club] = await db
+      .select()
+      .from(clubs)
+      .where(eq(clubs.slug, slug));
+  
+    return club;
+  
+  }
+
+  async getClubById(
+    id: string
+  ): Promise<Club | undefined> {
+  
+    const [club] = await db
+      .select()
+      .from(clubs)
+      .where(eq(clubs.id, id));
+  
+    return club;
+  
+  }
+
+  async updateClub(
+    id: string,
+    club: Partial<InsertClub>
+  ): Promise<Club> {
+  
+    const [updatedClub] = await db
+      .update(clubs)
+      .set({
+  
+        // Basic
+        name: club.name,
+        slug: club.slug,
+        category: club.category,
+        shortDescription: club.shortDescription,
+        description: club.description,
+  
+        // Images
+        image: club.image,
+        logo: club.logo,
+        cover: club.cover,
+        gallery: club.gallery as string[] | undefined,
+  
+        // Location
+        location: club.location,
+        state: club.state,
+        suburb: club.suburb,
+        address: club.address,
+        googleMapsUrl: club.googleMapsUrl,
+        hasMultipleLocations: club.hasMultipleLocations,
+        numberOfLocations: club.numberOfLocations,
+  
+        // Contact
+        phone: club.phone,
+        email: club.email,
+        website: club.website,
+        facebook: club.facebook,
+        instagram: club.instagram,
+  
+        contactPersonName: club.contactPersonName,
+        contactPersonRole: club.contactPersonRole,
+        contactPersonEmail: club.contactPersonEmail,
+        contactPersonPhone: club.contactPersonPhone,
+        contactPersonNotes: club.contactPersonNotes,
+        displayContactPerson: club.displayContactPerson,
+  
+        // Features
+        hasCourts: club.hasCourts,
+        hasCommunity: club.hasCommunity,
+        hasCoaching: club.hasCoaching,
+        hostsCompetitions: club.hostsCompetitions,
+  
+        // Courts
+        courtSurfaces:
+          club.courtSurfaces as string[] | undefined,
+  
+        indoorCourts: club.indoorCourts,
+        outdoorCourts: club.outdoorCourts,
+  
+        hasLighting: club.hasLighting,
+        courtBookingAvailable: club.courtBookingAvailable,
+        membershipRequired: club.membershipRequired,
+        publicAccess: club.publicAccess,
+  
+        socialTennisDays:
+          club.socialTennisDays as string[] | undefined,
+  
+        // Services
+        services:
+          club.services as string[] | undefined,
+  
+        // Pricing
+        price: club.price,
+        hourlyPrice: club.hourlyPrice,
+        pricingNotes: club.pricingNotes,
+  
+        // Competitions
+        hostedCompetitions:
+          club.hostedCompetitions as string[] | undefined,
+  
+        // Listing
+        listingType: club.listingType,
+        status: club.status,
+        displayOrder: club.displayOrder,
+  
+        // Trust
+        verified: club.verified,
+        officialPartner: club.officialPartner,
+        claimedListing: club.claimedListing,
+  
+        // SEO
+        seoTitle: club.seoTitle,
+        metaDescription: club.metaDescription,
+        metaKeywords: club.metaKeywords,
+  
+        // CTA
+        ctaText: club.ctaText,
+        ctaUrl: club.ctaUrl,
+  
+        // Rating
+        rating: club.rating,
+  
+        updatedAt: new Date(),
+  
+      })
+      .where(eq(clubs.id, id))
+      .returning();
+  
+    return updatedClub;
+  
+  }
+
+  async deleteClub(
+    id: string
+  ): Promise<void> {
+  
+    await db
+      .delete(clubs)
+      .where(eq(clubs.id, id));
+  
+  }
+
+  async publishClub(
+    id: string
+  ): Promise<Club> {
+  
+    const [club] = await db
+      .update(clubs)
+      .set({
+        status: "published",
+        updatedAt: new Date(),
+      })
+      .where(eq(clubs.id, id))
+      .returning();
+  
+    return club;
+  
+  }
+
+  async unpublishClub(
+    id: string
+  ): Promise<Club> {
+  
+    const [club] = await db
+      .update(clubs)
+      .set({
+        status: "draft",
+        updatedAt: new Date(),
+      })
+      .where(eq(clubs.id, id))
+      .returning();
+  
+    return club;
+  
+  }
+
+  async archiveClub(
+    id: string
+  ): Promise<Club> {
+  
+    const [club] = await db
+      .update(clubs)
+      .set({
+        status: "archived",
+        updatedAt: new Date(),
+      })
+      .where(eq(clubs.id, id))
+      .returning();
+  
+    return club;
+  
+  }
+
+  async restoreClub(
+    id: string
+  ): Promise<Club> {
+  
+    const [club] = await db
+      .update(clubs)
+      .set({
+        status: "draft",
+        updatedAt: new Date(),
+      })
+      .where(eq(clubs.id, id))
+      .returning();
+  
+    return club;
+  
+  }
+
+  async updateClubListing(
+    id: string,
+    listingType: "free" | "premium"
+  ): Promise<Club> {
+  
+    const [club] = await db
+      .update(clubs)
+      .set({
+        listingType,
+        updatedAt: new Date(),
+      })
+      .where(eq(clubs.id, id))
+      .returning();
+  
+    return club;
+  
   }
 
   // =====================

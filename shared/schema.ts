@@ -1,7 +1,16 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, json, real } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, json, real,  numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import {
+  CLUB_CATEGORIES,
+  CLUB_LISTING_TYPES,
+  CLUB_STATUS,
+  COURT_SURFACES,
+  CLUB_SERVICES,
+  HOSTED_COMPETITION_TYPES,
+  CONTACT_PERSON_ROLES,
+} from "./constants/clubs";
 
 // Users table - core authentication
 export const users = pgTable("users", {
@@ -199,19 +208,123 @@ export const marketplaceItems = pgTable("marketplace_items", {
   isActive: boolean("is_active").default(true),
 });
 
-// Clubs
+// ============================================================================
+// CLUB COMMUNITIES
+// ============================================================================
 export const clubs = pgTable("clubs", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+
+  // Basic Information
   name: text("name").notNull(),
-  location: text("location").notNull(),
+  slug: text("slug").unique(),
+  category: text("category").notNull(),
+  shortDescription: text("short_description"),
   description: text("description").notNull(),
-  services: json("services").$type<string[]>().default([]),
-  price: text("price").notNull(),
-  phone: text("phone").notNull(),
+
+  // Images
+  image: text("image"), // Legacy card image
+  logo: text("logo"),
+  cover: text("cover"),
+  gallery: json("gallery").$type<string[]>().default([]),
+
+  // Location
+  location: text("location"), // Legacy
+  state: text("state"),
+  suburb: text("suburb"),
+  address: text("address"),
+  googleMapsUrl: text("google_maps_url"),
+  hasMultipleLocations: boolean("has_multiple_locations")
+  .default(false),
+  numberOfLocations: integer("number_of_locations")
+    .default(1),
+
+  // Public Contact
+  phone: text("phone"),
+  email: text("email"),
   website: text("website"),
-  image: text("image"),
-  rating: text("rating"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  facebook: text("facebook"),
+  instagram: text("instagram"),
+
+  // Contact Person
+  contactPersonName: text("contact_person_name"),
+  contactPersonRole: text("contact_person_role"),
+  contactPersonEmail: text("contact_person_email"),
+  contactPersonPhone: text("contact_person_phone"),
+  contactPersonNotes: text("contact_person_notes"),
+  displayContactPerson: boolean("display_contact_person")
+  .default(false),
+
+  // Features
+  hasCourts: boolean("has_courts").default(false),
+  hasCommunity: boolean("has_community").default(false),
+  hasCoaching: boolean("has_coaching").default(false),
+  hostsCompetitions: boolean("hosts_competitions").default(false),
+
+  // Court Information
+  courtSurfaces: json("court_surfaces")
+  .$type<string[]>()
+  .default([]),
+  indoorCourts: integer("indoor_courts").default(0),
+  outdoorCourts: integer("outdoor_courts").default(0),
+  hasLighting: boolean("has_lighting").default(false),
+  courtBookingAvailable: boolean("court_booking_available")
+  .default(false),
+  membershipRequired: boolean("membership_required")
+  .default(false),
+  publicAccess: boolean("public_access")
+  .default(true),
+  socialTennisDays: json("social_tennis_days")
+  .$type<string[]>()
+  .default([]),
+
+  // Services
+  services: json("services").$type<string[]>().default([]),
+
+  // Pricing
+  // General pricing (membership, competitions, social tennis, etc.)
+  price: text("price"), // Legacy
+  hourlyPrice: numeric("hourly_price", {
+    precision: 10,
+    scale: 2,
+  }),
+  pricingNotes: text("pricing_notes"),
+
+  // Competitions
+  hostedCompetitions: json("hosted_competitions")
+  .$type<string[]>()
+  .default([]),
+
+  // Listing
+  listingType: text("listing_type").default("free"),
+  status: text("status").default("draft"),
+  displayOrder: integer("display_order").default(0),
+
+  // Trust Badges
+  verified: boolean("verified").default(false),
+  officialPartner: boolean("official_partner").default(false),
+  claimedListing: boolean("claimed_listing").default(false),
+
+  // SEO
+  seoTitle: text("seo_title"),
+  metaDescription: text("meta_description"),
+  metaKeywords: text("meta_keywords"),
+
+  // CTA
+  ctaText: text("cta_text"),
+  ctaUrl: text("cta_url"),
+  
+  // Rating
+  rating: real("rating"),
+
+  // Dates
+  createdAt: timestamp("created_at")
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .notNull(),
 });
 
 // Messages - for contact requests and messaging between users
@@ -365,6 +478,7 @@ export const insertMarketplaceItemSchema = createInsertSchema(marketplaceItems)
 export const insertClubSchema = createInsertSchema(clubs).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
 });
 
 export const insertMessageSchema = createInsertSchema(messages).omit({
@@ -389,8 +503,8 @@ export type TournamentHistory = typeof tournamentHistory.$inferSelect;
 export type InsertMarketplaceItem = z.infer<typeof insertMarketplaceItemSchema>;
 export type MarketplaceItem = typeof marketplaceItems.$inferSelect;
 
-export type InsertClub = z.infer<typeof insertClubSchema>;
 export type Club = typeof clubs.$inferSelect;
+export type InsertClub = z.infer<typeof insertClubSchema>;
 
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;

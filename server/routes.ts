@@ -6,13 +6,14 @@ import { hashPassword, comparePasswords } from "./auth";
 import uploadMediaRouter from "./routes/uploadMedia";
 import profileTournamentHistoryRouter from "./routes/profileTournamentHistory";
 import profileMarketplace from "./routes/profileMarketplace";
-import contentRouter from "./routes/content";
+import contentRouter from "./routes/adminContent";
 import passport from "passport";
 import { requireAuth, requireAdmin } from "./requireAuth";
 import supportRoutes from "./routes/supportRoutes";
 import playersRouter from "./routes/players";
 import coachesRouter from "./routes/coaches";
 import { sendSystemMessage } from "./services/systemMessages";
+import uploadContentRouter from "./routes/upload-content";
 
 
 import {
@@ -74,6 +75,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/", sitemapRoutes);
   app.use("/api/players", playersRouter);
   app.use("/api/coaches", coachesRouter);
+  app.use("/api/upload/content", uploadContentRouter);
 
   /* =========================
    SUPPORT CHAT
@@ -750,24 +752,37 @@ export async function registerRoutes(app: Express): Promise<void> {
   // ===== CLUBS ROUTES =====
   app.get("/api/clubs", async (req, res, next) => {
     try {
-      const clubs = await storage.getAllClubs();
-      res.json(clubs);
-    } catch (error: any) {
+      const clubs =
+        await storage.getPublishedClubs();
+      res.json(clubs); 
+    } catch (error: any) { 
       next(error);
     }
   });
 
-  app.post("/api/clubs", requireAuth, async (req, res, next) => {
+  app.get("/api/clubs/:slug", async (req, res, next) => {
     try {
-      const result = insertClubSchema.safeParse(req.body);
-
-      if (!result.success) {
-        return res.status(400).json({ message: "Invalid input", errors: result.error });
+      const club =
+        await storage.getClubBySlug(
+          req.params.slug
+        );
+      if (!club) {
+        return res.status(404).json({
+          message: "Club not found",
+        });
+  
       }
-
-      const club = await storage.createClub(result.data);
-      res.json(club);
-    } catch (error: any) {
+  
+      // Показываем только опубликованные клубы
+  
+      if (club.status !== "published") {
+  
+        return res.status(404).json({
+          message: "Club not found",
+        });
+      }
+      res.json(club); 
+    } catch (error: any) { 
       next(error);
     }
   });
