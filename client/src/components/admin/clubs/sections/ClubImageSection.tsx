@@ -13,12 +13,22 @@ interface ClubImageSectionProps {
     key: K,
     value: ClubFormData[K]
   ) => void;
+
+  saveMedia: (
+    data: Partial<{
+      image: string;
+      logo: string;
+      cover: string;
+      gallery: string[];
+    }>
+  ) => Promise<void>;
 }
 
 export function ClubImageSection({
   clubId,
   form,
   updateField,
+  saveMedia,
 }: ClubImageSectionProps) {
 
   const isPremium =
@@ -31,51 +41,40 @@ export function ClubImageSection({
       data-testid="club-image-section"
     >
 
-      {/* ====================================================== */}
       {/* Heading */}
-      {/* ====================================================== */}
 
       <div>
-
         <h2 className="text-2xl font-display font-semibold">
-
           Club Images
-
         </h2>
-
         <p className="mt-1 text-sm text-muted-foreground">
-
           Upload professional images that represent
           your club or community.
-
         </p>
-
       </div>
 
-      {/* ====================================================== */}
       {/* Directory Image */}
-      {/* ====================================================== */}
 
       <ImageUploader
 
         folder="clubs"
-
         entityId={clubId}
-
         type="image"
-
         value={form.image}
-
         label="Club Image"
-
         description="Displayed on directory cards and search results."
+        onUploaded={async (url) => {
 
-        onUploaded={(url) =>
           updateField(
             "image",
             url
-          )
-        }
+          );
+        
+          await saveMedia({
+            image: url,
+          });
+        
+        }}
 
         onDeleted={() =>
           updateField(
@@ -83,114 +82,96 @@ export function ClubImageSection({
             ""
           )
         }
-
       />
-            {/* ====================================================== */}
+      
       {/* Premium Images */}
-      {/* ====================================================== */}
 
       {isPremium && (
 
-<div
-  className="space-y-6"
-  data-testid="club-premium-images"
->
+      <div
+        className="space-y-6"
+        data-testid="club-premium-images"
+      >
 
-  <div>
+        <div>
 
-    <h3 className="text-lg font-semibold">
+          <h3 className="text-lg font-semibold">
+            Premium Images
+          </h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Add your logo and cover image to create
+            a professional club profile.
+          </p>
+        </div>
 
-      Premium Images
+        <div className="grid gap-6 xl:grid-cols-2">
 
-    </h3>
+          {/* Logo */}
 
-    <p className="mt-1 text-sm text-muted-foreground">
+          <ImageUploader
 
-      Add your logo and cover image to create
-      a professional club profile.
+            folder="clubs"
+            entityId={clubId}
+            type="logo"
+            value={form.logo}
+            label="Club Logo"
+            description="Displayed on the Premium club profile."
+            onUploaded={async (url) => {
 
-    </p>
+              updateField(
+                "logo",
+                url
+              );
+            
+              await saveMedia({
+                logo: url,
+              });
+            
+            }}
 
-  </div>
+            onDeleted={() =>
+              updateField(
+                "logo",
+                ""
+              )
+            }
+          />
 
-  <div className="grid gap-6 xl:grid-cols-2">
+          {/* Cover */}
 
-    {/* ============================================= */}
-    {/* Logo */}
-    {/* ============================================= */}
+          <ImageUploader
 
-    <ImageUploader
+            folder="clubs"
+            entityId={clubId}
+            type="cover"
+            value={form.cover}
+            label="Cover Image"
+            description="Large hero image displayed at the top of your Premium club page."
+            onUploaded={async (url) => {
 
-      folder="clubs"
+              updateField(
+                "cover",
+                url
+              );
+            
+                await saveMedia({
+                  cover: url,
+                });
+            
+            }}
 
-      entityId={clubId}
-
-      type="logo"
-
-      value={form.logo}
-
-      label="Club Logo"
-
-      description="Displayed on the Premium club profile."
-
-      onUploaded={(url) =>
-        updateField(
-          "logo",
-          url
-        )
-      }
-
-      onDeleted={() =>
-        updateField(
-          "logo",
-          ""
-        )
-      }
-
-    />
-
-    {/* ============================================= */}
-    {/* Cover */}
-    {/* ============================================= */}
-
-    <ImageUploader
-
-      folder="clubs"
-
-      entityId={clubId}
-
-      type="cover"
-
-      value={form.cover}
-
-      label="Cover Image"
-
-      description="Large hero image displayed at the top of your Premium club page."
-
-      onUploaded={(url) =>
-        updateField(
-          "cover",
-          url
-        )
-      }
-
-      onDeleted={() =>
-        updateField(
-          "cover",
-          ""
-        )
-      }
-
-    />
-
-  </div>
-
-</div>
-
-)}
-      {/* ====================================================== */}
+            onDeleted={() =>
+              updateField(
+                "cover",
+                ""
+              )
+            }
+          />
+        </div>
+      </div>
+      )}
+      
       {/* Premium Features (Free Listing) */}
-      {/* ====================================================== */}
 
       {!isPremium && (
 
@@ -217,13 +198,9 @@ export function ClubImageSection({
           <ul className="mt-5 space-y-2 text-sm text-muted-foreground">
 
             <li>✓ Club Logo</li>
-
             <li>✓ Cover Image</li>
-
             <li>✓ Photo Gallery</li>
-
             <li>✓ Premium Club Profile</li>
-
             <li>✓ Better Presentation</li>
 
           </ul>
@@ -232,9 +209,7 @@ export function ClubImageSection({
 
       )}
 
-      {/* ====================================================== */}
       {/* Gallery (Coming Soon) */}
-      {/* ====================================================== */}
 
       {isPremium && (
 
@@ -250,9 +225,7 @@ export function ClubImageSection({
         >
 
           <h3 className="text-lg font-semibold">
-
             Club Gallery
-
           </h3>
 
           <p className="mt-2 text-sm text-muted-foreground">
@@ -261,7 +234,6 @@ export function ClubImageSection({
             facilities, courts and community.
 
           </p>
-
           <div
             className="
               mt-6
@@ -277,19 +249,11 @@ export function ClubImageSection({
           >
 
             <span className="text-sm text-muted-foreground">
-
               Gallery uploader will be available soon.
-
             </span>
-
           </div>
-
         </div>
-
       )}
-
     </section>
-
   );
-
 }

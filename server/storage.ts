@@ -798,7 +798,6 @@ export class DatabaseStorage implements IStorage {
           club.services as string[] | undefined,
   
         // Pricing
-        price: club.price,
         hourlyPrice: club.hourlyPrice,
         pricingNotes: club.pricingNotes,
   
@@ -931,7 +930,6 @@ export class DatabaseStorage implements IStorage {
           club.services as string[] | undefined,
   
         // Pricing
-        price: club.price,
         hourlyPrice: club.hourlyPrice,
         pricingNotes: club.pricingNotes,
   

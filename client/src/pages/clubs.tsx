@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Footer } from "@/components/footer";
+import { ClubCard } from "@/components/clubs/ClubCard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -67,150 +68,6 @@ export default function ClubsPage() {
   const totalPages = Math.ceil(filteredClubs.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentClubs = filteredClubs.slice(startIndex, startIndex + itemsPerPage);
-
-  const ClubCard = ({ club }: { club: typeof CLUBS_DATA[0] }) => (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      viewport={{ once: true }}
-      className="group relative w-full"
-    >
-      <div className="flex flex-col lg:flex-row bg-card border rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300">
-        {/* Image Section */}
-        <div className="w-full
-          lg:w-[34%]
-          h-52
-          md:h-60
-          lg:h-auto
-          shrink-0
-          overflow-hidden
-          bg-muted">
-          <img 
-            src={club.image} 
-            alt={club.name} 
-            className="
-              w-full
-              h-full
-              object-cover
-              object-center
-              transition-transform
-              duration-700
-              group-hover:scale-105"
-          />
-          <div className="absolute top-4 left-4 flex gap-2">
-             <Badge className="bg-white/90 text-black hover:bg-white font-bold backdrop-blur-sm shadow-sm">
-                <Star className="w-3 h-3 mr-1 fill-yellow-400 text-yellow-400" /> {club.rating}
-             </Badge>
-          </div>
-           <div className="absolute bottom-0 left-0 w-full h-1/2 bg-linear-to-t to-transparent lg:hidden" /> 
-        </div>
-
-        {/* Content Section */}
-        <div className="p-3
-            md:p-5
-            lg:p-6
-            flex
-            flex-col">
-          <div className="mb-6">
-            <div className="flex items-center gap-2 text-primary font-bold mb-2 text-sm uppercase tracking-wide">
-              <MapPin className="w-4 h-4" /> {club.location}
-            </div>
-            <h2 className="
-                text-lg
-                md:text-2xl
-                lg:text-3xl
-                font-display
-                font-bold
-                leading-tight
-                line-clamp-2
-                min-h-[56px]
-                md:min-h-[72px]">
-              {club.name}
-            </h2>
-            <p className="text-sm
-                md:text-base
-                text-muted-foreground
-                leading-relaxed
-                line-clamp-3
-                min-h-[72px]
-                md:min-h-[84px]">
-              {club.description}
-            </p>
-            
-            <div className="flex
-              flex-wrap
-              gap-2
-              min-h-[60px]">
-              {club.services.slice(0, 4).map((service, i) => (
-                <Badge key={i} variant="secondary" className="px-2
-                  py-0.5
-                  text-[10px]
-                  md:text-xs bg-secondary/50">
-                  {service}
-                </Badge>
-              ))}
-            </div>
-
-            <div className="grid
-                grid-cols-2
-                gap-3
-                md:gap-6
-                mb-4
-                md:mb-6
-                py-4
-                border-y
-                border-border/50">
-              <div className="flex items-start gap-3">
-                 <div className="p-2 rounded-full bg-primary/10 text-primary">
-                   <DollarSign className="w-5 h-5" />
-                 </div>
-                 <div>
-                   <p className="font-bold text-base md:text-lg">{club.price}</p>
-                   <p className="text-xs text-muted-foreground">per hour / court</p>
-                 </div>
-              </div>
-              <div className="flex items-start gap-3">
-                 <div className="p-2 rounded-full bg-primary/10 text-primary">
-                   <Trophy className="w-5 h-5" />
-                 </div>
-                 <div>
-                   <p className="font-bold text-lg">Tournaments</p>
-                   <p className="text-xs text-muted-foreground">Monthly Events</p>
-                 </div>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-               <Button className="flex-1
-                  h-10
-                  md:h-12
-                  text-sm
-                  md:text-base
-                  font-bold
-                  rounded-xl" 
-                  asChild>
-                 <a href={`tel:${club.phone}`}>
-                    <Phone className="w-4 h-4 mr-2" /> Call to Book
-                 </a>
-               </Button>
-               <Button variant="outline" className="flex-1
-                    h-10
-                    md:h-12
-                    text-sm
-                    md:text-base
-                    font-bold
-                    rounded-xl hover:bg-secondary/50" asChild>
-                 <a href={club.website} target="_blank" rel="noopener noreferrer">
-                    <Globe className="w-4 h-4 mr-2" /> Visit Website
-                 </a>
-               </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
 
   return (
    <>
@@ -381,9 +238,10 @@ export default function ClubsPage() {
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
               {currentClubs.map((club) => (
-                <div key={club.id}>
-                  <ClubCard club={club} />
-                </div>
+                <ClubCard
+                key={club.id}
+                club={club}
+             />
               ))}
             </div>
 
@@ -399,6 +257,6 @@ export default function ClubsPage() {
         </div>
         <Footer />
       </div>
-    </>
+   </>
   );
 }

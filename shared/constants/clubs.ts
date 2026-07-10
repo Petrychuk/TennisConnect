@@ -156,13 +156,19 @@ export const CLUB_CATEGORIES = [
       group: "Community",
     },
     {
-      value: "mens-tennis",
-      label: "Men's Tennis",
+      value: "doubles-tennis",
+      label: "Doubles Tennis",
       group: "Community",
     },
     {
       value: "family-tennis",
       label: "Family Tennis",
+      group: "Community",
+    },
+
+    {
+      value: "tennis retreats",
+      label: "Tennis retreats",
       group: "Community",
     },
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
 import type { ClubService, CourtSurface, CompetitionType } from "@shared/constants/clubs";
 import { Button } from "@/components/ui/button";
 import { ClubListingType } from "./ClubListingType";
@@ -12,7 +13,6 @@ import { ClubCourtsSection } from "./sections/ClubCourtsSection";
 import { ClubCompetitionSection } from "./sections/ClubCompetitionSection";
 import { ClubSeoSection } from "./sections/ClubSeoSection";
 import { ClubImageSection } from "./sections/ClubImageSection";
-
 export interface ClubFormProps {
   mode?: "create" | "edit";
   clubId?: string;
@@ -35,6 +35,7 @@ export interface ClubFormData {
   image: string;
   logo: string;
   cover: string;
+  gallery: string[];
 
   // Location
   state: string;
@@ -46,7 +47,6 @@ export interface ClubFormData {
   services: ClubService[];
 
   // Pricing
-  price: string;
   hourlyPrice: string;
   pricingNotes: string;
 
@@ -107,6 +107,7 @@ export function ClubForm({
       image: "",
       logo: "",
       cover: "",
+      gallery: [],
   
       // Location
       state: "",
@@ -118,7 +119,6 @@ export function ClubForm({
       services: [],
   
       // Pricing
-      price: "",
       hourlyPrice: "",
       pricingNotes: "",
   
@@ -153,6 +153,7 @@ export function ClubForm({
       metaDescription: "",
       metaKeywords: "",
     });
+    const { toast } = useToast();
 
     const updateField = <
       K extends keyof ClubFormData
@@ -206,8 +207,7 @@ export function ClubForm({
     };
     const handleSave = async () => {
         try {
-          setLoading(true);
-      
+          setLoading(true);     
           const url =
             mode === "create"
               ? "/api/admin/clubs"
@@ -217,45 +217,54 @@ export function ClubForm({
             mode === "create"
               ? "POST"
               : "PUT";
-      
+          
+          const payload = {
+            ...form,
+            indoorCourts: Number(form.indoorCourts || 0),
+            outdoorCourts: Number(form.outdoorCourts || 0),
+            numberOfLocations: Number(form.numberOfLocations || 1),
+            };
+
+          console.log("Payload", payload);
           const res = await fetch(url, {
             method,
             credentials: "include",
             headers: {
               "Content-Type": "application/json",
-            },
-            body: JSON.stringify(form),
+            },         
+            body: JSON.stringify(payload),
           });
       
           if (!res.ok) {
+            console.log(await res.text());
             throw new Error("Failed to save club");
           }
       
           const club = await res.json();
       
-          setSavedClubId(club.id);
-      
+          setSavedClubId(club.id);     
           setStep("media");
       
         } catch (err) {
-      
-          console.error(err);
+           console.error(err);
       
         } finally {
-      
-          setLoading(false);
+           setLoading(false);
       
         }
       };
       
-      const handleUpdate = async () => {
-      
-        if (!savedClubId) return;
-      
-        try {
-      
+      const handleUpdate = async () => {      
+        if (!savedClubId) return;      
+        try {      
           setLoading(true);
-      
+          
+          const payload = {
+            ...form,
+            indoorCourts: Number(form.indoorCourts || 0),
+            outdoorCourts: Number(form.outdoorCourts || 0),
+            numberOfLocations: Number(form.numberOfLocations || 1),
+          };
           const res = await fetch(
             `/api/admin/clubs/${savedClubId}`,
             {
@@ -264,7 +273,7 @@ export function ClubForm({
               headers: {
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify(form),
+              body: JSON.stringify(payload),
             }
           );
       
@@ -284,7 +293,50 @@ export function ClubForm({
       
         } finally {
       
-          setLoading(false);
+          setLoading(false);      
+        }      
+      };
+
+      const saveMedia = async (
+        data: Partial<{
+          image: string;
+          logo: string;
+          cover: string;
+          gallery: string[];
+        }>
+      ) => {
+      
+        if (!savedClubId) return;
+      
+        try {
+      
+          const payload = {
+            ...form,
+            ...data,
+            indoorCourts: Number(form.indoorCourts || 0),
+            outdoorCourts: Number(form.outdoorCourts || 0),
+            numberOfLocations: Number(form.numberOfLocations || 1),
+          };
+      
+          const res = await fetch(
+            `/api/admin/clubs/${savedClubId}`,
+            {
+              method: "PUT",
+              credentials: "include",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(payload),
+            }
+          );
+      
+          if (!res.ok) {
+            throw new Error("Failed to save media");
+          }
+      
+        } catch (err) {
+      
+          console.error(err);
       
         }
       
@@ -295,8 +347,15 @@ export function ClubForm({
       
       };
         
-      const handleDone = () => {     
-        onSaved?.();     
+      const handleDone = () => {
+
+        toast({
+          description:
+            mode === "create"
+              ? "Club Community has been successfully created."
+              : "Club Community has been successfully updated.",
+        });      
+        onSaved?.();
         onClose();
       
       };
@@ -306,28 +365,23 @@ return (
       className="space-y-10"
       data-testid="club-form"
     >
-     <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between">
 
-        <div>
+          <div>
+            <h2 className="text-xl font-bold">
+                {step === "details"
+                ? "Club Details"
+                : "Upload Media"}
+            </h2>
 
-        <h2 className="text-xl font-bold">
-            {step === "details"
-            ? "Club Details"
-            : "Upload Media"}
-        </h2>
+            <p className="text-sm text-muted-foreground">
+                Step {step === "details" ? "1" : "2"} of 2
+            </p>
+          </div>
 
-        <p className="text-sm text-muted-foreground">
-            Step {step === "details" ? "1" : "2"} of 2
-        </p>
+      </div>
 
-        </div>
-
-        </div>
-
-        <Separator />
-      {/* ===================================================================== */}
       {/* STEP 1 */}
-      {/* ===================================================================== */}
   
       {step === "details" && (
         <>
@@ -336,61 +390,38 @@ return (
             onChange={(value) =>
               updateField("listingType", value)
             }
-          />
-  
-          <Separator />
-  
+          />   
           <ClubBasicSection
             form={form}
             updateField={updateField}
-          />
-  
-          <Separator />
-  
+          />    
           <ClubLocationSection
             form={form}
             updateField={updateField}
-          />
-  
-          <Separator />
-  
+          />  
           <ClubContactSection
             form={form}
             updateField={updateField}
           />
-  
-          <Separator />
-  
           <ClubServicesSection
             form={form}
             updateField={updateField}
           />
-  
-          <Separator />
-  
+          <ClubCourtsSection
+                form={form}
+                updateField={updateField}
+              />  
           <ClubPricingSection
             form={form}
             updateField={updateField}
           />
   
           {form.listingType === "premium" && (
-            <>
-              <Separator />
-  
-              <ClubCourtsSection
-                form={form}
-                updateField={updateField}
-              />
-  
-              <Separator />
-  
+            <> 
               <ClubCompetitionSection
                 form={form}
                 updateField={updateField}
-              />
-  
-              <Separator />
-  
+              /> 
               <ClubSeoSection
                 form={form}
                 updateField={updateField}
@@ -400,24 +431,17 @@ return (
         </>
       )}
   
-      {/* ===================================================================== */}
       {/* STEP 2 */}
-      {/* ===================================================================== */}
-  
       {step === "media" && (
         <ClubImageSection
         clubId={savedClubId}
         form={form}
         updateField={updateField}
+        saveMedia={saveMedia}
     />
       )}
-  
-      <Separator />
-  
-      {/* ===================================================================== */}
-      {/* FOOTER */}
-      {/* ===================================================================== */}
-  
+     
+      {/* FOOTER */}    
       <div className="flex items-center justify-between">
   
         {step === "details" ? (
@@ -437,11 +461,14 @@ return (
                   : handleUpdate
               }
               disabled={loading}
-              data-testid="club-save-btn"
             >
               {loading
-                ? "Saving..."
-                : "Save & Continue"}
+                ? (mode === "create"
+                    ? "Saving..."
+                    : "Updating...")
+                : (mode === "create"
+                    ? "Save & Continue"
+                    : "Update & Continue")}
             </Button>
           </>
         ) : (

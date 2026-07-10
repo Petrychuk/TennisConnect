@@ -17,6 +17,9 @@ import SEO from "@/components/seo";
 import { ClubForm } from "@/components/admin/clubs/ClubForm";
 import { clubValidationSchema, articleSchema, travelSchema, recreationSchema, tournamentSchema } from "@/lib/validations";
 import AdminUsersTab from "@/components/admin/users_tab";
+import { ClubAdminCard } from "@/components/admin/clubs/ClubAdminCard";
+import { ClubPreviewDialog } from "@/components/admin/clubs/ClubPreviewDialog";
+
 
 type Resource = "articles" | "travel" | "recreation" | "event-tournaments" | "clubs" ; 
 type AdminTab = Resource | "users";
@@ -175,11 +178,15 @@ export default function AdminPage() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
+  const [editingClubId, setEditingClubId] = useState<string>();
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [dialogOpen, setDialogOpen] = useState(false);
  
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<any>(null);
+  const [clubs, setClubs] = useState<any[]>([]);
+  const [previewClub, setPreviewClub] = useState<any>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const isAdmin = !!user?.isAdmin;
 
@@ -211,6 +218,14 @@ export default function AdminPage() {
 
     fetchItems(activeTab);
   }, [activeTab, isAdmin]);
+
+  useEffect(() => {
+    if (activeTab === "clubs") {
+  
+      loadClubs();  
+    }  
+  }, [activeTab]);
+
 
   if (isLoading) {
     return (
@@ -250,6 +265,8 @@ export default function AdminPage() {
 
   const openCreate = () => {
     setEditing(null);
+    setEditingClubId(undefined);
+
     const blank: Record<string, any> = {};
     
     if (!isContentTab(activeTab)) return;
@@ -266,6 +283,15 @@ export default function AdminPage() {
   };
 
   const openEdit = (item: any) => {
+    
+    if (activeTab === "clubs") {
+
+      setEditingClubId(item.id);
+      setDialogOpen(true);
+  
+      return;  
+    }
+
     setEditing(item);
     const data: Record<string, any> = {};
 
@@ -408,8 +434,10 @@ export default function AdminPage() {
   
       setDeleteDialogOpen(false);
       setItemToDelete(null);
-  
-      if (isContentTab(activeTab)) {
+
+      if (activeTab === "clubs") {
+        await loadClubs();
+      } else if (isContentTab(activeTab)) {
         fetchItems(activeTab);
       }
     } catch (e: any) {
@@ -428,6 +456,73 @@ export default function AdminPage() {
   const deleteLabel = isContentTab(activeTab)
   ? RESOURCE_LABELS[activeTab].slice(0, -1)
   : "User";
+ 
+  // control to close genaral modals window by icon "X"
+  const handleDialogClose = () => {
+
+    setEditing(null);
+    setEditingClubId(undefined);
+  
+    setDialogOpen(false);
+  
+  };
+
+  const loadClubs = async () => {
+    try {
+      const res = await fetch("/api/admin/clubs", {
+        credentials: "include",
+      });
+  
+      if (!res.ok) {
+        throw new Error("Failed to load clubs");
+      }
+  
+      const data = await res.json(); 
+      setClubs(data);
+  
+    } catch (err) { 
+      console.error(err);
+  
+    }
+  };
+
+  // Func published a new or edit club
+  const publishClub = async () => {
+    if (!previewClub) return;
+  
+    try {
+      const res = await fetch(
+        `/api/admin/clubs/${previewClub.id}/publish`,
+        {
+          method: "PATCH",
+          credentials: "include",
+        }
+      );
+  
+      if (!res.ok) {
+        throw new Error("Failed to publish club");
+      }
+  
+      const updatedClub = await res.json();
+  
+      setPreviewClub(updatedClub);
+      setPreviewOpen(false);
+  
+      loadClubs();
+  
+      toast({
+        title: "Club Community Published",
+        description: `${updatedClub.name} is now visible in the Clubs directory.`,
+      });
+  
+    } catch (e: any) {
+      toast({
+        variant: "destructive",
+        title: "Publishing failed",
+        description: e.message,
+      });
+    }
+  };  
 
   return (
     <>
@@ -500,21 +595,52 @@ export default function AdminPage() {
                   <div className="text-center py-12 text-muted-foreground">
                     Loading…
                   </div>
-                ) : items.length === 0 ? (
-                  <div className="text-center py-20">
-                    <ActiveIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-xl font-bold mb-2">
-                      No items yet
-                    </h3>
+                 ) : r === "clubs" ? (
 
-                    <Button
-                      onClick={openCreate}
-                      variant="outline"
-                    >
-                      Create first {RESOURCE_LABELS[r].toLowerCase()}
-                    </Button>
-                  </div>
-                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  
+                      {clubs.map((club) => (
+                  
+                        <ClubAdminCard
+                          key={club.id}
+                          club={club}
+                  
+                          onEdit={() => openEdit(club)}
+                  
+                          onPreview={() => {
+                            setPreviewClub(club);
+                            setPreviewOpen(true);
+                          }}
+                  
+                          onToggleStatus={() => {
+                            console.log("Toggle", club.id);
+                          }}
+                  
+                          onDelete={() => {
+                            remove(club);
+                          }}
+                        />                 
+                      ))}
+                  
+                    </div>
+                  
+                    ) : items.length === 0 ? (
+                    <div className="text-center py-20">
+                      <ActiveIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="text-xl font-bold mb-2">
+                        No items yet
+                      </h3>
+  
+                      <Button
+                        onClick={openCreate}
+                        variant="outline"
+                      >
+                        Create first {RESOURCE_LABELS[r].toLowerCase()}
+                      </Button>
+                    </div>
+                  
+                  ) : (
+                                    
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 
                     {items.map((item) => (
@@ -579,8 +705,23 @@ export default function AdminPage() {
 
         </div>
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <Dialog 
+            open={dialogOpen}
+            onOpenChange={(open) => {
+
+              if (open) {
+                setDialogOpen(true);
+              } else {
+                handleDialogClose();
+              }
+          
+            }}
+            >
+          <DialogContent 
+             className="sm:max-w-2xl max-h-[90vh] overflow-y-auto"
+             onPointerDownOutside={(e) => e.preventDefault()}
+             onEscapeKeyDown={(e) => e.preventDefault()}
+             >
             <DialogHeader>
               <DialogTitle>{editing ? "Edit" : "Create"}{" "} {activeLabel}</DialogTitle>
             </DialogHeader>
@@ -589,12 +730,17 @@ export default function AdminPage() {
             {activeTab === "clubs" ? (
 
             <ClubForm
-              mode={editing ? "edit" : "create"}
-              clubId="" /* {editing ? editingId : ""} */
-              onClose={() => setDialogOpen(false)}
+              mode={editingClubId ? "edit" : "create"}
+              clubId={editingClubId}
+              onClose={() => {
+                setEditingClubId(undefined);
+                setDialogOpen(false)
+              }}
+              
               onSaved={() => {
+                setEditingClubId(undefined);
                 setDialogOpen(false);
-                // сюда позже добавим refetchClubs();
+                loadClubs();
               }}
               />
 
@@ -720,9 +866,9 @@ export default function AdminPage() {
           >
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-              <DialogTitle>
-              Delete {deleteLabel}
-              </DialogTitle>
+                <DialogTitle>
+                Delete {deleteLabel}
+                </DialogTitle>
                 <DialogDescription>
                   Are you sure you want to delete
                   <strong>
@@ -755,7 +901,21 @@ export default function AdminPage() {
               </div>
             </DialogContent>
         </Dialog>
-
+        <ClubPreviewDialog
+            open={previewOpen}
+            club={previewClub}
+            onClose={() => {
+                setPreviewOpen(false);
+                setPreviewClub(null);
+            }}
+            onEdit={() => {
+              setPreviewOpen(false);
+          
+              setEditingClubId(previewClub.id);
+              setDialogOpen(true);
+            }}
+            onToggleStatus={publishClub}
+        />
         <Footer />
       </div>
     </>

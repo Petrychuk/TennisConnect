@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 
 import { Upload, Trash2, Loader2 } from "lucide-react";
-
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
@@ -14,19 +14,13 @@ import {
 
 interface ImageUploaderProps {
   folder: ContentFolder;
-
   entityId: string;
-
   type: ContentImageType;
-
   value?: string;
-
   label: string;
-
   description?: string;
 
   onUploaded: (url: string) => void;
-
   onDeleted?: () => void;
 }
 
@@ -43,14 +37,12 @@ export function ImageUploader({
 
   const inputRef =
     useRef<HTMLInputElement>(null);
-
+  const { toast } = useToast();
   const [loading, setLoading] =
     useState(false);
 
-  // ==========================================================
   // Upload Image
-  // ==========================================================
-
+ 
   async function handleUpload(
     e: React.ChangeEvent<HTMLInputElement>
   ) {
@@ -77,9 +69,11 @@ export function ImageUploader({
 
       console.error(err);
 
-      alert(
-        "Failed to upload image."
-      );
+      toast({
+        variant: "destructive",
+        title: "Upload failed",
+        description: "Unable to upload image.",
+    });
 
     } finally {
 
@@ -90,9 +84,8 @@ export function ImageUploader({
     }
 
   }
-    // ==========================================================
+  
   // Delete Image
-  // ==========================================================
 
   async function handleDelete() {
 
@@ -103,7 +96,6 @@ export function ImageUploader({
       setLoading(true);
 
       const url = new URL(value);
-
       const path = url.pathname
         .split("/media/")
         .pop();
@@ -136,11 +128,9 @@ export function ImageUploader({
       className="space-y-4"
       data-testid={`${type}-uploader`}
     >
-
-      {/* ====================================================== */}
-      {/* Heading */}
-      {/* ====================================================== */}
-
+    
+    {/* Heading */}
+     
       <div>
 
         <Label className="text-base font-semibold">
@@ -157,9 +147,7 @@ export function ImageUploader({
 
       </div>
 
-      {/* ====================================================== */}
       {/* Hidden Input */}
-      {/* ====================================================== */}
 
       <input
         ref={inputRef}
@@ -169,10 +157,8 @@ export function ImageUploader({
         onChange={handleUpload}
       />
 
-      {/* ====================================================== */}
       {/* Preview */}
-      {/* ====================================================== */}
-
+      
       <div
         className="
           rounded-2xl
@@ -214,25 +200,15 @@ export function ImageUploader({
             <Upload
               className="mb-4 h-10 w-10 text-muted-foreground"
             />
-
             <p className="font-medium">
-
               No image uploaded
-
             </p>
-
             <p className="mt-2 text-sm text-muted-foreground">
-
               PNG, JPG or WEBP
-
             </p>
-
             <p className="text-sm text-muted-foreground">
-
               Maximum file size 10 MB
-
             </p>
-
           </div>
 
         )}
@@ -292,11 +268,7 @@ export function ImageUploader({
           </Button>
 
         )}
-
       </div>
-
     </section>
-
   );
-
 }

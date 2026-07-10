@@ -60,9 +60,7 @@ export function ClubBasicSection({
 
       </div>
 
-      {/* ====================================================== */}
       {/* Slug */}
-      {/* ====================================================== */}
 
       <div className="space-y-2">
 
@@ -86,10 +84,8 @@ export function ClubBasicSection({
 
       </div>
 
-      {/* ====================================================== */}
       {/* Category */}
-      {/* ====================================================== */}
-
+ 
       <div className="space-y-2">
         <Label htmlFor="club-category">
             Category *
@@ -120,10 +116,8 @@ export function ClubBasicSection({
             </SelectContent>
         </Select>
         </div>
-
-      {/* ====================================================== */}
+      
       {/* Short Description */}
-      {/* ====================================================== */}
 
       <div className="space-y-2">
 
@@ -150,11 +144,12 @@ export function ClubBasicSection({
         </p>
 
       </div>
-
-      {/* ====================================================== */}
+     
+      {form.listingType === "premium" && (
+       <>
+      
       {/* Description */}
-      {/* ====================================================== */}
-
+      
       <div className="space-y-2">
 
         <Label htmlFor="club-description">
@@ -176,6 +171,8 @@ export function ClubBasicSection({
         />
 
       </div>
+      </>
+    )}
 
     </section>
   );

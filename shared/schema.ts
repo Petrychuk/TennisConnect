@@ -219,7 +219,9 @@ export const clubs = pgTable("clubs", {
   // Basic Information
   name: text("name").notNull(),
   slug: text("slug").unique(),
-  category: text("category").notNull(),
+  category: text("category")
+  .default("club")
+  .notNull(),
   shortDescription: text("short_description"),
   description: text("description").notNull(),
 
@@ -284,7 +286,7 @@ export const clubs = pgTable("clubs", {
 
   // Pricing
   // General pricing (membership, competitions, social tennis, etc.)
-  price: text("price"), // Legacy
+  /* price: text("price"), */ // Legacy
   hourlyPrice: numeric("hourly_price", {
     precision: 10,
     scale: 2,
@@ -316,7 +318,7 @@ export const clubs = pgTable("clubs", {
   ctaUrl: text("cta_url"),
   
   // Rating
-  rating: real("rating"),
+  rating: text("rating"),
 
   // Dates
   createdAt: timestamp("created_at")

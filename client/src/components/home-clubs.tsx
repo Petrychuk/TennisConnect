@@ -5,25 +5,25 @@ import { Building2, ArrowRight, MapPin, Star, Phone } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CLUBS_DATA } from "@/lib/dummy-data";
 
 interface Club {
-  id: string | number;
+  id: string;
+  slug: string;
   name: string;
-  location: string;
-  description: string;
+  state: string;
+  suburb: string;
+  shortDescription: string;
   services: string[];
-  price: string;
+  hourlyPrice: string;
+  pricingNotes: string;
   phone: string;
   website: string | null;
   image: string | null;
-  rating: number | null;
+  rating?: number | null;
 }
 
 export function HomeClubs() {
-  const [items, setItems] = useState<Club[]>(
-    CLUBS_DATA.slice(0, 3)
-  );
+  const [items, setItems] = useState<Club[]>([]);
 
   useEffect(() => {
     fetch("/api/clubs", { credentials: "include" })
@@ -128,13 +128,14 @@ export function HomeClubs() {
                     <div className="absolute bottom-3 left-4 right-4 text-white">
                       <h3 className="font-bold text-xl mb-1 line-clamp-1">{club.name}</h3>
                       <div className="flex items-center gap-1 text-sm opacity-90">
-                        <MapPin className="w-3 h-3" /> {club.location}
+                        <MapPin className="w-3 h-3" /> {club.suburb}
+                        {club.state ? `, ${club.state}` : ""}
                       </div>
                     </div>
                   </div>
 
                   <CardContent className="p-5">
-                    <p className="text-sm text-gray-300 line-clamp-2 mb-4">{club.description}</p>
+                    <p className="text-sm text-gray-300 line-clamp-2 mb-4">{club.shortDescription}</p>
 
                     <div className="flex flex-wrap gap-1.5 mb-4">
                       {(club.services || []).slice(0, 3).map((s) => (
@@ -151,12 +152,22 @@ export function HomeClubs() {
 
                     <div className="flex items-end justify-between pt-3 border-t border-zinc-800">
                       <div>
-                        <p className="text-xs text-gray-400">From</p>
-                        <p className="text-xl font-display font-bold">
-                          ${club.price}
-                          <span className="text-xs text-gray-400 font-normal ml-1">/hr</span>
-                        </p>
-                      </div>
+                      <p className="text-xs text-gray-400">
+                        Hourly Price
+                          </p>
+
+                          <p className="text-xl font-display font-bold">
+                              {club.hourlyPrice
+                                  ? `$${club.hourlyPrice}`
+                                  : "Contact Club"}
+                          </p>
+
+                          {club.pricingNotes && (
+                              <p className="text-xs text-gray-400 mt-1 line-clamp-1">
+                                  {club.pricingNotes}
+                              </p>
+                          )}
+                                          </div>
                       <span className="text-sm font-bold text-primary group-hover:underline">View →</span>
                     </div>
                   </CardContent>

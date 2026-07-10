@@ -17,24 +17,14 @@ export function ClubPricingSection({
   form,
   updateField,
 }: ClubPricingSectionProps) {
-  // ===========================================================================
-  // Derived State
-  // ===========================================================================
-
-  const hasCourtHire =
-    form.services.includes("court-hire");
-
   return (
     <section
       className="space-y-8"
       data-testid="club-pricing-section"
     >
-      {/* ====================================================== */}
       {/* Heading */}
-      {/* ====================================================== */}
 
       <div>
-
         <h2
           className="text-2xl font-display font-semibold"
           data-testid="club-pricing-heading"
@@ -46,92 +36,49 @@ export function ClubPricingSection({
           className="mt-1 text-sm text-muted-foreground"
           data-testid="club-pricing-description"
         >
-          Configure pricing information shown on the club listing.
+          Configure the price displayed on the club listing.
         </p>
-
       </div>
 
-      {/* ====================================================== */}
-      {/* General Price */}
-      {/* ====================================================== */}
+      {/* Price */}
 
       <div className="space-y-2">
 
-        <Label htmlFor="club-price">
-          General Price
+        <Label htmlFor="club-hourly-price">
+          Price
         </Label>
 
         <Input
-          id="club-price"
-          data-testid="club-price"
-          placeholder="Free, $15 Social Tennis, $120 Annual Membership..."
-          value={form.price}
+          id="club-hourly-price"
+          data-testid="club-hourly-price"
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="42"
+          value={form.hourlyPrice}
           onChange={(e) =>
-            updateField(
-              "price",
-              e.target.value
-            )
+            updateField("hourlyPrice", e.target.value)
           }
         />
 
         <p className="text-xs text-muted-foreground">
-          Used for memberships, competitions, social tennis,
-          academy pricing or any general pricing information.
+          Enter the price only (for example: 42).
         </p>
 
       </div>
-
-      {/* ====================================================== */}
-      {/* Court Hire Price */}
-      {/* ====================================================== */}
-
-      {hasCourtHire && (
-
-        <div className="space-y-2">
-
-          <Label htmlFor="club-hourly-price">
-            Hourly Court Hire Price
-          </Label>
-
-          <Input
-            id="club-hourly-price"
-            data-testid="club-hourly-price"
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="45.00"
-            value={form.hourlyPrice}
-            onChange={(e) =>
-              updateField(
-                "hourlyPrice",
-                e.target.value
-              )
-            }
-          />
-
-          <p className="text-xs text-muted-foreground">
-            Displayed only when Court Hire service is available.
-          </p>
-
-        </div>
-
-      )}
-
-      {/* ====================================================== */}
-      {/* Pricing Notes */}
-      {/* ====================================================== */}
+      {/* Price Description */}
 
       <div className="space-y-2">
 
         <Label htmlFor="club-pricing-notes">
-          Pricing Notes
+          Price Description
         </Label>
 
         <Textarea
           id="club-pricing-notes"
           data-testid="club-pricing-notes"
-          rows={4}
-          placeholder="Optional information about memberships, discounts, booking conditions or equipment..."
+          rows={3}
+          placeholder="e.g. Court Hire, Social Tennis Session, Casual Entry, Annual Membership..."
           value={form.pricingNotes}
           onChange={(e) =>
             updateField(
@@ -142,35 +89,29 @@ export function ClubPricingSection({
         />
 
         <p className="text-xs text-muted-foreground">
-          Optional. Visible on the premium club page.
+          This text appears directly below the price on the club card.
         </p>
 
       </div>
 
-      {/* ====================================================== */}
       {/* Premium Placeholder */}
-      {/* ====================================================== */}
 
       {form.listingType === "premium" && (
-
         <div
           className="rounded-2xl border border-dashed p-6"
           data-testid="club-premium-pricing-placeholder"
         >
-
           <h3 className="font-semibold">
             Premium Pricing
           </h3>
 
           <p className="mt-2 text-sm text-muted-foreground">
-            Additional pricing options such as Membership Required,
-            Public Access and Online Booking will be available here.
+            Additional pricing options such as memberships,
+            online booking and pricing tables will be available
+            for Premium listings.
           </p>
-
         </div>
-
       )}
-
     </section>
   );
 }
