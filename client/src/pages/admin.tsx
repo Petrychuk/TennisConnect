@@ -12,13 +12,22 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, ShieldCheck, FileText, Plane, Heart, Trophy, Users, Building2 } from "lucide-react";
+import { Plus, Edit, Trash2, ShieldCheck, FileText, Plane, Heart, Trophy, Users, Building2, Eye, Globe, } from "lucide-react";
 import SEO from "@/components/seo";
 import { ClubForm } from "@/components/admin/clubs/ClubForm";
 import { clubValidationSchema, articleSchema, travelSchema, recreationSchema, tournamentSchema } from "@/lib/validations";
 import AdminUsersTab from "@/components/admin/users_tab";
 import { ClubAdminCard } from "@/components/admin/clubs/ClubAdminCard";
 import { ClubPreviewDialog } from "@/components/admin/clubs/ClubPreviewDialog";
+import { AppPagination } from "@/components/shared/AppPagination";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 
 type Resource = "articles" | "travel" | "recreation" | "event-tournaments" | "clubs" ; 
@@ -189,6 +198,17 @@ export default function AdminPage() {
   const [previewOpen, setPreviewOpen] = useState(false);
 
   const isAdmin = !!user?.isAdmin;
+
+  const [search, setSearch] = useState("");
+  const [listingFilter, setListingFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 15;
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, listingFilter, statusFilter]);
 
   const fetchItems = async (resource: Resource) => {
     setLoading(true);
@@ -487,12 +507,15 @@ export default function AdminPage() {
   };
 
   // Func published a new or edit club
-  const publishClub = async () => {
-    if (!previewClub) return;
-  
+  const toggleClubStatus = async (club: any) => {
     try {
+      const endpoint =
+        club.status === "published"
+          ? "unpublish"
+          : "publish";
+  
       const res = await fetch(
-        `/api/admin/clubs/${previewClub.id}/publish`,
+        `/api/admin/clubs/${club.id}/${endpoint}`,
         {
           method: "PATCH",
           credentials: "include",
@@ -500,29 +523,61 @@ export default function AdminPage() {
       );
   
       if (!res.ok) {
-        throw new Error("Failed to publish club");
+        throw new Error("Failed to update status");
       }
   
       const updatedClub = await res.json();
   
-      setPreviewClub(updatedClub);
-      setPreviewOpen(false);
+      setClubs((prev) =>
+        prev.map((c) =>
+          c.id === updatedClub.id ? updatedClub : c
+        )
+      );
   
-      loadClubs();
+      if (previewClub?.id === updatedClub.id) {
+        setPreviewClub(updatedClub);
+      }
   
       toast({
-        title: "Club Community Published",
-        description: `${updatedClub.name} is now visible in the Clubs directory.`,
+        title:
+          updatedClub.status === "published"
+            ? "Club Published"
+            : "Club Hidden",
+        description: updatedClub.name,
       });
   
     } catch (e: any) {
       toast({
         variant: "destructive",
-        title: "Publishing failed",
+        title: "Status update failed",
         description: e.message,
       });
     }
-  };  
+  }; 
+  
+  const filteredClubs = clubs.filter((club) => {
+    const matchesSearch =
+      club.name.toLowerCase().includes(search.toLowerCase());
+  
+    const matchesListing =
+      listingFilter === "all" ||
+      club.listingType === listingFilter;
+  
+    const matchesStatus =
+      statusFilter === "all" ||
+      club.status === statusFilter;
+  
+    return matchesSearch && matchesListing && matchesStatus;
+  });
+  
+  const totalPages = Math.ceil(
+    filteredClubs.length / PAGE_SIZE
+  );
+  
+  const paginatedClubs = filteredClubs.slice(
+    (page - 1) * PAGE_SIZE,
+    page * PAGE_SIZE
+  );
 
   return (
     <>
@@ -596,33 +651,190 @@ export default function AdminPage() {
                     Loading…
                   </div>
                  ) : r === "clubs" ? (
+                  <>
+                  <p className="mb-4 text-sm text-muted-foreground">
+                    Showing {filteredClubs.length} club{filteredClubs.length !== 1 ? "s" : ""}
+                  </p>
+                  <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  
-                      {clubs.map((club) => (
-                  
-                        <ClubAdminCard
-                          key={club.id}
-                          club={club}
-                  
-                          onEdit={() => openEdit(club)}
-                  
-                          onPreview={() => {
-                            setPreviewClub(club);
-                            setPreviewOpen(true);
-                          }}
-                  
-                          onToggleStatus={() => {
-                            console.log("Toggle", club.id);
-                          }}
-                  
-                          onDelete={() => {
-                            remove(club);
-                          }}
-                        />                 
-                      ))}
-                  
+                    <Input
+                      placeholder="Search clubs..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="md:w-80"
+                    />
+
+                    <div className="flex gap-3">
+
+                      <select
+                        value={listingFilter}
+                        onChange={(e) => setListingFilter(e.target.value)}
+                        className="
+                          h-10
+                          rounded-md
+                          border
+                          bg-background
+                          px-3
+                          text-sm
+                        "
+                      >
+                        <option value="all">All Listings</option>
+                        <option value="free">Free</option>
+                        <option value="featured">Featured</option>
+                        <option value="premium">Premium</option>
+                      </select>
+
+                      <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="
+                          h-10
+                          rounded-md
+                          border
+                          bg-background
+                          px-3
+                          text-sm
+                        "
+                      >
+                        <option value="all">All Statuses</option>
+                        <option value="published">Published</option>
+                        <option value="hidden">Hidden</option>
+                        <option value="draft">Draft</option>
+                        <option value="expired">Expired</option>
+                      </select>
+
                     </div>
+
+                  </div>
+                  <div className="rounded-xl border bg-card overflow-hidden">
+
+                  <Table>
+                
+                    <TableHeader>
+                      <TableRow>
+                
+                        <TableHead>Club</TableHead>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Listing</TableHead>
+                        <TableHead>Status</TableHead>
+                
+                        <TableHead className="text-centre">
+                          Actions
+                        </TableHead>
+                
+                      </TableRow>
+                    </TableHeader>
+                
+                    <TableBody>
+                
+                      {paginatedClubs.map((club) => (
+                
+                        <TableRow key={club.id}>
+                
+                          <TableCell className="font-medium">
+                            {club.name}
+                          </TableCell>
+                
+                          <TableCell>
+                            {[club.suburb, club.state]
+                              .filter(Boolean)
+                              .join(", ")}
+                          </TableCell>
+                
+                          <TableCell>
+                
+                            <Badge
+                              variant={
+                                club.listingType === "premium"
+                                  ? "default"
+                                  : "secondary"
+                              }
+                            >
+                              {club.listingType}
+                            </Badge>
+                
+                          </TableCell>
+                
+                          <TableCell>
+                
+                            <Badge
+                              variant={
+                                club.status === "published"
+                                  ? "default"
+                                  : "outline"
+                              }
+                            >
+                              {club.status}
+                            </Badge>
+                
+                          </TableCell>
+                
+                          <TableCell>
+                
+                            <div className="flex justify-end gap-2">
+                
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => openEdit(club)}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => {
+                                  setPreviewClub(club);
+                                  setPreviewOpen(true);
+                                }}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                
+                              <Button
+                                size="icon"
+                                variant={
+                                  club.status === "published"
+                                    ? "default"
+                                    : "outline"
+                                }
+                                onClick={() =>
+                                  toggleClubStatus(club)
+                                }
+                              >
+                                <Globe className="w-4 h-4" />
+                              </Button>
+                
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => remove(club)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                
+                            </div>
+                
+                          </TableCell>
+                
+                        </TableRow>
+                
+                      ))}
+                
+                    </TableBody>
+                
+                  </Table>
+                
+                  
+                  <AppPagination
+                      currentPage={page}
+                      totalPages={totalPages}
+                      onPageChange={setPage}
+                  />
+                  </div>
+                  </>
                   
                     ) : items.length === 0 ? (
                     <div className="text-center py-20">
@@ -638,7 +850,6 @@ export default function AdminPage() {
                         Create first {RESOURCE_LABELS[r].toLowerCase()}
                       </Button>
                     </div>
-                  
                   ) : (
                                     
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -914,7 +1125,7 @@ export default function AdminPage() {
               setEditingClubId(previewClub.id);
               setDialogOpen(true);
             }}
-            onToggleStatus={publishClub}
+            onToggleStatus={() => toggleClubStatus(previewClub)}
         />
         <Footer />
       </div>

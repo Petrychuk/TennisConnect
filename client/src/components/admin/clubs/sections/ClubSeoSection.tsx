@@ -2,10 +2,8 @@ import type { ClubFormData } from "../ClubForm";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-
 interface ClubSeoSectionProps {
   form: ClubFormData;
-
   updateField: <
     K extends keyof ClubFormData
   >(
@@ -28,19 +26,14 @@ export function ClubSeoSection({
       className="space-y-8"
       data-testid="club-seo-section"
     >
-
-      {/* ====================================================== */}
       {/* Heading */}
-      {/* ====================================================== */}
 
       <div>
-
         <h2
           className="text-2xl font-display font-semibold"
         >
           SEO
         </h2>
-
         <p
           className="mt-1 text-sm text-muted-foreground"
         >
@@ -50,12 +43,9 @@ export function ClubSeoSection({
 
       </div>
 
-      {/* ====================================================== */}
       {/* Free Listing */}
-      {/* ====================================================== */}
 
       {!isPremium && (
-
         <div
           className="
             rounded-2xl
@@ -66,56 +56,34 @@ export function ClubSeoSection({
           "
           data-testid="seo-premium-required"
         >
-
           <h3 className="font-semibold">
             Premium Feature
           </h3>
 
           <p className="mt-2 text-sm text-muted-foreground">
-
             SEO optimisation is available only for
             Premium Club Communities.
-
           </p>
-
           <ul className="mt-5 space-y-2 text-sm text-muted-foreground">
-
             <li>✓ Custom SEO Title</li>
-
             <li>✓ Meta Description</li>
-
             <li>✓ Meta Keywords</li>
-
             <li>✓ Google Search Preview</li>
-
             <li>✓ Better Google ranking</li>
-
           </ul>
-
         </div>
-
       )}
 
-      {/* ====================================================== */}
       {/* Premium SEO */}
-      {/* ====================================================== */}
 
       {isPremium && (
-
         <>
-
           {/* SEO Title */}
-
           <div className="space-y-2">
-
             <div className="flex items-center justify-between">
-
               <Label htmlFor="seo-title">
-
                 SEO Title
-
               </Label>
-
               <span
                 className={`text-xs ${
                   form.seoTitle.length > 60
@@ -125,7 +93,6 @@ export function ClubSeoSection({
               >
                 {form.seoTitle.length} / 60
               </span>
-
             </div>
 
             <Input
@@ -146,18 +113,14 @@ export function ClubSeoSection({
             </p>
 
           </div>
-                    {/* ====================================================== */}
+              
           {/* Meta Description */}
-          {/* ====================================================== */}
 
           <div className="space-y-2">
-
             <div className="flex items-center justify-between">
-
               <Label htmlFor="meta-description">
                 Meta Description
               </Label>
-
               <span
                 className={`text-xs ${
                   form.metaDescription.length > 160
@@ -199,17 +162,12 @@ export function ClubSeoSection({
             />
 
             <p className="text-xs text-muted-foreground">
-
               Recommended length:
               140–160 characters.
-
             </p>
-
           </div>
 
-          {/* ====================================================== */}
           {/* Meta Keywords */}
-          {/* ====================================================== */}
 
           <div className="space-y-2">
 
@@ -229,23 +187,17 @@ export function ClubSeoSection({
                 )
               }
             />
-
             <p className="text-xs text-muted-foreground">
-
               Separate keywords with commas.
-
             </p>
-
           </div>
-                    {/* ====================================================== */}
+        
           {/* Google Preview */}
-          {/* ====================================================== */}
 
           <div
             className="rounded-2xl border bg-muted/30 p-6"
             data-testid="club-google-preview"
           >
-
             <h3 className="font-semibold">
               Google Search Preview
             </h3>
@@ -256,11 +208,8 @@ export function ClubSeoSection({
             </p>
 
             <div className="mt-6 rounded-xl border bg-background p-5">
-
               <p className="text-xs text-green-700">
-
                 www.tennisconnect.com.au/clubs/
-
                 {form.slug || "your-club"}
 
               </p>
@@ -270,29 +219,16 @@ export function ClubSeoSection({
                 {form.seoTitle ||
                   form.name ||
                   "Club Name"}
-
               </h4>
-
               <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-
                 {form.metaDescription ||
-
                   form.shortDescription ||
-
                   "Your club description will appear here."}
-
               </p>
-
             </div>
-
           </div>
-
         </>
-
       )}
-
     </section>
-
   );
-
 }

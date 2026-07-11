@@ -1,12 +1,9 @@
 import type { ClubFormData } from "../ClubForm";
-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-
 interface ClubPricingSectionProps {
   form: ClubFormData;
-
   updateField: <K extends keyof ClubFormData>(
     key: K,
     value: ClubFormData[K]

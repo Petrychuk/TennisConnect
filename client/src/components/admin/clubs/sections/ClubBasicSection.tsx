@@ -21,7 +21,6 @@ interface ClubBasicSectionProps {
     ) => void;
   }
 
-
 export function ClubBasicSection({
   form,
   updateField,
@@ -118,7 +117,6 @@ export function ClubBasicSection({
         </div>
       
       {/* Short Description */}
-
       <div className="space-y-2">
 
         <Label htmlFor="club-short-description">
@@ -148,8 +146,7 @@ export function ClubBasicSection({
       {form.listingType === "premium" && (
        <>
       
-      {/* Description */}
-      
+      {/* Description */}     
       <div className="space-y-2">
 
         <Label htmlFor="club-description">

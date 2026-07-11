@@ -19,7 +19,6 @@ export interface ClubFormProps {
   onClose: () => void;
   onSaved?: () => void;
 }
-
 export interface ClubFormData {
   // Listing
   listingType: "free" | "premium";
@@ -249,8 +248,7 @@ export function ClubForm({
            console.error(err);
       
         } finally {
-           setLoading(false);
-      
+           setLoading(false);     
         }
       };
       
@@ -281,8 +279,7 @@ export function ClubForm({
       
             throw new Error(
               "Failed to update club"
-            );
-      
+            );     
           }
       
           setStep("media");
@@ -304,12 +301,9 @@ export function ClubForm({
           cover: string;
           gallery: string[];
         }>
-      ) => {
-      
-        if (!savedClubId) return;
-      
-        try {
-      
+      ) => {      
+        if (!savedClubId) return;      
+        try {      
           const payload = {
             ...form,
             ...data,
@@ -334,10 +328,9 @@ export function ClubForm({
             throw new Error("Failed to save media");
           }
       
-        } catch (err) {
-      
+        } catch (err) {      
           console.error(err);
-      
+     
         }
       
       };
@@ -382,7 +375,7 @@ return (
       </div>
 
       {/* STEP 1 */}
-  
+ 
       {step === "details" && (
         <>
           <ClubListingType

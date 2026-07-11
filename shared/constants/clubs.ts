@@ -1,6 +1,5 @@
-// ============================================================================
+
 // CLUB COMMUNITIES
-// ============================================================================
 
 export const CLUB_CATEGORIES = [
     { value: "club", label: "🏆 Tennis Club" },
@@ -14,9 +13,7 @@ export const CLUB_CATEGORIES = [
   export type ClubCategory =
     (typeof CLUB_CATEGORIES)[number]["value"];
   
-  // ============================================================================
   // LISTING
-  // ============================================================================
   
   export const CLUB_LISTING_TYPES = [
     "free",
@@ -27,9 +24,8 @@ export const CLUB_CATEGORIES = [
   export type ClubListingType =
     (typeof CLUB_LISTING_TYPES)[number];
   
-  // ============================================================================
+  
   // STATUS
-  // ============================================================================
   
   export const CLUB_STATUS = [
     "draft",
@@ -41,9 +37,7 @@ export const CLUB_CATEGORIES = [
   export type ClubStatus =
     (typeof CLUB_STATUS)[number];
   
-  // ============================================================================
   // COURT SURFACES
-  // ============================================================================
   
   export const COURT_SURFACES = [
     { value: "hard", label: "Hard Court" },
@@ -56,14 +50,11 @@ export const CLUB_CATEGORIES = [
   export type CourtSurface =
     (typeof COURT_SURFACES)[number]["value"];
   
-  // ============================================================================
-  // CLUB SERVICES
-  // ============================================================================
-  
+  // CLUB SERVICES 
   export const CLUB_SERVICES = [
-    // ==========================================================================
-    // Court Hire
-    // ==========================================================================
+    
+  // Court Hire
+  
 
     {
       value: "court-hire",
@@ -81,9 +72,7 @@ export const CLUB_CATEGORIES = [
       group: "Courts",
     },
 
-    // ==========================================================================
     // Coaching
-    // ==========================================================================
 
     {
       value: "coaching",
@@ -96,8 +85,33 @@ export const CLUB_CATEGORIES = [
       group: "Coaching",
     },
     {
+      value: "hot-shots",
+      label: "Hot Shots",
+      group: "Coaching",
+    },
+    {
       value: "junior-tennis",
       label: "Junior Tennis",
+      group: "Coaching",
+    },
+    {
+      value: "junior-development",
+      label: "Junior Development",
+      group: "Coaching",
+    },
+    {
+      value: "school-holiday-camps",
+      label: "School Holiday Camps",
+      group: "Coaching",
+    },
+    {
+      value: "holiday-clinics",
+      label: "Holiday Clinics",
+      group: "Coaching",
+    },
+    {
+      value: "after-school-programs",
+      label: "After School Programs",
       group: "Coaching",
     },
     {
@@ -111,14 +125,12 @@ export const CLUB_CATEGORIES = [
       group: "Coaching",
     },
     {
-      value: "holiday-clinics",
-      label: "Holiday Clinics",
+      value: "birthday-parties",
+      label: "Kids Birthday Parties",
       group: "Coaching",
     },
 
-    // ==========================================================================
     // Community
-    // ==========================================================================
 
     {
       value: "social-tennis",
@@ -172,9 +184,7 @@ export const CLUB_CATEGORIES = [
       group: "Community",
     },
 
-    // ==========================================================================
     // Facilities
-    // ==========================================================================
 
     {
       value: "pro-shop",
@@ -232,9 +242,7 @@ export const CLUB_CATEGORIES = [
       group: "Facilities",
     },
 
-    // ==========================================================================
     // Extras
-    // ==========================================================================
 
     {
       value: "ball-machine",
@@ -261,9 +269,7 @@ export const CLUB_CATEGORIES = [
   export type ClubService =
   (typeof CLUB_SERVICES)[number]["value"];
   
-  // ============================================================================
   // COMPETITIONS
-  // ============================================================================
   
   export const HOSTED_COMPETITION_TYPES = [
     {

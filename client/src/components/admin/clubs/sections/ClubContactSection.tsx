@@ -11,7 +11,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CONTACT_PERSON_ROLES } from "@shared/constants/clubs";
-
 interface ClubContactSectionProps {
   form: ClubFormData;
 
@@ -36,37 +35,27 @@ export function ClubContactSection({
       className="space-y-8"
       data-testid="club-contact-section"
     >
-
       {/* Heading */}
-
       <div>
-
         <h2
           className="text-2xl font-display font-semibold"
           data-testid="club-contact-heading"
         >
           Contact Information
         </h2>
-
         <p
           className="mt-1 text-sm text-muted-foreground"
           data-testid="club-contact-description"
         >
           Public contact details displayed on TennisConnect.
         </p>
-
       </div>
-
       {/* Public Contact */}
-
       <div className="space-y-6">
-
         <div>
-
           <h3 className="text-lg font-semibold">
             Public Contact
           </h3>
-
           <p className="mt-1 text-sm text-muted-foreground">
             For a Free Listing provide at least a Website or an Email.
           </p>
@@ -74,13 +63,10 @@ export function ClubContactSection({
         </div>
 
         {/* Website */}
-
         <div className="space-y-2">
-
           <Label htmlFor="club-website">
             Website
           </Label>
-
           <Input
             id="club-website"
             data-testid="club-website"
@@ -97,13 +83,10 @@ export function ClubContactSection({
         </div>
 
         {/* Email */}
-
         <div className="space-y-2">
-
           <Label htmlFor="club-email">
             Public Email
           </Label>
-
           <Input
             id="club-email"
             type="email"
@@ -121,13 +104,9 @@ export function ClubContactSection({
         </div>
 
         {/* Premium Only */}
-
         {isPremium && (
-
           <>
-
-            {/* Phone */}
-
+           {/* Phone */}
             <div className="space-y-2">
 
               <Label htmlFor="club-phone">
@@ -169,12 +148,9 @@ export function ClubContactSection({
                   )
                 }
               />
-
             </div>
-
             {/* Instagram */}
-
-            <div className="space-y-2">
+           <div className="space-y-2">
 
               <Label htmlFor="club-instagram">
                 Instagram

@@ -1,8 +1,6 @@
 import type { ClubFormData } from "../ClubForm";
-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
 import {
   Select,
   SelectContent,
@@ -10,9 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
 import { AUSTRALIAN_STATES } from "@shared/constants/clubs";
-
 interface ClubLocationSectionProps {
   form: ClubFormData;
 
@@ -31,10 +27,8 @@ export function ClubLocationSection({
       className="space-y-8"
       data-testid="club-location-section"
     >
-      {/* ====================================================== */}
+     
       {/* Heading */}
-      {/* ====================================================== */}
-
       <div>
         <h2
           className="text-2xl font-display font-semibold"
@@ -51,9 +45,7 @@ export function ClubLocationSection({
         </p>
       </div>
 
-      {/* ====================================================== */}
       {/* State */}
-      {/* ====================================================== */}
 
       <div className="space-y-2">
         <Label htmlFor="club-state">
@@ -86,9 +78,7 @@ export function ClubLocationSection({
         </Select>
       </div>
 
-      {/* ====================================================== */}
       {/* Suburb */}
-      {/* ====================================================== */}
 
       <div className="space-y-2">
         <Label htmlFor="club-suburb">
@@ -106,9 +96,7 @@ export function ClubLocationSection({
         />
       </div>
 
-      {/* ====================================================== */}
       {/* Premium Fields */}
-      {/* ====================================================== */}
 
       {form.listingType === "premium" && (
         <>
@@ -116,7 +104,6 @@ export function ClubLocationSection({
             <Label htmlFor="club-address">
               Street Address
             </Label>
-
             <Input
               id="club-address"
               data-testid="club-address"
@@ -126,17 +113,14 @@ export function ClubLocationSection({
                 updateField("address", e.target.value)
               }
             />
-
             <p className="text-xs text-muted-foreground">
               Optional. Displayed on the premium club page.
             </p>
           </div>
-
           <div className="space-y-2">
             <Label htmlFor="club-google-maps">
               Google Maps URL
             </Label>
-
             <Input
               id="club-google-maps"
               data-testid="club-google-maps"
@@ -149,7 +133,6 @@ export function ClubLocationSection({
                 )
               }
             />
-
             <p className="text-xs text-muted-foreground">
               Optional. Used for the "Get Directions" button.
             </p>

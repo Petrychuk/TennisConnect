@@ -115,7 +115,6 @@ const buttonClass =
       >
 
         {/* Image */}
-
         <div
           className="
             relative
@@ -187,7 +186,6 @@ const buttonClass =
 
         </div>
         {/* Content */}
-
         <div
           className="
             p-3
@@ -202,7 +200,6 @@ const buttonClass =
          <div className="mb-6">
 
         {/* Location */}
-
         {location && (
 
         <div
@@ -219,7 +216,6 @@ const buttonClass =
             "
             data-testid="club-card-location"
         >
-
             <MapPin className="w-4 h-4" />
 
             {location}
@@ -385,7 +381,6 @@ const buttonClass =
 </div>
 
         {/* Competitions */}
-
         <div
   className="flex items-start gap-3"
   data-testid="club-card-competition-section"
@@ -438,12 +433,11 @@ const buttonClass =
 
   </div>
 
-</div>
+        </div>
 
         </div>
     
         {/* Actions */}
-
         <div
         className="flex gap-2 mt-auto items-center justify-end"
         data-testid="club-card-actions"
@@ -470,19 +464,13 @@ const buttonClass =
             <a href={`tel:${club.phone}`}>
 
                 <Phone className="w-4 h-4 mr-2" />
-
                 Call to Book
-
             </a>
-
             </Button>
-
         )}
 
         {/* Website has priority */}
-
         {secondaryAction && (
-
             <Button
             variant="outline"
             className={`
@@ -512,25 +500,18 @@ const buttonClass =
                     }
                 : {})}
             >
-
                 <secondaryAction.icon className="w-4 h-4 mr-2" />
-
                 {secondaryAction.label}
-
             </a>
 
             </Button>
 
             )}
 
-        </div>
-
           </div>
+        </div>
       </div>
      </div>
-
     </motion.div>
-
   );
-
 }

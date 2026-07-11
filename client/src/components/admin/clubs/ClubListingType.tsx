@@ -1,6 +1,5 @@
 import { Crown, MapPinned } from "lucide-react";
 import { cn } from "@/lib/utils";
-
 interface ClubListingTypeProps {
   value: "free" | "premium";
   onChange: (value: "free" | "premium") => void;
@@ -37,10 +36,9 @@ export function ClubListingType({
         className="grid gap-6 lg:grid-cols-2"
         data-testid="club-listing-options"
       >
-        {/* ===================================================== */}
-        {/* FREE */}
-        {/* ===================================================== */}
-
+      
+      {/* FREE */}
+      
         <button
           type="button"
           data-testid="club-listing-free"
@@ -97,9 +95,7 @@ export function ClubListingType({
           </div>
         </button>
 
-        {/* ===================================================== */}
-        {/* PREMIUM */}
-        {/* ===================================================== */}
+      {/* PREMIUM */}
 
         <button
           type="button"

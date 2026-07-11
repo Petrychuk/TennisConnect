@@ -23,8 +23,7 @@ export function ClubCompetitionSection({
   const isPremium =
     form.listingType === "premium";
 
-  // Toggle Competition
-  
+  // Toggle Competition 
   const toggleCompetition = (
     competition: CompetitionType
   ) => {
@@ -59,39 +58,32 @@ export function ClubCompetitionSection({
   };
 
   return (
-
     <section
       className="space-y-8"
       data-testid="club-competition-section"
     >
   
       {/* Heading */}
-    
       <div>
-
         <h2
           className="text-2xl font-display font-semibold"
           data-testid="club-competition-heading"
         >
           Competitions
         </h2>
-
         <p
           className="mt-1 text-sm text-muted-foreground"
         >
           Tell players what competitions and organised
           tennis activities are available at this club.
         </p>
-
       </div>
 
-      {/* Hosts Competitions */}
-     
+      {/* Hosts Competitions */}    
       <div
         className="rounded-2xl border p-5"
         data-testid="hosts-competitions-card"
       >
-
         <div className="flex items-center gap-3">
 
           <Checkbox
@@ -104,60 +96,44 @@ export function ClubCompetitionSection({
               )
             }
           />
-
           <Label
             htmlFor="hosts-competitions"
             className="cursor-pointer"
           >
             This club hosts organised competitions
           </Label>
-
         </div>
-
         <p className="mt-3 text-sm text-muted-foreground">
-
           Examples include social tennis, club
           championships, UTR events, leagues and
           tournaments.
-
         </p>
-
       </div>
     
       {/* Competition Types */}
-
       {form.hostsCompetitions && (
 
-    <div
-    className="space-y-6"
-    data-testid="competition-types"
+    <div className="space-y-6"
+         data-testid="competition-types"
     >
-
     <div>
-
         <h3 className="text-lg font-semibold">
         Competition Types
         </h3>
-
         <p className="mt-1 text-sm text-muted-foreground">
-
         Select all competitions available at this club.
-
         </p>
-
     </div>
 
     <div className="grid gap-4 md:grid-cols-2">
 
         {HOSTED_COMPETITION_TYPES.map((competition) => {
-
         const checked =
             form.hostedCompetitions.includes(
             competition.value
             );
 
         return (
-
             <div
             key={competition.value}
             className="
@@ -172,7 +148,6 @@ export function ClubCompetitionSection({
             "
             data-testid={`competition-${competition.value}`}
             >
-
             <Checkbox
                 id={`competition-${competition}`}
                 checked={checked}
@@ -182,24 +157,17 @@ export function ClubCompetitionSection({
                 )
                 }
             />
-
             <Label
                 htmlFor={`competition-${competition}`}
                 className="cursor-pointer"
             >
                 {competition.label}
             </Label>
-
             </div>
-
         );
-
         })}
-
     </div>
-
     {/* Premium Notice */}
-
     {!isPremium && (
 
         <div
@@ -212,37 +180,27 @@ export function ClubCompetitionSection({
         "
         data-testid="competition-free-note"
         >
-
         <p className="text-sm text-muted-foreground">
-
             Competition information will appear
             on the directory listing. A dedicated
             Competitions section is available on
             Premium club pages.
-
         </p>
-
         </div>
-
     )}
-
     </div>
 
     )}
         
-        {/* Competition Summary  */}
-        
+        {/* Competition Summary  */}     
         {form.hostsCompetitions && (
 
     <div
     className="rounded-2xl border bg-muted/30 p-6"
-    data-testid="competition-summary"
-    >
-
+    data-testid="competition-summary">
     <h3 className="font-semibold">
         Competition Summary
     </h3>
-
     {form.hostedCompetitions.length > 0 ? (
 
         <div className="mt-4 flex flex-wrap gap-2">
@@ -256,7 +214,6 @@ export function ClubCompetitionSection({
             )?.label ?? competition;
 
             return (
-
             <span
                 key={competition}
                 className="
@@ -283,13 +240,9 @@ export function ClubCompetitionSection({
         <p className="mt-4 text-sm text-muted-foreground">
         No competition types selected.
         </p>
-
     )}
-
     </div>
-
     )}
-
 </section>
 
 );

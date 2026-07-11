@@ -3,8 +3,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { COURT_SURFACES } from "@shared/constants/clubs";
-import type { CourtSurface } from "@shared/constants/clubs";
-  
+import type { CourtSurface } from "@shared/constants/clubs";  
   interface ClubCourtsSectionProps {
     form: ClubFormData;
   
@@ -19,8 +18,7 @@ import type { CourtSurface } from "@shared/constants/clubs";
   export function ClubCourtsSection({
     form,
     updateField,
-  }: ClubCourtsSectionProps) {
-  
+  }: ClubCourtsSectionProps) { 
   
 // Toggle Court Surface
   
@@ -63,9 +61,7 @@ import type { CourtSurface } from "@shared/constants/clubs";
         data-testid="club-courts-section"
       >
   
-        {/* ====================================================== */}
         {/* Heading */}
-        {/* ====================================================== */}
   
         <div>
   
@@ -86,9 +82,7 @@ import type { CourtSurface } from "@shared/constants/clubs";
   
         </div>
   
-        {/* ====================================================== */}
         {/* Court Surfaces */}
-        {/* ====================================================== */}
   
         <div className="space-y-5">
   
@@ -149,134 +143,122 @@ import type { CourtSurface } from "@shared/constants/clubs";
   
         </div>
 
-              {/* ====================================================== */}
       {/* Court Details */}
-      {/* ====================================================== */}
 
       {hasCourtSurfaces && (
+      <>
+      <div className="grid gap-6 md:grid-cols-2">
 
-<>
-
-  <div className="grid gap-6 md:grid-cols-2">
-
-    {/* Indoor Courts */}
-
-    <div className="space-y-2">
-
-      <Label htmlFor="indoor-courts">
-        Indoor Courts
-      </Label>
-
-      <Input
-        id="indoor-courts"
-        data-testid="indoor-courts"
-        type="number"
-        min="0"
-        placeholder="0"
-        value={form.indoorCourts}
-        onChange={(e) =>
-          updateField(
-            "indoorCourts",
-            e.target.value
-          )
-        }
-      />
-
-    </div>
-
-    {/* Outdoor Courts */}
-
-    <div className="space-y-2">
-
-      <Label htmlFor="outdoor-courts">
-        Outdoor Courts
-      </Label>
-
-      <Input
-        id="outdoor-courts"
-        data-testid="outdoor-courts"
-        type="number"
-        min="0"
-        placeholder="0"
-        value={form.outdoorCourts}
-        onChange={(e) =>
-          updateField(
-            "outdoorCourts",
-            e.target.value
-          )
-        }
-      />
-
-    </div>
-
-  </div>
-
-  {/* ====================================================== */}
-  {/* Lighting */}
-  {/* ====================================================== */}
-
-  <div
-    className="flex items-center gap-3 rounded-xl border p-4"
-    data-testid="lighting-option"
-  >
-
-    <Checkbox
-      id="has-lighting"
-      checked={form.hasLighting}
-      onCheckedChange={(checked) =>
-        updateField(
-          "hasLighting",
-          Boolean(checked)
-        )
-      }
-    />
-
-    <Label
-      htmlFor="has-lighting"
-      className="cursor-pointer"
-    >
-      Night Lighting Available
-    </Label>
-
-  </div>
-
-  {/* ====================================================== */}
-  {/* Multiple Locations */}
-  {/* ====================================================== */}
-
-  <div
-    className="flex items-center gap-3 rounded-xl border p-4"
-    data-testid="multiple-locations-option"
-  >
-
-    <Checkbox
-      id="multiple-locations"
-      checked={form.hasMultipleLocations}
-      onCheckedChange={(checked) =>
-        updateField(
-          "hasMultipleLocations",
-          Boolean(checked)
-        )
-      }
-    />
-
-    <Label
-      htmlFor="multiple-locations"
-      className="cursor-pointer"
-    >
-      This club has multiple locations
-    </Label>
-
-  </div>
-
-    {form.hasMultipleLocations && (
+        {/* Indoor Courts */}
 
         <div className="space-y-2">
 
+          <Label htmlFor="indoor-courts">
+            Indoor Courts
+          </Label>
+
+          <Input
+            id="indoor-courts"
+            data-testid="indoor-courts"
+            type="number"
+            min="0"
+            placeholder="0"
+            value={form.indoorCourts}
+            onChange={(e) =>
+              updateField(
+                "indoorCourts",
+                e.target.value
+              )
+            }
+          />
+
+        </div>
+
+        {/* Outdoor Courts */}
+
+        <div className="space-y-2">
+
+          <Label htmlFor="outdoor-courts">
+            Outdoor Courts
+          </Label>
+
+          <Input
+            id="outdoor-courts"
+            data-testid="outdoor-courts"
+            type="number"
+            min="0"
+            placeholder="0"
+            value={form.outdoorCourts}
+            onChange={(e) =>
+              updateField(
+                "outdoorCourts",
+                e.target.value
+              )
+            }
+          />
+
+        </div>
+
+      </div>
+    {/* Lighting */}
+
+      <div
+        className="flex items-center gap-3 rounded-xl border p-4"
+        data-testid="lighting-option"
+      >
+
+        <Checkbox
+          id="has-lighting"
+          checked={form.hasLighting}
+          onCheckedChange={(checked) =>
+            updateField(
+              "hasLighting",
+              Boolean(checked)
+            )
+          }
+        />
+
+        <Label
+          htmlFor="has-lighting"
+          className="cursor-pointer"
+        >
+          Night Lighting Available
+        </Label>
+
+      </div>
+
+  {/* Multiple Locations */}
+
+      <div
+        className="flex items-center gap-3 rounded-xl border p-4"
+        data-testid="multiple-locations-option"
+      >
+
+        <Checkbox
+          id="multiple-locations"
+          checked={form.hasMultipleLocations}
+          onCheckedChange={(checked) =>
+            updateField(
+              "hasMultipleLocations",
+              Boolean(checked)
+            )
+          }
+        />
+
+        <Label
+          htmlFor="multiple-locations"
+          className="cursor-pointer"
+        >
+          This club has multiple locations
+        </Label>
+
+      </div>
+
+    {form.hasMultipleLocations && (
+        <div className="space-y-2">
         <Label htmlFor="number-of-locations">
             Number of Locations
         </Label>
-
         <Input
             id="number-of-locations"
             data-testid="number-of-locations"
@@ -291,28 +273,19 @@ import type { CourtSurface } from "@shared/constants/clubs";
             )
             }
         />
-
         </div>
-
     )}
 
-          {/* ====================================================== */}
-          {/* Court Summary */}
-          {/* ====================================================== */}
-
+    {/* Court Summary */}
           <div
             className="rounded-2xl border bg-muted/30 p-6"
             data-testid="court-summary"
           >
-
             <h3 className="font-semibold">
               Court Summary
             </h3>
-
             <div className="mt-4 flex flex-wrap gap-2">
-
               {form.courtSurfaces.map((surface) => {
-
                 const label =
                   COURT_SURFACES.find(
                     (item) =>
@@ -320,44 +293,31 @@ import type { CourtSurface } from "@shared/constants/clubs";
                   )?.label;
 
                 return (
-
                   <span
                     key={surface}
                     className="rounded-full bg-lime-100 px-3 py-1 text-sm font-medium text-lime-700"
                   >
                     {label}
                   </span>
-
                 );
-
               })}
-
             </div>
-
             <div className="mt-6 space-y-2 text-sm text-muted-foreground">
-
               <p>
-
                 Indoor Courts:
                 {" "}
                 <strong className="text-foreground">
                   {form.indoorCourts || 0}
                 </strong>
-
               </p>
-
               <p>
-
                 Outdoor Courts:
                 {" "}
                 <strong className="text-foreground">
                   {form.outdoorCourts || 0}
                 </strong>
-
               </p>
-
               <p>
-
                 Lighting:
                 {" "}
                 <strong className="text-foreground">
@@ -365,11 +325,8 @@ import type { CourtSurface } from "@shared/constants/clubs";
                     ? "Available"
                     : "Not Available"}
                 </strong>
-
               </p>
-
-              <p>
-
+             <p>
                 Locations:
                 {" "}
                 <strong className="text-foreground">
@@ -377,21 +334,12 @@ import type { CourtSurface } from "@shared/constants/clubs";
                   {form.hasMultipleLocations
                     ? form.numberOfLocations
                     : 1}
-
                 </strong>
-
               </p>
-
             </div>
-
           </div>
-
         </>
-
       )}
-
     </section>
-
   );
-
 }

@@ -1,11 +1,8 @@
 import type { ClubFormData } from "../ClubForm";
-
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-
 import { CLUB_SERVICES } from "@shared/constants/clubs";
 import type { ClubService } from "@shared/constants/clubs";
-
 interface ClubServicesSectionProps {
   form: ClubFormData;
 
@@ -20,9 +17,7 @@ export function ClubServicesSection({
   updateField,
 }: ClubServicesSectionProps) {
 
-  // ===========================================================================
   // Toggle Service
-  // ===========================================================================
 
   const toggleService = (service: ClubService) => {
     const exists = form.services.includes(service);
@@ -54,9 +49,8 @@ export function ClubServicesSection({
       className="space-y-8"
       data-testid="club-services-section"
     >
-      {/* ====================================================== */}
-      {/* Heading */}
-      {/* ====================================================== */}
+  {/* Heading */}
+    
 
       <div>
         <h2
@@ -74,9 +68,7 @@ export function ClubServicesSection({
         </p>
       </div>
 
-      {/* ====================================================== */}
-      {/* Groups */}
-      {/* ====================================================== */}
+  {/* Groups */}
 
       {groups.map((group) => (
         <div

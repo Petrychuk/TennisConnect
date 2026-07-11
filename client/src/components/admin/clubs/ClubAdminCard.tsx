@@ -1,10 +1,4 @@
-import {
-    Eye,
-    Pencil,
-    Trash2,
-    Globe,
-    Star,
-  } from "lucide-react";
+import { Eye, EyeOff, Pencil, Trash2, Globe, Star, } from "lucide-react";
   
   import { Badge } from "@/components/ui/badge";
   import { Button } from "@/components/ui/button";
@@ -39,7 +33,7 @@ import {
   
         {/* Image */}
   
-        <div className="relative aspect-[16/10] overflow-hidden bg-muted">
+        <div className="relative aspect-16/10 overflow-hidden bg-muted">
   
           <img
             src={
@@ -128,7 +122,11 @@ import {
                 : "Publish"
             }
           >
+            {club.status === "published" ? (
+            <EyeOff className="h-4 w-4" />
+            ) : (
             <Globe className="h-4 w-4" />
+            )}
           </Button>
   
           <Button

@@ -158,13 +158,9 @@ import {
                     ? "Hide"
                     : "Publish"}
                 </Button>
-
             </div>
-
             </div>  
         </DialogContent>  
-      </Dialog>
-  
-    );
-  
+      </Dialog> 
+    );  
   }
