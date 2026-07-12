@@ -76,22 +76,22 @@ export default function TravelPage() {
     <div className="min-h-screen bg-background font-sans">
       <Navbar />
 
-      <div className="relative min-h-[40vh] flex items-center justify-center overflow-hidden bg-black">
+      <div className="relative min-h-[24vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-center overflow-hidden">
         <div
-          className="absolute inset-0 z-0 opacity-80"
+          className="absolute inset-0 z-0"
           style={{
             backgroundImage: `url(${travelHero})`,
             backgroundSize: "cover",
             backgroundPosition: "center",
           }}
         />
-        <div className="absolute inset-0 bg-linear-to-b from-black/60 via-black/40 to-background z-10" />
-        <div className="relative z-20 container mx-auto px-4 text-center mt-20">
+        <div className="absolute inset-0 bg-linear-to-b from-background/80 via-background/20 to-background z-10" />
+        <div className="relative z-20 container mx-auto px-4 text-center mt-16 md:mt-20">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
             <Badge className="mb-6 bg-primary text-primary-foreground px-4 py-1.5 text-sm font-bold">
               <Plane className="w-4 h-4 mr-2" /> Tennis Travel
             </Badge>
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold mb-4 tracking-tight text-white">
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold mb-4 tracking-tight">
               Train. Travel.{" "}
               <span className="relative inline-block text-primary">
                 Transform.
@@ -109,7 +109,7 @@ export default function TravelPage() {
                 </svg>
               </span>
             </h1>
-            <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto font-light">
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto font-light">
               Curated tennis getaways. Train with pros, recover in paradise.
             </p>
           </motion.div>

@@ -88,11 +88,11 @@ export default function ClubsPage() {
         <Navbar />
         
         {/* Intro / Hero Section */}
-        <div className="relative min-h-[34vh]
+        <div className="relative min-h-[24vh]
           md:min-h-[30vh]
           lg:min-h-[35vh] flex items-center justify-center overflow-hidden">
           <div 
-            className="absolute inset-0 z-0 opacity-70"
+            className="absolute inset-0 z-0"
             style={{
               backgroundImage: "url(/assets/images/tennisClubs.png)",
               //backgroundImage: "url(https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?q=80&w=2000&auto=format&fit=crop)",
@@ -100,9 +100,9 @@ export default function ClubsPage() {
               backgroundPosition: 'center',
             }}
           />
-          <div className="absolute inset-0 bg-linear-to-b from-background/30 via-background/10 to-background z-10" />
+          <div className="absolute inset-0 bg-linear-to-b from-background/80 via-background/20 to-background z-10" />
           
-          <div className="relative z-20 container mx-auto px-4 text-center mt-14 md:mt-20">
+          <div className="relative z-20 container mx-auto px-4 text-center mt-16 md:mt-20">
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}

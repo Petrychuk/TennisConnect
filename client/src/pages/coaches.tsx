@@ -170,7 +170,7 @@ export default function CoachesPage() {
         
         <main>
           {/* Modern Hero Section */}
-          <section className="relative min-h-[30vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-center overflow-hidden">
+          <section className="relative min-h-[24vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-center overflow-hidden">
             {/* Background Image with Overlay */}
             <div className="absolute inset-0 z-0">
               <img 
@@ -179,10 +179,9 @@ export default function CoachesPage() {
                 className="w-full
                 h-full
                 object-cover
-                object-[60%_20%]
-                opacity-70"
+                object-[60%_20%]"
               />
-              <div className="absolute inset-0 bg-linear-to-b from-black/30 via-black/10 to-background/90" />
+              <div className="absolute inset-0 bg-linear-to-b from-background/80 via-background/20 to-background" />
             </div>
 
             <div className="container mx-auto px-2 relative z-10">
