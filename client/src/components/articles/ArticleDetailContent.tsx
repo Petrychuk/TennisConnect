@@ -143,52 +143,81 @@ export function ArticleDetailContent({
           </div>
         </div>
       ) : hasCover ? (
-        // Default cover — full-bleed, breadcrumbs/title/excerpt overlaid.
-        // Top + bottom scrims are always on, so white text stays legible
-        // no matter how bright the underlying photo is.
-        <div className={`relative w-full ${LANDSCAPE_COVER_HEIGHT} overflow-hidden bg-secondary/40`}>
-          <img
-            src={article.coverImage}
-            alt={article.title}
-            onLoad={handleCoverLoad}
-            className="absolute inset-0 w-full h-full object-cover"
-          />
+        // Default cover — full-bleed. On desktop/tablet, breadcrumbs and
+        // title/excerpt are overlaid on the photo (scrims keep white text
+        // legible regardless of brightness). On mobile there isn't enough
+        // room to overlay all of that legibly, so the same text renders
+        // below the image instead, in normal (dark-on-light) colors.
+        <>
+          <div className={`relative w-full ${LANDSCAPE_COVER_HEIGHT} overflow-hidden bg-secondary/40`}>
+            <img
+              src={article.coverImage}
+              alt={article.title}
+              onLoad={handleCoverLoad}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
 
-          <div className="absolute inset-x-0 top-0 h-28 md:h-32 bg-linear-to-b from-black/65 via-black/25 to-transparent pointer-events-none" />
-          <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/30 to-transparent pointer-events-none" />
+            <div className="hidden md:block absolute inset-x-0 top-0 h-28 md:h-32 bg-linear-to-b from-black/65 via-black/25 to-transparent pointer-events-none" />
+            <div className="hidden md:block absolute inset-0 bg-linear-to-t from-black/85 via-black/30 to-transparent pointer-events-none" />
 
-          <div className="absolute inset-x-0 top-0 pt-16">
-            <div className={`container mx-auto px-4 ${READING_COLUMN} pt-4`}>
-              <ArticleBreadcrumbs category={article.category} title={article.title} light />
+            <div className="hidden md:block absolute inset-x-0 top-0 pt-16">
+              <div className={`container mx-auto px-4 ${READING_COLUMN} pt-4`}>
+                <ArticleBreadcrumbs category={article.category} title={article.title} light />
+              </div>
+            </div>
+
+            <div className="hidden md:block absolute inset-x-0 bottom-0">
+              <div className={`container mx-auto px-4 ${READING_COLUMN} pb-6 md:pb-10`}>
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
+                >
+                  <Badge className="mb-3 bg-primary text-primary-foreground">
+                    {article.category}
+                  </Badge>
+                  <h1
+                    className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-display font-bold text-white mb-3 leading-tight"
+                    data-testid="article-title-overlay"
+                  >
+                    {article.title}
+                  </h1>
+                  <MetaRow article={article} light />
+                  {article.excerpt && (
+                    <p className="text-white/90 mt-3 max-w-2xl leading-relaxed">
+                      {article.excerpt}
+                    </p>
+                  )}
+                </motion.div>
+              </div>
             </div>
           </div>
 
-          <div className="absolute inset-x-0 bottom-0">
-            <div className={`container mx-auto px-4 ${READING_COLUMN} pb-6 md:pb-10`}>
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-              >
+          {/* Mobile-only: same content, below the image, normal colors */}
+          <div className="md:hidden border-b bg-secondary/10">
+            <div className={`container mx-auto px-4 ${READING_COLUMN} pt-4 pb-6`}>
+              <ArticleBreadcrumbs category={article.category} title={article.title} />
+
+              <div className="mt-4">
                 <Badge className="mb-3 bg-primary text-primary-foreground">
                   {article.category}
                 </Badge>
                 <h1
-                  className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-display font-bold text-white mb-3 leading-tight"
+                  className="text-2xl font-display font-bold mb-3 leading-tight"
                   data-testid="article-title"
                 >
                   {article.title}
                 </h1>
-                <MetaRow article={article} light />
+                <MetaRow article={article} />
                 {article.excerpt && (
-                  <p className="text-white/90 mt-3 max-w-2xl leading-relaxed">
+                  <p className="text-muted-foreground mt-3 leading-relaxed">
                     {article.excerpt}
                   </p>
                 )}
-              </motion.div>
+              </div>
             </div>
           </div>
-        </div>
+        </>
       ) : (
         // No cover image — plain, normal-flow header.
         <div className="border-b bg-secondary/10">
