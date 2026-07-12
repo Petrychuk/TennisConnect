@@ -21,6 +21,7 @@ export default function AdminArticlePreviewPage() {
   const isAdmin = !!user?.isAdmin;
 
   const [article, setArticle] = useState<Article | null>(null);
+  const [relatedArticles, setRelatedArticles] = useState<Article[]>([]);
   const [notFound, setNotFound] = useState(false);
   const [updating, setUpdating] = useState(false);
 
@@ -29,7 +30,20 @@ export default function AdminArticlePreviewPage() {
     window.scrollTo(0, 0);
     fetch(`/api/articles/${params.slug}`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then(setArticle)
+      .then((data: Article) => {
+        setArticle(data);
+
+        fetch("/api/articles", { credentials: "include" })
+          .then((r) => (r.ok ? r.json() : []))
+          .then((all: Article[]) => {
+            setRelatedArticles(
+              (all || [])
+                .filter((a) => a.id !== data.id && a.category === data.category)
+                .slice(0, 3)
+            );
+          })
+          .catch(() => setRelatedArticles([]));
+      })
       .catch(() => setNotFound(true));
   }, [params?.slug, isAdmin]);
 
@@ -186,7 +200,7 @@ export default function AdminArticlePreviewPage() {
           </div>
         </div>
 
-        <ArticleDetailContent article={article} />
+        <ArticleDetailContent article={article} relatedArticles={relatedArticles} />
 
         <Footer />
       </div>

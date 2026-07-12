@@ -12,14 +12,32 @@ import {
 export default function ArticleDetailPage() {
   const [, params] = useRoute("/articles/:slug");
   const [article, setArticle] = useState<Article | null>(null);
+  const [relatedArticles, setRelatedArticles] = useState<Article[]>([]);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     if (!params?.slug) return;
     window.scrollTo(0, 0);
+    setArticle(null);
+    setRelatedArticles([]);
+    setNotFound(false);
+
     fetch(`/api/articles/${params.slug}`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then(setArticle)
+      .then((data: Article) => {
+        setArticle(data);
+
+        fetch("/api/articles", { credentials: "include" })
+          .then((r) => (r.ok ? r.json() : []))
+          .then((all: Article[]) => {
+            setRelatedArticles(
+              (all || [])
+                .filter((a) => a.id !== data.id && a.category === data.category)
+                .slice(0, 3)
+            );
+          })
+          .catch(() => setRelatedArticles([]));
+      })
       .catch(() => setNotFound(true));
   }, [params?.slug]);
 
@@ -58,13 +76,13 @@ export default function ArticleDetailPage() {
           article.title
         }
         canonical={`/articles/${article.slug}`}
-        tags={article.tags || []}
+        tags={(article.tags || "").split(",").map((t) => t.trim()).filter(Boolean)}
         type="article"
       />
         <div className="min-h-screen bg-background font-sans">         
           <Navbar />
 
-          <ArticleDetailContent article={article} />
+          <ArticleDetailContent article={article} relatedArticles={relatedArticles} />
 
           <Footer />
         </div>

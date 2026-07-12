@@ -27,10 +27,16 @@ interface Article {
 
 const CATEGORIES = ["All", "Training", "Equipment", "Health", "News"];
 
+function getInitialCategory(): string {
+  if (typeof window === "undefined") return "All";
+  const cat = new URLSearchParams(window.location.search).get("category");
+  return cat && CATEGORIES.includes(cat) ? cat : "All";
+}
+
 export default function ArticlesPage() {
   const [items, setItems] = useState<Article[]>([]);
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("All");
+  const [category, setCategory] = useState(getInitialCategory);
 
   useEffect(() => {
     window.scrollTo(0, 0);
