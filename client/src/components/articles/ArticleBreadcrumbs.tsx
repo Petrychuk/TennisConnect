@@ -12,15 +12,24 @@ import {
 interface ArticleBreadcrumbsProps {
   category: string;
   title: string;
+  // White text, for when breadcrumbs sit on top of the cover image
+  // instead of on a plain background.
+  light?: boolean;
 }
 
-export function ArticleBreadcrumbs({ category, title }: ArticleBreadcrumbsProps) {
+export function ArticleBreadcrumbs({ category, title, light }: ArticleBreadcrumbsProps) {
+  const base = light
+    ? "text-white/80 [&_svg]:opacity-90"
+    : "text-muted-foreground";
+  const link = light ? "hover:text-white" : "hover:text-primary";
+  const current = light ? "text-white" : undefined;
+
   return (
     <Breadcrumb data-testid="article-breadcrumbs">
-      <BreadcrumbList className="flex-nowrap">
+      <BreadcrumbList className={`flex-nowrap ${base}`}>
         <BreadcrumbItem>
           <BreadcrumbLink asChild>
-            <Link href="/" className="flex items-center gap-1 hover:text-primary">
+            <Link href="/" className={`flex items-center gap-1 ${link}`}>
               <Home className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Home</span>
             </Link>
@@ -31,7 +40,7 @@ export function ArticleBreadcrumbs({ category, title }: ArticleBreadcrumbsProps)
 
         <BreadcrumbItem>
           <BreadcrumbLink asChild>
-            <Link href="/articles" className="hover:text-primary">
+            <Link href="/articles" className={link}>
               Articles
             </Link>
           </BreadcrumbLink>
@@ -41,7 +50,7 @@ export function ArticleBreadcrumbs({ category, title }: ArticleBreadcrumbsProps)
 
         <BreadcrumbItem>
           <BreadcrumbLink asChild>
-            <Link href={`/articles?category=${encodeURIComponent(category)}`} className="hover:text-primary">
+            <Link href={`/articles?category=${encodeURIComponent(category)}`} className={link}>
               {category}
             </Link>
           </BreadcrumbLink>
@@ -50,7 +59,7 @@ export function ArticleBreadcrumbs({ category, title }: ArticleBreadcrumbsProps)
         <BreadcrumbSeparator />
 
         <BreadcrumbItem className="min-w-0">
-          <BreadcrumbPage className="block max-w-[140px] sm:max-w-[280px] md:max-w-sm truncate">
+          <BreadcrumbPage className={`block max-w-[140px] sm:max-w-[280px] md:max-w-sm truncate ${current || ""}`}>
             {title}
           </BreadcrumbPage>
         </BreadcrumbItem>

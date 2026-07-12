@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { Clock, Calendar, BookOpen, ArrowRight } from "lucide-react";
@@ -31,11 +32,10 @@ interface ArticleDetailContentProps {
   relatedArticles?: Article[];
 }
 
-// Cover height — a contained, moderately sized banner (matches the
-// card/thumbnail sizing used across the site's dashboards), not a full
-// viewport-height hero, but full-bleed edge-to-edge width.
-const COVER_HEIGHT =
-  "h-[260px] sm:h-[340px] md:h-[420px] lg:h-[480px]";
+// Landscape/default cover — a contained, moderately sized banner (matches
+// the card/thumbnail sizing used across the site's dashboards), not a
+// full viewport-height hero, but full-bleed edge-to-edge width.
+const LANDSCAPE_COVER_HEIGHT = "h-[300px] sm:h-[380px] md:h-[460px] lg:h-[520px]";
 
 const READING_COLUMN = "max-w-3xl md:max-w-4xl";
 
@@ -47,13 +47,7 @@ function formatDate(iso: string) {
   });
 }
 
-function MetaRow({
-  article,
-  light,
-}: {
-  article: Article;
-  light?: boolean;
-}) {
+function MetaRow({ article, light }: { article: Article; light?: boolean }) {
   return (
     <div
       className={`flex flex-wrap items-center gap-x-4 gap-y-2 text-sm ${
@@ -80,131 +74,155 @@ function MetaRow({
  * pixel-accurate representation of what will go live.
  *
  * One universal template, filled from the same CMS fields every article
- * already has. Legal-category documents get a quiet, minimal treatment
- * (title on the cover, plain body); every other category gets a bigger,
- * more editorial presentation — same engine, different presentation.
+ * already has. Breadcrumbs, title and excerpt are overlaid on the cover
+ * for every category. A portrait/vertical cover switches to a dedicated
+ * split layout instead of being cropped into a wide banner.
  */
 export function ArticleDetailContent({
   article,
   relatedArticles = [],
 }: ArticleDetailContentProps) {
-  const isLegal = article.category === "Legal";
+  const [isPortrait, setIsPortrait] = useState(false);
 
   const tags = (article.tags || "")
     .split(",")
     .map((t) => t.trim())
     .filter(Boolean);
 
+  const handleCoverLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    setIsPortrait(img.naturalHeight > img.naturalWidth * 1.1);
+  };
+
+  const hasCover = !!article.coverImage;
+
   return (
     <>
-      {/* Breadcrumbs */}
-      <div className="border-b bg-secondary/20">
-        <div className="container mx-auto px-4 pt-20 pb-4 md:pt-24">
-          <ArticleBreadcrumbs category={article.category} title={article.title} />
-        </div>
-      </div>
+      {hasCover && isPortrait ? (
+        // Portrait cover — a dedicated split layout instead of cropping a
+        // vertical photo into a wide horizontal banner.
+        <div className="pt-20 md:pt-24 bg-secondary/10 border-b">
+          <div className="container mx-auto px-4 py-8 md:py-12">
+            <ArticleBreadcrumbs category={article.category} title={article.title} />
 
-      {/* Fallback: if a Legal article has no cover image, there's nowhere
-          to overlay the title onto — show it in normal flow instead. */}
-      {isLegal && !article.coverImage && (
-        <div className={`container mx-auto px-4 ${READING_COLUMN} pt-8`}>
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            <Badge className="mb-3 bg-primary text-primary-foreground">
-              {article.category}
-            </Badge>
-            <h1
-              className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-display font-bold mb-3 leading-tight"
-              data-testid="article-title"
-            >
-              {article.title}
-            </h1>
-            <MetaRow article={article} />
-          </motion.div>
-        </div>
-      )}
+            <div className="grid md:grid-cols-5 gap-8 md:gap-12 items-center mt-6 md:mt-8">
+              <div className="md:col-span-2">
+                <div className="relative aspect-3/4 max-h-[560px] mx-auto md:mx-0 overflow-hidden rounded-2xl md:rounded-3xl shadow-lg bg-secondary/40">
+                  <img
+                    src={article.coverImage}
+                    alt={article.title}
+                    onLoad={handleCoverLoad}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                </div>
+              </div>
 
-      {/* Cover — full-bleed, right after breadcrumbs. Legal documents get
-          the title overlaid here; other categories keep the image clean
-          and introduce the title below. */}
-      {article.coverImage && (
-        <div className={`relative w-full ${COVER_HEIGHT} overflow-hidden bg-secondary/40`}>
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+                className="md:col-span-3"
+              >
+                <Badge className="mb-4 bg-primary text-primary-foreground">
+                  {article.category}
+                </Badge>
+                <h1
+                  className="text-3xl sm:text-4xl md:text-5xl font-display font-bold mb-4 leading-tight"
+                  data-testid="article-title"
+                >
+                  {article.title}
+                </h1>
+                <MetaRow article={article} />
+                {article.excerpt && (
+                  <p className="text-lg text-muted-foreground leading-relaxed mt-5">
+                    {article.excerpt}
+                  </p>
+                )}
+              </motion.div>
+            </div>
+          </div>
+        </div>
+      ) : hasCover ? (
+        // Default cover — full-bleed, breadcrumbs/title/excerpt overlaid.
+        // Top + bottom scrims are always on, so white text stays legible
+        // no matter how bright the underlying photo is.
+        <div className={`relative w-full ${LANDSCAPE_COVER_HEIGHT} overflow-hidden bg-secondary/40`}>
           <img
             src={article.coverImage}
             alt={article.title}
+            onLoad={handleCoverLoad}
             className="absolute inset-0 w-full h-full object-cover"
           />
 
-          {isLegal && (
-            <>
-              <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/45 to-black/10" />
-              <div className="absolute inset-0 flex items-end">
-                <div className={`container mx-auto px-4 ${READING_COLUMN} pb-6 md:pb-10`}>
-                  <motion.div
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4 }}
-                  >
-                    <Badge className="mb-3 bg-primary text-primary-foreground">
-                      {article.category}
-                    </Badge>
-                    <h1
-                      className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-display font-bold text-white mb-3 leading-tight"
-                      data-testid="article-title"
-                    >
-                      {article.title}
-                    </h1>
-                    <MetaRow article={article} light />
-                  </motion.div>
-                </div>
-              </div>
-            </>
-          )}
+          <div className="absolute inset-x-0 top-0 h-28 md:h-32 bg-linear-to-b from-black/65 via-black/25 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/30 to-transparent pointer-events-none" />
+
+          <div className="absolute inset-x-0 top-0 pt-16">
+            <div className={`container mx-auto px-4 ${READING_COLUMN} pt-4`}>
+              <ArticleBreadcrumbs category={article.category} title={article.title} light />
+            </div>
+          </div>
+
+          <div className="absolute inset-0 flex items-end">
+            <div className={`container mx-auto px-4 ${READING_COLUMN} pb-6 md:pb-10`}>
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+              >
+                <Badge className="mb-3 bg-primary text-primary-foreground">
+                  {article.category}
+                </Badge>
+                <h1
+                  className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-display font-bold text-white mb-3 leading-tight"
+                  data-testid="article-title"
+                >
+                  {article.title}
+                </h1>
+                <MetaRow article={article} light />
+                {article.excerpt && (
+                  <p className="text-white/90 mt-3 max-w-2xl leading-relaxed">
+                    {article.excerpt}
+                  </p>
+                )}
+              </motion.div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        // No cover image — plain, normal-flow header.
+        <div className="border-b bg-secondary/10">
+          <div className={`container mx-auto px-4 ${READING_COLUMN} pt-20 pb-8 md:pt-24 md:pb-10`}>
+            <ArticleBreadcrumbs category={article.category} title={article.title} />
+
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="mt-6"
+            >
+              <Badge className="mb-3 bg-primary text-primary-foreground">
+                {article.category}
+              </Badge>
+              <h1
+                className="text-3xl sm:text-4xl md:text-5xl font-display font-bold mb-3 leading-tight"
+                data-testid="article-title"
+              >
+                {article.title}
+              </h1>
+              <MetaRow article={article} />
+              {article.excerpt && (
+                <p className="text-lg text-muted-foreground leading-relaxed mt-5">
+                  {article.excerpt}
+                </p>
+              )}
+            </motion.div>
+          </div>
         </div>
       )}
 
+      {/* Content starts right after the hero — no separator */}
       <div className={`container mx-auto px-4 ${READING_COLUMN} py-8 md:py-12`}>
-        {/* Header — non-Legal categories get their title/meta below the
-            cover instead of overlaid, with a bolder editorial treatment. */}
-        {!isLegal && (
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="mb-8"
-          >
-            <Badge className="mb-4 bg-primary text-primary-foreground">
-              {article.category}
-            </Badge>
-
-            <h1
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-display font-bold mb-5 leading-[1.05]"
-              data-testid="article-title"
-            >
-              {article.title}
-            </h1>
-
-            <MetaRow article={article} />
-          </motion.div>
-        )}
-
-        {/* Legal gets a plain lead line; other categories get a bolder
-            pull-quote style excerpt. */}
-        {article.excerpt &&
-          (isLegal ? (
-            <p className="text-lg text-muted-foreground mb-10 pb-8 border-b">
-              {article.excerpt}
-            </p>
-          ) : (
-            <blockquote className="border-l-4 border-primary pl-5 md:pl-6 mb-10 text-xl md:text-2xl font-display font-medium leading-snug text-foreground/90">
-              {article.excerpt}
-            </blockquote>
-          ))}
-
-        {/* Content */}
         <ArticleRichContent content={article.content} />
 
         {/* Tags */}

@@ -9,7 +9,7 @@ export type ArticleContentBlock =
   | { type: "image"; src: string; alt: string }
   | { type: "paragraph"; text: string };
 
-const BLOCK_START = /^(#{2,3}\s|>\s|[-*]\s|\d+\.\s|!\[|---$|\*\*\*$)/;
+const BLOCK_START = /^(#{2,3}\s|>\s|[-*•]\s|\d+\.\s|!\[|---$|\*\*\*$)/;
 
 /**
  * Parses the article `content` field (a plain-text field filled in via the
@@ -22,7 +22,7 @@ const BLOCK_START = /^(#{2,3}\s|>\s|[-*]\s|\d+\.\s|!\[|---$|\*\*\*$)/;
  *   **Heading** (alone)   -> heading3 (kept for older articles)
  *   > Quote text          -> quote
  *   ---  or  ***          -> divider
- *   - item / * item       -> bullet list
+ *   - item / * item / • item -> bullet list
  *   1. item                -> numbered list
  *   ![alt](url)           -> image
  *   anything else          -> paragraph
@@ -88,11 +88,11 @@ export function parseArticleContent(content: string): ArticleContentBlock[] {
       continue;
     }
 
-    if (/^[-*]\s/.test(line)) {
-      const items = [line.replace(/^[-*]\s/, "")];
+    if (/^[-*•]\s/.test(line)) {
+      const items = [line.replace(/^[-*•]\s/, "")];
       i++;
-      while (i < lines.length && /^[-*]\s/.test(lines[i].trim())) {
-        items.push(lines[i].trim().replace(/^[-*]\s/, ""));
+      while (i < lines.length && /^[-*•]\s/.test(lines[i].trim())) {
+        items.push(lines[i].trim().replace(/^[-*•]\s/, ""));
         i++;
       }
       blocks.push({ type: "ul", items });

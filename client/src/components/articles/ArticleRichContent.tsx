@@ -82,7 +82,7 @@ function Block({ block }: { block: ArticleContentBlock }) {
 
     case "ul":
       return (
-        <ul className="my-5 space-y-2 list-disc pl-6 marker:text-primary">
+        <ul className="my-2.5 sm:my-3 space-y-1 sm:space-y-1.5 list-disc pl-5 sm:pl-6 marker:text-primary">
           {block.items.map((item, i) => (
             <li key={i} className="leading-relaxed">
               <Inline text={item} />
@@ -93,7 +93,7 @@ function Block({ block }: { block: ArticleContentBlock }) {
 
     case "ol":
       return (
-        <ol className="my-5 space-y-2 list-decimal pl-6 marker:text-primary marker:font-semibold">
+        <ol className="my-2.5 sm:my-3 space-y-1 sm:space-y-1.5 list-decimal pl-5 sm:pl-6 marker:text-primary marker:font-semibold">
           {block.items.map((item, i) => (
             <li key={i} className="leading-relaxed">
               <Inline text={item} />
