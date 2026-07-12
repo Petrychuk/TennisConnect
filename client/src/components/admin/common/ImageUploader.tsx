@@ -1,8 +1,9 @@
 import { useRef, useState } from "react";
 
-import { Upload, Trash2, Loader2 } from "lucide-react";
+import { Upload, Trash2, Loader2, Link as LinkIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import {
@@ -20,6 +21,11 @@ interface ImageUploaderProps {
   label: string;
   description?: string;
 
+  // When true, also shows a "paste an image URL" input as an alternative
+  // to uploading a file. Off by default so existing usages (e.g. Clubs)
+  // are unaffected.
+  allowUrl?: boolean;
+
   onUploaded: (url: string) => void;
   onDeleted?: () => void;
 }
@@ -31,6 +37,7 @@ export function ImageUploader({
   value,
   label,
   description,
+  allowUrl = false,
   onUploaded,
   onDeleted,
 }: ImageUploaderProps) {
@@ -40,6 +47,8 @@ export function ImageUploader({
   const { toast } = useToast();
   const [loading, setLoading] =
     useState(false);
+  const [urlInput, setUrlInput] =
+    useState("");
 
   // Upload Image
  
@@ -120,6 +129,30 @@ export function ImageUploader({
 
     }
 
+  }
+
+  // Use a pasted image URL directly (no upload)
+
+  function handleUseUrl() {
+
+    const url = urlInput.trim();
+
+    if (!url) return;
+
+    try {
+      // eslint-disable-next-line no-new
+      new URL(url);
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Invalid URL",
+        description: "Please enter a valid image URL.",
+      });
+      return;
+    }
+
+    onUploaded(url);
+    setUrlInput("");
   }
 
   return (
@@ -269,6 +302,37 @@ export function ImageUploader({
 
         )}
       </div>
+
+      {allowUrl && (
+
+        <div
+          className="flex gap-2"
+          data-testid={`${type}-url-row`}
+        >
+
+          <Input
+            placeholder="Or paste an image URL"
+            value={urlInput}
+            onChange={(e) =>
+              setUrlInput(e.target.value)
+            }
+            data-testid={`${type}-url-input`}
+          />
+
+          <Button
+            type="button"
+            variant="outline"
+            disabled={loading}
+            onClick={handleUseUrl}
+            data-testid={`${type}-url-use-btn`}
+          >
+            <LinkIcon className="mr-2 h-4 w-4" />
+            Use URL
+          </Button>
+
+        </div>
+
+      )}
     </section>
   );
 }

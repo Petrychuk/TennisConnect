@@ -16,6 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, ShieldCheck, FileText, Plane, Heart, Trophy, Users, Building2, Eye, Globe, } from "lucide-react";
 import SEO from "@/components/seo";
 import { ClubForm } from "@/components/admin/clubs/ClubForm";
+import { TravelForm } from "@/components/admin/travel/TravelForm";
+import { ArticleForm } from "@/components/admin/articles/ArticleForm";
 import { clubValidationSchema, articleSchema, travelSchema, recreationSchema, tournamentSchema } from "@/lib/validations";
 import AdminUsersTab from "@/components/admin/users_tab";
 import { ClubAdminCard } from "@/components/admin/clubs/ClubAdminCard";
@@ -31,20 +33,13 @@ import {
 } from "@/components/ui/table";
 
 
-type Resource = "articles" | "travel" | "recreation" | "event-tournaments" | "clubs" ; 
-type AdminTab = Resource | "users";
-
-function isContentTab(tab: AdminTab): tab is Resource {
-  return tab !== "users";
-}
-
-const RESOURCE_LABELS: Record<Resource, string> = {
-  articles: "Articles",
-  travel: "Travel Packages",
-  recreation: "Recreation Services",
-  "event-tournaments": "Tournaments",
-  clubs: "Club Communities",
-};
+import {
+  type Resource,
+  type AdminTab,
+  isContentTab,
+  RESOURCE_LABELS,
+  FIELDS,
+} from "@/lib/adminFields";
 
 const ICONS: Record<Resource, any> = {
   articles: FileText,
@@ -52,129 +47,6 @@ const ICONS: Record<Resource, any> = {
   recreation: Heart,
   "event-tournaments": Trophy,
   clubs: Building2,
-};
-
-// Field definitions per resource
-const FIELDS: Record<Resource, { name: string; label?: string; type: "text" | "textarea" | "number" | "list" | "select" | "checkbox"; required?: boolean; help?: string; options?: string[] }[]> = {
-  articles: [
-    { name: "title", type: "text", required: true },
-    { name: "slug", type: "text", required: true },
-    { name: "category", type: "select", required: true,
-      options: [
-        "Training",
-        "Coaching",
-        "Equipment",
-        "Health",
-        "Fitness",
-        "Nutrition",
-        "Mental Game",
-        "Tournaments",
-        "Travel",
-        "Community",
-        "News",
-        "Legal",
-      ],
-    },
-    { name: "legalType", type: "select",
-      options: [
-        "Privacy Policy",
-        "Terms & Conditions",
-        "Community Guidelines & Safety",
-        "Cookie Policy",
-        "Partner Disclosure & Affiliate Disclosure",
-        "Refund Policy",
-      ],
-    },
-    { name: "author", type: "text", required: true },
-    { name: "excerpt", type: "textarea", required: true },
-    { name: "content", type: "textarea", required: true },
-    { name: "coverImage", type: "text", required: true, help: "Image URL" },
-    { name: "readTime", type: "number", help: "Minutes" },
-    { name: "seoTitle", type: "text" },
-    { name: "metaDescription", type: "textarea" },
-    { name: "tags", type: "text" },
-  ],
-  travel: [
-    { name: "title", type: "text", required: true },
-    { name: "slug", type: "text", required: false, help: "Leave blank to auto-generate"},
-    { name: "destination", type: "text", required: true },
-    { name: "duration", type: "text", required: true, help: "e.g. 7 days" },
-    { name: "price", type: "number", required: true },
-    { name: "currency", type: "text", help: "AUD" },
-    { name: "description", type: "textarea", required: true },
-    { name: "highlights", type: "list", help: "Comma separated" },
-    { name: "includes", type: "list", help: "Comma separated" },
-    { name: "coverImage", type: "text", required: true, help: "Image URL" },
-    { name: "gallery", type: "list", help: "Image URLs (max 10)" },
-    { name: "providerName", type: "text" },
-    { name: "providerWebsite", type: "text" },
-    { name: "providerLogo", type: "text", help: "Logo URL" },
-    { name: "ctaText", type: "text", help: "Book Now / Learn More" },
-    { name: "ctaUrl", type: "text", help: "External booking page" },
-    { name: "tags", type: "list", help: "Comma separated" },
-    { name: "seoTitle", type: "text" },
-    {
-      name: "metaDescription",
-      type: "textarea",
-    },
-    {
-      name: "content",
-      type: "textarea",
-      help: "Full package details",
-    },
-    { name: "startDate", type: "text", help: "YYYY-MM-DD" },
-    { name: "spotsLeft", type: "number" },
-    {
-      name: "isFeatured",
-      label: "Featured Package",
-      type: "checkbox",
-    }
-  ],
-  recreation: [
-    { name: "name", type: "text", required: true },
-    { name: "type", type: "text", required: true, help: "Massage | Recovery | Yoga | Physio" },
-    { name: "provider", type: "text", required: true },
-    { name: "location", type: "text", required: true },
-    { name: "duration", type: "text", required: true, help: "e.g. 60 min" },
-    { name: "price", type: "number", required: true },
-    { name: "currency", type: "text" },
-    { name: "description", type: "textarea", required: true },
-    { name: "benefits", type: "list", help: "Comma separated" },
-    { name: "coverImage", type: "text", required: true, help: "Image URL" },
-    { name: "rating", type: "text" },
-    { name: "phone", type: "text" },
-    { name: "email", type: "text" },
-  ],
-  "event-tournaments": [
-    { name: "name", type: "text", required: true },
-    { name: "startDate", type: "text", required: true, help: "YYYY-MM-DD" },
-    { name: "endDate", type: "text", help: "YYYY-MM-DD" },
-    { name: "location", type: "text", required: true },
-    { name: "address", type: "text" },
-    { name: "level", type: "text", required: true, help: "Beginner | Intermediate | Advanced" },
-    { name: "price", type: "number", required: true },
-    { name: "prizePool", type: "text" },
-    { name: "maxParticipants", type: "number" },
-    { name: "currentParticipants", type: "number" },
-    { name: "description", type: "textarea", required: true },
-    { name: "organizer", type: "text", required: true },
-    { name: "phone", type: "text" },
-    { name: "email", type: "text" },
-    { name: "website", type: "text" },
-    { name: "coverImage", type: "text", required: true },
-    { name: "status", type: "text", required: true, help: "upcoming | past" },
-    { name: "categories", type: "list" },
-    { name: "ageGroups", type: "list" },
-    { name: "winner", type: "text" },
-    { name: "finalist", type: "text" },
-  ],
-  clubs: [
-    {
-      name: "name",
-      type: "text",
-      required: true,
-    },
-  ],
 };
 
 const VALID_TABS: AdminTab[] = [
@@ -1510,6 +1382,38 @@ export default function AdminPage() {
               }}
               />
 
+            ) : activeTab === "travel" ? (
+
+            <TravelForm
+              mode={editing ? "edit" : "create"}
+              initialData={editing}
+              onClose={() => {
+                setEditing(null);
+                setDialogOpen(false);
+              }}
+              onSaved={() => {
+                setEditing(null);
+                setDialogOpen(false);
+                fetchItems("travel");
+              }}
+              />
+
+            ) : activeTab === "articles" ? (
+
+            <ArticleForm
+              mode={editing ? "edit" : "create"}
+              initialData={editing}
+              onClose={() => {
+                setEditing(null);
+                setDialogOpen(false);
+              }}
+              onSaved={() => {
+                setEditing(null);
+                setDialogOpen(false);
+                fetchItems("articles");
+              }}
+              />
+
             ) : (
 
               isContentTab(activeTab) &&  (
@@ -1616,7 +1520,7 @@ export default function AdminPage() {
                 </div>
                )
               )}
-          {activeTab !== "clubs" && (
+          {activeTab !== "clubs" && activeTab !== "travel" && activeTab !== "articles" && (
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)} className="cursor-pointer">Cancel</Button>
               <Button onClick={submit} className="bg-primary text-primary-foreground cursor-pointer" data-testid="admin-save-button">

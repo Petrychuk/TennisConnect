@@ -46,7 +46,7 @@ export const articles = pgTable("articles", {
   legalType: text("legal_type"),
   excerpt: text("excerpt").notNull(),
   content: text("content").notNull(),
-  coverImage: text("cover_image").notNull(),
+  coverImage: text("cover_image"),
   category: text("category").notNull(), // 'Training', 'Equipment', 'News', 'Health'
   author: text("author").notNull(),
   readTime: integer("read_time").default(5).notNull(),
@@ -69,7 +69,7 @@ export const travelPackages = pgTable("travel_packages", {
   content: text("content"),
   highlights: json("highlights").$type<string[]>().default([]),
   includes: json("includes").$type<string[]>().default([]),
-  coverImage: text("cover_image").notNull(),
+  coverImage: text("cover_image"),
   gallery: json("gallery").$type<string[]>().default([]),
   providerName: text("provider_name"),
   providerWebsite: text("provider_website"),
