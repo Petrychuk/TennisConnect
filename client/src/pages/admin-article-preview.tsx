@@ -153,7 +153,7 @@ export default function AdminArticlePreviewPage() {
 
         {/* Admin preview control bar */}
         <div
-          className="sticky top-16 z-40 bg-primary/10 border-b border-primary/20 backdrop-blur-lg"
+          className="sticky top-16 z-40 bg-background/95 border-b shadow-xs backdrop-blur-lg"
           data-testid="article-admin-preview-bar"
         >
           <div className="container mx-auto px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
