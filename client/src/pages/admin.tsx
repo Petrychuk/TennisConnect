@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,6 @@ import { clubValidationSchema, articleSchema, travelSchema, recreationSchema, to
 import AdminUsersTab from "@/components/admin/users_tab";
 import { ClubAdminCard } from "@/components/admin/clubs/ClubAdminCard";
 import { ClubPreviewDialog } from "@/components/admin/clubs/ClubPreviewDialog";
-import { TravelPreviewDialog } from "@/components/admin/travel/TravelPreviewDialog";
 import { AppPagination } from "@/components/shared/AppPagination";
 import {
   Table,
@@ -177,10 +177,36 @@ const FIELDS: Record<Resource, { name: string; label?: string; type: "text" | "t
   ],
 };
 
+const VALID_TABS: AdminTab[] = [
+  "articles",
+  "travel",
+  "recreation",
+  "event-tournaments",
+  "clubs",
+  "users",
+];
+
+function getInitialTab(): AdminTab {
+  if (typeof window === "undefined") return "articles";
+  const tab = new URLSearchParams(window.location.search).get("tab");
+  return (VALID_TABS as string[]).includes(tab || "")
+    ? (tab as AdminTab)
+    : "articles";
+}
+
+function getInitialEditTravelId(): string | null {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("editTravel");
+}
+
 export default function AdminPage() {
   const { user, isAuthenticated, loading: isLoading } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<AdminTab>("articles");
+  const [, setLocation] = useLocation();
+  const [activeTab, setActiveTab] = useState<AdminTab>(getInitialTab);
+  const [pendingEditTravelId, setPendingEditTravelId] = useState<
+    string | null
+  >(getInitialEditTravelId);
   const ActiveIcon = isContentTab(activeTab)
   ? ICONS[activeTab]
   : Users;
@@ -198,9 +224,6 @@ export default function AdminPage() {
   const [previewClub, setPreviewClub] = useState<any>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  const [previewTravel, setPreviewTravel] = useState<any>(null);
-  const [previewTravelOpen, setPreviewTravelOpen] = useState(false);
-
   const isAdmin = !!user?.isAdmin;
 
   const [search, setSearch] = useState("");
@@ -213,6 +236,15 @@ export default function AdminPage() {
 
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 15;
+
+  // Clean up ?tab=/&editTravel= from the URL once read into state
+  // (coming back from the travel preview page's Edit/Back actions).
+  useEffect(() => {
+    if (window.location.search) {
+      window.history.replaceState(null, "", "/admin");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     setPage(1);
@@ -235,9 +267,12 @@ export default function AdminPage() {
           credentials: "include",
         });
       const data = await res.json();
-      setItems(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      setItems(list);
+      return list;
     } catch {
       setItems([]);
+      return [];
     } finally {
       setLoading(false);
     }
@@ -250,7 +285,35 @@ export default function AdminPage() {
   
     if (!isContentTab(activeTab)) return;
 
-    fetchItems(activeTab);
+    fetchItems(activeTab).then((data) => {
+      if (activeTab === "travel" && pendingEditTravelId) {
+        const found = (data || []).find(
+          (d: any) => d.id === pendingEditTravelId
+        );
+
+        if (found) {
+          setEditingClubId(undefined);
+          setEditing(found);
+
+          const nextFormData: Record<string, any> = {};
+          FIELDS.travel.forEach((f) => {
+            const v = found[f.name];
+            if (f.type === "list") {
+              nextFormData[f.name] = Array.isArray(v) ? v.join(", ") : (v || "");
+            } else if (f.type === "checkbox") {
+              nextFormData[f.name] = !!v;
+            } else {
+              nextFormData[f.name] = v ?? "";
+            }
+          });
+
+          setFormData(nextFormData);
+          setDialogOpen(true);
+        }
+
+        setPendingEditTravelId(null);
+      }
+    });
   }, [activeTab, isAdmin]);
 
   useEffect(() => {
@@ -591,10 +654,6 @@ export default function AdminPage() {
       setItems((prev) =>
         prev.map((p) => (p.id === updatedPkg.id ? updatedPkg : p))
       );
-
-      if (previewTravel?.id === updatedPkg.id) {
-        setPreviewTravel(updatedPkg);
-      }
 
       toast({
         title: updatedPkg.isActive ? "Package Published" : "Package Hidden",
@@ -1009,10 +1068,10 @@ export default function AdminPage() {
                               <Button
                                 size="icon"
                                 variant="ghost"
-                                onClick={() => {
-                                  setPreviewTravel(pkg);
-                                  setPreviewTravelOpen(true);
-                                }}
+                                onClick={() =>
+                                  setLocation(`/admin/travel/${pkg.slug}/preview`)
+                                }
+                                data-testid={`admin-preview-${pkg.id}`}
                               >
                                 <Eye className="w-4 h-4" />
                               </Button>
@@ -1350,19 +1409,6 @@ export default function AdminPage() {
               setDialogOpen(true);
             }}
             onToggleStatus={() => toggleClubStatus(previewClub)}
-        />
-        <TravelPreviewDialog
-            open={previewTravelOpen}
-            pkg={previewTravel}
-            onClose={() => {
-                setPreviewTravelOpen(false);
-                setPreviewTravel(null);
-            }}
-            onEdit={() => {
-              setPreviewTravelOpen(false);
-              openEdit(previewTravel);
-            }}
-            onToggleStatus={() => toggleTravelStatus(previewTravel)}
         />
         <Footer />
       </div>

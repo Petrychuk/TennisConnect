@@ -26,6 +26,7 @@ import TravelDetailPage from "@/pages/travel-detail";
 import RecreationPage from "@/pages/recreation";
 import RecreationDetailPage from "@/pages/recreation-detail";
 import AdminPage from "@/pages/admin";
+import AdminTravelPreviewPage from "@/pages/admin-travel-preview";
 
 function Router() {
   return (
@@ -49,6 +50,7 @@ function Router() {
       <Route path="/recreation" component={RecreationPage} />
       <Route path="/recreation/:slug" component={RecreationDetailPage} />
       <Route path="/admin" component={AdminPage} />
+      <Route path="/admin/travel/:slug/preview" component={AdminTravelPreviewPage} />
       <Route path="/messages" component={MessagesPage} />
       <Route path="/coach/profile" component={CoachProfile} />
       <Route path="/coach/:id" component={CoachProfile} />
