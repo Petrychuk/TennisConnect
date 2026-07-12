@@ -19,6 +19,7 @@ import { clubValidationSchema, articleSchema, travelSchema, recreationSchema, to
 import AdminUsersTab from "@/components/admin/users_tab";
 import { ClubAdminCard } from "@/components/admin/clubs/ClubAdminCard";
 import { ClubPreviewDialog } from "@/components/admin/clubs/ClubPreviewDialog";
+import { TravelPreviewDialog } from "@/components/admin/travel/TravelPreviewDialog";
 import { AppPagination } from "@/components/shared/AppPagination";
 import {
   Table,
@@ -197,11 +198,18 @@ export default function AdminPage() {
   const [previewClub, setPreviewClub] = useState<any>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
 
+  const [previewTravel, setPreviewTravel] = useState<any>(null);
+  const [previewTravelOpen, setPreviewTravelOpen] = useState(false);
+
   const isAdmin = !!user?.isAdmin;
 
   const [search, setSearch] = useState("");
   const [listingFilter, setListingFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+
+  const [travelSearch, setTravelSearch] = useState("");
+  const [travelStatusFilter, setTravelStatusFilter] = useState("all");
+  const [travelPage, setTravelPage] = useState(1);
 
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 15;
@@ -210,12 +218,18 @@ export default function AdminPage() {
     setPage(1);
   }, [search, listingFilter, statusFilter]);
 
+  useEffect(() => {
+    setTravelPage(1);
+  }, [travelSearch, travelStatusFilter]);
+
   const fetchItems = async (resource: Resource) => {
     setLoading(true);
     try {
       const endpoint =
       resource === "articles"
         ? "/api/admin/articles"
+        : resource === "travel"
+        ? "/api/admin/travel"
         : `/api/${resource}`;
         const res = await fetch(endpoint, {
           credentials: "include",
@@ -555,6 +569,46 @@ export default function AdminPage() {
     }
   }; 
   
+  // Func publish/hide a travel package
+  const toggleTravelStatus = async (pkg: any) => {
+    try {
+      const endpoint = pkg.isActive ? "unpublish" : "publish";
+
+      const res = await fetch(
+        `/api/admin/travel/${pkg.id}/${endpoint}`,
+        {
+          method: "PATCH",
+          credentials: "include",
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to update status");
+      }
+
+      const updatedPkg = await res.json();
+
+      setItems((prev) =>
+        prev.map((p) => (p.id === updatedPkg.id ? updatedPkg : p))
+      );
+
+      if (previewTravel?.id === updatedPkg.id) {
+        setPreviewTravel(updatedPkg);
+      }
+
+      toast({
+        title: updatedPkg.isActive ? "Package Published" : "Package Hidden",
+        description: updatedPkg.title,
+      });
+    } catch (e: any) {
+      toast({
+        variant: "destructive",
+        title: "Status update failed",
+        description: e.message,
+      });
+    }
+  };
+  
   const filteredClubs = clubs.filter((club) => {
     const matchesSearch =
       club.name.toLowerCase().includes(search.toLowerCase());
@@ -577,6 +631,29 @@ export default function AdminPage() {
   const paginatedClubs = filteredClubs.slice(
     (page - 1) * PAGE_SIZE,
     page * PAGE_SIZE
+  );
+
+  const filteredTravel = items.filter((pkg) => {
+    const q = travelSearch.toLowerCase();
+    const matchesSearch =
+      !q ||
+      (pkg.title || "").toLowerCase().includes(q) ||
+      (pkg.destination || "").toLowerCase().includes(q);
+
+    const matchesStatus =
+      travelStatusFilter === "all" ||
+      (travelStatusFilter === "published" ? !!pkg.isActive : !pkg.isActive);
+
+    return matchesSearch && matchesStatus;
+  });
+
+  const travelTotalPages = Math.ceil(
+    filteredTravel.length / PAGE_SIZE
+  );
+
+  const paginatedTravel = filteredTravel.slice(
+    (travelPage - 1) * PAGE_SIZE,
+    travelPage * PAGE_SIZE
   );
 
   return (
@@ -836,6 +913,153 @@ export default function AdminPage() {
                   </div>
                   </>
                   
+                  ) : r === "travel" ? (
+                  <>
+                  <p className="mb-4 text-sm text-muted-foreground">
+                    Showing {filteredTravel.length} package{filteredTravel.length !== 1 ? "s" : ""}
+                  </p>
+                  <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+
+                    <Input
+                      placeholder="Search travel packages..."
+                      value={travelSearch}
+                      onChange={(e) => setTravelSearch(e.target.value)}
+                      className="md:w-80"
+                    />
+
+                    <div className="flex gap-3">
+
+                      <select
+                        value={travelStatusFilter}
+                        onChange={(e) => setTravelStatusFilter(e.target.value)}
+                        className="
+                          h-10
+                          rounded-md
+                          border
+                          bg-background
+                          px-3
+                          text-sm
+                        "
+                      >
+                        <option value="all">All Statuses</option>
+                        <option value="published">Published</option>
+                        <option value="hidden">Hidden</option>
+                      </select>
+
+                    </div>
+
+                  </div>
+                  <div className="rounded-xl border bg-card overflow-hidden">
+
+                  <Table>
+
+                    <TableHeader>
+                      <TableRow>
+
+                        <TableHead>Package</TableHead>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Status</TableHead>
+
+                        <TableHead className="text-centre">
+                          Actions
+                        </TableHead>
+
+                      </TableRow>
+                    </TableHeader>
+
+                    <TableBody>
+
+                      {paginatedTravel.map((pkg) => (
+
+                        <TableRow key={pkg.id}>
+
+                          <TableCell className="font-medium">
+                            {pkg.title}
+                          </TableCell>
+
+                          <TableCell>
+                            {pkg.destination}
+                          </TableCell>
+
+                          <TableCell>
+
+                            <Badge
+                              variant={
+                                pkg.isActive ? "default" : "outline"
+                              }
+                            >
+                              {pkg.isActive ? "published" : "hidden"}
+                            </Badge>
+
+                          </TableCell>
+
+                          <TableCell>
+
+                            <div className="flex justify-end gap-2">
+
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => openEdit(pkg)}
+                                data-testid={`admin-edit-${pkg.id}`}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => {
+                                  setPreviewTravel(pkg);
+                                  setPreviewTravelOpen(true);
+                                }}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+
+                              <Button
+                                size="icon"
+                                variant={
+                                  pkg.isActive ? "default" : "outline"
+                                }
+                                onClick={() =>
+                                  toggleTravelStatus(pkg)
+                                }
+                              >
+                                <Globe className="w-4 h-4" />
+                              </Button>
+
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => remove(pkg)}
+                                className="text-destructive"
+                                data-testid={`admin-delete-${pkg.id}`}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+
+                            </div>
+
+                          </TableCell>
+
+                        </TableRow>
+
+                      ))}
+
+                    </TableBody>
+
+                  </Table>
+
+
+                  <AppPagination
+                      currentPage={travelPage}
+                      totalPages={travelTotalPages}
+                      onPageChange={setTravelPage}
+                  />
+                  </div>
+                  </>
+
                     ) : items.length === 0 ? (
                     <div className="text-center py-20">
                       <ActiveIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
@@ -1126,6 +1350,19 @@ export default function AdminPage() {
               setDialogOpen(true);
             }}
             onToggleStatus={() => toggleClubStatus(previewClub)}
+        />
+        <TravelPreviewDialog
+            open={previewTravelOpen}
+            pkg={previewTravel}
+            onClose={() => {
+                setPreviewTravelOpen(false);
+                setPreviewTravel(null);
+            }}
+            onEdit={() => {
+              setPreviewTravelOpen(false);
+              openEdit(previewTravel);
+            }}
+            onToggleStatus={() => toggleTravelStatus(previewTravel)}
         />
         <Footer />
       </div>

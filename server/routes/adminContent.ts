@@ -133,6 +133,17 @@ router.get("/legal/:type",
 );
 
 /* ========== TRAVEL PACKAGES ========== */
+router.get("/admin/travel",
+  requireAdmin,
+  asyncHandler(async (_req: any, res: any) => {
+    const rows = await db
+      .select()
+      .from(travelPackages)
+      .orderBy(desc(travelPackages.createdAt));
+    res.json(rows);
+  })
+);
+
 router.get("/travel",
   asyncHandler(async (_req: any, res: any) => {
     const rows = await db
@@ -180,6 +191,32 @@ router.delete("/admin/travel/:id",
   asyncHandler(async (req: any, res: any) => {
     await db.delete(travelPackages).where(eq(travelPackages.id, req.params.id));
     res.json({ ok: true });
+  })
+);
+
+router.patch("/admin/travel/:id/publish",
+  requireAdmin,
+  asyncHandler(async (req: any, res: any) => {
+    const [row] = await db
+      .update(travelPackages)
+      .set({ isActive: true })
+      .where(eq(travelPackages.id, req.params.id))
+      .returning();
+    if (!row) return res.status(404).json({ message: "Not found" });
+    res.json(row);
+  })
+);
+
+router.patch("/admin/travel/:id/unpublish",
+  requireAdmin,
+  asyncHandler(async (req: any, res: any) => {
+    const [row] = await db
+      .update(travelPackages)
+      .set({ isActive: false })
+      .where(eq(travelPackages.id, req.params.id))
+      .returning();
+    if (!row) return res.status(404).json({ message: "Not found" });
+    res.json(row);
   })
 );
 
