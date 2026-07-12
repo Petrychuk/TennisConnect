@@ -60,6 +60,16 @@ function Block({ block }: { block: ArticleContentBlock }) {
         </h3>
       );
 
+    case "numberedHeading":
+      return (
+        <h2 className="font-display font-bold text-xl md:text-2xl mt-10 mb-4 first:mt-0 flex items-baseline gap-2">
+          <span className="text-primary shrink-0">{block.number}.</span>
+          <span>
+            <Inline text={block.text} />
+          </span>
+        </h2>
+      );
+
     case "quote":
       return (
         <blockquote className="my-8 border-l-4 border-primary bg-primary/5 rounded-r-2xl px-5 py-4 md:px-6 md:py-5 text-lg md:text-xl font-display italic text-foreground">

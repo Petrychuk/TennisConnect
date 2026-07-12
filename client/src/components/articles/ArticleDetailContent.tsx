@@ -31,12 +31,46 @@ interface ArticleDetailContentProps {
   relatedArticles?: Article[];
 }
 
+// Cover height — a contained, moderately sized banner (matches the
+// card/thumbnail sizing used across the site's dashboards), not a full
+// viewport-height hero, but full-bleed edge-to-edge width.
+const COVER_HEIGHT =
+  "h-[260px] sm:h-[340px] md:h-[420px] lg:h-[480px]";
+
+const READING_COLUMN = "max-w-3xl md:max-w-4xl";
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-AU", {
     day: "numeric",
     month: "long",
     year: "numeric",
   });
+}
+
+function MetaRow({
+  article,
+  light,
+}: {
+  article: Article;
+  light?: boolean;
+}) {
+  return (
+    <div
+      className={`flex flex-wrap items-center gap-x-4 gap-y-2 text-sm ${
+        light ? "text-white/85" : "text-muted-foreground"
+      }`}
+    >
+      <span className={`font-semibold ${light ? "text-white" : "text-foreground"}`}>
+        {article.author}
+      </span>
+      <span className="flex items-center gap-1.5">
+        <Calendar className="w-3.5 h-3.5" /> {formatDate(article.createdAt)}
+      </span>
+      <span className="flex items-center gap-1.5">
+        <Clock className="w-3.5 h-3.5" /> {article.readTime} min read
+      </span>
+    </div>
+  );
 }
 
 /**
@@ -46,13 +80,16 @@ function formatDate(iso: string) {
  * pixel-accurate representation of what will go live.
  *
  * One universal template, filled from the same CMS fields every article
- * already has — sections (tags, related articles) simply don't render
- * when there's no data for them.
+ * already has. Legal-category documents get a quiet, minimal treatment
+ * (title on the cover, plain body); every other category gets a bigger,
+ * more editorial presentation — same engine, different presentation.
  */
 export function ArticleDetailContent({
   article,
   relatedArticles = [],
 }: ArticleDetailContentProps) {
+  const isLegal = article.category === "Legal";
+
   const tags = (article.tags || "")
     .split(",")
     .map((t) => t.trim())
@@ -67,66 +104,105 @@ export function ArticleDetailContent({
         </div>
       </div>
 
-      <div className="container mx-auto px-4 max-w-3xl py-8 md:py-12">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-        >
-          <Badge className="mb-4 bg-primary text-primary-foreground">
-            {article.category}
-          </Badge>
-
-          <h1
-            className="text-3xl sm:text-4xl md:text-5xl font-display font-bold mb-5 leading-tight"
-            data-testid="article-title"
-          >
-            {article.title}
-          </h1>
-
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground mb-6">
-            <span className="font-semibold text-foreground">{article.author}</span>
-            <span className="flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5" /> {formatDate(article.createdAt)}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5" /> {article.readTime} min read
-            </span>
-          </div>
-
-          <p className="text-lg md:text-xl text-muted-foreground leading-relaxed font-light mb-8">
-            {article.excerpt}
-          </p>
-        </motion.div>
-
-        {/* Cover image — a contained, moderately sized banner (matches the
-            card/thumbnail sizing used across the site's dashboards),
-            not a full viewport-height hero. object-cover keeps a clean
-            crop for both landscape and portrait covers. */}
-        {article.coverImage && (
+      {/* Fallback: if a Legal article has no cover image, there's nowhere
+          to overlay the title onto — show it in normal flow instead. */}
+      {isLegal && !article.coverImage && (
+        <div className={`container mx-auto px-4 ${READING_COLUMN} pt-8`}>
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.05 }}
-            className="
-              relative
-              h-[220px] sm:h-[300px] md:h-[380px] lg:h-[440px]
-              w-full
-              overflow-hidden
-              rounded-2xl md:rounded-3xl
-              shadow-lg
-              mb-10
-              bg-secondary/40
-            "
+            transition={{ duration: 0.4 }}
           >
-            <img
-              src={article.coverImage}
-              alt={article.title}
-              className="w-full h-full object-cover"
-            />
+            <Badge className="mb-3 bg-primary text-primary-foreground">
+              {article.category}
+            </Badge>
+            <h1
+              className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-display font-bold mb-3 leading-tight"
+              data-testid="article-title"
+            >
+              {article.title}
+            </h1>
+            <MetaRow article={article} />
+          </motion.div>
+        </div>
+      )}
+
+      {/* Cover — full-bleed, right after breadcrumbs. Legal documents get
+          the title overlaid here; other categories keep the image clean
+          and introduce the title below. */}
+      {article.coverImage && (
+        <div className={`relative w-full ${COVER_HEIGHT} overflow-hidden bg-secondary/40`}>
+          <img
+            src={article.coverImage}
+            alt={article.title}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+
+          {isLegal && (
+            <>
+              <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/45 to-black/10" />
+              <div className="absolute inset-0 flex items-end">
+                <div className={`container mx-auto px-4 ${READING_COLUMN} pb-6 md:pb-10`}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4 }}
+                  >
+                    <Badge className="mb-3 bg-primary text-primary-foreground">
+                      {article.category}
+                    </Badge>
+                    <h1
+                      className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-display font-bold text-white mb-3 leading-tight"
+                      data-testid="article-title"
+                    >
+                      {article.title}
+                    </h1>
+                    <MetaRow article={article} light />
+                  </motion.div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      <div className={`container mx-auto px-4 ${READING_COLUMN} py-8 md:py-12`}>
+        {/* Header — non-Legal categories get their title/meta below the
+            cover instead of overlaid, with a bolder editorial treatment. */}
+        {!isLegal && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="mb-8"
+          >
+            <Badge className="mb-4 bg-primary text-primary-foreground">
+              {article.category}
+            </Badge>
+
+            <h1
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-display font-bold mb-5 leading-[1.05]"
+              data-testid="article-title"
+            >
+              {article.title}
+            </h1>
+
+            <MetaRow article={article} />
           </motion.div>
         )}
+
+        {/* Legal gets a plain lead line; other categories get a bolder
+            pull-quote style excerpt. */}
+        {article.excerpt &&
+          (isLegal ? (
+            <p className="text-lg text-muted-foreground mb-10 pb-8 border-b">
+              {article.excerpt}
+            </p>
+          ) : (
+            <blockquote className="border-l-4 border-primary pl-5 md:pl-6 mb-10 text-xl md:text-2xl font-display font-medium leading-snug text-foreground/90">
+              {article.excerpt}
+            </blockquote>
+          ))}
 
         {/* Content */}
         <ArticleRichContent content={article.content} />

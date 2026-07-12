@@ -1,6 +1,7 @@
 export type ArticleContentBlock =
   | { type: "heading2"; text: string }
   | { type: "heading3"; text: string }
+  | { type: "numberedHeading"; number: string; text: string }
   | { type: "quote"; text: string }
   | { type: "hr" }
   | { type: "ul"; items: string[] }
@@ -99,13 +100,24 @@ export function parseArticleContent(content: string): ArticleContentBlock[] {
     }
 
     if (/^\d+\.\s/.test(line)) {
-      const items = [line.replace(/^\d+\.\s/, "")];
+      const firstMatch = line.match(/^(\d+)\.\s(.*)$/)!;
+      const items = [{ number: firstMatch[1], text: firstMatch[2] }];
       i++;
       while (i < lines.length && /^\d+\.\s/.test(lines[i].trim())) {
-        items.push(lines[i].trim().replace(/^\d+\.\s/, ""));
+        const m = lines[i].trim().match(/^(\d+)\.\s(.*)$/)!;
+        items.push({ number: m[1], text: m[2] });
         i++;
       }
-      blocks.push({ type: "ol", items });
+
+      if (items.length === 1) {
+        blocks.push({
+          type: "numberedHeading",
+          number: items[0].number,
+          text: items[0].text,
+        });
+      } else {
+        blocks.push({ type: "ol", items: items.map((it) => it.text) });
+      }
       continue;
     }
 
