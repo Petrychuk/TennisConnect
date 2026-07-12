@@ -208,9 +208,7 @@ export const marketplaceItems = pgTable("marketplace_items", {
   isActive: boolean("is_active").default(true),
 });
 
-// ============================================================================
 // CLUB COMMUNITIES
-// ============================================================================
 export const clubs = pgTable("clubs", {
   id: varchar("id")
     .primaryKey()
