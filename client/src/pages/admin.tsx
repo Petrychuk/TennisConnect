@@ -1436,29 +1436,7 @@ export default function AdminPage() {
                         )}
                       </Label>
         
-                      {activeTab === "travel" && f.type === "checkbox" ? (
-                          <div className="flex items-center justify-between rounded-lg border p-4">
-                            <div>
-                              <Label htmlFor={f.name}>
-                                {f.label || f.name}
-                              </Label>
-
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Show this package as Featured on TennisConnect.
-                              </p>
-                            </div>
-
-                            <Switch
-                                checked={!!formData[f.name]}
-                                onCheckedChange={(checked) =>
-                                  setFormData({
-                                    ...formData,
-                                    [f.name]: checked,
-                                  })
-                                }
-                              />
-                          </div>
-                        ) : f.type === "textarea" ? (
+                      {f.type === "textarea" ? (
                         <Textarea
                           id={f.name}
                           value={formData[f.name] || ""}
