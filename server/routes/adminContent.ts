@@ -110,6 +110,32 @@ router.delete("/admin/articles/:id",
   })
 );
 
+router.patch("/admin/articles/:id/publish",
+  requireAdmin,
+  asyncHandler(async (req: any, res: any) => {
+    const [row] = await db
+      .update(articles)
+      .set({ isPublished: true })
+      .where(eq(articles.id, req.params.id))
+      .returning();
+    if (!row) return res.status(404).json({ message: "Not found" });
+    res.json(row);
+  })
+);
+
+router.patch("/admin/articles/:id/unpublish",
+  requireAdmin,
+  asyncHandler(async (req: any, res: any) => {
+    const [row] = await db
+      .update(articles)
+      .set({ isPublished: false })
+      .where(eq(articles.id, req.params.id))
+      .returning();
+    if (!row) return res.status(404).json({ message: "Not found" });
+    res.json(row);
+  })
+);
+
 router.get("/legal/:type",
   asyncHandler(async (req: any, res: any) => {
     const [row] = await db

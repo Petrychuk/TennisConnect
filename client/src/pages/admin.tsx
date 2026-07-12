@@ -194,9 +194,9 @@ function getInitialTab(): AdminTab {
     : "articles";
 }
 
-function getInitialEditTravelId(): string | null {
+function getInitialEditId(param: string): string | null {
   if (typeof window === "undefined") return null;
-  return new URLSearchParams(window.location.search).get("editTravel");
+  return new URLSearchParams(window.location.search).get(param);
 }
 
 export default function AdminPage() {
@@ -206,7 +206,10 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>(getInitialTab);
   const [pendingEditTravelId, setPendingEditTravelId] = useState<
     string | null
-  >(getInitialEditTravelId);
+  >(() => getInitialEditId("editTravel"));
+  const [pendingEditArticleId, setPendingEditArticleId] = useState<
+    string | null
+  >(() => getInitialEditId("editArticle"));
   const ActiveIcon = isContentTab(activeTab)
   ? ICONS[activeTab]
   : Users;
@@ -234,6 +237,11 @@ export default function AdminPage() {
   const [travelStatusFilter, setTravelStatusFilter] = useState("all");
   const [travelPage, setTravelPage] = useState(1);
 
+  const [articleSearch, setArticleSearch] = useState("");
+  const [articleCategoryFilter, setArticleCategoryFilter] = useState("all");
+  const [articleStatusFilter, setArticleStatusFilter] = useState("all");
+  const [articlePage, setArticlePage] = useState(1);
+
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 15;
 
@@ -253,6 +261,10 @@ export default function AdminPage() {
   useEffect(() => {
     setTravelPage(1);
   }, [travelSearch, travelStatusFilter]);
+
+  useEffect(() => {
+    setArticlePage(1);
+  }, [articleSearch, articleCategoryFilter, articleStatusFilter]);
 
   const fetchItems = async (resource: Resource) => {
     setLoading(true);
@@ -312,6 +324,34 @@ export default function AdminPage() {
         }
 
         setPendingEditTravelId(null);
+      }
+
+      if (activeTab === "articles" && pendingEditArticleId) {
+        const found = (data || []).find(
+          (d: any) => d.id === pendingEditArticleId
+        );
+
+        if (found) {
+          setEditingClubId(undefined);
+          setEditing(found);
+
+          const nextFormData: Record<string, any> = {};
+          FIELDS.articles.forEach((f) => {
+            const v = found[f.name];
+            if (f.type === "list") {
+              nextFormData[f.name] = Array.isArray(v) ? v.join(", ") : (v || "");
+            } else if (f.type === "checkbox") {
+              nextFormData[f.name] = !!v;
+            } else {
+              nextFormData[f.name] = v ?? "";
+            }
+          });
+
+          setFormData(nextFormData);
+          setDialogOpen(true);
+        }
+
+        setPendingEditArticleId(null);
       }
     });
   }, [activeTab, isAdmin]);
@@ -668,6 +708,42 @@ export default function AdminPage() {
     }
   };
   
+  // Func publish/unpublish an article
+  const toggleArticleStatus = async (article: any) => {
+    try {
+      const endpoint = article.isPublished ? "unpublish" : "publish";
+
+      const res = await fetch(
+        `/api/admin/articles/${article.id}/${endpoint}`,
+        {
+          method: "PATCH",
+          credentials: "include",
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to update status");
+      }
+
+      const updatedArticle = await res.json();
+
+      setItems((prev) =>
+        prev.map((a) => (a.id === updatedArticle.id ? updatedArticle : a))
+      );
+
+      toast({
+        title: updatedArticle.isPublished ? "Article Published" : "Article Unpublished",
+        description: updatedArticle.title,
+      });
+    } catch (e: any) {
+      toast({
+        variant: "destructive",
+        title: "Status update failed",
+        description: e.message,
+      });
+    }
+  };
+  
   const filteredClubs = clubs.filter((club) => {
     const matchesSearch =
       club.name.toLowerCase().includes(search.toLowerCase());
@@ -713,6 +789,35 @@ export default function AdminPage() {
   const paginatedTravel = filteredTravel.slice(
     (travelPage - 1) * PAGE_SIZE,
     travelPage * PAGE_SIZE
+  );
+
+  const ARTICLE_CATEGORIES =
+    FIELDS.articles.find((f) => f.name === "category")?.options || [];
+
+  const filteredArticles = items.filter((a) => {
+    const q = articleSearch.toLowerCase();
+    const matchesSearch =
+      !q ||
+      (a.title || "").toLowerCase().includes(q) ||
+      (a.excerpt || "").toLowerCase().includes(q);
+
+    const matchesCategory =
+      articleCategoryFilter === "all" || a.category === articleCategoryFilter;
+
+    const matchesStatus =
+      articleStatusFilter === "all" ||
+      (articleStatusFilter === "published" ? !!a.isPublished : !a.isPublished);
+
+    return matchesSearch && matchesCategory && matchesStatus;
+  });
+
+  const articleTotalPages = Math.ceil(
+    filteredArticles.length / PAGE_SIZE
+  );
+
+  const paginatedArticles = filteredArticles.slice(
+    (articlePage - 1) * PAGE_SIZE,
+    articlePage * PAGE_SIZE
   );
 
   return (
@@ -1115,6 +1220,173 @@ export default function AdminPage() {
                       currentPage={travelPage}
                       totalPages={travelTotalPages}
                       onPageChange={setTravelPage}
+                  />
+                  </div>
+                  </>
+
+                  ) : r === "articles" ? (
+                  <>
+                  <p className="mb-4 text-sm text-muted-foreground">
+                    Showing {filteredArticles.length} article{filteredArticles.length !== 1 ? "s" : ""}
+                  </p>
+                  <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+
+                    <Input
+                      placeholder="Search articles..."
+                      value={articleSearch}
+                      onChange={(e) => setArticleSearch(e.target.value)}
+                      className="md:w-80"
+                    />
+
+                    <div className="flex gap-3">
+
+                      <select
+                        value={articleCategoryFilter}
+                        onChange={(e) => setArticleCategoryFilter(e.target.value)}
+                        className="
+                          h-10
+                          rounded-md
+                          border
+                          bg-background
+                          px-3
+                          text-sm
+                        "
+                      >
+                        <option value="all">All Categories</option>
+                        {ARTICLE_CATEGORIES.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </select>
+
+                      <select
+                        value={articleStatusFilter}
+                        onChange={(e) => setArticleStatusFilter(e.target.value)}
+                        className="
+                          h-10
+                          rounded-md
+                          border
+                          bg-background
+                          px-3
+                          text-sm
+                        "
+                      >
+                        <option value="all">All Statuses</option>
+                        <option value="published">Published</option>
+                        <option value="draft">Draft</option>
+                      </select>
+
+                    </div>
+
+                  </div>
+                  <div className="rounded-xl border bg-card overflow-hidden">
+
+                  <Table>
+
+                    <TableHeader>
+                      <TableRow>
+
+                        <TableHead>Title</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Status</TableHead>
+
+                        <TableHead className="text-centre">
+                          Actions
+                        </TableHead>
+
+                      </TableRow>
+                    </TableHeader>
+
+                    <TableBody>
+
+                      {paginatedArticles.map((article) => (
+
+                        <TableRow key={article.id}>
+
+                          <TableCell className="font-medium">
+                            {article.title}
+                          </TableCell>
+
+                          <TableCell>
+                            {article.category}
+                          </TableCell>
+
+                          <TableCell>
+
+                            <Badge
+                              variant={
+                                article.isPublished ? "default" : "outline"
+                              }
+                            >
+                              {article.isPublished ? "published" : "draft"}
+                            </Badge>
+
+                          </TableCell>
+
+                          <TableCell>
+
+                            <div className="flex justify-end gap-2">
+
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => openEdit(article)}
+                                data-testid={`admin-edit-${article.id}`}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() =>
+                                  setLocation(`/admin/articles/${article.slug}/preview`)
+                                }
+                                data-testid={`admin-preview-${article.id}`}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+
+                              <Button
+                                size="icon"
+                                variant={
+                                  article.isPublished ? "default" : "outline"
+                                }
+                                onClick={() =>
+                                  toggleArticleStatus(article)
+                                }
+                              >
+                                <Globe className="w-4 h-4" />
+                              </Button>
+
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => remove(article)}
+                                className="text-destructive"
+                                data-testid={`admin-delete-${article.id}`}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+
+                            </div>
+
+                          </TableCell>
+
+                        </TableRow>
+
+                      ))}
+
+                    </TableBody>
+
+                  </Table>
+
+
+                  <AppPagination
+                      currentPage={articlePage}
+                      totalPages={articleTotalPages}
+                      onPageChange={setArticlePage}
                   />
                   </div>
                   </>
