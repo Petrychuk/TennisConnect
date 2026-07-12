@@ -6,6 +6,7 @@ import {
   MapPin,
   Building2
 } from "lucide-react";
+import { openCookieSettings } from "@/lib/cookieConsent";
 
 export function Footer() {
   return (
@@ -261,11 +262,19 @@ export function Footer() {
 
               <li>
                 <Link
-                  href="/cookie-policy"
+                  href="/articles/cookie-policy"
                   className="hover:text-primary transition-colors"
                 >
                   Cookie Policy
                 </Link>
+              </li>
+              <li>
+                <button
+                  onClick={openCookieSettings}
+                  className="hover:text-primary transition-colors text-left"
+                >
+                  Manage Cookies
+                </button>
               </li>
             </ul>
           </div>

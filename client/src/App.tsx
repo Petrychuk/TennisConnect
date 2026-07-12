@@ -58,6 +58,7 @@ function Router() {
 }
 
 import { SupportChat } from "@/components/support-chat";
+import { CookieConsentManager } from "@/components/cookie-consent/CookieConsentManager";
 
 function App() {
   return (
@@ -68,6 +69,7 @@ function App() {
           <ScrollToTop />
           <Router />
           <SupportChat />
+          <CookieConsentManager />
         </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>
