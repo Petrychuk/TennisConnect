@@ -165,3 +165,10 @@
 .custom-chat-scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(180, 220, 40, 0.8);
 }
+
+/* Space for the fixed mobile bottom nav (Home / Messages / Profile / Notifications / More) */
+@media (max-width: 767px) {
+  body.has-mobile-bottom-nav {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+}

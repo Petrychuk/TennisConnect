@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supportSchema } from "@/lib/validations/support";
+import { useAuth } from "@/lib/auth-context";
+import { useLocation } from "wouter";
 
 const SUPPORT_AGENT = {
   name: "Nataliia from Support",
@@ -69,6 +71,10 @@ export function SupportChat() {
   });
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { isAuthenticated } = useAuth();
+  const [location] = useLocation();
+  // The fixed mobile bottom nav only renders when logged in and off /auth - lift the launcher above it so it doesn't overlap
+  const hasMobileBottomNav = isAuthenticated && location !== "/auth";
 
   useEffect(() => {
     const handleOpenChat = () => {
@@ -103,7 +109,12 @@ export function SupportChat() {
   }, [isOpen ]);
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end pointer-events-none">
+    <div
+      className={`fixed right-4 md:right-6 z-40 flex flex-col items-end pointer-events-none ${
+        hasMobileBottomNav ? "bottom-24 md:bottom-6" : "bottom-6"
+      }`}
+      data-testid="support-chat-launcher-wrapper"
+    >
       <AnimatePresence>
         {isOpen && !isMinimized && (
           <motion.div
