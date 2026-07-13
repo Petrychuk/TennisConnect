@@ -45,7 +45,7 @@ function extractLeadingNumber(value: unknown): number {
         <StatCard
           data-testid="coach-stat-rate"
           icon={<DollarSign className="w-3 h-3 md:w-5 md:h-5" />}
-          value={`$${extractLeadingNumber(profile.rate)}/hr`}
+          value={`${extractLeadingNumber(profile.rate)}`}
           label="Per Hour"
         />
   
