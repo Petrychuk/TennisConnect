@@ -12,6 +12,7 @@ interface StatCardProps {
   onClick?: () => void;
 
   className?: string;
+  "data-testid"?: string;
 }
 
 export function StatCard({
@@ -22,12 +23,14 @@ export function StatCard({
   clickable = false,
   onClick,
   className,
+  "data-testid": dataTestId,
 }: StatCardProps) {
   return (
     <button
   type="button"
   disabled={!clickable}
   onClick={onClick}
+  data-testid={dataTestId}
   className={cn(
     `
     rounded-xl
@@ -37,7 +40,8 @@ export function StatCard({
     bg-background/80
     backdrop-blur-sm
 
-    p-2.5
+    p-2
+    sm:p-2.5
     md:p-3
     lg:px-4
     lg:py-4
@@ -49,6 +53,7 @@ export function StatCard({
     hover:bg-background
 
     text-left
+    overflow-hidden
     `,
     className
   )}
@@ -59,7 +64,8 @@ export function StatCard({
     flex
     items-center
     justify-center
-    gap-1.5
+    gap-1
+    sm:gap-1.5
   "
 >
   <div
@@ -68,8 +74,11 @@ export function StatCard({
       items-center
       justify-center
 
-      w-6
-      h-6
+      w-5
+      h-5
+
+      sm:w-6
+      sm:h-6
 
       md:w-8
       md:h-8
@@ -87,13 +96,17 @@ export function StatCard({
 
   <div
     className="
-      text-lg
+      text-sm
+      sm:text-base
       md:text-xl
 
       font-bold
       leading-none
 
       text-muted-foreground
+
+      whitespace-nowrap
+      truncate
     "
   >
     {value}
@@ -104,7 +117,8 @@ export function StatCard({
       className="
         mt-1
 
-        text-[10px]
+        text-[9px]
+        sm:text-[10px]
         md:text-xs
 
         font-medium
@@ -112,6 +126,10 @@ export function StatCard({
         tracking-wide
 
         text-muted-foreground
+
+        whitespace-nowrap
+        truncate
+        max-w-full
       "
     >
       {label}

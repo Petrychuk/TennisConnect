@@ -75,6 +75,7 @@ export function PlayerHero({
         <ProfileStats>
 
           <StatCard
+            data-testid="player-stat-tournaments"
             icon={<Users className="w-5 h-5" />}
             value="12"
             label="Tournaments"
@@ -83,6 +84,7 @@ export function PlayerHero({
           />
 
           <StatCard
+            data-testid="player-stat-wins"
             icon={<Trophy className="w-5 h-5" />}
             value="8"
             label="Wins"
@@ -90,6 +92,7 @@ export function PlayerHero({
           />
 
           <StatCard
+            data-testid="player-stat-rating"
             icon={<Star className="w-5 h-5" />}
             value="3.7"
             label="UTR Rating"
@@ -98,6 +101,7 @@ export function PlayerHero({
           />
 
           <StatCard
+            data-testid="player-stat-member"
             icon={<Calendar className="w-5 h-5" />}
             value={getMemberSince(profile.createdAt)}
             label="Member"

@@ -7,6 +7,7 @@ import { Footer } from "@/components/footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -841,15 +842,45 @@ export default function CoachProfile() {
             onChange={(e) => handleFileChange(e, 'gallery')}
           />
          
-         <ProfileCover
-            cover={profile.cover}
-            isOwner={isOwnProfile}
-            onEdit={() =>
-              document.getElementById("cover-upload")?.click()
-            }
-          />
+         {loading ? (
+           <Skeleton
+             className="w-full h-48 sm:h-56 md:h-64 lg:h-72 rounded-none"
+             data-testid="coach-cover-skeleton"
+           />
+         ) : (
+           <ProfileCover
+              cover={profile.cover}
+              isOwner={isOwnProfile}
+              onEdit={() =>
+                document.getElementById("cover-upload")?.click()
+              }
+            />
+         )}
           <div className="container mx-auto px-4 relative z-40 -mt-20">
             
+          {loading ? (
+            <div
+              className="container mx-auto max-w-6xl sm:px-4 relative -mt-2 sm:-mt-6 md:-mt-16 lg:-mt-20"
+              data-testid="coach-hero-skeleton"
+            >
+              <div className="rounded-2xl border bg-background/90 backdrop-blur-xl shadow-xl pt-28 sm:pt-28 md:pt-8 pb-5 sm:pb-7 md:pb-8 px-4 sm:px-5 md:px-8 md:pl-56">
+                <div className="flex flex-col md:flex-row md:items-center gap-4">
+                  <Skeleton className="w-16 h-16 md:w-20 md:h-20 rounded-full shrink-0" />
+                  <div className="flex-1 space-y-3">
+                    <Skeleton className="h-6 md:h-8 w-48" />
+                    <Skeleton className="h-4 w-64 max-w-full" />
+                    <Skeleton className="h-4 w-40" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5 sm:gap-2 md:gap-4 mt-8">
+                  <Skeleton className="h-16 md:h-20 rounded-xl" />
+                  <Skeleton className="h-16 md:h-20 rounded-xl" />
+                  <Skeleton className="h-16 md:h-20 rounded-xl" />
+                  <Skeleton className="h-16 md:h-20 rounded-xl" />
+                </div>
+              </div>
+            </div>
+          ) : (
           <CoachHero
               profile={profile}
               isEditing={isEditing}
@@ -879,6 +910,7 @@ export default function CoachProfile() {
                   });
               }}
             />
+          )}
 
             {/* Main Content Tabs */}
             <div className="mt-12 pointer-events-auto">
@@ -931,54 +963,48 @@ export default function CoachProfile() {
                         </CardContent>
                       </Card>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Card>
-                          <CardContent className="p-6 flex items-center gap-4">
-                            <div className="p-3 rounded-full bg-primary/10 text-primary">
-                              <Trophy className="w-6 h-6" />
-                            </div>
-                            <div>
-                              <p className="text-sm text-muted-foreground">Experience</p>
-                              {isEditing ? (
+                      {isEditing && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <Card>
+                            <CardContent className="p-6 flex items-center gap-4">
+                              <div className="p-3 rounded-full bg-primary/10 text-primary">
+                                <Trophy className="w-6 h-6" />
+                              </div>
+                              <div>
+                                <p className="text-sm text-muted-foreground">Experience</p>
                                 <div className="flex items-center gap-2">
                                   <Input 
                                     value={profile.experience} 
                                     onChange={(e) => setProfile({...profile, experience: e.target.value})} 
                                     className="w-20 h-8"
+                                    data-testid="input-coach-experience"
                                   />
                                   <span>years</span>
                                 </div>
-                              ) : (
-                                <p className="text-xl font-bold">{profile.experience} Years</p>
-                              )}
-                            </div>
-                          </CardContent>
-                        </Card>
-                        <Card>
-                          <CardContent className="p-6 flex items-center gap-4">
-                            <div className="p-3 rounded-full bg-green-500/10 text-green-600">
-                              <DollarSign className="w-6 h-6" />
-                            </div>
-                            <div>
-                              <p className="text-sm text-muted-foreground">Hourly Rate</p>
-                              {isEditing ? (
+                              </div>
+                            </CardContent>
+                          </Card>
+                          <Card>
+                            <CardContent className="p-6 flex items-center gap-4">
+                              <div className="p-3 rounded-full bg-green-500/10 text-green-600">
+                                <DollarSign className="w-6 h-6" />
+                              </div>
+                              <div>
+                                <p className="text-sm text-muted-foreground">Hourly Rate</p>
                                 <div className="flex items-center gap-2">
                                   <Input 
                                     value={profile.rate} 
                                     onChange={(e) => setProfile({...profile, rate: e.target.value})} 
                                     className="w-20 h-8"
+                                    data-testid="input-coach-rate"
                                   />
                                   <span>AUD</span>
                                 </div>
-                              ) : (
-                                <p className="text-xl font-bold">${profile.rate} AUD</p>
-                              )}
-                            </div>
-                          </CardContent>
-                        </Card>
+                              </div>
+                            </CardContent>
+                          </Card>
 
-                        {/* Contact Info Editing */}
-                        {isEditing && (
+                          {/* Contact Info Editing */}
                           <Card>
                             <CardHeader>
                               <CardTitle>Contact Information</CardTitle>
@@ -1004,8 +1030,8 @@ export default function CoachProfile() {
                               </div>
                             </CardContent>
                           </Card>
-                        )}
-                      </div>
+                        </div>
+                      )}
 
                       <Card>
                         <CardHeader>

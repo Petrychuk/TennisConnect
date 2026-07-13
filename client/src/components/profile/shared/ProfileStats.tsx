@@ -11,7 +11,8 @@ export function ProfileStats({ children }: ProfileStatsProps) {
         mt-6
         grid
         grid-cols-4
-        gap-2
+        gap-1.5
+        sm:gap-2
         md:gap-3
         lg:gap-4
       "
