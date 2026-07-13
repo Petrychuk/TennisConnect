@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "wouter";
 import {
   DollarSign,
   Globe,
@@ -35,6 +36,8 @@ const description =
 const hourlyPrice = club.hourlyPrice ?? "Contact Club";
   const isPremium =
     club.listingType === "premium";
+
+  const detailHref = club.slug ? `/clubs/${club.slug}` : null;
     
 const hasPhone = !!club.phone;
 const hasWebsite = !!club.website;
@@ -144,6 +147,15 @@ const buttonClass =
             "
           />
 
+          {detailHref && (
+            <Link
+              href={detailHref}
+              className="absolute inset-0"
+              aria-label={`View ${club.name}`}
+              data-testid="club-card-image-link"
+            />
+          )}
+
           <div
             className="
               absolute
@@ -225,24 +237,50 @@ const buttonClass =
         )}
 
         {/* Name */}
-        <h2
-        className="
-            text-lg
-            md:text-xl
-            lg:text-2xl
-            font-display
-            font-bold
-            leading-tight
-            min-h-[32px]
-            md:min-h-[44px]
-            mb-2
-        "
-        data-testid="club-card-name"
-        >
+        {detailHref ? (
+          <Link href={detailHref} data-testid="club-card-name-link">
+            <h2
+            className="
+                text-lg
+                md:text-xl
+                lg:text-2xl
+                font-display
+                font-bold
+                leading-tight
+                min-h-[32px]
+                md:min-h-[44px]
+                mb-2
+                hover:text-primary
+                transition-colors
+                cursor-pointer
+            "
+            data-testid="club-card-name"
+            >
 
-        {club.name}
+            {club.name}
 
-        </h2>
+            </h2>
+          </Link>
+        ) : (
+          <h2
+          className="
+              text-lg
+              md:text-xl
+              lg:text-2xl
+              font-display
+              font-bold
+              leading-tight
+              min-h-[32px]
+              md:min-h-[44px]
+              mb-2
+          "
+          data-testid="club-card-name"
+          >
+
+          {club.name}
+
+          </h2>
+        )}
 
         {/* Short description */}
         <p

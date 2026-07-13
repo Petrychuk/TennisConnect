@@ -15,6 +15,7 @@ import PlayerRegistration from "@/pages/player-registration";
 import CoachesPage from "@/pages/coaches";
 import MarketplacePage from "@/pages/marketplace";
 import ClubsPage from "@/pages/clubs";
+import ClubDetailPage from "@/pages/club-detail";
 import PartnersPage from "@/pages/partners";
 import TournamentsPage from "@/pages/tournaments";
 import MessagesPage from "@/pages/messages";
@@ -42,6 +43,7 @@ function Router() {
       <Route path="/coaches" component={CoachesPage} />
       <Route path="/marketplace" component={MarketplacePage} />
       <Route path="/clubs" component={ClubsPage} />
+      <Route path="/clubs/:slug" component={ClubDetailPage} />
       <Route path="/partners" component={PartnersPage} />
       <Route path="/tournaments" component={TournamentsPage} />
       <Route path="/articles" component={ArticlesPage} />
