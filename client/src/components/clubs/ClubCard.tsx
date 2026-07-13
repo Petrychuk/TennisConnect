@@ -37,7 +37,10 @@ const hourlyPrice = club.hourlyPrice ?? "Contact Club";
   const isPremium =
     club.listingType === "premium";
 
-  const detailHref = club.slug ? `/clubs/${club.slug}` : null;
+  const detailHref =
+    club.slug && club.listingType === "premium"
+      ? `/clubs/${club.slug}`
+      : null;
     
 const hasPhone = !!club.phone;
 const hasWebsite = !!club.website;

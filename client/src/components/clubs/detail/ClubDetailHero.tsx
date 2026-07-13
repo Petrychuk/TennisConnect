@@ -149,6 +149,19 @@ function ActionCard({
 }) {
   const price = formatHourlyPrice(club);
 
+  const defaultCtaLabel =
+    variant === "courts"
+      ? "Book a Court"
+      : variant === "company"
+        ? "View All Locations"
+        : "Join Community";
+
+  const ctaLabel = club.ctaText || defaultCtaLabel;
+
+  const ctaHandler = club.ctaUrl
+    ? () => window.open(club.ctaUrl, "_blank", "noopener,noreferrer")
+    : onPrimaryAction;
+
   if (variant === "courts") {
     return (
       <div
@@ -203,10 +216,10 @@ function ActionCard({
         <div className="flex flex-col gap-2">
           <Button
             className="w-full rounded-xl font-bold cursor-pointer"
-            onClick={onPrimaryAction}
+            onClick={ctaHandler}
             data-testid="club-action-primary"
           >
-            Book a Court
+            {ctaLabel}
           </Button>
           <div className="flex gap-2">
             <Button
@@ -281,10 +294,10 @@ function ActionCard({
         <div className="flex flex-col gap-2">
           <Button
             className="w-full rounded-xl font-bold cursor-pointer"
-            onClick={onPrimaryAction}
+            onClick={ctaHandler}
             data-testid="club-action-primary"
           >
-            View All Locations
+            {ctaLabel}
           </Button>
           <Button
             variant="outline"
@@ -356,10 +369,10 @@ function ActionCard({
       <div className="flex flex-col gap-2">
         <Button
           className="w-full rounded-xl font-bold cursor-pointer"
-          onClick={onPrimaryAction}
+          onClick={ctaHandler}
           data-testid="club-action-primary"
         >
-          Join Community
+          {ctaLabel}
         </Button>
         <Button
           variant="outline"
@@ -387,28 +400,26 @@ export function ClubDetailHero({
   return (
     <section data-testid="club-detail-hero">
       {/* Breadcrumb */}
-      <div className="border-b bg-background">
-        <div className="container mx-auto px-4 py-3">
-          <nav
-            className="flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground overflow-x-auto whitespace-nowrap scrollbar-hide"
-            data-testid="club-breadcrumbs"
+      <div className="container mx-auto px-4 py-3">
+        <nav
+          className="flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground overflow-x-auto whitespace-nowrap scrollbar-hide"
+          data-testid="club-breadcrumbs"
+        >
+          <Link href="/" className="hover:text-primary transition-colors">
+            Home
+          </Link>
+          <ChevronRight className="w-3.5 h-3.5 shrink-0" />
+          <Link
+            href="/clubs"
+            className="hover:text-primary transition-colors"
           >
-            <Link href="/" className="hover:text-primary transition-colors">
-              Home
-            </Link>
-            <ChevronRight className="w-3.5 h-3.5 shrink-0" />
-            <Link
-              href="/clubs"
-              className="hover:text-primary transition-colors"
-            >
-              Club Communities
-            </Link>
-            <ChevronRight className="w-3.5 h-3.5 shrink-0" />
-            <span className="text-foreground font-medium truncate">
-              {club.name}
-            </span>
-          </nav>
-        </div>
+            Club Communities
+          </Link>
+          <ChevronRight className="w-3.5 h-3.5 shrink-0" />
+          <span className="text-foreground font-medium truncate">
+            {club.name}
+          </span>
+        </nav>
       </div>
 
       {/* Cover */}
@@ -422,12 +433,15 @@ export function ClubDetailHero({
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-black/20" />
 
-          <Badge
-            className="absolute left-4 top-4 md:left-6 md:top-6 bg-primary text-primary-foreground font-bold uppercase tracking-wide text-[10px] md:text-xs shadow-md"
-            data-testid="club-variant-badge"
-          >
-            {CLUB_VARIANT_LABELS[variant]}
-          </Badge>
+          {/* Aligned to the same container/padding as the breadcrumbs above */}
+          <div className="absolute inset-0 container mx-auto px-4">
+            <Badge
+              className="absolute left-0 top-4 md:top-6 bg-primary text-primary-foreground font-bold uppercase tracking-wide text-[10px] md:text-xs shadow-md"
+              data-testid="club-variant-badge"
+            >
+              {CLUB_VARIANT_LABELS[variant]}
+            </Badge>
+          </div>
         </div>
 
         <div className="container mx-auto px-4">

@@ -9,6 +9,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ClubGallery } from "./ClubGallery";
 import { ClubCTABanner } from "./ClubCTABanner";
+import { FormattedText } from "./FormattedText";
 import { getSurfaceLabel, getServiceLabel } from "@/lib/clubVariant";
 
 interface CourtsSectionProps {
@@ -57,21 +58,21 @@ export function CourtsSection({
     },
   ];
 
+  const hasGallery = (club.gallery?.length ?? 0) > 0;
+
   return (
     <div className="space-y-6" data-testid="club-courts-section-detail">
       {/* Description */}
       <div className="rounded-2xl border bg-card p-5 md:p-6">
         <h2 className="font-display font-bold text-xl mb-3">About</h2>
-        <p
-          className="text-muted-foreground leading-relaxed whitespace-pre-line"
-          data-testid="club-description"
-        >
-          {club.description}
-        </p>
+        <FormattedText
+          text={club.description}
+          testId="club-description"
+        />
       </div>
 
       {/* Court Information + Gallery */}
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className={hasGallery ? "grid md:grid-cols-2 gap-6" : ""}>
         <div
           className="rounded-2xl border bg-card p-5 md:p-6"
           data-testid="club-court-information"
@@ -95,10 +96,9 @@ export function CourtsSection({
           </div>
         </div>
 
-        <ClubGallery
-          images={club.gallery ?? []}
-          clubName={club.name}
-        />
+        {hasGallery && (
+          <ClubGallery images={club.gallery ?? []} clubName={club.name} />
+        )}
       </div>
 
       {/* Services */}

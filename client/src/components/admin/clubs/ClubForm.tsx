@@ -79,6 +79,10 @@ export interface ClubFormData {
   seoTitle: string;
   metaDescription: string;
   metaKeywords: string;
+
+  // CTA
+  ctaText: string;
+  ctaUrl: string;
 }
 export function ClubForm({
     mode = "create",
@@ -151,6 +155,10 @@ export function ClubForm({
       seoTitle: "",
       metaDescription: "",
       metaKeywords: "",
+
+      // CTA
+      ctaText: "",
+      ctaUrl: "",
     });
     const { toast } = useToast();
 

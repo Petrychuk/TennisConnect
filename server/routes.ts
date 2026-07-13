@@ -776,10 +776,15 @@ export async function registerRoutes(app: Express): Promise<void> {
       // Показываем только опубликованные клубы
   
       if (club.status !== "published") {
-  
-        return res.status(404).json({
-          message: "Club not found",
-        });
+        const isAdminPreview =
+          req.isAuthenticated?.() &&
+          (req.user as any)?.isAdmin;
+
+        if (!isAdminPreview) {
+          return res.status(404).json({
+            message: "Club not found",
+          });
+        }
       }
       res.json(club); 
     } catch (error: any) { 

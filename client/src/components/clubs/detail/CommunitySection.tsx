@@ -2,6 +2,7 @@ import { CalendarDays, Users, Trophy, HeartHandshake } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ClubGallery } from "./ClubGallery";
 import { ClubCTABanner } from "./ClubCTABanner";
+import { FormattedText } from "./FormattedText";
 import { getServiceLabel, getCompetitionLabel } from "@/lib/clubVariant";
 
 interface CommunitySectionProps {
@@ -47,12 +48,7 @@ export function CommunitySection({
         <h2 className="font-display font-bold text-xl mb-3">
           About Our Community
         </h2>
-        <p
-          className="text-muted-foreground leading-relaxed whitespace-pre-line"
-          data-testid="club-description"
-        >
-          {club.description}
-        </p>
+        <FormattedText text={club.description} testId="club-description" />
       </div>
 
       {/* Weekly schedule */}

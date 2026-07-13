@@ -20,6 +20,7 @@ interface Club {
   website: string | null;
   image: string | null;
   rating?: number | null;
+  listingType?: string;
 }
 
 export function HomeClubs() {
@@ -105,7 +106,14 @@ export function HomeClubs() {
               viewport={{ once: true }}
               transition={{ delay: index * 0.1 }}
             >
-              <Link href="/clubs">
+              <Link
+                href={
+                  club.listingType === "premium" && club.slug
+                    ? `/clubs/${club.slug}`
+                    : "/clubs"
+                }
+                data-testid={`club-card-link-${club.id}`}
+              >
                 <Card
                   className="group overflow-hidden border-none shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer h-full bg-zinc-900 text-white"
                   data-testid={`club-card-${club.id}`}

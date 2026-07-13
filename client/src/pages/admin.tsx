@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, ShieldCheck, FileText, Plane, Heart, Trophy, Users, Building2, Eye, Globe, } from "lucide-react";
+import { Plus, Edit, Trash2, ShieldCheck, FileText, Plane, Heart, Trophy, Users, Building2, Eye, Globe, ExternalLink as ExternalLinkIcon, } from "lucide-react";
 import SEO from "@/components/seo";
 import { ClubForm } from "@/components/admin/clubs/ClubForm";
 import { TravelForm } from "@/components/admin/travel/TravelForm";
@@ -890,6 +890,7 @@ export default function AdminPage() {
                                 size="icon"
                                 variant="ghost"
                                 onClick={() => openEdit(club)}
+                                data-testid={`club-row-edit-btn-${club.id}`}
                               >
                                 <Edit className="w-4 h-4" />
                               </Button>
@@ -901,9 +902,29 @@ export default function AdminPage() {
                                   setPreviewClub(club);
                                   setPreviewOpen(true);
                                 }}
+                                data-testid={`club-row-preview-btn-${club.id}`}
                               >
                                 <Eye className="w-4 h-4" />
                               </Button>
+
+                              {club.listingType === "premium" &&
+                                club.slug && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    asChild
+                                    title="View Live Page"
+                                    data-testid={`club-row-view-live-btn-${club.id}`}
+                                  >
+                                    <a
+                                      href={`/clubs/${club.slug}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      <ExternalLinkIcon className="w-4 h-4" />
+                                    </a>
+                                  </Button>
+                                )}
                 
                               <Button
                                 size="icon"
@@ -915,6 +936,7 @@ export default function AdminPage() {
                                 onClick={() =>
                                   toggleClubStatus(club)
                                 }
+                                data-testid={`club-row-toggle-status-btn-${club.id}`}
                               >
                                 <Globe className="w-4 h-4" />
                               </Button>
@@ -924,6 +946,7 @@ export default function AdminPage() {
                                 variant="ghost"
                                 onClick={() => remove(club)}
                                 className="text-destructive"
+                                data-testid={`club-row-delete-btn-${club.id}`}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>

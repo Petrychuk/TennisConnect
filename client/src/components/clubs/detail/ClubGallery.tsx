@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronRight, ImageOff, X } from "lucide-react";
+import { ChevronRight, X } from "lucide-react";
 
 interface ClubGalleryProps {
   images: string[];
@@ -9,6 +9,10 @@ interface ClubGalleryProps {
 export function ClubGallery({ images, clubName }: ClubGalleryProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+
+  if (!images || images.length === 0) {
+    return null;
+  }
 
   const openAt = (index: number) => {
     setActiveIndex(index);
@@ -38,58 +42,48 @@ export function ClubGallery({ images, clubName }: ClubGalleryProps) {
         )}
       </div>
 
-      {images.length === 0 ? (
-        <div
-          className="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground rounded-xl bg-muted/40"
-          data-testid="club-gallery-empty"
+      <div className="space-y-2">
+        <button
+          type="button"
+          onClick={() => openAt(0)}
+          className="block w-full rounded-xl overflow-hidden aspect-video bg-muted cursor-pointer"
+          data-testid="club-gallery-main-image"
         >
-          <ImageOff className="w-8 h-8" />
-          <p className="text-sm">No photos yet</p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <button
-            type="button"
-            onClick={() => openAt(0)}
-            className="block w-full rounded-xl overflow-hidden aspect-video bg-muted cursor-pointer"
-            data-testid="club-gallery-main-image"
-          >
-            <img
-              src={images[0]}
-              alt={clubName}
-              className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-            />
-          </button>
+          <img
+            src={images[0]}
+            alt={clubName}
+            className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+          />
+        </button>
 
-          {images.length > 1 && (
-            <div className="grid grid-cols-4 gap-2">
-              {images.slice(1, 5).map((img, i) => {
-                const isLastVisible = i === 3 && images.length > 5;
-                return (
-                  <button
-                    type="button"
-                    key={img + i}
-                    onClick={() => openAt(i + 1)}
-                    className="relative aspect-square rounded-lg overflow-hidden bg-muted cursor-pointer"
-                    data-testid={`club-gallery-thumb-${i}`}
-                  >
-                    <img
-                      src={img}
-                      alt={`${clubName} photo ${i + 2}`}
-                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-                    />
-                    {isLastVisible && (
-                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white font-bold text-sm">
-                        +{images.length - 5}
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
+        {images.length > 1 && (
+          <div className="grid grid-cols-4 gap-2">
+            {images.slice(1, 5).map((img, i) => {
+              const isLastVisible = i === 3 && images.length > 5;
+              return (
+                <button
+                  type="button"
+                  key={img + i}
+                  onClick={() => openAt(i + 1)}
+                  className="relative aspect-square rounded-lg overflow-hidden bg-muted cursor-pointer"
+                  data-testid={`club-gallery-thumb-${i}`}
+                >
+                  <img
+                    src={img}
+                    alt={`${clubName} photo ${i + 2}`}
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                  />
+                  {isLastVisible && (
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white font-bold text-sm">
+                      +{images.length - 5}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Lightbox */}
       {lightboxOpen && images.length > 0 && (

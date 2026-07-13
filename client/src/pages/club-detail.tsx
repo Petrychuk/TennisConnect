@@ -20,10 +20,8 @@ function scrollToSection(id: string) {
 function ClubDetailSkeleton() {
   return (
     <div data-testid="club-detail-skeleton">
-      <div className="border-b">
-        <div className="container mx-auto px-4 py-3">
-          <Skeleton className="h-4 w-64" />
-        </div>
+      <div className="container mx-auto px-4 py-3">
+        <Skeleton className="h-4 w-64" />
       </div>
       <Skeleton className="w-full h-56 sm:h-72 md:h-80 lg:h-[420px] rounded-none" />
       <div className="container mx-auto px-4">
