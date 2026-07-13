@@ -20,19 +20,13 @@ function scrollToSection(id: string) {
 function ClubDetailSkeleton() {
   return (
     <div data-testid="club-detail-skeleton">
-      <div className="container mx-auto px-4 py-3">
-        <Skeleton className="h-4 w-64" />
-      </div>
-      <Skeleton className="w-full h-56 sm:h-72 md:h-80 lg:h-[420px] rounded-none" />
+      <Skeleton className="w-full h-64 sm:h-80 md:h-96 lg:h-[460px] rounded-none" />
       <div className="container mx-auto px-4">
-        <div className="relative -mt-14 sm:-mt-16 md:-mt-20 z-10 grid lg:grid-cols-[1fr_360px] gap-4 lg:gap-6">
-          <div className="rounded-2xl border bg-background shadow-xl p-5 md:p-8 space-y-3">
-            <Skeleton className="h-8 w-2/3" />
-            <Skeleton className="h-4 w-1/3" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-5/6" />
-          </div>
-          <Skeleton className="h-64 rounded-2xl" />
+        <div className="relative -mt-14 sm:-mt-16 lg:-mt-20 z-10 space-y-3 rounded-2xl border bg-background shadow-xl p-5 md:p-8">
+          <Skeleton className="h-8 w-2/3" />
+          <Skeleton className="h-4 w-1/3" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-5/6" />
         </div>
         <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-3 pb-6">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -139,54 +133,52 @@ export default function ClubDetailPage() {
               />
 
               <div className="container mx-auto px-4 py-8 md:py-12">
-                <div
-                  className="grid lg:grid-cols-3 gap-6 lg:gap-8"
-                  id="club-section-main"
-                >
-                  <div className="lg:col-span-2">
-                    {variant === "courts" && (
-                      <CourtsSection
-                        club={club}
-                        onBookCourt={() =>
-                          scrollToSection("club-section-contact")
-                        }
-                        onViewAllCourts={() =>
-                          setLocation("/clubs")
-                        }
-                      />
-                    )}
-
-                    {variant === "company" && (
-                      <div id="club-section-locations">
-                        <CompanySection
+                {variant === "community" ? (
+                  <div id="club-section-main">
+                    <CommunitySection
+                      club={club}
+                      onJoin={() => scrollToSection("club-section-contact")}
+                      onViewSchedule={() =>
+                        scrollToSection("club-section-main")
+                      }
+                    />
+                  </div>
+                ) : (
+                  <div
+                    className="grid lg:grid-cols-3 gap-6 lg:gap-8"
+                    id="club-section-main"
+                  >
+                    <div className="lg:col-span-2">
+                      {variant === "courts" && (
+                        <CourtsSection
                           club={club}
-                          onViewLocations={() =>
-                            scrollToSection("club-section-locations")
-                          }
-                          onContactUs={() =>
+                          onBookCourt={() =>
                             scrollToSection("club-section-contact")
                           }
+                          onViewAllCourts={() => setLocation("/clubs")}
                         />
-                      </div>
-                    )}
+                      )}
 
-                    {variant === "community" && (
-                      <CommunitySection
-                        club={club}
-                        onJoin={() =>
-                          scrollToSection("club-section-contact")
-                        }
-                        onViewSchedule={() =>
-                          scrollToSection("club-section-main")
-                        }
-                      />
-                    )}
-                  </div>
+                      {variant === "company" && (
+                        <div id="club-section-locations">
+                          <CompanySection
+                            club={club}
+                            onViewLocations={() =>
+                              scrollToSection("club-section-locations")
+                            }
+                            onContactUs={() =>
+                              scrollToSection("club-section-contact")
+                            }
+                          />
+                        </div>
+                      )}
+                    </div>
 
-                  <div id="club-section-contact" className="scroll-mt-20">
-                    <ClubContactCard club={club} personLabel={personLabel} />
+                    <div id="club-section-contact" className="scroll-mt-20">
+                      <ClubContactCard club={club} personLabel={personLabel} />
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </>
           )}

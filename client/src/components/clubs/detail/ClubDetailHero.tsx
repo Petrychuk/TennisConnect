@@ -24,6 +24,7 @@ import {
   formatHourlyPrice,
   getSurfaceLabel,
 } from "@/lib/clubVariant";
+import { ClubFollowButton } from "./ClubFollowButton";
 
 interface QuickFact {
   icon: React.ReactNode;
@@ -399,113 +400,128 @@ export function ClubDetailHero({
 
   return (
     <section data-testid="club-detail-hero">
-      {/* Breadcrumb */}
-      <div className="container mx-auto px-4 py-3">
-        <nav
-          className="flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground overflow-x-auto whitespace-nowrap scrollbar-hide"
-          data-testid="club-breadcrumbs"
-        >
-          <Link href="/" className="hover:text-primary transition-colors">
-            Home
-          </Link>
-          <ChevronRight className="w-3.5 h-3.5 shrink-0" />
-          <Link
-            href="/clubs"
-            className="hover:text-primary transition-colors"
-          >
-            Club Communities
-          </Link>
-          <ChevronRight className="w-3.5 h-3.5 shrink-0" />
-          <span className="text-foreground font-medium truncate">
-            {club.name}
-          </span>
-        </nav>
-      </div>
-
-      {/* Cover */}
+      {/* Cover, with breadcrumbs + badge overlaid directly on the photo */}
       <div className="relative">
-        <div className="relative h-56 sm:h-72 md:h-80 lg:h-[420px] w-full overflow-hidden bg-muted">
+        <div className="relative h-64 sm:h-80 md:h-96 lg:h-[460px] w-full overflow-hidden bg-muted">
           <img
             src={club.cover || club.image}
             alt={club.name}
             className="w-full h-full object-cover"
             data-testid="club-detail-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-black/20" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/40" />
 
-          {/* Aligned to the same container/padding as the breadcrumbs above */}
-          <div className="absolute inset-0 container mx-auto px-4">
+          <div className="absolute inset-0 container mx-auto px-4 flex flex-col">
+            <nav
+              className="flex items-center gap-1.5 pt-4 md:pt-6 text-xs md:text-sm text-white/80 overflow-x-auto whitespace-nowrap scrollbar-hide"
+              data-testid="club-breadcrumbs"
+            >
+              <Link href="/" className="hover:text-white transition-colors">
+                Home
+              </Link>
+              <ChevronRight className="w-3.5 h-3.5 shrink-0" />
+              <Link
+                href="/clubs"
+                className="hover:text-white transition-colors"
+              >
+                Club Communities
+              </Link>
+              <ChevronRight className="w-3.5 h-3.5 shrink-0" />
+              <span className="text-white font-medium truncate">
+                {club.name}
+              </span>
+            </nav>
+
             <Badge
-              className="absolute left-0 top-4 md:top-6 bg-primary text-primary-foreground font-bold uppercase tracking-wide text-[10px] md:text-xs shadow-md"
+              className="mt-3 md:mt-4 w-fit bg-primary text-primary-foreground font-bold uppercase tracking-wide text-[10px] md:text-xs shadow-md"
               data-testid="club-variant-badge"
             >
               {CLUB_VARIANT_LABELS[variant]}
             </Badge>
           </div>
-        </div>
 
-        <div className="container mx-auto px-4">
-          <div className="relative -mt-14 sm:-mt-16 md:-mt-20 z-10 grid lg:grid-cols-[1fr_360px] gap-4 lg:gap-6 items-start">
-            {/* Info card */}
-            <div className="rounded-2xl border bg-background shadow-xl p-5 md:p-8">
-              <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-2">
-                <h1
-                  className="text-2xl md:text-4xl font-display font-bold leading-tight"
-                  data-testid="club-detail-name"
-                >
-                  {club.name}
-                </h1>
-
-                {club.verified && (
-                  <Badge
-                    className="rounded-full border-primary/20 bg-primary/10 text-primary px-3 py-1 font-semibold flex items-center gap-1.5"
-                    data-testid="club-verified-badge"
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5 fill-primary/20" />
-                    Verified{" "}
-                    {variant === "community" ? "Community" : "Club"}
-                  </Badge>
-                )}
-              </div>
-
-              {rating && (
-                <div
-                  className="flex items-center gap-1.5 text-sm mb-2"
-                  data-testid="club-detail-rating"
-                >
-                  <Star className="w-4 h-4 fill-primary text-primary" />
-                  <span className="font-semibold">{rating.toFixed(1)}</span>
-                  <span className="text-muted-foreground">reviews</span>
-                </div>
-              )}
-
-              {location && (
-                <div
-                  className="flex items-center gap-1.5 text-muted-foreground mb-4"
-                  data-testid="club-detail-location"
-                >
-                  <MapPin className="w-4 h-4 shrink-0" />
-                  {club.address ? `${club.address}, ` : ""}
-                  {location}
-                </div>
-              )}
-
-              {club.shortDescription && (
-                <p
-                  className="text-muted-foreground leading-relaxed"
-                  data-testid="club-detail-short-description"
-                >
-                  {club.shortDescription}
-                </p>
-              )}
-            </div>
-
-            {/* Action card - floats beside info card on desktop, stacks below on mobile/tablet */}
+          {/* Action card floats over the cover on desktop */}
+          <div
+            className="hidden lg:block absolute right-6 top-6 w-[340px] z-20"
+            data-testid="club-action-card-floating"
+          >
             <ActionCard
               club={club}
               variant={variant}
               onPrimaryAction={onPrimaryAction}
               onSecondaryAction={onSecondaryAction}
+            />
+          </div>
+        </div>
+
+        <div className="container mx-auto px-4">
+          {/* On mobile/tablet the action card stacks below the cover instead */}
+          <div className="lg:hidden -mt-14 sm:-mt-16 mb-4 relative z-20">
+            <ActionCard
+              club={club}
+              variant={variant}
+              onPrimaryAction={onPrimaryAction}
+              onSecondaryAction={onSecondaryAction}
+            />
+          </div>
+
+          {/* Info card */}
+          <div className="relative z-10 rounded-2xl border bg-background shadow-xl p-5 md:p-8 lg:-mt-20">
+            <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-2">
+              <h1
+                className="text-2xl md:text-4xl font-display font-bold leading-tight"
+                data-testid="club-detail-name"
+              >
+                {club.name}
+              </h1>
+
+              {club.verified && (
+                <Badge
+                  className="rounded-full border-primary/20 bg-primary/10 text-primary px-3 py-1 font-semibold flex items-center gap-1.5"
+                  data-testid="club-verified-badge"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 fill-primary/20" />
+                  Verified{" "}
+                  {variant === "community" ? "Community" : "Club"}
+                </Badge>
+              )}
+            </div>
+
+            {rating && (
+              <div
+                className="flex items-center gap-1.5 text-sm mb-2"
+                data-testid="club-detail-rating"
+              >
+                <Star className="w-4 h-4 fill-primary text-primary" />
+                <span className="font-semibold">{rating.toFixed(1)}</span>
+                <span className="text-muted-foreground">reviews</span>
+              </div>
+            )}
+
+            {location && (
+              <div
+                className="flex items-center gap-1.5 text-muted-foreground mb-4"
+                data-testid="club-detail-location"
+              >
+                <MapPin className="w-4 h-4 shrink-0" />
+                {club.address ? `${club.address}, ` : ""}
+                {location}
+              </div>
+            )}
+
+            {club.shortDescription && (
+              <p
+                className="text-muted-foreground leading-relaxed mb-5"
+                data-testid="club-detail-short-description"
+              >
+                {club.shortDescription}
+              </p>
+            )}
+
+            <ClubFollowButton
+              clubId={club.id}
+              initialFollowing={!!club.isFollowing}
+              className="rounded-xl font-bold cursor-pointer"
             />
           </div>
 

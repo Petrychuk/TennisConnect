@@ -209,6 +209,18 @@ export const marketplaceItems = pgTable("marketplace_items", {
 });
 
 // CLUB COMMUNITIES
+// A single weekly session (e.g. "Thursday Social Hit, 6:30-8:30 PM, $18,
+// Intermediate"), stored as an array on clubs.sessions.
+export interface ClubSession {
+  id: string;
+  day: string; // e.g. "Monday" .. "Sunday"
+  name: string; // e.g. "Thursday Social Hit"
+  startTime: string; // e.g. "18:30"
+  endTime: string; // e.g. "20:30"
+  price?: number;
+  level?: string; // e.g. "All Levels", "Intermediate"
+}
+
 export const clubs = pgTable("clubs", {
   id: varchar("id")
     .primaryKey()
@@ -279,6 +291,12 @@ export const clubs = pgTable("clubs", {
   .$type<string[]>()
   .default([]),
 
+  // Weekly sessions (day, time, price, level) shown in the Upcoming
+  // Sessions block on the Community premium page. Kept as JSON since
+  // it's simple repeating data scoped to a single club, same pattern
+  // as gallery/services/hostedCompetitions below.
+  sessions: json("sessions").$type<ClubSession[]>().default([]),
+
   // Services
   services: json("services").$type<string[]>().default([]),
 
@@ -325,6 +343,22 @@ export const clubs = pgTable("clubs", {
   updatedAt: timestamp("updated_at")
     .defaultNow()
     .notNull(),
+});
+
+// A player following a club/community. Surfaced as a "Following" toggle
+// on the premium club page, and (later) a "My Communities" list on the
+// player's own profile.
+export const clubFollows = pgTable("club_follows", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id")
+    .references(() => users.id)
+    .notNull(),
+  clubId: varchar("club_id")
+    .references(() => clubs.id)
+    .notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Messages - for contact requests and messaging between users
@@ -481,6 +515,11 @@ export const insertClubSchema = createInsertSchema(clubs).omit({
   updatedAt: true,
 });
 
+export const insertClubFollowSchema = createInsertSchema(clubFollows).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertMessageSchema = createInsertSchema(messages).omit({
   id: true,
   createdAt: true,
@@ -505,6 +544,9 @@ export type MarketplaceItem = typeof marketplaceItems.$inferSelect;
 
 export type Club = typeof clubs.$inferSelect;
 export type InsertClub = z.infer<typeof insertClubSchema>;
+
+export type ClubFollow = typeof clubFollows.$inferSelect;
+export type InsertClubFollow = z.infer<typeof insertClubFollowSchema>;
 
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;

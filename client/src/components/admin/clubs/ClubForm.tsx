@@ -11,6 +11,8 @@ import { ClubServicesSection } from "./sections/ClubServicesSection";
 import { ClubPricingSection } from "./sections/ClubPricingSection";
 import { ClubCourtsSection } from "./sections/ClubCourtsSection";
 import { ClubCompetitionSection } from "./sections/ClubCompetitionSection";
+import { ClubSessionsSection } from "./sections/ClubSessionsSection";
+import type { ClubSession } from "@shared/schema";
 import { ClubSeoSection } from "./sections/ClubSeoSection";
 import { ClubImageSection } from "./sections/ClubImageSection";
 export interface ClubFormProps {
@@ -83,6 +85,9 @@ export interface ClubFormData {
   // CTA
   ctaText: string;
   ctaUrl: string;
+
+  // Sessions
+  sessions: ClubSession[];
 }
 export function ClubForm({
     mode = "create",
@@ -159,6 +164,9 @@ export function ClubForm({
       // CTA
       ctaText: "",
       ctaUrl: "",
+
+      // Sessions
+      sessions: [],
     });
     const { toast } = useToast();
 
@@ -423,6 +431,10 @@ return (
                 form={form}
                 updateField={updateField}
               /> 
+              <ClubSessionsSection
+                form={form}
+                updateField={updateField}
+              />
               <ClubSeoSection
                 form={form}
                 updateField={updateField}

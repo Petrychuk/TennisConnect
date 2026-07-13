@@ -5,6 +5,7 @@ import {
   tournamentHistory,
   marketplaceItems,
   clubs,
+  clubFollows,
   messages,
   passwordResetTokens,
   supportRequests,
@@ -21,6 +22,7 @@ import {
   type InsertMarketplaceItem,
   type Club,
   type InsertClub,
+  type ClubFollow,
   type Message,
   type MessageWithAvatar,
   type InsertMessage,
@@ -125,6 +127,12 @@ export interface IStorage {
     id: string,
     listingType: "free" | "premium"
   ): Promise<Club>;
+
+  // Club Follows
+  followClub(userId: string, clubId: string): Promise<ClubFollow>;
+  unfollowClub(userId: string, clubId: string): Promise<void>;
+  isFollowingClub(userId: string, clubId: string): Promise<boolean>;
+  getFollowedClubs(userId: string): Promise<Club[]>;
   
   // Messages
   getUserMessages(userId: string): Promise<MessageWithAvatar[]>;
@@ -857,6 +865,79 @@ export class DatabaseStorage implements IStorage {
   
     return club;
   
+  }
+
+  async followClub(
+    userId: string,
+    clubId: string
+  ): Promise<ClubFollow> {
+
+    const existing = await db
+      .select()
+      .from(clubFollows)
+      .where(
+        and(
+          eq(clubFollows.userId, userId),
+          eq(clubFollows.clubId, clubId)
+        )
+      );
+
+    if (existing[0]) {
+      return existing[0];
+    }
+
+    const [follow] = await db
+      .insert(clubFollows)
+      .values({ userId, clubId })
+      .returning();
+
+    return follow;
+  }
+
+  async unfollowClub(
+    userId: string,
+    clubId: string
+  ): Promise<void> {
+
+    await db
+      .delete(clubFollows)
+      .where(
+        and(
+          eq(clubFollows.userId, userId),
+          eq(clubFollows.clubId, clubId)
+        )
+      );
+  }
+
+  async isFollowingClub(
+    userId: string,
+    clubId: string
+  ): Promise<boolean> {
+
+    const [existing] = await db
+      .select()
+      .from(clubFollows)
+      .where(
+        and(
+          eq(clubFollows.userId, userId),
+          eq(clubFollows.clubId, clubId)
+        )
+      );
+
+    return !!existing;
+  }
+
+  async getFollowedClubs(
+    userId: string
+  ): Promise<Club[]> {
+
+    const rows = await db
+      .select({ club: clubs })
+      .from(clubFollows)
+      .innerJoin(clubs, eq(clubFollows.clubId, clubs.id))
+      .where(eq(clubFollows.userId, userId));
+
+    return rows.map((r) => r.club);
   }
 
   async updateClub(

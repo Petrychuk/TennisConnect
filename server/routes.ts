@@ -786,8 +786,51 @@ export async function registerRoutes(app: Express): Promise<void> {
           });
         }
       }
-      res.json(club); 
+
+      let isFollowing = false;
+      if (req.isAuthenticated?.()) {
+        isFollowing = await storage.isFollowingClub(
+          (req.user as any).id,
+          club.id
+        );
+      }
+
+      res.json({ ...club, isFollowing });
     } catch (error: any) { 
+      next(error);
+    }
+  });
+
+  // Follow / unfollow a club (requires auth)
+  app.post("/api/clubs/:id/follow", requireAuth, async (req, res, next) => {
+    try {
+      const club = await storage.getClubById(req.params.id);
+      if (!club) {
+        return res.status(404).json({ message: "Club not found" });
+      }
+
+      await storage.followClub(req.user!.id, club.id);
+      res.json({ following: true });
+    } catch (error: any) {
+      next(error);
+    }
+  });
+
+  app.delete("/api/clubs/:id/follow", requireAuth, async (req, res, next) => {
+    try {
+      await storage.unfollowClub(req.user!.id, req.params.id);
+      res.json({ following: false });
+    } catch (error: any) {
+      next(error);
+    }
+  });
+
+  // Clubs the current user follows (for a future "My Communities" list)
+  app.get("/api/me/followed-clubs", requireAuth, async (req, res, next) => {
+    try {
+      const followed = await storage.getFollowedClubs(req.user!.id);
+      res.json(followed);
+    } catch (error: any) {
       next(error);
     }
   });

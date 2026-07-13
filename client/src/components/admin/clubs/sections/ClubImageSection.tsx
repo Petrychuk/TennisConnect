@@ -1,5 +1,6 @@
 import type { ClubFormData } from "../ClubForm";
 import { ImageUploader } from "@/components/admin/common/ImageUploader";
+import { GalleryUploader } from "@/components/admin/common/GalleryUploader";
 interface ClubImageSectionProps {
   clubId: string;
   form: ClubFormData;
@@ -176,7 +177,7 @@ export function ClubImageSection({
         </div>
       )}
 
-      {/* Gallery (Coming Soon) */}
+      {/* Gallery */}
 
       {isPremium && (
 
@@ -184,7 +185,6 @@ export function ClubImageSection({
           className="
             rounded-2xl
             border
-            border-dashed
             bg-muted/20
             p-8
           "
@@ -195,24 +195,23 @@ export function ClubImageSection({
           </h3>
           <p className="mt-2 text-sm text-muted-foreground">
             Upload up to 10 photos showcasing your
-            facilities, courts and community.
+            facilities, courts and community. If you don't
+            add any, the Gallery section is simply hidden
+            on the club's premium page.
           </p>
-          <div
-            className="
-              mt-6
-              flex
-              h-44
-              items-center
-              justify-center
-              rounded-xl
-              border
-              border-dashed
-              bg-background
-            "
-          >
-            <span className="text-sm text-muted-foreground">
-              Gallery uploader will be available soon.
-            </span>
+
+          <div className="mt-6">
+            <GalleryUploader
+              folder="clubs"
+              entityId={clubId}
+              value={form.gallery || []}
+              max={10}
+              label="Gallery Photos"
+              onChange={async (urls) => {
+                updateField("gallery", urls);
+                await saveMedia({ gallery: urls });
+              }}
+            />
           </div>
         </div>
       )}
