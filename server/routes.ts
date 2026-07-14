@@ -795,7 +795,9 @@ export async function registerRoutes(app: Express): Promise<void> {
         );
       }
 
-      res.json({ ...club, isFollowing });
+      const followersCount = await storage.getClubFollowerCount(club.id);
+
+      res.json({ ...club, isFollowing, followersCount });
     } catch (error: any) { 
       next(error);
     }

@@ -46,7 +46,7 @@ export function ClubGallery({ images, clubName }: ClubGalleryProps) {
         <button
           type="button"
           onClick={() => openAt(0)}
-          className="block w-full md:w-1/2 rounded-xl overflow-hidden aspect-video md:aspect-square bg-muted cursor-pointer shrink-0"
+          className="block w-full md:w-1/2 rounded-xl overflow-hidden aspect-video bg-muted cursor-pointer shrink-0"
           data-testid="club-gallery-main-image"
         >
           <img

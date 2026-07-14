@@ -133,6 +133,7 @@ export interface IStorage {
   unfollowClub(userId: string, clubId: string): Promise<void>;
   isFollowingClub(userId: string, clubId: string): Promise<boolean>;
   getFollowedClubs(userId: string): Promise<Club[]>;
+  getClubFollowerCount(clubId: string): Promise<number>;
   
   // Messages
   getUserMessages(userId: string): Promise<MessageWithAvatar[]>;
@@ -938,6 +939,18 @@ export class DatabaseStorage implements IStorage {
       .where(eq(clubFollows.userId, userId));
 
     return rows.map((r) => r.club);
+  }
+
+  async getClubFollowerCount(
+    clubId: string
+  ): Promise<number> {
+
+    const [row] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(clubFollows)
+      .where(eq(clubFollows.clubId, clubId));
+
+    return row?.count ?? 0;
   }
 
   async updateClub(

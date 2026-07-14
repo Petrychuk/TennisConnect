@@ -24,7 +24,6 @@ import {
   formatHourlyPrice,
   getSurfaceLabel,
   getServiceLabel,
-  getServiceGroup,
 } from "@/lib/clubVariant";
 import { ClubFollowButton } from "./ClubFollowButton";
 
@@ -32,6 +31,7 @@ interface QuickFact {
   icon: React.ReactNode;
   value: string;
   label: string;
+  iconBg?: string;
 }
 
 interface ClubDetailHeroProps {
@@ -107,34 +107,41 @@ function getQuickFacts(club: any, variant: ClubVariant): QuickFact[] {
     ];
   }
 
-  // community — driven by the club's actual services when set, so this
-  // reflects what was configured at creation instead of generic
-  // hardcoded claims. Shows all of them (single flexible row).
-  const communityServices = club.services ?? [];
-
-  if (communityServices.length > 0) {
-    return communityServices.map((s: string) => ({
-      icon: <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5" />,
-      value: getServiceLabel(s),
-      label: getServiceGroup(s) ?? "Service",
-    }));
-  }
+  // community — descriptive highlights (not services, those already
+  // show in the Join Session checklist), each with its own colour so
+  // the row reads as distinct highlight chips
+  const sessionCount = club.sessions?.length || club.socialTennisDays?.length || 0;
 
   return [
     {
       icon: <Users className="w-4 h-4 md:w-5 md:h-5" />,
-      value: club.membershipRequired ? "Members" : "All Levels",
+      value: club.membershipRequired ? "Members Only" : "Open to All",
+      label: "Community",
+      iconBg: "bg-pink-100 text-pink-600",
+    },
+    {
+      icon: <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5" />,
+      value: "All Levels",
       label: "Welcome",
+      iconBg: "bg-lime-100 text-lime-700",
     },
     {
       icon: <HeartHandshake className="w-4 h-4 md:w-5 md:h-5" />,
-      value: "Friendly",
-      label: "Social Play",
+      value: "Social Play",
+      label: "Focus",
+      iconBg: "bg-sky-100 text-sky-600",
+    },
+    {
+      icon: <CalendarDays className="w-4 h-4 md:w-5 md:h-5" />,
+      value: sessionCount > 0 ? `${sessionCount} Sessions` : "Weekly Sessions",
+      label: "Multiple Days",
+      iconBg: "bg-orange-100 text-orange-600",
     },
     {
       icon: <HeartHandshake className="w-4 h-4 md:w-5 md:h-5" />,
       value: "Supportive",
       label: "Environment",
+      iconBg: "bg-purple-100 text-purple-600",
     },
   ];
 }
@@ -367,7 +374,7 @@ function ActionCard({
 
       <ul className="space-y-2 mb-5 mt-3 text-sm" data-testid="club-action-checklist">
         {club.services?.length > 0 ? (
-          club.services.slice(0, 4).map((s: string) => (
+          club.services.map((s: string) => (
             <li key={s} className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
               {getServiceLabel(s)}
@@ -416,8 +423,21 @@ export function ClubDetailHero({
   const rating = club.rating ? Number(club.rating) : null;
   const quickFacts = getQuickFacts(club, variant);
 
+  const VariantBadge = (
+    <div
+      className="inline-flex items-center gap-2 rounded-full bg-black/55 backdrop-blur-sm px-3 py-1.5 mb-3 w-fit"
+      data-testid="club-variant-badge"
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+      <span className="text-[10px] md:text-xs font-bold uppercase tracking-wide text-primary">
+        {CLUB_VARIANT_LABELS[variant]}
+      </span>
+    </div>
+  );
+
   const NameBlockLight = (
     <div className="max-w-full lg:max-w-[52%]">
+      {VariantBadge}
       <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-2">
         <h1
           className="text-white text-xl sm:text-2xl md:text-3xl lg:text-5xl font-display font-bold leading-tight drop-shadow-sm break-words"
@@ -468,11 +488,12 @@ export function ClubDetailHero({
         </p>
       )}
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <ClubFollowButton
           clubId={club.id}
           initialFollowing={!!club.isFollowing}
-          className="rounded-xl font-bold cursor-pointer"
+          initialFollowersCount={club.followersCount ?? 0}
+          light
         />
         {club.phone && (
           <Button
@@ -493,6 +514,7 @@ export function ClubDetailHero({
 
   const NameBlockCard = (
     <div className="rounded-2xl border bg-background shadow-xl p-5">
+      {VariantBadge}
       <div className="flex flex-wrap items-center gap-2 mb-2">
         <h1
           className="text-xl sm:text-2xl font-display font-bold leading-tight break-words"
@@ -533,11 +555,11 @@ export function ClubDetailHero({
         </p>
       )}
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <ClubFollowButton
           clubId={club.id}
           initialFollowing={!!club.isFollowing}
-          className="rounded-xl font-bold cursor-pointer"
+          initialFollowersCount={club.followersCount ?? 0}
         />
         {club.phone && (
           <Button
@@ -592,13 +614,6 @@ export function ClubDetailHero({
               </span>
             </nav>
 
-            <Badge
-              className="mt-3 md:mt-4 w-fit bg-primary text-primary-foreground font-bold uppercase tracking-wide text-[10px] md:text-xs shadow-md"
-              data-testid="club-variant-badge"
-            >
-              {CLUB_VARIANT_LABELS[variant]}
-            </Badge>
-
             {/* Desktop: name block overlaid on the photo, bottom-left */}
             <div className="hidden lg:block mt-auto pb-8">
               {NameBlockLight}
@@ -639,18 +654,24 @@ export function ClubDetailHero({
             {quickFacts.map((fact, i) => (
               <div
                 key={i}
-                className="rounded-xl border bg-card p-3 md:p-4 text-center lg:flex-1 lg:min-w-0"
+                className="rounded-xl border bg-card p-3 md:p-4 lg:flex-1 lg:min-w-0 flex items-center gap-2.5"
                 data-testid={`club-quick-fact-${i}`}
               >
-                <div className="flex items-center justify-center gap-1.5 text-primary mb-1">
+                <span
+                  className={`flex h-9 w-9 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-lg ${
+                    fact.iconBg ?? "bg-primary/10 text-primary"
+                  }`}
+                >
                   {fact.icon}
+                </span>
+                <div className="min-w-0 text-left">
+                  <p className="font-bold text-sm md:text-base leading-none truncate">
+                    {fact.value}
+                  </p>
+                  <p className="mt-1 text-[10px] md:text-xs uppercase tracking-wide text-muted-foreground truncate">
+                    {fact.label}
+                  </p>
                 </div>
-                <p className="font-bold text-sm md:text-base leading-none truncate">
-                  {fact.value}
-                </p>
-                <p className="mt-1 text-[10px] md:text-xs uppercase tracking-wide text-muted-foreground truncate">
-                  {fact.label}
-                </p>
               </div>
             ))}
           </div>

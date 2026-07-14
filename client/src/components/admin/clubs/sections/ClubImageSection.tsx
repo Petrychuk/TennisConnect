@@ -1,6 +1,8 @@
 import type { ClubFormData } from "../ClubForm";
 import { ImageUploader } from "@/components/admin/common/ImageUploader";
 import { GalleryUploader } from "@/components/admin/common/GalleryUploader";
+import { useToast } from "@/hooks/use-toast";
+import { warnIfImageTooSmall } from "@/lib/imageQuality";
 interface ClubImageSectionProps {
   clubId: string;
   form: ClubFormData;
@@ -32,6 +34,8 @@ export function ClubImageSection({
   const isPremium =
     form.listingType === "premium";
 
+  const { toast } = useToast();
+
   return (
     <section
       className="space-y-8"
@@ -57,7 +61,7 @@ export function ClubImageSection({
         type="image"
         value={form.image}
         label="Club Image"
-        description="Displayed on directory cards and search results."
+        description="Displayed on directory cards and search results. For a crisp result, use at least 800×600px."
         onUploaded={async (url) => {
           updateField(
             "image",
@@ -66,6 +70,7 @@ export function ClubImageSection({
           await saveMedia({
             image: url,
           });
+          warnIfImageTooSmall(url, 800, 600, "Club Image", toast);
         
         }}
         onDeleted={() =>
@@ -100,7 +105,7 @@ export function ClubImageSection({
             type="logo"
             value={form.logo}
             label="Club Logo"
-            description="Displayed on the Premium club profile."
+            description="Displayed on the Premium club profile. Square logo, at least 400×400px works best."
             onUploaded={async (url) => {
               updateField(
                 "logo",
@@ -109,6 +114,7 @@ export function ClubImageSection({
               await saveMedia({
                 logo: url,
               });
+              warnIfImageTooSmall(url, 400, 400, "Club Logo", toast);
             
             }}
             onDeleted={() =>
@@ -126,7 +132,7 @@ export function ClubImageSection({
             type="cover"
             value={form.cover}
             label="Cover Image"
-            description="Large hero image displayed at the top of your Premium club page."
+            description="Large hero image at the top of your Premium page. Use a wide, landscape photo at least 1600×600px so it stays sharp."
             onUploaded={async (url) => {
               updateField(
                 "cover",
@@ -135,6 +141,7 @@ export function ClubImageSection({
                 await saveMedia({
                   cover: url,
                 });          
+                warnIfImageTooSmall(url, 1600, 600, "Cover Image", toast);
             }}
             onDeleted={() =>
               updateField(
@@ -197,7 +204,8 @@ export function ClubImageSection({
             Upload up to 10 photos showcasing your
             facilities, courts and community. If you don't
             add any, the Gallery section is simply hidden
-            on the club's premium page.
+            on the club's premium page. Aim for at least
+            1000×750px so they don't look soft when enlarged.
           </p>
 
           <div className="mt-6">
