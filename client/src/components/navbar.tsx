@@ -161,9 +161,16 @@ export function Navbar() {
               <Link
               key={link.name}
               href={link.href}
-              className="text-sm font-medium hover:text-lime-600 transition-colors cursor-pointer"
+              className={`text-sm font-medium transition-colors cursor-pointer relative ${
+                location.startsWith(link.href)
+                  ? "text-primary font-bold"
+                  : "hover:text-lime-600"
+              }`}
             >
               {link.name}
+              {location.startsWith(link.href) && (
+                <span className="absolute -bottom-1.5 left-0 right-0 h-0.5 rounded-full bg-primary" />
+              )}
             </Link>  
           ))}
         </div>

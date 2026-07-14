@@ -169,8 +169,9 @@ export default function CoachesPage() {
         <Navbar />
         
         <main>
-          {/* Modern Hero Section */}
-          <section className="relative min-h-[24vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-center overflow-hidden">
+          {/* Modern Hero Section — photo backdrop shared with the filter bar
+              below, same treatment as the Partners page */}
+          <section className="relative overflow-hidden">
             {/* Background Image with Overlay */}
             <div className="absolute inset-0 z-0">
               <img 
@@ -184,6 +185,7 @@ export default function CoachesPage() {
               <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100%" />
             </div>
 
+            <div className="relative min-h-[24vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-start">
             <div className="container mx-auto px-2 relative z-10">
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
@@ -245,10 +247,10 @@ export default function CoachesPage() {
                 </p>
               </motion.div>
             </div>
-          </section>
+            </div>
 
-          {/* Filter & Search Bar - Floating */}
-          <div className="container mx-auto px-2 mt-0 md:pt-2 md:-mt-2 relative z-20 mb-8 md:mb-14">
+          {/* Filter & Search Bar - floats over the tail of the photo */}
+          <div className="container mx-auto px-2 mt-0 relative z-20 pb-20 md:pb-32">
             <div className="bg-card/95
               backdrop-blur-sm
               border border-border/40
@@ -366,9 +368,11 @@ export default function CoachesPage() {
               </div>
             </div>
           </div>
+          </section>
 
-          {/* Coaches Grid */}
-          <section className="container mx-auto px-4 pb-24 scroll-mt-24"
+          {/* Coaches Grid — pulled up so the photo's fade dissolves under
+              the top of the first row, matching the Partners page */}
+          <section className="relative z-30 container mx-auto px-4 -mt-20 md:-mt-28 pb-24 scroll-mt-24"
             ref={coachesSectionRef}>
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
               {filteredCoaches.map((coach, index) => (
