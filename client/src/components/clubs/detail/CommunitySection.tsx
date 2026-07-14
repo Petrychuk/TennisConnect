@@ -77,11 +77,19 @@ export function CommunitySection({
     },
   ];
 
+  const hasSessions = sessions.length > 0;
+  const hasGallery = (club.gallery?.length ?? 0) > 0;
+
   return (
     <div className="space-y-6" data-testid="club-community-section-detail">
-      {/* Row 1: About (1/3) + Upcoming Sessions (2/3) */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1 rounded-2xl border bg-card p-5 md:p-6">
+      {/* Row 1: About + Upcoming Sessions (only if any) + Contact.
+          About takes the extra 2 columns when there are no sessions to show. */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div
+          className={`rounded-2xl border bg-card p-5 md:p-6 ${
+            hasSessions ? "lg:col-span-1" : "lg:col-span-3"
+          }`}
+        >
           <h2 className="font-display font-bold text-xl mb-3">
             About Our Community
           </h2>
@@ -97,24 +105,17 @@ export function CommunitySection({
           )}
         </div>
 
-        <div
-          className="lg:col-span-2 rounded-2xl border bg-card p-5 md:p-6"
-          data-testid="club-upcoming-sessions"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-display font-bold text-lg">
-              Upcoming Sessions
-            </h3>
-          </div>
+        {hasSessions && (
+          <div
+            className="lg:col-span-2 rounded-2xl border bg-card p-5 md:p-6"
+            data-testid="club-upcoming-sessions"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-display font-bold text-lg">
+                Upcoming Sessions
+              </h3>
+            </div>
 
-          {sessions.length === 0 ? (
-            <p
-              className="text-sm text-muted-foreground"
-              data-testid="club-sessions-empty"
-            >
-              Contact the community lead for the current schedule.
-            </p>
-          ) : (
             <div className="space-y-2">
               {sessions.slice(0, 7).map((session, i) => (
                 <div
@@ -161,22 +162,36 @@ export function CommunitySection({
                 </div>
               ))}
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+        )}
 
-      {/* Row 2: Gallery (2/3) + Contact (1/3) */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <ClubGallery images={club.gallery ?? []} clubName={club.name} />
-        </div>
         <div className="lg:col-span-1" id="club-section-contact">
           <ClubContactCard club={club} personLabel="Community Lead" />
         </div>
       </div>
 
-      {/* Row 3: Community Highlights + Services, in columns */}
-      <div className="grid md:grid-cols-2 gap-6">
+      {/* Services + Community Highlights, in columns */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div
+          className="rounded-2xl border bg-card p-5 md:p-6"
+          data-testid="club-services"
+        >
+          <h3 className="font-display font-bold text-lg mb-4">Services</h3>
+          {club.services?.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {club.services.map((s: string) => (
+                <Badge key={s} variant="secondary" className="px-3 py-1.5">
+                  {getServiceLabel(s)}
+                </Badge>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No services listed yet.
+            </p>
+          )}
+        </div>
+
         <div
           className="rounded-2xl border bg-card p-5 md:p-6"
           data-testid="club-community-highlights"
@@ -217,27 +232,12 @@ export function CommunitySection({
             </div>
           )}
         </div>
-
-        <div
-          className="rounded-2xl border bg-card p-5 md:p-6"
-          data-testid="club-services"
-        >
-          <h3 className="font-display font-bold text-lg mb-4">Services</h3>
-          {club.services?.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {club.services.map((s: string) => (
-                <Badge key={s} variant="secondary" className="px-3 py-1.5">
-                  {getServiceLabel(s)}
-                </Badge>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No services listed yet.
-            </p>
-          )}
-        </div>
       </div>
+
+      {/* Gallery — last, and only shown when there are photos */}
+      {hasGallery && (
+        <ClubGallery images={club.gallery ?? []} clubName={club.name} />
+      )}
 
       <ClubCTABanner
         title="Ready to join our community?"
