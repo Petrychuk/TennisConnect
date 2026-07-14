@@ -82,6 +82,48 @@ export function CommunitySection({
 
   return (
     <div className="space-y-6" data-testid="club-community-section-detail">
+      {/* Community Highlights — right under the hero */}
+      <div
+        className="rounded-2xl border bg-card p-5 md:p-6"
+        data-testid="club-community-highlights"
+      >
+        <h3 className="font-display font-bold text-lg mb-4">
+          Community Highlights
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {highlights.map((h) => (
+            <div key={h.label} className="flex items-start gap-2">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary mt-0.5">
+                {h.icon}
+              </span>
+              <div>
+                <p className="font-semibold text-sm leading-none">
+                  {h.value}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {h.label}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {club.hostedCompetitions?.length > 0 && (
+          <div className="mt-5 pt-5 border-t border-border/60">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+              Events & Competitions
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {club.hostedCompetitions.map((c: string) => (
+                <Badge key={c} variant="secondary" className="px-3 py-1.5">
+                  {getCompetitionLabel(c)}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Row 1: About + Upcoming Sessions (only if any) + Contact.
           About takes the extra 2 columns when there are no sessions to show. */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -170,68 +212,25 @@ export function CommunitySection({
         </div>
       </div>
 
-      {/* Services + Community Highlights, in columns */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div
-          className="rounded-2xl border bg-card p-5 md:p-6"
-          data-testid="club-services"
-        >
-          <h3 className="font-display font-bold text-lg mb-4">Services</h3>
-          {club.services?.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {club.services.map((s: string) => (
-                <Badge key={s} variant="secondary" className="px-3 py-1.5">
-                  {getServiceLabel(s)}
-                </Badge>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No services listed yet.
-            </p>
-          )}
-        </div>
-
-        <div
-          className="rounded-2xl border bg-card p-5 md:p-6"
-          data-testid="club-community-highlights"
-        >
-          <h3 className="font-display font-bold text-lg mb-4">
-            Community Highlights
-          </h3>
-          <div className="grid grid-cols-2 gap-4">
-            {highlights.map((h) => (
-              <div key={h.label} className="flex items-start gap-2">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary mt-0.5">
-                  {h.icon}
-                </span>
-                <div>
-                  <p className="font-semibold text-sm leading-none">
-                    {h.value}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {h.label}
-                  </p>
-                </div>
-              </div>
+      {/* Services */}
+      <div
+        className="rounded-2xl border bg-card p-5 md:p-6"
+        data-testid="club-services"
+      >
+        <h3 className="font-display font-bold text-lg mb-4">Services</h3>
+        {club.services?.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {club.services.map((s: string) => (
+              <Badge key={s} variant="secondary" className="px-3 py-1.5">
+                {getServiceLabel(s)}
+              </Badge>
             ))}
           </div>
-
-          {club.hostedCompetitions?.length > 0 && (
-            <div className="mt-5 pt-5 border-t border-border/60">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-                Events & Competitions
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {club.hostedCompetitions.map((c: string) => (
-                  <Badge key={c} variant="secondary" className="px-3 py-1.5">
-                    {getCompetitionLabel(c)}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No services listed yet.
+          </p>
+        )}
       </div>
 
       {/* Gallery — last, and only shown when there are photos */}

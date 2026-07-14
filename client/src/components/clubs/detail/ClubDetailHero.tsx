@@ -316,7 +316,13 @@ function ActionCard({
   }
 
   // community
+  const nextSession = club.sessions?.[0];
   const firstDay = club.socialTennisDays?.[0];
+  const hasSchedule = !!nextSession || !!firstDay;
+  const sessionPrice =
+    nextSession?.price !== undefined && nextSession?.price !== null
+      ? `$${nextSession.price}`
+      : price;
 
   return (
     <div
@@ -324,10 +330,17 @@ function ActionCard({
       data-testid="club-action-card-community"
     >
       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        {firstDay ? "Next Social Session" : "Join the Community"}
+        {hasSchedule ? "Next Social Session" : "Join the Community"}
       </p>
 
-      {firstDay ? (
+      {nextSession ? (
+        <p
+          className="mt-1 text-xl font-display font-bold"
+          data-testid="club-action-next-session"
+        >
+          {nextSession.name || nextSession.day}
+        </p>
+      ) : firstDay ? (
         <p
           className="mt-1 text-xl font-display font-bold"
           data-testid="club-action-next-session"
@@ -340,13 +353,13 @@ function ActionCard({
         </p>
       )}
 
-      {price && (
+      {hasSchedule && sessionPrice && (
         <p className="mb-4">
           <span
             className="text-2xl font-display font-bold"
             data-testid="club-action-price"
           >
-            {price}
+            {sessionPrice}
           </span>
           <span className="text-sm text-muted-foreground"> per session</span>
         </p>
