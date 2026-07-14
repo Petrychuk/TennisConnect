@@ -38,6 +38,10 @@ export function getServiceLabel(value: string): string {
   return CLUB_SERVICES.find((s) => s.value === value)?.label ?? value;
 }
 
+export function getServiceGroup(value: string): string | undefined {
+  return CLUB_SERVICES.find((s) => s.value === value)?.group;
+}
+
 export function getStateLabel(value?: string | null): string {
   if (!value) return "";
   return AUSTRALIAN_STATES.find((s) => s.value === value)?.label ?? value;

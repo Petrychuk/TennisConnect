@@ -23,6 +23,8 @@ import {
   formatLocation,
   formatHourlyPrice,
   getSurfaceLabel,
+  getServiceLabel,
+  getServiceGroup,
 } from "@/lib/clubVariant";
 import { ClubFollowButton } from "./ClubFollowButton";
 
@@ -105,7 +107,19 @@ function getQuickFacts(club: any, variant: ClubVariant): QuickFact[] {
     ];
   }
 
-  // community
+  // community — driven by the club's actual services when set (up to 8),
+  // so this reflects what was configured at creation instead of generic
+  // hardcoded claims
+  const communityServices = (club.services ?? []).slice(0, 8);
+
+  if (communityServices.length > 0) {
+    return communityServices.map((s: string) => ({
+      icon: <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5" />,
+      value: getServiceLabel(s),
+      label: getServiceGroup(s) ?? "Service",
+    }));
+  }
+
   return [
     {
       icon: <Users className="w-4 h-4 md:w-5 md:h-5" />,
@@ -113,21 +127,9 @@ function getQuickFacts(club: any, variant: ClubVariant): QuickFact[] {
       label: "Welcome",
     },
     {
-      icon: <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5" />,
-      value: "Open",
-      label: "All Levels",
-    },
-    {
       icon: <HeartHandshake className="w-4 h-4 md:w-5 md:h-5" />,
       value: "Friendly",
       label: "Social Play",
-    },
-    {
-      icon: <CalendarDays className="w-4 h-4 md:w-5 md:h-5" />,
-      value: club.socialTennisDays?.length
-        ? `${club.socialTennisDays.length}`
-        : "—",
-      label: "Weekly Sessions",
     },
     {
       icon: <HeartHandshake className="w-4 h-4 md:w-5 md:h-5" />,
@@ -350,20 +352,31 @@ function ActionCard({
         </p>
       )}
 
-      <ul className="space-y-2 mb-5 mt-3 text-sm">
-        <li className="flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
-          {club.membershipRequired ? "Members welcome" : "All levels welcome"}
-        </li>
-        <li className="flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
-          Social & friendly play
-        </li>
-        {club.hostsCompetitions && (
-          <li className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
-            Tournaments & events
-          </li>
+      <ul className="space-y-2 mb-5 mt-3 text-sm" data-testid="club-action-checklist">
+        {club.services?.length > 0 ? (
+          club.services.slice(0, 4).map((s: string) => (
+            <li key={s} className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+              {getServiceLabel(s)}
+            </li>
+          ))
+        ) : (
+          <>
+            <li className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+              {club.membershipRequired ? "Members welcome" : "All levels welcome"}
+            </li>
+            <li className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+              Social & friendly play
+            </li>
+            {club.hostsCompetitions && (
+              <li className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                Tournaments & events
+              </li>
+            )}
+          </>
         )}
       </ul>
 
@@ -394,7 +407,7 @@ export function ClubDetailHero({
     <div className="max-w-full lg:max-w-[52%]">
       <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-2">
         <h1
-          className="text-white text-2xl md:text-4xl font-display font-bold leading-tight drop-shadow-sm"
+          className="text-white text-xl sm:text-2xl md:text-3xl lg:text-5xl font-display font-bold leading-tight drop-shadow-sm break-words"
           data-testid="club-detail-name"
         >
           {club.name}
@@ -427,7 +440,7 @@ export function ClubDetailHero({
           className="flex items-center gap-1.5 text-white/80 mb-4"
           data-testid="club-detail-location"
         >
-          <MapPin className="w-4 h-4 shrink-0" />
+          <MapPin className="w-4 h-4 shrink-0 text-primary" />
           {club.address ? `${club.address}, ` : ""}
           {location}
         </div>
@@ -469,7 +482,7 @@ export function ClubDetailHero({
     <div className="rounded-2xl border bg-background shadow-xl p-5">
       <div className="flex flex-wrap items-center gap-2 mb-2">
         <h1
-          className="text-2xl font-display font-bold leading-tight"
+          className="text-xl sm:text-2xl font-display font-bold leading-tight break-words"
           data-testid="club-detail-name-mobile"
         >
           {club.name}
@@ -495,7 +508,7 @@ export function ClubDetailHero({
 
       {location && (
         <div className="flex items-center gap-1.5 text-muted-foreground mb-4">
-          <MapPin className="w-4 h-4 shrink-0" />
+          <MapPin className="w-4 h-4 shrink-0 text-primary" />
           {club.address ? `${club.address}, ` : ""}
           {location}
         </div>
@@ -543,7 +556,7 @@ export function ClubDetailHero({
             className="w-full h-full object-cover"
             data-testid="club-detail-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/40" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/5 to-black/25" />
 
           <div className="absolute inset-0 container mx-auto px-4 flex flex-col">
             <nav
@@ -607,22 +620,22 @@ export function ClubDetailHero({
 
           {/* Quick facts */}
           <div
-            className="mt-4 md:mt-6 pb-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-3"
+            className="mt-4 md:mt-6 pb-6 grid grid-cols-3 gap-2 md:gap-3 lg:flex lg:flex-nowrap"
             data-testid="club-quick-facts"
           >
             {quickFacts.map((fact, i) => (
               <div
                 key={i}
-                className="rounded-xl border bg-card p-3 md:p-4 text-center"
+                className="rounded-xl border bg-card p-3 md:p-4 text-center lg:flex-1 lg:min-w-0"
                 data-testid={`club-quick-fact-${i}`}
               >
                 <div className="flex items-center justify-center gap-1.5 text-primary mb-1">
                   {fact.icon}
                 </div>
-                <p className="font-bold text-sm md:text-base leading-none">
+                <p className="font-bold text-sm md:text-base leading-none truncate">
                   {fact.value}
                 </p>
-                <p className="mt-1 text-[10px] md:text-xs uppercase tracking-wide text-muted-foreground">
+                <p className="mt-1 text-[10px] md:text-xs uppercase tracking-wide text-muted-foreground truncate">
                   {fact.label}
                 </p>
               </div>
