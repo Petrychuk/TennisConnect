@@ -57,7 +57,7 @@ export function ClubGallery({ images, clubName }: ClubGalleryProps) {
         </button>
 
         {images.length > 1 && (
-          <div className="grid grid-cols-2 grid-rows-3 gap-2 flex-1">
+          <div className="grid grid-cols-2 auto-rows-fr gap-2 flex-1">
             {images.slice(1, 7).map((img, i) => {
               const isLastVisible = i === 5 && images.length > 7;
               return (
