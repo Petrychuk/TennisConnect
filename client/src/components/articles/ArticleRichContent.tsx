@@ -136,7 +136,13 @@ function Block({ block }: { block: ArticleContentBlock }) {
   }
 }
 
-export function ArticleRichContent({ content }: { content: string }) {
+export function ArticleRichContent({
+  content,
+  testId = "article-rich-content",
+}: {
+  content: string;
+  testId?: string;
+}) {
   const blocks = parseArticleContent(content);
 
   return (
@@ -147,7 +153,7 @@ export function ArticleRichContent({ content }: { content: string }) {
         text-foreground/90
         [&_strong]:text-foreground
       "
-      data-testid="article-rich-content"
+      data-testid={testId}
     >
       {blocks.map((block, i) => (
         <Block key={i} block={block} />

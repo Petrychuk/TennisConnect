@@ -9,7 +9,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ClubGallery } from "./ClubGallery";
 import { ClubCTABanner } from "./ClubCTABanner";
-import { FormattedText } from "./FormattedText";
+import { ArticleRichContent } from "@/components/articles/ArticleRichContent";
 import { getSurfaceLabel, getServiceLabel } from "@/lib/clubVariant";
 
 interface CourtsSectionProps {
@@ -65,8 +65,8 @@ export function CourtsSection({
       {/* Description */}
       <div className="rounded-2xl border bg-card p-5 md:p-6">
         <h2 className="font-display font-bold text-xl mb-3">About</h2>
-        <FormattedText
-          text={club.description}
+        <ArticleRichContent
+          content={club.description}
           testId="club-description"
         />
       </div>

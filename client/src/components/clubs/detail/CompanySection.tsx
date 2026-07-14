@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ClubGallery } from "./ClubGallery";
 import { ClubCTABanner } from "./ClubCTABanner";
-import { FormattedText } from "./FormattedText";
+import { ArticleRichContent } from "@/components/articles/ArticleRichContent";
 import { getServiceLabel, getStateLabel } from "@/lib/clubVariant";
 
 interface CompanySectionProps {
@@ -31,7 +31,7 @@ export function CompanySection({
             {club.state ? ` Across ${getStateLabel(club.state)}` : ""}
           </h2>
         </div>
-        <FormattedText text={club.description} testId="club-description" />
+        <ArticleRichContent content={club.description} testId="club-description" />
       </div>
 
       {/* Primary location + map link */}

@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { ClubGallery } from "./ClubGallery";
 import { ClubCTABanner } from "./ClubCTABanner";
 import { ClubContactCard } from "./ClubContactCard";
-import { FormattedText } from "./FormattedText";
+import { ArticleRichContent } from "@/components/articles/ArticleRichContent";
 import { getCompetitionLabel } from "@/lib/clubVariant";
 import type { ClubSession } from "@shared/schema";
 
@@ -81,17 +81,23 @@ export function CommunitySection({
   return (
     <div className="space-y-6" data-testid="club-community-section-detail">
       {/* Row 1: About + Upcoming Sessions (only if any) + Contact.
-          About takes the extra 2 columns when there are no sessions to show. */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          About takes the extra columns when there are no sessions to show.
+          When sessions exist, custom column widths give About ~30% more
+          room (taken from Sessions) instead of a flat 1:2:1 split. */}
+      <div
+        className={`grid grid-cols-1 gap-6 lg:gap-4 ${
+          hasSessions ? "lg:grid-cols-[1.3fr_1.7fr_1fr]" : "lg:grid-cols-4"
+        }`}
+      >
         <div
           className={`rounded-2xl border bg-card p-5 md:p-6 ${
-            hasSessions ? "lg:col-span-1" : "lg:col-span-3"
+            hasSessions ? "" : "lg:col-span-3"
           }`}
         >
           <h2 className="font-display font-bold text-xl mb-3">
             About Our Community
           </h2>
-          <FormattedText text={club.description} testId="club-description" />
+          <ArticleRichContent content={club.description} testId="club-description" />
 
           {club.hostsCompetitions && (
             <ul className="mt-4 space-y-1.5 text-sm text-muted-foreground">
@@ -105,7 +111,7 @@ export function CommunitySection({
 
         {hasSessions && (
           <div
-            className="lg:col-span-2 rounded-2xl border bg-card p-5 md:p-6"
+            className="rounded-2xl border bg-card p-5 md:p-6"
             data-testid="club-upcoming-sessions"
           >
             <div className="flex items-center justify-between mb-4">
@@ -163,7 +169,7 @@ export function CommunitySection({
           </div>
         )}
 
-        <div className="lg:col-span-1" id="club-section-contact">
+        <div id="club-section-contact">
           <ClubContactCard club={club} personLabel="Community Lead" />
         </div>
       </div>
