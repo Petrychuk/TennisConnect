@@ -128,14 +128,17 @@ export default function MarketplacePage() {
                 <div className="relative min-h-[24vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-center overflow-hidden mb-12">
                     <div className="absolute inset-0 z-0">
                     <img src={heroBg} className="w-full h-full object-cover" alt="Marketplace Background" />
-                    <div className="absolute inset-0 bg-linear-to-b from-background/80 via-background/20 to-background"></div>
+                    <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100%"></div>
                     </div>
                     
-                    <div className="container mx-auto px-4 relative z-10 text-center">
-                        <Badge className="mb-6 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-1.5 text-sm font-bold shadow-[0_0_20px_rgba(223,255,0,0.4)] border-none">
-                            Official Marketplace
-                        </Badge>
-                        <h1 className="text-5xl md:text-7xl font-display font-bold mb-6 tracking-tight">
+                    <div className="container mx-auto px-4 relative z-10 text-left">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md mb-6">
+                            <span className="w-2 h-2 rounded-full bg-primary" />
+                            <span className="text-xs sm:text-sm font-bold tracking-wider uppercase text-white">
+                                Official Marketplace
+                            </span>
+                        </div>
+                        <h1 className="text-5xl md:text-7xl font-display font-bold mb-6 tracking-tight text-white drop-shadow-md">
                             Tennis <span className="text-primary relative inline-block">
                                 Gear Exchange
                                 <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-50" viewBox="0 0 100 10" preserveAspectRatio="none">
@@ -143,7 +146,7 @@ export default function MarketplacePage() {
                                 </svg>
                             </span>
                         </h1>
-                        <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed font-medium">
+                        <p className="text-xl md:text-2xl text-white/85 max-w-2xl leading-relaxed font-medium drop-shadow-sm">
                             The trusted place for Sydney's tennis community to buy, sell, and trade pre-loved equipment.
                         </p>
                     </div>

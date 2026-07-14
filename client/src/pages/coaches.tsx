@@ -181,7 +181,7 @@ export default function CoachesPage() {
                 object-cover
                 object-[60%_20%]"
               />
-              <div className="absolute inset-0 bg-linear-to-b from-background/80 via-background/20 to-background" />
+              <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100%" />
             </div>
 
             <div className="container mx-auto px-2 relative z-10">
@@ -196,26 +196,18 @@ export default function CoachesPage() {
                   px-4
                   md:pl-8
                   lg:pl-0
-                  text-center
-                  md:text-left
+                  text-left
                   md:translate-y-10
                   lg:translate-y-2
                   xl:translate-y-6
                   xl:pt-20"
               >
-                <Badge className="mb-3
-                  md:mb-6
-                  px-3
-                  md:px-4
-                  py-1
-                  text-[10px]
-                  sm:text-xs
-                  md:text-sm
-                  font-bold
-                  uppercase
-                  tracking-wider">
-                  Find Best Coach
-                </Badge>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md mb-3 md:mb-6">
+                  <span className="w-2 h-2 rounded-full bg-primary" />
+                  <span className="text-[10px] sm:text-xs md:text-sm font-bold tracking-wider uppercase text-white">
+                    Find Best Coach
+                  </span>
+                </div>
                 <h1 className="text-3xl
                   sm:text-4xl
                   md:text-5xl
@@ -223,7 +215,9 @@ export default function CoachesPage() {
                   font-display
                   font-bold
                   leading-[0.95]
-                  mb-3">
+                  mb-3
+                  text-white
+                  drop-shadow-md">
                 Level Up <span className="text-primary relative inline-block">Your Game<svg
                   className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40"
                   viewBox="0 0 100 10"
@@ -242,12 +236,11 @@ export default function CoachesPage() {
                     text-sm
                     sm:text-base
                     md:text-lg
-                    text-muted-foreground
+                    text-white/85
                     leading-[1.2]
                     md:leading-relaxed
                     max-w-xl
-                    mx-auto
-                    md:mx-0">
+                    drop-shadow-sm">
                   Connect with certified tennis coaches in Sydney to take your game to the next level, whether you're a beginner or a tournament player.
                 </p>
               </motion.div>

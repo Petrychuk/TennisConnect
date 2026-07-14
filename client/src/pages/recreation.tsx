@@ -69,9 +69,9 @@ export default function RecreationPage() {
       <div className="min-h-screen bg-background font-sans">
         <Navbar />
 
-        <div className="relative min-h-[40vh] flex items-center justify-center overflow-hidden bg-black">
+        <div className="relative min-h-[26vh] md:min-h-[32vh] lg:min-h-[36vh] flex items-center justify-start overflow-hidden bg-black">
           <div
-            className="absolute inset-0 z-0 opacity-30"
+            className="absolute inset-0 z-0"
             style={{
               backgroundImage:
                 "url(https://images.unsplash.com/photo-1544161515-4ab6ce6db874?q=80&w=2000&auto=format&fit=crop)",
@@ -79,16 +79,19 @@ export default function RecreationPage() {
               backgroundPosition: "center",
             }}
           />
-          <div className="absolute inset-0 bg-linear-to-b from-black/60 via-black/40 to-background z-10" />
-          <div className="relative z-20 container mx-auto px-4 text-center mt-20">
+          <div className="absolute inset-0 bg-linear-to-b from-black/0 from-0% via-black/35 via-75% to-background to-100% z-10" />
+          <div className="relative z-20 container mx-auto px-4 text-left mt-16 md:mt-20">
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
-              <Badge className="mb-6 bg-primary text-primary-foreground px-4 py-1.5 text-sm font-bold">
-                <Heart className="w-4 h-4 mr-2" /> Tennis Recreation
-              </Badge>
-              <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold mb-4 tracking-tight text-white">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md mb-6">
+                <Heart className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs sm:text-sm font-bold tracking-wider uppercase text-white">
+                  Tennis Recreation
+                </span>
+              </div>
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold mb-4 tracking-tight text-white drop-shadow-md">
                 Body. Mind. <span className="text-primary">Performance.</span>
               </h1>
-              <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto font-light">
+              <p className="text-lg md:text-xl text-white/85 max-w-2xl font-light drop-shadow-sm">
                 Massage, cryo, yoga, physio — designed for tennis bodies.
               </p>
             </motion.div>

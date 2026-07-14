@@ -85,13 +85,16 @@ export default function TravelPage() {
             backgroundPosition: "center",
           }}
         />
-        <div className="absolute inset-0 bg-linear-to-b from-background/80 via-background/20 to-background z-10" />
-        <div className="relative z-20 container mx-auto px-4 text-center mt-16 md:mt-20">
+        <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100% z-10" />
+        <div className="relative z-20 container mx-auto px-4 text-left mt-16 md:mt-20">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
-            <Badge className="mb-6 bg-primary text-primary-foreground px-4 py-1.5 text-sm font-bold">
-              <Plane className="w-4 h-4 mr-2" /> Tennis Travel
-            </Badge>
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold mb-4 tracking-tight">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md mb-6">
+              <Plane className="w-3.5 h-3.5 text-primary" />
+              <span className="text-xs sm:text-sm font-bold tracking-wider uppercase text-white">
+                Tennis Travel
+              </span>
+            </div>
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold mb-4 tracking-tight text-white drop-shadow-md">
               Train. Travel.{" "}
               <span className="relative inline-block text-primary">
                 Transform.
@@ -109,7 +112,7 @@ export default function TravelPage() {
                 </svg>
               </span>
             </h1>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto font-light">
+            <p className="text-lg md:text-xl text-white/85 max-w-2xl font-light drop-shadow-sm">
               Curated tennis getaways. Train with pros, recover in paradise.
             </p>
           </motion.div>

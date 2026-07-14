@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Navbar } from "@/components/navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Footer } from "@/components/footer";
 import { ClubCard } from "@/components/clubs/ClubCard";
 import { Card, CardContent } from "@/components/ui/card";
@@ -100,29 +99,20 @@ export default function ClubsPage() {
               backgroundPosition: 'center',
             }}
           />
-          <div className="absolute inset-0 bg-linear-to-b from-background/80 via-background/20 to-background z-10" />
+          <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100% z-10" />
           
-          <div className="relative z-20 container mx-auto px-4 text-center mt-16 md:mt-20">
+          <div className="relative z-20 container mx-auto px-4 text-left mt-16 md:mt-20">
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
             >
-              <Badge className="
-                    mb-3
-                    md:mb-6
-                    px-4
-                    md:px-5
-                    py-1.5
-                    text-[10px]
-                    sm:text-xs
-                    font-bold
-                    uppercase
-                    tracking-wider
-                    shadow-md
-                  "
-                >Places To Play
-                </Badge>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md mb-3 md:mb-6">
+                <span className="w-2 h-2 rounded-full bg-primary" />
+                <span className="text-[10px] sm:text-xs md:text-sm font-bold tracking-wider uppercase text-white">
+                  Places To Play
+                </span>
+              </div>
                   <h1 className="text-4xl
                     sm:text-4xl
                     md:text-6xl
@@ -130,7 +120,9 @@ export default function ClubsPage() {
                     font-display
                     font-bold
                     tracking-tight
-                    leading-none">
+                    leading-none
+                    text-white
+                    drop-shadow-md">
                   Find Tennis <span className="text-primary relative inline-block">
                   Communities
                   <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none">
@@ -142,13 +134,13 @@ export default function ClubsPage() {
                   sm:text-base
                   md:text-xl
                   lg:text-2xl
-                  text-muted-foreground
+                  text-white/85
                   max-w-xl
                   md:max-w-2xl
-                  mx-auto
                   font-normal
                   leading-tight
-                  md:leading-[1.3]">
+                  md:leading-[1.3]
+                  drop-shadow-sm">
                  Discover tennis courts, clubs, social groups, and local communities across Australia.
               </p>
             </motion.div>
