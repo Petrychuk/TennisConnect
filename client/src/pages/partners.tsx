@@ -274,7 +274,7 @@ export default function PartnersPage() {
         />
         {/* Light at the top (photo mostly visible), gradually settling to
             the page background well past the filter bar. */}
-        <div className="absolute inset-0 bg-linear-to-b from-background/10 via-background/55 to-background z-10" />
+        <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100% z-10" />
 
         <div className="relative min-h-[26vh] md:min-h-[32vh] lg:min-h-[36vh] flex items-center justify-center">
           <div className="relative z-20 container mx-auto px-4 text-center mt-16 md:mt-20">
@@ -314,7 +314,7 @@ export default function PartnersPage() {
 
         {/* Filter Bar — floats over the tail of the photo instead of a
             solid block below it */}
-        <div className="relative z-20 pb-8 md:pb-14">
+        <div className="relative z-20 pb-24 md:pb-36">
           <div className="container mx-auto px-2 mt-0 mb-3 md:mb-6">
             <div
               className="
@@ -323,19 +323,20 @@ export default function PartnersPage() {
                 border border-border/40
                 shadow-lg
                 rounded-2xl
-                p-3 md:p-4
+                p-2.5 md:p-4
               "
             >
-              <div className="flex flex-col md:flex-row gap-3 md:gap-4 items-center justify-between">
+              <div className="flex flex-col md:flex-row gap-2 md:gap-4 items-center justify-between">
 
                 <div className="relative w-full md:w-80 lg:w-96 group">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground" />
 
                   <Input
                     placeholder="Search by name or location..."
                     className="
-                      pl-10
-                      h-11
+                      pl-9 md:pl-10
+                      h-9 md:h-11
+                      text-sm
                       rounded-xl
                       bg-background
                     "
@@ -344,7 +345,7 @@ export default function PartnersPage() {
                   />
                 </div>
 
-                <div className="flex w-full md:w-auto gap-2 overflow-x-auto scrollbar-hide">
+                <div className="flex w-full md:w-auto gap-1.5 md:gap-2 overflow-x-auto scrollbar-hide">
                   {["Beginner", "Intermediate", "Advanced"].map((level) => (
                     <button
                       key={level}
@@ -352,10 +353,10 @@ export default function PartnersPage() {
                         setFilterLevel(filterLevel === level ? "" : level)
                       }
                       className={`
-                        h-11
-                        px-4
+                        h-8 md:h-11
+                        px-3 md:px-4
                         rounded-full
-                        text-sm
+                        text-xs md:text-sm
                         font-medium
                         whitespace-nowrap
                         transition-all
@@ -381,7 +382,7 @@ export default function PartnersPage() {
 
       {/* Partners Grid — pulled up slightly so the photo's fade visibly
           dissolves under the top of the first card row */}
-      <div className="container mx-auto px-4 py-4 -mt-6 md:-mt-10 scroll-mt-24"
+      <div className="relative z-30 container mx-auto px-4 py-4 -mt-20 md:-mt-28 scroll-mt-24"
       ref={playersSectionRef}>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           {filteredPartners.map((partner, index) => {
