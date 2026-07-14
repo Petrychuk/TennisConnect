@@ -276,8 +276,8 @@ export default function PartnersPage() {
             the page background well past the filter bar. */}
         <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100% z-10" />
 
-        <div className="relative min-h-[26vh] md:min-h-[32vh] lg:min-h-[36vh] flex items-center justify-center">
-          <div className="relative z-20 container mx-auto px-4 text-center mt-16 md:mt-20">
+        <div className="relative min-h-[26vh] md:min-h-[32vh] lg:min-h-[36vh] flex items-center justify-start">
+          <div className="relative z-20 container mx-auto px-4 text-left mt-16 md:mt-20">
             <motion.div 
                initial={{ opacity: 0, y: 30 }}
                animate={{ opacity: 1, y: 0 }}
@@ -285,11 +285,11 @@ export default function PartnersPage() {
             >
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md mb-3 md:mb-6">
                 <span className="w-2 h-2 rounded-full bg-primary" />
-                <span className="text-[10px] sm:text-xs md:text-sm font-bold tracking-wider uppercase text-foreground">
+                <span className="text-[10px] sm:text-xs md:text-sm font-bold tracking-wider uppercase text-white">
                   Find Best Player
                 </span>
               </div>
-              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold mb-2 md:mb-6 tracking-tight">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold mb-2 md:mb-6 tracking-tight text-white drop-shadow-md">
                 Find Your <span className="text-primary relative inline-block">
                   Player
                   <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none">
@@ -300,12 +300,12 @@ export default function PartnersPage() {
               <p className="text-base
                 sm:text-lg
                 md:text-2xl
-                text-muted-foreground
+                text-white/85
                 max-w-2xl
-                mx-auto
                 font-normal
                 leading-snug
-                md:leading-relaxed">
+                md:leading-relaxed
+                drop-shadow-sm">
                 Connect with partners for games, join local matches, and expand your tennis network.
               </p>
             </motion.div>
