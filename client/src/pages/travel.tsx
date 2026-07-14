@@ -76,7 +76,7 @@ export default function TravelPage() {
     <div className="min-h-screen bg-background font-sans">
       <Navbar />
 
-      <div className="relative min-h-[24vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-center overflow-hidden">
+      <div className="relative overflow-hidden">
         <div
           className="absolute inset-0 z-0"
           style={{
@@ -86,6 +86,8 @@ export default function TravelPage() {
           }}
         />
         <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100% z-10" />
+
+        <div className="relative min-h-[24vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-start">
         <div className="relative z-20 container mx-auto px-4 text-left mt-16 md:mt-20">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md mb-6">
@@ -117,24 +119,28 @@ export default function TravelPage() {
             </p>
           </motion.div>
         </div>
-      </div>
+        </div>
 
-      <div className="sticky top-16 z-40 bg-background/80 backdrop-blur-lg border-b py-4">
+      {/* Search bar — floats over the tail of the photo */}
+      <div className="relative z-20 mt-5 pb-20 md:pb-32">
         <div className="container mx-auto px-4">
+          <div className="bg-card/70 backdrop-blur-lg border border-border/40 shadow-lg rounded-2xl p-3 md:p-4">
           <div className="relative w-full md:w-96">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Search destinations..."
-              className="pl-10 h-11 bg-secondary/50 border-transparent focus:border-primary rounded-xl"
+              className="pl-10 h-11 bg-background/80 border-transparent focus:border-primary rounded-xl"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               data-testid="travel-search-input"
             />
           </div>
+          </div>
         </div>
       </div>
+      </div>
 
-      <div className="container mx-auto px-4 py-12">
+      <div className="relative z-30 container mx-auto px-4 py-12 -mt-20 md:-mt-28">
         {filtered.length === 0 ? (
           <div className="text-center py-20">
             <Plane className="w-12 h-12 mx-auto text-muted-foreground mb-4" />

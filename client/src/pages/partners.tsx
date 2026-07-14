@@ -318,7 +318,7 @@ export default function PartnersPage() {
           <div className="container mx-auto px-2 mt-0 mb-3 md:mb-6">
             <div
               className="
-                bg-card/90
+                bg-card/70
                 backdrop-blur-md
                 border border-border/40
                 shadow-lg

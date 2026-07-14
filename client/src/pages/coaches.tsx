@@ -250,8 +250,8 @@ export default function CoachesPage() {
             </div>
 
           {/* Filter & Search Bar - floats over the tail of the photo */}
-          <div className="container mx-auto px-2 mt-0 relative z-20 pb-20 md:pb-32">
-            <div className="bg-card/95
+          <div className="container mx-auto px-2 mt-5 relative z-20 pb-20 md:pb-32">
+            <div className="bg-card/70
               backdrop-blur-sm
               border border-border/40
               shadow-lg
