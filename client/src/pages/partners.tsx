@@ -267,7 +267,7 @@ export default function PartnersPage() {
         <div
           className="absolute inset-0 z-0"
           style={{
-            backgroundImage: "url(https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?q=80&w=2000&auto=format&fit=crop)",
+            backgroundImage: "url('/assets/images/dashboard_players.png')",
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
