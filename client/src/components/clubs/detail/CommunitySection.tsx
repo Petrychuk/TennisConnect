@@ -85,8 +85,8 @@ export function CommunitySection({
           When sessions exist, custom column widths give About ~30% more
           room (taken from Sessions) instead of a flat 1:2:1 split. */}
       <div
-        className={`grid grid-cols-1 gap-6 lg:gap-4 ${
-          hasSessions ? "lg:grid-cols-[1.3fr_1.7fr_1fr]" : "lg:grid-cols-4"
+        className={`grid grid-cols-1 gap-6 lg:gap-2 ${
+          hasSessions ? "lg:grid-cols-[1.6fr_1.4fr_1fr]" : "lg:grid-cols-4"
         }`}
       >
         <div
@@ -97,7 +97,7 @@ export function CommunitySection({
           <h2 className="font-display font-bold text-xl mb-3">
             About Our Community
           </h2>
-          <ArticleRichContent content={club.description} testId="club-description" />
+          <ArticleRichContent content={club.description} testId="club-description" compact />
 
           {club.hostsCompetitions && (
             <ul className="mt-4 space-y-1.5 text-sm text-muted-foreground">

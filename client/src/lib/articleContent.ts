@@ -9,7 +9,7 @@ export type ArticleContentBlock =
   | { type: "image"; src: string; alt: string }
   | { type: "paragraph"; text: string };
 
-const BLOCK_START = /^(#{2,3}\s|>\s|[-*•]\s|\d+\.\s|!\[|---$|\*\*\*$)/;
+const BLOCK_START = /^(#{2,}\s|>\s|[-*•]\s|\d+\.\s|!\[|---$|\*\*\*$)/;
 
 /**
  * Parses the article `content` field (a plain-text field filled in via the
@@ -57,8 +57,8 @@ export function parseArticleContent(content: string): ArticleContentBlock[] {
       continue;
     }
 
-    if (line.startsWith("### ")) {
-      blocks.push({ type: "heading3", text: line.slice(4) });
+    if (/^#{3,}\s/.test(line)) {
+      blocks.push({ type: "heading3", text: line.replace(/^#{3,}\s/, "") });
       i++;
       continue;
     }

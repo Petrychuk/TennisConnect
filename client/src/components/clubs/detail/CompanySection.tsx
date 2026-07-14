@@ -31,7 +31,7 @@ export function CompanySection({
             {club.state ? ` Across ${getStateLabel(club.state)}` : ""}
           </h2>
         </div>
-        <ArticleRichContent content={club.description} testId="club-description" />
+        <ArticleRichContent content={club.description} testId="club-description" compact />
       </div>
 
       {/* Primary location + map link */}

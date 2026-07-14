@@ -139,20 +139,47 @@ function Block({ block }: { block: ArticleContentBlock }) {
 export function ArticleRichContent({
   content,
   testId = "article-rich-content",
+  compact = false,
 }: {
   content: string;
   testId?: string;
+  /** Smaller type scale for compact contexts (e.g. a sidebar/card "About"
+   * block) instead of the full article reading size. */
+  compact?: boolean;
 }) {
   const blocks = parseArticleContent(content);
 
   return (
     <div
-      className="
-        space-y-5
-        text-base md:text-lg
-        text-foreground/90
-        [&_strong]:text-foreground
-      "
+      className={
+        compact
+          ? `
+            space-y-3
+            text-sm
+            text-foreground/90
+            [&_strong]:text-foreground
+            [&_h2]:text-lg
+            [&_h2]:mt-5
+            [&_h2]:mb-2
+            [&_h3]:text-base
+            [&_h3]:mt-4
+            [&_h3]:mb-1.5
+            [&_blockquote]:text-sm
+            [&_blockquote]:my-3
+            [&_blockquote]:py-2.5
+            [&_blockquote]:px-4
+            [&_hr]:my-4
+            [&_ul]:my-1.5
+            [&_ol]:my-1.5
+            [&_figure]:my-4
+          `
+          : `
+            space-y-5
+            text-base md:text-lg
+            text-foreground/90
+            [&_strong]:text-foreground
+          `
+      }
       data-testid={testId}
     >
       {blocks.map((block, i) => (

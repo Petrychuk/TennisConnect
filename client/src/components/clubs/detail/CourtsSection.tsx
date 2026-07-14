@@ -68,6 +68,7 @@ export function CourtsSection({
         <ArticleRichContent
           content={club.description}
           testId="club-description"
+          compact
         />
       </div>
 
