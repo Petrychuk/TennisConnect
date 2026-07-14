@@ -436,7 +436,7 @@ export function ClubDetailHero({
   );
 
   const NameBlockLight = (
-    <div className="max-w-full lg:max-w-[52%]">
+    <div className="max-w-full lg:max-w-[42%]">
       {VariantBadge}
       <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-2">
         <h1
@@ -648,7 +648,7 @@ export function ClubDetailHero({
 
           {/* Quick facts */}
           <div
-            className="mt-4 md:mt-6 pb-6 grid grid-cols-3 gap-2 md:gap-3 lg:flex lg:flex-nowrap"
+            className="mt-4 md:mt-6 pb-3 grid grid-cols-3 gap-2 md:gap-3 lg:flex lg:flex-nowrap"
             data-testid="club-quick-facts"
           >
             {quickFacts.map((fact, i) => (

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { ChevronRight, X } from "lucide-react";
 
 interface ClubGalleryProps {
@@ -6,11 +7,29 @@ interface ClubGalleryProps {
   clubName: string;
 }
 
-export function ClubGallery({ images, clubName }: ClubGalleryProps) {
+const SLIDE_INTERVAL_MS = 4500;
+
+export function ClubGallery({ images: rawImages, clubName }: ClubGalleryProps) {
+  // Defensive: drop any empty/missing URLs so a bad upload never leaves a
+  // blank bordered box in the thumbnail grid.
+  const images = (rawImages || []).filter(Boolean);
+
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [slide, setSlide] = useState(0);
+  const [paused, setPaused] = useState(false);
 
-  if (!images || images.length === 0) {
+  useEffect(() => {
+    if (images.length <= 1 || paused || lightboxOpen) return;
+
+    const timer = setInterval(() => {
+      setSlide((s) => (s + 1) % images.length);
+    }, SLIDE_INTERVAL_MS);
+
+    return () => clearInterval(timer);
+  }, [images.length, paused, lightboxOpen]);
+
+  if (images.length === 0) {
     return null;
   }
 
@@ -45,19 +64,41 @@ export function ClubGallery({ images, clubName }: ClubGalleryProps) {
       <div className="flex flex-col md:flex-row gap-2">
         <button
           type="button"
-          onClick={() => openAt(0)}
-          className="block w-full md:w-1/2 rounded-xl overflow-hidden aspect-video bg-muted cursor-pointer shrink-0"
+          onClick={() => openAt(slide)}
+          onMouseEnter={() => setPaused(true)}
+          onMouseLeave={() => setPaused(false)}
+          className="relative block w-full md:w-1/2 rounded-xl overflow-hidden aspect-video bg-muted cursor-pointer shrink-0"
           data-testid="club-gallery-main-image"
         >
-          <img
-            src={images[0]}
-            alt={clubName}
-            className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-          />
+          <AnimatePresence mode="sync">
+            <motion.img
+              key={slide}
+              src={images[slide]}
+              alt={clubName}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.8 }}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          </AnimatePresence>
+
+          {images.length > 1 && (
+            <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+              {images.map((_, i) => (
+                <span
+                  key={i}
+                  className={`h-1.5 rounded-full transition-all ${
+                    i === slide ? "w-5 bg-white" : "w-1.5 bg-white/50"
+                  }`}
+                />
+              ))}
+            </div>
+          )}
         </button>
 
         {images.length > 1 && (
-          <div className="grid grid-cols-2 auto-rows-fr gap-2 flex-1">
+          <div className="grid grid-cols-2 gap-2 flex-1">
             {images.slice(1, 7).map((img, i) => {
               const isLastVisible = i === 5 && images.length > 7;
               return (
@@ -86,7 +127,7 @@ export function ClubGallery({ images, clubName }: ClubGalleryProps) {
       </div>
 
       {/* Lightbox */}
-      {lightboxOpen && images.length > 0 && (
+      {lightboxOpen && (
         <div
           className="fixed inset-0 z-100 bg-black/90 flex items-center justify-center p-4"
           onClick={() => setLightboxOpen(false)}
