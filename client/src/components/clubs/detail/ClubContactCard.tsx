@@ -100,17 +100,11 @@ export function ClubContactCard({
           )}
 
           <p
-            className="font-display font-bold text-lg leading-snug"
+            className="font-display font-bold text-base leading-snug"
             data-testid="club-provider-name"
           >
             {club.name}
           </p>
-
-          {club.shortDescription && (
-            <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-              {club.shortDescription}
-            </p>
-          )}
 
           {hasWebsite && (
             <a

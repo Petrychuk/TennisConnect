@@ -107,10 +107,10 @@ function getQuickFacts(club: any, variant: ClubVariant): QuickFact[] {
     ];
   }
 
-  // community — driven by the club's actual services when set (up to 8),
-  // so this reflects what was configured at creation instead of generic
-  // hardcoded claims
-  const communityServices = (club.services ?? []).slice(0, 8);
+  // community — driven by the club's actual services when set, so this
+  // reflects what was configured at creation instead of generic
+  // hardcoded claims. Shows all of them (single flexible row).
+  const communityServices = club.services ?? [];
 
   if (communityServices.length > 0) {
     return communityServices.map((s: string) => ({

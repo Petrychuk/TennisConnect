@@ -42,11 +42,11 @@ export function ClubGallery({ images, clubName }: ClubGalleryProps) {
         )}
       </div>
 
-      <div className="space-y-2">
+      <div className="flex flex-col md:flex-row gap-2">
         <button
           type="button"
           onClick={() => openAt(0)}
-          className="block w-full rounded-xl overflow-hidden aspect-video bg-muted cursor-pointer"
+          className="block w-full md:w-1/2 rounded-xl overflow-hidden aspect-video md:aspect-square bg-muted cursor-pointer shrink-0"
           data-testid="club-gallery-main-image"
         >
           <img
@@ -57,9 +57,9 @@ export function ClubGallery({ images, clubName }: ClubGalleryProps) {
         </button>
 
         {images.length > 1 && (
-          <div className="grid grid-cols-4 gap-2">
-            {images.slice(1, 5).map((img, i) => {
-              const isLastVisible = i === 3 && images.length > 5;
+          <div className="grid grid-cols-2 grid-rows-3 gap-2 flex-1">
+            {images.slice(1, 7).map((img, i) => {
+              const isLastVisible = i === 5 && images.length > 7;
               return (
                 <button
                   type="button"
@@ -75,7 +75,7 @@ export function ClubGallery({ images, clubName }: ClubGalleryProps) {
                   />
                   {isLastVisible && (
                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white font-bold text-sm">
-                      +{images.length - 5}
+                      +{images.length - 7}
                     </div>
                   )}
                 </button>

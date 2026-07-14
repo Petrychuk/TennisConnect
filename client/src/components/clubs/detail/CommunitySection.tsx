@@ -1,16 +1,10 @@
-import {
-  CalendarDays,
-  Users,
-  Trophy,
-  HeartHandshake,
-  Clock,
-} from "lucide-react";
+import { Users, Trophy, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ClubGallery } from "./ClubGallery";
 import { ClubCTABanner } from "./ClubCTABanner";
 import { ClubContactCard } from "./ClubContactCard";
 import { FormattedText } from "./FormattedText";
-import { getServiceLabel, getCompetitionLabel } from "@/lib/clubVariant";
+import { getCompetitionLabel } from "@/lib/clubVariant";
 import type { ClubSession } from "@shared/schema";
 
 interface CommunitySectionProps {
@@ -36,6 +30,31 @@ const SESSION_ICON_BG = [
   "bg-purple-500/10 text-purple-600",
 ];
 
+// TEMPORARY: placeholder sessions so the Upcoming Sessions layout can be
+// reviewed before real sessions are added via the admin Sessions section.
+// Only used when a club has neither club.sessions nor socialTennisDays set.
+// Remove this once you're happy with the layout / have real data everywhere.
+const DEMO_SESSIONS: ClubSession[] = [
+  {
+    id: "demo-1",
+    day: "Thursday",
+    name: "Thursday Social Hit",
+    startTime: "18:30",
+    endTime: "20:30",
+    price: 18,
+    level: "Intermediate",
+  },
+  {
+    id: "demo-2",
+    day: "Saturday",
+    name: "Saturday Morning Tennis",
+    startTime: "09:00",
+    endTime: "11:00",
+    price: 18,
+    level: "All Levels",
+  },
+];
+
 export function CommunitySection({
   club,
   onJoin,
@@ -43,87 +62,24 @@ export function CommunitySection({
 }: CommunitySectionProps) {
   const sessions: ClubSession[] = club.sessions?.length
     ? club.sessions
-    : (club.socialTennisDays ?? []).map(
-        (day: string, i: number): ClubSession => ({
-          id: `day-${i}`,
-          day,
-          name: `${day} Social Tennis`,
-          startTime: "",
-          endTime: "",
-          level: "All Levels",
-        })
-      );
-
-  const highlights = [
-    {
-      icon: <Users className="w-4 h-4" />,
-      label: "Membership",
-      value: club.membershipRequired ? "Members Only" : "Open to All",
-    },
-    {
-      icon: <CalendarDays className="w-4 h-4" />,
-      label: "Weekly Sessions",
-      value: sessions.length ? `${sessions.length}` : "Contact for schedule",
-    },
-    {
-      icon: <Trophy className="w-4 h-4" />,
-      label: "Events",
-      value: club.hostsCompetitions ? "Regularly" : "Occasional",
-    },
-    {
-      icon: <HeartHandshake className="w-4 h-4" />,
-      label: "Vibe",
-      value: "Friendly & Supportive",
-    },
-  ];
+    : club.socialTennisDays?.length
+      ? club.socialTennisDays.map(
+          (day: string, i: number): ClubSession => ({
+            id: `day-${i}`,
+            day,
+            name: `${day} Social Tennis`,
+            startTime: "",
+            endTime: "",
+            level: "All Levels",
+          })
+        )
+      : DEMO_SESSIONS;
 
   const hasSessions = sessions.length > 0;
   const hasGallery = (club.gallery?.length ?? 0) > 0;
 
   return (
     <div className="space-y-6" data-testid="club-community-section-detail">
-      {/* Community Highlights — right under the hero */}
-      <div
-        className="rounded-2xl border bg-card p-5 md:p-6"
-        data-testid="club-community-highlights"
-      >
-        <h3 className="font-display font-bold text-lg mb-4">
-          Community Highlights
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {highlights.map((h) => (
-            <div key={h.label} className="flex items-start gap-2">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary mt-0.5">
-                {h.icon}
-              </span>
-              <div>
-                <p className="font-semibold text-sm leading-none">
-                  {h.value}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {h.label}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {club.hostedCompetitions?.length > 0 && (
-          <div className="mt-5 pt-5 border-t border-border/60">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-              Events & Competitions
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {club.hostedCompetitions.map((c: string) => (
-                <Badge key={c} variant="secondary" className="px-3 py-1.5">
-                  {getCompetitionLabel(c)}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Row 1: About + Upcoming Sessions (only if any) + Contact.
           About takes the extra 2 columns when there are no sessions to show. */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -210,27 +166,6 @@ export function CommunitySection({
         <div className="lg:col-span-1" id="club-section-contact">
           <ClubContactCard club={club} personLabel="Community Lead" />
         </div>
-      </div>
-
-      {/* Services */}
-      <div
-        className="rounded-2xl border bg-card p-5 md:p-6"
-        data-testid="club-services"
-      >
-        <h3 className="font-display font-bold text-lg mb-4">Services</h3>
-        {club.services?.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {club.services.map((s: string) => (
-              <Badge key={s} variant="secondary" className="px-3 py-1.5">
-                {getServiceLabel(s)}
-              </Badge>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            No services listed yet.
-          </p>
-        )}
       </div>
 
       {/* Gallery — last, and only shown when there are photos */}
