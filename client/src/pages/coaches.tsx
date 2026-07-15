@@ -255,7 +255,7 @@ export default function CoachesPage() {
             </div>
 
           {/* Filter & Search Bar - floats over the tail of the photo */}
-          <div className="container mx-auto px-2 mt-5 relative z-20 pb-8 md:pb-12">
+          <div className="container mx-auto px-2 mt-5 relative z-20 pb-5 md:pb-10">
             <div className="bg-card/50
               backdrop-blur-sm
               border border-border/40
@@ -377,7 +377,7 @@ export default function CoachesPage() {
 
           {/* Coaches Grid — pulled up so the photo's fade dissolves under
               the top of the first row, matching the Partners page */}
-          <section className="relative z-30 container mx-auto px-4 -mt-4 md:-mt-8 pb-24 scroll-mt-24"
+          <section className="relative z-30 container mx-auto px-4 md:-mt-4 pb-24 scroll-mt-24"
             ref={coachesSectionRef}>
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
               {filteredCoaches.map((coach, index) => (

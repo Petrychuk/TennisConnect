@@ -148,7 +148,7 @@ export default function ClubsPage() {
           </div>
 
         {/* Filter Bar — floats over the tail of the photo */}
-        <div className="relative z-20 mt-5 pb-8 md:pb-12">
+        <div className="relative z-20 mt-5 pb-5 md:pb-10">
           <div className="container mx-auto px-2 md:px-4">
             <div className="bg-card/50 backdrop-blur-lg border border-border/40 shadow-lg rounded-2xl p-3 md:p-4">
             <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
@@ -200,7 +200,7 @@ export default function ClubsPage() {
 
         {/* Clubs List Section — pulled up so the photo dissolves under
             the top of the first row */}
-        <div className="relative z-30 container mx-auto px-4 py-16 -mt-4 md:-mt-8">
+        <div className="relative z-30 container mx-auto px-4 py-16 md:-mt-4">
 
         {filteredClubs.length === 0 ? (
 

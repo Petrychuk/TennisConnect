@@ -59,6 +59,7 @@ export default function Home() {
       <Navbar />      
       <main>
         <Hero />       
+        <div className="relative h-28 md:h-44 -mt-28 md:-mt-44 bg-linear-to-b from-black to-background pointer-events-none z-10" />
         <AboutUs />
         <Features />
         <HomeClubs />

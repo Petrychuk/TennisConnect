@@ -122,7 +122,7 @@ export default function TravelPage() {
         </div>
 
       {/* Search bar — floats over the tail of the photo */}
-      <div className="relative z-20 mt-5 pb-8 md:pb-12">
+      <div className="relative z-20 mt-5 pb-5 md:pb-10">
         <div className="container mx-auto px-4">
           <div className="bg-card/50 backdrop-blur-lg border border-border/40 shadow-lg rounded-2xl p-3 md:p-4">
           <div className="relative w-full md:w-96">
@@ -140,7 +140,7 @@ export default function TravelPage() {
       </div>
       </div>
 
-      <div className="relative z-30 container mx-auto px-4 py-12 -mt-4 md:-mt-8">
+      <div className="relative z-30 container mx-auto px-4 py-12 md:-mt-4">
         {filtered.length === 0 ? (
           <div className="text-center py-20">
             <Plane className="w-12 h-12 mx-auto text-muted-foreground mb-4" />

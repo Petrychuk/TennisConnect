@@ -319,7 +319,7 @@ export default function PartnersPage() {
 
         {/* Filter Bar — floats over the tail of the photo instead of a
             solid block below it */}
-        <div className="relative z-20 pb-8 md:pb-12">
+        <div className="relative z-20 pb-5 md:pb-10">
           <div className="container mx-auto px-2 mt-0 mb-3 md:mb-6">
             <div
               className="
@@ -387,7 +387,7 @@ export default function PartnersPage() {
 
       {/* Partners Grid — pulled up slightly so the photo's fade visibly
           dissolves under the top of the first card row */}
-      <div className="relative z-30 container mx-auto px-4 py-4 -mt-4 md:-mt-8 scroll-mt-24"
+      <div className="relative z-30 container mx-auto px-4 py-4 md:-mt-4 scroll-mt-24"
       ref={playersSectionRef}>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           {filteredPartners.map((partner, index) => {
