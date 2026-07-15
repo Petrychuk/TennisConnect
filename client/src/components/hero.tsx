@@ -6,9 +6,13 @@ import { Link } from "wouter";
 
 export function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden pt-16 bg-black">
-      {/* Background Image - Positioned to the right with blending */}
-      <div className="absolute inset-0 z-0">
+    <section className="relative min-h-screen flex items-center pt-16">
+      {/* Background Image - positioned to the right with blending. The
+          whole background layer (image + black) bleeds below the
+          section itself and fades to the page background, so the photo
+          visually continues into the top of the next block instead of
+          cutting off abruptly. */}
+      <div className="absolute inset-x-0 top-0 -bottom-28 md:-bottom-44 z-0 bg-black">
         <div className="absolute right-0 top-0 bottom-0 w-full md:w-[75%] h-full">
           <img
             src={heroImage}
@@ -19,6 +23,9 @@ export function Hero() {
           <div className="absolute inset-0 bg-linear-to-r from-black via-black/10 to-transparent" />
           <div className="absolute inset-0 bg-linear-to-t from-black/20 via-transparent to-transparent" />
         </div>
+        {/* Fade the whole extended background (photo + black) down to
+            the page background, smoothly across the bled portion */}
+        <div className="absolute inset-0 bg-linear-to-b from-transparent from-75% to-background to-100%" />
       </div>
 
       {/* Content */}
