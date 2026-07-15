@@ -61,7 +61,7 @@ export function ClubGallery({ images: rawImages, clubName }: ClubGalleryProps) {
         )}
       </div>
 
-      <div className="flex flex-col md:flex-row gap-2">
+      <div className="flex flex-col md:flex-row md:items-start gap-2">
         <button
           type="button"
           onClick={() => openAt(slide)}
