@@ -175,7 +175,7 @@ function ActionCard({
   if (variant === "courts") {
     return (
       <div
-        className="rounded-2xl border bg-background shadow-xl p-5"
+        className="rounded-2xl border bg-background/70 backdrop-blur-lg shadow-xl p-5"
         data-testid="club-action-card-courts"
       >
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -262,7 +262,7 @@ function ActionCard({
   if (variant === "company") {
     return (
       <div
-        className="rounded-2xl border bg-background shadow-xl p-5"
+        className="rounded-2xl border bg-background/70 backdrop-blur-lg shadow-xl p-5"
         data-testid="club-action-card-company"
       >
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -333,7 +333,7 @@ function ActionCard({
 
   return (
     <div
-      className="rounded-2xl border bg-background shadow-xl p-5"
+      className="rounded-2xl border bg-background/70 backdrop-blur-lg shadow-xl p-5"
       data-testid="club-action-card-community"
     >
       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -481,7 +481,7 @@ export function ClubDetailHero({
 
       {club.shortDescription && (
         <p
-          className="text-white/85 leading-relaxed mb-5"
+          className="text-white/85 leading-snug mb-5"
           data-testid="club-detail-short-description"
         >
           {club.shortDescription}
@@ -513,7 +513,7 @@ export function ClubDetailHero({
   );
 
   const NameBlockCard = (
-    <div className="rounded-2xl border bg-background shadow-xl p-5">
+    <div className="rounded-2xl bg-background shadow-xl p-5">
       {VariantBadge}
       <div className="flex flex-wrap items-center gap-2 mb-2">
         <h1
@@ -550,7 +550,7 @@ export function ClubDetailHero({
       )}
 
       {club.shortDescription && (
-        <p className="text-muted-foreground leading-relaxed mb-5">
+        <p className="text-sm text-muted-foreground leading-snug mb-5">
           {club.shortDescription}
         </p>
       )}
@@ -636,7 +636,7 @@ export function ClubDetailHero({
 
         <div className="container mx-auto px-4">
           {/* Mobile/tablet: name card first, then the action card below it */}
-          <div className="lg:hidden -mt-10 sm:-mt-12 relative z-20 space-y-4 mb-4">
+          <div className="lg:hidden -mt-6 sm:-mt-8 relative z-20 space-y-4 mb-4">
             {NameBlockCard}
             <ActionCard
               club={club}
