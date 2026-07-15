@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronRight, X } from "lucide-react";
 
@@ -8,6 +8,7 @@ interface ClubGalleryProps {
 }
 
 const SLIDE_INTERVAL_MS = 4500;
+const SWIPE_THRESHOLD_PX = 40;
 
 export function ClubGallery({ images: rawImages, clubName }: ClubGalleryProps) {
   // Defensive: drop any empty/missing URLs so a bad upload never leaves a
@@ -18,6 +19,9 @@ export function ClubGallery({ images: rawImages, clubName }: ClubGalleryProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [slide, setSlide] = useState(0);
   const [paused, setPaused] = useState(false);
+
+  const touchStartX = useRef<number | null>(null);
+  const didSwipe = useRef(false);
 
   useEffect(() => {
     if (images.length <= 1 || paused || lightboxOpen) return;
@@ -36,6 +40,27 @@ export function ClubGallery({ images: rawImages, clubName }: ClubGalleryProps) {
   const openAt = (index: number) => {
     setActiveIndex(index);
     setLightboxOpen(true);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    didSwipe.current = false;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+
+    if (Math.abs(deltaX) < SWIPE_THRESHOLD_PX) return;
+
+    didSwipe.current = true;
+    setPaused(true);
+    if (deltaX < 0) {
+      setSlide((s) => (s + 1) % images.length);
+    } else {
+      setSlide((s) => (s - 1 + images.length) % images.length);
+    }
   };
 
   return (
@@ -64,10 +89,18 @@ export function ClubGallery({ images: rawImages, clubName }: ClubGalleryProps) {
       <div className="flex flex-col md:flex-row md:items-start gap-2">
         <button
           type="button"
-          onClick={() => openAt(slide)}
+          onClick={() => {
+            if (didSwipe.current) {
+              didSwipe.current = false;
+              return;
+            }
+            openAt(slide);
+          }}
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
-          className="relative block w-full md:w-1/2 rounded-xl overflow-hidden aspect-video bg-muted cursor-pointer shrink-0"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          className="relative block w-full md:w-1/2 rounded-xl overflow-hidden aspect-video bg-muted cursor-pointer shrink-0 touch-pan-y"
           data-testid="club-gallery-main-image"
         >
           <AnimatePresence mode="sync">
@@ -97,8 +130,10 @@ export function ClubGallery({ images: rawImages, clubName }: ClubGalleryProps) {
           )}
         </button>
 
+        {/* Thumbnails: desktop/tablet only — mobile uses the swipeable
+            slider above instead */}
         {images.length > 1 && (
-          <div className="grid grid-cols-2 gap-2 flex-1">
+          <div className="hidden md:grid grid-cols-2 gap-2 flex-1">
             {images.slice(1, 7).map((img, i) => {
               const isLastVisible = i === 5 && images.length > 7;
               return (
