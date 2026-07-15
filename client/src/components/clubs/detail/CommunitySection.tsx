@@ -4,7 +4,7 @@ import { ClubGallery } from "./ClubGallery";
 import { ClubCTABanner } from "./ClubCTABanner";
 import { ClubContactCard } from "./ClubContactCard";
 import { ArticleRichContent } from "@/components/articles/ArticleRichContent";
-import { getCompetitionLabel } from "@/lib/clubVariant";
+import { getCompetitionLabel, formatLocation } from "@/lib/clubVariant";
 import type { ClubSession } from "@shared/schema";
 
 interface CommunitySectionProps {
@@ -176,7 +176,7 @@ export function CommunitySection({
 
       {/* Gallery — last, and only shown when there are photos */}
       {hasGallery && (
-        <ClubGallery images={club.gallery ?? []} clubName={club.name} />
+        <ClubGallery images={club.gallery ?? []} clubName={club.name} location={formatLocation(club)} />
       )}
 
       <ClubCTABanner

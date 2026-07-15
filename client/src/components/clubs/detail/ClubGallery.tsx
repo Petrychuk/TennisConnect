@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronRight, X } from "lucide-react";
+import { ChevronRight, ChevronLeft, X, Image as ImageIcon } from "lucide-react";
 
 interface ClubGalleryProps {
   images: string[];
   clubName: string;
+  location?: string;
 }
 
 const SLIDE_INTERVAL_MS = 4500;
 const SWIPE_THRESHOLD_PX = 40;
 
-export function ClubGallery({ images: rawImages, clubName }: ClubGalleryProps) {
+export function ClubGallery({ images: rawImages, clubName, location }: ClubGalleryProps) {
   // Defensive: drop any empty/missing URLs so a bad upload never leaves a
   // blank bordered box in the thumbnail grid.
   const images = (rawImages || []).filter(Boolean);
@@ -42,6 +43,11 @@ export function ClubGallery({ images: rawImages, clubName }: ClubGalleryProps) {
     setLightboxOpen(true);
   };
 
+  const goTo = (index: number) => {
+    setPaused(true);
+    setSlide((index + images.length) % images.length);
+  };
+
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
     didSwipe.current = false;
@@ -69,15 +75,20 @@ export function ClubGallery({ images: rawImages, clubName }: ClubGalleryProps) {
       data-testid="club-gallery"
     >
       <div className="flex items-center justify-between mb-3 md:mb-4">
-        <h3 className="font-display font-bold text-lg md:text-xl">
-          Gallery
-        </h3>
+        <div>
+          <h3 className="font-display font-bold text-lg md:text-xl">
+            Gallery
+          </h3>
+          <p className="text-xs md:text-sm text-muted-foreground">
+            Moments from our tennis community
+          </p>
+        </div>
 
         {images.length > 1 && (
           <button
             type="button"
             onClick={() => openAt(0)}
-            className="flex items-center gap-1 text-sm font-medium text-primary hover:underline cursor-pointer"
+            className="flex items-center gap-1 text-sm font-medium text-primary hover:underline cursor-pointer shrink-0"
             data-testid="club-gallery-view-all"
           >
             View all photos
@@ -87,48 +98,97 @@ export function ClubGallery({ images: rawImages, clubName }: ClubGalleryProps) {
       </div>
 
       <div className="flex flex-col md:flex-row md:items-start gap-2">
-        <button
-          type="button"
-          onClick={() => {
-            if (didSwipe.current) {
-              didSwipe.current = false;
-              return;
-            }
-            openAt(slide);
-          }}
-          onMouseEnter={() => setPaused(true)}
-          onMouseLeave={() => setPaused(false)}
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-          className="relative block w-full md:w-1/2 rounded-xl overflow-hidden aspect-video bg-muted cursor-pointer shrink-0 touch-pan-y"
-          data-testid="club-gallery-main-image"
-        >
-          <AnimatePresence mode="sync">
-            <motion.img
-              key={slide}
-              src={images[slide]}
-              alt={clubName}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.8 }}
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-          </AnimatePresence>
+        <div className="relative w-full md:w-1/2 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              if (didSwipe.current) {
+                didSwipe.current = false;
+                return;
+              }
+              openAt(slide);
+            }}
+            onMouseEnter={() => setPaused(true)}
+            onMouseLeave={() => setPaused(false)}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            className="relative block w-full rounded-xl overflow-hidden aspect-video bg-muted cursor-pointer touch-pan-y"
+            data-testid="club-gallery-main-image"
+          >
+            <AnimatePresence mode="sync">
+              <motion.img
+                key={slide}
+                src={images[slide]}
+                alt={clubName}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.8 }}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            </AnimatePresence>
 
-          {images.length > 1 && (
-            <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-              {images.map((_, i) => (
-                <span
-                  key={i}
-                  className={`h-1.5 rounded-full transition-all ${
-                    i === slide ? "w-5 bg-white" : "w-1.5 bg-white/50"
-                  }`}
-                />
-              ))}
+            {/* Caption overlay */}
+            <div className="absolute left-3 bottom-3 flex items-center gap-2 rounded-xl bg-black/60 backdrop-blur-sm px-3 py-2 text-left">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/15">
+                <ImageIcon className="w-3.5 h-3.5 text-white" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-white text-sm font-semibold leading-tight truncate">
+                  {clubName}
+                </p>
+                {location && (
+                  <p className="text-white/70 text-xs leading-tight truncate">
+                    {location}
+                  </p>
+                )}
+              </div>
             </div>
+
+            {images.length > 1 && (
+              <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+                {images.map((_, i) => (
+                  <span
+                    key={i}
+                    className={`h-1.5 rounded-full transition-all ${
+                      i === slide ? "w-5 bg-white" : "w-1.5 bg-white/50"
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+          </button>
+
+          {/* Prev/next arrows — desktop/tablet only, mobile uses swipe */}
+          {images.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goTo(slide - 1);
+                }}
+                className="hidden md:flex absolute left-3 top-1/2 -translate-y-1/2 h-9 w-9 items-center justify-center rounded-full bg-white/90 text-foreground shadow-md hover:bg-white transition-colors cursor-pointer"
+                data-testid="club-gallery-prev"
+                aria-label="Previous photo"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goTo(slide + 1);
+                }}
+                className="hidden md:flex absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 items-center justify-center rounded-full bg-white/90 text-foreground shadow-md hover:bg-white transition-colors cursor-pointer"
+                data-testid="club-gallery-next"
+                aria-label="Next photo"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </>
           )}
-        </button>
+        </div>
 
         {/* Thumbnails: desktop/tablet only — mobile uses the swipeable
             slider above instead */}

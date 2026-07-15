@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { ClubGallery } from "./ClubGallery";
 import { ClubCTABanner } from "./ClubCTABanner";
 import { ArticleRichContent } from "@/components/articles/ArticleRichContent";
-import { getSurfaceLabel, getServiceLabel } from "@/lib/clubVariant";
+import { getSurfaceLabel, getServiceLabel, formatLocation } from "@/lib/clubVariant";
 
 interface CourtsSectionProps {
   club: any;
@@ -98,7 +98,7 @@ export function CourtsSection({
         </div>
 
         {hasGallery && (
-          <ClubGallery images={club.gallery ?? []} clubName={club.name} />
+          <ClubGallery images={club.gallery ?? []} clubName={club.name} location={formatLocation(club)} />
         )}
       </div>
 

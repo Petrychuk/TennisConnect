@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ClubGallery } from "./ClubGallery";
 import { ClubCTABanner } from "./ClubCTABanner";
 import { ArticleRichContent } from "@/components/articles/ArticleRichContent";
-import { getServiceLabel, getStateLabel } from "@/lib/clubVariant";
+import { getServiceLabel, getStateLabel, formatLocation } from "@/lib/clubVariant";
 
 interface CompanySectionProps {
   club: any;
@@ -86,7 +86,7 @@ export function CompanySection({
         </div>
       )}
 
-      <ClubGallery images={club.gallery ?? []} clubName={club.name} />
+      <ClubGallery images={club.gallery ?? []} clubName={club.name} location={formatLocation(club)} />
 
       <ClubCTABanner
         title="Explore All Our Locations"
