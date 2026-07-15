@@ -513,7 +513,7 @@ export function ClubDetailHero({
   );
 
   const NameBlockCard = (
-    <div className="rounded-2xl bg-background shadow-xl p-5">
+    <div>
       {VariantBadge}
       <div className="flex flex-wrap items-center gap-2 mb-2">
         <h1
