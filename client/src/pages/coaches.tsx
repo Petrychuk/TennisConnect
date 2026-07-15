@@ -140,9 +140,14 @@ export default function CoachesPage() {
     setMinRating(0);
   };
 
+  const isFirstPageRender = useRef(true);
   useEffect(() => {
     if (!pagination) return;
-  
+    if (isFirstPageRender.current) {
+      isFirstPageRender.current = false;
+      return;
+    }
+
     coachesSectionRef.current?.scrollIntoView({
       behavior: "smooth",
       block: "start",
@@ -250,8 +255,8 @@ export default function CoachesPage() {
             </div>
 
           {/* Filter & Search Bar - floats over the tail of the photo */}
-          <div className="container mx-auto px-2 mt-5 relative z-20 pb-20 md:pb-32">
-            <div className="bg-card/70
+          <div className="container mx-auto px-2 mt-5 relative z-20 pb-8 md:pb-12">
+            <div className="bg-card/50
               backdrop-blur-sm
               border border-border/40
               shadow-lg
@@ -372,7 +377,7 @@ export default function CoachesPage() {
 
           {/* Coaches Grid — pulled up so the photo's fade dissolves under
               the top of the first row, matching the Partners page */}
-          <section className="relative z-30 container mx-auto px-4 -mt-20 md:-mt-28 pb-24 scroll-mt-24"
+          <section className="relative z-30 container mx-auto px-4 -mt-4 md:-mt-8 pb-24 scroll-mt-24"
             ref={coachesSectionRef}>
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
               {filteredCoaches.map((coach, index) => (
