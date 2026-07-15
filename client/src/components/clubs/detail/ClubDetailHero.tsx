@@ -440,7 +440,7 @@ export function ClubDetailHero({
       {VariantBadge}
       <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-2">
         <h1
-          className="text-white text-xl sm:text-2xl md:text-3xl lg:text-5xl font-display font-bold leading-tight drop-shadow-sm break-words"
+          className="text-white text-xl sm:text-2xl md:text-3xl lg:text-5xl font-display font-bold leading-tight drop-shadow-sm wrap-break-word"
           data-testid="club-detail-name"
         >
           {club.name}
@@ -517,7 +517,7 @@ export function ClubDetailHero({
       {VariantBadge}
       <div className="flex flex-wrap items-center gap-2 mb-2">
         <h1
-          className="text-xl sm:text-2xl font-display font-bold leading-tight break-words"
+          className="text-xl sm:text-2xl font-display font-bold leading-tight wrap-break-word"
           data-testid="club-detail-name-mobile"
         >
           {club.name}
@@ -591,7 +591,7 @@ export function ClubDetailHero({
             className="w-full h-full object-cover"
             data-testid="club-detail-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/5 to-black/25" />
+          <div className="absolute inset-0 bg-linear-to-t from-black/55 via-black/5 to-black/25" />
 
           <div className="absolute inset-0 container mx-auto px-4 flex flex-col">
             <nav

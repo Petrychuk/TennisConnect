@@ -98,15 +98,6 @@ export function CommunitySection({
             About Our Community
           </h2>
           <ArticleRichContent content={club.description} testId="club-description" compact />
-
-          {club.hostsCompetitions && (
-            <ul className="mt-4 space-y-1.5 text-sm text-muted-foreground">
-              <li className="flex items-center gap-2">
-                <Trophy className="w-3.5 h-3.5 text-primary shrink-0" />
-                Tournaments & events
-              </li>
-            </ul>
-          )}
         </div>
 
         {hasSessions && (
@@ -114,12 +105,15 @@ export function CommunitySection({
             className="rounded-2xl border bg-card p-5 md:p-6"
             data-testid="club-upcoming-sessions"
           >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-display font-bold text-lg">
-                Upcoming Sessions
+            <div className="space-y-1 mb-4">
+              <h3 className="font-display text-xl font-bold">
+                What's On
               </h3>
-            </div>
 
+              <p className="text-sm text-muted-foreground">
+                Discover what's happening near you
+              </p>
+            </div>
             <div className="space-y-2">
               {sessions.slice(0, 7).map((session, i) => (
                 <div

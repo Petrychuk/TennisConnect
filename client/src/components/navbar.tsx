@@ -115,7 +115,7 @@ export function Navbar() {
     { name: "Coaches", href: "/coaches", icon: Award },
     /* { name: "Tournaments", href: "/tournaments" }, */
     { name: "Club Communities", href: "/clubs", icon: Building2 },
-    { name: "Travel", href: "/travel", icon: Plane },
+    { name: "Travels", href: "/travel", icon: Plane },
     { name: "Tennis IQ", href: "/articles", icon: BookOpen },
     /* { name: "Recreation", href: "/recreation" },
     { name: "Marketplace", href: "/marketplace" }, 
