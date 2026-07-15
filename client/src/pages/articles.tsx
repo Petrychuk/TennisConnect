@@ -77,8 +77,7 @@ export default function ArticlesPage() {
           <div
             className="absolute inset-0 z-0"
             style={{
-              backgroundImage:
-                "url(https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?q=80&w=2000&auto=format&fit=crop)",
+              backgroundImage: "url('/assets/images/Dashboard_articles.png')",
               backgroundSize: "cover",
               backgroundPosition: "center",
             }}

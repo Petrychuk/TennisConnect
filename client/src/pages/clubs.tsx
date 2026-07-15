@@ -92,7 +92,7 @@ export default function ClubsPage() {
           <div 
             className="absolute inset-0 z-0"
             style={{
-              backgroundImage: "url(/assets/images/tennisClubs.png)",
+              backgroundImage: "url('/assets/images/Dashboard_club.png')",
               //backgroundImage: "url(https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?q=80&w=2000&auto=format&fit=crop)",
               backgroundSize: 'cover',
               backgroundPosition: 'center',
