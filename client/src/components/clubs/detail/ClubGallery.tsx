@@ -133,7 +133,7 @@ export function ClubGallery({ images: rawImages, clubName }: ClubGalleryProps) {
         {/* Thumbnails: desktop/tablet only — mobile uses the swipeable
             slider above instead */}
         {images.length > 1 && (
-          <div className="hidden md:grid grid-cols-2 gap-2 flex-1">
+          <div className="hidden md:grid grid-cols-3 gap-2 flex-1 content-start">
             {images.slice(1, 7).map((img, i) => {
               const isLastVisible = i === 5 && images.length > 7;
               return (
