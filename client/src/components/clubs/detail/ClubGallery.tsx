@@ -97,7 +97,7 @@ export function ClubGallery({ images: rawImages, clubName, location }: ClubGalle
         )}
       </div>
 
-      <div className="flex flex-col md:flex-row md:items-start gap-2">
+      <div className="flex flex-col md:flex-row gap-2">
         <div className="relative w-full md:w-1/2 shrink-0">
           <button
             type="button"
@@ -112,7 +112,7 @@ export function ClubGallery({ images: rawImages, clubName, location }: ClubGalle
             onMouseLeave={() => setPaused(false)}
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
-            className="relative block w-full rounded-xl overflow-hidden aspect-video bg-muted cursor-pointer touch-pan-y"
+            className="relative block w-full aspect-video md:aspect-auto md:h-full rounded-xl overflow-hidden bg-muted cursor-pointer touch-pan-y"
             data-testid="club-gallery-main-image"
           >
             <AnimatePresence mode="sync">
