@@ -59,9 +59,7 @@ export default function Home() {
       <Navbar />      
       <main>
         <Hero />       
-        <div className="relative z-10 -mt-28 md:-mt-44">
-          <AboutUs />
-        </div>
+        <AboutUs />
         <Features />
         <HomeClubs />
         <HomeTravel />       
