@@ -20,6 +20,8 @@ import { COACHES_DATA, PARTNERS_DATA } from "@/lib/dummy-data";
 import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.png";
 import SEO from "@/components/seo";
 import { Footer } from "@/components/footer";
+import { BecomeOrganizerCard } from "@/components/profile/shared/BecomeOrganizerCard";
+import { MySessionsSection } from "@/components/profile/shared/MySessionsSection";
 import { TennisLoader } from "@/components/ui/tennisLoader";
 
 type MarketplaceDraft = {
@@ -672,12 +674,16 @@ export default function PlayerProfile() {
                       gap-2
                       scrollbar-hide">
                   <TabsTrigger value="overview" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">Overview</TabsTrigger>
+                  {isOwnProfile && (
+                    <TabsTrigger value="sessions" data-testid="my-sessions-tab" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">My Sessions</TabsTrigger>
+                  )}
                   <TabsTrigger value="tournaments" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">Tournaments</TabsTrigger>
                   <TabsTrigger value="coaches" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">My Coaches</TabsTrigger>
                   <TabsTrigger value="marketplace" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">Selling ({marketplaceItems.length})</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-8">
+                 {isOwnProfile && <BecomeOrganizerCard />}
                   <Card>
                     <CardHeader>
                       <CardTitle>Playing Preferences</CardTitle>
@@ -727,7 +733,11 @@ export default function PlayerProfile() {
                     </CardContent>
                   </Card>
                 </TabsContent>
-
+                {isOwnProfile && (
+                 <TabsContent value="sessions" className="space-y-8" data-testid="my-sessions-tab-content">
+                   <MySessionsSection />
+                 </TabsContent>
+                )}
                 <TabsContent value="tournaments" className="space-y-8">
                   <div className="flex justify-between items-center">
                     <h3 className="text-xl font-bold">Tournament History</h3>

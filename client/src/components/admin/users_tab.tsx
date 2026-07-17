@@ -23,6 +23,8 @@ interface User {
   isAdmin: boolean;
   createdAt: string;
   isTestUser?: boolean;
+  isOrganizer?: boolean;
+  organizerRequestStatus?: "pending" | "approved" | "rejected" | null;
 }
 
 export default function AdminUsersTab() {
@@ -235,6 +237,7 @@ export default function AdminUsersTab() {
               <th className="text-left py-3 min-w-[320px]">Name</th>
               <th className="text-left py-3 min-w-[320px]">Email</th>
               <th className="text-left py-3">Role</th>
+              <th className="text-left py-3">Organizer</th>
               <th className="text-left py-3">Status</th>
               <th className="text-left py-3">Created</th>
               <th className="text-center py-3">Actions</th>
@@ -268,7 +271,21 @@ export default function AdminUsersTab() {
                 </td>
                 <td className="min-w-[320px]">{user.email}</td>
                 <td>{user.role}</td>
-
+                <td>
+                  {user.isOrganizer ? (
+                    <Badge className="bg-primary/10 text-primary">Organizer</Badge>
+                  ) : user.organizerRequestStatus === "pending" ? (
+                    <Badge variant="secondary" className="bg-orange-100 text-orange-700">
+                      Awaiting Approval
+                    </Badge>
+                  ) : user.organizerRequestStatus === "rejected" ? (
+                    <Badge variant="secondary" className="bg-red-100 text-red-700">
+                      Rejected
+                    </Badge>
+                  ) : (
+                    <span className="text-muted-foreground text-sm">—</span>
+                  )}
+                </td>
                 <td>
                   <td>
                     <td>

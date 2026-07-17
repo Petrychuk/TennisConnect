@@ -14,6 +14,7 @@ import playersRouter from "./routes/players";
 import coachesRouter from "./routes/coaches";
 import { sendSystemMessage } from "./services/systemMessages";
 import uploadContentRouter from "./routes/upload-content";
+import organizerRouter from "./routes/organizer";
 
 
 import {
@@ -76,6 +77,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/api/players", playersRouter);
   app.use("/api/coaches", coachesRouter);
   app.use("/api/upload/content", uploadContentRouter);
+  app.use("/api/organizer", organizerRouter);
 
   /* =========================
    SUPPORT CHAT
@@ -366,10 +368,26 @@ export async function registerRoutes(app: Express): Promise<void> {
       requireAdmin,
       async (_req, res) => {
         const users = await storage.getAllUsers();
+        const requests = await storage.getOrganizerRequests();
 
-        res.json(users);
-      }
-    );
+        // Latest request per user (requests are already ordered desc by createdAt).
+        const latestRequestByUser = new Map<string, string>();
+        for (const r of requests) {
+          if (!latestRequestByUser.has(r.userId)) {
+            latestRequestByUser.set(r.userId, r.status);
+          }
+        }
+
+        const usersWithOrganizerStatus = users.map((u: any) => ({
+          ...u,
+          organizerRequestStatus: u.isOrganizer
+            ? null
+            : latestRequestByUser.get(u.id) || null,
+        }));
+
+        res.json(usersWithOrganizerStatus);
+       }
+     );
 
     app.patch("/api/admin/users/:id/approve",
       requireAdmin,

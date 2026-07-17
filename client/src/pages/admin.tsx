@@ -18,6 +18,7 @@ import SEO from "@/components/seo";
 import { ClubForm } from "@/components/admin/clubs/ClubForm";
 import { TravelForm } from "@/components/admin/travel/TravelForm";
 import { ArticleForm } from "@/components/admin/articles/ArticleForm";
+import AdminOrganizerRequestsTab from "@/components/admin/OrganizerRequestsTab";
 import { clubValidationSchema, articleSchema, travelSchema, recreationSchema, tournamentSchema } from "@/lib/validations";
 import AdminUsersTab from "@/components/admin/users_tab";
 import { ClubAdminCard } from "@/components/admin/clubs/ClubAdminCard";
@@ -753,7 +754,14 @@ export default function AdminPage() {
                 <Users className="w-4 h-4 mr-2" />
                 Users
               </TabsTrigger>
-
+              <TabsTrigger
+                value="organizer-requests"
+                className="cursor-pointer"
+                data-testid="admin-tab-organizer-requests"
+             >
+                <Trophy className="w-4 h-4 mr-2" />
+                Organizer &amp; Sessions
+              </TabsTrigger>
             </TabsList>
 
             {(Object.keys(RESOURCE_LABELS) as Resource[]).map((r) => (
@@ -1362,6 +1370,9 @@ export default function AdminPage() {
               <AdminUsersTab />
             </TabsContent>
 
+            <TabsContent value="organizer-requests">
++              <AdminOrganizerRequestsTab />
++            </TabsContent>
           </Tabs>
 
         </div>

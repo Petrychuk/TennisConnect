@@ -13,6 +13,7 @@ interface User {
   cover?: string | null;
   profileCompleted: boolean;
   isAdmin?: boolean;
+  isOrganizer?: boolean;
 }
 
 interface AuthContextType {
@@ -26,7 +27,8 @@ interface AuthContextType {
     email: string,
     password: string,
     name: string,
-    role: "player" | "coach"
+    role: "player" | "coach",
+    wantsToOrganize?: boolean
   ) => Promise<User>;
   
     // 🔹 GET current user 
@@ -146,14 +148,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string,
     password: string,
     name: string,
-    role: "player" | "coach"
+    role: "player" | "coach",
+    wantsToOrganize?: boolean
   ): Promise<User> => {
     setLoading(true);
 
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, name, role }),
+      body: JSON.stringify({ email, password, name, role, wantsToOrganize }),
       credentials: "include",
     });
 

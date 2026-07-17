@@ -9,7 +9,12 @@ import {
   messages,
   passwordResetTokens,
   supportRequests,
-  tournaments, 
+  tournaments,
+  organizerRequests,
+  organizations,
+  organizationMembers,
+  tennisSessions,
+  registrations, 
   type User, 
   type InsertUser,
   type PlayerProfile,
@@ -28,9 +33,19 @@ import {
   type InsertMessage,
   type SupportRequest,
   type InsertSupportRequest,
+  type OrganizerRequest,
+  type InsertOrganizerRequest,
+  type Organization,
+  type InsertOrganization,
+  type OrganizationMember,
+  type TennisSession,
+  type InsertSession,
+  type Registration,
+  type InsertRegistration,
+  type SessionWithDetails,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, or, asc, sql } from "drizzle-orm";
+import { eq, desc, and, or, asc, sql, lte, ne, gte} from "drizzle-orm";
 import { supabaseAdmin } from "./supabaseAdmin";
 
 function slugify(text: string) {
@@ -61,6 +76,21 @@ async function generateUniqueSlug(name: string): Promise<string> {
   }
 }
 
+async function generateUniqueOrgSlug(name: string): Promise<string> {
+    const base = slugify(name) || "organization";
+    let slug = base;
+  
+    while (true) {
+      const [existing] = await db
+        .select()
+        .from(organizations)
+        .where(eq(organizations.slug, slug));
+  
+      if (!existing) return slug;
+  
+     slug = `${base}-${Math.random().toString(36).slice(2, 6)}`;
+    }
+  }
 export interface IStorage {
   // Users
   getUser(id: string): Promise<User | undefined>;
@@ -159,6 +189,51 @@ export interface IStorage {
     clubs: number;
     tournaments: number;
   }>;
+  
+  // ===== ORGANIZER REQUESTS =====
+  createOrganizerRequest(userId: string, note?: string): Promise<OrganizerRequest>;
+  getLatestOrganizerRequest(userId: string): Promise<OrganizerRequest | undefined>;
+  getOrganizerRequestById(id: string): Promise<OrganizerRequest | undefined>;
+  getOrganizerRequests(status?: string): Promise<(OrganizerRequest & {
+    userName: string;
+    userEmail: string;
+    userRole: string;
+  })[]>;
+  approveOrganizerRequest(id: string, reviewerId: string): Promise<OrganizerRequest>;
+  rejectOrganizerRequest(id: string, reviewerId: string): Promise<OrganizerRequest>;
+
+  // ===== ORGANIZATIONS =====
+  createOrganization(ownerId: string, org: InsertOrganization): Promise<Organization>;
+  getOrganizationBySlug(slug: string): Promise<Organization | undefined>;
+  getOrganizationById(id: string): Promise<Organization | undefined>;
+  getOrganizationOwnedByUser(userId: string): Promise<Organization | undefined>;
+  updateOrganization(id: string, updates: Partial<InsertOrganization>): Promise<Organization>;
+
+  // ===== SESSIONS =====
+  createSession(organizationId: string, createdBy: string, session: InsertSession): Promise<TennisSession>;
+  getSessionById(id: string): Promise<TennisSession | undefined>;
+  getSessionsByOrganization(organizationId: string): Promise<TennisSession[]>;
+  getUpcomingPublishedSessionsByOrganization(organizationId: string): Promise<SessionWithDetails[]>;
+  getSessionsThisWeek(): Promise<SessionWithDetails[]>;
+  getSessionsUserRegisteredFor(userId: string): Promise<SessionWithDetails[]>;
+  updateSession(id: string, updates: Partial<InsertSession>): Promise<TennisSession>;
+ // Organizer: send a draft to the admin queue.
+  submitSessionForReview(id: string): Promise<TennisSession>;
+  // Admin: approve (-> published) or reject (-> rejected) a submitted session.
+ approveSession(id: string, reviewerId: string): Promise<TennisSession>;
+ rejectSession(id: string, reviewerId: string, note?: string): Promise<TennisSession>;
+  // Admin only: publish directly, bypassing review (admins don't review themselves).
+ publishSessionDirect(id: string, reviewerId: string): Promise<TennisSession>;
+ cancelSession(id: string): Promise<TennisSession>;
+  // Admin: every session on the platform, across all organizations, so
+  // nothing goes live without the admin seeing it first.
+ getAllSessionsForAdmin(status?: string): Promise<SessionWithDetails[]>;
+
+  // ===== REGISTRATIONS =====
+  registerForSession(sessionId: string, userId: string): Promise<{ registration: Registration; waitlisted: boolean }>;
+  cancelRegistration(sessionId: string, userId: string): Promise<Registration>;
+  getViewerRegistrationStatus(sessionId: string, userId: string): Promise<string | null>;
+  getSessionRegistrationCounts(sessionId: string): Promise<{ registered: number; waitlisted: number }>;
 
 }
 export class DatabaseStorage implements IStorage {
@@ -1450,6 +1525,541 @@ export class DatabaseStorage implements IStorage {
       tournaments: Number(tournamentsResult.count),
     };
   }
+
+  // =====================
+  // ORGANIZER REQUESTS
+  // =====================
+
+  async createOrganizerRequest(userId: string, note?: string): Promise<OrganizerRequest> {
+    const [request] = await db
+      .insert(organizerRequests)
+      .values({ userId, note: note || null })
+      .returning();
+    return request;
+  }
+
+  async getLatestOrganizerRequest(userId: string): Promise<OrganizerRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(organizerRequests)
+      .where(eq(organizerRequests.userId, userId))
+      .orderBy(desc(organizerRequests.createdAt))
+      .limit(1);
+    return request;
+  }
+
+  async getOrganizerRequestById(id: string): Promise<OrganizerRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(organizerRequests)
+      .where(eq(organizerRequests.id, id));
+    return request;
+  }
+
+  async getOrganizerRequests(status?: string) {
+    const rows = await db
+      .select({
+        request: organizerRequests,
+        userName: users.name,
+        userEmail: users.email,
+        userRole: users.role,
+      })
+      .from(organizerRequests)
+      .innerJoin(users, eq(organizerRequests.userId, users.id))
+      .where(status ? eq(organizerRequests.status, status) : undefined)
+      .orderBy(desc(organizerRequests.createdAt));
+
+    return rows.map((r) => ({
+      ...r.request,
+      userName: r.userName,
+      userEmail: r.userEmail,
+      userRole: r.userRole,
+    }));
+  }
+
+  async approveOrganizerRequest(id: string, reviewerId: string): Promise<OrganizerRequest> {
+    const [request] = await db
+      .select()
+      .from(organizerRequests)
+      .where(eq(organizerRequests.id, id));
+
+    if (!request) {
+      throw new Error("Organizer request not found");
+    }
+
+    const [updated] = await db
+      .update(organizerRequests)
+      .set({ status: "approved", reviewedBy: reviewerId, reviewedAt: new Date() })
+      .where(eq(organizerRequests.id, id))
+      .returning();
+
+    await db
+      .update(users)
+      .set({ isOrganizer: true })
+      .where(eq(users.id, request.userId));
+
+    return updated;
+  }
+
+  async rejectOrganizerRequest(id: string, reviewerId: string): Promise<OrganizerRequest> {
+    const [updated] = await db
+      .update(organizerRequests)
+      .set({ status: "rejected", reviewedBy: reviewerId, reviewedAt: new Date() })
+      .where(eq(organizerRequests.id, id))
+      .returning();
+
+    if (!updated) {
+      throw new Error("Organizer request not found");
+    }
+
+    return updated;
+  }
+
+  // =====================
+  // ORGANIZATIONS
+  // =====================
+
+  async createOrganization(ownerId: string, org: InsertOrganization): Promise<Organization> {
+    const slug = await generateUniqueOrgSlug(org.name);
+
+    const [organization] = await db
+      .insert(organizations)
+      .values({ ...org, ownerId, slug })
+      .returning();
+
+    await db.insert(organizationMembers).values({
+      organizationId: organization.id,
+      userId: ownerId,
+      role: "owner",
+    });
+
+    return organization;
+  }
+
+  async getOrganizationBySlug(slug: string): Promise<Organization | undefined> {
+    const [organization] = await db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.slug, slug));
+    return organization;
+  }
+
+  async getOrganizationById(id: string): Promise<Organization | undefined> {
+    const [organization] = await db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.id, id));
+    return organization;
+  }
+
+  async getOrganizationOwnedByUser(userId: string): Promise<Organization | undefined> {
+    const [organization] = await db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.ownerId, userId));
+    return organization;
+  }
+
+  async updateOrganization(id: string, updates: Partial<InsertOrganization>): Promise<Organization> {
+    const [organization] = await db
+      .update(organizations)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(organizations.id, id))
+      .returning();
+    return organization;
+  }
+
+  // =====================
+  // SESSIONS
+  // =====================
+
+  private async attachSessionDetails(
+    rows: TennisSession[],
+    viewerId?: string,
+    includeCreatorNames?: boolean
+  ): Promise<SessionWithDetails[]> {
+    if (rows.length === 0) return [];
+
+    const orgIds = Array.from(new Set(rows.map((r) => r.organizationId)));
+    const orgRows = await db
+      .select({ id: organizations.id, name: organizations.name, slug: organizations.slug })
+      .from(organizations)
+      .where(sql`${organizations.id} IN ${orgIds}`);
+    const orgById = new Map(orgRows.map((o) => [o.id, o]));
+
+    const sessionIds = rows.map((r) => r.id);
+    const regRows = await db
+      .select({
+        sessionId: registrations.sessionId,
+        status: registrations.status,
+        userId: registrations.userId,
+        count: sql<number>`count(*)`,
+      })
+      .from(registrations)
+      .where(sql`${registrations.sessionId} IN ${sessionIds}`)
+      .groupBy(registrations.sessionId, registrations.status, registrations.userId);
+      let creatorById = new Map<string, string>();
+    if (includeCreatorNames) {
+      const creatorIds = Array.from(new Set(rows.map((r) => r.createdBy)));
+     const creatorRows = await db
+        .select({ id: users.id, name: users.name })
+        .from(users)
+        .where(sql`${users.id} IN ${creatorIds}`);
+      creatorById = new Map(creatorRows.map((c) => [c.id, c.name]));
+   }
+
+    return rows.map((session) => {
+      const org = orgById.get(session.organizationId);
+      const sessionRegs = regRows.filter((r) => r.sessionId === session.id);
+      const registeredCount = sessionRegs
+        .filter((r) => r.status === "registered")
+        .reduce((sum, r) => sum + Number(r.count), 0);
+      const waitlistedCount = sessionRegs
+        .filter((r) => r.status === "waitlisted")
+        .reduce((sum, r) => sum + Number(r.count), 0);
+      const viewerReg = viewerId
+        ? sessionRegs.find((r) => r.userId === viewerId && r.status !== "cancelled")
+        : undefined;
+
+      return {
+        ...session,
+        organizationName: org?.name || "TennisConnect",
+        organizationSlug: org?.slug || "",
+        registeredCount,
+        waitlistedCount,
+        spotsLeft:
+          session.maxParticipants != null
+            ? Math.max(0, session.maxParticipants - registeredCount)
+            : null,
+        viewerRegistrationStatus: viewerReg ? (viewerReg.status as any) : null,
+        creatorName: includeCreatorNames ? creatorById.get(session.createdBy) : undefined,
+      };
+    });
+  }
+
+  async createSession(
+    organizationId: string,
+    createdBy: string,
+    session: InsertSession
+  ): Promise<TennisSession> {
+    const [createdSession] = await db
+      .insert(tennisSessions)
+      .values({
+        ...session,
+        organizationId,
+        createdBy,
+        price:
+          session.price !== undefined && session.price !== null
+            ? String(session.price)
+            : null,
+      })
+      .returning();
+  
+    return createdSession;
+  }
+
+  async getSessionById(id: string): Promise<TennisSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(tennisSessions)
+      .where(eq(tennisSessions.id, id));
+    return session;
+  }
+
+  async getSessionsByOrganization(organizationId: string): Promise<TennisSession[]> {
+    return db
+      .select()
+      .from(tennisSessions)
+      .where(eq(tennisSessions.organizationId, organizationId))
+      .orderBy(desc(tennisSessions.startAt));
+  }
+
+  async getUpcomingPublishedSessionsByOrganization(
+    organizationId: string
+  ): Promise<SessionWithDetails[]> {
+    const rows = await db
+      .select()
+      .from(tennisSessions)
+      .where(
+        and(
+          eq(tennisSessions.organizationId, organizationId),
+          eq(tennisSessions.status, "published"),
+          gte(tennisSessions.startAt, new Date())
+        )
+      )
+      .orderBy(asc(tennisSessions.startAt));
+
+    return this.attachSessionDetails(rows);
+  }
+
+  async getSessionsThisWeek(): Promise<SessionWithDetails[]> {
+    const now = new Date();
+    const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    const rows = await db
+      .select()
+      .from(tennisSessions)
+      .where(
+        and(
+          eq(tennisSessions.status, "published"),
+          gte(tennisSessions.startAt, now),
+          lte(tennisSessions.startAt, weekFromNow)
+        )
+      )
+      .orderBy(asc(tennisSessions.startAt));
+
+    return this.attachSessionDetails(rows);
+  }
+
+  async getSessionsUserRegisteredFor(userId: string): Promise<SessionWithDetails[]> {
+    const rows = await db
+      .select({ session: tennisSessions })
+      .from(registrations)
+      .innerJoin(tennisSessions, eq(registrations.sessionId, tennisSessions.id))
+      .where(
+        and(
+          eq(registrations.userId, userId),
+          ne(registrations.status, "cancelled")
+        )
+      )
+      .orderBy(asc(tennisSessions.startAt));
+
+    return this.attachSessionDetails(rows.map((r) => r.session), userId);
+  }
+
+  async updateSession(
+    id: string,
+    updates: Partial<InsertSession>
+  ): Promise<TennisSession> {
+    const { price, ...rest } = updates;
+  
+    const normalizedUpdates = {
+      ...rest,
+      ...(price !== undefined
+        ? { price: price !== null ? String(price) : null }
+        : {}),
+      updatedAt: new Date(),
+    };
+  
+    const [session] = await db
+      .update(tennisSessions)
+      .set(normalizedUpdates)
+      .where(eq(tennisSessions.id, id))
+      .returning();
+  
+    return session;
+  }
+
+  async submitSessionForReview(id: string): Promise<TennisSession> {
+    const [session] = await db
+      .update(tennisSessions)
+      .set({ status: "pending_review", updatedAt: new Date() })
+      .where(eq(tennisSessions.id, id))
+      .returning();
+    return session;
+  }
+
+  async approveSession(id: string, reviewerId: string): Promise<TennisSession> {
+    const [session] = await db
+      .update(tennisSessions)
+      .set({
+        status: "published",
+        reviewedBy: reviewerId,
+        reviewedAt: new Date(),
+        reviewNote: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(tennisSessions.id, id))
+      .returning();
+    return session;
+  }
+
+  async rejectSession(id: string, reviewerId: string, note?: string): Promise<TennisSession> {
+    const [session] = await db
+      .update(tennisSessions)
+      .set({
+        status: "rejected",
+        reviewedBy: reviewerId,
+        reviewedAt: new Date(),
+        reviewNote: note || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(tennisSessions.id, id))
+      .returning();
+    return session;
+  }
+
+  // Admins skip the review queue entirely — they're the ones approving
+  // everyone else, so there's no one above them to approve their own events.
+  async publishSessionDirect(id: string, reviewerId: string): Promise<TennisSession> {
+    const [session] = await db
+      .update(tennisSessions)
+      .set({
+        status: "published",
+        reviewedBy: reviewerId,
+        reviewedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(tennisSessions.id, id))
+      .returning();
+    return session;
+  }
+
+  async cancelSession(id: string): Promise<TennisSession> {
+    const [session] = await db
+      .update(tennisSessions)
+      .set({ status: "cancelled", updatedAt: new Date() })
+      .where(eq(tennisSessions.id, id))
+      .returning();
+    return session;
+  }
+
+  async getAllSessionsForAdmin(status?: string): Promise<SessionWithDetails[]> {
+    const rows = await db
+      .select()
+      .from(tennisSessions)
+      .where(status ? eq(tennisSessions.status, status) : undefined)
+      .orderBy(desc(tennisSessions.createdAt));
+
+    return this.attachSessionDetails(rows, undefined, true);
+  }
+
+  // =====================
+  // REGISTRATIONS
+  // =====================
+
+  async registerForSession(
+    sessionId: string,
+    userId: string
+  ): Promise<{ registration: Registration; waitlisted: boolean }> {
+    const [session] = await db
+      .select()
+      .from(tennisSessions)
+      .where(eq(tennisSessions.id, sessionId));
+
+    if (!session) {
+      throw new Error("Session not found");
+    }
+    if (session.status !== "published") {
+      throw new Error("Session is not open for registration");
+    }
+
+    const [existing] = await db
+      .select()
+      .from(registrations)
+      .where(
+        and(
+          eq(registrations.sessionId, sessionId),
+          eq(registrations.userId, userId)
+        )
+      );
+
+    const { registered } = await this.getSessionRegistrationCounts(sessionId);
+    const isFull =
+      session.maxParticipants != null && registered >= session.maxParticipants;
+    const nextStatus = isFull
+      ? (session.waitingListEnabled ? "waitlisted" : null)
+      : "registered";
+
+    if (!nextStatus) {
+      throw new Error("Session is full");
+    }
+
+    if (existing && existing.status !== "cancelled") {
+      return { registration: existing, waitlisted: existing.status === "waitlisted" };
+    }
+
+    if (existing) {
+      const [updated] = await db
+        .update(registrations)
+        .set({ status: nextStatus, checkedInAt: null })
+        .where(eq(registrations.id, existing.id))
+        .returning();
+      return { registration: updated, waitlisted: nextStatus === "waitlisted" };
+    }
+
+    const [created] = await db
+      .insert(registrations)
+      .values({ sessionId, userId, status: nextStatus })
+      .returning();
+    return { registration: created, waitlisted: nextStatus === "waitlisted" };
+  }
+
+  async cancelRegistration(sessionId: string, userId: string): Promise<Registration> {
+    const [existing] = await db
+      .select()
+      .from(registrations)
+      .where(
+        and(
+          eq(registrations.sessionId, sessionId),
+          eq(registrations.userId, userId)
+        )
+      );
+
+    if (!existing) {
+      throw new Error("Registration not found");
+    }
+
+    const wasRegistered = existing.status === "registered";
+
+    const [cancelled] = await db
+      .update(registrations)
+      .set({ status: "cancelled" })
+      .where(eq(registrations.id, existing.id))
+      .returning();
+
+    // A spot opened up — promote the longest-waiting waitlisted player.
+    if (wasRegistered) {
+      const [nextInLine] = await db
+        .select()
+        .from(registrations)
+        .where(
+          and(
+            eq(registrations.sessionId, sessionId),
+            eq(registrations.status, "waitlisted")
+          )
+        )
+        .orderBy(asc(registrations.createdAt))
+        .limit(1);
+
+      if (nextInLine) {
+        await db
+          .update(registrations)
+          .set({ status: "registered" })
+          .where(eq(registrations.id, nextInLine.id));
+      }
+    }
+
+    return cancelled;
+  }
+
+  async getViewerRegistrationStatus(sessionId: string, userId: string): Promise<string | null> {
+    const [existing] = await db
+      .select()
+      .from(registrations)
+      .where(
+        and(
+          eq(registrations.sessionId, sessionId),
+          eq(registrations.userId, userId),
+          ne(registrations.status, "cancelled")
+        )
+      );
+    return existing?.status || null;
+  }
+
+  async getSessionRegistrationCounts(
+    sessionId: string
+  ): Promise<{ registered: number; waitlisted: number }> {
+    const rows = await db
+      .select({ status: registrations.status, count: sql<number>`count(*)` })
+      .from(registrations)
+      .where(eq(registrations.sessionId, sessionId))
+      .groupBy(registrations.status);
+
+    const registered = rows.find((r) => r.status === "registered")?.count || 0;
+    const waitlisted = rows.find((r) => r.status === "waitlisted")?.count || 0;
+    return { registered: Number(registered), waitlisted: Number(waitlisted) };
+  }
 }
 
-  export const storage = new DatabaseStorage();
+export const storage = new DatabaseStorage();

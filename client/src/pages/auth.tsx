@@ -37,7 +37,7 @@ export default function AuthPage() {
 
   const registerForm = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { role: "player", name: "", email: "", password: "", confirmPassword: "", agreeToTerms: false },
+    defaultValues: { role: "player", name: "", email: "", password: "", confirmPassword: "", agreeToTerms: false, wantsToOrganize: false },
   });
 
   const onLogin = async (data: z.infer<typeof loginSchema>) => {
@@ -74,7 +74,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
   setIsLoading(true);
   try {
     
-    const user = await register(data.email, data.password, data.name, data.role);
+    const user = await register(data.email, data.password, data.name, data.role, data.wantsToOrganize);
 
     toast({
       title: "Account created",
@@ -377,7 +377,23 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                       </div>
                     </RadioGroup>
                   </div>
-
+                  <div className="flex items-start space-x-2">
+                   <Checkbox
+                    id="wantsToOrganize"
+                    data-testid="wants-to-organize"
+                     checked={registerForm.watch("wantsToOrganize")}
+                     onCheckedChange={(checked) =>
+                       registerForm.setValue("wantsToOrganize", !!checked)
+                     }
+                   />
+                    <label
+                     htmlFor="wantsToOrganize"
+                     className="text-sm text-muted-foreground leading-relaxed cursor-pointer"
+                    >
+                      I want to organize tennis sessions
+                   </label>
+                  </div>
+                  
                   <div className="space-y-2">
                     <Label htmlFor="reg-name">Full Name</Label>
                     <Input 

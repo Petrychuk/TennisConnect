@@ -1,0 +1,136 @@
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Trophy, Loader2, CheckCircle2, Clock, XCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
+
+interface OrganizerRequestStatus {
+  isOrganizer: boolean;
+  request: {
+    id: string;
+    status: "pending" | "approved" | "rejected";
+  } | null;
+}
+
+// Shown on a player's/coach's own profile. Lets a user who did not check
+// "I want to organize tennis sessions" at sign-up request organizer access
+// later. Renders nothing for other visitors' profiles.
+export function BecomeOrganizerCard() {
+  const [data, setData] = useState<OrganizerRequestStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/organizer/requests/me", { credentials: "include" });
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!cancelled) setData(json);
+      } catch {
+        // silently ignore — this is a supplementary card, not core profile data
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function handleBecomeOrganizer() {
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/organizer/requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({}),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.message || "Something went wrong");
+      }
+      setData({ isOrganizer: false, request: json });
+      toast({
+        title: "Request sent",
+        description: "We'll let you know once an admin reviews your request.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Could not send request",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (loading || !data) return null;
+
+  return (
+    <Card data-testid="become-organizer-card">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Trophy className="w-5 h-5" />
+          Organize Tennis Sessions
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {data.isOrganizer ? (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+            <div className="flex items-center gap-2 text-sm">
+              <CheckCircle2 className="w-4 h-4 text-primary" />
+              You're an approved organizer.
+            </div>
+            <Button asChild size="sm" data-testid="go-to-organizer-dashboard">
+              <Link href="/organizer/dashboard">Open Organizer Dashboard</Link>
+            </Button>
+          </div>
+        ) : data.request?.status === "pending" ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="organizer-request-pending">
+            <Clock className="w-4 h-4" />
+            Your organizer request is awaiting review.
+            <Badge variant="secondary">Pending</Badge>
+          </div>
+        ) : data.request?.status === "rejected" ? (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="organizer-request-rejected">
+              <XCircle className="w-4 h-4" />
+              Your last request was not approved.
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBecomeOrganizer}
+              disabled={submitting}
+              data-testid="become-organizer-button"
+            >
+              {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Request Again
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+            <p className="text-sm text-muted-foreground">
+              Run your own social hits, round robins, or clinics on TennisConnect.
+            </p>
+            <Button
+              onClick={handleBecomeOrganizer}
+              disabled={submitting}
+              data-testid="become-organizer-button"
+            >
+              {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Become an Organizer
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

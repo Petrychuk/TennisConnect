@@ -32,6 +32,8 @@ export const registerSchema = z.object({
         "You must accept the Terms of Service and Privacy Policy",
     }
   ),
+
+   wantsToOrganize: z.boolean().optional().default(false),
 })
 .refine(
   (data) => data.password === data.confirmPassword,

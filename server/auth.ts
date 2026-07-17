@@ -41,6 +41,7 @@ declare global {
       status?: string | null;
       profileCompleted?: boolean | null;
       isAdmin?: boolean;
+      isOrganizer?: boolean;
     }
   }
 }
@@ -124,6 +125,7 @@ export function setupAuth(app: Express) {
             status: user.status,
             profileCompleted: user.profileCompleted,
             isAdmin: (user as any).isAdmin || false,
+            isOrganizer: (user as any).isOrganizer || false,
           });
         } catch (err) {
           done(err);
@@ -158,6 +160,7 @@ export function setupAuth(app: Express) {
       status: user.status,
       profileCompleted: user.profileCompleted,
       isAdmin: (user as any).isAdmin || false,
+      isOrganizer: (user as any).isOrganizer || false,
     });
   });
 

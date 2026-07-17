@@ -20,6 +20,8 @@ import { useAuth } from "@/lib/auth-context";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import SEO from "@/components/seo";
+import { BecomeOrganizerCard } from "@/components/profile/shared/BecomeOrganizerCard";
+import { MySessionsSection } from "@/components/profile/shared/MySessionsSection";
 
 import { COACHES_DATA } from "@/lib/dummy-data";
 import {
@@ -944,6 +946,7 @@ export default function CoachProfile() {
                   {/* Left Content (2 cols) */}
                   <div className="lg:col-span-2 space-y-8">
                     <TabsContent value="about" className="space-y-8 mt-0">
+                    {isOwnProfile && <BecomeOrganizerCard />}
                       <Card>
                         <CardHeader>
                           <CardTitle>Biography</CardTitle>
