@@ -498,6 +498,44 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
     );
 
+    // Admin grants organizer access directly — for a member who was
+    // already approved and later asks (outside the formal request flow)
+    // to run Sessions, without needing to submit an Organizer Request.
+    app.patch("/api/admin/users/:id/grant-organizer",
+      requireAdmin,
+      async (req, res) => {
+        const user = await storage.grantOrganizer(req.params.id);
+
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        await sendSystemMessage(
+          user.id,
+          user.role,
+          "Organizer Access Granted",
+          `You've been granted organizer access on TennisConnect. You can now create an Organization and publish Sessions. — TennisConnect Team`
+        );
+
+        res.json(user);
+      }
+    );
+
+    // Admin revokes organizer access — the user keeps their player/coach
+    // profile, they just lose the ability to create/manage Sessions.
+    app.patch("/api/admin/users/:id/revoke-organizer",
+      requireAdmin,
+      async (req, res) => {
+        const user = await storage.revokeOrganizer(req.params.id);
+
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        res.json(user);
+      }
+    );
+
   /* =========================
      ME (CURRENT USER)
   ========================= */

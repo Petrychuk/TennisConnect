@@ -19,7 +19,7 @@ import { ClubForm } from "@/components/admin/clubs/ClubForm";
 import { TravelForm } from "@/components/admin/travel/TravelForm";
 import { ArticleForm } from "@/components/admin/articles/ArticleForm";
 import AdminOrganizerRequestsTab from "@/components/admin/OrganizerRequestsTab";
-import { clubValidationSchema, articleSchema, travelSchema, recreationSchema, tournamentSchema } from "@/lib/validations";
+import { clubValidationSchema, articleSchema, travelSchema, recreationSchema } from "@/lib/validations";
 import AdminUsersTab from "@/components/admin/users_tab";
 import { ClubAdminCard } from "@/components/admin/clubs/ClubAdminCard";
 import { ClubPreviewDialog } from "@/components/admin/clubs/ClubPreviewDialog";
@@ -43,28 +43,27 @@ import {
 } from "@/lib/adminFields";
 
 const ICONS: Record<Resource, any> = {
-  articles: FileText,
-  travel: Plane,
-  recreation: Heart,
-  "event-tournaments": Trophy,
   clubs: Building2,
+  travel: Plane,
+  articles: FileText,
+  recreation: Heart,
 };
 
 const VALID_TABS: AdminTab[] = [
-  "articles",
-  "travel",
-  "recreation",
-  "event-tournaments",
-  "clubs",
   "users",
+  "organizer-requests",
+  "clubs",
+  "travel",
+  "articles",
+  "recreation",
 ];
 
 function getInitialTab(): AdminTab {
-  if (typeof window === "undefined") return "articles";
+  if (typeof window === "undefined") return "users";
   const tab = new URLSearchParams(window.location.search).get("tab");
   return (VALID_TABS as string[]).includes(tab || "")
     ? (tab as AdminTab)
-    : "articles";
+    : "users";
 }
 
 function getInitialEditId(param: string): string | null {
@@ -362,10 +361,6 @@ export default function AdminPage() {
   
       case "recreation":
         validation = recreationSchema.safeParse(payload);
-        break;
-  
-      case "event-tournaments":
-        validation = tournamentSchema.safeParse(payload);
         break;
     }
   
@@ -713,7 +708,7 @@ export default function AdminPage() {
               <h1 className="text-4xl md:text-5xl font-display font-bold">Content Manager</h1>
               <p className="text-muted-foreground mt-2">Manage articles, travel, recreation, users and tournaments.</p>
             </div>
-            {activeTab !== "users" && (
+            {activeTab !== "users" && activeTab !== "organizer-requests" && (
             <Button
               onClick={openCreate}
               className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
@@ -726,9 +721,27 @@ export default function AdminPage() {
 
           <Tabs
             value={activeTab}
-            onValueChange={(v) => setActiveTab(v as Resource)}
+            onValueChange={(v) => setActiveTab(v as AdminTab)}
           >
             <TabsList className="grid grid-cols-2 md:grid-cols-6 mb-8 w-full max-w-5xl">
+
+              <TabsTrigger
+                value="users"
+                className="cursor-pointer"
+                data-testid="admin-tab-users"
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Users
+              </TabsTrigger>
+
+              <TabsTrigger
+                value="organizer-requests"
+                className="cursor-pointer"
+                data-testid="admin-tab-organizer-requests"
+              >
+                <Trophy className="w-4 h-4 mr-2" />
+                Organizer &amp; Sessions
+              </TabsTrigger>
 
               {(Object.keys(RESOURCE_LABELS) as Resource[]).map((r) => {
                 const Icon = ICONS[r];
@@ -746,22 +759,6 @@ export default function AdminPage() {
                 );
               })}
 
-              <TabsTrigger
-                value="users"
-                className="cursor-pointer"
-                data-testid="admin-tab-users"
-              >
-                <Users className="w-4 h-4 mr-2" />
-                Users
-              </TabsTrigger>
-              <TabsTrigger
-                value="organizer-requests"
-                className="cursor-pointer"
-                data-testid="admin-tab-organizer-requests"
-             >
-                <Trophy className="w-4 h-4 mr-2" />
-                Organizer &amp; Sessions
-              </TabsTrigger>
             </TabsList>
 
             {(Object.keys(RESOURCE_LABELS) as Resource[]).map((r) => (

@@ -105,6 +105,11 @@ export interface IStorage {
   deleteUserByAdmin(userId: string): Promise<void>;
   hideUser(id: string): Promise<typeof users.$inferSelect>;
   unhideUser(id: string): Promise<typeof users.$inferSelect>;
+  // Admin can grant/revoke organizer access directly, independent of the
+  // Organizer Request flow — e.g. promoting an already-approved member,
+  // or pulling access from someone who has it.
+  grantOrganizer(id: string): Promise<typeof users.$inferSelect>;
+  revokeOrganizer(id: string): Promise<typeof users.$inferSelect>;
   
   // Player Profiles
   getPlayerProfile(userId: string): Promise<PlayerProfile | undefined>;
@@ -378,6 +383,26 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, id))
       .returning();
   
+    return user;
+  }
+
+  async grantOrganizer(id: string) {
+    const [user] = await db
+      .update(users)
+      .set({ isOrganizer: true })
+      .where(eq(users.id, id))
+      .returning();
+
+    return user;
+  }
+
+  async revokeOrganizer(id: string) {
+    const [user] = await db
+      .update(users)
+      .set({ isOrganizer: false })
+      .where(eq(users.id, id))
+      .returning();
+
     return user;
   }
 
