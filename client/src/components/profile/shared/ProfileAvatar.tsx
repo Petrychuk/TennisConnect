@@ -9,33 +9,11 @@ interface ProfileAvatarProps {
   onEdit?: () => void;
 }
 
-const INITIALS_COLORS = [
-  "bg-primary",
-  "bg-blue-500",
-  "bg-purple-500",
-  "bg-pink-500",
-  "bg-orange-500",
-  "bg-teal-500",
-  "bg-indigo-500",
-  "bg-rose-500",
-];
-
-function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  const first = parts[0][0] ?? "";
-  const last = parts.length > 1 ? parts[parts.length - 1][0] ?? "" : "";
-  return (first + last).toUpperCase();
-}
-
-// Deterministic (not random) so the same person always gets the same
-// color across renders/sessions, without needing to store one.
-function getInitialsColor(name: string) {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return INITIALS_COLORS[Math.abs(hash) % INITIALS_COLORS.length];
+// Same look as the navbar's account-menu avatar fallback (light primary
+// tint, primary-colored initial) so the "no photo" presentation is
+// consistent across the app, not a separate style just for this page.
+function getInitial(name: string) {
+  return name?.trim()?.[0]?.toUpperCase() || "U";
 }
 
 const AVATAR_SIZE_CLASSES =
@@ -62,12 +40,11 @@ export function ProfileAvatar({
         <div
           className={cn(
             AVATAR_SIZE_CLASSES,
-            "flex items-center justify-center text-white font-bold select-none",
-            getInitialsColor(name || "?")
+            "flex items-center justify-center bg-primary/10 text-primary font-bold select-none"
           )}
           data-testid="profile-avatar-initials"
         >
-          <span className="text-3xl lg:text-6xl">{getInitials(name || "?")}</span>
+          <span className="text-3xl lg:text-6xl">{getInitial(name)}</span>
         </div>
       )}
 
