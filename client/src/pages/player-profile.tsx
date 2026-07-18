@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ProfileCover } from "@/components/profile/shared/ProfileCover";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PlayerHero } from "@/components/profile/player/PlayerHero";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogDescription, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
@@ -635,15 +636,45 @@ export default function PlayerProfile() {
               data-testid="cover-upload"
             />
 
-            <ProfileCover
-                cover={profile.cover}
-                isOwner={isOwnProfile}
-                onEdit={() =>
-                    document.getElementById("cover-upload")?.click()
-                }
-            />           
+            {loading ? (
+              <Skeleton
+                className="w-full h-[280px] sm:h-[300px] md:h-[380px] lg:h-[460px] rounded-t-3xl"
+                data-testid="player-cover-skeleton"
+              />
+            ) : (
+              <ProfileCover
+                  cover={profile.cover}
+                  isOwner={isOwnProfile}
+                  onEdit={() =>
+                      document.getElementById("cover-upload")?.click()
+                  }
+              />
+            )}
             <div className="container mx-auto px-4 -mt-20 relative z-30 max-w-6xl">
             
+            {loading ? (
+              <div
+                className="relative"
+                data-testid="player-hero-skeleton"
+              >
+                <div className="rounded-2xl border bg-background/90 backdrop-blur-xl shadow-xl pt-28 sm:pt-28 md:pt-8 pb-5 sm:pb-7 md:pb-8 px-4 sm:px-5 md:px-8 md:pl-56">
+                  <div className="flex flex-col md:flex-row md:items-center gap-4">
+                    <Skeleton className="w-16 h-16 md:w-20 md:h-20 rounded-full shrink-0" />
+                    <div className="flex-1 space-y-3">
+                      <Skeleton className="h-6 md:h-8 w-48" />
+                      <Skeleton className="h-4 w-64 max-w-full" />
+                      <Skeleton className="h-4 w-40" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1.5 sm:gap-2 md:gap-4 mt-8">
+                    <Skeleton className="h-16 md:h-20 rounded-xl" />
+                    <Skeleton className="h-16 md:h-20 rounded-xl" />
+                    <Skeleton className="h-16 md:h-20 rounded-xl" />
+                    <Skeleton className="h-16 md:h-20 rounded-xl" />
+                  </div>
+                </div>
+              </div>
+            ) : (
             <PlayerHero
                 profile={profile}
                 isEditing={isEditing}
@@ -662,6 +693,7 @@ export default function PlayerProfile() {
                 }}
                 onSave={handleSave}
              />
+            )}
               <Tabs defaultValue="overview" className="space-y-8">
                 <TabsList className="w-full
                       flex
@@ -680,17 +712,10 @@ export default function PlayerProfile() {
                     <TabsTrigger value="sessions" data-testid="my-sessions-tab" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">My Sessions</TabsTrigger>
                   )}
                   <TabsTrigger value="tournaments" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">Tournaments</TabsTrigger>
-                  <TabsTrigger value="coaches" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">My Coaches</TabsTrigger>
                   <TabsTrigger value="marketplace" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">Selling ({marketplaceItems.length})</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-8">
-                 {isOwnProfile && organizerStatus.data && (
-                   <BecomeOrganizerCard
-                     status={organizerStatus.data}
-                     onChange={() => organizerStatus.refresh()}
-                   />
-                 )}
                   <Card>
                     <CardHeader>
                       <CardTitle>Playing Preferences</CardTitle>
@@ -739,6 +764,12 @@ export default function PlayerProfile() {
                       </div>
                     </CardContent>
                   </Card>
+                  {isOwnProfile && organizerStatus.data && (
+                    <BecomeOrganizerCard
+                      status={organizerStatus.data}
+                      onChange={() => organizerStatus.refresh()}
+                    />
+                  )}
                 </TabsContent>
                 {isOwnProfile && organizerStatus.hasEngagedWithOrganizing && (
                  <TabsContent value="sessions" className="space-y-8" data-testid="my-sessions-tab-content">
@@ -1012,38 +1043,6 @@ export default function PlayerProfile() {
                     );
                   })()}
                 </TabsContent>
-                
-                {/* Need to delete Tab Coaches */}
-                {/* <TabsContent value="coaches" className="space-y-8">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {myCoaches.map(coach => (
-                      <Card key={coach.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                        <div className="aspect-video relative">
-                          <img src={coach.cover} alt={coach.name} className="w-full h-full object-cover" />
-                          <div className="absolute bottom-4 left-4 flex items-center gap-3">
-                            <Avatar className="border-2 border-background">
-                              <AvatarImage src={coach.image} />
-                              <AvatarFallback>{coach.name[0]}</AvatarFallback>
-                            </Avatar>
-                            <div className="text-white drop-shadow-md">
-                              <div className="font-bold">{coach.name}</div>
-                              <div className="text-xs opacity-90">{coach.title}</div>
-                            </div>
-                          </div>
-                        </div>
-                        <CardContent className="p-4 pt-4">
-                          <Button className="w-full" variant="secondary">Book Session</Button>
-                        </CardContent>
-                      </Card>
-                    ))}
-                    {myCoaches.length === 0 && (
-                      <div className="col-span-full text-center py-12 text-muted-foreground">
-                        <p>No coaches connected yet.</p>
-                        <Button variant="link" onClick={() => setLocation("/coaches")}>Find a Coach</Button>
-                      </div>
-                    )}
-                  </div>
-                </TabsContent> */}
 
                 <TabsContent value="marketplace" className="space-y-8">
                   <div className="flex justify-between items-center">

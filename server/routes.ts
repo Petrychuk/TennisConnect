@@ -108,20 +108,14 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
 
       const hashedPassword = await hashPassword(parsed.data.password);
-      
-      // Default avatar and cover based on role
-      const defaultAvatar = parsed.data.role === 'coach' 
-        ? 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop'
-        : 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop';
-      const defaultCover = parsed.data.role === 'coach'
-        ? 'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=1200&h=400&fit=crop'
-        : 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=1200&h=400&fit=crop';
-            
+
+      // No default avatar/cover: a fresh account has none, and the
+      // profile page renders an initials circle / gradient for that —
+      // baking in a stock photo here just means the client has to swap
+      // it out later, which is the flicker we don't want.
       const user = await storage.createUser({
         ...parsed.data,
         password: hashedPassword,
-        avatar: defaultAvatar,
-        cover: defaultCover,
       });
 
       // 🔑 AUTO-CREATE PROFILE
@@ -140,6 +134,14 @@ export async function registerRoutes(app: Express): Promise<void> {
           location: "Sydney",
         });
       }
+
+      // Checkbox on the registration form: "I want to organize tennis
+      // sessions". Creates a pending Organizer Request for an admin to
+      // review, instead of granting organizer rights outright.
+      if (req.body?.wantsToOrganize === true) {
+        await storage.createOrganizerRequest(user.id, "Requested at sign-up");
+      }
+
       await sendSystemMessage(
         user.id,
         user.role,

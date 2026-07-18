@@ -951,12 +951,6 @@ export default function CoachProfile() {
                   {/* Left Content (2 cols) */}
                   <div className="lg:col-span-2 space-y-8">
                     <TabsContent value="about" className="space-y-8 mt-0">
-                    {isOwnProfile && organizerStatus.data && (
-                      <BecomeOrganizerCard
-                        status={organizerStatus.data}
-                        onChange={() => organizerStatus.refresh()}
-                      />
-                    )}
                       <Card>
                         <CardHeader>
                           <CardTitle>Biography</CardTitle>
@@ -975,6 +969,13 @@ export default function CoachProfile() {
                           )}
                         </CardContent>
                       </Card>
+
+                      {isOwnProfile && organizerStatus.data && (
+                        <BecomeOrganizerCard
+                          status={organizerStatus.data}
+                          onChange={() => organizerStatus.refresh()}
+                        />
+                      )}
 
                       {isEditing && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
