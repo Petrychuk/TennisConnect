@@ -12,7 +12,7 @@ import { requireAuth, requireAdmin } from "./requireAuth";
 import supportRoutes from "./routes/supportRoutes";
 import playersRouter from "./routes/players";
 import coachesRouter from "./routes/coaches";
-import { sendSystemMessage } from "./services/systemMessages";
+import { sendSystemMessage, ORGANIZER_APPROVED_SUBJECT, ORGANIZER_APPROVED_MESSAGE } from "./services/systemMessages";
 import uploadContentRouter from "./routes/upload-content";
 import organizerRouter from "./routes/organizer";
 
@@ -515,8 +515,8 @@ export async function registerRoutes(app: Express): Promise<void> {
         await sendSystemMessage(
           user.id,
           user.role,
-          "Organizer Access Granted",
-          `You've been granted organizer access on TennisConnect. You can now create an Organization and publish Sessions. — TennisConnect Team`
+          ORGANIZER_APPROVED_SUBJECT,
+          ORGANIZER_APPROVED_MESSAGE
         );
 
         res.json(user);

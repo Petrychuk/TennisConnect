@@ -1,6 +1,7 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { storage } from "../storage";
 import { requireAuth, requireAdmin } from "../requireAuth";
+import { sendSystemMessage, ORGANIZER_APPROVED_SUBJECT, ORGANIZER_APPROVED_MESSAGE } from "../services/systemMessages";
 import {
   insertOrganizationSchema,
   insertSessionSchema,
@@ -71,6 +72,17 @@ router.post("/requests/:id/approve", requireAdmin, async (req, res, next) => {
   try {
     const reviewerId = (req.user as any).id;
     const request = await storage.approveOrganizerRequest(req.params.id, reviewerId);
+
+    const approvedUser = await storage.getUser(request.userId);
+    if (approvedUser) {
+      await sendSystemMessage(
+        approvedUser.id,
+        approvedUser.role,
+        ORGANIZER_APPROVED_SUBJECT,
+        ORGANIZER_APPROVED_MESSAGE
+      );
+    }
+
     res.json(request);
   } catch (error) {
     next(error);
