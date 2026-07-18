@@ -104,8 +104,12 @@ router.post("/requests/:id/reject", requireAdmin, async (req, res, next) => {
    ORGANIZATIONS
 ========================= */
 
-// The organizer's own organization (creates one on first use if none exists).
-router.get("/organizations/me", requireAuth, requireOrganizer, async (req, res, next) => {
+// The organizer's own organization — viewable even after organizer
+// access is revoked, so past work stays visible as history. Only
+// requireAuth: it's already scoped to the caller's own organization,
+// and the "can't create/manage" restriction lives on the write routes
+// below (requireOrganizer), not here.
+router.get("/organizations/me", requireAuth, async (req, res, next) => {
   try {
     const organization = await storage.getOrganizationOwnedByUser((req.user as any).id);
     res.json(organization || null);
@@ -172,8 +176,10 @@ router.get("/organizations/:slug", async (req, res, next) => {
    SESSIONS
 ========================= */
 
-// Organizer's own sessions (all statuses) for their dashboard.
-router.get("/sessions/mine", requireAuth, requireOrganizer, async (req, res, next) => {
+// Organizer's own sessions (all statuses) for their dashboard. Same
+// reasoning as GET /organizations/me above — viewing your own past
+// sessions shouldn't require currently-active organizer access.
+router.get("/sessions/mine", requireAuth, async (req, res, next) => {
   try {
     const organization = await storage.getOrganizationOwnedByUser((req.user as any).id);
     if (!organization) {

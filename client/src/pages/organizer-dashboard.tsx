@@ -115,13 +115,13 @@ export default function OrganizerDashboardPage() {
       setLocation("/auth");
       return;
     }
-    if (!user?.isOrganizer) {
-      setLoading(false);
-      return;
-    }
+    // Load regardless of current isOrganizer — a revoked organizer
+    // should still be able to see their past organization/sessions as
+    // history. Whether they can manage anything is decided at render
+    // time by isReadOnly, further down.
     loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, isAuthenticated, user?.isOrganizer]);
+  }, [authLoading, isAuthenticated]);
 
   async function loadAll() {
     setLoading(true);
@@ -253,7 +253,7 @@ export default function OrganizerDashboardPage() {
     );
   }
 
-  if (!user?.isOrganizer) {
+  if (!user?.isOrganizer && !organization) {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
@@ -273,6 +273,13 @@ export default function OrganizerDashboardPage() {
     );
   }
 
+  // Organizer access was revoked, but they have an Organization/Sessions
+  // from when they were active — keep it visible as history, just not
+  // editable. (Session/tournament creation itself is still a work in
+  // progress regardless of this flag; this only governs who's allowed
+  // to touch it once it's finished.)
+  const isReadOnly = !user?.isOrganizer;
+
   return (
     <div className="min-h-screen flex flex-col">
       <SEO
@@ -284,6 +291,16 @@ export default function OrganizerDashboardPage() {
 
       <div className="flex-1 max-w-5xl mx-auto w-full px-4 py-10 space-y-8">
         <h1 className="font-display text-3xl font-bold">Organizer Dashboard</h1>
+
+        {isReadOnly && (
+          <Card className="border-orange-200 bg-orange-50" data-testid="organizer-readonly-banner">
+            <CardContent className="py-4 text-sm text-orange-800">
+              Your organizer access has been revoked. You can still see your past Organization
+              and Sessions below, but you can't create or manage new ones. Contact an admin if
+              you think this is a mistake.
+            </CardContent>
+          </Card>
+        )}
 
         {!organization ? (
           <Card data-testid="create-organization-card">
@@ -342,6 +359,7 @@ export default function OrganizerDashboardPage() {
 
             <div className="flex items-center justify-between">
               <h2 className="font-display text-2xl font-bold">Sessions</h2>
+              {!isReadOnly && (
               <Dialog open={sessionDialogOpen} onOpenChange={setSessionDialogOpen}>
                 <DialogTrigger asChild>
                   <Button data-testid="create-session-button">
@@ -468,12 +486,13 @@ export default function OrganizerDashboardPage() {
                   </form>
                 </DialogContent>
               </Dialog>
+              )}
             </div>
 
             {sessions.length === 0 ? (
               <Card>
                 <CardContent className="py-10 text-center text-muted-foreground" data-testid="sessions-empty">
-                  No sessions yet. Create your first one above.
+                  {isReadOnly ? "No sessions in your history." : "No sessions yet. Create your first one above."}
                 </CardContent>
               </Card>
             ) : (
@@ -505,7 +524,7 @@ export default function OrganizerDashboardPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                      {(session.status === "draft" || session.status === "rejected") && (
+                      {!isReadOnly && (session.status === "draft" || session.status === "rejected") && (
                           <Button
                             size="sm"
                             onClick={() => handlePublish(session.id)}
@@ -516,7 +535,7 @@ export default function OrganizerDashboardPage() {
                             {user?.isAdmin ? "Publish" : "Submit for Review"}
                           </Button>
                         )}
-                        {(session.status === "draft" ||
+                        {!isReadOnly && (session.status === "draft" ||
                           session.status === "pending_review" ||
                           session.status === "published") && (
                           <Button
