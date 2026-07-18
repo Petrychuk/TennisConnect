@@ -72,41 +72,46 @@ export default function ArticlesPage() {
       <div className="min-h-screen bg-background font-sans">
         <Navbar />
 
-        {/* Hero */}
-        <div className="relative min-h-[24vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-center overflow-hidden">
+        {/* Hero — shares one photo backdrop with the filter bar below */}
+        <div className="relative overflow-hidden">
           <div
             className="absolute inset-0 z-0"
             style={{
-              backgroundImage:
-                "url(https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?q=80&w=2000&auto=format&fit=crop)",
+              backgroundImage: "url('/assets/images/Dashboard_articles.png')",
               backgroundSize: "cover",
               backgroundPosition: "center",
             }}
           />
-          <div className="absolute inset-0 bg-linear-to-b from-background/80 via-background/20 to-background z-10" />
-          <div className="relative z-20 container mx-auto px-4 text-center mt-16 md:mt-20">
+          <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100% z-10" />
+
+          <div className="relative min-h-[24vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-start">
+          <div className="relative z-20 container mx-auto px-4 text-left mt-24 md:mt-20">
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
-              <Badge className="mb-6 bg-primary text-primary-foreground px-4 py-1.5 text-sm font-bold">
-                <BookOpen className="w-4 h-4 mr-2" /> Tennis Journal
-              </Badge>
-              <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold mb-4 tracking-tight">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md mb-6">
+                <BookOpen className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs sm:text-sm font-bold tracking-wider uppercase text-white">
+                  Tennis Journal
+                </span>
+              </div>
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold mb-4 tracking-tight text-white drop-shadow-md">
                 Articles & <span className="text-primary">Insights</span>
               </h1>
-              <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto font-light">
+              <p className="text-lg md:text-xl text-white/85 max-w-2xl font-light drop-shadow-sm">
                 Tactics, gear, mind & body. Written for everyone who plays.
               </p>
             </motion.div>
           </div>
-        </div>
+          </div>
 
-        {/* Filter bar */}
-        <div className="sticky top-16 z-40 bg-background/80 backdrop-blur-lg border-b py-4">
-          <div className="container mx-auto px-4 flex flex-col md:flex-row gap-4 justify-between">
+        {/* Filter bar — floats over the tail of the photo */}
+        <div className="relative z-20 mt-5 pb-5 md:pb-10">
+          <div className="container mx-auto px-4">
+            <div className="bg-card/50 backdrop-blur-lg border border-border/40 shadow-lg rounded-2xl p-3 md:p-4 flex flex-col md:flex-row gap-4 justify-between">
             <div className="relative w-full md:w-96">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search articles..."
-                className="pl-10 h-11 bg-secondary/50 border-transparent focus:border-primary rounded-xl"
+                className="pl-10 h-11 bg-background/80 border-transparent focus:border-primary rounded-xl"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 data-testid="articles-search-input"
@@ -120,7 +125,7 @@ export default function ArticlesPage() {
                   className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border cursor-pointer ${
                     category === c
                       ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-background hover:bg-secondary border-input"
+                      : "bg-background/80 hover:bg-secondary border-input"
                   }`}
                   data-testid={`articles-category-${c}`}
                 >
@@ -128,11 +133,13 @@ export default function ArticlesPage() {
                 </button>
               ))}
             </div>
+            </div>
           </div>
         </div>
+        </div>
 
-        {/* Grid */}
-        <div className="container mx-auto px-4 py-12">
+        {/* Grid — pulled up so the photo dissolves under the top row */}
+        <div className="relative z-30 container mx-auto px-4 py-12 md:-mt-4">
           {filtered.length === 0 ? (
             <div className="text-center py-20">
               <BookOpen className="w-12 h-12 mx-auto text-muted-foreground mb-4" />

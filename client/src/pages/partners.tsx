@@ -214,9 +214,14 @@ export default function PartnersPage() {
     setPage(newPage);
   };
   
+  const isFirstPageRender = useRef(true);
   useEffect(() => {
     if (!pagination) return;
-  
+    if (isFirstPageRender.current) {
+      isFirstPageRender.current = false;
+      return;
+    }
+
     playersSectionRef.current?.scrollIntoView({
       behavior: "smooth",
       block: "start",
@@ -259,127 +264,130 @@ export default function PartnersPage() {
 
       <Navbar />
 
-      {/* Intro / Hero Section */}
-      <div className="relative min-h-[24vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-center overflow-hidden">
-        <div 
+      {/* Intro / Hero Section + Filter bar share one photo backdrop that
+          fades gently all the way past the filter bar, so the image
+          dissolves under the top of the card grid instead of stopping
+          abruptly. Same treatment on mobile (no separate mobile variant). */}
+      <div className="relative overflow-hidden">
+        <div
           className="absolute inset-0 z-0"
           style={{
-            backgroundImage: "url(https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?q=80&w=2000&auto=format&fit=crop)",
+            backgroundImage: "url('/assets/images/dashboard_players.png')",
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
         />
-        <div className="absolute inset-0 bg-linear-to-b from-background/80 via-background/20 to-background z-10" />
-        
-        <div className="relative z-20 container mx-auto px-4 text-center mt-16 md:mt-20">
-          <motion.div 
-             initial={{ opacity: 0, y: 30 }}
-             animate={{ opacity: 1, y: 0 }}
-             transition={{ duration: 0.8 }}
-          >
-            <Badge className="mb-3
-                  md:mb-6
-                  px-3
-                  md:px-4
-                  py-1
-                  text-[10px]
-                  sm:text-xs
-                  md:text-sm
-                  font-bold
-                  uppercase
-                  tracking-wider">
+        {/* Light at the top (photo mostly visible), gradually settling to
+            the page background well past the filter bar. */}
+        <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100% z-10" />
+
+        <div className="relative min-h-[26vh] md:min-h-[32vh] lg:min-h-[36vh] flex items-center justify-start">
+          <div className="relative z-20 container mx-auto px-4 text-left mt-16 md:mt-20">
+            <motion.div 
+               initial={{ opacity: 0, y: 30 }}
+               animate={{ opacity: 1, y: 0 }}
+               transition={{ duration: 0.8 }}
+            >
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md mb-3 md:mb-6">
+                <span className="w-2 h-2 rounded-full bg-primary" />
+                <span className="text-[10px] sm:text-xs md:text-sm font-bold tracking-wider uppercase text-white">
                   Find Best Player
-            </Badge>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold mb-2 md:mb-6 tracking-tight">
-              Find Your <span className="text-primary relative inline-block">
-                Player
-                <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none">
-                  <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" />
-                </svg>
-              </span>
-            </h1>
-            <p className="text-base
-              sm:text-lg
-              md:text-2xl
-              text-muted-foreground
-              max-w-2xl
-              mx-auto
-              font-normal
-              leading-snug
-              md:leading-relaxed">
-              Connect with partners for games, join local matches, and expand your tennis network.
-            </p>
-          </motion.div>
+                </span>
+              </div>
+              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold mb-2 md:mb-6 tracking-tight text-white drop-shadow-md">
+                Find Your <span className="text-primary relative inline-block">
+                  Player
+                  <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none">
+                    <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" />
+                  </svg>
+                </span>
+              </h1>
+              <p className="text-base
+                sm:text-lg
+                md:text-2xl
+                text-white/85
+                max-w-2xl
+                font-normal
+                leading-snug
+                md:leading-relaxed
+                drop-shadow-sm">
+                Connect with partners for games, join local matches, and expand your tennis network.
+              </p>
+            </motion.div>
+          </div>
         </div>
-      </div>
 
-      {/* Filter Bar */}
-      <div className="bg-background/80 backdrop-blur-lg border-y border-border/50 py-2 md:py-4 shadow-sm">
-      <div className="container mx-auto px-2 mt-0 mb-3 md:mb-6">
-          <div
-            className="
-              bg-card/95
-              backdrop-blur-sm
-              border border-border/40
-              shadow-lg
-              rounded-2xl
-              p-3 md:p-4
-            "
-          >
-            <div className="flex flex-col md:flex-row gap-3 md:gap-4 items-center justify-between">
+        {/* Filter Bar — floats over the tail of the photo instead of a
+            solid block below it */}
+        <div className="relative z-20 pb-5 md:pb-10">
+          <div className="container mx-auto px-2 mt-0 mb-3 md:mb-6">
+            <div
+              className="
+                bg-card/50
+                backdrop-blur-md
+                border border-border/40
+                shadow-lg
+                rounded-2xl
+                p-2.5 md:p-4
+              "
+            >
+              <div className="flex flex-col md:flex-row gap-2 md:gap-4 items-center justify-between">
 
-              <div className="relative w-full md:w-80 lg:w-96 group">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <div className="relative w-full md:w-80 lg:w-96 group">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground" />
 
-                <Input
-                  placeholder="Search by name or location..."
-                  className="
-                    pl-10
-                    h-11
-                    rounded-xl
-                    bg-background
-                  "
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-
-              <div className="flex w-full md:w-auto gap-2 overflow-x-auto scrollbar-hide">
-                {["Beginner", "Intermediate", "Advanced"].map((level) => (
-                  <button
-                    key={level}
-                    onClick={() =>
-                      setFilterLevel(filterLevel === level ? "" : level)
-                    }
-                    className={`
-                      h-11
-                      px-4
-                      rounded-full
+                  <Input
+                    placeholder="Search by name or location..."
+                    className="
+                      pl-9 md:pl-10
+                      h-9 md:h-11
                       text-sm
-                      font-medium
-                      whitespace-nowrap
-                      transition-all
-                      border
-                      cursor-pointer
-                      ${
-                        filterLevel === level
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-background border-input hover:border-primary/50"
-                      }
-                    `}
-                  >
-                    {level}
-                  </button>
-                ))}
-              </div>
+                      rounded-xl
+                      bg-background
+                    "
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
 
+                <div className="flex w-full md:w-auto gap-1.5 md:gap-2 overflow-x-auto scrollbar-hide">
+                  {["Beginner", "Intermediate", "Advanced"].map((level) => (
+                    <button
+                      key={level}
+                      onClick={() =>
+                        setFilterLevel(filterLevel === level ? "" : level)
+                      }
+                      className={`
+                        h-8 md:h-11
+                        px-3 md:px-4
+                        rounded-full
+                        text-xs md:text-sm
+                        font-medium
+                        whitespace-nowrap
+                        transition-all
+                        border
+                        cursor-pointer
+                        ${
+                          filterLevel === level
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-background border-input hover:border-primary/50"
+                        }
+                      `}
+                    >
+                      {level}
+                    </button>
+                  ))}
+                </div>
+
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Partners Grid */}
-      <div className="container mx-auto px-4 py-4 scroll-mt-24"
+      {/* Partners Grid — pulled up slightly so the photo's fade visibly
+          dissolves under the top of the first card row */}
+      <div className="relative z-30 container mx-auto px-4 py-4 md:-mt-4 scroll-mt-24"
       ref={playersSectionRef}>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           {filteredPartners.map((partner, index) => {

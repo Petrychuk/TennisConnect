@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Navbar } from "@/components/navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Footer } from "@/components/footer";
 import { ClubCard } from "@/components/clubs/ClubCard";
 import { Card, CardContent } from "@/components/ui/card";
@@ -87,42 +86,33 @@ export default function ClubsPage() {
       <div className="min-h-screen bg-background font-sans">
         <Navbar />
         
-        {/* Intro / Hero Section */}
-        <div className="relative min-h-[24vh]
-          md:min-h-[30vh]
-          lg:min-h-[35vh] flex items-center justify-center overflow-hidden">
+        {/* Intro / Hero Section — shares one photo backdrop with the
+            filter bar below, same treatment as Partners/Coaches */}
+        <div className="relative overflow-hidden">
           <div 
             className="absolute inset-0 z-0"
             style={{
-              backgroundImage: "url(/assets/images/tennisClubs.png)",
+              backgroundImage: "url('/assets/images/Dashboard_club.png')",
               //backgroundImage: "url(https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?q=80&w=2000&auto=format&fit=crop)",
               backgroundSize: 'cover',
               backgroundPosition: 'center',
             }}
           />
-          <div className="absolute inset-0 bg-linear-to-b from-background/80 via-background/20 to-background z-10" />
-          
-          <div className="relative z-20 container mx-auto px-4 text-center mt-16 md:mt-20">
+          <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100% z-10" />
+
+          <div className="relative min-h-[24vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-start">
+          <div className="relative z-20 container mx-auto px-4 text-left mt-16 md:mt-20">
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
             >
-              <Badge className="
-                    mb-3
-                    md:mb-6
-                    px-4
-                    md:px-5
-                    py-1.5
-                    text-[10px]
-                    sm:text-xs
-                    font-bold
-                    uppercase
-                    tracking-wider
-                    shadow-md
-                  "
-                >Places To Play
-                </Badge>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md mb-3 md:mb-6">
+                <span className="w-2 h-2 rounded-full bg-primary" />
+                <span className="text-[10px] sm:text-xs md:text-sm font-bold tracking-wider uppercase text-white">
+                  Places To Play
+                </span>
+              </div>
                   <h1 className="text-4xl
                     sm:text-4xl
                     md:text-6xl
@@ -130,7 +120,9 @@ export default function ClubsPage() {
                     font-display
                     font-bold
                     tracking-tight
-                    leading-none">
+                    leading-none
+                    text-white
+                    drop-shadow-md">
                   Find Tennis <span className="text-primary relative inline-block">
                   Communities
                   <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none">
@@ -142,28 +134,29 @@ export default function ClubsPage() {
                   sm:text-base
                   md:text-xl
                   lg:text-2xl
-                  text-muted-foreground
+                  text-white/85
                   max-w-xl
                   md:max-w-2xl
-                  mx-auto
                   font-normal
                   leading-tight
-                  md:leading-[1.3]">
+                  md:leading-[1.3]
+                  drop-shadow-sm">
                  Discover tennis courts, clubs, social groups, and local communities across Australia.
               </p>
             </motion.div>
           </div>
-        </div>
+          </div>
 
-        {/* Filter Bar */}
-        <div className="bg-background/80 backdrop-blur-lg border-y border-border/50 py-2 md:py-4">
+        {/* Filter Bar — floats over the tail of the photo */}
+        <div className="relative z-20 mt-5 pb-5 md:pb-10">
           <div className="container mx-auto px-2 md:px-4">
+            <div className="bg-card/50 backdrop-blur-lg border border-border/40 shadow-lg rounded-2xl p-3 md:p-4">
             <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
               <div className="relative w-full md:w-80 lg:w-96 group">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
                 <Input 
                   placeholder="Search by name or location..." 
-                  className="pl-10 h-11 bg-secondary/50 border-transparent focus:border-primary focus:bg-background transition-all rounded-xl"
+                  className="pl-10 h-11 bg-background/80 border-transparent focus:border-primary focus:bg-background transition-all rounded-xl"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -192,7 +185,7 @@ export default function ClubsPage() {
                         shrink-0 ${
                           filterService === tag 
                         ? "bg-primary text-primary-foreground border-primary" 
-                        : "bg-background hover:bg-secondary border-input hover:border-primary/50"
+                        : "bg-background/80 hover:bg-secondary border-input hover:border-primary/50"
                     }`}
                   >
                     {tag}
@@ -200,11 +193,14 @@ export default function ClubsPage() {
                 ))}
               </div>
             </div>
+            </div>
           </div>
         </div>
+        </div>
 
-        {/* Clubs List Section */}
-        <div className="container mx-auto px-4 py-16">
+        {/* Clubs List Section — pulled up so the photo dissolves under
+            the top of the first row */}
+        <div className="relative z-30 container mx-auto px-4 py-16 md:-mt-4">
 
         {filteredClubs.length === 0 ? (
 

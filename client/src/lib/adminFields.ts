@@ -2,21 +2,19 @@ export type Resource =
   | "articles"
   | "travel"
   | "recreation"
-  | "event-tournaments"
   | "clubs";
 
-export type AdminTab = Resource | "users";
+export type AdminTab = Resource | "users" | "organizer-requests";
 
 export function isContentTab(tab: AdminTab): tab is Resource {
-  return tab !== "users";
+  return tab !== "users" && tab !== "organizer-requests";
 }
 
 export const RESOURCE_LABELS: Record<Resource, string> = {
-  articles: "Articles",
-  travel: "Travel Packages",
-  recreation: "Recreation Services",
-  "event-tournaments": "Tournaments",
   clubs: "Club Communities",
+  travel: "Travel Packages",
+  articles: "Articles",
+  recreation: "Recreation Services",
 };
 
 export interface AdminFieldDef {
@@ -118,29 +116,6 @@ export const FIELDS: Record<Resource, AdminFieldDef[]> = {
     { name: "rating", type: "text" },
     { name: "phone", type: "text" },
     { name: "email", type: "text" },
-  ],
-  "event-tournaments": [
-    { name: "name", type: "text", required: true },
-    { name: "startDate", type: "text", required: true, help: "YYYY-MM-DD" },
-    { name: "endDate", type: "text", help: "YYYY-MM-DD" },
-    { name: "location", type: "text", required: true },
-    { name: "address", type: "text" },
-    { name: "level", type: "text", required: true, help: "Beginner | Intermediate | Advanced" },
-    { name: "price", type: "number", required: true },
-    { name: "prizePool", type: "text" },
-    { name: "maxParticipants", type: "number" },
-    { name: "currentParticipants", type: "number" },
-    { name: "description", type: "textarea", required: true },
-    { name: "organizer", type: "text", required: true },
-    { name: "phone", type: "text" },
-    { name: "email", type: "text" },
-    { name: "website", type: "text" },
-    { name: "coverImage", type: "text", required: true },
-    { name: "status", type: "text", required: true, help: "upcoming | past" },
-    { name: "categories", type: "list" },
-    { name: "ageGroups", type: "list" },
-    { name: "winner", type: "text" },
-    { name: "finalist", type: "text" },
   ],
   clubs: [
     {

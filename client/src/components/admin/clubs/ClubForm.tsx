@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ShieldCheck } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import type { ClubService, CourtSurface, CompetitionType } from "@shared/constants/clubs";
@@ -11,6 +12,8 @@ import { ClubServicesSection } from "./sections/ClubServicesSection";
 import { ClubPricingSection } from "./sections/ClubPricingSection";
 import { ClubCourtsSection } from "./sections/ClubCourtsSection";
 import { ClubCompetitionSection } from "./sections/ClubCompetitionSection";
+import { ClubSessionsSection } from "./sections/ClubSessionsSection";
+import type { ClubSession } from "@shared/schema";
 import { ClubSeoSection } from "./sections/ClubSeoSection";
 import { ClubImageSection } from "./sections/ClubImageSection";
 export interface ClubFormProps {
@@ -79,6 +82,13 @@ export interface ClubFormData {
   seoTitle: string;
   metaDescription: string;
   metaKeywords: string;
+
+  // CTA
+  ctaText: string;
+  ctaUrl: string;
+
+  // Sessions
+  sessions: ClubSession[];
 }
 export function ClubForm({
     mode = "create",
@@ -151,6 +161,13 @@ export function ClubForm({
       seoTitle: "",
       metaDescription: "",
       metaKeywords: "",
+
+      // CTA
+      ctaText: "",
+      ctaUrl: "",
+
+      // Sessions
+      sessions: [],
     });
     const { toast } = useToast();
 
@@ -176,6 +193,9 @@ export function ClubForm({
       loadClub();
     }, [clubId]);
   
+    const [wasPublished, setWasPublished] = useState(false);
+    const [unpublishForReview, setUnpublishForReview] = useState(false);
+
     const loadClub = async () => {
       try { 
         setLoading(true); 
@@ -196,6 +216,7 @@ export function ClubForm({
           ...club,
         });
         setSavedClubId(club.id); 
+        setWasPublished(club.status === "published");
       } catch (err) { 
         console.error(err);
   
@@ -252,13 +273,18 @@ export function ClubForm({
         }
       };
       
-      const handleUpdate = async () => {      
+      const handleUpdate = async (
+        opts?: { statusOverride?: string }
+      ) => {      
         if (!savedClubId) return;      
         try {      
           setLoading(true);
           
           const payload = {
             ...form,
+            ...(opts?.statusOverride
+              ? { status: opts.statusOverride }
+              : {}),
             indoorCourts: Number(form.indoorCourts || 0),
             outdoorCourts: Number(form.outdoorCourts || 0),
             numberOfLocations: Number(form.numberOfLocations || 1),
@@ -280,6 +306,11 @@ export function ClubForm({
             throw new Error(
               "Failed to update club"
             );     
+          }
+
+          if (opts?.statusOverride) {
+            updateField("status", opts.statusOverride);
+            setWasPublished(opts.statusOverride === "published");
           }
       
           setStep("media");
@@ -415,6 +446,10 @@ return (
                 form={form}
                 updateField={updateField}
               /> 
+              <ClubSessionsSection
+                form={form}
+                updateField={updateField}
+              />
               <ClubSeoSection
                 form={form}
                 updateField={updateField}
@@ -434,6 +469,36 @@ return (
     />
       )}
      
+      {step === "details" && mode === "edit" && wasPublished && (
+        <div
+          className="rounded-2xl border border-amber-300 bg-amber-50 p-4 flex items-start gap-3"
+          data-testid="club-live-edit-warning"
+        >
+          <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-amber-900">
+              This listing is currently live
+            </p>
+            <p className="mt-1 text-sm text-amber-800">
+              Saving updates the public page right away. Unpublish it
+              first if you'd rather review your changes privately
+              before it goes live again.
+            </p>
+            <label className="mt-2 flex items-center gap-2 text-sm text-amber-900 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={unpublishForReview}
+                onChange={(e) =>
+                  setUnpublishForReview(e.target.checked)
+                }
+                data-testid="club-unpublish-for-review-checkbox"
+              />
+              Unpublish while I review these changes
+            </label>
+          </div>
+        </div>
+      )}
+
       {/* FOOTER */}    
       <div className="flex items-center justify-between">
   
@@ -448,10 +513,14 @@ return (
             </Button>
   
             <Button
-              onClick={
+              onClick={() =>
                 mode === "create"
-                  ? handleSave
-                  : handleUpdate
+                  ? handleSave()
+                  : handleUpdate(
+                      unpublishForReview
+                        ? { statusOverride: "draft" }
+                        : undefined
+                    )
               }
               disabled={loading}
             >
@@ -461,7 +530,9 @@ return (
                     : "Updating...")
                 : (mode === "create"
                     ? "Save & Continue"
-                    : "Update & Continue")}
+                    : unpublishForReview
+                      ? "Unpublish & Save"
+                      : "Update & Continue")}
             </Button>
           </>
         ) : (

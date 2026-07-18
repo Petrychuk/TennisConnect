@@ -336,7 +336,7 @@ export default function TournamentsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-sm font-medium">Organizer Contact:</p>
+                  <p className="text-sm font-medium">Organiser Contact:</p>
                   <div className="text-sm space-y-1">
                     {selectedTournament.phone && <p className="flex items-center gap-2"><Phone className="w-4 h-4 text-muted-foreground" />{selectedTournament.phone}</p>}
                     {selectedTournament.email && <p className="flex items-center gap-2"><Mail className="w-4 h-4 text-muted-foreground" />{selectedTournament.email}</p>}
@@ -388,7 +388,7 @@ export default function TournamentsPage() {
                 </div>
 
                 <div className="border-t pt-4">
-                  <h4 className="font-bold mb-3">Organizer</h4>
+                  <h4 className="font-bold mb-3">Organiser</h4>
                   <p className="font-medium">{selectedTournament.organizer}</p>
                   <div className="mt-2 space-y-2 text-sm">
                     {selectedTournament.phone && <p className="flex items-center gap-2"><Phone className="w-4 h-4 text-muted-foreground" /><a href={`tel:${selectedTournament.phone}`} className="hover:text-primary">{selectedTournament.phone}</a></p>}

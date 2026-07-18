@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import type { ClubFormData } from "../ClubForm";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { MarkdownToolbar } from "@/components/admin/common/MarkdownToolbar";
 
 import { CLUB_CATEGORIES } from "@shared/constants/clubs";
 
@@ -25,6 +27,8 @@ export function ClubBasicSection({
   form,
   updateField,
 }: ClubBasicSectionProps) {
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+
   return (
     <section className="space-y-8">
 
@@ -153,11 +157,24 @@ export function ClubBasicSection({
           Full Description *
         </Label>
 
+        <p className="text-xs text-muted-foreground">
+          Use the toolbar to format headings, bold text, lists and more —
+          it's rendered properly on the club's live page.
+        </p>
+
+        <MarkdownToolbar
+          textareaRef={descriptionRef}
+          value={form.description}
+          onChange={(v) => updateField("description", v)}
+        />
+
         <Textarea
+          ref={descriptionRef}
           id="club-description"
           data-testid="club-description"
           placeholder="Describe the club, community, facilities and atmosphere..."
           rows={8}
+          className="rounded-t-none"
           value={form.description}
           onChange={(e) =>
             updateField(

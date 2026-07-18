@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/navbar";
 import { ProfileCover } from "@/components/profile/shared/ProfileCover";
+import defaultCoachCover from "/assets/images/default_coach_cover.jpg";
 import { CoachHero } from "@/components/profile/coach/CoachHero";
 import { Footer } from "@/components/footer";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,11 @@ import { useAuth } from "@/lib/auth-context";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import SEO from "@/components/seo";
+import { BecomeOrganizerCard } from "@/components/profile/shared/BecomeOrganizerCard";
+import { MySessionsSection } from "@/components/profile/shared/MySessionsSection";
+import { MyOrganizedSessionsSection } from "@/components/profile/shared/MyOrganizedSessionsSection";
+import { TournamentHistorySection } from "@/components/profile/shared/TournamentHistorySection";
+import { useOrganizerStatus } from "@/hooks/use-organizer-status";
 
 import { COACHES_DATA } from "@/lib/dummy-data";
 import {
@@ -102,6 +108,7 @@ export type CoachProfile = {
   bio: string;
   avatar?: string | null;
   cover?: string | null;
+  createdAt?: string;
   rate: string;
   experience: string;
   locations: string[];
@@ -125,8 +132,8 @@ export const DEFAULT_COACH_PROFILE: CoachProfile = {
   location: "Manly, Sydney",
   bio: "Passionate tennis coach dedicated to helping beginners and intermediate players fall in love with the game.",
 
-  avatar: avatarImage,
-  cover: heroImage,
+  avatar: null,
+  cover: null,
 
   rate: "70",
   experience: "10",
@@ -200,6 +207,7 @@ export default function CoachProfile() {
     isAuthenticated &&
     user?.role === "coach" &&
     user?.slug === profileSlug;
+  const organizerStatus = useOrganizerStatus(isOwnProfile);
   
   /* =========================
      EDITING STATE
@@ -228,7 +236,6 @@ export default function CoachProfile() {
   /* =========================
      MODALS
   ========================= */
-  const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
   const [selectedBuyItem, setSelectedBuyItem] = useState<any>(null);
@@ -710,6 +717,7 @@ export default function CoachProfile() {
             name: data.user.name,
             avatar: data.user.avatar ?? DEFAULT_COACH_PROFILE.avatar,
             cover: data.user.cover ?? DEFAULT_COACH_PROFILE.cover,
+            createdAt: data.user.createdAt,
 
             // profile-level
             title: data.profile.title ?? DEFAULT_COACH_PROFILE.title,
@@ -752,7 +760,7 @@ export default function CoachProfile() {
               ...DEFAULT_COACH_PROFILE,
               name: demoCoach.name,
               avatar: demoCoach.image,
-              cover: DEFAULT_COACH_PROFILE.cover,
+              cover: heroImage,
               title: demoCoach.title || DEFAULT_COACH_PROFILE.title,
               location: demoCoach.location,
               bio: demoCoach.bio || DEFAULT_COACH_PROFILE.bio,
@@ -850,6 +858,7 @@ export default function CoachProfile() {
          ) : (
            <ProfileCover
               cover={profile.cover}
+              defaultCover={defaultCoachCover}
               isOwner={isOwnProfile}
               onEdit={() =>
                 document.getElementById("cover-upload")?.click()
@@ -860,10 +869,10 @@ export default function CoachProfile() {
             
           {loading ? (
             <div
-              className="container mx-auto max-w-6xl sm:px-4 relative -mt-2 sm:-mt-6 md:-mt-16 lg:-mt-20"
+              className="container mx-auto max-w-6xl px-4 relative -mt-2 sm:-mt-6 md:-mt-16 lg:-mt-20"
               data-testid="coach-hero-skeleton"
             >
-              <div className="rounded-2xl border bg-background/90 backdrop-blur-xl shadow-xl pt-28 sm:pt-28 md:pt-8 pb-5 sm:pb-7 md:pb-8 px-4 sm:px-5 md:px-8 md:pl-56">
+              <div className="rounded-2xl border border-border/40 bg-card/50 backdrop-blur-md shadow-lg pt-28 sm:pt-28 md:pt-8 pb-5 sm:pb-7 md:pb-8 px-4 sm:px-5 md:px-8 md:pl-56">
                 <div className="flex flex-col md:flex-row md:items-center gap-4">
                   <Skeleton className="w-16 h-16 md:w-20 md:h-20 rounded-full shrink-0" />
                   <div className="flex-1 space-y-3">
@@ -930,19 +939,26 @@ export default function CoachProfile() {
                     p-0
                     bg-transparent
                     gap-2
+                    md:pl-8
                     scrollbar-hide">
                   <TabsTrigger value="about" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">About</TabsTrigger>
+                  {isOwnProfile && (
+                    <TabsTrigger value="sessions" data-testid="my-sessions-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">My Sessions</TabsTrigger>
+                  )}
+                  {isOwnProfile && organizerStatus.hasEngagedWithOrganizing && (
+                    <TabsTrigger value="organizing" data-testid="my-organized-sessions-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Organising</TabsTrigger>
+                  )}
+                  <TabsTrigger value="tournaments" data-testid="tournaments-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Tournaments</TabsTrigger>
                   <TabsTrigger value="photos" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Photos</TabsTrigger>
                   <TabsTrigger value="schedule" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Schedule & Locations</TabsTrigger>
-                  <TabsTrigger value="practice" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Hitting Partner</TabsTrigger>
                   <TabsTrigger value="students" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">My Students</TabsTrigger>
-                  <TabsTrigger value="marketplace" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-baseg">Marketplace</TabsTrigger>
-                  <TabsTrigger value="contact" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Contact</TabsTrigger>
+                  <TabsTrigger value="marketplace" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Selling ({marketplaceItems.length})</TabsTrigger>
+                  {!isOwnProfile && (
+                    <TabsTrigger value="contact" data-testid="contact-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Contact</TabsTrigger>
+                  )}
                 </TabsList>
 
-                <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  {/* Left Content (2 cols) */}
-                  <div className="lg:col-span-2 space-y-8">
+                <div className="mt-8 space-y-8">
                     <TabsContent value="about" className="space-y-8 mt-0">
                       <Card>
                         <CardHeader>
@@ -962,6 +978,13 @@ export default function CoachProfile() {
                           )}
                         </CardContent>
                       </Card>
+
+                      {isOwnProfile && organizerStatus.data && (
+                        <BecomeOrganizerCard
+                          status={organizerStatus.data}
+                          onChange={() => organizerStatus.refresh()}
+                        />
+                      )}
 
                       {isEditing && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1087,6 +1110,22 @@ export default function CoachProfile() {
                           </div>
                         </CardContent>
                       </Card>
+                    </TabsContent>
+
+                    {isOwnProfile && (
+                      <TabsContent value="sessions" className="space-y-8 mt-0" data-testid="my-sessions-tab-content">
+                        <MySessionsSection />
+                      </TabsContent>
+                    )}
+
+                    {isOwnProfile && organizerStatus.hasEngagedWithOrganizing && (
+                      <TabsContent value="organizing" className="space-y-8 mt-0" data-testid="my-organized-sessions-tab-content">
+                        <MyOrganizedSessionsSection />
+                      </TabsContent>
+                    )}
+
+                    <TabsContent value="tournaments" className="mt-0" data-testid="tournaments-tab-content">
+                      <TournamentHistorySection userId={coachUserId} isOwnProfile={isOwnProfile} />
                     </TabsContent>
 
                     <TabsContent value="photos" className="mt-0">
@@ -1344,103 +1383,6 @@ export default function CoachProfile() {
                       </Card>
                     </TabsContent>
 
-                    <TabsContent value="practice" className="mt-0">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
-                            <Trophy className="w-5 h-5 text-primary" />
-                            Hitting Partner / Practice Sessions
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                          <div className="bg-muted/30 p-6 rounded-lg border border-border/50">
-                            <div className="flex items-start gap-4">
-                              <div className="p-3 bg-primary/10 rounded-full text-primary">
-                                <Trophy className="w-6 h-6" />
-                              </div>
-                              <div>
-                                <h3 className="text-lg font-bold mb-2">Need a Hitting Partner?</h3>
-                                <p className="text-muted-foreground mb-4">
-                                  Apart from coaching, I also offer hitting sessions for players who want to practice match play, improve consistency, or just get a good workout without technical instruction.
-                                </p>
-                                
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <Check className="w-4 h-4 text-primary" />
-                                    <span>Match Play Simulation</span>
-                                  </div>
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <Check className="w-4 h-4 text-primary" />
-                                    <span>Drill Repetition</span>
-                                  </div>
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <Check className="w-4 h-4 text-primary" />
-                                    <span>Tie-break Practice</span>
-                                  </div>
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <Check className="w-4 h-4 text-primary" />
-                                    <span>High Intensity Rallying</span>
-                                  </div>
-                                </div>
-                                
-                                <div className="flex items-center justify-between bg-background p-4 rounded-md border">
-                                  <div>
-                                    <span className="text-sm text-muted-foreground block">Session Rate</span>
-                                    <span className="text-xl font-bold">$50 <span className="text-sm font-normal text-muted-foreground">/ hour</span></span>
-                                  </div>
-                                  <Dialog open={isBookingOpen} onOpenChange={setIsBookingOpen}>
-                                    <DialogTrigger asChild>
-                                      <Button>Book Practice</Button>
-                                    </DialogTrigger>
-                                    <DialogContent className="sm:max-w-[425px]">
-                                      <DialogHeader>
-                                        <DialogTitle>Book a Hitting Session</DialogTitle>
-                                        <DialogDescription>
-                                          Send a request to practice with {profile.name}. 
-                                        </DialogDescription>
-                                      </DialogHeader>
-                                      <div className="grid gap-4 py-4">
-                                        <div className="grid gap-2">
-                                          <Label htmlFor="name">Name</Label>
-                                          <Input id="name" defaultValue={user?.name || ""} placeholder="Your name" />
-                                        </div>
-                                        <div className="grid gap-2">
-                                          <Label htmlFor="email">Email</Label>
-                                          <Input id="email" type="email" placeholder="your@email.com" />
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                          <div className="grid gap-2">
-                                            <Label htmlFor="date">Preferred Date</Label>
-                                            <Input id="date" type="date" />
-                                          </div>
-                                          <div className="grid gap-2">
-                                            <Label htmlFor="time">Time</Label>
-                                            <Input id="time" type="time" />
-                                          </div>
-                                        </div>
-                                        <div className="grid gap-2">
-                                          <Label htmlFor="message">Message</Label>
-                                          <Textarea id="message" placeholder="I'd like to work on my backhand cross-court rally..." />
-                                        </div>
-                                      </div>
-                                      <DialogFooter>
-                                        <Button type="submit" onClick={() => {
-                                          setIsBookingOpen(false);
-                                          toast({
-                                            title: "Request Sent!",
-                                            description: `Your hitting session request has been sent to ${profile.name}.`,
-                                          });
-                                        }}>Send Request</Button>
-                                      </DialogFooter>
-                                    </DialogContent>
-                                  </Dialog>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </TabsContent>
 
                     <TabsContent value="students" className="mt-0">
                       <Card>
@@ -1513,7 +1455,7 @@ export default function CoachProfile() {
                         <CardHeader className="flex flex-row items-center justify-between">
                           <CardTitle className="flex items-center gap-2">
                             <ShoppingBag className="w-5 h-5 text-primary" />
-                            Coach's Marketplace
+                            My Items for Sale
                           </CardTitle>
                           {isEditing && marketplaceItems.length < 3 && (
                             <Button size="sm" variant="outline" className="gap-2" onClick={() => setIsItemModalOpen(true)}>
@@ -1781,7 +1723,8 @@ export default function CoachProfile() {
                       </Dialog>
                     </TabsContent>
 
-                    <TabsContent value="contact" className="mt-0">
+                    <TabsContent value="contact" className="mt-0" data-testid="contact-tab-content">
+                      {!isOwnProfile && (
                       <Card>
                         <CardHeader>
                           <CardTitle className="flex items-center gap-2">
@@ -1878,127 +1821,8 @@ export default function CoachProfile() {
                           </div>
                         </CardContent>
                       </Card>
+                      )}
                     </TabsContent>
-                  </div>
-
-                  {/* Right Sidebar */}
-                  <div className="space-y-6">
-                    <Card className="bg-card border-border/50 sticky lg:sticky md:static shadow-sm">
-                      <CardHeader>
-                        <CardTitle className="text-xl flex items-center gap-2">
-                          <Check className="w-5 h-5 text-primary" />
-                          Coach Overview
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-6">
-                        <div className="space-y-4">
-                          <div className="flex justify-between items-center">
-                            <span className="text-muted-foreground text-sm">Verification Status</span>
-                            <Badge variant="outline" className="text-primary border-primary/30 bg-primary/5 flex gap-1 items-center">
-                              <Check className="w-3 h-3" /> Verified
-                            </Badge>
-                          </div>
-                          
-                          <div className="flex justify-between items-center gap-2">
-                            <span className="text-muted-foreground text-sm whitespace-nowrap">Response Time</span>
-                            {isEditing ? (
-                              <Input 
-                                value={profile.response_time} 
-                                onChange={(e) => setProfile({...profile, response_time: e.target.value})}
-                                className="h-8 w-[140px] text-right"
-                              />
-                            ) : (
-                              <span className="font-medium text-sm text-right">{profile.response_time}</span>
-                            )}
-                          </div>
-
-                          <div className="flex justify-between items-center">
-                            <span className="text-muted-foreground text-sm">Accepting Students</span>
-                            {isEditing ? (
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-muted-foreground">{profile.accepting_students ? 'Open' : 'Closed'}</span>
-                                <Switch 
-                                  checked={profile.accepting_students}
-                                  onCheckedChange={(checked) => setProfile({...profile, accepting_students: checked})}
-                                />
-                              </div>
-                            ) : (
-                              <Badge className={cn("border-none text-white", profile.accepting_students ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600")}>
-                                {profile.accepting_students ? "Yes, Open" : "Waitlist Only"}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="pt-4 border-t border-border/50">
-                          <div className="flex justify-between items-center mb-3">
-                            <span className="text-sm font-bold block">Performance Stats</span>
-                            {isEditing && <span className="text-[10px] text-muted-foreground uppercase tracking-widest bg-muted px-2 py-1 rounded">Editable Prototype</span>}
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/50 relative group">
-                              {isEditing ? (
-                                <Input 
-                                  value={profile.active_students}
-                                  onChange={(e) => setProfile({...profile, active_students: e.target.value})}
-                                  className="text-center h-8 text-lg font-bold p-0 border-none bg-transparent focus-visible:ring-0 focus-visible:bg-background" 
-                                />
-                              ) : (
-                                <div className="text-2xl font-bold text-primary">{profile.active_students}</div>
-                              )}
-                              <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Active Students</div>
-                            </div>
-                            <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/50 relative">
-                              {isEditing ? (
-                                <Input 
-                                  value={String(profile.rating)}
-                                  onChange={(e) => setProfile({...profile, rating: parseFloat(e.target.value) || 0})}
-                                  className="text-center h-8 text-lg font-bold p-0 border-none bg-transparent focus-visible:ring-0 focus-visible:bg-background" 
-                                />
-                              ) : (
-                                <div className="text-2xl font-bold text-primary">{profile.rating}</div>
-                              )}
-                              <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Rating</div>
-                            </div>
-                            <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/50 relative">
-                              {isEditing ? (
-                                <Input 
-                                  value={profile.hours_taught}
-                                  onChange={(e) => setProfile({...profile, hours_taught: e.target.value})}
-                                  className="text-center h-8 text-lg font-bold p-0 border-none bg-transparent focus-visible:ring-0 focus-visible:bg-background" 
-                                />
-                              ) : (
-                                <div className="text-2xl font-bold text-primary">{profile.hours_taught}</div>
-                              )}
-                              <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Hours Taught</div>
-                            </div>
-                            <div className="bg-muted/30 p-3 rounded-lg text-center border border-border/50 relative">
-                              {isEditing ? (
-                                <div className="flex items-center justify-center gap-0.5">
-                                  <Input 
-                                    value={profile.attendance}
-                                    onChange={(e) => setProfile({...profile, attendance: parseInt(e.target.value) || 0})}
-                                    className="text-center h-8 w-12 text-lg font-bold p-0 border-none bg-transparent focus-visible:ring-0 focus-visible:bg-background" 
-                                  />
-                                  <span className="text-lg font-bold text-primary">%</span>
-                                </div>
-                              ) : (
-                                <div className="text-2xl font-bold text-primary">{profile.attendance}%</div>
-                              )}
-                              <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Attendance</div>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <Button className="w-full gap-2" variant="outline" onClick={() => {
-                          navigator.clipboard.writeText(window.location.href);
-                          toast({ description: "Profile link copied to clipboard!" });
-                        }}>
-                          <Send className="w-4 h-4" /> Share Profile
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </div>
                 </div>
               </Tabs>
             </div>

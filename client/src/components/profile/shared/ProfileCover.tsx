@@ -1,35 +1,41 @@
 import { ReactNode } from "react";
 import { Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import genericDefaultCover from "/assets/images/cinematic_tennis_court_abstract_background.png";
 
 interface ProfileCoverProps {
   cover?: string | null;
   isOwner: boolean;
   onEdit?: () => void;
   children?: ReactNode;
+  // Role-specific branded default (player vs coach). Falls back to a
+  // generic tennis-court image if a page doesn't pass one.
+  defaultCover?: string;
 }
 
 export function ProfileCover({
   cover,
   isOwner,
   onEdit,
+  defaultCover,
 }: ProfileCoverProps) {
   return (
     <div className="relative w-full h-[280px] sm:h-[300px] md:h-[380px] lg:h-[460px] overflow-hidden rounded-t-3xl group">
 
-      {/* Cover Image */}
+      {/* Cover Image — a single bundled default when the user has none,
+          so there's nothing to swap once their real data loads. */}
       <img
-        src={cover ?? "/assets/images/default-cover.jpg"}
+        src={cover || defaultCover || genericDefaultCover}
         alt="Profile Cover"
         data-testid="profile-cover"
         className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
       />
 
-      {/* Dark Overlay */}
+      {/* Dark Overlay — the only scrim now. The old extra fade-to-background
+          strip at the bottom sat exactly where the hero card overlaps,
+          pre-opacifying the photo there and making the card's own
+          translucency pointless no matter how see-through it was set to. */}
       <div className="absolute inset-0 bg-black/25" />
-
-      {/* Bottom Gradient */}
-      <div className="absolute inset-x-0 bottom-0 h-36 bg-linear-to-t from-background via-background/60 to-transparent" />
 
       {/* Cover Edit Button */}
       {isOwner && (

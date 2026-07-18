@@ -13,12 +13,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, ShieldCheck, FileText, Plane, Heart, Trophy, Users, Building2, Eye, Globe, } from "lucide-react";
+import { Plus, Edit, Trash2, ShieldCheck, FileText, Plane, Heart, Trophy, Users, Building2, Eye, Globe, ExternalLink as ExternalLinkIcon, } from "lucide-react";
 import SEO from "@/components/seo";
 import { ClubForm } from "@/components/admin/clubs/ClubForm";
 import { TravelForm } from "@/components/admin/travel/TravelForm";
 import { ArticleForm } from "@/components/admin/articles/ArticleForm";
-import { clubValidationSchema, articleSchema, travelSchema, recreationSchema, tournamentSchema } from "@/lib/validations";
+import AdminOrganizerRequestsTab from "@/components/admin/OrganizerRequestsTab";
+import { clubValidationSchema, articleSchema, travelSchema, recreationSchema } from "@/lib/validations";
 import AdminUsersTab from "@/components/admin/users_tab";
 import { ClubAdminCard } from "@/components/admin/clubs/ClubAdminCard";
 import { ClubPreviewDialog } from "@/components/admin/clubs/ClubPreviewDialog";
@@ -42,28 +43,27 @@ import {
 } from "@/lib/adminFields";
 
 const ICONS: Record<Resource, any> = {
-  articles: FileText,
-  travel: Plane,
-  recreation: Heart,
-  "event-tournaments": Trophy,
   clubs: Building2,
+  travel: Plane,
+  articles: FileText,
+  recreation: Heart,
 };
 
 const VALID_TABS: AdminTab[] = [
-  "articles",
-  "travel",
-  "recreation",
-  "event-tournaments",
-  "clubs",
   "users",
+  "organizer-requests",
+  "clubs",
+  "travel",
+  "articles",
+  "recreation",
 ];
 
 function getInitialTab(): AdminTab {
-  if (typeof window === "undefined") return "articles";
+  if (typeof window === "undefined") return "users";
   const tab = new URLSearchParams(window.location.search).get("tab");
   return (VALID_TABS as string[]).includes(tab || "")
     ? (tab as AdminTab)
-    : "articles";
+    : "users";
 }
 
 function getInitialEditId(param: string): string | null {
@@ -361,10 +361,6 @@ export default function AdminPage() {
   
       case "recreation":
         validation = recreationSchema.safeParse(payload);
-        break;
-  
-      case "event-tournaments":
-        validation = tournamentSchema.safeParse(payload);
         break;
     }
   
@@ -706,13 +702,14 @@ export default function AdminPage() {
         <div className="container mx-auto px-4 py-12 mt-16">
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
             <div>
-              <Badge className="mb-3 bg-primary text-primary-foreground">
-                <ShieldCheck className="w-3 h-3 mr-1" /> Admin
-              </Badge>
-              <h1 className="text-4xl md:text-5xl font-display font-bold">Content Manager</h1>
-              <p className="text-muted-foreground mt-2">Manage articles, travel, recreation, users and tournaments.</p>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl md:text-3xl font-display font-bold">Content Manager</h1>
+                <Badge className="bg-primary text-primary-foreground">
+                  <ShieldCheck className="w-3 h-3 mr-1" /> Admin
+                </Badge>
+              </div>
             </div>
-            {activeTab !== "users" && (
+            {activeTab !== "users" && activeTab !== "organizer-requests" && (
             <Button
               onClick={openCreate}
               className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
@@ -725,9 +722,27 @@ export default function AdminPage() {
 
           <Tabs
             value={activeTab}
-            onValueChange={(v) => setActiveTab(v as Resource)}
+            onValueChange={(v) => setActiveTab(v as AdminTab)}
           >
             <TabsList className="grid grid-cols-2 md:grid-cols-6 mb-8 w-full max-w-5xl">
+
+              <TabsTrigger
+                value="users"
+                className="cursor-pointer"
+                data-testid="admin-tab-users"
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Users
+              </TabsTrigger>
+
+              <TabsTrigger
+                value="organizer-requests"
+                className="cursor-pointer"
+                data-testid="admin-tab-organizer-requests"
+              >
+                <Trophy className="w-4 h-4 mr-2" />
+                Organiser &amp; Sessions
+              </TabsTrigger>
 
               {(Object.keys(RESOURCE_LABELS) as Resource[]).map((r) => {
                 const Icon = ICONS[r];
@@ -744,15 +759,6 @@ export default function AdminPage() {
                   </TabsTrigger>
                 );
               })}
-
-              <TabsTrigger
-                value="users"
-                className="cursor-pointer"
-                data-testid="admin-tab-users"
-              >
-                <Users className="w-4 h-4 mr-2" />
-                Users
-              </TabsTrigger>
 
             </TabsList>
 
@@ -890,6 +896,7 @@ export default function AdminPage() {
                                 size="icon"
                                 variant="ghost"
                                 onClick={() => openEdit(club)}
+                                data-testid={`club-row-edit-btn-${club.id}`}
                               >
                                 <Edit className="w-4 h-4" />
                               </Button>
@@ -901,9 +908,29 @@ export default function AdminPage() {
                                   setPreviewClub(club);
                                   setPreviewOpen(true);
                                 }}
+                                data-testid={`club-row-preview-btn-${club.id}`}
                               >
                                 <Eye className="w-4 h-4" />
                               </Button>
+
+                              {club.listingType === "premium" &&
+                                club.slug && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    asChild
+                                    title="View Live Page"
+                                    data-testid={`club-row-view-live-btn-${club.id}`}
+                                  >
+                                    <a
+                                      href={`/clubs/${club.slug}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      <ExternalLinkIcon className="w-4 h-4" />
+                                    </a>
+                                  </Button>
+                                )}
                 
                               <Button
                                 size="icon"
@@ -915,6 +942,7 @@ export default function AdminPage() {
                                 onClick={() =>
                                   toggleClubStatus(club)
                                 }
+                                data-testid={`club-row-toggle-status-btn-${club.id}`}
                               >
                                 <Globe className="w-4 h-4" />
                               </Button>
@@ -924,6 +952,7 @@ export default function AdminPage() {
                                 variant="ghost"
                                 onClick={() => remove(club)}
                                 className="text-destructive"
+                                data-testid={`club-row-delete-btn-${club.id}`}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -1339,6 +1368,9 @@ export default function AdminPage() {
               <AdminUsersTab />
             </TabsContent>
 
+            <TabsContent value="organizer-requests">
+              <AdminOrganizerRequestsTab />
+            </TabsContent>
           </Tabs>
 
         </div>

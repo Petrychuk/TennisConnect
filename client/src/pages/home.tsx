@@ -15,6 +15,7 @@ import { HomeTravel } from "@/components/home-travel";
 //import { HomeRecreation } from "@/components/home-recreation";
 //import { HomeTournaments } from "@/components/home-tournaments";
 import { HomeClubs } from "@/components/home-clubs";
+import { PlayThisWeek } from "@/components/home-play-this-week";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
@@ -61,6 +62,7 @@ export default function Home() {
         <Hero />       
         <AboutUs />
         <Features />
+        <PlayThisWeek />
         <HomeClubs />
         <HomeTravel />       
         {/* <ProShop /> */}

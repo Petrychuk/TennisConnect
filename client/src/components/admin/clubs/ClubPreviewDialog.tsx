@@ -7,6 +7,7 @@ import {
   import { Button } from "@/components/ui/button";
   import { ClubCard } from "@/components/clubs/ClubCard";
   import { Badge } from "@/components/ui/badge";
+  import { ExternalLink } from "lucide-react";
   
   interface ClubPreviewDialogProps {
     open: boolean;
@@ -104,24 +105,42 @@ import {
                 data-testid="club-premium-preview-title"> 
                   Premium Club Page 
                 </h3>  
+
                 <p 
                 className="mt-3 text-muted-foreground"
                 data-testid="club-premium-preview-description">  
-                  Premium Club Page Preview will be available soon.  
+                  {club.slug
+                    ? "Open the real premium page below to review exactly what visitors will see, including the hero, gallery, and contact details."
+                    : "Add a slug to this listing to generate its premium page."}
                 </p>  
-                <ul className="mt-6 space-y-2 text-sm"
-                data-testid="club-premium-preview-features">
-  
-                  <li>✓ Hero Banner</li>
-                  <li>✓ Club Logo</li>
-                  <li>✓ Image Gallery</li>
-                  <li>✓ About Club</li>
-                  <li>✓ Court Information</li>
-                  <li>✓ Competitions</li>
-                  <li>✓ Contact Person</li>
-                  <li>✓ Booking CTA</li>
-  
-                </ul> 
+
+                {club.slug && (
+                  <Button
+                    asChild
+                    className="mt-5 rounded-xl font-bold cursor-pointer"
+                    data-testid="club-premium-preview-open-btn"
+                  >
+                    <a
+                      href={`/clubs/${club.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      Open Premium Page
+                    </a>
+                  </Button>
+                )}
+
+                {club.status !== "published" && (
+                  <p
+                    className="mt-3 text-xs text-muted-foreground"
+                    data-testid="club-premium-preview-draft-note"
+                  >
+                    This listing isn't published yet — only admins can
+                    open this link right now; visitors will see a 404
+                    until you publish it.
+                  </p>
+                )}
               </section> 
             )}
   

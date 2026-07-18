@@ -76,7 +76,7 @@ export default function TravelPage() {
     <div className="min-h-screen bg-background font-sans">
       <Navbar />
 
-      <div className="relative min-h-[24vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-center overflow-hidden">
+      <div className="relative overflow-hidden">
         <div
           className="absolute inset-0 z-0"
           style={{
@@ -85,13 +85,18 @@ export default function TravelPage() {
             backgroundPosition: "center",
           }}
         />
-        <div className="absolute inset-0 bg-linear-to-b from-background/80 via-background/20 to-background z-10" />
-        <div className="relative z-20 container mx-auto px-4 text-center mt-16 md:mt-20">
+        <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100% z-10" />
+
+        <div className="relative min-h-[24vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-start">
+        <div className="relative z-20 container mx-auto px-4 text-left mt-24 md:mt-20">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
-            <Badge className="mb-6 bg-primary text-primary-foreground px-4 py-1.5 text-sm font-bold">
-              <Plane className="w-4 h-4 mr-2" /> Tennis Travel
-            </Badge>
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold mb-4 tracking-tight">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md mb-6">
+              <Plane className="w-3.5 h-3.5 text-primary" />
+              <span className="text-xs sm:text-sm font-bold tracking-wider uppercase text-white">
+                Tennis Travel
+              </span>
+            </div>
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold mb-4 tracking-tight text-white drop-shadow-md">
               Train. Travel.{" "}
               <span className="relative inline-block text-primary">
                 Transform.
@@ -109,29 +114,33 @@ export default function TravelPage() {
                 </svg>
               </span>
             </h1>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto font-light">
+            <p className="text-lg md:text-xl text-white/85 max-w-2xl font-light drop-shadow-sm">
               Curated tennis getaways. Train with pros, recover in paradise.
             </p>
           </motion.div>
         </div>
-      </div>
+        </div>
 
-      <div className="sticky top-16 z-40 bg-background/80 backdrop-blur-lg border-b py-4">
+      {/* Search bar — floats over the tail of the photo */}
+      <div className="relative z-20 mt-5 pb-5 md:pb-10">
         <div className="container mx-auto px-4">
+          <div className="bg-card/50 backdrop-blur-lg border border-border/40 shadow-lg rounded-2xl p-3 md:p-4">
           <div className="relative w-full md:w-96">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Search destinations..."
-              className="pl-10 h-11 bg-secondary/50 border-transparent focus:border-primary rounded-xl"
+              className="pl-10 h-11 bg-background/80 border-transparent focus:border-primary rounded-xl"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               data-testid="travel-search-input"
             />
           </div>
+          </div>
         </div>
       </div>
+      </div>
 
-      <div className="container mx-auto px-4 py-12">
+      <div className="relative z-30 container mx-auto px-4 py-12 md:-mt-4">
         {filtered.length === 0 ? (
           <div className="text-center py-20">
             <Plane className="w-12 h-12 mx-auto text-muted-foreground mb-4" />

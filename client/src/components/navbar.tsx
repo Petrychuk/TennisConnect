@@ -19,8 +19,10 @@ import {
   Plane,
   BookOpen,
   ChevronRight,
+  Trophy,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { HeaderClockWeather } from "@/components/header-clock-weather";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -115,7 +117,7 @@ export function Navbar() {
     { name: "Coaches", href: "/coaches", icon: Award },
     /* { name: "Tournaments", href: "/tournaments" }, */
     { name: "Club Communities", href: "/clubs", icon: Building2 },
-    { name: "Travel", href: "/travel", icon: Plane },
+    { name: "Travels", href: "/travel", icon: Plane },
     { name: "Tennis IQ", href: "/articles", icon: BookOpen },
     /* { name: "Recreation", href: "/recreation" },
     { name: "Marketplace", href: "/marketplace" }, 
@@ -161,32 +163,26 @@ export function Navbar() {
               <Link
               key={link.name}
               href={link.href}
-              className="text-sm font-medium hover:text-lime-600 transition-colors cursor-pointer"
+              className={`text-sm font-medium transition-colors cursor-pointer relative ${
+                location.startsWith(link.href)
+                  ? "text-primary font-bold"
+                  : "hover:text-lime-600"
+              }`}
             >
               {link.name}
+              {location.startsWith(link.href) && (
+                <span className="absolute -bottom-1.5 left-0 right-0 h-0.5 rounded-full bg-primary" />
+              )}
             </Link>  
           ))}
         </div>
 
         {/* CTA & Mobile Menu */}
         <div className="flex items-center gap-4">
+          {/* Compact Sydney time/weather — desktop only */}
+          <HeaderClockWeather />
           {isAuthenticated ? (
             <div className="hidden md:flex items-center gap-2">
-              {/* Notifications Bell */}
-              <Link href="/messages">
-                <Button variant="ghost" size="icon" className="relative cursor-pointer" data-testid="button-notifications">
-                  <Bell className="w-5 h-5" />
-                  {unreadCount > 0 && (
-                    <Badge 
-                      className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-[10px] bg-red-500 text-white border-2 border-background"
-                      data-testid="badge-unread-count"
-                    >
-                      {unreadCount > 9 ? "9+" : unreadCount}
-                    </Badge>
-                  )}
-                </Button>
-              </Link>
-
               <Link href={profileHref}>
                 <Button variant="ghost" className="font-bold hover:text-lime-600 gap-2 cursor-pointer">
                   <User className="w-4 h-4" />
@@ -231,6 +227,14 @@ export function Navbar() {
                       </Link>
                     </DropdownMenuItem>
                   )}
+                  {user?.isOrganizer && (
+                    <DropdownMenuItem asChild className="cursor-pointer">
+                      <Link href="/organiser/hub" className="flex items-center gap-2" data-testid="navbar-organiser-hub-link">
+                        <Trophy className="w-4 h-4" />
+                        Organiser Hub
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem className="cursor-pointer">
                     <Settings className="h-4 w-4" />
                       Settings
@@ -257,6 +261,21 @@ export function Navbar() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              {/* Notifications Bell — now after the avatar */}
+              <Link href="/messages">
+                <Button variant="ghost" size="icon" className="relative cursor-pointer" data-testid="button-notifications">
+                  <Bell className="w-5 h-5" />
+                  {unreadCount > 0 && (
+                    <Badge 
+                      className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-[10px] bg-red-500 text-white border-2 border-background"
+                      data-testid="badge-unread-count"
+                    >
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </Badge>
+                  )}
+                </Button>
+              </Link>
             </div>
           ) : (
             <Link href="/auth">
@@ -581,6 +600,18 @@ export function Navbar() {
             >
               <ShieldCheck className="w-4 h-4" />
               Admin Panel
+            </Link>
+          )}
+
+          {user?.isOrganizer && (
+            <Link
+              href="/organiser/hub"
+              data-testid="mobile-more-organiser-hub-link"
+              className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-muted transition-colors cursor-pointer"
+              onClick={() => setMoreOpen(false)}
+            >
+              <Trophy className="w-4 h-4" />
+              Organiser Hub
             </Link>
           )}
 

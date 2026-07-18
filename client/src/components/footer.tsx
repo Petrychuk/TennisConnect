@@ -253,7 +253,7 @@ export function Footer() {
 
               <li>
                 <Link
-                  href="/community-guidelines"
+                  href="/articles/community-guidelines"
                   className="hover:text-primary transition-colors"
                 >
                   Community Guidelines

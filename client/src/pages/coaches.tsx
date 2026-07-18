@@ -23,7 +23,7 @@ import {
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { AppPagination } from "@/components/shared/AppPagination";
 import { Search, MapPin, Star, Filter, ArrowRight, DollarSign, X, Calendar } from "lucide-react";
-import heroImage from "/assets/images/professional_tennis_coaching_session_on_a_sunny_court.png";
+import heroImage from "/assets/images/dashboard_coach.png";
 
 import { COACHES_DATA } from "@/lib/dummy-data";
 
@@ -140,9 +140,14 @@ export default function CoachesPage() {
     setMinRating(0);
   };
 
+  const isFirstPageRender = useRef(true);
   useEffect(() => {
     if (!pagination) return;
-  
+    if (isFirstPageRender.current) {
+      isFirstPageRender.current = false;
+      return;
+    }
+
     coachesSectionRef.current?.scrollIntoView({
       behavior: "smooth",
       block: "start",
@@ -169,8 +174,9 @@ export default function CoachesPage() {
         <Navbar />
         
         <main>
-          {/* Modern Hero Section */}
-          <section className="relative min-h-[24vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-center overflow-hidden">
+          {/* Modern Hero Section — photo backdrop shared with the filter bar
+              below, same treatment as the Partners page */}
+          <section className="relative overflow-hidden">
             {/* Background Image with Overlay */}
             <div className="absolute inset-0 z-0">
               <img 
@@ -181,9 +187,10 @@ export default function CoachesPage() {
                 object-cover
                 object-[60%_20%]"
               />
-              <div className="absolute inset-0 bg-linear-to-b from-background/80 via-background/20 to-background" />
+              <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100%" />
             </div>
 
+            <div className="relative min-h-[24vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-start">
             <div className="container mx-auto px-2 relative z-10">
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
@@ -196,26 +203,18 @@ export default function CoachesPage() {
                   px-4
                   md:pl-8
                   lg:pl-0
-                  text-center
-                  md:text-left
+                  text-left
                   md:translate-y-10
                   lg:translate-y-2
                   xl:translate-y-6
                   xl:pt-20"
               >
-                <Badge className="mb-3
-                  md:mb-6
-                  px-3
-                  md:px-4
-                  py-1
-                  text-[10px]
-                  sm:text-xs
-                  md:text-sm
-                  font-bold
-                  uppercase
-                  tracking-wider">
-                  Find Best Coach
-                </Badge>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md mb-3 md:mb-6">
+                  <span className="w-2 h-2 rounded-full bg-primary" />
+                  <span className="text-[10px] sm:text-xs md:text-sm font-bold tracking-wider uppercase text-white">
+                    Find Best Coach
+                  </span>
+                </div>
                 <h1 className="text-3xl
                   sm:text-4xl
                   md:text-5xl
@@ -223,7 +222,9 @@ export default function CoachesPage() {
                   font-display
                   font-bold
                   leading-[0.95]
-                  mb-3">
+                  mb-3
+                  text-white
+                  drop-shadow-md">
                 Level Up <span className="text-primary relative inline-block">Your Game<svg
                   className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40"
                   viewBox="0 0 100 10"
@@ -242,21 +243,20 @@ export default function CoachesPage() {
                     text-sm
                     sm:text-base
                     md:text-lg
-                    text-muted-foreground
+                    text-white/85
                     leading-[1.2]
                     md:leading-relaxed
                     max-w-xl
-                    mx-auto
-                    md:mx-0">
+                    drop-shadow-sm">
                   Connect with certified tennis coaches in Sydney to take your game to the next level, whether you're a beginner or a tournament player.
                 </p>
               </motion.div>
             </div>
-          </section>
+            </div>
 
-          {/* Filter & Search Bar - Floating */}
-          <div className="container mx-auto px-2 mt-0 md:pt-2 md:-mt-2 relative z-20 mb-8 md:mb-14">
-            <div className="bg-card/95
+          {/* Filter & Search Bar - floats over the tail of the photo */}
+          <div className="container mx-auto px-2 mt-5 relative z-20 pb-5 md:pb-10">
+            <div className="bg-card/50
               backdrop-blur-sm
               border border-border/40
               shadow-lg
@@ -373,9 +373,11 @@ export default function CoachesPage() {
               </div>
             </div>
           </div>
+          </section>
 
-          {/* Coaches Grid */}
-          <section className="container mx-auto px-4 pb-24 scroll-mt-24"
+          {/* Coaches Grid — pulled up so the photo's fade dissolves under
+              the top of the first row, matching the Partners page */}
+          <section className="relative z-30 container mx-auto px-4 md:-mt-4 pb-24 scroll-mt-24"
             ref={coachesSectionRef}>
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
               {filteredCoaches.map((coach, index) => (

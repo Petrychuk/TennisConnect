@@ -91,22 +91,63 @@ export function ClubPricingSection({
 
       </div>
 
-      {/* Premium Placeholder */}
+      {/* Premium CTA */}
 
       {form.listingType === "premium" && (
         <div
-          className="rounded-2xl border border-dashed p-6"
-          data-testid="club-premium-pricing-placeholder"
+          className="rounded-2xl border p-6 space-y-5"
+          data-testid="club-premium-cta-section"
         >
-          <h3 className="font-semibold">
-            Premium Pricing
-          </h3>
+          <div>
+            <h3 className="font-semibold">
+              Premium Page Call-to-Action
+            </h3>
 
-          <p className="mt-2 text-sm text-muted-foreground">
-            Additional pricing options such as memberships,
-            online booking and pricing tables will be available
-            for Premium listings.
-          </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Customise the main button on the club's premium page
+              (for example "Book a Court" or "Join Community"). Leave
+              blank to use the default label for this listing's type.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="club-cta-text">
+              Button Label
+            </Label>
+
+            <Input
+              id="club-cta-text"
+              data-testid="club-cta-text"
+              placeholder="e.g. Book a Court"
+              value={form.ctaText}
+              onChange={(e) =>
+                updateField("ctaText", e.target.value)
+              }
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="club-cta-url">
+              Button Link
+            </Label>
+
+            <Input
+              id="club-cta-url"
+              data-testid="club-cta-url"
+              type="url"
+              placeholder="https://your-booking-system.com"
+              value={form.ctaUrl}
+              onChange={(e) =>
+                updateField("ctaUrl", e.target.value)
+              }
+            />
+
+            <p className="text-xs text-muted-foreground">
+              If set, the button opens this link in a new tab. If left
+              blank, it scrolls the visitor to the Contact section
+              instead.
+            </p>
+          </div>
         </div>
       )}
     </section>

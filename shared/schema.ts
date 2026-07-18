@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, json, real,  numeric } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, json, real,  numeric, unique, } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import {
@@ -11,6 +11,13 @@ import {
   HOSTED_COMPETITION_TYPES,
   CONTACT_PERSON_ROLES,
 } from "./constants/clubs";
+import { type RegistrationStatus as RegistrationStatusType } from "./constants/sessions";
+import {
+  ORGANIZATION_TYPES,
+  ORGANIZATION_LISTING_TYPES,
+  ORGANIZATION_STATUSES,
+  ORGANIZATION_MEMBER_ROLES,
+} from "./constants/organizations";
 
 // Users table - core authentication
 export const users = pgTable("users", {
@@ -25,6 +32,9 @@ export const users = pgTable("users", {
   status: varchar("status", { length: 50 }).default("active"),
   profileCompleted: boolean("profile_completed").default(false).notNull(),
   isAdmin: boolean("is_admin").default(false).notNull(),
+  // Granted once an Organizer Request is approved by an admin. Lets a
+  // user create an Organization and run Sessions (TC Play Hub / TC Live).
+  isOrganizer: boolean("is_organizer").default(false).notNull(),
   isApproved: boolean("is_approved")
   .default(false)
   .notNull(),
@@ -209,6 +219,18 @@ export const marketplaceItems = pgTable("marketplace_items", {
 });
 
 // CLUB COMMUNITIES
+// A single weekly session (e.g. "Thursday Social Hit, 6:30-8:30 PM, $18,
+// Intermediate"), stored as an array on clubs.sessions.
+export interface ClubSession {
+  id: string;
+  day: string; // e.g. "Monday" .. "Sunday"
+  name: string; // e.g. "Thursday Social Hit"
+  startTime: string; // e.g. "18:30"
+  endTime: string; // e.g. "20:30"
+  price?: number;
+  level?: string; // e.g. "All Levels", "Intermediate"
+}
+
 export const clubs = pgTable("clubs", {
   id: varchar("id")
     .primaryKey()
@@ -279,6 +301,12 @@ export const clubs = pgTable("clubs", {
   .$type<string[]>()
   .default([]),
 
+  // Weekly sessions (day, time, price, level) shown in the Upcoming
+  // Sessions block on the Community premium page. Kept as JSON since
+  // it's simple repeating data scoped to a single club, same pattern
+  // as gallery/services/hostedCompetitions below.
+  sessions: json("sessions").$type<ClubSession[]>().default([]),
+
   // Services
   services: json("services").$type<string[]>().default([]),
 
@@ -325,6 +353,289 @@ export const clubs = pgTable("clubs", {
   updatedAt: timestamp("updated_at")
     .defaultNow()
     .notNull(),
+});
+
+// ============================================================
+// ORGANIZER / PLAY HUB FOUNDATION (architecture v1)
+//
+//   User -> Organizer Request -> Organization -> Organization Members
+//        -> Session -> Registration
+//
+// v2 (Check-In, Live Session, Rounds, Matches, Scores, Statistics,
+// Rankings) is NOT implemented yet, but `sessions.type`/`status` and
+// `registrations.status`/`checkedInAt` are shaped so v2 can be added
+// later without changing the schema. See shared/constants/sessions.ts.
+// ============================================================
+
+// A player/coach asking to become an Organizer. Reviewed by an admin in
+// Admin > Organizer Requests. On approval, users.isOrganizer is set true.
+export const organizerRequests = pgTable("organizer_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  status: text("status").default("pending").notNull(), // pending | approved | rejected
+  note: text("note"), // optional message from the requester
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// An organizing entity (a person or a group) that runs Sessions.
+// Created by an approved Organizer from their Organizer Dashboard.
+export const organizations = pgTable("organizations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  slug: varchar("slug", { length: 255 })
+    .notNull()
+    .unique(),
+  name: text("name").notNull(),
+  description: text("description"),
+  logo: text("logo"),
+  cover: text("cover"),
+  // NEW
+  website: text("website"),
+  phone: text("phone"),
+  email: text("email"),
+  ownerId: varchar("owner_id")
+    .notNull()
+    .references(() => users.id),
+
+  // community | club | academy | coach | company
+  type: text("type")
+    .default("community")
+    .notNull(),
+  // free | featured | premium
+  listingType: text("listing_type")
+    .default("free")
+    .notNull(),
+  verified: boolean("verified")
+    .default(false)
+    .notNull(),
+  // draft | published | inactive
+  status: text("status")
+    .default("draft")
+    .notNull(),
+  createdAt: timestamp("created_at")
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .notNull(),
+});
+
+// Members of an Organization (owner is added automatically on creation).
+export const organizationMembers = pgTable(
+  "organization_members",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    organizationId: varchar("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id),
+
+    role: text("role")
+      .default("owner")
+      .notNull(),
+
+    createdAt: timestamp("created_at")
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    organizationUserUnique: unique().on(
+      table.organizationId,
+      table.userId
+    ),
+  })
+);
+
+// A single "Play This Week" session run by an Organization.
+export const tennisSessions = pgTable("sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  // Free text on purpose (see shared/constants/sessions.ts SESSION_TYPES)
+  // so new formats don't require a migration.
+  type: text("type").default("social").notNull(),
+  status: text("status").default("draft").notNull(), // draft | published | cancelled | live | completed
+  location: text("location"),
+  startAt: timestamp("start_at").notNull(),
+  endAt: timestamp("end_at"),
+  registrationOpensAt: timestamp("registration_opens_at"),
+  registrationClosesAt: timestamp("registration_closes_at"),
+  price: numeric("price", { precision: 10, scale: 2, }),
+  currency: varchar("currency", { length: 8 }).default("AUD").notNull(),
+  maxParticipants: integer("max_participants"),
+  skillLevel: text("skill_level"),
+  visibility: text("visibility")
+  .default("public")
+  .notNull(),
+  courtsCount: integer("courts_count"),
+  waitingListEnabled: boolean("waiting_list_enabled").default(true).notNull(),
+  // Admin moderation — every organizer-submitted session is reviewed
+ // before it goes live. Null until an admin approves or rejects it.
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNote: text("review_note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+
+});
+
+// A player joining a Session. `checkedInAt` is unused today but reserved
+// so QR Check-In (v2) can land without a schema change.
+export const registrations = pgTable(
+  "registrations",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+    sessionId: varchar("session_id")
+      .notNull()
+      .references(() => tennisSessions.id),
+
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id),
+
+    status: text("status")
+      .default("registered")
+      .notNull(),
+
+    checkedInAt: timestamp("checked_in_at"),
+
+    createdAt: timestamp("created_at")
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    sessionUserUnique: unique().on(
+      table.sessionId,
+      table.userId
+    ),
+  })
+);
+ 
+export const organizerRequestsRelations = relations(organizerRequests, ({ one }) => ({
+  user: one(users, {
+    fields: [organizerRequests.userId],
+    references: [users.id],
+  }),
+  reviewer: one(users, {
+    fields: [organizerRequests.reviewedBy],
+    references: [users.id],
+  }),
+}));
+
+export const organizationsRelations = relations(organizations, ({ one, many }) => ({
+  owner: one(users, {
+    fields: [organizations.ownerId],
+    references: [users.id],
+  }),
+  members: many(organizationMembers),
+  sessions: many(tennisSessions),
+}));
+
+export const organizationMembersRelations = relations(organizationMembers, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [organizationMembers.organizationId],
+    references: [organizations.id],
+  }),
+  user: one(users, {
+    fields: [organizationMembers.userId],
+    references: [users.id],
+  }),
+}));
+
+export const tennisSessionsRelations = relations(tennisSessions, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [tennisSessions.organizationId],
+    references: [organizations.id],
+  }),
+  creator: one(users, {
+    fields: [tennisSessions.createdBy],
+    references: [users.id],
+  }),
+  registrations: many(registrations),
+}));
+
+export const registrationsRelations = relations(registrations, ({ one }) => ({
+  session: one(tennisSessions, {
+    fields: [registrations.sessionId],
+    references: [tennisSessions.id],
+  }),
+  user: one(users, {
+    fields: [registrations.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertOrganizerRequestSchema = createInsertSchema(organizerRequests)
+  .pick({
+    userId: true,
+    note: true,
+  })
+  .extend({
+    note: z.string().max(500).optional(),
+  });
+
+export const insertOrganizationSchema = createInsertSchema(organizations)
+  .omit({
+    id: true,
+    slug: true,
+    ownerId: true,
+    status: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  .extend({
+    name: z.string().min(2, "Name must be at least 2 characters"),
+    description: z.string().max(2000).optional(),
+    type: z.enum(ORGANIZATION_TYPES).optional(),
+    listingType: z.enum(ORGANIZATION_LISTING_TYPES).optional(),
+  });
+
+export const insertSessionSchema = createInsertSchema(tennisSessions)
+  .omit({
+    id: true,
+    organizationId: true,
+    createdBy: true,
+    status: true,
+    reviewedBy: true,
+    reviewedAt: true,
+    reviewNote: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  .extend({
+    title: z.string().min(2, "Title must be at least 2 characters"),
+    startAt: z.coerce.date(),
+    endAt: z.coerce.date().optional(),
+    maxParticipants: z.coerce.number().int().positive().optional(),
+    price: z.coerce.number().min(0).optional(),
+  });
+
+export const insertRegistrationSchema = createInsertSchema(registrations).pick({
+  sessionId: true,
+  userId: true,
+});
+
+// A player following a club/community. Surfaced as a "Following" toggle
+// on the premium club page, and (later) a "My Communities" list on the
+// player's own profile.
+export const clubFollows = pgTable("club_follows", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id")
+    .references(() => users.id)
+    .notNull(),
+  clubId: varchar("club_id")
+    .references(() => clubs.id)
+    .notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Messages - for contact requests and messaging between users
@@ -378,13 +689,29 @@ export const usersRelations = relations(users, ({ one, many }) => ({
     fields: [users.id],
     references: [playerProfiles.userId],
   }),
+
   coachProfile: one(coachProfiles, {
     fields: [users.id],
     references: [coachProfiles.userId],
   }),
+
   tournamentHistory: many(tournamentHistory),
+
   marketplaceItems: many(marketplaceItems),
+
   receivedMessages: many(messages),
+
+  // ===== Organizer Foundation =====
+
+  organizerRequests: many(organizerRequests),
+
+  ownedOrganizations: many(organizations),
+
+  organizationMemberships: many(organizationMembers),
+
+  createdSessions: many(tennisSessions),
+
+  registrations: many(registrations),
 }));
 
 export const messagesRelations = relations(messages, ({ one }) => ({
@@ -425,13 +752,6 @@ export const marketplaceItemsRelations = relations(marketplaceItems, ({ one }) =
     references: [users.id],
   }),
 }));
-
-// export const registerSchema = z.object({
-//   email: z.string().email(),
-//   password: z.string().min(6),
-//   name: z.string().min(2),
-//   role: z.enum(["player", "coach"]),
-// });
 
 export const insertUserSchema = createInsertSchema(users)
   .pick({
@@ -481,6 +801,11 @@ export const insertClubSchema = createInsertSchema(clubs).omit({
   updatedAt: true,
 });
 
+export const insertClubFollowSchema = createInsertSchema(clubFollows).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertMessageSchema = createInsertSchema(messages).omit({
   id: true,
   createdAt: true,
@@ -506,6 +831,9 @@ export type MarketplaceItem = typeof marketplaceItems.$inferSelect;
 export type Club = typeof clubs.$inferSelect;
 export type InsertClub = z.infer<typeof insertClubSchema>;
 
+export type ClubFollow = typeof clubFollows.$inferSelect;
+export type InsertClubFollow = z.infer<typeof insertClubFollowSchema>;
+
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
 export type MessageWithAvatar = Message & {
@@ -514,6 +842,32 @@ export type MessageWithAvatar = Message & {
 
 export type SupportRequest = typeof supportRequests.$inferSelect;
 export type InsertSupportRequest = typeof supportRequests.$inferInsert;
+
+export type OrganizerRequest = typeof organizerRequests.$inferSelect;
+export type InsertOrganizerRequest = z.infer<typeof insertOrganizerRequestSchema>;
+
+export type Organization = typeof organizations.$inferSelect;
+export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
+
+export type OrganizationMember = typeof organizationMembers.$inferSelect;
+
+export type TennisSession = typeof tennisSessions.$inferSelect;
+export type InsertSession = z.infer<typeof insertSessionSchema>;
+
+export type Registration = typeof registrations.$inferSelect;
+export type InsertRegistration = z.infer<typeof insertRegistrationSchema>;
+
+// Session enriched with the info the UI actually renders (organization
+// name, spot counts, and — for a specific viewer — their own registration).
+export type SessionWithDetails = TennisSession & {
+  organizationName: string;
+  organizationSlug: string;
+  registeredCount: number;
+  waitlistedCount: number;
+  spotsLeft: number | null; // null when maxParticipants is not set (unlimited)
+  viewerRegistrationStatus?: RegistrationStatusType | null;
+  creatorName?: string; // populated only for the admin moderation view
+};
 
 // Articles / Travel / Recreation / Tournaments schemas
 export const insertArticleSchema = createInsertSchema(articles).omit({

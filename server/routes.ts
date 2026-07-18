@@ -12,8 +12,10 @@ import { requireAuth, requireAdmin } from "./requireAuth";
 import supportRoutes from "./routes/supportRoutes";
 import playersRouter from "./routes/players";
 import coachesRouter from "./routes/coaches";
-import { sendSystemMessage } from "./services/systemMessages";
+import { sendSystemMessage, ORGANIZER_APPROVED_SUBJECT, ORGANIZER_APPROVED_MESSAGE } from "./services/systemMessages";
 import uploadContentRouter from "./routes/upload-content";
+import organizerRouter from "./routes/organizer";
+import weatherRouter from "./routes/weather";
 
 
 import {
@@ -76,6 +78,8 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/api/players", playersRouter);
   app.use("/api/coaches", coachesRouter);
   app.use("/api/upload/content", uploadContentRouter);
+  app.use("/api/organizer", organizerRouter);
+  app.use("/api/weather", weatherRouter);
 
   /* =========================
    SUPPORT CHAT
@@ -106,20 +110,14 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
 
       const hashedPassword = await hashPassword(parsed.data.password);
-      
-      // Default avatar and cover based on role
-      const defaultAvatar = parsed.data.role === 'coach' 
-        ? 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop'
-        : 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop';
-      const defaultCover = parsed.data.role === 'coach'
-        ? 'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=1200&h=400&fit=crop'
-        : 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=1200&h=400&fit=crop';
-            
+
+      // No default avatar/cover: a fresh account has none, and the
+      // profile page renders an initials circle / gradient for that —
+      // baking in a stock photo here just means the client has to swap
+      // it out later, which is the flicker we don't want.
       const user = await storage.createUser({
         ...parsed.data,
         password: hashedPassword,
-        avatar: defaultAvatar,
-        cover: defaultCover,
       });
 
       // 🔑 AUTO-CREATE PROFILE
@@ -138,6 +136,14 @@ export async function registerRoutes(app: Express): Promise<void> {
           location: "Sydney",
         });
       }
+
+      // Checkbox on the registration form: "I want to organise tennis
+      // sessions". Creates a pending Organizer Request for an admin to
+      // review, instead of granting organizer rights outright.
+      if (req.body?.wantsToOrganize === true) {
+        await storage.createOrganizerRequest(user.id, "Requested at sign-up");
+      }
+
       await sendSystemMessage(
         user.id,
         user.role,
@@ -366,10 +372,26 @@ export async function registerRoutes(app: Express): Promise<void> {
       requireAdmin,
       async (_req, res) => {
         const users = await storage.getAllUsers();
+        const requests = await storage.getOrganizerRequests();
 
-        res.json(users);
-      }
-    );
+        // Latest request per user (requests are already ordered desc by createdAt).
+        const latestRequestByUser = new Map<string, string>();
+        for (const r of requests) {
+          if (!latestRequestByUser.has(r.userId)) {
+            latestRequestByUser.set(r.userId, r.status);
+          }
+        }
+
+        const usersWithOrganizerStatus = users.map((u: any) => ({
+          ...u,
+          organizerRequestStatus: u.isOrganizer
+            ? null
+            : latestRequestByUser.get(u.id) || null,
+        }));
+
+        res.json(usersWithOrganizerStatus);
+       }
+     );
 
     app.patch("/api/admin/users/:id/approve",
       requireAdmin,
@@ -477,6 +499,46 @@ export async function registerRoutes(app: Express): Promise<void> {
         res.json({
           success: true,
         });
+      }
+    );
+
+    // Admin grants organizer access directly — for a member who was
+    // already approved and later asks (outside the formal request flow)
+    // to run Sessions, without needing to submit an Organizer Request.
+    app.patch("/api/admin/users/:id/grant-organizer",
+      requireAdmin,
+      async (req, res) => {
+        const reviewerId = (req.user as any).id;
+        const user = await storage.grantOrganizer(req.params.id, reviewerId);
+
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        await sendSystemMessage(
+          user.id,
+          user.role,
+          ORGANIZER_APPROVED_SUBJECT,
+          ORGANIZER_APPROVED_MESSAGE
+        );
+
+        res.json(user);
+      }
+    );
+
+    // Admin revokes organizer access — the user keeps their player/coach
+    // profile, they just lose the ability to create/manage Sessions.
+    app.patch("/api/admin/users/:id/revoke-organizer",
+      requireAdmin,
+      async (req, res) => {
+        const reviewerId = (req.user as any).id;
+        const user = await storage.revokeOrganizer(req.params.id, reviewerId);
+
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        res.json(user);
       }
     );
 
@@ -776,13 +838,63 @@ export async function registerRoutes(app: Express): Promise<void> {
       // Показываем только опубликованные клубы
   
       if (club.status !== "published") {
-  
-        return res.status(404).json({
-          message: "Club not found",
-        });
+        const isAdminPreview =
+          req.isAuthenticated?.() &&
+          (req.user as any)?.isAdmin;
+
+        if (!isAdminPreview) {
+          return res.status(404).json({
+            message: "Club not found",
+          });
+        }
       }
-      res.json(club); 
+
+      let isFollowing = false;
+      if (req.isAuthenticated?.()) {
+        isFollowing = await storage.isFollowingClub(
+          (req.user as any).id,
+          club.id
+        );
+      }
+
+      const followersCount = await storage.getClubFollowerCount(club.id);
+
+      res.json({ ...club, isFollowing, followersCount });
     } catch (error: any) { 
+      next(error);
+    }
+  });
+
+  // Follow / unfollow a club (requires auth)
+  app.post("/api/clubs/:id/follow", requireAuth, async (req, res, next) => {
+    try {
+      const club = await storage.getClubById(req.params.id);
+      if (!club) {
+        return res.status(404).json({ message: "Club not found" });
+      }
+
+      await storage.followClub(req.user!.id, club.id);
+      res.json({ following: true });
+    } catch (error: any) {
+      next(error);
+    }
+  });
+
+  app.delete("/api/clubs/:id/follow", requireAuth, async (req, res, next) => {
+    try {
+      await storage.unfollowClub(req.user!.id, req.params.id);
+      res.json({ following: false });
+    } catch (error: any) {
+      next(error);
+    }
+  });
+
+  // Clubs the current user follows (for a future "My Communities" list)
+  app.get("/api/me/followed-clubs", requireAuth, async (req, res, next) => {
+    try {
+      const followed = await storage.getFollowedClubs(req.user!.id);
+      res.json(followed);
+    } catch (error: any) {
       next(error);
     }
   });
