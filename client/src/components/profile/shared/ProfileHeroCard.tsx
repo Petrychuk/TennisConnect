@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 interface ProfileHeroCardProps {
   avatar: ReactNode;
@@ -6,6 +7,9 @@ interface ProfileHeroCardProps {
   info?: ReactNode;
   actions: ReactNode;
   stats: ReactNode;
+  // How see-through the white info card is. Player and coach profiles
+  // want different amounts of transparency, so this isn't hardcoded.
+  cardBackgroundClassName?: string;
 }
 
 export function ProfileHeroCard({
@@ -14,6 +18,7 @@ export function ProfileHeroCard({
   info,
   actions,
   stats,
+  cardBackgroundClassName = "bg-background/90",
 }: ProfileHeroCardProps) {
   return (
     <div className="container mx-auto max-w-6xl sm:px-4 relative -mt-2 sm:-mt-6 md:-mt-16 lg:-mt-20 z-30">
@@ -39,25 +44,10 @@ export function ProfileHeroCard({
 
         {/* White Card */}
         <div
-          className="
-            mt-14
-            sm:mt-10
-            md:mt-0
-            rounded-2xl
-            bg-background/70
-            backdrop-blur-xl
-            border
-            shadow-xl
-            pt-28
-            sm:pt-28
-            md:pt-8
-            pb-5
-            sm:pb-7
-            md:pb-8
-            px-4
-            sm:px-5
-            md:px-8
-            md:pl-56"
+          className={cn(
+            "mt-14 sm:mt-10 md:mt-0 rounded-2xl backdrop-blur-xl border shadow-xl pt-28 sm:pt-28 md:pt-8 pb-5 sm:pb-7 md:pb-8 px-4 sm:px-5 md:px-8 md:pl-56",
+            cardBackgroundClassName
+          )}
         >
           {/* Header + Actions */}
           <div

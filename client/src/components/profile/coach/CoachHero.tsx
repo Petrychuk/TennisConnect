@@ -36,6 +36,7 @@ export function CoachHero({
 }: CoachHeroProps) {
   return (
     <ProfileHeroCard
+      cardBackgroundClassName="bg-background/40"
       avatar={
         <ProfileAvatar
           avatar={profile.avatar}

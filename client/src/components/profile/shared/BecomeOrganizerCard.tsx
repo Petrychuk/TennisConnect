@@ -55,7 +55,7 @@ export function BecomeOrganizerCard({ status, onChange }: BecomeOrganizerCardPro
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Trophy className="w-5 h-5" />
-          Organize Tennis Sessions
+          Organise Tennis Sessions
         </CardTitle>
       </CardHeader>
       <CardContent>
