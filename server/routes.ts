@@ -15,6 +15,7 @@ import coachesRouter from "./routes/coaches";
 import { sendSystemMessage, ORGANIZER_APPROVED_SUBJECT, ORGANIZER_APPROVED_MESSAGE } from "./services/systemMessages";
 import uploadContentRouter from "./routes/upload-content";
 import organizerRouter from "./routes/organizer";
+import weatherRouter from "./routes/weather";
 
 
 import {
@@ -78,6 +79,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/api/coaches", coachesRouter);
   app.use("/api/upload/content", uploadContentRouter);
   app.use("/api/organizer", organizerRouter);
+  app.use("/api/weather", weatherRouter);
 
   /* =========================
    SUPPORT CHAT

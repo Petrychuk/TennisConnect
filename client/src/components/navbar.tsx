@@ -22,6 +22,7 @@ import {
   Trophy,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { HeaderClockWeather } from "@/components/header-clock-weather";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -178,23 +179,10 @@ export function Navbar() {
 
         {/* CTA & Mobile Menu */}
         <div className="flex items-center gap-4">
+          {/* Compact Sydney time/weather — desktop only */}
+          <HeaderClockWeather />
           {isAuthenticated ? (
             <div className="hidden md:flex items-center gap-2">
-              {/* Notifications Bell */}
-              <Link href="/messages">
-                <Button variant="ghost" size="icon" className="relative cursor-pointer" data-testid="button-notifications">
-                  <Bell className="w-5 h-5" />
-                  {unreadCount > 0 && (
-                    <Badge 
-                      className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-[10px] bg-red-500 text-white border-2 border-background"
-                      data-testid="badge-unread-count"
-                    >
-                      {unreadCount > 9 ? "9+" : unreadCount}
-                    </Badge>
-                  )}
-                </Button>
-              </Link>
-
               <Link href={profileHref}>
                 <Button variant="ghost" className="font-bold hover:text-lime-600 gap-2 cursor-pointer">
                   <User className="w-4 h-4" />
@@ -273,6 +261,21 @@ export function Navbar() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              {/* Notifications Bell — now after the avatar */}
+              <Link href="/messages">
+                <Button variant="ghost" size="icon" className="relative cursor-pointer" data-testid="button-notifications">
+                  <Bell className="w-5 h-5" />
+                  {unreadCount > 0 && (
+                    <Badge 
+                      className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-[10px] bg-red-500 text-white border-2 border-background"
+                      data-testid="badge-unread-count"
+                    >
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </Badge>
+                  )}
+                </Button>
+              </Link>
             </div>
           ) : (
             <Link href="/auth">
