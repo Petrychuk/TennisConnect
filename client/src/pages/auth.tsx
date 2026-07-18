@@ -390,7 +390,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                      htmlFor="wantsToOrganize"
                      className="text-sm text-muted-foreground leading-relaxed cursor-pointer"
                     >
-                      I want to organize tennis sessions
+                      I want to organise tennis sessions
                    </label>
                   </div>
                   

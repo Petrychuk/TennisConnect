@@ -260,11 +260,11 @@ export default function OrganizerDashboardPage() {
         <div className="flex-1 flex items-center justify-center px-4">
           <Card className="max-w-md w-full">
             <CardHeader>
-              <CardTitle>Organizer access required</CardTitle>
+              <CardTitle>Organiser access required</CardTitle>
             </CardHeader>
             <CardContent className="text-muted-foreground">
-              You need to be an approved organizer to view this page. Head to your profile to
-              request organizer access.
+              You need to be an approved organiser to view this page. Head to your profile to
+              request organiser access.
             </CardContent>
           </Card>
         </div>
@@ -283,19 +283,19 @@ export default function OrganizerDashboardPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <SEO
-        title="Organizer Dashboard | TennisConnect"
+        title="Organiser Dashboard | TennisConnect"
         description="Manage your Organization and Sessions on TennisConnect."
         noIndex
       />
       <Navbar />
 
       <div className="flex-1 max-w-5xl mx-auto w-full px-4 py-10 space-y-8">
-        <h1 className="font-display text-3xl font-bold">Organizer Dashboard</h1>
+        <h1 className="font-display text-3xl font-bold">Organiser Dashboard</h1>
 
         {isReadOnly && (
           <Card className="border-orange-200 bg-orange-50" data-testid="organizer-readonly-banner">
             <CardContent className="py-4 text-sm text-orange-800">
-              Your organizer access has been revoked. You can still see your past Organization
+              Your organiser access has been revoked. You can still see your past Organization
               and Sessions below, but you can't create or manage new ones. Contact an admin if
               you think this is a mistake.
             </CardContent>

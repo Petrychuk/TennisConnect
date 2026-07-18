@@ -72,7 +72,7 @@ export const COACHES_DATA = [
     title: "Club Coach & Tournament Director",
     location: "Inner West",
     locations: ["Newtown", "Marrickville", "Stanmore"],
-    bio: "Experienced club coach who enjoys working with players of all ages and abilities. I organize social competitions and tournaments to help players gain match experience in a friendly environment.",
+    bio: "Experienced club coach who enjoys working with players of all ages and abilities. I organise social competitions and tournaments to help players gain match experience in a friendly environment.",
     rating: 4.7,
     reviews: 31,
     rate: 85,

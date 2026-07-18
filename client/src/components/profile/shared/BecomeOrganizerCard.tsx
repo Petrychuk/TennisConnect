@@ -63,16 +63,16 @@ export function BecomeOrganizerCard({ status, onChange }: BecomeOrganizerCardPro
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
             <div className="flex items-center gap-2 text-sm" data-testid="organizer-status-approved">
               <CheckCircle2 className="w-4 h-4 text-primary" />
-              You're an approved organizer.
+              You're an approved organiser.
             </div>
             <Button asChild size="sm" data-testid="go-to-organizer-dashboard">
-              <Link href="/organizer/dashboard">Open Organizer Dashboard</Link>
+              <Link href="/organizer/dashboard">Open Organiser Dashboard</Link>
             </Button>
           </div>
         ) : status.request?.status === "pending" ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="organizer-request-pending">
             <Clock className="w-4 h-4" />
-            Your organizer request is awaiting review.
+            Your organiser request is awaiting review.
             <Badge variant="secondary">Pending</Badge>
           </div>
         ) : status.request?.status === "rejected" ? (
@@ -96,7 +96,7 @@ export function BecomeOrganizerCard({ status, onChange }: BecomeOrganizerCardPro
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
             <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="organizer-request-revoked">
               <XCircle className="w-4 h-4" />
-              Your organizer access was revoked.
+              Your organiser access was revoked.
             </div>
             <Button
               variant="outline"
@@ -120,7 +120,7 @@ export function BecomeOrganizerCard({ status, onChange }: BecomeOrganizerCardPro
               data-testid="become-organizer-button"
             >
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Become an Organizer
+              Become an Organiser
             </Button>
           </div>
         )}

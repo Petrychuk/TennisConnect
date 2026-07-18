@@ -702,11 +702,12 @@ export default function AdminPage() {
         <div className="container mx-auto px-4 py-12 mt-16">
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
             <div>
-              <Badge className="mb-3 bg-primary text-primary-foreground">
-                <ShieldCheck className="w-3 h-3 mr-1" /> Admin
-              </Badge>
-              <h1 className="text-4xl md:text-5xl font-display font-bold">Content Manager</h1>
-              <p className="text-muted-foreground mt-2">Manage articles, travel, recreation, users and tournaments.</p>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl md:text-3xl font-display font-bold">Content Manager</h1>
+                <Badge className="bg-primary text-primary-foreground">
+                  <ShieldCheck className="w-3 h-3 mr-1" /> Admin
+                </Badge>
+              </div>
             </div>
             {activeTab !== "users" && activeTab !== "organizer-requests" && (
             <Button
@@ -740,7 +741,7 @@ export default function AdminPage() {
                 data-testid="admin-tab-organizer-requests"
               >
                 <Trophy className="w-4 h-4 mr-2" />
-                Organizer &amp; Sessions
+                Organiser &amp; Sessions
               </TabsTrigger>
 
               {(Object.keys(RESOURCE_LABELS) as Resource[]).map((r) => {
@@ -1368,8 +1369,8 @@ export default function AdminPage() {
             </TabsContent>
 
             <TabsContent value="organizer-requests">
-+              <AdminOrganizerRequestsTab />
-+            </TabsContent>
+              <AdminOrganizerRequestsTab />
+            </TabsContent>
           </Tabs>
 
         </div>

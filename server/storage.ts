@@ -1634,7 +1634,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(organizerRequests.id, id));
 
     if (!request) {
-      throw new Error("Organizer request not found");
+      throw new Error("Organiser request not found");
     }
 
     const [updated] = await db
@@ -1659,7 +1659,7 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     if (!updated) {
-      throw new Error("Organizer request not found");
+      throw new Error("Organiser request not found");
     }
 
     return updated;

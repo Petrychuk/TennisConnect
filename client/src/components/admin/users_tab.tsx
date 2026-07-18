@@ -192,7 +192,7 @@ export default function AdminUsersTab() {
         if (!res.ok) {
           const error = await res.json();
           toast({
-            title: "Could not grant organizer access",
+            title: "Could not grant organiser access",
             description: error.message || "Something went wrong",
             variant: "destructive",
           });
@@ -201,7 +201,7 @@ export default function AdminUsersTab() {
         }
 
         toast({
-          title: "Organizer Access Granted",
+          title: "Organiser Access Granted",
           description: `${selectedUser.name} can now create an Organization and publish Sessions.`,
         });
       }
@@ -218,7 +218,7 @@ export default function AdminUsersTab() {
         if (!res.ok) {
           const error = await res.json();
           toast({
-            title: "Could not revoke organizer access",
+            title: "Could not revoke organiser access",
             description: error.message || "Something went wrong",
             variant: "destructive",
           });
@@ -227,7 +227,7 @@ export default function AdminUsersTab() {
         }
 
         toast({
-          title: "Organizer Access Revoked",
+          title: "Organiser Access Revoked",
           description: `${selectedUser.name} can no longer manage Sessions.`,
         });
       }
@@ -331,38 +331,34 @@ export default function AdminUsersTab() {
 
       <div className="flex flex-wrap gap-2 mb-6">
         <Button
-          size="sm"
           variant={organizerFilter === "all" ? "default" : "outline"}
           onClick={() => setOrganizerFilter("all")}
           data-testid="users-filter-organizer-all"
         >
-          All Organizer Status
+          All Organiser Status
         </Button>
         <Button
-          size="sm"
           variant={organizerFilter === "organizers" ? "default" : "outline"}
           onClick={() => setOrganizerFilter("organizers")}
           data-testid="users-filter-organizer-approved"
           className="gap-1"
         >
           <Trophy className="w-3.5 h-3.5" />
-          Organizers Approved ({organizersCount})
+          Organisers Approved ({organizersCount})
         </Button>
         <Button
-          size="sm"
           variant={organizerFilter === "not-organizers" ? "default" : "outline"}
           onClick={() => setOrganizerFilter("not-organizers")}
           data-testid="users-filter-organizer-not-approved"
         >
-          Not Organizers ({notOrganizersCount})
+          Not Organisers ({notOrganizersCount})
         </Button>
         <Button
-          size="sm"
           variant={organizerFilter === "awaiting" ? "default" : "outline"}
           onClick={() => setOrganizerFilter("awaiting")}
           data-testid="users-filter-organizer-awaiting"
         >
-          Awaiting Organizer Approval ({awaitingOrganizerCount})
+          Awaiting Organiser Approval ({awaitingOrganizerCount})
         </Button>
       </div>
 
@@ -370,13 +366,13 @@ export default function AdminUsersTab() {
         <table className="w-full">
           <thead>
             <tr className="border-b">
-              <th className="text-left py-3 min-w-[320px]">Name</th>
-              <th className="text-left py-3 min-w-[320px]">Email</th>
+              <th className="text-left py-3 min-w-[180px]">Name</th>
+              <th className="text-left py-3 min-w-[200px]">Email</th>
               <th className="text-left py-3">Role</th>
-              <th className="text-left py-3">Organizer</th>
+              <th className="text-left py-3">Organiser</th>
               <th className="text-left py-3">Status</th>
-              <th className="text-left py-3">Created</th>
               <th className="text-center py-3">Actions</th>
+              <th className="text-left py-3">Created</th>
             </tr>
           </thead>
 
@@ -407,11 +403,11 @@ export default function AdminUsersTab() {
                   </Badge>
                 )}
                 </td>
-                <td className="min-w-[320px]">{user.email}</td>
+                <td className="min-w-[200px]">{user.email}</td>
                 <td>{user.role}</td>
                 <td data-testid={`user-organizer-status-${user.id}`}>
                   {user.isOrganizer ? (
-                    <Badge className="bg-primary/10 text-primary">Organizer</Badge>
+                    <Badge className="bg-primary/10 text-primary">Organiser</Badge>
                   ) : user.organizerRequestStatus === "pending" ? (
                     <Badge variant="secondary" className="bg-orange-100 text-orange-700">
                       Awaiting Approval
@@ -442,12 +438,6 @@ export default function AdminUsersTab() {
                       Pending
                     </Badge>
                   )}
-                </td>
-
-                <td>
-                  {new Date(
-                    user.createdAt
-                  ).toLocaleDateString()}
                 </td>
 
                 <td>
@@ -484,7 +474,7 @@ export default function AdminUsersTab() {
                     {!user.isOrganizer ? (
                       <button
                         onClick={() => openGrantOrganizer(user)}
-                        title="Grant Organizer Access"
+                        title="Grant Organiser Access"
                         data-testid={`grant-organizer-${user.id}`}
                       >
                         <Trophy className="w-5 h-5 text-primary" />
@@ -492,7 +482,7 @@ export default function AdminUsersTab() {
                     ) : (
                       <button
                         onClick={() => openRevokeOrganizer(user)}
-                        title="Revoke Organizer Access"
+                        title="Revoke Organiser Access"
                         data-testid={`revoke-organizer-${user.id}`}
                       >
                         <UserMinus className="w-5 h-5 text-destructive" />
@@ -519,6 +509,11 @@ export default function AdminUsersTab() {
                     )} 
                   </div>
                 </td>
+                <td>
+                  {new Date(
+                    user.createdAt
+                  ).toLocaleDateString()}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -536,8 +531,8 @@ export default function AdminUsersTab() {
               {actionType === "delete" && "Delete User"}
               {actionType === "hide" && "Hide User"}
               {actionType === "unhide" && "Restore User"}
-              {actionType === "grant-organizer" && "Grant Organizer Access"}
-              {actionType === "revoke-organizer" && "Revoke Organizer Access"}
+              {actionType === "grant-organizer" && "Grant Organiser Access"}
+              {actionType === "revoke-organizer" && "Revoke Organiser Access"}
             </DialogTitle>
 
             <DialogDescription>
@@ -554,10 +549,10 @@ export default function AdminUsersTab() {
                 `Are you sure you want to restore "${selectedUser?.name}"? The user will become visible in public listings again.`}
 
               {actionType === "grant-organizer" &&
-                `Grant organizer access to "${selectedUser?.name}"? They'll be able to create an Organization and publish Sessions immediately — no request needed.`}
+                `Grant organiser access to "${selectedUser?.name}"? They'll be able to create an Organization and publish Sessions immediately — no request needed.`}
 
               {actionType === "revoke-organizer" &&
-                `Revoke organizer access from "${selectedUser?.name}"? Their existing Organization and Sessions stay in place, but they won't be able to publish new ones until re-approved.`}
+                `Revoke organiser access from "${selectedUser?.name}"? Their existing Organization and Sessions stay in place, but they won't be able to publish new ones until re-approved.`}
             </DialogDescription>
 
           </DialogHeader>

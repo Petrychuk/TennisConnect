@@ -55,7 +55,7 @@ const SESSION_STATUS_LABEL: Record<string, string> = {
 export default function AdminOrganizerTab() {
   return (
     <div className="bg-white rounded-3xl border border-border p-6" data-testid="admin-organizer-tab">
-      <h2 className="font-display text-2xl font-bold mb-6">Organizer &amp; Sessions</h2>
+      <h2 className="font-display text-2xl font-bold mb-6">Organiser &amp; Sessions</h2>
 
       <Tabs defaultValue="sessions">
         <TabsList className="mb-6">
@@ -127,7 +127,7 @@ function SessionModerationPanel() {
         body: JSON.stringify({ note: rejectNote || undefined }),
       });
       if (!res.ok) throw new Error((await res.json()).message);
-      toast({ title: "Session rejected", description: "The organizer can edit and resubmit it." });
+      toast({ title: "Session rejected", description: "The organiser can edit and resubmit it." });
       setRejectTarget(null);
       setRejectNote("");
       loadSessions(statusFilter);
@@ -232,7 +232,7 @@ function SessionModerationPanel() {
             <DialogTitle>Reject "{rejectTarget?.title}"</DialogTitle>
           </DialogHeader>
           <Textarea
-            placeholder="Optional note for the organizer (why it was rejected)"
+            placeholder="Optional note for the organiser (why it was rejected)"
             value={rejectNote}
             onChange={(e) => setRejectNote(e.target.value)}
             rows={3}

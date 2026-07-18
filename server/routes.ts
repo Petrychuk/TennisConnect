@@ -135,7 +135,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         });
       }
 
-      // Checkbox on the registration form: "I want to organize tennis
+      // Checkbox on the registration form: "I want to organise tennis
       // sessions". Creates a pending Organizer Request for an admin to
       // review, instead of granting organizer rights outright.
       if (req.body?.wantsToOrganize === true) {

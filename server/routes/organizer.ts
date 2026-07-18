@@ -14,7 +14,7 @@ function requireOrganizer(req: Request, res: Response, next: NextFunction) {
       // Admins can create Organizations/Sessions directly — they don't need
       // to request organizer access from themselves.
       if (!u?.isOrganizer && !u?.isAdmin) {
-         return res.status(403).json({ message: "Organizer access required" });
+         return res.status(403).json({ message: "Organiser access required" });
        }
        next();
 }
@@ -29,7 +29,7 @@ router.post("/requests", requireAuth, async (req, res, next) => {
     const userId = (req.user as any).id;
 
     if ((req.user as any).isOrganizer) {
-      return res.status(400).json({ message: "You are already an organizer" });
+      return res.status(400).json({ message: "You are already an organiser" });
     }
 
     const latest = await storage.getLatestOrganizerRequest(userId);
