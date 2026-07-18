@@ -108,7 +108,7 @@ export interface IStorage {
   // Admin can grant/revoke organizer access directly, independent of the
   // Organizer Request flow — e.g. promoting an already-approved member,
   // or pulling access from someone who has it.
-  grantOrganizer(id: string): Promise<typeof users.$inferSelect>;
+  grantOrganizer(id: string, reviewerId: string): Promise<typeof users.$inferSelect>;
   revokeOrganizer(id: string): Promise<typeof users.$inferSelect>;
   
   // Player Profiles
@@ -386,7 +386,20 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async grantOrganizer(id: string) {
+  // Takes a reviewerId (not just id) because granting via this shortcut
+  // also resolves any pending Organizer Request for the same user —
+  // otherwise it'd sit "pending" forever in the Access Requests queue
+  // even though the user is already an organizer, and someone approving
+  // it later would trigger a second, redundant notification.
+  async grantOrganizer(id: string, reviewerId: string) {
+    const latestRequest = await this.getLatestOrganizerRequest(id);
+    if (latestRequest && latestRequest.status === "pending") {
+      await db
+        .update(organizerRequests)
+        .set({ status: "approved", reviewedBy: reviewerId, reviewedAt: new Date() })
+        .where(eq(organizerRequests.id, latestRequest.id));
+    }
+
     const [user] = await db
       .update(users)
       .set({ isOrganizer: true })

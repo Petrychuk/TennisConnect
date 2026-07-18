@@ -506,7 +506,8 @@ export async function registerRoutes(app: Express): Promise<void> {
     app.patch("/api/admin/users/:id/grant-organizer",
       requireAdmin,
       async (req, res) => {
-        const user = await storage.grantOrganizer(req.params.id);
+        const reviewerId = (req.user as any).id;
+        const user = await storage.grantOrganizer(req.params.id, reviewerId);
 
         if (!user) {
           return res.status(404).json({ message: "User not found" });
