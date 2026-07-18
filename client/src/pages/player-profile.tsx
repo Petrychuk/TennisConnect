@@ -22,6 +22,7 @@ import SEO from "@/components/seo";
 import { Footer } from "@/components/footer";
 import { BecomeOrganizerCard } from "@/components/profile/shared/BecomeOrganizerCard";
 import { MySessionsSection } from "@/components/profile/shared/MySessionsSection";
+import { useOrganizerStatus } from "@/hooks/use-organizer-status";
 import { TennisLoader } from "@/components/ui/tennisLoader";
 
 type MarketplaceDraft = {
@@ -69,8 +70,8 @@ export const DEFAULT_PLAYER_PROFILE: PlayerProfile = {
   country: "Australia",
   skillLevel: "Intermediate",
   bio: "Hi! I love tennis and I'm looking for partners to play with on weekends.",
-  avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop",
-  cover: "https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?q=80&w=2000&auto=format&fit=crop",
+  avatar: null,
+  cover: null,
   preferredCourts: ["Bondi Beach", "Manly"],
   photos: [],
   coaches: [1], // IDs of connected coaches
@@ -86,6 +87,7 @@ export default function PlayerProfile() {
   const { toast } = useToast();
 
   const isOwnProfile = isAuthenticated && user?.slug === profileSlug; 
+  const organizerStatus = useOrganizerStatus(isOwnProfile);
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState<PlayerProfile>(DEFAULT_PLAYER_PROFILE);
   const [originalProfile, setOriginalProfile] = useState<PlayerProfile>(DEFAULT_PLAYER_PROFILE);
@@ -674,7 +676,7 @@ export default function PlayerProfile() {
                       gap-2
                       scrollbar-hide">
                   <TabsTrigger value="overview" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">Overview</TabsTrigger>
-                  {isOwnProfile && (
+                  {isOwnProfile && organizerStatus.hasEngagedWithOrganizing && (
                     <TabsTrigger value="sessions" data-testid="my-sessions-tab" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">My Sessions</TabsTrigger>
                   )}
                   <TabsTrigger value="tournaments" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">Tournaments</TabsTrigger>
@@ -683,7 +685,12 @@ export default function PlayerProfile() {
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-8">
-                 {isOwnProfile && <BecomeOrganizerCard />}
+                 {isOwnProfile && organizerStatus.data && (
+                   <BecomeOrganizerCard
+                     status={organizerStatus.data}
+                     onChange={() => organizerStatus.refresh()}
+                   />
+                 )}
                   <Card>
                     <CardHeader>
                       <CardTitle>Playing Preferences</CardTitle>
@@ -733,7 +740,7 @@ export default function PlayerProfile() {
                     </CardContent>
                   </Card>
                 </TabsContent>
-                {isOwnProfile && (
+                {isOwnProfile && organizerStatus.hasEngagedWithOrganizing && (
                  <TabsContent value="sessions" className="space-y-8" data-testid="my-sessions-tab-content">
                    <MySessionsSection />
                  </TabsContent>

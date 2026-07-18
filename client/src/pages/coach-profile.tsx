@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import SEO from "@/components/seo";
 import { BecomeOrganizerCard } from "@/components/profile/shared/BecomeOrganizerCard";
 import { MySessionsSection } from "@/components/profile/shared/MySessionsSection";
+import { useOrganizerStatus } from "@/hooks/use-organizer-status";
 
 import { COACHES_DATA } from "@/lib/dummy-data";
 import {
@@ -127,8 +128,8 @@ export const DEFAULT_COACH_PROFILE: CoachProfile = {
   location: "Manly, Sydney",
   bio: "Passionate tennis coach dedicated to helping beginners and intermediate players fall in love with the game.",
 
-  avatar: avatarImage,
-  cover: heroImage,
+  avatar: null,
+  cover: null,
 
   rate: "70",
   experience: "10",
@@ -202,6 +203,7 @@ export default function CoachProfile() {
     isAuthenticated &&
     user?.role === "coach" &&
     user?.slug === profileSlug;
+  const organizerStatus = useOrganizerStatus(isOwnProfile);
   
   /* =========================
      EDITING STATE
@@ -754,7 +756,7 @@ export default function CoachProfile() {
               ...DEFAULT_COACH_PROFILE,
               name: demoCoach.name,
               avatar: demoCoach.image,
-              cover: DEFAULT_COACH_PROFILE.cover,
+              cover: heroImage,
               title: demoCoach.title || DEFAULT_COACH_PROFILE.title,
               location: demoCoach.location,
               bio: demoCoach.bio || DEFAULT_COACH_PROFILE.bio,
@@ -934,6 +936,9 @@ export default function CoachProfile() {
                     gap-2
                     scrollbar-hide">
                   <TabsTrigger value="about" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">About</TabsTrigger>
+                  {isOwnProfile && organizerStatus.hasEngagedWithOrganizing && (
+                    <TabsTrigger value="sessions" data-testid="my-sessions-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">My Sessions</TabsTrigger>
+                  )}
                   <TabsTrigger value="photos" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Photos</TabsTrigger>
                   <TabsTrigger value="schedule" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Schedule & Locations</TabsTrigger>
                   <TabsTrigger value="practice" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Hitting Partner</TabsTrigger>
@@ -946,7 +951,12 @@ export default function CoachProfile() {
                   {/* Left Content (2 cols) */}
                   <div className="lg:col-span-2 space-y-8">
                     <TabsContent value="about" className="space-y-8 mt-0">
-                    {isOwnProfile && <BecomeOrganizerCard />}
+                    {isOwnProfile && organizerStatus.data && (
+                      <BecomeOrganizerCard
+                        status={organizerStatus.data}
+                        onChange={() => organizerStatus.refresh()}
+                      />
+                    )}
                       <Card>
                         <CardHeader>
                           <CardTitle>Biography</CardTitle>
@@ -1091,6 +1101,12 @@ export default function CoachProfile() {
                         </CardContent>
                       </Card>
                     </TabsContent>
+
+                    {isOwnProfile && organizerStatus.hasEngagedWithOrganizing && (
+                      <TabsContent value="sessions" className="space-y-8 mt-0" data-testid="my-sessions-tab-content">
+                        <MySessionsSection />
+                      </TabsContent>
+                    )}
 
                     <TabsContent value="photos" className="mt-0">
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">

@@ -18,12 +18,19 @@ export function ProfileCover({
     <div className="relative w-full h-[280px] sm:h-[300px] md:h-[380px] lg:h-[460px] overflow-hidden rounded-t-3xl group">
 
       {/* Cover Image */}
-      <img
-        src={cover ?? "/assets/images/default-cover.jpg"}
-        alt="Profile Cover"
-        data-testid="profile-cover"
-        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
-      />
+      {cover ? (
+        <img
+          src={cover}
+          alt="Profile Cover"
+          data-testid="profile-cover"
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
+        />
+      ) : (
+        <div
+          className="absolute inset-0 w-full h-full bg-linear-to-br from-primary/30 via-muted to-primary/10"
+          data-testid="profile-cover-default"
+        />
+      )}
 
       {/* Dark Overlay */}
       <div className="absolute inset-0 bg-black/25" />

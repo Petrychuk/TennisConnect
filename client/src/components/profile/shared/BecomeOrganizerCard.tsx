@@ -1,46 +1,25 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Trophy, Loader2, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
+import type { OrganizerStatusData } from "@/hooks/use-organizer-status";
 
-interface OrganizerRequestStatus {
-  isOrganizer: boolean;
-  request: {
-    id: string;
-    status: "pending" | "approved" | "rejected";
-  } | null;
+interface BecomeOrganizerCardProps {
+  status: OrganizerStatusData;
+  onChange: (status: OrganizerStatusData) => void;
 }
 
-// Shown on a player's/coach's own profile. Lets a user who did not check
-// "I want to organize tennis sessions" at sign-up request organizer access
-// later. Renders nothing for other visitors' profiles.
-export function BecomeOrganizerCard() {
-  const [data, setData] = useState<OrganizerRequestStatus | null>(null);
-  const [loading, setLoading] = useState(true);
+// Shown on a player's/coach's own profile. If they already checked
+// "I want to organize tennis sessions" at sign-up (or requested since),
+// `status.request` is non-null and this shows the Pending/Rejected state
+// instead of the button — the button only ever appears when no request
+// exists yet, so it's never redundant with the sign-up checkbox.
+export function BecomeOrganizerCard({ status, onChange }: BecomeOrganizerCardProps) {
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/organizer/requests/me", { credentials: "include" });
-        if (!res.ok) return;
-        const json = await res.json();
-        if (!cancelled) setData(json);
-      } catch {
-        // silently ignore — this is a supplementary card, not core profile data
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   async function handleBecomeOrganizer() {
     setSubmitting(true);
@@ -55,7 +34,7 @@ export function BecomeOrganizerCard() {
       if (!res.ok) {
         throw new Error(json.message || "Something went wrong");
       }
-      setData({ isOrganizer: false, request: json });
+      onChange({ isOrganizer: false, request: json });
       toast({
         title: "Request sent",
         description: "We'll let you know once an admin reviews your request.",
@@ -71,8 +50,6 @@ export function BecomeOrganizerCard() {
     }
   }
 
-  if (loading || !data) return null;
-
   return (
     <Card data-testid="become-organizer-card">
       <CardHeader>
@@ -82,9 +59,9 @@ export function BecomeOrganizerCard() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {data.isOrganizer ? (
+        {status.isOrganizer ? (
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex items-center gap-2 text-sm" data-testid="organizer-status-approved">
               <CheckCircle2 className="w-4 h-4 text-primary" />
               You're an approved organizer.
             </div>
@@ -92,13 +69,13 @@ export function BecomeOrganizerCard() {
               <Link href="/organizer/dashboard">Open Organizer Dashboard</Link>
             </Button>
           </div>
-        ) : data.request?.status === "pending" ? (
+        ) : status.request?.status === "pending" ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="organizer-request-pending">
             <Clock className="w-4 h-4" />
             Your organizer request is awaiting review.
             <Badge variant="secondary">Pending</Badge>
           </div>
-        ) : data.request?.status === "rejected" ? (
+        ) : status.request?.status === "rejected" ? (
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
             <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="organizer-request-rejected">
               <XCircle className="w-4 h-4" />
