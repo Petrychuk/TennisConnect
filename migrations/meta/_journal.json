@@ -71,6 +71,13 @@
       "when": 1783318001858,
       "tag": "0009_closed_oracle",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784268807809,
+      "tag": "0010_sturdy_thunderbird",
+      "breakpoints": true
     }
   ]
 }
