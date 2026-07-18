@@ -16,7 +16,7 @@ import { CheckCircle, XCircle, Calendar, MapPin } from "lucide-react";
 interface OrganizerRequestRow {
   id: string;
   userId: string;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "revoked";
   note: string | null;
   createdAt: string;
   userName: string;
@@ -36,7 +36,7 @@ interface SessionModerationRow {
   reviewNote: string | null;
 }
 
-const REQUEST_FILTERS = ["pending", "approved", "rejected"] as const;
+const REQUEST_FILTERS = ["pending", "approved", "rejected", "revoked"] as const;
 const SESSION_FILTERS = ["pending_review", "published", "rejected", "cancelled", "draft"] as const;
 
 const SESSION_STATUS_LABEL: Record<string, string> = {

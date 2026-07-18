@@ -3,6 +3,10 @@ export const ORGANIZER_REQUEST_STATUS = [
     "pending",
     "approved",
     "rejected",
+    // Set when an admin pulls organizer access back via the Users tab.
+    // Distinct from "rejected" (never approved) — this person WAS an
+    // organizer and no longer is.
+    "revoked",
   ] as const;
   
   export type OrganizerRequestStatus =

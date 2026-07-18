@@ -4,7 +4,7 @@ export interface OrganizerStatusData {
   isOrganizer: boolean;
   request: {
     id: string;
-    status: "pending" | "approved" | "rejected";
+    status: "pending" | "approved" | "rejected" | "revoked";
   } | null;
 }
 

@@ -92,6 +92,23 @@ export function BecomeOrganizerCard({ status, onChange }: BecomeOrganizerCardPro
               Request Again
             </Button>
           </div>
+        ) : status.request?.status === "revoked" ? (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="organizer-request-revoked">
+              <XCircle className="w-4 h-4" />
+              Your organizer access was revoked.
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBecomeOrganizer}
+              disabled={submitting}
+              data-testid="become-organizer-button"
+            >
+              {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Request Again
+            </Button>
+          </div>
         ) : (
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
             <p className="text-sm text-muted-foreground">

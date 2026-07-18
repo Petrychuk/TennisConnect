@@ -26,7 +26,7 @@ interface User {
   createdAt: string;
   isTestUser?: boolean;
   isOrganizer?: boolean;
-  organizerRequestStatus?: "pending" | "approved" | "rejected" | null;
+  organizerRequestStatus?: "pending" | "approved" | "rejected" | "revoked" | null;
 }
 
 type OrganizerFilter = "all" | "organizers" | "not-organizers" | "awaiting";
@@ -419,6 +419,10 @@ export default function AdminUsersTab() {
                   ) : user.organizerRequestStatus === "rejected" ? (
                     <Badge variant="secondary" className="bg-red-100 text-red-700">
                       Rejected
+                    </Badge>
+                  ) : user.organizerRequestStatus === "revoked" ? (
+                    <Badge variant="secondary" className="bg-slate-200 text-slate-700">
+                      Revoked
                     </Badge>
                   ) : (
                     <span className="text-muted-foreground text-sm">—</span>

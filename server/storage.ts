@@ -109,7 +109,7 @@ export interface IStorage {
   // Organizer Request flow — e.g. promoting an already-approved member,
   // or pulling access from someone who has it.
   grantOrganizer(id: string, reviewerId: string): Promise<typeof users.$inferSelect>;
-  revokeOrganizer(id: string): Promise<typeof users.$inferSelect>;
+  revokeOrganizer(id: string, reviewerId: string): Promise<typeof users.$inferSelect>;
   
   // Player Profiles
   getPlayerProfile(userId: string): Promise<PlayerProfile | undefined>;
@@ -409,7 +409,19 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async revokeOrganizer(id: string) {
+  // Takes a reviewerId (like grantOrganizer) to record who revoked it
+  // and mark the underlying request "revoked" — otherwise it would sit
+  // forever as "approved" in the Access Requests queue even though the
+  // person is no longer an organizer, which is misleading.
+  async revokeOrganizer(id: string, reviewerId: string) {
+    const latestRequest = await this.getLatestOrganizerRequest(id);
+    if (latestRequest && latestRequest.status === "approved") {
+      await db
+        .update(organizerRequests)
+        .set({ status: "revoked", reviewedBy: reviewerId, reviewedAt: new Date() })
+        .where(eq(organizerRequests.id, latestRequest.id));
+    }
+
     const [user] = await db
       .update(users)
       .set({ isOrganizer: false })
