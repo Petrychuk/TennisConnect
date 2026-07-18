@@ -6,7 +6,7 @@ import { PlayerActions } from "./PlayerActions";
 
 import { ProfileStats } from "../shared/ProfileStats";
 import { StatCard } from "../shared/StatCard";
-import { getMemberSince } from "@/lib/memberSince";
+import { getMemberSince, getJoinedMonthLabel } from "@/lib/memberSince";
 
 import {
   Users,
@@ -104,8 +104,7 @@ export function PlayerHero({
             data-testid="player-stat-member"
             icon={<Calendar className="w-5 h-5" />}
             value={getMemberSince(profile.createdAt)}
-            label="Member"
-            subtitle="December 2025"
+            label={getJoinedMonthLabel(profile.createdAt)}
           />
 
         </ProfileStats>

@@ -44,7 +44,7 @@ export function ProfileHeroCard({
             sm:mt-10
             md:mt-0
             rounded-2xl
-            bg-background/90
+            bg-background/70
             backdrop-blur-xl
             border
             shadow-xl

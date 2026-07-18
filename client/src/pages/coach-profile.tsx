@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import SEO from "@/components/seo";
 import { BecomeOrganizerCard } from "@/components/profile/shared/BecomeOrganizerCard";
 import { MySessionsSection } from "@/components/profile/shared/MySessionsSection";
+import { MyOrganizedSessionsSection } from "@/components/profile/shared/MyOrganizedSessionsSection";
 import { useOrganizerStatus } from "@/hooks/use-organizer-status";
 
 import { COACHES_DATA } from "@/lib/dummy-data";
@@ -106,6 +107,7 @@ export type CoachProfile = {
   bio: string;
   avatar?: string | null;
   cover?: string | null;
+  createdAt?: string;
   rate: string;
   experience: string;
   locations: string[];
@@ -233,7 +235,6 @@ export default function CoachProfile() {
   /* =========================
      MODALS
   ========================= */
-  const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
   const [selectedBuyItem, setSelectedBuyItem] = useState<any>(null);
@@ -715,6 +716,7 @@ export default function CoachProfile() {
             name: data.user.name,
             avatar: data.user.avatar ?? DEFAULT_COACH_PROFILE.avatar,
             cover: data.user.cover ?? DEFAULT_COACH_PROFILE.cover,
+            createdAt: data.user.createdAt,
 
             // profile-level
             title: data.profile.title ?? DEFAULT_COACH_PROFILE.title,
@@ -941,12 +943,16 @@ export default function CoachProfile() {
                   {isOwnProfile && organizerStatus.hasEngagedWithOrganizing && (
                     <TabsTrigger value="sessions" data-testid="my-sessions-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">My Sessions</TabsTrigger>
                   )}
+                  {isOwnProfile && organizerStatus.data?.isOrganizer && (
+                    <TabsTrigger value="organizing" data-testid="my-organized-sessions-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Organizing</TabsTrigger>
+                  )}
                   <TabsTrigger value="photos" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Photos</TabsTrigger>
                   <TabsTrigger value="schedule" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Schedule & Locations</TabsTrigger>
-                  <TabsTrigger value="practice" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Hitting Partner</TabsTrigger>
                   <TabsTrigger value="students" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">My Students</TabsTrigger>
                   <TabsTrigger value="marketplace" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-baseg">Marketplace</TabsTrigger>
-                  <TabsTrigger value="contact" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Contact</TabsTrigger>
+                  {!isOwnProfile && (
+                    <TabsTrigger value="contact" data-testid="contact-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Contact</TabsTrigger>
+                  )}
                 </TabsList>
 
                 <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -1108,6 +1114,12 @@ export default function CoachProfile() {
                     {isOwnProfile && organizerStatus.hasEngagedWithOrganizing && (
                       <TabsContent value="sessions" className="space-y-8 mt-0" data-testid="my-sessions-tab-content">
                         <MySessionsSection />
+                      </TabsContent>
+                    )}
+
+                    {isOwnProfile && organizerStatus.data?.isOrganizer && (
+                      <TabsContent value="organizing" className="space-y-8 mt-0" data-testid="my-organized-sessions-tab-content">
+                        <MyOrganizedSessionsSection />
                       </TabsContent>
                     )}
 
@@ -1366,103 +1378,6 @@ export default function CoachProfile() {
                       </Card>
                     </TabsContent>
 
-                    <TabsContent value="practice" className="mt-0">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
-                            <Trophy className="w-5 h-5 text-primary" />
-                            Hitting Partner / Practice Sessions
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                          <div className="bg-muted/30 p-6 rounded-lg border border-border/50">
-                            <div className="flex items-start gap-4">
-                              <div className="p-3 bg-primary/10 rounded-full text-primary">
-                                <Trophy className="w-6 h-6" />
-                              </div>
-                              <div>
-                                <h3 className="text-lg font-bold mb-2">Need a Hitting Partner?</h3>
-                                <p className="text-muted-foreground mb-4">
-                                  Apart from coaching, I also offer hitting sessions for players who want to practice match play, improve consistency, or just get a good workout without technical instruction.
-                                </p>
-                                
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <Check className="w-4 h-4 text-primary" />
-                                    <span>Match Play Simulation</span>
-                                  </div>
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <Check className="w-4 h-4 text-primary" />
-                                    <span>Drill Repetition</span>
-                                  </div>
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <Check className="w-4 h-4 text-primary" />
-                                    <span>Tie-break Practice</span>
-                                  </div>
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <Check className="w-4 h-4 text-primary" />
-                                    <span>High Intensity Rallying</span>
-                                  </div>
-                                </div>
-                                
-                                <div className="flex items-center justify-between bg-background p-4 rounded-md border">
-                                  <div>
-                                    <span className="text-sm text-muted-foreground block">Session Rate</span>
-                                    <span className="text-xl font-bold">$50 <span className="text-sm font-normal text-muted-foreground">/ hour</span></span>
-                                  </div>
-                                  <Dialog open={isBookingOpen} onOpenChange={setIsBookingOpen}>
-                                    <DialogTrigger asChild>
-                                      <Button>Book Practice</Button>
-                                    </DialogTrigger>
-                                    <DialogContent className="sm:max-w-[425px]">
-                                      <DialogHeader>
-                                        <DialogTitle>Book a Hitting Session</DialogTitle>
-                                        <DialogDescription>
-                                          Send a request to practice with {profile.name}. 
-                                        </DialogDescription>
-                                      </DialogHeader>
-                                      <div className="grid gap-4 py-4">
-                                        <div className="grid gap-2">
-                                          <Label htmlFor="name">Name</Label>
-                                          <Input id="name" defaultValue={user?.name || ""} placeholder="Your name" />
-                                        </div>
-                                        <div className="grid gap-2">
-                                          <Label htmlFor="email">Email</Label>
-                                          <Input id="email" type="email" placeholder="your@email.com" />
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                          <div className="grid gap-2">
-                                            <Label htmlFor="date">Preferred Date</Label>
-                                            <Input id="date" type="date" />
-                                          </div>
-                                          <div className="grid gap-2">
-                                            <Label htmlFor="time">Time</Label>
-                                            <Input id="time" type="time" />
-                                          </div>
-                                        </div>
-                                        <div className="grid gap-2">
-                                          <Label htmlFor="message">Message</Label>
-                                          <Textarea id="message" placeholder="I'd like to work on my backhand cross-court rally..." />
-                                        </div>
-                                      </div>
-                                      <DialogFooter>
-                                        <Button type="submit" onClick={() => {
-                                          setIsBookingOpen(false);
-                                          toast({
-                                            title: "Request Sent!",
-                                            description: `Your hitting session request has been sent to ${profile.name}.`,
-                                          });
-                                        }}>Send Request</Button>
-                                      </DialogFooter>
-                                    </DialogContent>
-                                  </Dialog>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </TabsContent>
 
                     <TabsContent value="students" className="mt-0">
                       <Card>
@@ -1803,7 +1718,8 @@ export default function CoachProfile() {
                       </Dialog>
                     </TabsContent>
 
-                    <TabsContent value="contact" className="mt-0">
+                    <TabsContent value="contact" className="mt-0" data-testid="contact-tab-content">
+                      {!isOwnProfile && (
                       <Card>
                         <CardHeader>
                           <CardTitle className="flex items-center gap-2">
@@ -1900,6 +1816,7 @@ export default function CoachProfile() {
                           </div>
                         </CardContent>
                       </Card>
+                      )}
                     </TabsContent>
                   </div>
 

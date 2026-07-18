@@ -8,7 +8,7 @@ import {
 import { ProfileStats } from "../shared/ProfileStats";
 import { StatCard } from "../shared/StatCard";
 import { CoachProfile } from "@/pages/coach-profile";
-import { getMemberSince } from "@/lib/memberSince";
+import { getMemberSince, getJoinedMonthLabel } from "@/lib/memberSince";
 
 // Some profiles store experience/rate as pre-formatted text (e.g. "15 years",
 // "$120/hr") instead of a raw number. Pulling out just the leading number
@@ -52,9 +52,8 @@ function extractLeadingNumber(value: unknown): number {
         <StatCard
           data-testid="coach-stat-member"
           icon={<CalendarDays className="w-3 h-3 md:w-5 md:h-5" />}
-          value="New"
-          /* value={getMemberSince(profile.createdAt)} */
-          label="Member"
+          value={getMemberSince(profile.createdAt)}
+          label={getJoinedMonthLabel(profile.createdAt)}
         />
       </ProfileStats>
     );
