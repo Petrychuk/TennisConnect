@@ -31,11 +31,11 @@ export function ProfileCover({
         className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
       />
 
-      {/* Dark Overlay */}
+      {/* Dark Overlay — the only scrim now. The old extra fade-to-background
+          strip at the bottom sat exactly where the hero card overlaps,
+          pre-opacifying the photo there and making the card's own
+          translucency pointless no matter how see-through it was set to. */}
       <div className="absolute inset-0 bg-black/25" />
-
-      {/* Bottom Gradient */}
-      <div className="absolute inset-x-0 bottom-0 h-36 bg-linear-to-t from-background via-background/60 to-transparent" />
 
       {/* Cover Edit Button */}
       {isOwner && (
