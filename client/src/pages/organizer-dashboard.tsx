@@ -283,14 +283,14 @@ export default function OrganizerDashboardPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <SEO
-        title="Organiser Dashboard | TennisConnect"
+        title="Organiser Hub | TennisConnect"
         description="Manage your Organization and Sessions on TennisConnect."
         noIndex
       />
       <Navbar />
 
       <div className="flex-1 max-w-5xl mx-auto w-full px-4 py-10 space-y-8">
-        <h1 className="font-display text-3xl font-bold">Organiser Dashboard</h1>
+        <h1 className="font-display text-3xl font-bold">Organiser Hub</h1>
 
         {isReadOnly && (
           <Card className="border-orange-200 bg-orange-50" data-testid="organizer-readonly-banner">

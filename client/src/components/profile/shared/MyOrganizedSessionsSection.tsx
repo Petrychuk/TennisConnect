@@ -37,7 +37,7 @@ const STATUS_LABEL: Record<string, string> = {
 // The sessions/tournaments this user organizes — as opposed to
 // MySessionsSection, which is sessions they've joined as a player.
 // Read-only here; creating/publishing/cancelling happens on the
-// Organizer Dashboard, this is just the at-a-glance view on the profile.
+// Organiser Hub, this is just the at-a-glance view on the profile.
 export function MyOrganizedSessionsSection() {
   const [sessions, setSessions] = useState<MyOrganizedSession[] | null>(null);
 
@@ -67,7 +67,7 @@ export function MyOrganizedSessionsSection() {
         <Button asChild variant="outline" size="sm" data-testid="go-to-organizer-dashboard-from-profile">
           <Link href="/organizer/dashboard">
             <ExternalLink className="w-4 h-4 mr-2" />
-            Manage in Organizer Dashboard
+            Manage in Organiser Hub
           </Link>
         </Button>
       </div>
@@ -75,7 +75,7 @@ export function MyOrganizedSessionsSection() {
       {sessions.length === 0 ? (
         <Card data-testid="my-organized-sessions-empty">
           <CardContent className="py-10 text-center text-muted-foreground">
-            You haven't created any sessions yet. Head to your Organizer Dashboard to create one.
+            You haven't created any sessions yet. Head to your Organiser Hub to create one.
           </CardContent>
         </Card>
       ) : (

@@ -66,7 +66,7 @@ export function BecomeOrganizerCard({ status, onChange }: BecomeOrganizerCardPro
               You're an approved organiser.
             </div>
             <Button asChild size="sm" data-testid="go-to-organizer-dashboard">
-              <Link href="/organizer/dashboard">Open Organiser Dashboard</Link>
+              <Link href="/organizer/dashboard">Open Organiser Hub</Link>
             </Button>
           </div>
         ) : status.request?.status === "pending" ? (
