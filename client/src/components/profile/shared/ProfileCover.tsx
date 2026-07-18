@@ -1,19 +1,23 @@
 import { ReactNode } from "react";
 import { Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import defaultCoverImage from "/assets/images/cinematic_tennis_court_abstract_background.png";
+import genericDefaultCover from "/assets/images/cinematic_tennis_court_abstract_background.png";
 
 interface ProfileCoverProps {
   cover?: string | null;
   isOwner: boolean;
   onEdit?: () => void;
   children?: ReactNode;
+  // Role-specific branded default (player vs coach). Falls back to a
+  // generic tennis-court image if a page doesn't pass one.
+  defaultCover?: string;
 }
 
 export function ProfileCover({
   cover,
   isOwner,
   onEdit,
+  defaultCover,
 }: ProfileCoverProps) {
   return (
     <div className="relative w-full h-[280px] sm:h-[300px] md:h-[380px] lg:h-[460px] overflow-hidden rounded-t-3xl group">
@@ -21,7 +25,7 @@ export function ProfileCover({
       {/* Cover Image — a single bundled default when the user has none,
           so there's nothing to swap once their real data loads. */}
       <img
-        src={cover || defaultCoverImage}
+        src={cover || defaultCover || genericDefaultCover}
         alt="Profile Cover"
         data-testid="profile-cover"
         className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
