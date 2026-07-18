@@ -29,6 +29,8 @@ import RecreationDetailPage from "@/pages/recreation-detail";
 import AdminPage from "@/pages/admin";
 import AdminTravelPreviewPage from "@/pages/admin-travel-preview";
 import AdminArticlePreviewPage from "@/pages/admin-article-preview";
+import OrganizerDashboardPage from "@/pages/organizer-dashboard";
+import OrganizationDetailPage from "@/pages/organization-detail";
 
 function Router() {
   return (
@@ -58,6 +60,8 @@ function Router() {
       <Route path="/messages" component={MessagesPage} />
       <Route path="/coach/profile" component={CoachProfile} />
       <Route path="/coach/:id" component={CoachProfile} />
+      <Route path="/organiser/hub" component={OrganizerDashboardPage} />
+      <Route path="/organizations/:slug" component={OrganizationDetailPage} />
       <Route component={NotFound} />
     </Switch>
   );
