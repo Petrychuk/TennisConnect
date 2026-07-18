@@ -869,7 +869,7 @@ export default function CoachProfile() {
             
           {loading ? (
             <div
-              className="container mx-auto max-w-6xl sm:px-4 relative -mt-2 sm:-mt-6 md:-mt-16 lg:-mt-20"
+              className="container mx-auto max-w-6xl px-4 relative -mt-2 sm:-mt-6 md:-mt-16 lg:-mt-20"
               data-testid="coach-hero-skeleton"
             >
               <div className="rounded-2xl border bg-background/90 backdrop-blur-xl shadow-xl pt-28 sm:pt-28 md:pt-8 pb-5 sm:pb-7 md:pb-8 px-4 sm:px-5 md:px-8 md:pl-56">

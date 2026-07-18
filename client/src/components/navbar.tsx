@@ -19,6 +19,7 @@ import {
   Plane,
   BookOpen,
   ChevronRight,
+  Trophy,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState, useEffect } from "react";
@@ -235,6 +236,14 @@ export function Navbar() {
                       <Link href="/admin" className="flex items-center gap-2" data-testid="navbar-admin-link">
                         <ShieldCheck className="w-4 h-4" />
                         Admin Panel
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  {user?.isOrganizer && (
+                    <DropdownMenuItem asChild className="cursor-pointer">
+                      <Link href="/organiser/hub" className="flex items-center gap-2" data-testid="navbar-organiser-hub-link">
+                        <Trophy className="w-4 h-4" />
+                        Organiser Hub
                       </Link>
                     </DropdownMenuItem>
                   )}
@@ -588,6 +597,18 @@ export function Navbar() {
             >
               <ShieldCheck className="w-4 h-4" />
               Admin Panel
+            </Link>
+          )}
+
+          {user?.isOrganizer && (
+            <Link
+              href="/organiser/hub"
+              data-testid="mobile-more-organiser-hub-link"
+              className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-muted transition-colors cursor-pointer"
+              onClick={() => setMoreOpen(false)}
+            >
+              <Trophy className="w-4 h-4" />
+              Organiser Hub
             </Link>
           )}
 

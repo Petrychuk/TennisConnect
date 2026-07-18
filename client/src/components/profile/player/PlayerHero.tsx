@@ -42,7 +42,7 @@ export function PlayerHero({
 }: PlayerHeroProps) {
   return (
     <ProfileHeroCard
-      cardBackgroundClassName="bg-background/90"
+      cardBackgroundClassName="bg-background/40"
 
       avatar={
         <ProfileAvatar
