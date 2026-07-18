@@ -18,7 +18,7 @@ export function ProfileHeroCard({
   info,
   actions,
   stats,
-  cardBackgroundClassName = "bg-background/90",
+  cardBackgroundClassName = "bg-card/50",
 }: ProfileHeroCardProps) {
   return (
     <div className="container mx-auto max-w-6xl sm:px-4 relative -mt-2 sm:-mt-6 md:-mt-16 lg:-mt-20 z-30">
@@ -42,10 +42,11 @@ export function ProfileHeroCard({
           {avatar}
         </div>
 
-        {/* White Card */}
+        {/* Info Card — same glass treatment as the search/filter bars
+            (bg-card/50 + backdrop-blur-md + border-border/40 + shadow-lg) */}
         <div
           className={cn(
-            "mt-14 sm:mt-10 md:mt-0 rounded-2xl backdrop-blur-xl border shadow-xl pt-28 sm:pt-28 md:pt-8 pb-5 sm:pb-7 md:pb-8 px-4 sm:px-5 md:px-8 md:pl-56",
+            "mt-14 sm:mt-10 md:mt-0 rounded-2xl backdrop-blur-md border border-border/40 shadow-lg pt-28 sm:pt-28 md:pt-8 pb-5 sm:pb-7 md:pb-8 px-4 sm:px-5 md:px-8 md:pl-56",
             cardBackgroundClassName
           )}
         >

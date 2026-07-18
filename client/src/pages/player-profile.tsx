@@ -662,7 +662,7 @@ export default function PlayerProfile() {
                 className="relative"
                 data-testid="player-hero-skeleton"
               >
-                <div className="rounded-2xl border bg-background/90 backdrop-blur-xl shadow-xl pt-28 sm:pt-28 md:pt-8 pb-5 sm:pb-7 md:pb-8 px-4 sm:px-5 md:px-8 md:pl-56">
+                <div className="rounded-2xl border border-border/40 bg-card/50 backdrop-blur-md shadow-lg pt-28 sm:pt-28 md:pt-8 pb-5 sm:pb-7 md:pb-8 px-4 sm:px-5 md:px-8 md:pl-56">
                   <div className="flex flex-col md:flex-row md:items-center gap-4">
                     <Skeleton className="w-16 h-16 md:w-20 md:h-20 rounded-full shrink-0" />
                     <div className="flex-1 space-y-3">
