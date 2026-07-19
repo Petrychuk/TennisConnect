@@ -53,6 +53,7 @@ export interface SessionListItem {
   // session might be full or registration might be closed even though
   // it's still upcoming, so this needs to be its own signal.
   registrationOpen?: boolean;
+  registrationClosesAt?: string; // ISO
   checkInOpen?: boolean;
   format?: string; // "Fun doubles · Random partners · Balance skill"
   roundsDescription?: string; // "5 rounds · Best of 4 games (no-ad)"
@@ -93,6 +94,7 @@ export const mockSessionsList: SessionListItem[] = [
     roundTotal: 5,
     roundEndsAt: hoursFromNow(1.22),
     registrationOpen: true,
+    registrationClosesAt: hoursFromNow(-0.5),
     checkInOpen: true,
     format: "Fun doubles · Random partners · Balance skill",
     roundsDescription: "5 rounds · Best of 4 games (no-ad)",
@@ -442,7 +444,7 @@ export interface SessionPlayer {
   level: number;
   levelLabel: "Advanced" | "Intermediate" | "Social";
   group: "A" | "B" | "C" | null;
-  status: "registered" | "waiting" | "cancelled" | "invited";
+  status: "registered" | "waiting" | "cancelled" | "invited" | "no-response";
   checkedIn: boolean;
   checkInTime: string | null; // ISO
   joinedAt: string; // ISO
@@ -463,6 +465,9 @@ export const mockSessionPlayers: SessionPlayer[] = [
   { id: "p-8", name: "Katerina Leon", avatar: null, level: 3.0, levelLabel: "Social", group: "C", status: "registered", checkedIn: true, checkInTime: minutesAgo(48), joinedAt: minutesAgo(210) },
   { id: "p-9", name: "Sophie Turner", avatar: null, level: 3.5, levelLabel: "Intermediate", group: null, status: "cancelled", checkedIn: false, checkInTime: null, joinedAt: minutesAgo(300) },
   { id: "p-10", name: "Liam Chen", avatar: null, level: 3.0, levelLabel: "Social", group: null, status: "invited", checkedIn: false, checkInTime: null, joinedAt: minutesAgo(90) },
+  { id: "p-11", name: "Priya Nair", avatar: null, level: 3.5, levelLabel: "Intermediate", group: null, status: "invited", checkedIn: false, checkInTime: null, joinedAt: minutesAgo(80) },
+  { id: "p-12", name: "Ryan Foster", avatar: null, level: 3.0, levelLabel: "Social", group: null, status: "no-response", checkedIn: false, checkInTime: null, joinedAt: minutesAgo(120) },
+  { id: "p-13", name: "Grace Kim", avatar: null, level: 4.0, levelLabel: "Intermediate", group: null, status: "no-response", checkedIn: false, checkInTime: null, joinedAt: minutesAgo(140) },
 ];
 
 export interface WaitingPlayer {

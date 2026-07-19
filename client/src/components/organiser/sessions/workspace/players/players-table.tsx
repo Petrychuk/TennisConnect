@@ -32,6 +32,7 @@ const STATUS_BADGE_STYLE: Record<SessionPlayer["status"], string> = {
   waiting: "bg-muted text-muted-foreground",
   cancelled: "bg-destructive/10 text-destructive",
   invited: "bg-accent text-accent-foreground",
+  "no-response": "bg-muted text-muted-foreground",
 };
 
 export function PlayersTable({ players, onCheckIn, showGroupColumn = true, showJoinedColumn = true }: PlayersTableProps) {
@@ -99,7 +100,15 @@ export function PlayersTable({ players, onCheckIn, showGroupColumn = true, showJ
               {showGroupColumn && <TableCell>{player.group ?? "—"}</TableCell>}
               <TableCell>
                 <Badge className={STATUS_BADGE_STYLE[player.status]}>
-                  {player.status === "registered" ? "Registered" : player.status === "waiting" ? "Waiting" : player.status === "cancelled" ? "Cancelled" : "Invited"}
+                  {player.status === "registered"
+                    ? "Registered"
+                    : player.status === "waiting"
+                    ? "Waiting"
+                    : player.status === "cancelled"
+                    ? "Cancelled"
+                    : player.status === "invited"
+                    ? "Invited"
+                    : "No Response"}
                 </Badge>
               </TableCell>
               <TableCell>

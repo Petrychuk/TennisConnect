@@ -272,7 +272,7 @@ export default function OrganiserSessionWorkspacePage() {
               <PlayersTab session={session} onEdit={goEdit} />
             </TabsContent>
             <TabsContent value="registration" className="mt-4">
-              <RegistrationTab />
+              <RegistrationTab session={session} onEnterLive={goLive} />
             </TabsContent>
             <TabsContent value="format" className="mt-4">
               <FormatRulesTab session={session} />
