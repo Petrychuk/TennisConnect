@@ -31,6 +31,7 @@ import AdminTravelPreviewPage from "@/pages/admin-travel-preview";
 import AdminArticlePreviewPage from "@/pages/admin-article-preview";
 import OrganiserDashboardPage from "@/pages/organiser/organiser-dashboard";
 import OrganiserSessionsPage from "@/pages/organiser/sessions";
+import OrganiserPlayersPage from "@/pages/organiser/players";
 import OrganiserSessionWorkspacePage from "@/pages/organiser/session-workspace";
 import OrganiserSessionLivePage from "@/pages/organiser/session-live";
 import OrganiserSessionEditPage from "@/pages/organiser/session-edit";
@@ -66,6 +67,7 @@ function Router() {
       <Route path="/coach/:id" component={CoachProfile} />
       <Route path="/organiser" component={OrganiserDashboardPage} />
       <Route path="/organiser/sessions" component={OrganiserSessionsPage} />
+      <Route path="/organiser/players" component={OrganiserPlayersPage} />
       <Route path="/organiser/sessions/:id/live" component={OrganiserSessionLivePage} />
       <Route path="/organiser/sessions/:id/edit" component={OrganiserSessionEditPage} />
       <Route path="/organiser/sessions/:id" component={OrganiserSessionWorkspacePage} />
