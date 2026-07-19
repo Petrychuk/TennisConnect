@@ -62,7 +62,7 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
 
   const bucketTabsList = (
     <Tabs value={bucket} onValueChange={(v) => setBucket(v as Bucket)}>
-      <TabsList className="w-full justify-start overflow-x-auto whitespace-nowrap h-auto p-1 scrollbar-hide" data-testid="organiser-players-bucket-tabs">
+      <TabsList className="justify-start overflow-x-auto max-w-full whitespace-nowrap h-auto p-1 scrollbar-hide" data-testid="organiser-players-bucket-tabs">
         {bucketTabs.map((b) => (
           <TabsTrigger key={b.key} value={b.key} className="gap-1" data-testid={`organiser-players-bucket-tab-${b.key}`}>
             {b.label}

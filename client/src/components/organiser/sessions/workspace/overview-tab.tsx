@@ -6,11 +6,9 @@ import { SessionQuickStatsCard } from "./session-quick-stats-card";
 import { SessionStatusCard } from "./session-status-card";
 import { SessionReadinessCard } from "./session-readiness-card";
 import { SessionActionsCard } from "./session-actions-card";
-import { SessionActivityCard } from "./session-activity-card";
 import { SessionNotesCard } from "./session-notes-card";
 import { useToast } from "@/hooks/use-toast";
 import {
-  mockSessionActivity,
   mockSessionQuickStats,
   mockSessionTopPlayers,
   mockSessionTopPlayersExtra,
@@ -40,16 +38,15 @@ export function OverviewTab({ session, onEdit }: OverviewTabProps) {
   return (
     <div data-testid="organiser-session-overview-tab">
       {/* Desktop (xl+): Summary(2) + Status + Readiness in row 1, then
-          Details/Activity/Actions/Notes as four equal columns, Quick Stats last. */}
-      <div className="hidden xl:block space-y-6">
-        <div className="grid grid-cols-4 gap-6">
+          Details/Actions/Notes as three equal columns, Quick Stats last. */}
+      <div className="hidden xl:block space-y-4">
+        <div className="grid grid-cols-4 gap-4">
           <SessionSummaryCard session={session} className="col-span-2" />
           <SessionStatusCard session={session} onEdit={onEdit} />
           <SessionReadinessCard readiness={mockSessionReadiness} onViewDetails={viewReadinessDetails} />
         </div>
-        <div className="grid grid-cols-4 gap-6">
+        <div className="grid grid-cols-3 gap-4">
           <SessionDetailsCard session={session} />
-          <SessionActivityCard items={mockSessionActivity} />
           <SessionActionsCard onEdit={onEdit} />
           <SessionNotesCard initialNote={detail.notes} />
         </div>
@@ -57,20 +54,18 @@ export function OverviewTab({ session, onEdit }: OverviewTabProps) {
       </div>
 
       {/* Tablet (md to xl): Summary full width, Status+Readiness paired,
-          Details on its own row, Activity+Notes paired, Actions as an
-          icon grid, Quick Stats last. */}
-      <div className="hidden md:block xl:hidden space-y-6">
+          Details+Notes paired, Actions as an icon grid, Quick Stats last. */}
+      <div className="hidden md:block xl:hidden space-y-4">
         <SessionSummaryCard session={session} />
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-2 gap-4">
           <SessionStatusCard session={session} showEditButton={false} />
           <SessionReadinessCard readiness={mockSessionReadiness} onViewDetails={viewReadinessDetails} />
         </div>
-        <SessionDetailsCard session={session} />
-        <SessionActionsCard onEdit={onEdit} variant="grid" />
-        <div className="grid grid-cols-2 gap-6">
-          <SessionActivityCard items={mockSessionActivity} />
+        <div className="grid grid-cols-2 gap-4">
+          <SessionDetailsCard session={session} />
           <SessionNotesCard initialNote={detail.notes} />
         </div>
+        <SessionActionsCard onEdit={onEdit} variant="grid" />
         {quickStats}
       </div>
 
@@ -94,7 +89,6 @@ export function OverviewTab({ session, onEdit }: OverviewTabProps) {
           </Button>
         </div>
         <SessionDetailsCard session={session} />
-        <SessionActivityCard items={mockSessionActivity} />
         <SessionNotesCard initialNote={detail.notes} />
         {quickStats}
       </div>

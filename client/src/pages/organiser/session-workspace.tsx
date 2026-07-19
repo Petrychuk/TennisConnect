@@ -185,7 +185,7 @@ export default function OrganiserSessionWorkspacePage() {
           </div>
         </div>
 
-        <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 max-w-6xl mx-auto">
+        <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 md:space-y-4 max-w-6xl mx-auto">
           {/* Breadcrumb */}
           <div className="flex items-center gap-1.5 text-sm" data-testid="organiser-session-breadcrumb">
             <Link href="/organiser/sessions" className="text-primary hover:underline">
@@ -254,7 +254,7 @@ export default function OrganiserSessionWorkspacePage() {
 
           {/* Tabs */}
           <Tabs value={tab} onValueChange={(v) => setTab(v as WorkspaceTabKey)}>
-            <TabsList className="w-full justify-start overflow-x-auto whitespace-nowrap h-auto p-1 scrollbar-hide" data-testid="organiser-session-workspace-tabs">
+            <TabsList className="justify-start overflow-x-auto max-w-full whitespace-nowrap h-auto p-1 scrollbar-hide" data-testid="organiser-session-workspace-tabs">
               {WORKSPACE_TABS.map((t) => (
                 <TabsTrigger key={t.key} value={t.key} className="gap-1" data-testid={`organiser-session-workspace-tab-${t.key}`}>
                   {t.label}

@@ -11,7 +11,7 @@ export function SessionStatusTabs({ value, onValueChange, counts }: SessionStatu
   return (
     <Tabs value={value} onValueChange={(v) => onValueChange(v as SessionBucket)}>
       <TabsList
-        className="w-full justify-start overflow-x-auto whitespace-nowrap h-auto p-1 scrollbar-hide"
+        className="justify-start overflow-x-auto max-w-full whitespace-nowrap h-auto p-1 scrollbar-hide"
         data-testid="organiser-sessions-status-tabs"
       >
         {BUCKET_ORDER.map((bucket) => (
