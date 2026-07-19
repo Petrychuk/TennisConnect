@@ -35,13 +35,13 @@ import {
 function DashboardSkeleton() {
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-8" data-testid="organiser-dashboard-skeleton">
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-6">
         {Array.from({ length: 5 }).map((_, i) => (
           <Skeleton key={i} className="h-20 rounded-xl" />
         ))}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Skeleton className="h-72 rounded-2xl lg:col-span-2" />
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <Skeleton className="h-72 rounded-2xl xl:col-span-2" />
         <Skeleton className="h-72 rounded-2xl" />
       </div>
     </div>
@@ -53,6 +53,7 @@ export function OrganiserDashboard() {
   const [, setLocation] = useLocation();
   const [loading, setLoading] = useState(true);
   const [createSessionNotice, setCreateSessionNotice] = useState(false);
+  const profileHref = user ? `/${user.role}/${user.slug}` : "/";
 
   useEffect(() => {
     // Mock-data phase: nothing to actually await yet, but keeping a brief
@@ -93,14 +94,17 @@ export function OrganiserDashboard() {
         noIndex
       />
 
-      {/* Persistent sidebar — desktop only */}
-      <aside className="hidden lg:flex lg:w-64 shrink-0 border-r border-border bg-card">
-        <OrganiserSidebarNav organiser={mockOrganiser} className="w-full" />
+      {/* Persistent sidebar — true desktop only (xl+). Tablet, in either
+          orientation, gets the collapsible hamburger version instead
+          (see DashboardHeader) so it doesn't cramp the content grid. */}
+      <aside className="hidden xl:flex xl:w-64 shrink-0 border-r border-border">
+        <OrganiserSidebarNav organiser={mockOrganiser} profileHref={profileHref} className="w-full" />
       </aside>
 
-      <div className="flex-1 min-w-0 pb-16 lg:pb-0">
+      <div className="flex-1 min-w-0 pb-16 xl:pb-0">
         <DashboardHeader
           organiser={mockOrganiser}
+          profileHref={profileHref}
           onCreateSession={() => setCreateSessionNotice(true)}
         />
 
@@ -120,32 +124,32 @@ export function OrganiserDashboard() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-12 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-6 xl:grid-cols-12 gap-6">
                 <LiveTodayCard
                   session={mockLiveSession}
-                  className="md:col-span-6 lg:col-span-8"
+                  className="md:col-span-6 xl:col-span-8"
                   onEnterLive={() => setCreateSessionNotice(true)}
                 />
-                <RecentActivityCard items={mockActivity} className="md:col-span-6 lg:col-span-4" />
+                <RecentActivityCard items={mockActivity} className="md:col-span-6 xl:col-span-4" />
 
-                <UpcomingSessionsCard sessions={mockUpcomingSessions} className="md:col-span-6 lg:col-span-8" />
+                <UpcomingSessionsCard sessions={mockUpcomingSessions} className="md:col-span-6 xl:col-span-8" />
                 <SeasonProgressCard
                   seasonLabel={mockSeason.label}
                   weekLabel={mockSeason.weekLabel}
                   progressPercent={mockSeason.progressPercent}
                   leaderboard={mockLeaderboard}
-                  className="md:col-span-6 lg:col-span-4"
+                  className="md:col-span-6 xl:col-span-4"
                 />
 
                 <QuickActionsCard
                   organizationSlug={mockOrganiser.organizationSlug}
                   onCreateSession={() => setCreateSessionNotice(true)}
-                  className="md:col-span-3 lg:col-span-4"
+                  className="md:col-span-3 xl:col-span-4"
                 />
                 <StatisticsCard
                   stats={mockQuickAnalytics}
                   highlight={mockHighlight.message}
-                  className="md:col-span-3 lg:col-span-8"
+                  className="md:col-span-3 xl:col-span-8"
                 />
               </div>
             </div>

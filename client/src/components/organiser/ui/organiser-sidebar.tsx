@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import {
   Home,
   CalendarDays,
@@ -10,6 +11,7 @@ import {
   MessageSquare,
   FileBarChart,
   Settings,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { OrganiserUser } from "@/lib/organiser-hub-mock-data";
@@ -35,25 +37,31 @@ const NAV_ITEMS: NavItem[] = [
 
 interface OrganiserSidebarProps {
   organiser: OrganiserUser;
+  profileHref: string;
   className?: string;
 }
 
 // Only "Home" renders anything right now — this is the mock-data pass, the
 // rest of the nav is visually complete but not wired to real pages yet.
-export function OrganiserSidebarNav({ organiser, className }: OrganiserSidebarProps) {
+//
+// Wrapped in the project's own `.dark` scope (see index.css's
+// @custom-variant dark rule) rather than hardcoded colours, so the
+// permanently-dark sidebar still only ever uses the existing palette
+// tokens — just their dark-theme values, scoped to this subtree.
+export function OrganiserSidebarNav({ organiser, profileHref, className }: OrganiserSidebarProps) {
   return (
-    <div className={cn("flex flex-col h-full", className)}>
-      <div className="px-5 pt-6 pb-4">
-        <Link href="/" className="text-xl font-display font-bold flex items-center gap-1">
+    <div className={cn("dark flex flex-col h-full bg-background text-foreground", className)} data-testid="organiser-sidebar">
+      <div className="px-5 pt-6">
+        <Link href="/" className="text-xl font-display font-bold flex items-center gap-1" data-testid="organiser-sidebar-logo">
           Tennis<span className="text-primary">Connect</span>
           <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1" />
         </Link>
-        <p className="text-[11px] font-semibold tracking-widest text-muted-foreground mt-4 px-1">
+        <p className="text-[11px] font-semibold tracking-widest text-muted-foreground mt-3 px-1">
           ORGANISER HUB
         </p>
       </div>
 
-      <nav className="flex-1 px-3 space-y-1" data-testid="organiser-sidebar-nav">
+      <nav className="flex-1 px-3 pt-4 space-y-1" data-testid="organiser-sidebar-nav">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           return (
@@ -71,16 +79,20 @@ export function OrganiserSidebarNav({ organiser, className }: OrganiserSidebarPr
               <Icon className="w-4 h-4 shrink-0" />
               <span className="flex-1">{item.label}</span>
               {item.badge && (
-                <Badge className="h-5 min-w-5 px-1.5 justify-center">{item.badge}</Badge>
+                <Badge className="h-5 min-w-5 px-1.5 justify-center" data-testid={`organiser-sidebar-nav-${item.key}-badge`}>
+                  {item.badge}
+                </Badge>
               )}
             </div>
           );
         })}
       </nav>
 
-      <div className="p-3 mt-auto">
-        <div
-          className="flex items-center gap-3 rounded-xl border border-border p-3"
+      <div className="px-3 pb-3">
+        <Separator className="mb-3" />
+        <Link
+          href={profileHref}
+          className="flex items-center gap-3 rounded-xl border border-border p-3 hover:bg-accent/40 transition-colors"
           data-testid="organiser-sidebar-user"
         >
           <Avatar className="h-9 w-9 border border-border">
@@ -89,11 +101,12 @@ export function OrganiserSidebarNav({ organiser, className }: OrganiserSidebarPr
               {organiser.name[0]}
             </AvatarFallback>
           </Avatar>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold truncate">{organiser.name} Coach</p>
             <p className="text-xs text-muted-foreground">{organiser.role}</p>
           </div>
-        </div>
+          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+        </Link>
       </div>
     </div>
   );

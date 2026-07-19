@@ -9,15 +9,17 @@ import type { OrganiserUser } from "@/lib/organiser-hub-mock-data";
 
 interface DashboardHeaderProps {
   organiser: OrganiserUser;
+  profileHref: string;
   hasUnread?: boolean;
   onCreateSession?: () => void;
 }
 
-export function DashboardHeader({ organiser, hasUnread = true, onCreateSession }: DashboardHeaderProps) {
+export function DashboardHeader({ organiser, profileHref, hasUnread = true, onCreateSession }: DashboardHeaderProps) {
   return (
     <div data-testid="organiser-dashboard-header">
-      {/* Compact bar — tablet & mobile only, sidebar collapses behind the hamburger */}
-      <div className="flex lg:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
+      {/* Compact bar — tablet (both orientations) & mobile, sidebar collapses
+          behind the hamburger until xl (true desktop) */}
+      <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
         <Sheet>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" data-testid="organiser-sidebar-trigger">
@@ -26,7 +28,7 @@ export function DashboardHeader({ organiser, hasUnread = true, onCreateSession }
           </SheetTrigger>
           <SheetContent side="left" className="p-0 w-72">
             <SheetTitle className="sr-only">Organiser Hub navigation</SheetTitle>
-            <OrganiserSidebarNav organiser={organiser} />
+            <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} />
           </SheetContent>
         </Sheet>
 
@@ -44,17 +46,19 @@ export function DashboardHeader({ organiser, hasUnread = true, onCreateSession }
               )}
             </Button>
           </Link>
-          <Avatar className="h-8 w-8 border border-border">
-            <AvatarImage src={organiser.avatar || undefined} />
-            <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
-              {organiser.name[0]}
-            </AvatarFallback>
-          </Avatar>
+          <Link href={profileHref} data-testid="organiser-header-avatar-mobile">
+            <Avatar className="h-8 w-8 border border-border">
+              <AvatarImage src={organiser.avatar || undefined} />
+              <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
+                {organiser.name[0]}
+              </AvatarFallback>
+            </Avatar>
+          </Link>
         </div>
       </div>
 
       {/* Desktop row — sidebar is persistent, this just holds notifications + the primary action */}
-      <div className="hidden lg:flex items-center justify-end gap-3 px-8 pt-6">
+      <div className="hidden xl:flex items-center justify-end gap-3 px-8 pt-6">
         <Button variant="outline" size="icon" className="relative" asChild data-testid="organiser-header-bell-desktop">
           <Link href="/messages">
             <Bell className="w-4 h-4" />
