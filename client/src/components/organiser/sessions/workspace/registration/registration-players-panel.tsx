@@ -75,7 +75,7 @@ export function RegistrationPlayersPanel({ players, onOpenPlayerActions, showDet
   return (
     <div data-testid="organiser-registration-players-panel">
       <div className="flex flex-col sm:flex-row gap-2 mb-3">
-        <div className="relative flex-1">
+        <div className="relative sm:max-w-xs sm:flex-none flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             value={search}
@@ -132,7 +132,7 @@ export function RegistrationPlayersPanel({ players, onOpenPlayerActions, showDet
                 </Badge>
               )}
               {showDetailColumns && player.rating && (
-                <span className="hidden lg:flex items-center gap-1 text-xs text-muted-foreground shrink-0" data-testid={`organiser-registration-player-${player.id}-rating`}>
+                <span className="hidden xl:flex items-center gap-1 text-xs text-muted-foreground shrink-0" data-testid={`organiser-registration-player-${player.id}-rating`}>
                   <Star className="w-3 h-3" />
                   Rating {player.rating.toFixed(1)}
                 </span>

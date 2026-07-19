@@ -31,15 +31,18 @@ export function RegistrationTab({ session, onEnterLive }: RegistrationTabProps) 
     <div className="space-y-4" data-testid="organiser-session-registration-tab">
       <ReadyForLiveBar readiness={mockSessionReadiness} />
 
-      <RegistrationPlayersPanel
-        players={mockSessionPlayers}
-        onOpenPlayerActions={setSheetPlayer}
-        showDetailColumns
-      />
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <RegistrationWaitingListCard players={mockWaitingList} defaultOpen={false} />
-        <RegistrationQuickActionsCard />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
+          <RegistrationPlayersPanel
+            players={mockSessionPlayers}
+            onOpenPlayerActions={setSheetPlayer}
+            showDetailColumns
+          />
+        </div>
+        <div className="space-y-4">
+          <RegistrationWaitingListCard players={mockWaitingList} defaultOpen={false} />
+          <RegistrationQuickActionsCard />
+        </div>
       </div>
 
       <div className="flex justify-center pt-2">

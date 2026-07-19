@@ -185,7 +185,7 @@ export default function OrganiserSessionWorkspacePage() {
           </div>
         </div>
 
-        <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 max-w-6xl mx-auto">
           {/* Breadcrumb */}
           <div className="flex items-center gap-1.5 text-sm" data-testid="organiser-session-breadcrumb">
             <Link href="/organiser/sessions" className="text-primary hover:underline">
