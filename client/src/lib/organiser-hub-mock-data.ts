@@ -33,6 +33,51 @@ export interface MockSession {
   round?: string; // e.g. "Round 2" - only meaningful once TC Live exists
 }
 
+export type CourtState = "ready" | "playing" | "pending";
+
+export interface CourtStatus {
+  id: string;
+  label: string; // "Court 1"
+  state: CourtState;
+}
+
+// The live-session state that makes the dashboard feel like it's actually
+// watching something happen, not just showing a static record. This is the
+// shape TC Live will eventually replace/extend — kept as its own type so
+// swapping the mock for a real subscription later doesn't touch the rest
+// of LiveTodayCard.
+export interface LiveSessionState {
+  roundCurrent: number;
+  roundTotal: number;
+  roundEndsAt: string; // ISO — drives the "round ends in" countdown
+  courts: CourtStatus[];
+  // Placeholder for the eventual TC Live upgrade (connected player count
+  // over a live socket). Undefined today; once it's real, LiveTodayCard
+  // can switch its headline straight from "LIVE NOW" to "TC LIVE".
+  connectedPlayers?: number;
+}
+
+export interface TodaysFocus {
+  title: string;
+  startAt: string; // ISO
+  registeredCount: number;
+  checkedInCount: number;
+  weatherEmoji: string;
+  weatherLabel: string;
+  courtsReady: number;
+  courtsTotal: number;
+}
+
+export interface AlertItem {
+  id: string;
+  message: string;
+}
+
+export interface AiRecommendation {
+  id: string;
+  message: string;
+}
+
 export interface StatStripItem {
   key: string;
   label: string;
@@ -92,13 +137,52 @@ export const mockLiveSession: MockSession = {
   round: "Round Not Started",
 };
 
+export const mockLiveSessionState: LiveSessionState = {
+  roundCurrent: 2,
+  roundTotal: 5,
+  roundEndsAt: new Date(Date.now() + 18 * 60 * 1000 + 24 * 1000).toISOString(),
+  courts: [
+    { id: "court-1", label: "Court 1", state: "ready" },
+    { id: "court-2", label: "Court 2", state: "playing" },
+    { id: "court-3", label: "Court 3", state: "playing" },
+    { id: "court-4", label: "Court 4", state: "pending" },
+    { id: "court-5", label: "Court 5", state: "ready" },
+    { id: "court-6", label: "Court 6", state: "playing" },
+  ],
+};
+
+export const mockTodaysFocus: TodaysFocus = {
+  title: "Wednesday Social Tennis",
+  startAt: mockLiveSession.startAt,
+  registeredCount: 24,
+  checkedInCount: 17,
+  weatherEmoji: "☀️",
+  weatherLabel: "23°C",
+  courtsReady: 6,
+  courtsTotal: 6,
+};
+
+export const mockAlerts: AlertItem[] = [
+  { id: "alert-1", message: "4 players still haven't checked in." },
+  { id: "alert-2", message: "Registration for Friday Ladies Social closes in 45 min." },
+  { id: "alert-3", message: "Court 3 has no score logged for Round 1." },
+  { id: "alert-4", message: "Waiting list for Sunday Americano has 5 players." },
+];
+
+export const mockAiRecommendations: AiRecommendation[] = [
+  { id: "ai-1", message: "Registration for Sunday Americano is almost full — consider opening Court 7." },
+  { id: "ai-2", message: "Emma Wilson hasn't attended in 3 weeks — worth a check-in message." },
+  { id: "ai-3", message: "Kate Smith just reached Finals qualification for the season." },
+  { id: "ai-4", message: "Attendance this week is 12% above your season average." },
+];
+
 function daysFromNowAt(days: number, hour: number, minute: number) {
   const d = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
   d.setHours(hour, minute, 0, 0);
   return d.toISOString();
 }
 
-export const mockUpcomingSessions: MockSession[] = [
+export const mockSessions: MockSession[] = [
   {
     id: "upcoming-1",
     title: "Friday Ladies Social",
@@ -134,6 +218,30 @@ export const mockUpcomingSessions: MockSession[] = [
     checkedInCount: 0,
     waitingCount: 0,
     maxParticipants: 16,
+  },
+  {
+    id: "draft-1",
+    title: "Autumn Club Championship",
+    type: "tournament",
+    status: "draft",
+    location: "Lyne Park Tennis Centre",
+    startAt: daysFromNowAt(14, 9, 0),
+    registeredCount: 0,
+    checkedInCount: 0,
+    waitingCount: 0,
+    maxParticipants: 32,
+  },
+  {
+    id: "completed-1",
+    title: "Monday Beginner Clinic",
+    type: "clinic",
+    status: "completed",
+    location: "Lyne Park Tennis Centre",
+    startAt: daysFromNowAt(-3, 18, 0),
+    registeredCount: 10,
+    checkedInCount: 9,
+    waitingCount: 0,
+    maxParticipants: 10,
   },
 ];
 

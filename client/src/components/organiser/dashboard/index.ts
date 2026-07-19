@@ -1,9 +1,13 @@
 export { OrganiserDashboard } from "./organiser-dashboard";
 export { DashboardHeader } from "./dashboard-header";
 export { DashboardHero } from "./dashboard-hero";
+export { TodaysFocusCard } from "./todays-focus-card";
 export { LiveTodayCard } from "./live-today-card";
 export { UpcomingSessionsCard } from "./upcoming-sessions-card";
 export { SeasonProgressCard } from "./season-progress-card";
 export { QuickActionsCard } from "./quick-actions-card";
 export { RecentActivityCard } from "./recent-activity-card";
 export { StatisticsCard } from "./statistics-card";
+export { AlertsCard } from "./alerts-card";
+export { AiAssistantCard } from "./ai-assistant-card";
+export { CountdownTimer } from "./countdown-timer";

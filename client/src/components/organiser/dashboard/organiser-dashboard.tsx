@@ -9,23 +9,30 @@ import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar
 import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
 import { DashboardHeader } from "./dashboard-header";
 import { DashboardHero } from "./dashboard-hero";
+import { TodaysFocusCard } from "./todays-focus-card";
 import { LiveTodayCard } from "./live-today-card";
 import { UpcomingSessionsCard } from "./upcoming-sessions-card";
 import { SeasonProgressCard } from "./season-progress-card";
 import { QuickActionsCard } from "./quick-actions-card";
 import { RecentActivityCard } from "./recent-activity-card";
 import { StatisticsCard } from "./statistics-card";
+import { AlertsCard } from "./alerts-card";
+import { AiAssistantCard } from "./ai-assistant-card";
 
 import {
   mockOrganiser,
   mockStatStrip,
+  mockTodaysFocus,
   mockLiveSession,
-  mockUpcomingSessions,
+  mockLiveSessionState,
+  mockSessions,
   mockSeason,
   mockLeaderboard,
   mockActivity,
   mockQuickAnalytics,
   mockHighlight,
+  mockAlerts,
+  mockAiRecommendations,
 } from "@/lib/organiser-hub-mock-data";
 
 // NOTE: mock-data only for now (see organiser-hub-mock-data.ts). Every
@@ -124,32 +131,63 @@ export function OrganiserDashboard() {
                 </div>
               )}
 
+              {/*
+                A single grid with per-card `order` classes rather than
+                three separate grids — the mobile sequence genuinely
+                differs from desktop (Today's Session -> Activity ->
+                Sessions -> Analytics -> Quick Actions), it isn't just the
+                desktop grid reflowed into one column.
+              */}
               <div className="grid grid-cols-1 md:grid-cols-6 xl:grid-cols-12 gap-6">
+                <TodaysFocusCard
+                  focus={mockTodaysFocus}
+                  className="md:col-span-6 xl:col-span-12 order-1"
+                />
+
                 <LiveTodayCard
                   session={mockLiveSession}
-                  className="md:col-span-6 xl:col-span-8"
+                  liveState={mockLiveSessionState}
+                  className="md:col-span-6 xl:col-span-8 order-2 xl:order-4"
                   onEnterLive={() => setCreateSessionNotice(true)}
                 />
-                <RecentActivityCard items={mockActivity} className="md:col-span-6 xl:col-span-4" />
 
-                <UpcomingSessionsCard sessions={mockUpcomingSessions} className="md:col-span-6 xl:col-span-8" />
+                <AlertsCard
+                  alerts={mockAlerts}
+                  className="md:col-span-6 xl:col-span-4 order-3 xl:order-2"
+                />
+
+                <RecentActivityCard
+                  items={mockActivity}
+                  className="md:col-span-6 xl:col-span-4 order-4 xl:order-5"
+                />
+
+                <UpcomingSessionsCard
+                  sessions={mockSessions}
+                  className="md:col-span-6 xl:col-span-8 order-5 xl:order-6"
+                />
+
                 <SeasonProgressCard
                   seasonLabel={mockSeason.label}
                   weekLabel={mockSeason.weekLabel}
                   progressPercent={mockSeason.progressPercent}
                   leaderboard={mockLeaderboard}
-                  className="md:col-span-6 xl:col-span-4"
+                  className="md:col-span-6 xl:col-span-4 order-6 xl:order-7"
                 />
 
-                <QuickActionsCard
-                  organizationSlug={mockOrganiser.organizationSlug}
-                  onCreateSession={() => setCreateSessionNotice(true)}
-                  className="md:col-span-3 xl:col-span-4"
-                />
                 <StatisticsCard
                   stats={mockQuickAnalytics}
                   highlight={mockHighlight.message}
-                  className="md:col-span-3 xl:col-span-8"
+                  className="md:col-span-6 xl:col-span-8 order-7 xl:order-9"
+                />
+
+                <QuickActionsCard
+                  onCreateSession={() => setCreateSessionNotice(true)}
+                  className="md:col-span-3 xl:col-span-4 order-8 xl:order-8"
+                />
+
+                <AiAssistantCard
+                  recommendations={mockAiRecommendations}
+                  className="md:col-span-3 xl:col-span-4 order-9 xl:order-3"
                 />
               </div>
             </div>
