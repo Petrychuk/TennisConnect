@@ -1,4 +1,4 @@
-import { Users, Repeat, Trophy, Swords, Crown, Settings2, Check, Lightbulb } from "lucide-react";
+import { Users, Repeat, Trophy, Swords, Crown, Settings2, Check, Lightbulb, Award, Shield, Heart, Activity, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { SESSION_TYPE_OPTIONS, type SessionTypeKey } from "@/lib/organiser-session-wizard-types";
@@ -18,6 +18,12 @@ const TYPE_ICON: Record<SessionTypeKey, typeof Users> = {
   "round-robin": Trophy,
   mexicano: Swords,
   "king-of-the-court": Crown,
+  tournament: Award,
+  league: Shield,
+  "club-championship": Trophy,
+  "junior-event": Heart,
+  "cardio-tennis": Activity,
+  "coaching-clinic": GraduationCap,
   custom: Settings2,
 };
 

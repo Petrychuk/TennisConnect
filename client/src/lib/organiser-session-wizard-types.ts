@@ -1,4 +1,16 @@
-export type SessionTypeKey = "social" | "americano" | "round-robin" | "mexicano" | "king-of-the-court" | "custom";
+export type SessionTypeKey =
+  | "social"
+  | "americano"
+  | "round-robin"
+  | "mexicano"
+  | "king-of-the-court"
+  | "league"
+  | "club-championship"
+  | "tournament"
+  | "junior-event"
+  | "cardio-tennis"
+  | "coaching-clinic"
+  | "custom";
 
 export interface SessionTypeOption {
   key: SessionTypeKey;
@@ -7,12 +19,26 @@ export interface SessionTypeOption {
   mostPopular?: boolean;
 }
 
+// Tournament (and League, Club Championship, etc.) are deliberately just
+// more entries here, not a separate module or entity - "Tournament — это
+// один из типов Session", per the architecture note. The wizard's later
+// steps and Session Workspace still only branch behavior on a handful of
+// mechanical questions (draw vs. rounds, elimination vs. round-robin),
+// not on a hardcoded "is this a tournament" check, so adding a type here
+// doesn't require a new code path elsewhere - only Step 1 needs to know
+// the full list exists.
 export const SESSION_TYPE_OPTIONS: SessionTypeOption[] = [
   { key: "social", label: "Social Tennis", description: "Fun, random doubles", mostPopular: true },
-  { key: "americano", label: "Americano", description: "Rotate partners · Play with everyone" },
+  { key: "americano", label: "Americano", description: "Rotate partners · Individual points" },
   { key: "round-robin", label: "Round Robin", description: "Everyone plays · Structured format" },
   { key: "mexicano", label: "Mexicano", description: "Competitive doubles · Level based" },
   { key: "king-of-the-court", label: "King of the Court", description: "Challenge and play · Elimination style" },
+  { key: "tournament", label: "Tournament", description: "Draw · Elimination · Champion" },
+  { key: "league", label: "League Match", description: "Home vs away · Team points · Season" },
+  { key: "club-championship", label: "Club Championship", description: "Seeded draw · Qualifying · Final" },
+  { key: "junior-event", label: "Junior Event", description: "Age groups · Development focused" },
+  { key: "cardio-tennis", label: "Cardio Tennis", description: "Fitness format · High rotation" },
+  { key: "coaching-clinic", label: "Coaching Clinic", description: "Instructor led · Skill building" },
   { key: "custom", label: "Custom Session", description: "Create your own · Fully flexible" },
 ];
 
