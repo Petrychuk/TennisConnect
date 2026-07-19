@@ -29,10 +29,8 @@ import RecreationDetailPage from "@/pages/recreation-detail";
 import AdminPage from "@/pages/admin";
 import AdminTravelPreviewPage from "@/pages/admin-travel-preview";
 import AdminArticlePreviewPage from "@/pages/admin-article-preview";
-// organizer-dashboard.tsx (real API-backed dashboard) is currently unrouted —
-// its logic can be merged into the new Organiser Hub design later, see organiser-hub.tsx
-import OrganiserHubPage from "@/pages/organiser-hub";
-import OrganizationDetailPage from "@/pages/organization-detail";
+import OrganiserDashboardPage from "@/pages/organiser/organiser-dashboard";
+import OrganisationDetailPage from "@/pages/organisation-detail";
 
 function Router() {
   return (
@@ -62,8 +60,8 @@ function Router() {
       <Route path="/messages" component={MessagesPage} />
       <Route path="/coach/profile" component={CoachProfile} />
       <Route path="/coach/:id" component={CoachProfile} />
-      <Route path="/organiser/hub" component={OrganiserHubPage} />
-      <Route path="/organizations/:slug" component={OrganizationDetailPage} />
+      <Route path="/organiser" component={OrganiserDashboardPage} />
+      <Route path="/organisations/:slug" component={OrganisationDetailPage} />
       <Route component={NotFound} />
     </Switch>
   );

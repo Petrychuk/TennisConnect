@@ -1,6 +1,6 @@
 import { OrganiserDashboard } from "@/components/organiser/dashboard";
 
-export default function OrganiserHubPage() {
+export default function OrganiserDashboardPage() {
   return (
     <OrganiserDashboard />
   );

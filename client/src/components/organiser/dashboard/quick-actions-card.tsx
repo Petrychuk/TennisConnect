@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, ExternalLink, Users2, Settings } from "lucide-react";
+import { Plus, ExternalLink, Users2, Settings, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface QuickActionsCardProps {
@@ -9,13 +9,17 @@ interface QuickActionsCardProps {
   className?: string;
 }
 
+type ActionItem =
+  | { key: string; label: string; icon: LucideIcon; kind: "link"; href: string }
+  | { key: string; label: string; icon: LucideIcon; kind: "button"; onClick?: () => void; disabled?: boolean };
+
 export function QuickActionsCard({ organizationSlug, onCreateSession, className }: QuickActionsCardProps) {
-  const actions = [
-    { key: "create-session", label: "Create Session", icon: Plus, onClick: onCreateSession },
-    { key: "view-org", label: "View Public Page", icon: ExternalLink, href: `/organizations/${organizationSlug}` },
-    { key: "members", label: "Members", icon: Users2, disabled: true },
-    { key: "settings", label: "Settings", icon: Settings, disabled: true },
-  ] as const;
+  const actions: ActionItem[] = [
+    { key: "create-session", label: "Create Session", icon: Plus, kind: "button", onClick: onCreateSession },
+    { key: "view-org", label: "View Public Page", icon: ExternalLink, kind: "link", href: `/organisations/${organizationSlug}` },
+    { key: "members", label: "Members", icon: Users2, kind: "button", disabled: true },
+    { key: "settings", label: "Settings", icon: Settings, kind: "button", disabled: true },
+  ];
 
   return (
     <Card className={cn("shadow-sm hover:shadow-md transition-shadow", className)} data-testid="organiser-quick-actions-card">
@@ -35,7 +39,7 @@ export function QuickActionsCard({ organizationSlug, onCreateSession, className 
             const sharedClasses =
               "flex flex-col items-center justify-center gap-1.5 rounded-xl border border-border p-3 text-center transition-all hover:border-primary/40 hover:bg-accent/40 hover:scale-[1.01]";
 
-            if ("href" in action) {
+            if (action.kind === "link") {
               return (
                 <Link
                   key={action.key}
@@ -53,13 +57,13 @@ export function QuickActionsCard({ organizationSlug, onCreateSession, className 
                 key={action.key}
                 type="button"
                 onClick={action.onClick}
-                disabled={"disabled" in action ? action.disabled : false}
+                disabled={action.disabled}
                 className={cn(
                   sharedClasses,
                   "disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:bg-transparent disabled:hover:scale-100"
                 )}
                 data-testid={`organiser-quick-action-${action.key}`}
-                title={"disabled" in action && action.disabled ? "Coming soon" : undefined}
+                title={action.disabled ? "Coming soon" : undefined}
               >
                 {content}
               </button>

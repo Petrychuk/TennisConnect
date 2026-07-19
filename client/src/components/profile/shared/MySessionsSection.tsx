@@ -83,7 +83,7 @@ export function MySessionsSection() {
           <CardContent className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <Link href={`/organizations/${session.organizationSlug}`} className="font-semibold hover:underline">
+                <Link href={`/organisations/${session.organizationSlug}`} className="font-semibold hover:underline">
                   {session.title}
                 </Link>
                 {session.viewerRegistrationStatus === "waitlisted" && (

@@ -65,7 +65,7 @@ export function MyOrganizedSessionsSection() {
     <div className="space-y-3" data-testid="my-organized-sessions-list">
       <div className="flex justify-end">
         <Button asChild size="sm" data-testid="go-to-organizer-dashboard-from-profile">
-          <Link href="/organiser/hub">
+          <Link href="/organiser">
             <ExternalLink className="w-4 h-4 mr-2" />
             Manage in Organiser Hub
           </Link>

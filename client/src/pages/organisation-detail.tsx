@@ -37,8 +37,8 @@ interface OrganizationDetail {
   upcomingSessions: SessionWithDetails[];
 }
 
-export default function OrganizationDetailPage() {
-  const [, params] = useRoute("/organizations/:slug");
+export default function OrganisationDetailPage() {
+  const [, params] = useRoute("/organisations/:slug");
   const slug = params?.slug;
   const { isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();

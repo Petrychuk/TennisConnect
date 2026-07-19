@@ -120,34 +120,32 @@ export function OrganiserDashboard() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-12 gap-6">
                 <LiveTodayCard
                   session={mockLiveSession}
-                  className="lg:col-span-2"
+                  className="md:col-span-6 lg:col-span-8"
                   onEnterLive={() => setCreateSessionNotice(true)}
                 />
-                <RecentActivityCard items={mockActivity} />
-              </div>
+                <RecentActivityCard items={mockActivity} className="md:col-span-6 lg:col-span-4" />
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <UpcomingSessionsCard sessions={mockUpcomingSessions} className="lg:col-span-2" />
+                <UpcomingSessionsCard sessions={mockUpcomingSessions} className="md:col-span-6 lg:col-span-8" />
                 <SeasonProgressCard
                   seasonLabel={mockSeason.label}
                   weekLabel={mockSeason.weekLabel}
                   progressPercent={mockSeason.progressPercent}
                   leaderboard={mockLeaderboard}
+                  className="md:col-span-6 lg:col-span-4"
                 />
-              </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <QuickActionsCard
                   organizationSlug={mockOrganiser.organizationSlug}
                   onCreateSession={() => setCreateSessionNotice(true)}
+                  className="md:col-span-3 lg:col-span-4"
                 />
                 <StatisticsCard
                   stats={mockQuickAnalytics}
                   highlight={mockHighlight.message}
-                  className="lg:col-span-2"
+                  className="md:col-span-3 lg:col-span-8"
                 />
               </div>
             </div>

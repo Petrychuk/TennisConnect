@@ -229,7 +229,7 @@ export function Navbar() {
                   )}
                   {user?.isOrganizer && (
                     <DropdownMenuItem asChild className="cursor-pointer">
-                      <Link href="/organiser/hub" className="flex items-center gap-2" data-testid="navbar-organiser-hub-link">
+                      <Link href="/organiser" className="flex items-center gap-2" data-testid="navbar-organiser-hub-link">
                         <Trophy className="w-4 h-4" />
                         Organiser Hub
                       </Link>
@@ -605,7 +605,7 @@ export function Navbar() {
 
           {user?.isOrganizer && (
             <Link
-              href="/organiser/hub"
+              href="/organiser"
               data-testid="mobile-more-organiser-hub-link"
               className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-muted transition-colors cursor-pointer"
               onClick={() => setMoreOpen(false)}

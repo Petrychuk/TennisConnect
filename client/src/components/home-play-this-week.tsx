@@ -69,7 +69,7 @@ export function PlayThisWeek() {
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
               >
-                <Link href={`/organizations/${session.organizationSlug}`}>
+                <Link href={`/organisations/${session.organizationSlug}`}>
                   <Card
                     className="h-full cursor-pointer hover:shadow-lg transition-all duration-300"
                     data-testid={`play-this-week-card-${session.id}`}

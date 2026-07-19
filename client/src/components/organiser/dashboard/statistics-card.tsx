@@ -26,6 +26,11 @@ export function StatisticsCard({ stats, highlight, onViewLeaderboard, className 
         <span className="text-xs text-muted-foreground">This Week</span>
       </CardHeader>
       <CardContent className="space-y-5">
+        {stats.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-2" data-testid="organiser-quick-analytics-empty">
+            Run a few sessions and your analytics will show up here.
+          </p>
+        ) : (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {stats.map((stat) => {
             const Icon = STAT_ICON[stat.key] ?? Users;
@@ -49,6 +54,7 @@ export function StatisticsCard({ stats, highlight, onViewLeaderboard, className 
             );
           })}
         </div>
+        )}
 
         {highlight && (
           <div className="rounded-xl bg-primary/10 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">

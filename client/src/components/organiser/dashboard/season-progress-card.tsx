@@ -44,22 +44,28 @@ export function SeasonProgressCard({
             </span>
           </div>
 
-          <div className="space-y-2.5">
-            {leaderboard.map((entry) => (
-              <div key={entry.rank} className="flex items-center gap-3" data-testid={`organiser-leaderboard-entry-${entry.rank}`}>
-                <span className="w-4 text-xs font-bold text-muted-foreground text-center shrink-0">
-                  {entry.rank}
-                </span>
-                <Avatar className="h-6 w-6 border border-border">
-                  <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-bold">
-                    {entry.name[0]}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-sm flex-1 truncate">{entry.name}</span>
-                <span className="text-sm font-semibold">{entry.points.toLocaleString()} pts</span>
-              </div>
-            ))}
-          </div>
+          {leaderboard.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-2" data-testid="organiser-leaderboard-empty">
+              No results yet this season.
+            </p>
+          ) : (
+            <div className="space-y-2.5">
+              {leaderboard.map((entry) => (
+                <div key={entry.rank} className="flex items-center gap-3" data-testid={`organiser-leaderboard-entry-${entry.rank}`}>
+                  <span className="w-4 text-xs font-bold text-muted-foreground text-center shrink-0">
+                    {entry.rank}
+                  </span>
+                  <Avatar className="h-6 w-6 border border-border">
+                    <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-bold">
+                      {entry.name[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm flex-1 truncate">{entry.name}</span>
+                  <span className="text-sm font-semibold">{entry.points.toLocaleString()} pts</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
