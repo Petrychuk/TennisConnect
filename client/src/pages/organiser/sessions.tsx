@@ -17,6 +17,7 @@ import { SessionStatusTabs } from "@/components/organiser/sessions/session-statu
 import { SessionFiltersBar } from "@/components/organiser/sessions/session-filters-bar";
 import { SessionCard } from "@/components/organiser/sessions/session-card";
 import { SessionsEmptyState } from "@/components/organiser/sessions/sessions-empty-state";
+import { NewSessionMenu } from "@/components/organiser/sessions/wizard/new-session-menu";
 import { groupSessionsByBucket, type SessionBucket } from "@/components/organiser/sessions/session-utils";
 
 import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
@@ -134,7 +135,7 @@ export default function OrganiserSessionsPage() {
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-destructive" />
               </Button>
             </Link>
-            <Button size="icon" className="h-8 w-8" onClick={() => toast({ title: "New Session isn't wired up yet" })} data-testid="organiser-sessions-new-mobile">
+            <Button size="icon" className="h-8 w-8" onClick={() => setLocation("/organiser/sessions/new")} data-testid="organiser-sessions-new-mobile">
               <Plus className="w-4 h-4" />
             </Button>
           </div>
@@ -151,15 +152,12 @@ export default function OrganiserSessionsPage() {
                 <LayoutTemplate className="w-4 h-4" />
                 Templates
               </Button>
-              <Button className="gap-2" data-testid="organiser-sessions-new-button" onClick={() => toast({ title: "New Session isn't wired up yet" })}>
-                <Plus className="w-4 h-4" />
-                New Session
-              </Button>
+              <NewSessionMenu className="gap-2" />
             </div>
           </div>
 
           {sessions.length === 0 ? (
-            <SessionsEmptyState onCreateSession={() => toast({ title: "New Session isn't wired up yet" })} />
+            <SessionsEmptyState onCreateSession={() => setLocation("/organiser/sessions/new")} />
           ) : (
             <>
               <SessionStatusTabs value={activeBucket} onValueChange={setActiveBucket} counts={counts} />

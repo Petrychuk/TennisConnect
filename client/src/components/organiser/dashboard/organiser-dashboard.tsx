@@ -52,7 +52,6 @@ export function OrganiserDashboard() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [loading, setLoading] = useState(true);
-  const [createSessionNotice, setCreateSessionNotice] = useState(false);
   const profileHref = user ? `/${user.role}/${user.slug}` : "/";
 
   useEffect(() => {
@@ -105,7 +104,7 @@ export function OrganiserDashboard() {
         <DashboardHeader
           organiser={mockOrganiser}
           profileHref={profileHref}
-          onCreateSession={() => setCreateSessionNotice(true)}
+          onCreateSession={() => setLocation("/organiser/sessions/new")}
         />
 
         {loading ? (
@@ -115,20 +114,11 @@ export function OrganiserDashboard() {
             <DashboardHero organiser={mockOrganiser} stats={mockStatStrip} />
 
             <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-8">
-              {createSessionNotice && (
-                <div
-                  className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-primary"
-                  data-testid="organiser-create-session-notice"
-                >
-                  Session creation isn't wired up on this page yet — this is the mock-data pass.
-                </div>
-              )}
-
               <div className="grid grid-cols-1 md:grid-cols-6 xl:grid-cols-12 gap-6">
                 <LiveTodayCard
                   session={mockLiveSession}
                   className="md:col-span-6 xl:col-span-8"
-                  onEnterLive={() => setCreateSessionNotice(true)}
+                  onEnterLive={() => setLocation(`/organiser/sessions/${mockLiveSession.id}/live`)}
                 />
                 <RecentActivityCard items={mockActivity} className="md:col-span-6 xl:col-span-4" />
 
@@ -143,7 +133,7 @@ export function OrganiserDashboard() {
 
                 <QuickActionsCard
                   organizationSlug={mockOrganiser.organizationSlug}
-                  onCreateSession={() => setCreateSessionNotice(true)}
+                  onCreateSession={() => setLocation("/organiser/sessions/new")}
                   className="md:col-span-3 xl:col-span-4"
                 />
                 <StatisticsCard
