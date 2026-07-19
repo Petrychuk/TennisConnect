@@ -22,22 +22,28 @@ export function OverviewTab({ session, onEdit }: OverviewTabProps) {
   const detail = getSessionDetail(session);
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6" data-testid="organiser-session-overview-tab">
-      <div className="xl:col-span-2 space-y-6">
-        <SessionSummaryCard session={session} />
-        <SessionDetailsCard session={session} />
-        <SessionQuickStatsCard
-          stats={mockSessionQuickStats}
-          topPlayers={mockSessionTopPlayers}
-          extraCount={mockSessionTopPlayersExtra}
-        />
-      </div>
+    <div className="space-y-6" data-testid="organiser-session-overview-tab">
+      <SessionSummaryCard session={session} />
 
-      <div className="space-y-6">
+      {/*
+        md (tablet portrait+): pairs up as (Details, Status) / (Activity, Notes)
+        lg (tablet landscape + desktop): all four flatten into one row -
+        Details/Activity/Notes end up "on the same level" as requested,
+        Status rides along in the same row rather than being split off.
+      */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <SessionDetailsCard session={session} />
         <SessionStatusCard session={session} onEdit={onEdit} />
         <SessionActivityCard items={mockSessionActivity} />
         <SessionNotesCard initialNote={detail.notes} />
       </div>
+
+      {/* Always last, including on mobile. */}
+      <SessionQuickStatsCard
+        stats={mockSessionQuickStats}
+        topPlayers={mockSessionTopPlayers}
+        extraCount={mockSessionTopPlayersExtra}
+      />
     </div>
   );
 }
