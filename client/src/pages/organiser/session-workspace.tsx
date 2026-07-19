@@ -2,45 +2,77 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useRoute, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ArrowLeft, Calendar, MapPin, Users, Play, Pencil } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Menu,
+  Bell,
+  ChevronRight,
+  Share2,
+  MoreHorizontal,
+  Play,
+  Pencil,
+  Copy,
+  Archive,
+  Calendar,
+  MapPin,
+} from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { useToast } from "@/hooks/use-toast";
 import SEO from "@/components/seo";
-import { mockSessionsList, type SessionListItem } from "@/lib/organiser-sessions-mock-data";
+
+import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar";
+import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
+import { OverviewTab } from "@/components/organiser/sessions/workspace/overview-tab";
+import { PlayersTab } from "@/components/organiser/sessions/workspace/players-tab";
+import { RegistrationTab } from "@/components/organiser/sessions/workspace/registration-tab";
+import { FormatRulesTab } from "@/components/organiser/sessions/workspace/format-rules-tab";
+import { RoundsTab } from "@/components/organiser/sessions/workspace/rounds-tab";
+import { MessagesTab } from "@/components/organiser/sessions/workspace/messages-tab";
+import { PhotosTab } from "@/components/organiser/sessions/workspace/photos-tab";
+import { ResultsTab } from "@/components/organiser/sessions/workspace/results-tab";
 import { bucketFor } from "@/components/organiser/sessions/session-utils";
+
+import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
+import { mockSessionsList, mockSessionPlayers } from "@/lib/organiser-sessions-mock-data";
 
 const WORKSPACE_TABS = [
   { key: "overview", label: "Overview" },
-  { key: "registration", label: "Registration" },
   { key: "players", label: "Players" },
-  { key: "draws", label: "Draws" },
-  { key: "results", label: "Results" },
+  { key: "registration", label: "Registration" },
+  { key: "format", label: "Format & Rules" },
+  { key: "rounds", label: "Rounds" },
   { key: "messages", label: "Messages" },
-  { key: "settings", label: "Settings" },
-  { key: "history", label: "History" },
+  { key: "photos", label: "Photos" },
+  { key: "results", label: "Results" },
 ] as const;
 
 type WorkspaceTabKey = (typeof WORKSPACE_TABS)[number]["key"];
 
-// Foundation only — every tab past Overview is a placeholder marking where
-// that piece of session management will live once it's built. The point
-// of this pass is the workspace shell + navigation existing at all, not
-// every tab being finished.
-function TabPlaceholder({ label }: { label: string }) {
-  return (
-    <div className="rounded-2xl border border-dashed border-border py-16 text-center text-muted-foreground" data-testid={`organiser-session-workspace-placeholder-${label.toLowerCase()}`}>
-      {label} isn't built yet — this tab is here so the navigation is real
-      when it is.
-    </div>
-  );
-}
+const BUCKET_BADGE_LABEL: Record<string, string> = {
+  live: "Live",
+  "registration-open": "Open",
+  upcoming: "Upcoming",
+  draft: "Draft",
+  completed: "Completed",
+  archived: "Archived",
+};
 
 export default function OrganiserSessionWorkspacePage() {
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/organiser/sessions/:id");
   const search = useSearch();
+  const { toast } = useToast();
+  const profileHref = user ? `/${user.role}/${user.slug}` : "/";
   const [tab, setTab] = useState<WorkspaceTabKey>("overview");
 
   useEffect(() => {
@@ -56,7 +88,23 @@ export default function OrganiserSessionWorkspacePage() {
     return null;
   }
 
-  const session: SessionListItem | undefined = mockSessionsList.find((s) => s.id === params?.id);
+  if (!user?.isOrganizer) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 bg-background">
+        <Card className="max-w-md w-full shadow-sm">
+          <CardHeader>
+            <CardTitle>Organiser access required</CardTitle>
+          </CardHeader>
+          <CardContent className="text-muted-foreground">
+            You need to be an approved organiser to view this page. Head to your profile to
+            request organiser access.
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const session = mockSessionsList.find((s) => s.id === params?.id);
 
   if (!session) {
     return (
@@ -71,110 +119,188 @@ export default function OrganiserSessionWorkspacePage() {
 
   const bucket = bucketFor(session);
 
+  const goEdit = () => setLocation(`/organiser/sessions/${session.id}/edit`);
+  const goLive = () => setLocation(`/organiser/sessions/${session.id}/live`);
+
+  // Same state -> action mapping as the Sessions list card, so a session
+  // never presents different actions depending on where you opened it from.
+  const primaryAction =
+    bucket === "draft"
+      ? { label: "Continue Setup", onClick: goEdit, icon: undefined }
+      : bucket === "live"
+      ? { label: "Enter Live Session", onClick: goLive, icon: Play }
+      : bucket === "completed"
+      ? { label: "View Results", onClick: () => setTab("results"), icon: undefined }
+      : bucket === "archived"
+      ? { label: "View History", onClick: () => setTab("results"), icon: undefined }
+      : { label: "Enter Live Session", onClick: goLive, icon: Play }; // registration-open / upcoming — session hasn't started, button still points at Live for when it does
+
   return (
-    <div className="min-h-screen bg-background" data-testid="organiser-session-workspace">
-      <SEO title={`${session.title} | Organiser Hub | TennisConnect`} description={`Manage ${session.title} — registration, players, and results.`} noIndex />
+    <div className="min-h-screen flex bg-background" data-testid="organiser-session-workspace">
+      <SEO
+        title={`${session.title} | Organiser Hub | TennisConnect`}
+        description={`Manage ${session.title} — registration, players, rounds, and results.`}
+        noIndex
+      />
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-        <Link
-          href="/organiser/sessions"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          data-testid="organiser-session-workspace-back"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Sessions
-        </Link>
+      <aside className="hidden xl:flex xl:w-64 shrink-0 border-r border-border">
+        <OrganiserSidebarNav organiser={mockOrganiser} profileHref={profileHref} className="w-full" />
+      </aside>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="font-display text-2xl sm:text-3xl font-bold">{session.title}</h1>
-              <Badge className="capitalize">{bucket.replace("-", " ")}</Badge>
-            </div>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
-              <span className="flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5" />
-                {new Date(session.startAt).toLocaleString(undefined, {
-                  weekday: "short",
-                  day: "numeric",
-                  month: "short",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5" />
-                {session.location}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            {bucket === "live" && (
-              <Button asChild data-testid="organiser-session-workspace-enter-live">
-                <Link href={`/organiser/sessions/${session.id}/live`}>
-                  <Play className="w-4 h-4 mr-2" />
-                  Enter Live
-                </Link>
+      <div className="flex-1 min-w-0 pb-16 md:pb-0">
+        {/* Compact bar — tablet & mobile */}
+        <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="hidden md:inline-flex" data-testid="organiser-sidebar-trigger">
+                <Menu className="w-5 h-5" />
               </Button>
-            )}
-            <Button variant="outline" asChild data-testid="organiser-session-workspace-edit">
-              <Link href={`/organiser/sessions/${session.id}/edit`}>
-                <Pencil className="w-4 h-4 mr-2" />
-                Edit
-              </Link>
-            </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-0 w-72">
+              <SheetTitle className="sr-only">Organiser Hub navigation</SheetTitle>
+              <OrganiserSidebarNav organiser={mockOrganiser} profileHref={profileHref} />
+            </SheetContent>
+          </Sheet>
+          <div className="w-9 h-9 md:hidden" aria-hidden="true" />
+
+          <div className="font-display font-bold">Session Details</div>
+
+          <div className="flex items-center gap-1">
+            <Link href="/messages">
+              <Button variant="ghost" size="icon" className="relative" data-testid="organiser-header-bell-mobile">
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-destructive" />
+              </Button>
+            </Link>
+            <Link href={profileHref}>
+              <Avatar className="h-8 w-8 border border-border">
+                <AvatarImage src={mockOrganiser.avatar || undefined} />
+                <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
+                  {mockOrganiser.name[0]}
+                </AvatarFallback>
+              </Avatar>
+            </Link>
           </div>
         </div>
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as WorkspaceTabKey)}>
-          <TabsList className="w-full justify-start overflow-x-auto whitespace-nowrap h-auto p-1 scrollbar-hide" data-testid="organiser-session-workspace-tabs">
-            {WORKSPACE_TABS.map((t) => (
-              <TabsTrigger key={t.key} value={t.key} data-testid={`organiser-session-workspace-tab-${t.key}`}>
-                {t.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+        <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+          {/* Breadcrumb */}
+          <div className="flex items-center gap-1.5 text-sm" data-testid="organiser-session-breadcrumb">
+            <Link href="/organiser/sessions" className="text-primary hover:underline">
+              Sessions
+            </Link>
+            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-muted-foreground truncate">{session.title}</span>
+          </div>
 
-          <TabsContent value="overview" className="mt-4">
-            <Card className="shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-base">Overview</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div>
-                    <p className="text-xl font-bold flex items-center gap-1.5">
-                      <Users className="w-4 h-4" />
-                      {session.registeredCount}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Registered</p>
-                  </div>
-                  <div>
-                    <p className="text-xl font-bold">{session.checkedInCount}</p>
-                    <p className="text-xs text-muted-foreground">Checked In</p>
-                  </div>
-                  <div>
-                    <p className="text-xl font-bold">{session.waitingCount}</p>
-                    <p className="text-xs text-muted-foreground">Waiting List</p>
-                  </div>
-                  <div>
-                    <p className="text-xl font-bold">{session.maxParticipants ?? "—"}</p>
-                    <p className="text-xs text-muted-foreground">Capacity</p>
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground mt-4">{session.progressLabel}</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          {/* Header */}
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="font-display text-2xl sm:text-3xl font-bold">{session.title}</h1>
+                <Badge className={bucket === "live" ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary"}>
+                  {BUCKET_BADGE_LABEL[bucket]}
+                </Badge>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5" />
+                  {new Date(session.startAt).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
+                  {" · "}
+                  {new Date(session.startAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+                  {session.endAt && ` - ${new Date(session.endAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5" />
+                  {session.location}
+                </span>
+              </div>
+            </div>
 
-          {WORKSPACE_TABS.filter((t) => t.key !== "overview").map((t) => (
-            <TabsContent key={t.key} value={t.key} className="mt-4">
-              <TabPlaceholder label={t.label} />
+            <div className="hidden xl:flex items-center gap-2 shrink-0">
+              <Button variant="outline" onClick={() => toast({ title: "Share isn't wired up yet" })} data-testid="organiser-session-share-button">
+                <Share2 className="w-4 h-4 mr-2" />
+                Share
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" data-testid="organiser-session-more-button">
+                    <MoreHorizontal className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={goEdit}>
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Edit Session
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => toast({ title: "Duplicate isn't wired up here yet", description: "Use the Sessions list for now." })}>
+                    <Copy className="w-4 h-4 mr-2" />
+                    Duplicate
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => toast({ title: "Archive isn't wired up yet" })}>
+                    <Archive className="w-4 h-4 mr-2" />
+                    Archive
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button onClick={primaryAction.onClick} data-testid="organiser-session-primary-action">
+                {primaryAction.icon && <primaryAction.icon className="w-4 h-4 mr-2" />}
+                {primaryAction.label}
+              </Button>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <Tabs value={tab} onValueChange={(v) => setTab(v as WorkspaceTabKey)}>
+            <TabsList className="w-full justify-start overflow-x-auto whitespace-nowrap h-auto p-1 scrollbar-hide" data-testid="organiser-session-workspace-tabs">
+              {WORKSPACE_TABS.map((t) => (
+                <TabsTrigger key={t.key} value={t.key} className="gap-1" data-testid={`organiser-session-workspace-tab-${t.key}`}>
+                  {t.label}
+                  {t.key === "players" && (
+                    <span className="text-[11px] text-muted-foreground">({mockSessionPlayers.length})</span>
+                  )}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            <TabsContent value="overview" className="mt-4">
+              <OverviewTab session={session} onEdit={goEdit} />
             </TabsContent>
-          ))}
-        </Tabs>
+            <TabsContent value="players" className="mt-4">
+              <PlayersTab />
+            </TabsContent>
+            <TabsContent value="registration" className="mt-4">
+              <RegistrationTab />
+            </TabsContent>
+            <TabsContent value="format" className="mt-4">
+              <FormatRulesTab session={session} />
+            </TabsContent>
+            <TabsContent value="rounds" className="mt-4">
+              <RoundsTab session={session} />
+            </TabsContent>
+            <TabsContent value="messages" className="mt-4">
+              <MessagesTab />
+            </TabsContent>
+            <TabsContent value="photos" className="mt-4">
+              <PhotosTab />
+            </TabsContent>
+            <TabsContent value="results" className="mt-4">
+              <ResultsTab session={session} />
+            </TabsContent>
+          </Tabs>
+
+          {/* Tablet/mobile — the primary action lives at the bottom instead
+              of the header (Share/More are desktop-only), matching the mockup. */}
+          <div className="xl:hidden">
+            <Button onClick={primaryAction.onClick} className="w-full" size="lg" data-testid="organiser-session-primary-action-mobile">
+              {primaryAction.icon && <primaryAction.icon className="w-4 h-4 mr-2" />}
+              {primaryAction.label}
+            </Button>
+          </div>
+        </div>
       </div>
+
+      <OrganiserMobileNav />
     </div>
   );
 }

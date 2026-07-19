@@ -15,6 +15,7 @@ export interface SessionListItem {
   status: SessionStatus;
   location: string;
   startAt: string; // ISO
+  endAt?: string; // ISO — for the "6:30 PM - 8:30 PM" range display
   registeredCount: number;
   checkedInCount: number;
   waitingCount: number;
@@ -30,6 +31,14 @@ export interface SessionListItem {
   // session might be full or registration might be closed even though
   // it's still upcoming, so this needs to be its own signal.
   registrationOpen?: boolean;
+  checkInOpen?: boolean;
+  format?: string; // "Fun doubles · Random partners · Balance skill"
+  roundsDescription?: string; // "5 rounds · Best of 4 games (no-ad)"
+  waitingListEnabled?: boolean;
+  costPerPlayer?: number | null;
+  organizerName?: string;
+  createdAt?: string; // ISO
+  notes?: string | null;
 }
 
 function hoursFromNow(hours: number) {
@@ -51,15 +60,25 @@ export const mockSessionsList: SessionListItem[] = [
     status: "live",
     location: "Lyne Park Tennis Centre",
     startAt: hoursFromNow(-1.5),
+    endAt: hoursFromNow(0.72),
     registeredCount: 24,
     checkedInCount: 21,
-    waitingCount: 5,
+    waitingCount: 3,
     maxParticipants: 24,
     progressPercent: 40,
     progressLabel: "Ends in 1h 13m",
     roundCurrent: 2,
     roundTotal: 5,
     roundEndsAt: hoursFromNow(1.22),
+    registrationOpen: true,
+    checkInOpen: true,
+    format: "Fun doubles · Random partners · Balance skill",
+    roundsDescription: "5 rounds · Best of 4 games (no-ad)",
+    waitingListEnabled: true,
+    costPerPlayer: 15,
+    organizerName: "Henry Coach",
+    createdAt: daysAgo(12),
+    notes: null,
     courts: [
       { id: "court-1", label: "Court 1", state: "ready" },
       { id: "court-2", label: "Court 2", state: "playing" },
@@ -312,4 +331,98 @@ export const mockSessionsList: SessionListItem[] = [
     progressLabel: "Archived",
     resultsPublished: true,
   },
+];
+
+// Not every mock session has the full workspace-detail fields filled in
+// (only the flagship "live-1" example matches the approved mockup
+// exactly) — this fills in sensible defaults for the rest so every
+// session in the list still has a working Workspace page.
+export function getSessionDetail(session: SessionListItem): Required<
+  Pick<
+    SessionListItem,
+    | "endAt"
+    | "checkInOpen"
+    | "format"
+    | "roundsDescription"
+    | "waitingListEnabled"
+    | "costPerPlayer"
+    | "organizerName"
+    | "createdAt"
+    | "notes"
+  >
+> {
+  const start = new Date(session.startAt);
+  return {
+    endAt: session.endAt ?? new Date(start.getTime() + 90 * 60 * 1000).toISOString(),
+    checkInOpen: session.checkInOpen ?? (session.status === "live" || session.status === "completed"),
+    format: session.format ?? "Fun doubles · Random partners · Balance skill",
+    roundsDescription:
+      session.roundsDescription ??
+      (session.roundTotal ? `${session.roundTotal} rounds · Best of 4 games (no-ad)` : "Not set yet"),
+    waitingListEnabled: session.waitingListEnabled ?? true,
+    costPerPlayer: session.costPerPlayer ?? 15,
+    organizerName: session.organizerName ?? "Henry Coach",
+    createdAt: session.createdAt ?? daysAgo(14),
+    notes: session.notes ?? null,
+  };
+}
+
+export interface SessionActivityItem {
+  id: string;
+  message: string;
+  timestamp: string; // ISO
+}
+
+export const mockSessionActivity: SessionActivityItem[] = [
+  { id: "sa-1", message: "Emma Wilson checked in", timestamp: hoursFromNow(-0.2) },
+  { id: "sa-2", message: "Michael Lee checked in", timestamp: hoursFromNow(-0.25) },
+  { id: "sa-3", message: "Kate Smith joined the session", timestamp: hoursFromNow(-2.5) },
+  { id: "sa-4", message: "Alex Brown moved to waiting list", timestamp: hoursFromNow(-6) },
+  { id: "sa-5", message: "You opened registration", timestamp: daysAgo(1) },
+];
+
+export interface SessionQuickStat {
+  key: string;
+  label: string;
+  value: string;
+  deltaLabel: string;
+  deltaDirection: "up" | "down";
+}
+
+export const mockSessionQuickStats: SessionQuickStat[] = [
+  { key: "avg-players", label: "Avg. Players", value: "22.4", deltaLabel: "8% vs last week", deltaDirection: "up" },
+  { key: "attendance-rate", label: "Attendance Rate", value: "91%", deltaLabel: "5% vs last week", deltaDirection: "up" },
+  { key: "avg-length", label: "Avg. Session Length", value: "2h 18m", deltaLabel: "6% vs last week", deltaDirection: "up" },
+  { key: "satisfaction", label: "Player Satisfaction", value: "4.7", deltaLabel: "0.3 vs last week", deltaDirection: "up" },
+];
+
+export interface SessionTopPlayer {
+  id: string;
+  name: string;
+  avatar: string | null;
+}
+
+export const mockSessionTopPlayers: SessionTopPlayer[] = [
+  { id: "p-1", name: "Alex Brown", avatar: null },
+  { id: "p-2", name: "Kate Smith", avatar: null },
+  { id: "p-3", name: "Emma Wilson", avatar: null },
+  { id: "p-4", name: "Michael Lee", avatar: null },
+];
+export const mockSessionTopPlayersExtra = 5; // "+5" beyond the avatars shown
+
+export interface SessionPlayer {
+  id: string;
+  name: string;
+  avatar: string | null;
+  status: "registered" | "waiting" | "cancelled" | "invited" | "checked-in";
+}
+
+export const mockSessionPlayers: SessionPlayer[] = [
+  { id: "p-1", name: "Emma Wilson", avatar: null, status: "checked-in" },
+  { id: "p-2", name: "Michael Lee", avatar: null, status: "checked-in" },
+  { id: "p-3", name: "Kate Smith", avatar: null, status: "registered" },
+  { id: "p-4", name: "Alex Brown", avatar: null, status: "waiting" },
+  { id: "p-5", name: "Priya Nair", avatar: null, status: "registered" },
+  { id: "p-6", name: "Liam Chen", avatar: null, status: "invited" },
+  { id: "p-7", name: "Sophie Turner", avatar: null, status: "cancelled" },
 ];
