@@ -8,9 +8,10 @@ import { getSessionDetail } from "@/lib/organiser-sessions-mock-data";
 interface SessionStatusCardProps {
   session: SessionListItem;
   onEdit?: () => void;
+  showEditButton?: boolean;
 }
 
-export function SessionStatusCard({ session, onEdit }: SessionStatusCardProps) {
+export function SessionStatusCard({ session, onEdit, showEditButton = true }: SessionStatusCardProps) {
   const detail = getSessionDetail(session);
   const isLive = session.status === "live";
   const hasEnded = session.status === "completed" || session.status === "archived";
@@ -72,10 +73,12 @@ export function SessionStatusCard({ session, onEdit }: SessionStatusCardProps) {
           );
         })}
 
-        <Button variant="outline" className="w-full mt-2" onClick={onEdit} data-testid="organiser-session-status-edit-button">
-          <Pencil className="w-4 h-4 mr-2" />
-          Edit Session
-        </Button>
+        {showEditButton && (
+          <Button variant="outline" className="w-full mt-2" onClick={onEdit} data-testid="organiser-session-status-edit-button">
+            <Pencil className="w-4 h-4 mr-2" />
+            Edit Session
+          </Button>
+        )}
       </CardContent>
     </Card>
   );

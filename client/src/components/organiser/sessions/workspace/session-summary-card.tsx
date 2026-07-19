@@ -1,12 +1,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.png";
 
 interface SessionSummaryCardProps {
   session: SessionListItem;
+  className?: string;
 }
 
-export function SessionSummaryCard({ session }: SessionSummaryCardProps) {
+export function SessionSummaryCard({ session, className }: SessionSummaryCardProps) {
   const hasStarted = session.status === "live" || session.status === "completed" || session.status === "archived";
   const statusWord = session.status === "live" ? "Live" : hasStarted ? "Finished" : "Not Started";
   const roundLabel =
@@ -17,7 +19,7 @@ export function SessionSummaryCard({ session }: SessionSummaryCardProps) {
       : "No rounds set";
 
   return (
-    <Card className="shadow-sm" data-testid="organiser-session-summary-card">
+    <Card className={cn("shadow-sm", className)} data-testid="organiser-session-summary-card">
       <CardHeader>
         <CardTitle className="text-base">Session Summary</CardTitle>
       </CardHeader>
