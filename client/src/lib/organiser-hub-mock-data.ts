@@ -17,7 +17,8 @@ export type SessionStatus =
   | "rejected"
   | "cancelled"
   | "live"
-  | "completed";
+  | "completed"
+  | "archived";
 
 export interface MockSession {
   id: string;

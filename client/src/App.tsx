@@ -30,6 +30,10 @@ import AdminPage from "@/pages/admin";
 import AdminTravelPreviewPage from "@/pages/admin-travel-preview";
 import AdminArticlePreviewPage from "@/pages/admin-article-preview";
 import OrganiserDashboardPage from "@/pages/organiser/organiser-dashboard";
+import OrganiserSessionsPage from "@/pages/organiser/sessions";
+import OrganiserSessionWorkspacePage from "@/pages/organiser/session-workspace";
+import OrganiserSessionLivePage from "@/pages/organiser/session-live";
+import OrganiserSessionEditPage from "@/pages/organiser/session-edit";
 import OrganisationDetailPage from "@/pages/organisation-detail";
 
 function Router() {
@@ -61,6 +65,10 @@ function Router() {
       <Route path="/coach/profile" component={CoachProfile} />
       <Route path="/coach/:id" component={CoachProfile} />
       <Route path="/organiser" component={OrganiserDashboardPage} />
+      <Route path="/organiser/sessions" component={OrganiserSessionsPage} />
+      <Route path="/organiser/sessions/:id/live" component={OrganiserSessionLivePage} />
+      <Route path="/organiser/sessions/:id/edit" component={OrganiserSessionEditPage} />
+      <Route path="/organiser/sessions/:id" component={OrganiserSessionWorkspacePage} />
       <Route path="/organisations/:slug" component={OrganisationDetailPage} />
       <Route component={NotFound} />
     </Switch>

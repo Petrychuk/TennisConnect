@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -20,13 +20,13 @@ interface NavItem {
   key: string;
   label: string;
   icon: typeof Home;
-  active?: boolean;
+  href?: string; // present once the page behind it actually exists
   badge?: number;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { key: "home", label: "Home", icon: Home, active: true },
-  { key: "sessions", label: "Sessions", icon: CalendarDays },
+  { key: "home", label: "Home", icon: Home, href: "/organiser" },
+  { key: "sessions", label: "Sessions", icon: CalendarDays, href: "/organiser/sessions" },
   { key: "players", label: "Players", icon: Users },
   { key: "seasons", label: "Seasons", icon: CalendarRange },
   { key: "rankings", label: "Rankings", icon: Trophy },
@@ -41,14 +41,17 @@ interface OrganiserSidebarProps {
   className?: string;
 }
 
-// Only "Home" renders anything right now — this is the mock-data pass, the
-// rest of the nav is visually complete but not wired to real pages yet.
+// "Home" and "Sessions" are wired up to real pages now — the rest is
+// visually complete but not built yet, so it stays a disabled-looking
+// placeholder instead of a dead link.
 //
 // Wrapped in the project's own `.dark` scope (see index.css's
 // @custom-variant dark rule) rather than hardcoded colours, so the
 // permanently-dark sidebar still only ever uses the existing palette
 // tokens — just their dark-theme values, scoped to this subtree.
 export function OrganiserSidebarNav({ organiser, profileHref, className }: OrganiserSidebarProps) {
+  const [location] = useLocation();
+
   return (
     <div className={cn("dark flex flex-col h-full bg-background text-foreground", className)} data-testid="organiser-sidebar">
       <div className="px-5 pt-6">
@@ -64,18 +67,16 @@ export function OrganiserSidebarNav({ organiser, profileHref, className }: Organ
       <nav className="px-3 pt-4 space-y-1" data-testid="organiser-sidebar-nav">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
-          return (
-            <div
-              key={item.key}
-              className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                item.active
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground opacity-60 cursor-not-allowed"
-              )}
-              data-testid={`organiser-sidebar-nav-${item.key}`}
-              title={item.active ? undefined : "Coming soon"}
-            >
+          // "/organiser" itself must match exactly (else it'd also light up
+          // for every /organiser/* sub-route); everything else matches by prefix.
+          const isActive = item.href
+            ? item.href === "/organiser"
+              ? location === "/organiser"
+              : location.startsWith(item.href)
+            : false;
+
+          const content = (
+            <>
               <Icon className="w-4 h-4 shrink-0" />
               <span className="flex-1">{item.label}</span>
               {item.badge && (
@@ -83,6 +84,29 @@ export function OrganiserSidebarNav({ organiser, profileHref, className }: Organ
                   {item.badge}
                 </Badge>
               )}
+            </>
+          );
+
+          const sharedClasses = cn(
+            "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+            isActive
+              ? "bg-primary/10 text-primary"
+              : item.href
+              ? "text-foreground/80 hover:bg-accent/10 hover:text-foreground"
+              : "text-muted-foreground opacity-60 cursor-not-allowed"
+          );
+
+          if (item.href) {
+            return (
+              <Link key={item.key} href={item.href} className={sharedClasses} data-testid={`organiser-sidebar-nav-${item.key}`}>
+                {content}
+              </Link>
+            );
+          }
+
+          return (
+            <div key={item.key} className={sharedClasses} data-testid={`organiser-sidebar-nav-${item.key}`} title="Coming soon">
+              {content}
             </div>
           );
         })}
