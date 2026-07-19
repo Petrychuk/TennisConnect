@@ -61,7 +61,7 @@ export function OrganiserSidebarNav({ organiser, profileHref, className }: Organ
         </p>
       </div>
 
-      <nav className="flex-1 px-3 pt-4 space-y-1" data-testid="organiser-sidebar-nav">
+      <nav className="px-3 pt-4 space-y-1" data-testid="organiser-sidebar-nav">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           return (
@@ -86,10 +86,9 @@ export function OrganiserSidebarNav({ organiser, profileHref, className }: Organ
             </div>
           );
         })}
-      </nav>
 
-      <div className="px-3 pb-3">
-        <Separator className="mb-3" />
+        <Separator className="my-3" />
+
         <Link
           href={profileHref}
           className="flex items-center gap-3 rounded-xl border border-border p-3 hover:bg-accent/40 transition-colors"
@@ -107,7 +106,7 @@ export function OrganiserSidebarNav({ organiser, profileHref, className }: Organ
           </div>
           <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
         </Link>
-      </div>
+      </nav>
     </div>
   );
 }

@@ -101,7 +101,7 @@ export function OrganiserDashboard() {
         <OrganiserSidebarNav organiser={mockOrganiser} profileHref={profileHref} className="w-full" />
       </aside>
 
-      <div className="flex-1 min-w-0 pb-16 xl:pb-0">
+      <div className="flex-1 min-w-0 pb-16 md:pb-0">
         <DashboardHeader
           organiser={mockOrganiser}
           profileHref={profileHref}

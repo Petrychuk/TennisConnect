@@ -22,7 +22,12 @@ export function DashboardHeader({ organiser, profileHref, hasUnread = true, onCr
       <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
         <Sheet>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" data-testid="organiser-sidebar-trigger">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden md:inline-flex"
+              data-testid="organiser-sidebar-trigger"
+            >
               <Menu className="w-5 h-5" />
             </Button>
           </SheetTrigger>
@@ -31,6 +36,10 @@ export function DashboardHeader({ organiser, profileHref, hasUnread = true, onCr
             <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} />
           </SheetContent>
         </Sheet>
+        {/* Mobile has no hamburger — the bottom nav bar already covers
+            navigation there — but keeps the same-width empty spacer so the
+            title below doesn't jump around between breakpoints. */}
+        <div className="w-9 h-9 md:hidden" aria-hidden="true" />
 
         <div className="flex items-center gap-1.5 font-display font-bold">
           <Trophy className="w-4 h-4 text-primary" />

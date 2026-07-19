@@ -15,7 +15,7 @@ const ITEMS = [
 export function OrganiserMobileNav() {
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border flex items-stretch justify-around px-1 pb-[env(safe-area-inset-bottom)] xl:hidden"
+      className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border flex items-stretch justify-around px-1 pb-[env(safe-area-inset-bottom)] md:hidden"
       data-testid="organiser-mobile-nav"
     >
       {ITEMS.map((item) => {
