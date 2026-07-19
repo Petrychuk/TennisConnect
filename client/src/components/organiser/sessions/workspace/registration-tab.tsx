@@ -3,18 +3,20 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { mockSessionPlayers, type SessionPlayer } from "@/lib/organiser-sessions-mock-data";
 
-const GROUPS: { key: SessionPlayer["status"]; label: string }[] = [
-  { key: "registered", label: "Registered" },
-  { key: "waiting", label: "Waiting List" },
-  { key: "cancelled", label: "Cancelled" },
-  { key: "invited", label: "Invited" },
-  { key: "checked-in", label: "Checked In" },
+type Bucket = "registered" | "checked-in" | "waiting" | "cancelled" | "invited";
+
+const GROUPS: { key: Bucket; label: string; match: (p: SessionPlayer) => boolean }[] = [
+  { key: "registered", label: "Registered", match: (p) => p.status === "registered" },
+  { key: "checked-in", label: "Checked In", match: (p) => p.status === "registered" && p.checkedIn },
+  { key: "waiting", label: "Waiting List", match: (p) => p.status === "waiting" },
+  { key: "cancelled", label: "Cancelled", match: (p) => p.status === "cancelled" },
+  { key: "invited", label: "Invited", match: (p) => p.status === "invited" },
 ];
 
 export function RegistrationTab() {
   const grouped = GROUPS.map((g) => ({
     ...g,
-    players: mockSessionPlayers.filter((p) => p.status === g.key),
+    players: mockSessionPlayers.filter(g.match),
   }));
 
   return (

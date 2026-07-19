@@ -1,94 +1,132 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, ArrowUpDown, Trash2, CheckCircle2, MessageSquare, UserCircle } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Users2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { mockSessionPlayers, type SessionPlayer } from "@/lib/organiser-sessions-mock-data";
+import { PlayersStatStrip } from "./players/players-stat-strip";
+import { PlayersToolbar } from "./players/players-toolbar";
+import { PlayersTable } from "./players/players-table";
+import { PlayersList } from "./players/players-list";
+import { WaitingListCard } from "./players/waiting-list-card";
+import { InvitePlayersCard } from "./players/invite-players-card";
+import { GroupOverviewCard } from "./players/group-overview-card";
+import { CheckInSummaryCard } from "./players/checkin-summary-card";
+import { PlayersQuickActionsCard } from "./players/players-quick-actions-card";
+import { SessionActionsSheet } from "./session-actions-sheet";
+import {
+  mockSessionPlayers,
+  mockWaitingList,
+  mockGroupOverview,
+  type SessionListItem,
+  type SessionPlayer,
+} from "@/lib/organiser-sessions-mock-data";
 
-const STATUS_LABEL: Record<SessionPlayer["status"], string> = {
-  registered: "Registered",
-  waiting: "Waiting List",
-  cancelled: "Cancelled",
-  invited: "Invited",
-  "checked-in": "Checked In",
-};
+interface PlayersTabProps {
+  session: SessionListItem;
+  onEdit?: () => void;
+}
 
-const STATUS_STYLE: Record<SessionPlayer["status"], string> = {
-  registered: "bg-secondary text-secondary-foreground",
-  waiting: "bg-muted text-muted-foreground",
-  cancelled: "bg-destructive/10 text-destructive",
-  invited: "bg-accent text-accent-foreground",
-  "checked-in": "bg-primary/10 text-primary",
-};
+type Bucket = "registered" | "checked-in" | "waiting" | "cancelled" | "invited";
 
-export function PlayersTab() {
+export function PlayersTab({ session, onEdit }: PlayersTabProps) {
   const { toast } = useToast();
+  const [search, setSearch] = useState("");
+  const [bucket, setBucket] = useState<Bucket>("registered");
+  const [actionsSheetOpen, setActionsSheetOpen] = useState(false);
 
-  const notify = (action: string, player: SessionPlayer) =>
-    toast({ title: `${action} — coming soon`, description: `Would apply to ${player.name}.` });
+  const buckets: Record<Bucket, SessionPlayer[]> = useMemo(() => {
+    const registered = mockSessionPlayers.filter((p) => p.status === "registered");
+    return {
+      registered,
+      "checked-in": registered.filter((p) => p.checkedIn),
+      waiting: mockSessionPlayers.filter((p) => p.status === "waiting"),
+      cancelled: mockSessionPlayers.filter((p) => p.status === "cancelled"),
+      invited: mockSessionPlayers.filter((p) => p.status === "invited"),
+    };
+  }, []);
+
+  const query = search.trim().toLowerCase();
+  const visible = (query ? buckets[bucket].filter((p) => p.name.toLowerCase().includes(query)) : buckets[bucket]);
+
+  const handleCheckIn = (player: SessionPlayer) =>
+    toast({ title: "Checked in", description: `${player.name} would be marked as checked in.` });
+  const handleCheckInAll = () => toast({ title: "Check-in All isn't wired up yet" });
+  const handleInvitePlayers = () => toast({ title: "Invite Players isn't wired up yet" });
+
+  const bucketTabs: { key: Bucket; label: string }[] = [
+    { key: "registered", label: "Registered" },
+    { key: "checked-in", label: "Checked In" },
+    { key: "waiting", label: "Waiting List" },
+    { key: "cancelled", label: "Cancelled" },
+    { key: "invited", label: "Invited" },
+  ];
+
+  const bucketTabsList = (
+    <Tabs value={bucket} onValueChange={(v) => setBucket(v as Bucket)}>
+      <TabsList className="w-full justify-start overflow-x-auto whitespace-nowrap h-auto p-1 scrollbar-hide" data-testid="organiser-players-bucket-tabs">
+        {bucketTabs.map((b) => (
+          <TabsTrigger key={b.key} value={b.key} className="gap-1" data-testid={`organiser-players-bucket-tab-${b.key}`}>
+            {b.label}
+            <span className="text-[11px] text-muted-foreground">({buckets[b.key].length})</span>
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
+  );
+
+  const paginationText = (
+    <p className="text-sm text-muted-foreground" data-testid="organiser-players-pagination">
+      Show 1 to {visible.length} of {visible.length} players
+    </p>
+  );
 
   return (
-    <div className="space-y-3" data-testid="organiser-session-players-tab">
-      {mockSessionPlayers.map((player) => (
-        <Card key={player.id} className="shadow-sm" data-testid={`organiser-session-player-${player.id}`}>
-          <CardContent className="p-4 flex items-center gap-3">
-            <Avatar className="h-10 w-10 border border-border">
-              <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
-                {player.name[0]}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1">
-              <p className="font-medium truncate">{player.name}</p>
-              <Badge className={STATUS_STYLE[player.status]}>{STATUS_LABEL[player.status]}</Badge>
-            </div>
+    <div data-testid="organiser-session-players-tab">
+      {/* Desktop (xl+) */}
+      <div className="hidden xl:block space-y-6">
+        <PlayersStatStrip session={session} players={mockSessionPlayers} />
+        {bucketTabsList}
+        <PlayersToolbar
+          search={search}
+          onSearchChange={setSearch}
+          onCheckInAll={handleCheckInAll}
+          onInvitePlayers={handleInvitePlayers}
+          showAdvancedFilters
+        />
+        <PlayersTable players={visible} onCheckIn={handleCheckIn} />
+        {paginationText}
+        <div className="grid grid-cols-2 gap-6">
+          <WaitingListCard players={mockWaitingList} />
+          <InvitePlayersCard sessionId={session.id} />
+        </div>
+      </div>
 
-            {player.status !== "checked-in" && player.status !== "cancelled" && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => notify("Check In", player)}
-                data-testid={`organiser-session-player-${player.id}-checkin`}
-              >
-                <CheckCircle2 className="w-4 h-4 mr-1.5" />
-                Check In
-              </Button>
-            )}
+      {/* Tablet (md-xl) */}
+      <div className="hidden md:block xl:hidden space-y-6">
+        <PlayersStatStrip session={session} players={mockSessionPlayers} />
+        {bucketTabsList}
+        <PlayersToolbar search={search} onSearchChange={setSearch} onCheckInAll={handleCheckInAll} onInvitePlayers={handleInvitePlayers} />
+        <PlayersList players={visible} onCheckIn={handleCheckIn} />
+        {paginationText}
+        <WaitingListCard players={mockWaitingList} />
+        <div className="grid grid-cols-2 gap-6">
+          <GroupOverviewCard groups={mockGroupOverview} />
+          <CheckInSummaryCard players={mockSessionPlayers} />
+        </div>
+        <PlayersQuickActionsCard lastLabel="Manage Groups" lastIcon={Users2} onMore={() => setActionsSheetOpen(true)} />
+      </div>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" data-testid={`organiser-session-player-${player.id}-menu`}>
-                  <MoreHorizontal className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => notify("Move to Waiting List", player)}>
-                  <ArrowUpDown className="w-4 h-4 mr-2" />
-                  Move to Waiting
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => notify("Message", player)}>
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  Message
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => notify("View Profile", player)}>
-                  <UserCircle className="w-4 h-4 mr-2" />
-                  View Profile
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => notify("Remove", player)} className="text-destructive">
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Remove
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </CardContent>
-        </Card>
-      ))}
+      {/* Mobile (<md) */}
+      <div className="md:hidden space-y-6">
+        <PlayersStatStrip session={session} players={mockSessionPlayers} />
+        {bucketTabsList}
+        <PlayersToolbar search={search} onSearchChange={setSearch} onCheckInAll={handleCheckInAll} onInvitePlayers={handleInvitePlayers} />
+        <PlayersList players={visible} onCheckIn={handleCheckIn} />
+        {paginationText}
+        <WaitingListCard players={mockWaitingList} />
+        <PlayersQuickActionsCard onMore={() => setActionsSheetOpen(true)} />
+      </div>
+
+      <SessionActionsSheet open={actionsSheetOpen} onOpenChange={setActionsSheetOpen} onEdit={onEdit} />
     </div>
   );
 }

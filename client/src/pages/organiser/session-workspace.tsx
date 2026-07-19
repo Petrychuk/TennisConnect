@@ -43,7 +43,7 @@ import { SettingsTab } from "@/components/organiser/sessions/workspace/settings-
 import { bucketFor } from "@/components/organiser/sessions/session-utils";
 
 import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
-import { mockSessionsList, mockSessionPlayers } from "@/lib/organiser-sessions-mock-data";
+import { mockSessionsList } from "@/lib/organiser-sessions-mock-data";
 
 const WORKSPACE_TABS = [
   { key: "overview", label: "Overview" },
@@ -259,7 +259,7 @@ export default function OrganiserSessionWorkspacePage() {
                 <TabsTrigger key={t.key} value={t.key} className="gap-1" data-testid={`organiser-session-workspace-tab-${t.key}`}>
                   {t.label}
                   {t.key === "players" && (
-                    <span className="text-[11px] text-muted-foreground">({mockSessionPlayers.length})</span>
+                    <span className="text-[11px] text-muted-foreground">({session.registeredCount})</span>
                   )}
                 </TabsTrigger>
               ))}
@@ -269,7 +269,7 @@ export default function OrganiserSessionWorkspacePage() {
               <OverviewTab session={session} onEdit={goEdit} />
             </TabsContent>
             <TabsContent value="players" className="mt-4">
-              <PlayersTab />
+              <PlayersTab session={session} onEdit={goEdit} />
             </TabsContent>
             <TabsContent value="registration" className="mt-4">
               <RegistrationTab />
