@@ -448,6 +448,8 @@ export interface SessionPlayer {
   checkedIn: boolean;
   checkInTime: string | null; // ISO
   joinedAt: string; // ISO
+  paymentStatus?: "paid" | "pending" | "guest";
+  rating?: number;
 }
 
 function minutesAgo(minutes: number) {
@@ -455,12 +457,12 @@ function minutesAgo(minutes: number) {
 }
 
 export const mockSessionPlayers: SessionPlayer[] = [
-  { id: "p-1", name: "Emma Wilson", avatar: null, level: 4.5, levelLabel: "Advanced", group: "A", status: "registered", checkedIn: true, checkInTime: minutesAgo(52), joinedAt: minutesAgo(172) },
-  { id: "p-2", name: "Kate Smith", avatar: null, level: 4.0, levelLabel: "Intermediate", group: "A", status: "registered", checkedIn: true, checkInTime: minutesAgo(57), joinedAt: minutesAgo(195) },
-  { id: "p-3", name: "Michael Lee", avatar: null, level: 4.0, levelLabel: "Intermediate", group: "A", status: "registered", checkedIn: true, checkInTime: minutesAgo(62), joinedAt: minutesAgo(210) },
-  { id: "p-4", name: "Alex Brown", avatar: null, level: 3.5, levelLabel: "Intermediate", group: "B", status: "registered", checkedIn: true, checkInTime: minutesAgo(65), joinedAt: minutesAgo(247) },
-  { id: "p-5", name: "James Davis", avatar: null, level: 3.5, levelLabel: "Intermediate", group: "B", status: "registered", checkedIn: false, checkInTime: null, joinedAt: minutesAgo(238) },
-  { id: "p-6", name: "Sophie Carter", avatar: null, level: 3.0, levelLabel: "Social", group: "B", status: "registered", checkedIn: false, checkInTime: null, joinedAt: minutesAgo(225) },
+  { id: "p-1", name: "Emma Wilson", avatar: null, level: 4.5, levelLabel: "Advanced", group: "A", status: "registered", checkedIn: true, checkInTime: minutesAgo(52), joinedAt: minutesAgo(172), paymentStatus: "paid", rating: 4.2 },
+  { id: "p-2", name: "Kate Smith", avatar: null, level: 4.0, levelLabel: "Intermediate", group: "A", status: "registered", checkedIn: false, checkInTime: null, joinedAt: minutesAgo(195), paymentStatus: "pending" },
+  { id: "p-3", name: "Michael Lee", avatar: null, level: 4.0, levelLabel: "Intermediate", group: "A", status: "registered", checkedIn: true, checkInTime: minutesAgo(62), joinedAt: minutesAgo(210), paymentStatus: "paid" },
+  { id: "p-4", name: "Alex Brown", avatar: null, level: 3.5, levelLabel: "Intermediate", group: "B", status: "registered", checkedIn: true, checkInTime: minutesAgo(65), joinedAt: minutesAgo(247), paymentStatus: "paid", rating: 4.5 },
+  { id: "p-5", name: "James Davis", avatar: null, level: 3.5, levelLabel: "Intermediate", group: "B", status: "registered", checkedIn: true, checkInTime: minutesAgo(40), joinedAt: minutesAgo(238) },
+  { id: "p-6", name: "Sophie Carter", avatar: null, level: 3.0, levelLabel: "Social", group: "B", status: "registered", checkedIn: false, checkInTime: null, joinedAt: minutesAgo(225), paymentStatus: "guest" },
   { id: "p-7", name: "Olena Boncheva", avatar: null, level: 3.0, levelLabel: "Social", group: "C", status: "registered", checkedIn: false, checkInTime: null, joinedAt: minutesAgo(220) },
   { id: "p-8", name: "Katerina Leon", avatar: null, level: 3.0, levelLabel: "Social", group: "C", status: "registered", checkedIn: true, checkInTime: minutesAgo(48), joinedAt: minutesAgo(210) },
   { id: "p-9", name: "Sophie Turner", avatar: null, level: 3.5, levelLabel: "Intermediate", group: null, status: "cancelled", checkedIn: false, checkInTime: null, joinedAt: minutesAgo(300) },

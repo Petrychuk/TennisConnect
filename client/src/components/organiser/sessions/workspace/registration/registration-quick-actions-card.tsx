@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Lock, BellRing, UserPlus, QrCode, Download } from "lucide-react";
+import { BellRing, Lock, QrCode, Download, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export function RegistrationQuickActionsCard() {
@@ -7,11 +7,11 @@ export function RegistrationQuickActionsCard() {
   const notify = (label: string) => toast({ title: `${label} isn't wired up yet` });
 
   const actions = [
+    { key: "reminder", label: "Send Check-in Reminder", icon: BellRing, onClick: () => notify("Send Check-in Reminder") },
     { key: "close", label: "Close Registration", icon: Lock, onClick: () => notify("Close Registration") },
-    { key: "reminder", label: "Send Reminder", icon: BellRing, onClick: () => notify("Send Reminder") },
-    { key: "invite-waiting", label: "Invite Waiting List", icon: UserPlus, onClick: () => notify("Invite Waiting List") },
     { key: "qr", label: "Print QR Check-in", icon: QrCode, onClick: () => notify("Print QR Check-in") },
     { key: "export", label: "Export Attendance", icon: Download, onClick: () => notify("Export Attendance") },
+    { key: "duplicate", label: "Duplicate Session", icon: Copy, onClick: () => notify("Duplicate Session") },
   ];
 
   return (
