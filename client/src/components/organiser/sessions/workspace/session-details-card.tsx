@@ -1,5 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tag, Shuffle, Repeat, MapPinned, Users, ListPlus, DollarSign, UserCog, CalendarPlus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Tag, Shuffle, Layers, Repeat, MapPinned, Users, ListPlus, DollarSign, UserCog, CalendarPlus } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 import { getSessionDetail } from "@/lib/organiser-sessions-mock-data";
 
@@ -9,18 +11,21 @@ interface SessionDetailsCardProps {
 
 export function SessionDetailsCard({ session }: SessionDetailsCardProps) {
   const detail = getSessionDetail(session);
+  const { toast } = useToast();
   const courtsCount = session.courts?.length ?? 6;
+  const roundsCount = session.roundTotal ?? 5;
 
   const rows = [
     { icon: Tag, label: "Session Type", value: session.type.replace("-", " "), testId: "type" },
-    { icon: Shuffle, label: "Format", value: detail.format, testId: "format" },
-    { icon: Repeat, label: "Rounds", value: detail.roundsDescription, testId: "rounds" },
-    { icon: MapPinned, label: "Courts", value: `${courtsCount} courts`, testId: "courts" },
-    { icon: Users, label: "Max Players", value: session.maxParticipants ? `${session.maxParticipants} players` : "No limit", testId: "max-players" },
+    { icon: Shuffle, label: "Format", value: "Fun Doubles", testId: "format" },
+    { icon: Layers, label: "Game Format", value: detail.gameFormat, testId: "game-format" },
+    { icon: Repeat, label: "Rounds", value: `${roundsCount} Rounds`, testId: "rounds" },
+    { icon: MapPinned, label: "Courts", value: `${courtsCount} Courts`, testId: "courts" },
+    { icon: Users, label: "Max Players", value: session.maxParticipants ? `${session.maxParticipants} Players` : "No limit", testId: "max-players" },
     {
       icon: ListPlus,
       label: "Waiting List",
-      value: detail.waitingListEnabled ? "Enabled" : "Disabled",
+      value: detail.waitingListEnabled ? "Enabled (10 spots)" : "Disabled",
       testId: "waiting-list",
     },
     { icon: DollarSign, label: "Cost", value: detail.costPerPlayer ? `$${detail.costPerPlayer} per player` : "Free", testId: "cost" },
@@ -61,6 +66,15 @@ export function SessionDetailsCard({ session }: SessionDetailsCardProps) {
             </div>
           );
         })}
+
+        <Button
+          variant="outline"
+          className="w-full mt-2"
+          onClick={() => toast({ title: "Full details view isn't wired up yet" })}
+          data-testid="organiser-session-details-view-full"
+        >
+          View Full Details
+        </Button>
       </CardContent>
     </Card>
   );

@@ -39,6 +39,7 @@ import { RoundsTab } from "@/components/organiser/sessions/workspace/rounds-tab"
 import { MessagesTab } from "@/components/organiser/sessions/workspace/messages-tab";
 import { PhotosTab } from "@/components/organiser/sessions/workspace/photos-tab";
 import { ResultsTab } from "@/components/organiser/sessions/workspace/results-tab";
+import { SettingsTab } from "@/components/organiser/sessions/workspace/settings-tab";
 import { bucketFor } from "@/components/organiser/sessions/session-utils";
 
 import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
@@ -53,17 +54,18 @@ const WORKSPACE_TABS = [
   { key: "messages", label: "Messages" },
   { key: "photos", label: "Photos" },
   { key: "results", label: "Results" },
+  { key: "settings", label: "Settings" },
 ] as const;
 
 type WorkspaceTabKey = (typeof WORKSPACE_TABS)[number]["key"];
 
 const BUCKET_BADGE_LABEL: Record<string, string> = {
-  live: "Live",
-  "registration-open": "Open",
-  upcoming: "Upcoming",
-  draft: "Draft",
-  completed: "Completed",
-  archived: "Archived",
+  live: "LIVE",
+  "registration-open": "OPEN",
+  upcoming: "UPCOMING",
+  draft: "DRAFT",
+  completed: "COMPLETED",
+  archived: "ARCHIVED",
 };
 
 export default function OrganiserSessionWorkspacePage() {
@@ -286,6 +288,9 @@ export default function OrganiserSessionWorkspacePage() {
             </TabsContent>
             <TabsContent value="results" className="mt-4">
               <ResultsTab session={session} />
+            </TabsContent>
+            <TabsContent value="settings" className="mt-4">
+              <SettingsTab session={session} />
             </TabsContent>
           </Tabs>
 

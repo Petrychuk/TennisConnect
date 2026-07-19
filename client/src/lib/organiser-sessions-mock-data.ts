@@ -8,6 +8,28 @@ export interface CourtStatus {
   state: CourtState;
 }
 
+export interface ReadinessItem {
+  id: string;
+  label: string;
+  status: "ready" | "warning" | "issue";
+}
+
+export interface SessionReadiness {
+  percent: number;
+  items: ReadinessItem[];
+}
+
+export const mockSessionReadiness: SessionReadiness = {
+  percent: 84,
+  items: [
+    { id: "registration", label: "Registration Closed", status: "ready" },
+    { id: "courts", label: "Courts Ready (6/6)", status: "ready" },
+    { id: "checkin", label: "2 Players Not Checked In", status: "warning" },
+    { id: "waitlist", label: "Waiting List Ready", status: "ready" },
+    { id: "rounds", label: "Round 1 Not Generated", status: "issue" },
+  ],
+};
+
 export interface SessionListItem {
   id: string;
   title: string;
@@ -350,7 +372,7 @@ export function getSessionDetail(session: SessionListItem): Required<
     | "createdAt"
     | "notes"
   >
-> {
+> & { gameFormat: string } {
   const start = new Date(session.startAt);
   return {
     endAt: session.endAt ?? new Date(start.getTime() + 90 * 60 * 1000).toISOString(),
@@ -364,21 +386,24 @@ export function getSessionDetail(session: SessionListItem): Required<
     organizerName: session.organizerName ?? "Henry Coach",
     createdAt: session.createdAt ?? daysAgo(14),
     notes: session.notes ?? null,
+    gameFormat: "4 Games (No-Ad)",
   };
 }
 
 export interface SessionActivityItem {
   id: string;
+  kind: "players" | "system" | "live";
   message: string;
   timestamp: string; // ISO
 }
 
 export const mockSessionActivity: SessionActivityItem[] = [
-  { id: "sa-1", message: "Emma Wilson checked in", timestamp: hoursFromNow(-0.2) },
-  { id: "sa-2", message: "Michael Lee checked in", timestamp: hoursFromNow(-0.25) },
-  { id: "sa-3", message: "Kate Smith joined the session", timestamp: hoursFromNow(-2.5) },
-  { id: "sa-4", message: "Alex Brown moved to waiting list", timestamp: hoursFromNow(-6) },
-  { id: "sa-5", message: "You opened registration", timestamp: daysAgo(1) },
+  { id: "sa-1", kind: "players", message: "Emma Wilson checked in", timestamp: hoursFromNow(-0.2) },
+  { id: "sa-2", kind: "players", message: "Michael Lee checked in", timestamp: hoursFromNow(-0.25) },
+  { id: "sa-3", kind: "players", message: "Kate Smith joined the session", timestamp: hoursFromNow(-2.5) },
+  { id: "sa-4", kind: "players", message: "Alex Brown moved to waiting list", timestamp: hoursFromNow(-6) },
+  { id: "sa-5", kind: "system", message: "You opened registration", timestamp: daysAgo(1) },
+  { id: "sa-6", kind: "live", message: "Round 1 started", timestamp: hoursFromNow(-1.4) },
 ];
 
 export interface SessionQuickStat {

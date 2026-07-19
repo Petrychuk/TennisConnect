@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
+import { CountdownTimer } from "../countdown-timer";
 import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.png";
 
 interface SessionSummaryCardProps {
@@ -10,7 +11,7 @@ interface SessionSummaryCardProps {
 
 export function SessionSummaryCard({ session, className }: SessionSummaryCardProps) {
   const hasStarted = session.status === "live" || session.status === "completed" || session.status === "archived";
-  const statusWord = session.status === "live" ? "Live" : hasStarted ? "Finished" : "Not Started";
+  const statusWord = hasStarted ? "Finished" : "Not Started";
   const roundLabel =
     session.roundCurrent && session.roundTotal
       ? `Round ${session.roundCurrent} / ${session.roundTotal}`
@@ -42,8 +43,19 @@ export function SessionSummaryCard({ session, className }: SessionSummaryCardPro
             <p className="text-xs text-muted-foreground">Waiting List</p>
           </div>
           <div data-testid="organiser-session-summary-round">
-            <p className="text-xl font-bold">{statusWord}</p>
-            <p className="text-xs text-muted-foreground">{roundLabel}</p>
+            {session.status === "live" && session.roundEndsAt ? (
+              <>
+                <p className="text-xl font-bold">{roundLabel}</p>
+                <p className="text-xs text-muted-foreground">
+                  Ends in <CountdownTimer target={session.roundEndsAt} className="font-medium text-foreground" />
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-xl font-bold">{statusWord}</p>
+                <p className="text-xs text-muted-foreground">{roundLabel}</p>
+              </>
+            )}
           </div>
         </div>
       </CardContent>

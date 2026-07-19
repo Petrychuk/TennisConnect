@@ -4,6 +4,7 @@ import { SessionSummaryCard } from "./session-summary-card";
 import { SessionDetailsCard } from "./session-details-card";
 import { SessionQuickStatsCard } from "./session-quick-stats-card";
 import { SessionStatusCard } from "./session-status-card";
+import { SessionReadinessCard } from "./session-readiness-card";
 import { SessionActionsCard } from "./session-actions-card";
 import { SessionActivityCard } from "./session-activity-card";
 import { SessionNotesCard } from "./session-notes-card";
@@ -13,6 +14,7 @@ import {
   mockSessionQuickStats,
   mockSessionTopPlayers,
   mockSessionTopPlayersExtra,
+  mockSessionReadiness,
   getSessionDetail,
   type SessionListItem,
 } from "@/lib/organiser-sessions-mock-data";
@@ -25,6 +27,7 @@ interface OverviewTabProps {
 export function OverviewTab({ session, onEdit }: OverviewTabProps) {
   const detail = getSessionDetail(session);
   const { toast } = useToast();
+  const viewReadinessDetails = () => toast({ title: "Readiness details isn't wired up yet" });
 
   const quickStats = (
     <SessionQuickStatsCard
@@ -36,30 +39,34 @@ export function OverviewTab({ session, onEdit }: OverviewTabProps) {
 
   return (
     <div data-testid="organiser-session-overview-tab">
-      {/* Desktop (xl+): Summary+Status share a row, Details/Activity/Notes
-          share the next row as three equal columns, Quick Stats closes it out. */}
+      {/* Desktop (xl+): Summary(2) + Status + Readiness in row 1, then
+          Details/Activity/Actions/Notes as four equal columns, Quick Stats last. */}
       <div className="hidden xl:block space-y-6">
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-4 gap-6">
           <SessionSummaryCard session={session} className="col-span-2" />
           <SessionStatusCard session={session} onEdit={onEdit} />
+          <SessionReadinessCard readiness={mockSessionReadiness} onViewDetails={viewReadinessDetails} />
         </div>
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-4 gap-6">
           <SessionDetailsCard session={session} />
           <SessionActivityCard items={mockSessionActivity} />
+          <SessionActionsCard onEdit={onEdit} />
           <SessionNotesCard initialNote={detail.notes} />
         </div>
         {quickStats}
       </div>
 
-      {/* Tablet (md to xl): Summary full width, then Status+Actions as a
-          pair, Details on its own row, then Activity+Notes as a pair. */}
+      {/* Tablet (md to xl): Summary full width, Status+Readiness paired,
+          Details on its own row, Activity+Notes paired, Actions as an
+          icon grid, Quick Stats last. */}
       <div className="hidden md:block xl:hidden space-y-6">
         <SessionSummaryCard session={session} />
         <div className="grid grid-cols-2 gap-6">
           <SessionStatusCard session={session} showEditButton={false} />
-          <SessionActionsCard onEdit={onEdit} />
+          <SessionReadinessCard readiness={mockSessionReadiness} onViewDetails={viewReadinessDetails} />
         </div>
         <SessionDetailsCard session={session} />
+        <SessionActionsCard onEdit={onEdit} variant="grid" />
         <div className="grid grid-cols-2 gap-6">
           <SessionActivityCard items={mockSessionActivity} />
           <SessionNotesCard initialNote={detail.notes} />
@@ -67,12 +74,12 @@ export function OverviewTab({ session, onEdit }: OverviewTabProps) {
         {quickStats}
       </div>
 
-      {/* Mobile (<md): everything single-column. Status has no button of
-          its own — Edit/Invite sit as a pair right below it instead. */}
+      {/* Mobile (<md): everything single-column, Edit/Invite as a 2-button
+          row right after Status+Readiness since Status has no button here. */}
       <div className="md:hidden space-y-6">
         <SessionSummaryCard session={session} />
-        <SessionDetailsCard session={session} />
         <SessionStatusCard session={session} showEditButton={false} />
+        <SessionReadinessCard readiness={mockSessionReadiness} onViewDetails={viewReadinessDetails} />
         <div className="grid grid-cols-2 gap-3">
           <Button variant="outline" onClick={onEdit} data-testid="organiser-session-overview-edit-mobile">
             Edit Session
@@ -86,6 +93,7 @@ export function OverviewTab({ session, onEdit }: OverviewTabProps) {
             Invite Players
           </Button>
         </div>
+        <SessionDetailsCard session={session} />
         <SessionActivityCard items={mockSessionActivity} />
         <SessionNotesCard initialNote={detail.notes} />
         {quickStats}
