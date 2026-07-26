@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 import { mockSessionsList } from "./organiser-sessions-mock-data";
 import type { SessionListItem } from "./organiser-sessions-mock-data";
 
-const STORAGE_KEY = "tc-organiser-sessions-v2";
+const STORAGE_KEY = "tc-organiser-sessions-v3";
 
 function loadInitial(): SessionListItem[] {
   if (typeof window === "undefined") return mockSessionsList;
