@@ -25,6 +25,7 @@ import { Footer } from "@/components/footer";
 import { BecomeOrganizerCard } from "@/components/profile/shared/BecomeOrganizerCard";
 import { MySessionsSection } from "@/components/profile/shared/MySessionsSection";
 import { MyOrganizedSessionsSection } from "@/components/profile/shared/MyOrganizedSessionsSection";
+import { useOrganiserSessions } from "@/lib/organiser-sessions-store";
 import { useOrganizerStatus } from "@/hooks/use-organizer-status";
 import { TennisLoader } from "@/components/ui/tennisLoader";
 
@@ -97,6 +98,9 @@ export default function PlayerProfile() {
   const [originalProfile, setOriginalProfile] = useState<PlayerProfile>(DEFAULT_PLAYER_PROFILE);
   const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState<any>(null);
+  const organiserSessions = useOrganiserSessions();
+  const hasPublishedSessionsAsGuest =
+    !isOwnProfile && organiserSessions.some((s) => s.status === "published" && s.organizerName === profile.name);
   
     // Tournament State
   const [isTournamentModalOpen, setIsTournamentModalOpen] = useState(false);
@@ -717,7 +721,7 @@ export default function PlayerProfile() {
                   {isOwnProfile && (
                     <TabsTrigger value="sessions" data-testid="my-sessions-tab" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">My Sessions</TabsTrigger>
                   )}
-                  {isOwnProfile && organizerStatus.hasEngagedWithOrganizing && (
+                  {(isOwnProfile ? organizerStatus.hasEngagedWithOrganizing : hasPublishedSessionsAsGuest) && (
                     <TabsTrigger value="organizing" data-testid="my-organized-sessions-tab" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">Organising</TabsTrigger>
                   )}
                   <TabsTrigger value="tournaments" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">Tournaments</TabsTrigger>
@@ -785,9 +789,9 @@ export default function PlayerProfile() {
                    <MySessionsSection />
                  </TabsContent>
                 )}
-                {isOwnProfile && organizerStatus.hasEngagedWithOrganizing && (
+                {(isOwnProfile ? organizerStatus.hasEngagedWithOrganizing : hasPublishedSessionsAsGuest) && (
                  <TabsContent value="organizing" className="space-y-8" data-testid="my-organized-sessions-tab-content">
-                   <MyOrganizedSessionsSection />
+                   <MyOrganizedSessionsSection isOwnProfile={isOwnProfile} />
                  </TabsContent>
                 )}
                 <TabsContent value="tournaments" className="space-y-8">

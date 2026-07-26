@@ -58,6 +58,7 @@ export interface SessionListItem {
   registrationClosesAt?: string; // ISO
   checkInOpen?: boolean;
   reviewNote?: string; // set by an admin on rejection
+  cancellationPolicy?: string;
   format?: string; // "Fun doubles · Random partners · Balance skill"
   roundsDescription?: string; // "5 rounds · Best of 4 games (no-ad)"
   waitingListEnabled?: boolean;
@@ -377,7 +378,7 @@ export function getSessionDetail(session: SessionListItem): Required<
     | "createdAt"
     | "notes"
   >
-> & { gameFormat: string } {
+> & { gameFormat: string; cancellationPolicy: string } {
   const start = new Date(session.startAt);
   return {
     endAt: session.endAt ?? new Date(start.getTime() + 90 * 60 * 1000).toISOString(),
@@ -392,6 +393,9 @@ export function getSessionDetail(session: SessionListItem): Required<
     createdAt: session.createdAt ?? daysAgo(14),
     notes: session.notes ?? null,
     gameFormat: "4 Games (No-Ad)",
+    cancellationPolicy:
+      session.cancellationPolicy ??
+      "Free cancellation up to 24 hours before the session starts. After that, no refund — the spot may still be offered to the waiting list.",
   };
 }
 

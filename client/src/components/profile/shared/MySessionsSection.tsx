@@ -1,72 +1,36 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, MapPin, Loader2 } from "lucide-react";
+import { Calendar, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
-
-interface MySession {
-  id: string;
-  title: string;
-  location: string | null;
-  startAt: string;
-  organizationName: string;
-  organizationSlug: string;
-  viewerRegistrationStatus: "registered" | "waitlisted" | "cancelled" | null;
-}
+import { useOrganiserSessions } from "@/lib/organiser-sessions-store";
+import { useMyRegistrations, cancelRegistration } from "@/lib/session-registrations-store";
 
 // "My Sessions" — sessions the current user has joined (Play Hub).
+// Reads from the same client-side stores the rest of the Organiser Hub
+// module uses (organiser-sessions-store + session-registrations-store)
+// rather than a backend that doesn't exist yet.
 export function MySessionsSection() {
-  const [sessions, setSessions] = useState<MySession[] | null>(null);
-  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const allSessions = useOrganiserSessions();
+  const registrations = useMyRegistrations();
   const { toast } = useToast();
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
-  async function load() {
-    try {
-      const res = await fetch("/api/organizer/sessions/mine/registered", {
-        credentials: "include",
-      });
-      if (!res.ok) return;
-      setSessions(await res.json());
-    } catch {
-      setSessions([]);
-    }
-  }
+  const joined = registrations
+    .filter((r) => r.status !== "cancelled")
+    .map((r) => ({ registration: r, session: allSessions.find((s) => s.id === r.sessionId) }))
+    .filter((row): row is { registration: (typeof registrations)[number]; session: NonNullable<(typeof allSessions)[number]> } => !!row.session);
 
-  useEffect(() => {
-    load();
-  }, []);
-
-  async function handleCancel(sessionId: string) {
+  const handleCancel = (sessionId: string, title: string) => {
     setCancellingId(sessionId);
-    try {
-      const res = await fetch(`/api/organizer/sessions/${sessionId}/join`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const json = await res.json();
-        throw new Error(json.message || "Could not cancel");
-      }
-      toast({ title: "Registration cancelled" });
-      await load();
-    } catch (error: any) {
-      toast({ title: "Something went wrong", description: error.message, variant: "destructive" });
-    } finally {
-      setCancellingId(null);
-    }
-  }
+    cancelRegistration(sessionId);
+    toast({ title: "Registration cancelled", description: `You're no longer registered for "${title}".` });
+    setCancellingId(null);
+  };
 
-  if (sessions === null) {
-    return (
-      <div className="flex justify-center py-8" data-testid="my-sessions-loading">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (sessions.length === 0) {
+  if (joined.length === 0) {
     return (
       <Card data-testid="my-sessions-empty">
         <CardContent className="py-10 text-center text-muted-foreground">
@@ -78,51 +42,53 @@ export function MySessionsSection() {
 
   return (
     <div className="space-y-3" data-testid="my-sessions-list">
-      {sessions.map((session) => (
-        <Card key={session.id} data-testid={`my-session-${session.id}`}>
-          <CardContent className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <Link href={`/organisations/${session.organizationSlug}`} className="font-semibold hover:underline">
-                  {session.title}
-                </Link>
-                {session.viewerRegistrationStatus === "waitlisted" && (
-                  <Badge variant="secondary">Waitlisted</Badge>
-                )}
-              </div>
-              <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1">
-                <span className="flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5" />
-                  {new Date(session.startAt).toLocaleString(undefined, {
-                    weekday: "short",
-                    day: "numeric",
-                    month: "short",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
-                {session.location && (
+      {joined.map(({ registration, session }) => {
+        const canCancel = new Date(session.startAt).getTime() > Date.now();
+        return (
+          <Card key={session.id} data-testid={`my-session-${session.id}`}>
+            <CardContent className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Link href={`/organiser/sessions/${session.id}`} className="font-semibold hover:underline">
+                    {session.title}
+                  </Link>
+                  {registration.status === "waitlisted" && <Badge variant="secondary">Waitlisted</Badge>}
+                </div>
+                <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1">
                   <span className="flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5" />
-                    {session.location}
+                    <Calendar className="w-3.5 h-3.5" />
+                    {new Date(session.startAt).toLocaleString(undefined, {
+                      weekday: "short",
+                      day: "numeric",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </span>
-                )}
-                <span>by {session.organizationName}</span>
+                  {session.location && (
+                    <span className="flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5" />
+                      {session.location}
+                    </span>
+                  )}
+                  {session.organizerName && <span>by {session.organizerName}</span>}
+                </div>
               </div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleCancel(session.id)}
-              disabled={cancellingId === session.id}
-              data-testid={`cancel-session-${session.id}`}
-            >
-              {cancellingId === session.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Cancel
-            </Button>
-          </CardContent>
-        </Card>
-      ))}
+              {canCancel && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleCancel(session.id, session.title)}
+                  disabled={cancellingId === session.id}
+                  data-testid={`cancel-session-${session.id}`}
+                >
+                  Cancel
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }
