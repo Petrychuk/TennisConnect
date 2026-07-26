@@ -210,7 +210,13 @@ export default function CoachProfile() {
     user?.slug === profileSlug;
   const organizerStatus = useOrganizerStatus(isOwnProfile);
   const organiserSessions = useOrganiserSessions();
-  const showOrganisingTab = isOwnProfile
+  // Deliberately not the same as isOwnProfile - that also requires
+  // user.role === "coach", so an organiser whose base account role is
+  // something else would never see their own Organising tab here even
+  // though it's genuinely their account and they do have organiser
+  // access. This only needs to know "is this literally my account".
+  const isMyAccount = isAuthenticated && user?.slug === profileSlug;
+  const showOrganisingTab = isMyAccount
     ? !!user?.isOrganizer
     : organiserSessions.some((s) => s.status === "published" && s.organizerName === profile.name);
   
@@ -1116,12 +1122,12 @@ export default function CoachProfile() {
                     </TabsContent>
 
                     <TabsContent value="sessions" className="space-y-8 mt-0" data-testid="my-sessions-tab-content">
-                      <MySessionsSection isOwnProfile={isOwnProfile} isAuthenticated={isAuthenticated} />
+                      <MySessionsSection isOwnProfile={isMyAccount} isAuthenticated={isAuthenticated} />
                     </TabsContent>
 
                     {showOrganisingTab && (
                       <TabsContent value="organizing" className="space-y-8 mt-0" data-testid="my-organized-sessions-tab-content">
-                        <MyOrganizedSessionsSection isOwnProfile={isOwnProfile} />
+                        <MyOrganizedSessionsSection isOwnProfile={isMyAccount} />
                       </TabsContent>
                     )}
 
