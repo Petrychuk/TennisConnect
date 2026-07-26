@@ -24,7 +24,6 @@ import SEO from "@/components/seo";
 import { BecomeOrganizerCard } from "@/components/profile/shared/BecomeOrganizerCard";
 import { MySessionsSection } from "@/components/profile/shared/MySessionsSection";
 import { MyOrganizedSessionsSection } from "@/components/profile/shared/MyOrganizedSessionsSection";
-import { useOrganiserSessions } from "@/lib/organiser-sessions-store";
 import { TournamentHistorySection } from "@/components/profile/shared/TournamentHistorySection";
 import { useOrganizerStatus } from "@/hooks/use-organizer-status";
 
@@ -209,9 +208,6 @@ export default function CoachProfile() {
     user?.role === "coach" &&
     user?.slug === profileSlug;
   const organizerStatus = useOrganizerStatus(isOwnProfile);
-  const organiserSessions = useOrganiserSessions();
-  const hasPublishedSessionsAsGuest =
-    !isOwnProfile && organiserSessions.some((s) => s.status === "published" && s.organizerName === profile.name);
   
   /* =========================
      EDITING STATE
@@ -933,6 +929,7 @@ export default function CoachProfile() {
                 className="w-full"
               >
                 <TabsList className="w-full
+                    max-w-3xl
                     overflow-x-auto
                     whitespace-nowrap
                     flex
@@ -946,12 +943,8 @@ export default function CoachProfile() {
                     md:pl-8
                     scrollbar-hide">
                   <TabsTrigger value="about" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">About</TabsTrigger>
-                  {isOwnProfile && (
-                    <TabsTrigger value="sessions" data-testid="my-sessions-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">My Sessions</TabsTrigger>
-                  )}
-                  {(isOwnProfile || hasPublishedSessionsAsGuest) && (
-                    <TabsTrigger value="organizing" data-testid="my-organized-sessions-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Organising</TabsTrigger>
-                  )}
+                  <TabsTrigger value="sessions" data-testid="my-sessions-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">My Sessions</TabsTrigger>
+                  <TabsTrigger value="organizing" data-testid="my-organized-sessions-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Organising</TabsTrigger>
                   <TabsTrigger value="tournaments" data-testid="tournaments-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Tournaments</TabsTrigger>
                   <TabsTrigger value="photos" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Photos</TabsTrigger>
                   <TabsTrigger value="schedule" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Schedule & Locations</TabsTrigger>
@@ -1116,17 +1109,13 @@ export default function CoachProfile() {
                       </Card>
                     </TabsContent>
 
-                    {isOwnProfile && (
-                      <TabsContent value="sessions" className="space-y-8 mt-0" data-testid="my-sessions-tab-content">
-                        <MySessionsSection />
-                      </TabsContent>
-                    )}
+                    <TabsContent value="sessions" className="space-y-8 mt-0" data-testid="my-sessions-tab-content">
+                      <MySessionsSection isOwnProfile={isOwnProfile} isAuthenticated={isAuthenticated} />
+                    </TabsContent>
 
-                    {(isOwnProfile || hasPublishedSessionsAsGuest) && (
-                      <TabsContent value="organizing" className="space-y-8 mt-0" data-testid="my-organized-sessions-tab-content">
-                        <MyOrganizedSessionsSection isOwnProfile={isOwnProfile} />
-                      </TabsContent>
-                    )}
+                    <TabsContent value="organizing" className="space-y-8 mt-0" data-testid="my-organized-sessions-tab-content">
+                      <MyOrganizedSessionsSection isOwnProfile={isOwnProfile} />
+                    </TabsContent>
 
                     <TabsContent value="tournaments" className="mt-0" data-testid="tournaments-tab-content">
                       <TournamentHistorySection userId={coachUserId} isOwnProfile={isOwnProfile} />

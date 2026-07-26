@@ -2,21 +2,58 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, MapPin } from "lucide-react";
+import { Calendar, MapPin, LogIn } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { useOrganiserSessions } from "@/lib/organiser-sessions-store";
 import { useMyRegistrations, cancelRegistration } from "@/lib/session-registrations-store";
 
+interface MySessionsSectionProps {
+  isOwnProfile: boolean;
+  isAuthenticated: boolean;
+}
+
 // "My Sessions" — sessions the current user has joined (Play Hub).
 // Reads from the same client-side stores the rest of the Organiser Hub
 // module uses (organiser-sessions-store + session-registrations-store)
 // rather than a backend that doesn't exist yet.
-export function MySessionsSection() {
+//
+// The tab itself is always visible on every profile now (rather than
+// only rendering for isOwnProfile) - "my sessions" is inherently about
+// the viewer though, not whoever's profile is being looked at, so it
+// only shows real content on the viewer's own profile while signed in;
+// everywhere else it explains why, instead of just disappearing.
+export function MySessionsSection({ isOwnProfile, isAuthenticated }: MySessionsSectionProps) {
   const allSessions = useOrganiserSessions();
   const registrations = useMyRegistrations();
   const { toast } = useToast();
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+
+  if (!isAuthenticated) {
+    return (
+      <Card data-testid="my-sessions-signed-out">
+        <CardContent className="py-10 text-center space-y-3">
+          <p className="text-muted-foreground">Sign in to see the sessions you've joined.</p>
+          <Button asChild size="sm" data-testid="my-sessions-sign-in">
+            <Link href="/auth">
+              <LogIn className="w-4 h-4 mr-2" />
+              Sign In
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!isOwnProfile) {
+    return (
+      <Card data-testid="my-sessions-not-own-profile">
+        <CardContent className="py-10 text-center text-muted-foreground">
+          "My Sessions" shows sessions you've joined, not this profile's — visit your own profile to see yours.
+        </CardContent>
+      </Card>
+    );
+  }
 
   const joined = registrations
     .filter((r) => r.status !== "cancelled")

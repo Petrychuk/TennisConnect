@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, MapPin, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { useOrganiserSessions } from "@/lib/organiser-sessions-store";
@@ -81,7 +81,7 @@ function guestBucketFor(session: SessionListItem): GuestBucket | null {
 // here, for the right audience, with the right status.
 export function MyOrganizedSessionsSection({ isOwnProfile }: MyOrganizedSessionsSectionProps) {
   const allSessions = useOrganiserSessions();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const registrations = useMyRegistrations();
   const { toast } = useToast();
   const [joiningId, setJoiningId] = useState<string | null>(null);
@@ -96,7 +96,13 @@ export function MyOrganizedSessionsSection({ isOwnProfile }: MyOrganizedSessions
     ? allSessions
     : allSessions.filter((s) => guestBucketFor(s) !== null);
 
+  const [, setLocation] = useLocation();
+
   const handleJoin = (session: SessionListItem) => {
+    if (!isAuthenticated) {
+      setLocation("/auth");
+      return;
+    }
     setJoiningId(session.id);
     const status = joinSession(session.id);
     toast({
@@ -185,7 +191,7 @@ export function MyOrganizedSessionsSection({ isOwnProfile }: MyOrganizedSessions
                       disabled={joiningId === session.id}
                       data-testid={`join-session-${session.id}`}
                     >
-                      Join
+                      {isAuthenticated ? "Join" : "Sign in to Join"}
                     </Button>
                   )}
                 </div>
