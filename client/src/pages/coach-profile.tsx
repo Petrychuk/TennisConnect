@@ -218,7 +218,7 @@ export default function CoachProfile() {
   const isMyAccount = isAuthenticated && user?.slug === profileSlug;
   const showOrganisingTab = isMyAccount
     ? !!user?.isOrganizer
-    : organiserSessions.some((s) => s.status === "published" && s.organizerName === profile.name);
+    : organiserSessions.some((s) => s.status === "published" && s.organizerSlug === profileSlug);
   
   /* =========================
      EDITING STATE
@@ -1138,7 +1138,7 @@ export default function CoachProfile() {
 
                     {showOrganisingTab && (
                       <TabsContent value="organizing" className="space-y-8 mt-0" data-testid="my-organized-sessions-tab-content">
-                        <MyOrganizedSessionsSection isOwnProfile={isMyAccount} />
+                        <MyOrganizedSessionsSection isOwnProfile={isMyAccount} profileSlug={profileSlug} />
                       </TabsContent>
                     )}
 

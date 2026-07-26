@@ -101,7 +101,7 @@ export default function PlayerProfile() {
   const organiserSessions = useOrganiserSessions();
   const showOrganisingTab = isOwnProfile
     ? !!user?.isOrganizer
-    : organiserSessions.some((s) => s.status === "published" && s.organizerName === profile.name);
+    : organiserSessions.some((s) => s.status === "published" && s.organizerSlug === profileSlug);
   
     // Tournament State
   const [isTournamentModalOpen, setIsTournamentModalOpen] = useState(false);
@@ -799,7 +799,7 @@ export default function PlayerProfile() {
                 </TabsContent>
                 {showOrganisingTab && (
                   <TabsContent value="organizing" className="space-y-8" data-testid="my-organized-sessions-tab-content">
-                    <MyOrganizedSessionsSection isOwnProfile={isOwnProfile} />
+                    <MyOrganizedSessionsSection isOwnProfile={isOwnProfile} profileSlug={profileSlug} />
                   </TabsContent>
                 )}
                 <TabsContent value="tournaments" className="space-y-8">

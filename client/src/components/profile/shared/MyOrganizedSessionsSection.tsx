@@ -12,6 +12,7 @@ import { useMyRegistrations, getRegistrationStatus, joinSession } from "@/lib/se
 
 interface MyOrganizedSessionsSectionProps {
   isOwnProfile: boolean;
+  profileSlug?: string;
 }
 
 const OWNER_STATUS_BADGE: Record<string, string> = {
@@ -79,7 +80,7 @@ function guestBucketFor(session: SessionListItem): GuestBucket | null {
 // there's no backend for this yet, and this is what makes a session
 // created in the wizard and approved by an admin actually show up
 // here, for the right audience, with the right status.
-export function MyOrganizedSessionsSection({ isOwnProfile }: MyOrganizedSessionsSectionProps) {
+export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrganizedSessionsSectionProps) {
   const allSessions = useOrganiserSessions();
   const { user, isAuthenticated } = useAuth();
   const registrations = useMyRegistrations();
@@ -87,14 +88,13 @@ export function MyOrganizedSessionsSection({ isOwnProfile }: MyOrganizedSessions
   const [joiningId, setJoiningId] = useState<string | null>(null);
   const [policyOpenId, setPolicyOpenId] = useState<string | null>(null);
 
-  // Mock-data phase: every session in the shared store is treated as
-  // belonging to whichever organiser is viewing/joining, since there's
-  // only ever one organiser persona in this world so far. Once sessions
-  // carry a real ownerId, this narrows to sessions where
-  // session.ownerId === profile.userId.
+  // Every session in the shared store now carries the real creator's
+  // slug (organizerSlug), set at creation time in the wizard - so a
+  // guest's view can be scoped to sessions actually organised by this
+  // profile specifically, not every published session store-wide.
   const sessions = isOwnProfile
     ? allSessions
-    : allSessions.filter((s) => guestBucketFor(s) !== null);
+    : allSessions.filter((s) => guestBucketFor(s) !== null && s.organizerSlug === profileSlug);
 
   const [, setLocation] = useLocation();
 
@@ -143,7 +143,7 @@ export function MyOrganizedSessionsSection({ isOwnProfile }: MyOrganizedSessions
           const myStatus = getRegistrationStatus(session.id);
           const canJoin = !isOwnProfile
             ? (guestBucket === "open" || guestBucket === "waitlist") && !myStatus
-            : (guestBucket === "open" || guestBucket === "waitlist") && !myStatus && detail.organizerName === user?.name;
+            : (guestBucket === "open" || guestBucket === "waitlist") && !myStatus && session.organizerSlug === user?.slug;
           const showPolicy = policyOpenId === session.id;
 
           return (

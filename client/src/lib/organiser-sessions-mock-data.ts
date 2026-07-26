@@ -64,6 +64,7 @@ export interface SessionListItem {
   waitingListEnabled?: boolean;
   costPerPlayer?: number | null;
   organizerName?: string;
+  organizerSlug?: string;
   createdAt?: string; // ISO
   notes?: string | null;
 }

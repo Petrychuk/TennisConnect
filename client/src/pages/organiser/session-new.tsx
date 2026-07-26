@@ -85,6 +85,7 @@ export default function OrganiserSessionNewPage() {
       waitingListEnabled: draft.waitingListEnabled,
       costPerPlayer: draft.pricing === "paid" ? draft.price : 0,
       organizerName: organiser.name,
+      organizerSlug: user?.slug,
       createdAt: new Date().toISOString(),
       coverImage: draft.coverImage ?? undefined,
     };
