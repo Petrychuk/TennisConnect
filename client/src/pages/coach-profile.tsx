@@ -933,6 +933,17 @@ export default function CoachProfile() {
           )}
 
             {/* Main Content Tabs */}
+            {loading ? (
+              <div className="mt-12 container mx-auto max-w-6xl px-4 space-y-4" data-testid="coach-tabs-skeleton">
+                <div className="flex gap-4">
+                  <Skeleton className="h-9 w-20" />
+                  <Skeleton className="h-9 w-28" />
+                  <Skeleton className="h-9 w-24" />
+                </div>
+                <Skeleton className="h-40 w-full rounded-2xl" />
+                <Skeleton className="h-40 w-full rounded-2xl" />
+              </div>
+            ) : (
             <div className="mt-12 pointer-events-auto">
             <Tabs
                 value={activeTab}
@@ -1833,6 +1844,7 @@ export default function CoachProfile() {
                 </div>
               </Tabs>
             </div>
+            )}
           </div>
         </main>
 

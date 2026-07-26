@@ -704,6 +704,17 @@ export default function PlayerProfile() {
                 onSave={handleSave}
              />
             )}
+              {loading ? (
+                <div className="space-y-4" data-testid="player-tabs-skeleton">
+                  <div className="flex gap-4">
+                    <Skeleton className="h-9 w-20" />
+                    <Skeleton className="h-9 w-28" />
+                    <Skeleton className="h-9 w-24" />
+                  </div>
+                  <Skeleton className="h-40 w-full rounded-2xl" />
+                  <Skeleton className="h-40 w-full rounded-2xl" />
+                </div>
+              ) : (
               <Tabs defaultValue="overview" className="space-y-8">
                 <TabsList className="w-full
                       flex
@@ -1213,6 +1224,7 @@ export default function PlayerProfile() {
                   </div>
                 </TabsContent>
               </Tabs>
+              )}
             </div>
           </div>
         </div>
