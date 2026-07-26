@@ -98,10 +98,11 @@ export default function PlayerProfile() {
   const [originalProfile, setOriginalProfile] = useState<PlayerProfile>(DEFAULT_PLAYER_PROFILE);
   const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState<any>(null);
+  const [profileIsOrganizer, setProfileIsOrganizer] = useState(false);
   const organiserSessions = useOrganiserSessions();
   const showOrganisingTab = isOwnProfile
     ? !!user?.isOrganizer
-    : organiserSessions.some((s) => s.status === "published" && s.organizerSlug === profileSlug);
+    : profileIsOrganizer || organiserSessions.some((s) => s.status === "published" && s.organizerSlug === profileSlug);
   
     // Tournament State
   const [isTournamentModalOpen, setIsTournamentModalOpen] = useState(false);
@@ -175,6 +176,7 @@ export default function PlayerProfile() {
           });
 
           setProfileData(data.profile || null);
+          setProfileIsOrganizer(!!data.user.isOrganizer);
 
           /* ===== PUBLIC TOURNAMENTS ===== */
           const tournamentsRes = await fetch(

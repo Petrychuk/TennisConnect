@@ -204,6 +204,7 @@ export default function CoachProfile() {
   const [profileData, setProfileData] = useState<any>(null);
   const [coachUserId, setCoachUserId] = useState<string>("");
   const [marketplaceItems, setMarketplaceItems] = useState<any[]>([]);
+  const [profileIsOrganizer, setProfileIsOrganizer] = useState(false);
   const isOwnProfile =
     isAuthenticated &&
     user?.role === "coach" &&
@@ -218,7 +219,7 @@ export default function CoachProfile() {
   const isMyAccount = isAuthenticated && user?.slug === profileSlug;
   const showOrganisingTab = isMyAccount
     ? !!user?.isOrganizer
-    : organiserSessions.some((s) => s.status === "published" && s.organizerSlug === profileSlug);
+    : profileIsOrganizer || organiserSessions.some((s) => s.status === "published" && s.organizerSlug === profileSlug);
   
   /* =========================
      EDITING STATE
@@ -719,6 +720,7 @@ export default function CoachProfile() {
 
           const data = await res.json();
           setCoachUserId(data.user.id);
+          setProfileIsOrganizer(!!data.user.isOrganizer);
           console.log("Coach ID:", data.user.id);
 
           setProfile(prev => ({
