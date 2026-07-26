@@ -1,4 +1,5 @@
 import type { SessionStatus } from "./organiser-hub-mock-data";
+import type { SessionTypeKey } from "./organiser-session-wizard-types";
 
 export type CourtState = "ready" | "playing" | "pending";
 
@@ -33,7 +34,7 @@ export const mockSessionReadiness: SessionReadiness = {
 export interface SessionListItem {
   id: string;
   title: string;
-  type: "social" | "round-robin" | "clinic" | "tournament";
+  type: SessionTypeKey | "clinic";
   status: SessionStatus;
   location: string;
   startAt: string; // ISO
@@ -48,6 +49,7 @@ export interface SessionListItem {
   roundTotal?: number;
   roundEndsAt?: string; // ISO - only meaningful while status is "live"
   courts?: CourtStatus[]; // only meaningful while status is "live"
+  coverImage?: string; // data URL - user-uploaded cover photo, falls back to the stock court photo when absent
   resultsPublished?: boolean;
   // Explicit flag rather than inferring from status/text - a "published"
   // session might be full or registration might be closed even though

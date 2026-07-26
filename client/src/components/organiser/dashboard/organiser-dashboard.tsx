@@ -53,6 +53,9 @@ export function OrganiserDashboard() {
   const [, setLocation] = useLocation();
   const [loading, setLoading] = useState(true);
   const profileHref = user ? `/${user.role}/${user.slug}` : "/";
+  // Real name/avatar from the authenticated user - role/organization
+  // fields stay mock for now since there's no backend for those yet.
+  const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null } : mockOrganiser;
 
   useEffect(() => {
     // Mock-data phase: nothing to actually await yet, but keeping a brief
@@ -97,12 +100,12 @@ export function OrganiserDashboard() {
           orientation, gets the collapsible hamburger version instead
           (see DashboardHeader) so it doesn't cramp the content grid. */}
       <aside className="hidden xl:flex xl:w-64 shrink-0 border-r border-border">
-        <OrganiserSidebarNav organiser={mockOrganiser} profileHref={profileHref} className="w-full" />
+        <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} className="w-full" />
       </aside>
 
       <div className="flex-1 min-w-0 pb-16 md:pb-0">
         <DashboardHeader
-          organiser={mockOrganiser}
+          organiser={organiser}
           profileHref={profileHref}
           onCreateSession={() => setLocation("/organiser/sessions/new")}
         />
@@ -111,7 +114,7 @@ export function OrganiserDashboard() {
           <DashboardSkeleton />
         ) : (
           <>
-            <DashboardHero organiser={mockOrganiser} stats={mockStatStrip} />
+            <DashboardHero organiser={organiser} stats={mockStatStrip} />
 
             <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-6 xl:grid-cols-12 gap-6">
@@ -132,7 +135,7 @@ export function OrganiserDashboard() {
                 />
 
                 <QuickActionsCard
-                  organizationSlug={mockOrganiser.organizationSlug}
+                  organizationSlug={organiser.organizationSlug}
                   onCreateSession={() => setLocation("/organiser/sessions/new")}
                   className="md:col-span-3 xl:col-span-4"
                 />

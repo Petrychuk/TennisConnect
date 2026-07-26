@@ -21,7 +21,8 @@ import { NewSessionMenu } from "@/components/organiser/sessions/wizard/new-sessi
 import { groupSessionsByBucket, type SessionBucket } from "@/components/organiser/sessions/session-utils";
 
 import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
-import { mockSessionsList, type SessionListItem } from "@/lib/organiser-sessions-mock-data";
+import { type SessionListItem } from "@/lib/organiser-sessions-mock-data";
+import { useOrganiserSessions, addSession, removeSession } from "@/lib/organiser-sessions-store";
 
 export default function OrganiserSessionsPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
@@ -29,7 +30,7 @@ export default function OrganiserSessionsPage() {
   const { toast } = useToast();
   const profileHref = user ? `/${user.role}/${user.slug}` : "/";
 
-  const [sessions, setSessions] = useState<SessionListItem[]>(mockSessionsList);
+  const sessions = useOrganiserSessions();
   const [activeBucket, setActiveBucket] = useState<SessionBucket>("all");
   const [search, setSearch] = useState("");
 
@@ -65,11 +66,11 @@ export default function OrganiserSessionsPage() {
       progressLabel: "Not published",
       resultsPublished: false,
     };
-    setSessions((prev) => [copy, ...prev]);
+    addSession(copy);
   };
 
   const handleDelete = (session: SessionListItem) => {
-    setSessions((prev) => prev.filter((s) => s.id !== session.id));
+    removeSession(session.id);
     toast({ title: "Draft deleted", description: `"${session.title}" was removed.` });
   };
 

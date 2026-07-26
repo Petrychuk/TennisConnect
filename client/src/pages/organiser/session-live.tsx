@@ -5,7 +5,7 @@ import { ArrowLeft, Play, CheckCircle2, Hourglass } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import SEO from "@/components/seo";
 import { CountdownTimer } from "@/components/organiser/sessions/countdown-timer";
-import { mockSessionsList } from "@/lib/organiser-sessions-mock-data";
+import { useOrganiserSessions } from "@/lib/organiser-sessions-store";
 import { cn } from "@/lib/utils";
 
 // Foundation only: this is the screen that exists only while a session is
@@ -16,6 +16,7 @@ export default function OrganiserSessionLivePage() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/organiser/sessions/:id/live");
+  const sessions = useOrganiserSessions();
 
   if (authLoading) return null;
   if (!isAuthenticated) {
@@ -23,7 +24,7 @@ export default function OrganiserSessionLivePage() {
     return null;
   }
 
-  const session = mockSessionsList.find((s) => s.id === params?.id);
+  const session = sessions.find((s) => s.id === params?.id);
 
   if (!session) {
     return (

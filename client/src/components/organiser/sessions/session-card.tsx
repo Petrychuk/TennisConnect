@@ -116,7 +116,7 @@ export function SessionCard({ session, onDuplicate, onDelete }: SessionCardProps
           <div className="relative w-full sm:w-40 h-32 sm:h-auto shrink-0 overflow-hidden">
             {bucket === "live" ? (
               <>
-                <img src={courtImage} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" />
+                <img src={session.coverImage || courtImage} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-foreground/40" />
               </>
             ) : (

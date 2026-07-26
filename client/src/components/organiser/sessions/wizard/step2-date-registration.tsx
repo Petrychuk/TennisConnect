@@ -1,9 +1,12 @@
+import { useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { CalendarDays, ClipboardList, DollarSign, Eye } from "lucide-react";
+import { CalendarDays, ClipboardList, DollarSign, Eye, ImagePlus, X } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import type { NewSessionDraft } from "@/lib/organiser-session-wizard-types";
 
 interface Step2DateRegistrationProps {
@@ -33,8 +36,69 @@ function SectionCard({ icon: Icon, title, children }: { icon: typeof CalendarDay
 }
 
 export function Step2DateRegistration({ draft, onChange }: Step2DateRegistrationProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  const handlePhotoSelect = (file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Please choose an image file", variant: "destructive" });
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast({ title: "Image is too large", description: "Please choose a file under 8MB.", variant: "destructive" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => onChange("coverImage", reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div className="space-y-4" data-testid="organiser-wizard-step2">
+      <Card className="shadow-sm" data-testid="organiser-wizard-section-cover-photo">
+        <CardHeader className="flex flex-row items-center gap-2 space-y-0">
+          <ImagePlus className="w-4 h-4 text-primary" />
+          <CardTitle className="text-base">Cover Photo</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => handlePhotoSelect(e.target.files?.[0])}
+            data-testid="organiser-wizard-cover-photo-input"
+          />
+          {draft.coverImage ? (
+            <div className="relative rounded-xl overflow-hidden h-40">
+              <img src={draft.coverImage} alt="Session cover" className="absolute inset-0 w-full h-full object-cover" />
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                className="absolute top-2 right-2 h-8 w-8"
+                onClick={() => onChange("coverImage", null)}
+                data-testid="organiser-wizard-cover-photo-remove"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full h-32 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-1.5 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+              data-testid="organiser-wizard-cover-photo-trigger"
+            >
+              <ImagePlus className="w-6 h-6" />
+              <span className="text-sm font-medium">Upload a cover photo</span>
+              <span className="text-xs">Optional — defaults to a standard court photo</span>
+            </button>
+          )}
+        </CardContent>
+      </Card>
+
       <SectionCard icon={ClipboardList} title="Session">
         <Field label="Session Name">
           <Input

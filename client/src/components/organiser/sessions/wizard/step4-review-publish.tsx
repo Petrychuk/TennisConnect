@@ -22,7 +22,7 @@ export function Step4ReviewPublish({ draft }: Step4ReviewPublishProps) {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4" data-testid="organiser-wizard-step4">
       <Card className="shadow-sm lg:col-span-2 overflow-hidden" data-testid="organiser-wizard-review-summary">
         <div className="relative h-40">
-          <img src={courtImage} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" />
+          <img src={draft.coverImage || courtImage} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" />
           <div className="absolute inset-0 bg-foreground/40" />
           <div className="absolute inset-0 p-5 flex flex-col justify-end text-primary-foreground">
             <Badge className="bg-primary text-primary-foreground w-fit mb-2">{typeLabel}</Badge>

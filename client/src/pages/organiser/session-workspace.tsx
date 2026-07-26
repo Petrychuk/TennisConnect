@@ -43,7 +43,7 @@ import { SettingsTab } from "@/components/organiser/sessions/workspace/settings-
 import { bucketFor } from "@/components/organiser/sessions/session-utils";
 
 import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
-import { mockSessionsList } from "@/lib/organiser-sessions-mock-data";
+import { useOrganiserSessions } from "@/lib/organiser-sessions-store";
 
 const WORKSPACE_TABS = [
   { key: "overview", label: "Overview" },
@@ -72,6 +72,7 @@ export default function OrganiserSessionWorkspacePage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/organiser/sessions/:id");
+  const sessions = useOrganiserSessions();
   const search = useSearch();
   const { toast } = useToast();
   const profileHref = user ? `/${user.role}/${user.slug}` : "/";
@@ -106,7 +107,7 @@ export default function OrganiserSessionWorkspacePage() {
     );
   }
 
-  const session = mockSessionsList.find((s) => s.id === params?.id);
+  const session = sessions.find((s) => s.id === params?.id);
 
   if (!session) {
     return (

@@ -20,6 +20,8 @@ import { Step4ReviewPublish } from "@/components/organiser/sessions/wizard/step4
 import { PendingApprovalDialog } from "@/components/organiser/sessions/wizard/pending-approval-dialog";
 
 import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
+import { addSession } from "@/lib/organiser-sessions-store";
+import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 import {
   createEmptyDraft,
   SESSION_TYPE_OPTIONS,
@@ -59,12 +61,42 @@ export default function OrganiserSessionNewPage() {
 
   const handleBack = () => setStep((prev) => Math.max(prev - 1, 1));
 
+  const buildSessionFromDraft = (status: SessionListItem["status"]): SessionListItem => {
+    const startAt = draft.date ? new Date(`${draft.date}T${draft.startTime || "00:00"}`).toISOString() : new Date().toISOString();
+    const endAt = draft.date ? new Date(`${draft.date}T${draft.endTime || "00:00"}`).toISOString() : undefined;
+    return {
+      id: `draft-${Date.now()}`,
+      title: draft.name || "Untitled Session",
+      type: draft.type ?? "custom",
+      status,
+      location: draft.venue,
+      startAt,
+      endAt,
+      registeredCount: 0,
+      checkedInCount: 0,
+      waitingCount: 0,
+      maxParticipants: draft.maxPlayers,
+      progressPercent: 0,
+      progressLabel: status === "draft" ? "Not published" : "Awaiting admin approval",
+      registrationOpen: false,
+      waitingListEnabled: draft.waitingListEnabled,
+      costPerPlayer: draft.pricing === "paid" ? draft.price : 0,
+      organizerName: mockOrganiser.name,
+      createdAt: new Date().toISOString(),
+      coverImage: draft.coverImage ?? undefined,
+    };
+  };
+
   const handleSaveDraft = () => {
+    const session = buildSessionFromDraft("draft");
+    addSession(session);
     toast({ title: "Saved as draft", description: "Pick up where you left off any time from Sessions." });
     setLocation("/organiser/sessions");
   };
 
   const handlePublish = () => {
+    const session = buildSessionFromDraft("pending_review");
+    addSession(session);
     setPendingApprovalOpen(true);
   };
 

@@ -26,7 +26,7 @@ export function SessionSummaryCard({ session, className }: SessionSummaryCardPro
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="relative rounded-xl overflow-hidden h-48">
-          <img src={courtImage} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" />
+          <img src={session.coverImage || courtImage} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" />
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">

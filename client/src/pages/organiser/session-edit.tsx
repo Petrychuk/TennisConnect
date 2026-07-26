@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import SEO from "@/components/seo";
-import { mockSessionsList } from "@/lib/organiser-sessions-mock-data";
+import { useOrganiserSessions } from "@/lib/organiser-sessions-store";
 
 // Foundation only. The brief calls for the same multi-step wizard used to
 // create a session, just pre-filled - that wizard isn't part of this
@@ -14,6 +14,7 @@ export default function OrganiserSessionEditPage() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/organiser/sessions/:id/edit");
+  const sessions = useOrganiserSessions();
 
   if (authLoading) return null;
   if (!isAuthenticated) {
@@ -21,7 +22,7 @@ export default function OrganiserSessionEditPage() {
     return null;
   }
 
-  const session = mockSessionsList.find((s) => s.id === params?.id);
+  const session = sessions.find((s) => s.id === params?.id);
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-background" data-testid="organiser-session-edit">

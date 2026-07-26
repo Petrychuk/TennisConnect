@@ -1,27 +1,19 @@
-import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, MapPin, Loader2, ExternalLink } from "lucide-react";
+import { Calendar, MapPin, ExternalLink } from "lucide-react";
 import { Link } from "wouter";
-
-interface MyOrganizedSession {
-  id: string;
-  title: string;
-  type: string;
-  status: "draft" | "pending_review" | "published" | "rejected" | "cancelled" | "live" | "completed";
-  location: string | null;
-  startAt: string;
-}
+import { useOrganiserSessions } from "@/lib/organiser-sessions-store";
 
 const STATUS_BADGE: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
-  pending_review: "bg-orange-100 text-orange-700",
+  pending_review: "bg-secondary text-secondary-foreground",
   published: "bg-primary/10 text-primary",
   rejected: "bg-destructive/10 text-destructive",
   cancelled: "bg-destructive/10 text-destructive",
-  live: "bg-blue-100 text-blue-700",
-  completed: "bg-green-100 text-green-700",
+  live: "bg-primary text-primary-foreground",
+  completed: "bg-accent text-accent-foreground",
+  archived: "bg-muted text-muted-foreground",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -32,34 +24,22 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: "Cancelled",
   live: "Live",
   completed: "Completed",
+  archived: "Archived",
 };
 
 // The sessions/tournaments this user organizes — as opposed to
 // MySessionsSection, which is sessions they've joined as a player.
 // Read-only here; creating/publishing/cancelling happens on the
 // Organiser Hub, this is just the at-a-glance view on the profile.
+//
+// Reads from the same client-side store the Organiser Hub's Sessions
+// page and wizard use (organiser-sessions-store.ts) rather than a
+// backend endpoint - there's no backend for this yet, and this is what
+// makes a session created in the wizard actually show up here once
+// it's been published, per the intended publish -> moderation ->
+// appears-on-profile flow.
 export function MyOrganizedSessionsSection() {
-  const [sessions, setSessions] = useState<MyOrganizedSession[] | null>(null);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/organizer/sessions/mine", { credentials: "include" });
-        if (!res.ok) return setSessions([]);
-        setSessions(await res.json());
-      } catch {
-        setSessions([]);
-      }
-    })();
-  }, []);
-
-  if (sessions === null) {
-    return (
-      <div className="flex justify-center py-8" data-testid="my-organized-sessions-loading">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+  const sessions = useOrganiserSessions();
 
   return (
     <div className="space-y-3" data-testid="my-organized-sessions-list">

@@ -35,7 +35,7 @@ export function Step3DetailsRules({ draft, onChange }: Step3DetailsRulesProps) {
               <RadioGroup
                 value={draft.matchType}
                 onValueChange={(v) => onChange("matchType", v as NewSessionDraft["matchType"])}
-                className="flex gap-4"
+                className="flex flex-wrap gap-4"
                 data-testid="organiser-wizard-match-type"
               >
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -45,6 +45,10 @@ export function Step3DetailsRules({ draft, onChange }: Step3DetailsRulesProps) {
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <RadioGroupItem value="doubles" data-testid="organiser-wizard-match-type-doubles" />
                   Doubles
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <RadioGroupItem value="mixed" data-testid="organiser-wizard-match-type-mixed" />
+                  Mixed Doubles
                 </label>
               </RadioGroup>
             </div>

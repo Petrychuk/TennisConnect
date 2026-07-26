@@ -69,9 +69,10 @@ export interface NewSessionDraft {
   price: number;
   // Visibility
   visibility: Visibility;
+  coverImage: string | null; // data URL
 
   // Step 3 - Format
-  matchType: "singles" | "doubles";
+  matchType: "singles" | "doubles" | "mixed";
   gamesTo: number;
   roundsCount: number;
   noAd: boolean;
@@ -111,6 +112,7 @@ export function createEmptyDraft(): NewSessionDraft {
     pricing: "free",
     price: 15,
     visibility: "public",
+    coverImage: null,
     matchType: "doubles",
     gamesTo: 4,
     roundsCount: 5,
