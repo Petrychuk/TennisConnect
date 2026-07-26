@@ -57,6 +57,7 @@ export interface SessionListItem {
   registrationOpen?: boolean;
   registrationClosesAt?: string; // ISO
   checkInOpen?: boolean;
+  reviewNote?: string; // set by an admin on rejection
   format?: string; // "Fun doubles · Random partners · Balance skill"
   roundsDescription?: string; // "5 rounds · Best of 4 games (no-ad)"
   waitingListEnabled?: boolean;

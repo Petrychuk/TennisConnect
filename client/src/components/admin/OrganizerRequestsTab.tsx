@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle, XCircle, Calendar, MapPin } from "lucide-react";
+import { useOrganiserSessions, updateSession } from "@/lib/organiser-sessions-store";
+import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 
 interface OrganizerRequestRow {
   id: string;
@@ -22,18 +24,6 @@ interface OrganizerRequestRow {
   userName: string;
   userEmail: string;
   userRole: string;
-}
-
-interface SessionModerationRow {
-  id: string;
-  title: string;
-  type: string;
-  status: "draft" | "pending_review" | "published" | "rejected" | "cancelled" | "live" | "completed";
-  location: string | null;
-  startAt: string;
-  organizationName: string;
-  creatorName?: string;
-  reviewNote: string | null;
 }
 
 const REQUEST_FILTERS = ["pending", "approved", "rejected", "revoked"] as const;
@@ -80,62 +70,41 @@ export default function AdminOrganizerTab() {
 }
 
 function SessionModerationPanel() {
-  const [sessions, setSessions] = useState<SessionModerationRow[]>([]);
+  const allSessions = useOrganiserSessions();
   const [statusFilter, setStatusFilter] = useState<(typeof SESSION_FILTERS)[number]>("pending_review");
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [rejectTarget, setRejectTarget] = useState<SessionModerationRow | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<SessionListItem | null>(null);
   const [rejectNote, setRejectNote] = useState("");
   const { toast } = useToast();
 
-  async function loadSessions(status: string) {
-    const res = await fetch(`/api/organizer/admin/sessions?status=${status}`, {
-      credentials: "include",
-    });
-    if (!res.ok) return;
-    setSessions(await res.json());
-  }
+  const sessions = allSessions.filter((s) => s.status === statusFilter);
 
-  useEffect(() => {
-    loadSessions(statusFilter);
-  }, [statusFilter]);
-
-  async function handleApprove(id: string) {
+  function handleApprove(id: string) {
     setProcessingId(id);
-    try {
-      const res = await fetch(`/api/organizer/admin/sessions/${id}/approve`, {
-        method: "POST",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error((await res.json()).message);
-      toast({ title: "Session approved", description: "It's now live on the site." });
-      loadSessions(statusFilter);
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } finally {
-      setProcessingId(null);
-    }
+    // Approval is what turns a session on for real: registration opens
+    // and it becomes eligible for public display (profile "Sessions" tab,
+    // and eventually the club's own premium page and the homepage "What's
+    // On" block, once those pull from real organiser data).
+    updateSession(id, {
+      status: "published",
+      registrationOpen: true,
+      progressLabel: "Registration Open",
+    });
+    toast({ title: "Session approved", description: "It's now open for registration and visible on the organiser's profile." });
+    setProcessingId(null);
   }
 
-  async function handleReject() {
+  function handleReject() {
     if (!rejectTarget) return;
     setProcessingId(rejectTarget.id);
-    try {
-      const res = await fetch(`/api/organizer/admin/sessions/${rejectTarget.id}/reject`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ note: rejectNote || undefined }),
-      });
-      if (!res.ok) throw new Error((await res.json()).message);
-      toast({ title: "Session rejected", description: "The organiser can edit and resubmit it." });
-      setRejectTarget(null);
-      setRejectNote("");
-      loadSessions(statusFilter);
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } finally {
-      setProcessingId(null);
-    }
+    updateSession(rejectTarget.id, {
+      status: "rejected",
+      reviewNote: rejectNote || undefined,
+    });
+    toast({ title: "Session rejected", description: "The organiser can edit and resubmit it." });
+    setRejectTarget(null);
+    setRejectNote("");
+    setProcessingId(null);
   }
 
   return (
@@ -188,10 +157,7 @@ function SessionModerationPanel() {
                       {session.location}
                     </span>
                   )}
-                  <span>
-                    {session.organizationName}
-                    {session.creatorName ? ` · by ${session.creatorName}` : ""}
-                  </span>
+                  {session.organizerName && <span>by {session.organizerName}</span>}
                 </div>
                 {session.status === "rejected" && session.reviewNote && (
                   <div className="text-sm text-destructive">Note: {session.reviewNote}</div>

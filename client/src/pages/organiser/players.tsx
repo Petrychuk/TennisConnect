@@ -34,6 +34,9 @@ export default function OrganiserPlayersPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const profileHref = user ? `/${user.role}/${user.slug}` : "/";
+  // Real name/avatar from the authenticated user - role/organization
+  // fields stay mock for now since there's no backend for those yet.
+  const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null } : mockOrganiser;
 
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"table" | "grid">("table");
@@ -81,7 +84,7 @@ export default function OrganiserPlayersPage() {
       />
 
       <aside className="hidden xl:flex xl:w-64 shrink-0 border-r border-border">
-        <OrganiserSidebarNav organiser={mockOrganiser} profileHref={profileHref} className="w-full" />
+        <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} className="w-full" />
       </aside>
 
       <div className="flex-1 min-w-0 pb-16 md:pb-0">
@@ -95,7 +98,7 @@ export default function OrganiserPlayersPage() {
             </SheetTrigger>
             <SheetContent side="left" className="p-0 w-72">
               <SheetTitle className="sr-only">Organiser Hub navigation</SheetTitle>
-              <OrganiserSidebarNav organiser={mockOrganiser} profileHref={profileHref} />
+              <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} />
             </SheetContent>
           </Sheet>
           <div className="w-9 h-9 md:hidden" aria-hidden="true" />
@@ -111,9 +114,9 @@ export default function OrganiserPlayersPage() {
             </Link>
             <Link href={profileHref}>
               <Avatar className="h-8 w-8 border border-border">
-                <AvatarImage src={mockOrganiser.avatar || undefined} />
+                <AvatarImage src={organiser.avatar || undefined} />
                 <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
-                  {mockOrganiser.name[0]}
+                  {organiser.name[0]}
                 </AvatarFallback>
               </Avatar>
             </Link>

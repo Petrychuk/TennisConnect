@@ -29,6 +29,9 @@ export default function OrganiserSessionsPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const profileHref = user ? `/${user.role}/${user.slug}` : "/";
+  // Real name/avatar from the authenticated user - role/organization
+  // fields stay mock for now since there's no backend for those yet.
+  const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null } : mockOrganiser;
 
   const sessions = useOrganiserSessions();
   const [activeBucket, setActiveBucket] = useState<SessionBucket>("all");
@@ -106,7 +109,7 @@ export default function OrganiserSessionsPage() {
       />
 
       <aside className="hidden xl:flex xl:w-64 shrink-0 border-r border-border">
-        <OrganiserSidebarNav organiser={mockOrganiser} profileHref={profileHref} className="w-full" />
+        <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} className="w-full" />
       </aside>
 
       <div className="flex-1 min-w-0 pb-16 md:pb-0">
@@ -120,7 +123,7 @@ export default function OrganiserSessionsPage() {
             </SheetTrigger>
             <SheetContent side="left" className="p-0 w-72">
               <SheetTitle className="sr-only">Organiser Hub navigation</SheetTitle>
-              <OrganiserSidebarNav organiser={mockOrganiser} profileHref={profileHref} />
+              <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} />
             </SheetContent>
           </Sheet>
           <div className="w-9 h-9 md:hidden" aria-hidden="true" />
