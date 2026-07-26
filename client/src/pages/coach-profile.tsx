@@ -24,6 +24,7 @@ import SEO from "@/components/seo";
 import { BecomeOrganizerCard } from "@/components/profile/shared/BecomeOrganizerCard";
 import { MySessionsSection } from "@/components/profile/shared/MySessionsSection";
 import { MyOrganizedSessionsSection } from "@/components/profile/shared/MyOrganizedSessionsSection";
+import { useOrganiserSessions } from "@/lib/organiser-sessions-store";
 import { TournamentHistorySection } from "@/components/profile/shared/TournamentHistorySection";
 import { useOrganizerStatus } from "@/hooks/use-organizer-status";
 
@@ -208,6 +209,10 @@ export default function CoachProfile() {
     user?.role === "coach" &&
     user?.slug === profileSlug;
   const organizerStatus = useOrganizerStatus(isOwnProfile);
+  const organiserSessions = useOrganiserSessions();
+  const showOrganisingTab = isOwnProfile
+    ? !!user?.isOrganizer
+    : organiserSessions.some((s) => s.status === "published" && s.organizerName === profile.name);
   
   /* =========================
      EDITING STATE
@@ -929,7 +934,6 @@ export default function CoachProfile() {
                 className="w-full"
               >
                 <TabsList className="w-full
-                    max-w-3xl
                     overflow-x-auto
                     whitespace-nowrap
                     flex
@@ -944,7 +948,9 @@ export default function CoachProfile() {
                     scrollbar-hide">
                   <TabsTrigger value="about" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">About</TabsTrigger>
                   <TabsTrigger value="sessions" data-testid="my-sessions-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">My Sessions</TabsTrigger>
-                  <TabsTrigger value="organizing" data-testid="my-organized-sessions-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Organising</TabsTrigger>
+                  {showOrganisingTab && (
+                    <TabsTrigger value="organizing" data-testid="my-organized-sessions-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Organising</TabsTrigger>
+                  )}
                   <TabsTrigger value="tournaments" data-testid="tournaments-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Tournaments</TabsTrigger>
                   <TabsTrigger value="photos" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Photos</TabsTrigger>
                   <TabsTrigger value="schedule" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Schedule & Locations</TabsTrigger>
@@ -1113,9 +1119,11 @@ export default function CoachProfile() {
                       <MySessionsSection isOwnProfile={isOwnProfile} isAuthenticated={isAuthenticated} />
                     </TabsContent>
 
-                    <TabsContent value="organizing" className="space-y-8 mt-0" data-testid="my-organized-sessions-tab-content">
-                      <MyOrganizedSessionsSection isOwnProfile={isOwnProfile} />
-                    </TabsContent>
+                    {showOrganisingTab && (
+                      <TabsContent value="organizing" className="space-y-8 mt-0" data-testid="my-organized-sessions-tab-content">
+                        <MyOrganizedSessionsSection isOwnProfile={isOwnProfile} />
+                      </TabsContent>
+                    )}
 
                     <TabsContent value="tournaments" className="mt-0" data-testid="tournaments-tab-content">
                       <TournamentHistorySection userId={coachUserId} isOwnProfile={isOwnProfile} />
