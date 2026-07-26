@@ -1,3 +1,4 @@
+import { Suspense, lazy } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -5,77 +6,97 @@ import { Toaster } from "@/components/ui/toaster";
 import { ScrollToTop } from "@/components/scroll-to-top";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/lib/auth-context";
-import NotFound from "@/pages/not-found";
+import { Loader2 } from "lucide-react";
 import Home from "@/pages/home";
-import AuthPage from "@/pages/auth";
-import ResetPasswordPage from "@/pages/reset-password";
-import CoachProfile from "@/pages/coach-profile";
-import PlayerProfile from "@/pages/player-profile";
-import PlayerRegistration from "@/pages/player-registration";
-import CoachesPage from "@/pages/coaches";
-import MarketplacePage from "@/pages/marketplace";
-import ClubsPage from "@/pages/clubs";
-import ClubDetailPage from "@/pages/club-detail";
-import PartnersPage from "@/pages/partners";
-import TournamentsPage from "@/pages/tournaments";
-import MessagesPage from "@/pages/messages";
-import CompleteProfilePage from "@/pages/complete-profile";
-import ArticlesPage from "@/pages/articles";
-import ArticleDetailPage from "@/pages/article-detail";
-import TravelPage from "@/pages/travel";
-import TravelDetailPage from "@/pages/travel-detail";
-import RecreationPage from "@/pages/recreation";
-import RecreationDetailPage from "@/pages/recreation-detail";
-import AdminPage from "@/pages/admin";
-import AdminTravelPreviewPage from "@/pages/admin-travel-preview";
-import AdminArticlePreviewPage from "@/pages/admin-article-preview";
-import OrganiserDashboardPage from "@/pages/organiser/organiser-dashboard";
-import OrganiserSessionsPage from "@/pages/organiser/sessions";
-import OrganiserPlayersPage from "@/pages/organiser/players";
-import OrganiserSessionNewPage from "@/pages/organiser/session-new";
-import OrganiserSessionWorkspacePage from "@/pages/organiser/session-workspace";
-import OrganiserSessionLivePage from "@/pages/organiser/session-live";
-import OrganiserSessionEditPage from "@/pages/organiser/session-edit";
-import OrganisationDetailPage from "@/pages/organisation-detail";
+import NotFound from "@/pages/not-found";
+
+// Every other route is lazy - each only downloads its own JS chunk the
+// moment someone actually navigates there, instead of all of them
+// (including the entire Organiser Hub module, every admin panel, and
+// both multi-thousand-line profile pages) being bundled into what has
+// to load before the homepage can even paint. Home and NotFound stay
+// eager since they're the two places almost every visit touches first.
+const AuthPage = lazy(() => import("@/pages/auth"));
+const ResetPasswordPage = lazy(() => import("@/pages/reset-password"));
+const CoachProfile = lazy(() => import("@/pages/coach-profile"));
+const PlayerProfile = lazy(() => import("@/pages/player-profile"));
+const PlayerRegistration = lazy(() => import("@/pages/player-registration"));
+const CoachesPage = lazy(() => import("@/pages/coaches"));
+const MarketplacePage = lazy(() => import("@/pages/marketplace"));
+const ClubsPage = lazy(() => import("@/pages/clubs"));
+const ClubDetailPage = lazy(() => import("@/pages/club-detail"));
+const PartnersPage = lazy(() => import("@/pages/partners"));
+const TournamentsPage = lazy(() => import("@/pages/tournaments"));
+const MessagesPage = lazy(() => import("@/pages/messages"));
+const CompleteProfilePage = lazy(() => import("@/pages/complete-profile"));
+const ArticlesPage = lazy(() => import("@/pages/articles"));
+const ArticleDetailPage = lazy(() => import("@/pages/article-detail"));
+const TravelPage = lazy(() => import("@/pages/travel"));
+const TravelDetailPage = lazy(() => import("@/pages/travel-detail"));
+const RecreationPage = lazy(() => import("@/pages/recreation"));
+const RecreationDetailPage = lazy(() => import("@/pages/recreation-detail"));
+const AdminPage = lazy(() => import("@/pages/admin"));
+const AdminTravelPreviewPage = lazy(() => import("@/pages/admin-travel-preview"));
+const AdminArticlePreviewPage = lazy(() => import("@/pages/admin-article-preview"));
+const OrganiserDashboardPage = lazy(() => import("@/pages/organiser/organiser-dashboard"));
+const OrganiserSessionsPage = lazy(() => import("@/pages/organiser/sessions"));
+const OrganiserPlayersPage = lazy(() => import("@/pages/organiser/players"));
+const OrganiserSessionNewPage = lazy(() => import("@/pages/organiser/session-new"));
+const OrganiserSessionWorkspacePage = lazy(() => import("@/pages/organiser/session-workspace"));
+const OrganiserSessionLivePage = lazy(() => import("@/pages/organiser/session-live"));
+const OrganiserSessionEditPage = lazy(() => import("@/pages/organiser/session-edit"));
+const OrganisationDetailPage = lazy(() => import("@/pages/organisation-detail"));
+
+// Minimal, unobtrusive - shows only during the brief window a lazy
+// chunk is downloading on navigation, not on every render.
+function RouteFallback() {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center" data-testid="route-loading-fallback">
+      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
 
 function Router() {
   return (
-    <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/auth" component={AuthPage} />
-      <Route path="/reset-password" component={ResetPasswordPage} />
-      <Route path="/complete-profile" component={CompleteProfilePage} />
-      <Route path="/player/register" component={PlayerRegistration} />
-      <Route path="/player/profile" component={PlayerProfile} />
-      <Route path="/player/:id" component={PlayerProfile} />
-      <Route path="/coaches" component={CoachesPage} />
-      <Route path="/marketplace" component={MarketplacePage} />
-      <Route path="/clubs" component={ClubsPage} />
-      <Route path="/clubs/:slug" component={ClubDetailPage} />
-      <Route path="/partners" component={PartnersPage} />
-      <Route path="/tournaments" component={TournamentsPage} />
-      <Route path="/articles" component={ArticlesPage} />
-      <Route path="/articles/:slug" component={ArticleDetailPage} />
-      <Route path="/travel" component={TravelPage} />
-      <Route path="/travel/:slug" component={TravelDetailPage} />
-      <Route path="/recreation" component={RecreationPage} />
-      <Route path="/recreation/:slug" component={RecreationDetailPage} />
-      <Route path="/admin" component={AdminPage} />
-      <Route path="/admin/travel/:slug/preview" component={AdminTravelPreviewPage} />
-      <Route path="/admin/articles/:slug/preview" component={AdminArticlePreviewPage} />
-      <Route path="/messages" component={MessagesPage} />
-      <Route path="/coach/profile" component={CoachProfile} />
-      <Route path="/coach/:id" component={CoachProfile} />
-      <Route path="/organiser" component={OrganiserDashboardPage} />
-      <Route path="/organiser/sessions" component={OrganiserSessionsPage} />
-      <Route path="/organiser/sessions/new" component={OrganiserSessionNewPage} />
-      <Route path="/organiser/players" component={OrganiserPlayersPage} />
-      <Route path="/organiser/sessions/:id/live" component={OrganiserSessionLivePage} />
-      <Route path="/organiser/sessions/:id/edit" component={OrganiserSessionEditPage} />
-      <Route path="/organiser/sessions/:id" component={OrganiserSessionWorkspacePage} />
-      <Route path="/organisations/:slug" component={OrganisationDetailPage} />
-      <Route component={NotFound} />
-    </Switch>
+    <Suspense fallback={<RouteFallback />}>
+      <Switch>
+        <Route path="/" component={Home} />
+        <Route path="/auth" component={AuthPage} />
+        <Route path="/reset-password" component={ResetPasswordPage} />
+        <Route path="/complete-profile" component={CompleteProfilePage} />
+        <Route path="/player/register" component={PlayerRegistration} />
+        <Route path="/player/profile" component={PlayerProfile} />
+        <Route path="/player/:id" component={PlayerProfile} />
+        <Route path="/coaches" component={CoachesPage} />
+        <Route path="/marketplace" component={MarketplacePage} />
+        <Route path="/clubs" component={ClubsPage} />
+        <Route path="/clubs/:slug" component={ClubDetailPage} />
+        <Route path="/partners" component={PartnersPage} />
+        <Route path="/tournaments" component={TournamentsPage} />
+        <Route path="/articles" component={ArticlesPage} />
+        <Route path="/articles/:slug" component={ArticleDetailPage} />
+        <Route path="/travel" component={TravelPage} />
+        <Route path="/travel/:slug" component={TravelDetailPage} />
+        <Route path="/recreation" component={RecreationPage} />
+        <Route path="/recreation/:slug" component={RecreationDetailPage} />
+        <Route path="/admin" component={AdminPage} />
+        <Route path="/admin/travel/:slug/preview" component={AdminTravelPreviewPage} />
+        <Route path="/admin/articles/:slug/preview" component={AdminArticlePreviewPage} />
+        <Route path="/messages" component={MessagesPage} />
+        <Route path="/coach/profile" component={CoachProfile} />
+        <Route path="/coach/:id" component={CoachProfile} />
+        <Route path="/organiser" component={OrganiserDashboardPage} />
+        <Route path="/organiser/sessions" component={OrganiserSessionsPage} />
+        <Route path="/organiser/sessions/new" component={OrganiserSessionNewPage} />
+        <Route path="/organiser/players" component={OrganiserPlayersPage} />
+        <Route path="/organiser/sessions/:id/live" component={OrganiserSessionLivePage} />
+        <Route path="/organiser/sessions/:id/edit" component={OrganiserSessionEditPage} />
+        <Route path="/organiser/sessions/:id" component={OrganiserSessionWorkspacePage} />
+        <Route path="/organisations/:slug" component={OrganisationDetailPage} />
+        <Route component={NotFound} />
+      </Switch>
+    </Suspense>
   );
 }
 

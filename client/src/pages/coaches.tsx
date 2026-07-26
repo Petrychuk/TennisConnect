@@ -394,6 +394,7 @@ export default function CoachesPage() {
                       <img 
                         src={coach.image} 
                         alt={coach.name} 
+                        loading="lazy"
                         className="w-full h-full object-cover object-[50%_35%] transition-transform duration-500 group-hover:scale-105"
                       />
                       <div className="absolute

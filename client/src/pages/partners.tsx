@@ -425,6 +425,7 @@ export default function PartnersPage() {
                           : partner.avatar
                       }
                       alt={partner.name}
+                      loading="lazy"
                       className="
                         w-full
                         h-full
