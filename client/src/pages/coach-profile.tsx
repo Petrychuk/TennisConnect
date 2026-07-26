@@ -949,7 +949,7 @@ export default function CoachProfile() {
                   {isOwnProfile && (
                     <TabsTrigger value="sessions" data-testid="my-sessions-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">My Sessions</TabsTrigger>
                   )}
-                  {(isOwnProfile ? organizerStatus.hasEngagedWithOrganizing : hasPublishedSessionsAsGuest) && (
+                  {(isOwnProfile || hasPublishedSessionsAsGuest) && (
                     <TabsTrigger value="organizing" data-testid="my-organized-sessions-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Organising</TabsTrigger>
                   )}
                   <TabsTrigger value="tournaments" data-testid="tournaments-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base">Tournaments</TabsTrigger>
@@ -1122,7 +1122,7 @@ export default function CoachProfile() {
                       </TabsContent>
                     )}
 
-                    {(isOwnProfile ? organizerStatus.hasEngagedWithOrganizing : hasPublishedSessionsAsGuest) && (
+                    {(isOwnProfile || hasPublishedSessionsAsGuest) && (
                       <TabsContent value="organizing" className="space-y-8 mt-0" data-testid="my-organized-sessions-tab-content">
                         <MyOrganizedSessionsSection isOwnProfile={isOwnProfile} />
                       </TabsContent>
