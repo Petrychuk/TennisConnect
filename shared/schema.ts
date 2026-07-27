@@ -613,6 +613,8 @@ export const insertSessionSchema = createInsertSchema(tennisSessions)
     title: z.string().min(2, "Title must be at least 2 characters"),
     startAt: z.coerce.date(),
     endAt: z.coerce.date().optional(),
+    registrationOpensAt: z.coerce.date().optional(),
+    registrationClosesAt: z.coerce.date().optional(),
     maxParticipants: z.coerce.number().int().positive().optional(),
     price: z.coerce.number().min(0).optional(),
   });
