@@ -172,6 +172,30 @@ router.get("/organizations/:slug", async (req, res, next) => {
   }
 });
 
+// Resolves a user's own profile slug (player/coach) to the organization
+// they own, with its upcoming published sessions - a session's
+// organizationId isn't the same as the creator's own profile slug, so
+// a guest's Organising tab (on that user's public profile) needs this
+// extra hop to find what to show. Public, no auth - same visibility
+// as the organization route above, just keyed by user slug instead of
+// organization slug since that's what the profile page already has.
+router.get("/organizations/by-user/:userSlug", async (req, res, next) => {
+  try {
+    const user = await storage.getUserBySlug(req.params.userSlug);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const organization = await storage.getOrganizationOwnedByUser(user.id);
+    if (!organization) {
+      return res.json(null);
+    }
+    const sessions = await storage.getUpcomingPublishedSessionsByOrganization(organization.id);
+    res.json({ ...organization, upcomingSessions: sessions });
+  } catch (error) {
+    next(error);
+  }
+});
+
 /* =========================
    SESSIONS
 ========================= */
@@ -263,6 +287,21 @@ router.post("/sessions/:id/cancel", requireAuth, requireOrganizer, requireOwnSes
   }
 });
 
+// Drafts only - see storage.deleteSession for why. Anything past draft
+// should be cancelled instead (the route above), never deleted.
+router.delete("/sessions/:id", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+  try {
+    const session = (req as any).session_;
+    if (session.status !== "draft") {
+      return res.status(400).json({ message: "Only drafts can be deleted - cancel it instead." });
+    }
+    await storage.deleteSession(req.params.id);
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Admin: every session across every organization, so nothing goes live
 // without being seen first. Optional ?status= filter (e.g. pending_review).
 router.get("/admin/sessions", requireAdmin, async (req, res, next) => {
@@ -301,6 +340,31 @@ router.get("/sessions/this-week", async (_req, res, next) => {
   try {
     const sessions = await storage.getSessionsThisWeek();
     res.json(sessions);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Single session by id - Session Workspace/Live/Edit load one session
+// directly rather than always fetching the whole "mine" list. Owner or
+// admin only. Registered after every fixed-name /sessions/* GET route
+// above (this-week, mine, mine/registered) so this catch-all :id param
+// can't shadow them - Express matches routes in registration order, and
+// a 2-segment /sessions/:id would otherwise swallow /sessions/this-week.
+router.get("/sessions/:id", requireAuth, async (req, res, next) => {
+  try {
+    const session = await storage.getSessionById(req.params.id);
+    if (!session) {
+      return res.status(404).json({ message: "Session not found" });
+    }
+    const isAdmin = (req.user as any).isAdmin;
+    if (!isAdmin) {
+      const organization = await storage.getOrganizationById(session.organizationId);
+      if (!organization || organization.ownerId !== (req.user as any).id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+    }
+    res.json(session);
   } catch (error) {
     next(error);
   }

@@ -230,6 +230,7 @@ export interface IStorage {
   // Admin only: publish directly, bypassing review (admins don't review themselves).
  publishSessionDirect(id: string, reviewerId: string): Promise<TennisSession>;
  cancelSession(id: string): Promise<TennisSession>;
+ deleteSession(id: string): Promise<void>;
   // Admin: every session on the platform, across all organizations, so
   // nothing goes live without the admin seeing it first.
  getAllSessionsForAdmin(status?: string): Promise<SessionWithDetails[]>;
@@ -1962,6 +1963,17 @@ export class DatabaseStorage implements IStorage {
       .where(eq(tennisSessions.id, id))
       .returning();
     return session;
+  }
+
+  // Drafts only, by design - a session that's ever been submitted for
+  // review (or beyond) should be cancelled instead, never deleted, since
+  // players may already be registered and admins may already have a
+  // record of reviewing it. Caller (the route) is responsible for
+  // checking ownership before calling this.
+  async deleteSession(id: string): Promise<void> {
+    await db
+      .delete(tennisSessions)
+      .where(and(eq(tennisSessions.id, id), eq(tennisSessions.status, "draft")));
   }
 
   async getAllSessionsForAdmin(status?: string): Promise<SessionWithDetails[]> {

@@ -25,7 +25,6 @@ import { Footer } from "@/components/footer";
 import { BecomeOrganizerCard } from "@/components/profile/shared/BecomeOrganizerCard";
 import { MySessionsSection } from "@/components/profile/shared/MySessionsSection";
 import { MyOrganizedSessionsSection } from "@/components/profile/shared/MyOrganizedSessionsSection";
-import { useOrganiserSessions } from "@/lib/organiser-sessions-store";
 import { useOrganizerStatus } from "@/hooks/use-organizer-status";
 import { TennisLoader } from "@/components/ui/tennisLoader";
 
@@ -99,10 +98,9 @@ export default function PlayerProfile() {
   const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState<any>(null);
   const [profileIsOrganizer, setProfileIsOrganizer] = useState(false);
-  const organiserSessions = useOrganiserSessions();
   const showOrganisingTab = isOwnProfile
     ? !!user?.isOrganizer
-    : profileIsOrganizer || organiserSessions.some((s) => s.status === "published" && s.organizerSlug === profileSlug);
+    : profileIsOrganizer;
   
     // Tournament State
   const [isTournamentModalOpen, setIsTournamentModalOpen] = useState(false);

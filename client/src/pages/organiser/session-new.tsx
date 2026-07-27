@@ -20,10 +20,10 @@ import { Step4ReviewPublish } from "@/components/organiser/sessions/wizard/step4
 import { PendingApprovalDialog } from "@/components/organiser/sessions/wizard/pending-approval-dialog";
 
 import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
-import { addSession } from "@/lib/organiser-sessions-store";
-import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
+import { ensureMyOrganization, createSession, publishSession } from "@/lib/api/organizer-sessions";
 import {
   createEmptyDraft,
+  draftToInsertSession,
   SESSION_TYPE_OPTIONS,
   type NewSessionDraft,
 } from "@/lib/organiser-session-wizard-types";
@@ -64,44 +64,36 @@ export default function OrganiserSessionNewPage() {
 
   const handleBack = () => setStep((prev) => Math.max(prev - 1, 1));
 
-  const buildSessionFromDraft = (status: SessionListItem["status"]): SessionListItem => {
-    const startAt = draft.date ? new Date(`${draft.date}T${draft.startTime || "00:00"}`).toISOString() : new Date().toISOString();
-    const endAt = draft.date ? new Date(`${draft.date}T${draft.endTime || "00:00"}`).toISOString() : undefined;
-    return {
-      id: `draft-${Date.now()}`,
-      title: draft.name || "Untitled Session",
-      type: draft.type ?? "custom",
-      status,
-      location: draft.venue,
-      startAt,
-      endAt,
-      registeredCount: 0,
-      checkedInCount: 0,
-      waitingCount: 0,
-      maxParticipants: draft.maxPlayers,
-      progressPercent: 0,
-      progressLabel: status === "draft" ? "Not published" : "Awaiting admin approval",
-      registrationOpen: false,
-      waitingListEnabled: draft.waitingListEnabled,
-      costPerPlayer: draft.pricing === "paid" ? draft.price : 0,
-      organizerName: organiser.name,
-      organizerSlug: user?.slug,
-      createdAt: new Date().toISOString(),
-      coverImage: draft.coverImage ?? undefined,
-    };
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSaveDraft = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await ensureMyOrganization(`${organiser.name}'s Sessions`);
+      await createSession(draftToInsertSession(draft) as any);
+      toast({ title: "Saved as draft", description: "Pick up where you left off any time from Sessions." });
+      setLocation("/organiser/sessions");
+    } catch (error: any) {
+      toast({ title: "Couldn't save draft", description: error?.message ?? "Please try again.", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleSaveDraft = () => {
-    const session = buildSessionFromDraft("draft");
-    addSession(session);
-    toast({ title: "Saved as draft", description: "Pick up where you left off any time from Sessions." });
-    setLocation("/organiser/sessions");
-  };
-
-  const handlePublish = () => {
-    const session = buildSessionFromDraft("pending_review");
-    addSession(session);
-    setPendingApprovalOpen(true);
+  const handlePublish = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await ensureMyOrganization(`${organiser.name}'s Sessions`);
+      const created = await createSession(draftToInsertSession(draft) as any);
+      await publishSession(created.id);
+      setPendingApprovalOpen(true);
+    } catch (error: any) {
+      toast({ title: "Couldn't publish session", description: error?.message ?? "Please try again.", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (authLoading) return null;
@@ -184,7 +176,7 @@ export default function OrganiserSessionNewPage() {
               <p className="text-muted-foreground mt-1">Create a new tennis session in just a few steps.</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <Button variant="outline" onClick={handleSaveDraft} data-testid="organiser-wizard-save-draft-top">
+              <Button variant="outline" onClick={handleSaveDraft} disabled={submitting} data-testid="organiser-wizard-save-draft-top">
                 Save as Draft
               </Button>
               {step < 4 ? (
@@ -193,7 +185,7 @@ export default function OrganiserSessionNewPage() {
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               ) : (
-                <Button onClick={handlePublish} data-testid="organiser-wizard-publish-top">
+                <Button onClick={handlePublish} disabled={submitting} data-testid="organiser-wizard-publish-top">
                   Publish Session
                 </Button>
               )}
@@ -230,7 +222,7 @@ export default function OrganiserSessionNewPage() {
                     Back
                   </Button>
                 )}
-                <Button variant="outline" onClick={handleSaveDraft} className="sm:order-2" data-testid="organiser-wizard-save-draft">
+                <Button variant="outline" onClick={handleSaveDraft} disabled={submitting} className="sm:order-2" data-testid="organiser-wizard-save-draft">
                   Save Draft
                 </Button>
                 {step < 4 ? (
@@ -239,7 +231,7 @@ export default function OrganiserSessionNewPage() {
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 ) : (
-                  <Button onClick={handlePublish} className="sm:order-3 sm:ml-auto" data-testid="organiser-wizard-publish">
+                  <Button onClick={handlePublish} disabled={submitting} className="sm:order-3 sm:ml-auto" data-testid="organiser-wizard-publish">
                     Publish Session
                   </Button>
                 )}
@@ -256,7 +248,7 @@ export default function OrganiserSessionNewPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" onClick={handleSaveDraft} data-testid="organiser-wizard-save-draft-bottom">
+                  <Button variant="outline" onClick={handleSaveDraft} disabled={submitting} data-testid="organiser-wizard-save-draft-bottom">
                     Save as Draft
                   </Button>
                   {step < 4 ? (
@@ -265,7 +257,7 @@ export default function OrganiserSessionNewPage() {
                       <ArrowRight className="w-4 h-4 ml-2" />
                     </Button>
                   ) : (
-                    <Button onClick={handlePublish} data-testid="organiser-wizard-publish-bottom">
+                    <Button onClick={handlePublish} disabled={submitting} data-testid="organiser-wizard-publish-bottom">
                       Publish Session
                     </Button>
                   )}

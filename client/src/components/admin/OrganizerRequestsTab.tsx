@@ -12,7 +12,9 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle, XCircle, Calendar, MapPin } from "lucide-react";
-import { useOrganiserSessions, updateSession } from "@/lib/organiser-sessions-store";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getAdminSessions, approveSession as approveSessionApi, rejectSession as rejectSessionApi } from "@/lib/api/organizer-sessions";
+import { toSessionListItems } from "@/lib/api/session-adapter";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 
 interface OrganizerRequestRow {
@@ -70,7 +72,12 @@ export default function AdminOrganizerTab() {
 }
 
 function SessionModerationPanel() {
-  const allSessions = useOrganiserSessions();
+  const queryClient = useQueryClient();
+  const adminSessionsQuery = useQuery({
+    queryKey: ["/api/organizer/admin/sessions"],
+    queryFn: () => getAdminSessions(),
+  });
+  const allSessions = toSessionListItems(adminSessionsQuery.data ?? []);
   const [statusFilter, setStatusFilter] = useState<(typeof SESSION_FILTERS)[number]>("pending_review");
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<SessionListItem | null>(null);
@@ -79,32 +86,38 @@ function SessionModerationPanel() {
 
   const sessions = allSessions.filter((s) => s.status === statusFilter);
 
-  function handleApprove(id: string) {
+  async function handleApprove(id: string) {
     setProcessingId(id);
-    // Approval is what turns a session on for real: registration opens
-    // and it becomes eligible for public display (profile "Sessions" tab,
-    // and eventually the club's own premium page and the homepage "What's
-    // On" block, once those pull from real organiser data).
-    updateSession(id, {
-      status: "published",
-      registrationOpen: true,
-      progressLabel: "Registration Open",
-    });
-    toast({ title: "Session approved", description: "It's now open for registration and visible on the organiser's profile." });
-    setProcessingId(null);
+    try {
+      // Approval is what turns a session on for real: registration opens
+      // and it becomes eligible for public display (profile "Sessions"
+      // tab, and eventually the club's own premium page and the
+      // homepage "What's On" block, once those pull from real
+      // organiser data).
+      await approveSessionApi(id);
+      await queryClient.invalidateQueries({ queryKey: ["/api/organizer/admin/sessions"] });
+      toast({ title: "Session approved", description: "It's now open for registration and visible on the organiser's profile." });
+    } catch (error: any) {
+      toast({ title: "Couldn't approve session", description: error?.message ?? "Please try again.", variant: "destructive" });
+    } finally {
+      setProcessingId(null);
+    }
   }
 
-  function handleReject() {
+  async function handleReject() {
     if (!rejectTarget) return;
     setProcessingId(rejectTarget.id);
-    updateSession(rejectTarget.id, {
-      status: "rejected",
-      reviewNote: rejectNote || undefined,
-    });
-    toast({ title: "Session rejected", description: "The organiser can edit and resubmit it." });
-    setRejectTarget(null);
-    setRejectNote("");
-    setProcessingId(null);
+    try {
+      await rejectSessionApi(rejectTarget.id, rejectNote || undefined);
+      await queryClient.invalidateQueries({ queryKey: ["/api/organizer/admin/sessions"] });
+      toast({ title: "Session rejected", description: "The organiser can edit and resubmit it." });
+      setRejectTarget(null);
+      setRejectNote("");
+    } catch (error: any) {
+      toast({ title: "Couldn't reject session", description: error?.message ?? "Please try again.", variant: "destructive" });
+    } finally {
+      setProcessingId(null);
+    }
   }
 
   return (

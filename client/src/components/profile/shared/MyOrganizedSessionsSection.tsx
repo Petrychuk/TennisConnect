@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,14 +7,21 @@ import { Calendar, MapPin, ExternalLink, ChevronDown, ChevronUp } from "lucide-r
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { useOrganiserSessions } from "@/lib/organiser-sessions-store";
-import { getSessionDetail, type SessionListItem } from "@/lib/organiser-sessions-mock-data";
-import { useMyRegistrations, getRegistrationStatus, joinSession } from "@/lib/session-registrations-store";
+import {
+  getMySessions,
+  getOrganizationByUserSlug,
+  getMyRegisteredSessions,
+  joinSession as joinSessionApi,
+} from "@/lib/api/organizer-sessions";
+import type { TennisSession, SessionWithDetails } from "@shared/schema";
 
 interface MyOrganizedSessionsSectionProps {
   isOwnProfile: boolean;
   profileSlug?: string;
 }
+
+const DEFAULT_CANCELLATION_POLICY =
+  "Free cancellation up to 24 hours before the session starts. After that, no refund — the spot may still be offered to the waiting list.";
 
 const OWNER_STATUS_BADGE: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -23,7 +31,6 @@ const OWNER_STATUS_BADGE: Record<string, string> = {
   cancelled: "bg-destructive/10 text-destructive",
   live: "bg-primary text-primary-foreground",
   completed: "bg-accent text-accent-foreground",
-  archived: "bg-muted text-muted-foreground",
 };
 
 const OWNER_STATUS_LABEL: Record<string, string> = {
@@ -34,36 +41,28 @@ const OWNER_STATUS_LABEL: Record<string, string> = {
   cancelled: "Cancelled",
   live: "Live",
   completed: "Completed",
-  archived: "Archived",
 };
 
-type GuestBucket = "open" | "waitlist" | "closed" | "live" | "archive";
+type GuestBucket = "open" | "waitlist" | "closed";
 
 const GUEST_STATUS_LABEL: Record<GuestBucket, string> = {
   open: "Registration Open",
   waitlist: "Waiting List",
   closed: "Registration Closed",
-  live: "Live Now",
-  archive: "Archive",
 };
 
 const GUEST_STATUS_BADGE: Record<GuestBucket, string> = {
   open: "bg-primary/10 text-primary",
   waitlist: "bg-secondary text-secondary-foreground",
   closed: "bg-muted text-muted-foreground",
-  live: "bg-primary text-primary-foreground",
-  archive: "bg-muted text-muted-foreground",
 };
 
-// A session only becomes visible to anyone other than its own organiser
-// once it's published - drafts, pending review, and rejected sessions
-// are the organiser's own business until then.
-function guestBucketFor(session: SessionListItem): GuestBucket | null {
-  if (session.status === "live") return "live";
-  if (session.status === "completed" || session.status === "archived") return "archive";
-  if (session.status !== "published") return null;
+// This endpoint (getOrganizationByUserSlug -> upcomingSessions) only
+// ever returns published, upcoming sessions to begin with - so every
+// row here is already "open" or "waitlist" or "closed", never
+// draft/pending/live/completed. That's the right scope for a guest.
+function guestBucketFor(session: SessionWithDetails): GuestBucket {
   const isFull = session.maxParticipants != null && session.registeredCount >= session.maxParticipants;
-  if (!session.registrationOpen) return "closed";
   if (isFull) return session.waitingListEnabled ? "waitlist" : "closed";
   return "open";
 }
@@ -73,47 +72,81 @@ function guestBucketFor(session: SessionListItem): GuestBucket | null {
 // managing (that happens in the Organiser Hub); this is the at-a-
 // glance view on the profile, and for other visitors, the entry point
 // into actually joining.
-//
-// Reads from the same client-side store the Organiser Hub's Sessions
-// page, wizard, and admin approval queue all use
-// (organiser-sessions-store.ts) rather than a backend endpoint -
-// there's no backend for this yet, and this is what makes a session
-// created in the wizard and approved by an admin actually show up
-// here, for the right audience, with the right status.
 export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrganizedSessionsSectionProps) {
-  const allSessions = useOrganiserSessions();
-  const { user, isAuthenticated } = useAuth();
-  const registrations = useMyRegistrations();
+  const { isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
   const [joiningId, setJoiningId] = useState<string | null>(null);
   const [policyOpenId, setPolicyOpenId] = useState<string | null>(null);
 
-  // Every session in the shared store now carries the real creator's
-  // slug (organizerSlug), set at creation time in the wizard - so a
-  // guest's view can be scoped to sessions actually organised by this
-  // profile specifically, not every published session store-wide.
-  const sessions = isOwnProfile
-    ? allSessions
-    : allSessions.filter((s) => guestBucketFor(s) !== null && s.organizerSlug === profileSlug);
+  const mineQuery = useQuery({
+    queryKey: ["/api/organizer/sessions/mine"],
+    queryFn: getMySessions,
+    enabled: isOwnProfile,
+  });
 
-  const [, setLocation] = useLocation();
+  const orgQuery = useQuery({
+    queryKey: ["/api/organizer/organizations/by-user", profileSlug],
+    queryFn: () => getOrganizationByUserSlug(profileSlug!),
+    enabled: !isOwnProfile && !!profileSlug,
+  });
 
-  const handleJoin = (session: SessionListItem) => {
+  // Only needed to show "Joined"/"Waitlisted" badges on a guest view -
+  // skipped entirely when not signed in, since there's nothing to check.
+  const myRegisteredQuery = useQuery({
+    queryKey: ["/api/organizer/sessions/mine/registered"],
+    queryFn: getMyRegisteredSessions,
+    enabled: !isOwnProfile && isAuthenticated,
+  });
+
+  const isLoading = isOwnProfile ? mineQuery.isLoading : orgQuery.isLoading;
+  const sessions: (TennisSession | SessionWithDetails)[] = isOwnProfile
+    ? mineQuery.data ?? []
+    : orgQuery.data?.upcomingSessions ?? [];
+
+  const myStatusById = useMemo(() => {
+    const map = new Map<string, "registered" | "waitlisted">();
+    (myRegisteredQuery.data ?? []).forEach((s) => {
+      if (s.viewerRegistrationStatus === "registered" || s.viewerRegistrationStatus === "waitlisted") {
+        map.set(s.id, s.viewerRegistrationStatus);
+      }
+    });
+    return map;
+  }, [myRegisteredQuery.data]);
+
+  const handleJoin = async (session: TennisSession) => {
     if (!isAuthenticated) {
       setLocation("/auth");
       return;
     }
     setJoiningId(session.id);
-    const status = joinSession(session.id);
-    toast({
-      title: status === "waitlisted" ? "Added to the waiting list" : "You're in!",
-      description:
-        status === "waitlisted"
+    try {
+      const { waitlisted } = await joinSessionApi(session.id);
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine/registered"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/organizations/by-user", profileSlug] });
+      toast({
+        title: waitlisted ? "Added to the waiting list" : "You're in!",
+        description: waitlisted
           ? `"${session.title}" is full — you'll move up automatically if a spot opens.`
           : `You've joined "${session.title}".`,
-    });
-    setJoiningId(null);
+      });
+    } catch (error: any) {
+      toast({ title: "Couldn't join session", description: error?.message ?? "Please try again.", variant: "destructive" });
+    } finally {
+      setJoiningId(null);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3" data-testid="my-organized-sessions-loading">
+        <Card>
+          <CardContent className="py-10 text-center text-muted-foreground">Loading…</CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3" data-testid="my-organized-sessions-list">
@@ -138,12 +171,12 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
         </Card>
       ) : (
         sessions.map((session) => {
-          const guestBucket = guestBucketFor(session);
-          const detail = getSessionDetail(session);
-          const myStatus = getRegistrationStatus(session.id);
+          const details = "registeredCount" in session ? session : null;
+          const guestBucket = details ? guestBucketFor(details) : null;
+          const myStatus = myStatusById.get(session.id) ?? null;
           const canJoin = !isOwnProfile
             ? (guestBucket === "open" || guestBucket === "waitlist") && !myStatus
-            : (guestBucket === "open" || guestBucket === "waitlist") && !myStatus && session.organizerSlug === user?.slug;
+            : false; // an organiser joining their own session happens from the Organiser Hub, not this at-a-glance card
           const showPolicy = policyOpenId === session.id;
 
           return (
@@ -154,7 +187,7 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold">{session.title}</span>
                       {isOwnProfile ? (
-                        <Badge className={OWNER_STATUS_BADGE[session.status]}>{OWNER_STATUS_LABEL[session.status]}</Badge>
+                        <Badge className={OWNER_STATUS_BADGE[session.status]}>{OWNER_STATUS_LABEL[session.status] ?? session.status}</Badge>
                       ) : (
                         guestBucket && <Badge className={GUEST_STATUS_BADGE[guestBucket]}>{GUEST_STATUS_LABEL[guestBucket]}</Badge>
                       )}
@@ -214,7 +247,7 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
                 )}
                 {showPolicy && (
                   <p className="text-xs text-muted-foreground mt-1.5 max-w-md" data-testid={`cancellation-policy-text-${session.id}`}>
-                    {detail.cancellationPolicy}
+                    {DEFAULT_CANCELLATION_POLICY}
                   </p>
                 )}
               </CardContent>

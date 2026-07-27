@@ -20,20 +20,29 @@ import { SessionsEmptyState } from "@/components/organiser/sessions/sessions-emp
 import { NewSessionMenu } from "@/components/organiser/sessions/wizard/new-session-menu";
 import { groupSessionsByBucket, type SessionBucket } from "@/components/organiser/sessions/session-utils";
 
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
-import { type SessionListItem } from "@/lib/organiser-sessions-mock-data";
-import { useOrganiserSessions, addSession, removeSession } from "@/lib/organiser-sessions-store";
+import { getMySessions, createSession, deleteSession } from "@/lib/api/organizer-sessions";
+import { toSessionListItems } from "@/lib/api/session-adapter";
+import { draftToInsertSession, createEmptyDraft } from "@/lib/organiser-session-wizard-types";
+import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 
 export default function OrganiserSessionsPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const profileHref = user ? `/${user.role}/${user.slug}` : "/";
   // Real name/avatar from the authenticated user - role/organization
   // fields stay mock for now since there's no backend for those yet.
   const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null } : mockOrganiser;
 
-  const sessions = useOrganiserSessions();
+  const sessionsQuery = useQuery({
+    queryKey: ["/api/organizer/sessions/mine"],
+    queryFn: getMySessions,
+    enabled: isAuthenticated,
+  });
+  const sessions = useMemo(() => toSessionListItems(sessionsQuery.data ?? []), [sessionsQuery.data]);
   const [activeBucket, setActiveBucket] = useState<SessionBucket>("all");
   const [search, setSearch] = useState("");
 
@@ -55,26 +64,30 @@ export default function OrganiserSessionsPage() {
 
   const visible = activeBucket === "all" ? filtered : grouped[activeBucket];
 
-  const handleDuplicate = (session: SessionListItem) => {
-    const copy: SessionListItem = {
-      ...session,
-      id: `${session.id}-copy-${Date.now()}`,
-      title: `${session.title} (Copy)`,
-      status: "draft",
-      registrationOpen: false,
-      registeredCount: 0,
-      checkedInCount: 0,
-      waitingCount: 0,
-      progressPercent: 0,
-      progressLabel: "Not published",
-      resultsPublished: false,
-    };
-    addSession(copy);
+  const invalidateSessions = () => queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine"] });
+
+  const handleDuplicate = async (session: SessionListItem) => {
+    try {
+      // Same shape a "blank" wizard draft would build, seeded with this
+      // session's own details - a real draft copy in the database, not
+      // just a client-side clone.
+      const draft = { ...createEmptyDraft(), name: `${session.title} (Copy)`, venue: session.location, maxPlayers: session.maxParticipants ?? 24 };
+      await createSession(draftToInsertSession(draft) as any);
+      invalidateSessions();
+      toast({ title: "Session duplicated", description: `"${session.title}" was copied as a new draft.` });
+    } catch (error: any) {
+      toast({ title: "Couldn't duplicate session", description: error?.message ?? "Please try again.", variant: "destructive" });
+    }
   };
 
-  const handleDelete = (session: SessionListItem) => {
-    removeSession(session.id);
-    toast({ title: "Draft deleted", description: `"${session.title}" was removed.` });
+  const handleDelete = async (session: SessionListItem) => {
+    try {
+      await deleteSession(session.id);
+      invalidateSessions();
+      toast({ title: "Draft deleted", description: `"${session.title}" was removed.` });
+    } catch (error: any) {
+      toast({ title: "Couldn't delete draft", description: error?.message ?? "Please try again.", variant: "destructive" });
+    }
   };
 
   if (authLoading) return null;
@@ -160,7 +173,13 @@ export default function OrganiserSessionsPage() {
             </div>
           </div>
 
-          {sessions.length === 0 ? (
+          {sessionsQuery.isLoading ? (
+            <div className="space-y-3" data-testid="organiser-sessions-loading">
+              <Skeleton className="h-24 w-full rounded-2xl" />
+              <Skeleton className="h-24 w-full rounded-2xl" />
+              <Skeleton className="h-24 w-full rounded-2xl" />
+            </div>
+          ) : sessions.length === 0 ? (
             <SessionsEmptyState onCreateSession={() => setLocation("/organiser/sessions/new")} />
           ) : (
             <>

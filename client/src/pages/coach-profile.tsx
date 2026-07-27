@@ -24,7 +24,6 @@ import SEO from "@/components/seo";
 import { BecomeOrganizerCard } from "@/components/profile/shared/BecomeOrganizerCard";
 import { MySessionsSection } from "@/components/profile/shared/MySessionsSection";
 import { MyOrganizedSessionsSection } from "@/components/profile/shared/MyOrganizedSessionsSection";
-import { useOrganiserSessions } from "@/lib/organiser-sessions-store";
 import { TournamentHistorySection } from "@/components/profile/shared/TournamentHistorySection";
 import { useOrganizerStatus } from "@/hooks/use-organizer-status";
 
@@ -210,7 +209,6 @@ export default function CoachProfile() {
     user?.role === "coach" &&
     user?.slug === profileSlug;
   const organizerStatus = useOrganizerStatus(isOwnProfile);
-  const organiserSessions = useOrganiserSessions();
   // Deliberately not the same as isOwnProfile - that also requires
   // user.role === "coach", so an organiser whose base account role is
   // something else would never see their own Organising tab here even
@@ -219,7 +217,7 @@ export default function CoachProfile() {
   const isMyAccount = isAuthenticated && user?.slug === profileSlug;
   const showOrganisingTab = isMyAccount
     ? !!user?.isOrganizer
-    : profileIsOrganizer || organiserSessions.some((s) => s.status === "published" && s.organizerSlug === profileSlug);
+    : profileIsOrganizer;
   
   /* =========================
      EDITING STATE

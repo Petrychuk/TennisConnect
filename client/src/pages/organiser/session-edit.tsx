@@ -1,10 +1,11 @@
 import { Link, useLocation, useRoute } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import SEO from "@/components/seo";
-import { useOrganiserSessions } from "@/lib/organiser-sessions-store";
+import { getSessionById } from "@/lib/api/organizer-sessions";
 
 // Foundation only. The brief calls for the same multi-step wizard used to
 // create a session, just pre-filled - that wizard isn't part of this
@@ -14,7 +15,11 @@ export default function OrganiserSessionEditPage() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/organiser/sessions/:id/edit");
-  const sessions = useOrganiserSessions();
+  const sessionQuery = useQuery({
+    queryKey: ["/api/organizer/sessions", params?.id],
+    queryFn: () => getSessionById(params!.id),
+    enabled: !!params?.id,
+  });
 
   if (authLoading) return null;
   if (!isAuthenticated) {
@@ -22,7 +27,7 @@ export default function OrganiserSessionEditPage() {
     return null;
   }
 
-  const session = sessions.find((s) => s.id === params?.id);
+  const session = sessionQuery.data;
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-background" data-testid="organiser-session-edit">

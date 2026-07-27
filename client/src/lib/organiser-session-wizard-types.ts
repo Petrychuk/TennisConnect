@@ -129,3 +129,56 @@ export function createEmptyDraft(): NewSessionDraft {
     publishResults: true,
   };
 }
+
+/**
+ * Maps the wizard's draft to the real backend's InsertSession shape
+ * (server/routes/organizer.ts POST /sessions, validated against
+ * insertSessionSchema in shared/schema.ts).
+ *
+ * Step 1/2 fields (type, name, venue, date/time, registration window,
+ * capacity, pricing, visibility, court count, waiting list) all have a
+ * direct column - those go straight across. Step 3's format/rules
+ * fields (singles/doubles/mixed, games to, rounds, no-ad/tiebreak,
+ * pairing rules, live settings) don't have columns on the sessions
+ * table yet, so nothing there is silently dropped - they're folded
+ * into a short, readable summary appended to the description instead,
+ * which is better than losing that information outright while a
+ * proper schema addition for structured format/rules storage is a
+ * separate, later piece of work. season/coverImage also have no
+ * backend column yet for the same reason.
+ */
+export function draftToInsertSession(draft: NewSessionDraft) {
+  const startAt = draft.date
+    ? new Date(`${draft.date}T${draft.startTime || "00:00"}`)
+    : new Date();
+  const endAt = draft.date && draft.endTime
+    ? new Date(`${draft.date}T${draft.endTime}`)
+    : undefined;
+
+  const matchTypeLabel = draft.matchType === "mixed" ? "Mixed Doubles" : draft.matchType === "doubles" ? "Doubles" : "Singles";
+  const formatSummary = [
+    `Format: ${matchTypeLabel}`,
+    `Games to ${draft.gamesTo}`,
+    `${draft.roundsCount} rounds`,
+    draft.noAd ? "No-Ad" : null,
+    draft.tiebreak ? "Tiebreak" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return {
+    title: draft.name || "Untitled Session",
+    description: formatSummary || undefined,
+    type: draft.type ?? "custom",
+    location: draft.venue || undefined,
+    startAt,
+    endAt,
+    registrationOpensAt: draft.registrationOpens ? new Date(`${draft.registrationOpens}T00:00`) : undefined,
+    registrationClosesAt: draft.registrationCloses ? new Date(`${draft.registrationCloses}T23:59`) : undefined,
+    price: draft.pricing === "paid" ? draft.price : 0,
+    maxParticipants: draft.maxPlayers || undefined,
+    visibility: draft.visibility,
+    courtsCount: draft.courtCount || undefined,
+    waitingListEnabled: draft.waitingListEnabled,
+  };
+}

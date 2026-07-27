@@ -24,6 +24,7 @@ import {
   Archive,
   Calendar,
   MapPin,
+  Loader2,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -43,7 +44,9 @@ import { SettingsTab } from "@/components/organiser/sessions/workspace/settings-
 import { bucketFor } from "@/components/organiser/sessions/session-utils";
 
 import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
-import { useOrganiserSessions } from "@/lib/organiser-sessions-store";
+import { useQuery } from "@tanstack/react-query";
+import { getSessionById } from "@/lib/api/organizer-sessions";
+import { toSessionListItem } from "@/lib/api/session-adapter";
 
 const WORKSPACE_TABS = [
   { key: "overview", label: "Overview" },
@@ -72,7 +75,11 @@ export default function OrganiserSessionWorkspacePage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/organiser/sessions/:id");
-  const sessions = useOrganiserSessions();
+  const sessionQuery = useQuery({
+    queryKey: ["/api/organizer/sessions", params?.id],
+    queryFn: () => getSessionById(params!.id),
+    enabled: !!params?.id,
+  });
   const search = useSearch();
   const { toast } = useToast();
   const profileHref = user ? `/${user.role}/${user.slug}` : "/";
@@ -110,7 +117,15 @@ export default function OrganiserSessionWorkspacePage() {
     );
   }
 
-  const session = sessions.find((s) => s.id === params?.id);
+  if (sessionQuery.isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const session = sessionQuery.data ? toSessionListItem(sessionQuery.data) : undefined;
 
   if (!session) {
     return (

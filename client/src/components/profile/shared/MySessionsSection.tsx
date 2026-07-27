@@ -1,12 +1,12 @@
 import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, MapPin, LogIn } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
-import { useOrganiserSessions } from "@/lib/organiser-sessions-store";
-import { useMyRegistrations, cancelRegistration } from "@/lib/session-registrations-store";
+import { getMyRegisteredSessions, leaveSession } from "@/lib/api/organizer-sessions";
 
 interface MySessionsSectionProps {
   isOwnProfile: boolean;
@@ -14,9 +14,6 @@ interface MySessionsSectionProps {
 }
 
 // "My Sessions" — sessions the current user has joined (Play Hub).
-// Reads from the same client-side stores the rest of the Organiser Hub
-// module uses (organiser-sessions-store + session-registrations-store)
-// rather than a backend that doesn't exist yet.
 //
 // The tab itself is always visible on every profile now (rather than
 // only rendering for isOwnProfile) - "my sessions" is inherently about
@@ -24,10 +21,15 @@ interface MySessionsSectionProps {
 // only shows real content on the viewer's own profile while signed in;
 // everywhere else it explains why, instead of just disappearing.
 export function MySessionsSection({ isOwnProfile, isAuthenticated }: MySessionsSectionProps) {
-  const allSessions = useOrganiserSessions();
-  const registrations = useMyRegistrations();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+
+  const registeredQuery = useQuery({
+    queryKey: ["/api/organizer/sessions/mine/registered"],
+    queryFn: getMyRegisteredSessions,
+    enabled: isOwnProfile && isAuthenticated,
+  });
 
   if (!isAuthenticated) {
     return (
@@ -55,16 +57,27 @@ export function MySessionsSection({ isOwnProfile, isAuthenticated }: MySessionsS
     );
   }
 
-  const joined = registrations
-    .filter((r) => r.status !== "cancelled")
-    .map((r) => ({ registration: r, session: allSessions.find((s) => s.id === r.sessionId) }))
-    .filter((row): row is { registration: (typeof registrations)[number]; session: NonNullable<(typeof allSessions)[number]> } => !!row.session);
+  if (registeredQuery.isLoading) {
+    return (
+      <Card data-testid="my-sessions-loading">
+        <CardContent className="py-10 text-center text-muted-foreground">Loading…</CardContent>
+      </Card>
+    );
+  }
 
-  const handleCancel = (sessionId: string, title: string) => {
+  const joined = registeredQuery.data ?? [];
+
+  const handleCancel = async (sessionId: string, title: string) => {
     setCancellingId(sessionId);
-    cancelRegistration(sessionId);
-    toast({ title: "Registration cancelled", description: `You're no longer registered for "${title}".` });
-    setCancellingId(null);
+    try {
+      await leaveSession(sessionId);
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine/registered"] });
+      toast({ title: "Registration cancelled", description: `You're no longer registered for "${title}".` });
+    } catch (error: any) {
+      toast({ title: "Couldn't cancel", description: error?.message ?? "Please try again.", variant: "destructive" });
+    } finally {
+      setCancellingId(null);
+    }
   };
 
   if (joined.length === 0) {
@@ -79,7 +92,7 @@ export function MySessionsSection({ isOwnProfile, isAuthenticated }: MySessionsS
 
   return (
     <div className="space-y-3" data-testid="my-sessions-list">
-      {joined.map(({ registration, session }) => {
+      {joined.map((session) => {
         const canCancel = new Date(session.startAt).getTime() > Date.now();
         return (
           <Card key={session.id} data-testid={`my-session-${session.id}`}>
@@ -89,7 +102,7 @@ export function MySessionsSection({ isOwnProfile, isAuthenticated }: MySessionsS
                   <Link href={`/organiser/sessions/${session.id}`} className="font-semibold hover:underline">
                     {session.title}
                   </Link>
-                  {registration.status === "waitlisted" && <Badge variant="secondary">Waitlisted</Badge>}
+                  {session.viewerRegistrationStatus === "waitlisted" && <Badge variant="secondary">Waitlisted</Badge>}
                 </div>
                 <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1">
                   <span className="flex items-center gap-1">
@@ -108,7 +121,7 @@ export function MySessionsSection({ isOwnProfile, isAuthenticated }: MySessionsS
                       {session.location}
                     </span>
                   )}
-                  {session.organizerName && <span>by {session.organizerName}</span>}
+                  {session.organizationName && <span>by {session.organizationName}</span>}
                 </div>
               </div>
               {canCancel && (

@@ -1,22 +1,30 @@
 import { Link, useLocation, useRoute } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Play, CheckCircle2, Hourglass } from "lucide-react";
+import { ArrowLeft, Play, CheckCircle2, Hourglass, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import SEO from "@/components/seo";
-import { CountdownTimer } from "@/components/organiser/sessions/countdown-timer";
-import { useOrganiserSessions } from "@/lib/organiser-sessions-store";
+import { getSessionById } from "@/lib/api/organizer-sessions";
+import { toSessionListItem } from "@/lib/api/session-adapter";
 import { cn } from "@/lib/utils";
 
 // Foundation only: this is the screen that exists only while a session is
 // running, per the brief. Round controls (Generate Next Round / Finish
-// Round) are visually real but disabled — they need a live backend
-// connection before they can do anything.
+// Round) are visually real but disabled — they need the TC Live engine,
+// which isn't built on the backend yet (see shared/constants/sessions.ts -
+// live/completed statuses are reserved for it but nothing produces
+// round/court data today). The session itself is real; rounds/courts
+// stay empty rather than faking data that doesn't exist server-side.
 export default function OrganiserSessionLivePage() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/organiser/sessions/:id/live");
-  const sessions = useOrganiserSessions();
+  const sessionQuery = useQuery({
+    queryKey: ["/api/organizer/sessions", params?.id],
+    queryFn: () => getSessionById(params!.id),
+    enabled: !!params?.id,
+  });
 
   if (authLoading) return null;
   if (!isAuthenticated) {
@@ -24,7 +32,15 @@ export default function OrganiserSessionLivePage() {
     return null;
   }
 
-  const session = sessions.find((s) => s.id === params?.id);
+  if (sessionQuery.isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-foreground">
+        <Loader2 className="w-6 h-6 animate-spin text-primary-foreground/60" />
+      </div>
+    );
+  }
+
+  const session = sessionQuery.data ? toSessionListItem(sessionQuery.data) : undefined;
 
   if (!session) {
     return (
@@ -68,13 +84,7 @@ export default function OrganiserSessionLivePage() {
             </Badge>
             <h1 className="font-display text-2xl sm:text-3xl font-bold">{session.title}</h1>
             <p className="text-primary-foreground/70 text-sm mt-1">
-              Round {session.roundCurrent} / {session.roundTotal}
-              {session.roundEndsAt && (
-                <>
-                  {" "}
-                  · Ends in <CountdownTimer target={session.roundEndsAt} className="font-semibold" />
-                </>
-              )}
+              {session.location}
             </p>
           </div>
 
