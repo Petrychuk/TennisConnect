@@ -43,6 +43,7 @@ import {
   type Registration,
   type InsertRegistration,
   type SessionWithDetails,
+  type RegistrationWithUser,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, asc, sql, lte, ne, gte} from "drizzle-orm";
@@ -231,6 +232,7 @@ export interface IStorage {
  publishSessionDirect(id: string, reviewerId: string): Promise<TennisSession>;
  cancelSession(id: string): Promise<TennisSession>;
  deleteSession(id: string): Promise<void>;
+ getRegistrationsForSession(sessionId: string): Promise<RegistrationWithUser[]>;
   // Admin: every session on the platform, across all organizations, so
   // nothing goes live without the admin seeing it first.
  getAllSessionsForAdmin(status?: string): Promise<SessionWithDetails[]>;
@@ -2093,6 +2095,34 @@ export class DatabaseStorage implements IStorage {
     }
 
     return cancelled;
+  }
+
+  // Real registrations for a session, joined with just enough user info
+  // to display a name/avatar/link - the organizer-facing Players and
+  // Registration tabs use this. Ordered oldest-first so "who joined
+  // first" reads naturally (waitlist promotion already relies on the
+  // same ordering above).
+  async getRegistrationsForSession(sessionId: string): Promise<RegistrationWithUser[]> {
+    const rows = await db
+      .select({
+        registration: registrations,
+        userName: users.name,
+        userSlug: users.slug,
+        userAvatar: users.avatar,
+        userIsTestUser: users.isTestUser,
+      })
+      .from(registrations)
+      .innerJoin(users, eq(registrations.userId, users.id))
+      .where(eq(registrations.sessionId, sessionId))
+      .orderBy(asc(registrations.createdAt));
+
+    return rows.map((row) => ({
+      ...row.registration,
+      userName: row.userName,
+      userSlug: row.userSlug,
+      userAvatar: row.userAvatar,
+      userIsTestUser: row.userIsTestUser,
+    }));
   }
 
   async getViewerRegistrationStatus(sessionId: string, userId: string): Promise<string | null> {

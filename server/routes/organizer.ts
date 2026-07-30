@@ -370,6 +370,30 @@ router.get("/sessions/:id", requireAuth, async (req, res, next) => {
   }
 });
 
+// Real registrations for a session (organizer-facing Players/
+// Registration tabs) - same ownership rule as the route above. Not to
+// be confused with /sessions/mine/registered (a different path, that
+// one's the signed-in *player's* own joined sessions).
+router.get("/sessions/:id/registrations", requireAuth, async (req, res, next) => {
+  try {
+    const session = await storage.getSessionById(req.params.id);
+    if (!session) {
+      return res.status(404).json({ message: "Session not found" });
+    }
+    const isAdmin = (req.user as any).isAdmin;
+    if (!isAdmin) {
+      const organization = await storage.getOrganizationById(session.organizationId);
+      if (!organization || organization.ownerId !== (req.user as any).id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+    }
+    const registrationsList = await storage.getRegistrationsForSession(req.params.id);
+    res.json(registrationsList);
+  } catch (error) {
+    next(error);
+  }
+});
+
 /* =========================
    REGISTRATIONS ("My Sessions")
 ========================= */

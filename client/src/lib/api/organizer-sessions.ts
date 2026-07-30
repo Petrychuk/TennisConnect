@@ -4,6 +4,7 @@ import type {
   SessionWithDetails,
   InsertSession,
   Organization,
+  RegistrationWithUser,
 } from "@shared/schema";
 
 const BASE = "/api/organizer";
@@ -46,6 +47,11 @@ export async function getMySessions(): Promise<TennisSession[]> {
 
 export async function getSessionById(id: string): Promise<TennisSession> {
   const res = await apiRequest("GET", `${BASE}/sessions/${id}`);
+  return res.json();
+}
+
+export async function getSessionRegistrations(id: string): Promise<RegistrationWithUser[]> {
+  const res = await apiRequest("GET", `${BASE}/sessions/${id}/registrations`);
   return res.json();
 }
 

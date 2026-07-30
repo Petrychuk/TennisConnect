@@ -871,6 +871,16 @@ export type SessionWithDetails = TennisSession & {
   creatorName?: string; // populated only for the admin moderation view
 };
 
+// One row per player registered for a session, with just enough user
+// info for the organizer's Players/Registration tabs to display a name,
+// avatar, and profile link - not the full user record.
+export type RegistrationWithUser = Registration & {
+  userName: string;
+  userSlug: string;
+  userAvatar: string | null;
+  userIsTestUser: boolean;
+};
+
 // Articles / Travel / Recreation / Tournaments schemas
 export const insertArticleSchema = createInsertSchema(articles).omit({
   id: true,

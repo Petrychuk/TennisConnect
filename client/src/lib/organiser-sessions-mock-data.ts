@@ -458,6 +458,11 @@ export interface SessionPlayer {
   joinedAt: string; // ISO
   paymentStatus?: "paid" | "pending" | "guest";
   rating?: number;
+  // True for a real registration pulled from the database, as opposed
+  // to the mock "crowd" data used to preview what a fuller session
+  // looks like without needing dozens of real test accounts to join.
+  isReal?: boolean;
+  slug?: string; // real player's profile slug, when isReal
 }
 
 function minutesAgo(minutes: number) {

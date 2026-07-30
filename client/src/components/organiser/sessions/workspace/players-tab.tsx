@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -12,6 +13,8 @@ import { GroupOverviewCard } from "./players/group-overview-card";
 import { CheckInSummaryCard } from "./players/checkin-summary-card";
 import { PlayersQuickActionsCard } from "./players/players-quick-actions-card";
 import { SessionActionsSheet } from "./session-actions-sheet";
+import { getSessionRegistrations } from "@/lib/api/organizer-sessions";
+import { toSessionPlayers } from "@/lib/api/session-adapter";
 import {
   mockSessionPlayers,
   mockWaitingList,
@@ -33,16 +36,30 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
   const [bucket, setBucket] = useState<Bucket>("registered");
   const [actionsSheetOpen, setActionsSheetOpen] = useState(false);
 
+  const registrationsQuery = useQuery({
+    queryKey: ["/api/organizer/sessions", session.id, "registrations"],
+    queryFn: () => getSessionRegistrations(session.id),
+  });
+
+  // Real registrations first, then the mock "crowd" - lets an organiser
+  // preview what a fuller session looks like (e.g. 24 registered)
+  // without needing dozens of real test accounts to actually join,
+  // while a genuine registration still shows up right alongside it.
+  const allPlayers: SessionPlayer[] = useMemo(() => {
+    const real = toSessionPlayers(registrationsQuery.data ?? []);
+    return [...real, ...mockSessionPlayers];
+  }, [registrationsQuery.data]);
+
   const buckets: Record<Bucket, SessionPlayer[]> = useMemo(() => {
-    const registered = mockSessionPlayers.filter((p) => p.status === "registered");
+    const registered = allPlayers.filter((p) => p.status === "registered");
     return {
       registered,
       "checked-in": registered.filter((p) => p.checkedIn),
-      waiting: mockSessionPlayers.filter((p) => p.status === "waiting"),
-      cancelled: mockSessionPlayers.filter((p) => p.status === "cancelled"),
-      invited: mockSessionPlayers.filter((p) => p.status === "invited"),
+      waiting: allPlayers.filter((p) => p.status === "waiting"),
+      cancelled: allPlayers.filter((p) => p.status === "cancelled"),
+      invited: allPlayers.filter((p) => p.status === "invited"),
     };
-  }, []);
+  }, [allPlayers]);
 
   const query = search.trim().toLowerCase();
   const visible = (query ? buckets[bucket].filter((p) => p.name.toLowerCase().includes(query)) : buckets[bucket]);
@@ -83,7 +100,7 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
     <div data-testid="organiser-session-players-tab">
       {/* Desktop (xl+) */}
       <div className="hidden xl:block space-y-6">
-        <PlayersStatStrip session={session} players={mockSessionPlayers} />
+        <PlayersStatStrip session={session} players={allPlayers} />
         {bucketTabsList}
         <PlayersToolbar
           search={search}
@@ -102,7 +119,7 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
 
       {/* Tablet (md-xl) */}
       <div className="hidden md:block xl:hidden space-y-6">
-        <PlayersStatStrip session={session} players={mockSessionPlayers} />
+        <PlayersStatStrip session={session} players={allPlayers} />
         {bucketTabsList}
         <PlayersToolbar search={search} onSearchChange={setSearch} onCheckInAll={handleCheckInAll} onInvitePlayers={handleInvitePlayers} />
         <PlayersList players={visible} onCheckIn={handleCheckIn} />
@@ -110,14 +127,14 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
         <WaitingListCard players={mockWaitingList} />
         <div className="grid grid-cols-2 gap-6">
           <GroupOverviewCard groups={mockGroupOverview} />
-          <CheckInSummaryCard players={mockSessionPlayers} />
+          <CheckInSummaryCard players={allPlayers} />
         </div>
         <PlayersQuickActionsCard lastLabel="Manage Groups" lastIcon={Users2} onMore={() => setActionsSheetOpen(true)} />
       </div>
 
       {/* Mobile (<md) */}
       <div className="md:hidden space-y-6">
-        <PlayersStatStrip session={session} players={mockSessionPlayers} />
+        <PlayersStatStrip session={session} players={allPlayers} />
         {bucketTabsList}
         <PlayersToolbar search={search} onSearchChange={setSearch} onCheckInAll={handleCheckInAll} onInvitePlayers={handleInvitePlayers} />
         <PlayersList players={visible} onCheckIn={handleCheckIn} />

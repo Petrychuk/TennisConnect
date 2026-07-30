@@ -1,5 +1,5 @@
-import type { TennisSession, SessionWithDetails } from "@shared/schema";
-import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
+import type { TennisSession, SessionWithDetails, RegistrationWithUser } from "@shared/schema";
+import type { SessionListItem, SessionPlayer } from "@/lib/organiser-sessions-mock-data";
 
 function isSessionWithDetails(s: TennisSession | SessionWithDetails): s is SessionWithDetails {
   return "registeredCount" in s;
@@ -88,4 +88,39 @@ export function toSessionListItem(session: TennisSession | SessionWithDetails): 
 
 export function toSessionListItems(sessions: (TennisSession | SessionWithDetails)[]): SessionListItem[] {
   return sessions.map(toSessionListItem);
+}
+
+const REGISTRATION_STATUS_TO_PLAYER_STATUS: Record<string, SessionPlayer["status"]> = {
+  registered: "registered",
+  waitlisted: "waiting",
+  cancelled: "cancelled",
+};
+
+/**
+ * Maps a real registration (from GET /sessions/:id/registrations) to
+ * the SessionPlayer shape the Players/Registration tab UI already
+ * expects, so a real registration can be merged straight into the
+ * existing mock "crowd" list without that UI needing to change.
+ * Level/group/rating aren't modelled on a real registration yet, so
+ * those get a neutral default rather than fabricated data.
+ */
+export function toSessionPlayer(registration: RegistrationWithUser): SessionPlayer {
+  return {
+    id: registration.id,
+    name: registration.userName,
+    avatar: registration.userAvatar,
+    level: 0,
+    levelLabel: "Social",
+    group: null,
+    status: REGISTRATION_STATUS_TO_PLAYER_STATUS[registration.status] ?? "registered",
+    checkedIn: !!registration.checkedInAt,
+    checkInTime: registration.checkedInAt ? new Date(registration.checkedInAt).toISOString() : null,
+    joinedAt: new Date(registration.createdAt).toISOString(),
+    isReal: true,
+    slug: registration.userSlug,
+  };
+}
+
+export function toSessionPlayers(registrationsList: RegistrationWithUser[]): SessionPlayer[] {
+  return registrationsList.map(toSessionPlayer);
 }

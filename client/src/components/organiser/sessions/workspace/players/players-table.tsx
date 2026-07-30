@@ -89,6 +89,11 @@ export function PlayersTable({ players, onCheckIn, showGroupColumn = true, showJ
                     </AvatarFallback>
                   </Avatar>
                   <span className="font-medium">{player.name}</span>
+                  {player.isReal && (
+                    <Badge className="bg-primary/10 text-primary" data-testid={`organiser-players-row-${player.id}-real`}>
+                      Real
+                    </Badge>
+                  )}
                 </div>
               </TableCell>
               <TableCell>
