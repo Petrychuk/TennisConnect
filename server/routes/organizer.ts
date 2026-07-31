@@ -269,12 +269,31 @@ router.put("/sessions/:id", requireAuth, requireOrganizer, requireOwnSession, as
 router.post("/sessions/:id/publish", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
   try {
     const reviewerId = (req.user as any).id;
-    const session = (req.user as any).isAdmin
+    const isAdmin = (req.user as any).isAdmin;
+    const session = isAdmin
       ? await storage.publishSessionDirect(req.params.id, reviewerId)
-     : await storage.submitSessionForReview(req.params.id);
-     res.json(session);
-   } catch (error) {
-     next(error);
+      : await storage.submitSessionForReview(req.params.id);
+
+    // An organiser (not an admin) submitting for review is the moment
+    // an admin needs to know about - a direct admin publish doesn't
+    // need this, they already know.
+    if (!isAdmin) {
+      const admins = await storage.getAdminUsers();
+      await Promise.all(
+        admins.map((admin) =>
+          sendSystemMessage(
+            admin.id,
+            admin.role,
+            "New Session Pending Review",
+            `"${session.title}" was just submitted for review and is waiting for your approval.`
+          )
+        )
+      );
+    }
+
+    res.json(session);
+  } catch (error) {
+    next(error);
   }
 });
 

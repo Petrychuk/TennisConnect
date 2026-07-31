@@ -12,6 +12,7 @@ import {
   getOrganizationByUserSlug,
   getMyRegisteredSessions,
   joinSession as joinSessionApi,
+  leaveSession as leaveSessionApi,
 } from "@/lib/api/organizer-sessions";
 import type { TennisSession, SessionWithDetails } from "@shared/schema";
 
@@ -92,12 +93,13 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
     enabled: !isOwnProfile && !!profileSlug,
   });
 
-  // Only needed to show "Joined"/"Waitlisted" badges on a guest view -
-  // skipped entirely when not signed in, since there's nothing to check.
+  // Needed to show "Joined"/"Waitlisted" and drive the Join/Leave
+  // button on every session, own profile included - the organiser can
+  // be a player in their own event too.
   const myRegisteredQuery = useQuery({
     queryKey: ["/api/organizer/sessions/mine/registered"],
     queryFn: getMyRegisteredSessions,
-    enabled: !isOwnProfile && isAuthenticated,
+    enabled: isAuthenticated,
   });
 
   const isLoading = isOwnProfile ? mineQuery.isLoading : orgQuery.isLoading;
@@ -125,6 +127,7 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
       const { waitlisted } = await joinSessionApi(session.id);
       queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine/registered"] });
       queryClient.invalidateQueries({ queryKey: ["/api/organizer/organizations/by-user", profileSlug] });
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine"] });
       toast({
         title: waitlisted ? "Added to the waiting list" : "You're in!",
         description: waitlisted
@@ -133,6 +136,21 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
       });
     } catch (error: any) {
       toast({ title: "Couldn't join session", description: error?.message ?? "Please try again.", variant: "destructive" });
+    } finally {
+      setJoiningId(null);
+    }
+  };
+
+  const handleLeave = async (session: TennisSession) => {
+    setJoiningId(session.id);
+    try {
+      await leaveSessionApi(session.id);
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine/registered"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/organizations/by-user", profileSlug] });
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine"] });
+      toast({ title: "Registration cancelled", description: `You're no longer registered for "${session.title}".` });
+    } catch (error: any) {
+      toast({ title: "Couldn't cancel", description: error?.message ?? "Please try again.", variant: "destructive" });
     } finally {
       setJoiningId(null);
     }
@@ -176,7 +194,7 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
           const myStatus = myStatusById.get(session.id) ?? null;
           const canJoin = !isOwnProfile
             ? (guestBucket === "open" || guestBucket === "waitlist") && !myStatus
-            : false; // an organiser joining their own session happens from the Organiser Hub, not this at-a-glance card
+            : session.status === "published" && !myStatus; // capacity is re-checked server-side either way
           const showPolicy = policyOpenId === session.id;
 
           return (
@@ -217,16 +235,29 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
                     </div>
                   </div>
 
-                  {canJoin && (
-                    <Button
-                      size="sm"
-                      onClick={() => handleJoin(session)}
-                      disabled={joiningId === session.id}
-                      data-testid={`join-session-${session.id}`}
-                    >
-                      {isAuthenticated ? "Join" : "Sign in to Join"}
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {canJoin && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleJoin(session)}
+                        disabled={joiningId === session.id}
+                        data-testid={`join-session-${session.id}`}
+                      >
+                        {isAuthenticated ? "Join" : "Sign in to Join"}
+                      </Button>
+                    )}
+                    {myStatus && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleLeave(session)}
+                        disabled={joiningId === session.id}
+                        data-testid={`leave-session-${session.id}`}
+                      >
+                        Leave
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="pt-3">

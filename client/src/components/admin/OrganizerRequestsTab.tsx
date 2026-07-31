@@ -85,6 +85,10 @@ function SessionModerationPanel() {
   const { toast } = useToast();
 
   const sessions = allSessions.filter((s) => s.status === statusFilter);
+  const countByStatus: Record<string, number> = {};
+  SESSION_FILTERS.forEach((status) => {
+    countByStatus[status] = allSessions.filter((s) => s.status === status).length;
+  });
 
   async function handleApprove(id: string) {
     setProcessingId(id);
@@ -129,8 +133,23 @@ function SessionModerationPanel() {
             variant={statusFilter === status ? "default" : "outline"}
             onClick={() => setStatusFilter(status)}
             data-testid={`session-moderation-filter-${status}`}
+            className="gap-1.5"
           >
             {SESSION_STATUS_LABEL[status]}
+            {countByStatus[status] > 0 && (
+              <Badge
+                className={
+                  status === "pending_review"
+                    ? "bg-destructive text-destructive-foreground"
+                    : statusFilter === status
+                      ? "bg-primary-foreground/20 text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                }
+                data-testid={`session-moderation-filter-${status}-count`}
+              >
+                {countByStatus[status]}
+              </Badge>
+            )}
           </Button>
         ))}
       </div>

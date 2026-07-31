@@ -95,6 +95,7 @@ async function generateUniqueOrgSlug(name: string): Promise<string> {
 export interface IStorage {
   // Users
   getUser(id: string): Promise<User | undefined>;
+  getAdminUsers(): Promise<User[]>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User>;
@@ -252,6 +253,12 @@ export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
+  }
+
+  // Every admin account - used to notify admins (e.g. a new session
+  // submitted for review) rather than a single hardcoded recipient.
+  async getAdminUsers(): Promise<User[]> {
+    return db.select().from(users).where(eq(users.isAdmin, true));
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {

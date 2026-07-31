@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
@@ -19,6 +20,7 @@ import { ClubForm } from "@/components/admin/clubs/ClubForm";
 import { TravelForm } from "@/components/admin/travel/TravelForm";
 import { ArticleForm } from "@/components/admin/articles/ArticleForm";
 import AdminOrganizerRequestsTab from "@/components/admin/OrganizerRequestsTab";
+import { getAdminSessions } from "@/lib/api/organizer-sessions";
 import { clubValidationSchema, articleSchema, travelSchema, recreationSchema } from "@/lib/validations";
 import AdminUsersTab from "@/components/admin/users_tab";
 import { ClubAdminCard } from "@/components/admin/clubs/ClubAdminCard";
@@ -76,6 +78,17 @@ export default function AdminPage() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<AdminTab>(getInitialTab);
+  // Shares its cache with OrganizerRequestsTab's own query (same
+  // queryKey) - just here to badge the outer tab with how many
+  // sessions are waiting on a review, visible without opening it.
+  const pendingSessionsCountQuery = useQuery({
+    queryKey: ["/api/organizer/admin/sessions"],
+    queryFn: () => getAdminSessions(),
+    enabled: !!user?.isAdmin,
+  });
+  const pendingSessionsCount = (pendingSessionsCountQuery.data ?? []).filter(
+    (s: any) => s.status === "pending_review"
+  ).length;
   const [pendingEditTravelId, setPendingEditTravelId] = useState<
     string | null
   >(() => getInitialEditId("editTravel"));
@@ -737,11 +750,16 @@ export default function AdminPage() {
 
               <TabsTrigger
                 value="organizer-requests"
-                className="cursor-pointer"
+                className="cursor-pointer gap-1.5"
                 data-testid="admin-tab-organizer-requests"
               >
                 <Trophy className="w-4 h-4 mr-2" />
                 Organiser &amp; Sessions
+                {pendingSessionsCount > 0 && (
+                  <Badge className="bg-destructive text-destructive-foreground" data-testid="admin-tab-organizer-requests-pending-count">
+                    {pendingSessionsCount}
+                  </Badge>
+                )}
               </TabsTrigger>
 
               {(Object.keys(RESOURCE_LABELS) as Resource[]).map((r) => {
