@@ -22,7 +22,7 @@ interface AuthContextType {
   loading: boolean;
   profileLoaded: boolean;
 
-  login: (email: string, password: string) => Promise<User>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<User>;
   register: (
     email: string,
     password: string,
@@ -114,13 +114,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /**
    * LOGIN
    */
-  const login = async (email: string, password: string): Promise<User> => {
+  const login = async (email: string, password: string, rememberMe?: boolean): Promise<User> => {
     setLoading(true);
 
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, rememberMe: !!rememberMe }),
       credentials: "include",
     });
 

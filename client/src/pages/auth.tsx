@@ -19,6 +19,7 @@ import { registerSchema, loginSchema } from "@/lib/validations/auth";
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
@@ -44,7 +45,7 @@ export default function AuthPage() {
   const onLogin = async (data: z.infer<typeof loginSchema>) => {
     setIsLoading(true);
     try {
-      const loggedInUser = await login(data.email, data.password);
+      const loggedInUser = await login(data.email, data.password, rememberMe);
 
       const params = new URLSearchParams(search);
       const returnTo = params.get("returnTo");
@@ -361,7 +362,12 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                   </div>
                   
                   <div className="flex items-center space-x-2 py-2">
-                    <Checkbox id="remember" data-testid="remember-me"/>
+                    <Checkbox
+                      id="remember"
+                      checked={rememberMe}
+                      onCheckedChange={(checked) => setRememberMe(checked === true)}
+                      data-testid="remember-me"
+                    />
                     <label
                       htmlFor="remember"
                       className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"

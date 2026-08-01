@@ -80,6 +80,14 @@ export function setupAuth(app: Express) {
   // === Idle timeout middleware ===
   app.use((req, res, next) => {
     if (req.isAuthenticated() && req.session) {
+      // A "remember me" session is meant to stay signed in for the
+      // full 30 days regardless of activity gaps - the whole point is
+      // not needing to log back in every time. Only the default
+      // (non-remembered) 1-day session enforces the 1-hour idle cutoff.
+      if ((req.session as any).rememberMe) {
+        return next();
+      }
+
       const now = Date.now();
       const lastActivity = (req.session as any).lastActivity || now;
 

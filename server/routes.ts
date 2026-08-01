@@ -180,6 +180,13 @@ export async function registerRoutes(app: Express): Promise<void> {
         
         req.login(user, (loginErr) => {
           if (loginErr) return next(loginErr);
+
+          const rememberMe = req.body?.rememberMe === true;
+          if (rememberMe) {
+            const THIRTY_DAYS = 1000 * 60 * 60 * 24 * 30;
+            req.session.cookie.maxAge = THIRTY_DAYS;
+            (req.session as any).rememberMe = true;
+          }
           
           // Save session explicitly
           req.session.save((saveErr) => {
