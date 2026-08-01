@@ -12,7 +12,7 @@ import { getSessionById } from "@/lib/api/organizer-sessions";
 // module yet, so this route exists (so Edit/Continue Setup go somewhere
 // real) without pretending the wizard itself is built.
 export default function OrganiserSessionEditPage() {
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/organiser/sessions/:id/edit");
   const sessionQuery = useQuery({
@@ -25,6 +25,22 @@ export default function OrganiserSessionEditPage() {
   if (!isAuthenticated) {
     setLocation("/auth");
     return null;
+  }
+
+  if (!user?.isOrganizer) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 bg-background">
+        <Card className="max-w-md w-full shadow-sm">
+          <CardHeader>
+            <CardTitle>Organiser access required</CardTitle>
+          </CardHeader>
+          <CardContent className="text-muted-foreground">
+            You need to be an approved organiser to view this page. Head to your profile to
+            request organiser access.
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   const session = sessionQuery.data;

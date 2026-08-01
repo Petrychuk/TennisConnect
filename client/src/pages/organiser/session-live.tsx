@@ -2,6 +2,7 @@ import { Link, useLocation, useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Play, CheckCircle2, Hourglass, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import SEO from "@/components/seo";
@@ -17,7 +18,7 @@ import { cn } from "@/lib/utils";
 // round/court data today). The session itself is real; rounds/courts
 // stay empty rather than faking data that doesn't exist server-side.
 export default function OrganiserSessionLivePage() {
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/organiser/sessions/:id/live");
   const sessionQuery = useQuery({
@@ -30,6 +31,22 @@ export default function OrganiserSessionLivePage() {
   if (!isAuthenticated) {
     setLocation("/auth");
     return null;
+  }
+
+  if (!user?.isOrganizer) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 bg-background">
+        <Card className="max-w-md w-full shadow-sm">
+          <CardHeader>
+            <CardTitle>Organiser access required</CardTitle>
+          </CardHeader>
+          <CardContent className="text-muted-foreground">
+            You need to be an approved organiser to view this page. Head to your profile to
+            request organiser access.
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   if (sessionQuery.isLoading) {
