@@ -618,73 +618,54 @@ export default function MessagesPage() {
                           <div className="space-y-4 pr-2">
                             {conversation.map((msg) => {
                             const isMe = msg.senderUserId === user?.id;
-                            const isSystemMessage = !msg.senderUserId;
 
                             return (
-                              <div
-                                key={msg.id}
-                                className={`flex ${
-                                  isMe ? "justify-end" : "justify-start"
-                                }`}
-                              >
-                                <div
-                                  className={
-                                    isSystemMessage
-                                      ? "flex gap-3 w-full"
-                                      : `flex gap-3 max-w-[90%] sm:max-w-[80%] ${
-                                          isMe ? "flex-row-reverse gap-4" : "gap-3"
-                                        }`
-                                  }
-                                >
-                                  <Avatar className="h-10 w-10 shrink-0 ml-1">
-                                    <AvatarImage
-                                      src={msg.senderAvatar || undefined}
-                                      alt={msg.senderName}
-                                    />
-                                    <AvatarFallback className="bg-primary/10 text-primary">
-                                      {msg.senderName?.charAt(0)?.toUpperCase()}
-                                    </AvatarFallback>
-                                  </Avatar>
+                              <div key={msg.id} className="flex gap-3 w-full">
+                                <Avatar className="h-10 w-10 shrink-0 ml-1">
+                                  <AvatarImage
+                                    src={msg.senderAvatar || undefined}
+                                    alt={msg.senderName}
+                                  />
+                                  <AvatarFallback className="bg-primary/10 text-primary">
+                                    {msg.senderName?.charAt(0)?.toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
 
-                                  <div>
-                                    <div
-                                      className={`text-xs mb-1 px-1 ${
+                                <div className="flex-1 min-w-0">
+                                  <div
+                                    className={`text-xs mb-1 px-1 ${
+                                      isMe
+                                        ? "text-right text-muted-foreground"
+                                        : "text-muted-foreground"
+                                    }`}
+                                  >
+                                    {msg.senderName}
+                                  </div>
+
+                                  <div
+                                    className={`
+                                      w-full rounded-2xl px-4 py-3 shadow-sm transition-all
+                                      ${
                                         isMe
-                                          ? "text-right text-muted-foreground"
-                                          : "text-muted-foreground"
-                                      }`}
-                                    >
-                                      {msg.senderName}
-                                    </div>
+                                          ? "bg-primary/5 border border-primary/20"
+                                          : "bg-muted"
+                                      }
+                                    `}
+                                  >
+                                    <p className="whitespace-pre-wrap wrap-break-word text-sm leading-relaxed">
+                                      {msg.content}
+                                    </p>
+                                  </div>
 
-                                    <div
-                                      className={`
-                                        rounded-2xl px-4 py-3 shadow-sm transition-all
-
-                                        ${
-                                          isSystemMessage
-                                            ? "w-full bg-primary/5 border border-primary/20"
-                                            : isMe
-                                            ? "bg-primary text-primary-foreground rounded-br-md"
-                                            : "bg-muted hover:bg-muted/80 rounded-bl-md"
-                                        }
-                                      `}
-                                    >
-                                      <p className="whitespace-pre-wrap wrap-break-word text-sm leading-relaxed">
-                                        {msg.content}
-                                      </p>
-                                    </div>
-
-                                    <div
-                                      className={`mt-1 text-xs text-muted-foreground px-1 ${
-                                        isMe ? "text-right" : ""
-                                      }`}
-                                    >
-                                      {format(
-                                        new Date(msg.createdAt),
-                                        "MMM d, h:mm a"
-                                      )}
-                                    </div>
+                                  <div
+                                    className={`mt-1 text-xs text-muted-foreground px-1 ${
+                                      isMe ? "text-right" : ""
+                                    }`}
+                                  >
+                                    {format(
+                                      new Date(msg.createdAt),
+                                      "MMM d, h:mm a"
+                                    )}
                                   </div>
                                 </div>
                               </div>
