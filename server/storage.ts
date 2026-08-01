@@ -178,6 +178,7 @@ export interface IStorage {
   getMessageById(id: string): Promise<Message | undefined>;
   createMessage(message: InsertMessage): Promise<Message>;
   markMessageAsRead(id: string): Promise<Message>;
+  markConversationAsRead(conversationId: string, recipientId: string): Promise<void>;
   getConversationMessages(conversationId: string): Promise<MessageWithAvatar[]>;
   getUserConversations(userId: string): Promise<MessageWithAvatar[]>;
   findConversationBetweenUsers(userA: string, userB: string): Promise<MessageWithAvatar | undefined>;
@@ -1409,6 +1410,22 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     return message;
+  }
+
+  // Every unread message in a thread, for one specific recipient -
+  // opening a conversation should clear all of it, not just the single
+  // representative message the inbox list happens to show.
+  async markConversationAsRead(conversationId: string, recipientId: string): Promise<void> {
+    await db
+      .update(messages)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(messages.conversationId, conversationId),
+          eq(messages.recipientId, recipientId),
+          eq(messages.isRead, false)
+        )
+      );
   }
 
   async deleteMessage(id: string): Promise<void> {

@@ -404,18 +404,22 @@ export async function registerRoutes(app: Express): Promise<void> {
             });
           }
 
-        await sendSystemMessage(
-          user.id,
-          user.role,
-          "Profile Approved",
-          `Congratulations! Your TennisConnect profile has been approved and is now visible to the community
+        const reviewer = await storage.getUser((req.user as any).id);
+        if (reviewer) {
+          await sendMessageBetween(
+            reviewer,
+            user.id,
+            user.role,
+            "Profile Approved",
+            `Congratulations! Your TennisConnect profile has been approved and is now visible to the community
             You can now:
             • Connect with players and coaches
             • Receive messages
             • Participate in community activities
 
           Welcome to TennisConnect and enjoy your tennis journey! — TennisConnect Team`
-        );
+          );
+        }
 
         res.json(user);
       }
@@ -463,12 +467,16 @@ export async function registerRoutes(app: Express): Promise<void> {
         const user = await storage.hideUser(req.params.id);
 
         if (user) {
-          await sendSystemMessage(
-            user.id,
-            user.role,
-            "Profile Hidden",
-            `Your profile has been temporarily hidden from public listings. Your account remains active and your data has not been removed. If you believe this was done in error, please contact support. — TennisConnect Team`
-          );
+          const reviewer = await storage.getUser(req.user!.id);
+          if (reviewer) {
+            await sendMessageBetween(
+              reviewer,
+              user.id,
+              user.role,
+              "Profile Hidden",
+              `Your profile has been temporarily hidden from public listings. Your account remains active and your data has not been removed. If you believe this was done in error, please contact support. — TennisConnect Team`
+            );
+          }
         }
     
         res.json({
@@ -489,12 +497,16 @@ export async function registerRoutes(app: Express): Promise<void> {
           });
         }
 
-        await sendSystemMessage(
-          user.id,
-          user.role,
-          "Profile Restored",
-          `Good news! Your TennisConnect profile has been restored and is once again visible to the community.Other members can now find your profile and connect with you normally. Thank you for being part of TennisConnect. - TennisConnect Team`
-        );
+        const reviewer = await storage.getUser(req.user!.id);
+        if (reviewer) {
+          await sendMessageBetween(
+            reviewer,
+            user.id,
+            user.role,
+            "Profile Restored",
+            `Good news! Your TennisConnect profile has been restored and is once again visible to the community.Other members can now find your profile and connect with you normally. Thank you for being part of TennisConnect. - TennisConnect Team`
+          );
+        }
             
         res.json({
           success: true,
@@ -997,6 +1009,18 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
       const message = await storage.markMessageAsRead(req.params.id);
       res.json(message);
+    } catch (error: any) {
+      next(error);
+    }
+  });
+
+  // Mark every message in a thread as read for the current user -
+  // opening a conversation should clear all of it, not just whichever
+  // single message the inbox list happened to represent it with.
+  app.put("/api/messages/conversation/:conversationId/read", requireAuth, async (req, res, next) => {
+    try {
+      await storage.markConversationAsRead(req.params.conversationId, req.user!.id);
+      res.json({ success: true });
     } catch (error: any) {
       next(error);
     }

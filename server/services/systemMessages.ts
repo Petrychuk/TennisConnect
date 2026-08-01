@@ -40,9 +40,10 @@ export async function sendMessageBetween(
 }
 
 // The one case with no other real person to attribute it to - kept as
-// a system notice from "Site Admin", not repliable. Still one thread
-// per recipient (the original admin-${recipientId} scheme), so e.g. a
-// repeated organiser-access grant doesn't create a new thread each time.
+// a system notice from "Tennis Connect" (the platform, not a specific
+// admin), not repliable. Still one thread per recipient (the original
+// admin-${recipientId} scheme), so e.g. a repeated welcome message
+// doesn't create a new thread each time.
 export async function sendSystemMessage(
     recipientId: string,
     recipientType: string,
@@ -57,7 +58,7 @@ export async function sendSystemMessage(
   
       senderUserId: null,
   
-      senderName: "Site Admin",
+      senderName: "Tennis Connect",
       senderEmail: "makeinfosense@gmail.com",
   
       senderPhone: null,

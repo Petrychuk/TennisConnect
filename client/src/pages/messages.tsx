@@ -216,16 +216,10 @@ export default function MessagesPage() {
   
         setSelectedMessage(firstMessage);
   
-        await loadConversation(
-          firstMessage.conversationId ||
-          firstMessage.id
-        );
+        const firstConversationId = firstMessage.conversationId || firstMessage.id;
+        await loadConversation(firstConversationId);
   
-        if (!firstMessage.isRead) {
-          await handleMarkAsRead(
-            firstMessage.id
-          );
-        }
+        await handleMarkConversationAsRead(firstConversationId);
   
         return;
       }
@@ -253,18 +247,24 @@ export default function MessagesPage() {
     }
   };
 
-  const handleMarkAsRead = async (messageId: string) => {
+  // Opening a conversation clears every unread message in it, not just
+  // the single representative row the inbox list shows - otherwise the
+  // unread badge stays inflated by messages the viewer never actually
+  // sees marked individually.
+  const handleMarkConversationAsRead = async (conversationId: string) => {
     try {
-      const res = await fetch(`/api/messages/${messageId}/read`, {
+      const res = await fetch(`/api/messages/conversation/${conversationId}/read`, {
         method: "PUT",
+        credentials: "include",
       });
       if (res.ok) {
-        setMessages(messages.map(m => 
-          m.id === messageId ? { ...m, isRead: true } : m
-        ));
+        setMessages((prev) =>
+          prev.map((m) => ((m.conversationId || m.id) === conversationId ? { ...m, isRead: true } : m))
+        );
+        setConversation((prev) => prev.map((m) => ({ ...m, isRead: true })));
       }
     } catch (error) {
-      console.error("Failed to mark message as read:", error);
+      console.error("Failed to mark conversation as read:", error);
     }
   };
 
@@ -345,16 +345,10 @@ export default function MessagesPage() {
       setMobileView("chat");
     }
 
-    await loadConversation(
-      message.conversationId ||
-      message.id
-    );
+    const conversationId = message.conversationId || message.id;
+    await loadConversation(conversationId);
 
-    if (!message.isRead) {
-      await handleMarkAsRead(
-        message.id
-      );
-    }
+    await handleMarkConversationAsRead(conversationId);
   };
 
   if (!isAuthenticated) {
