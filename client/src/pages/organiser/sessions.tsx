@@ -6,12 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Menu, Bell, Plus, LayoutTemplate, CalendarDays } from "lucide-react";
+import { Menu, Plus, LayoutTemplate, CalendarDays } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import SEO from "@/components/seo";
 
 import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar";
+import { NotificationBell } from "@/components/organiser/ui/notification-bell";
 import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
 import { SessionStatusTabs } from "@/components/organiser/sessions/session-status-tabs";
 import { SessionFiltersBar } from "@/components/organiser/sessions/session-filters-bar";
@@ -146,12 +147,7 @@ export default function OrganiserSessionsPage() {
           </div>
 
           <div className="flex items-center gap-1">
-            <Link href="/messages">
-              <Button variant="ghost" size="icon" className="relative" data-testid="organiser-header-bell-mobile">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-destructive" />
-              </Button>
-            </Link>
+            <NotificationBell testId="organiser-header-bell-mobile" />
             <Button size="icon" className="h-8 w-8" onClick={() => setLocation("/organiser/sessions/new")} data-testid="organiser-sessions-new-mobile">
               <Plus className="w-4 h-4" />
             </Button>

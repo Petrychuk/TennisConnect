@@ -4,12 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Menu, Bell, Clock, ArrowRight, ArrowLeft } from "lucide-react";
+import { Menu, Clock, ArrowRight, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import SEO from "@/components/seo";
 
 import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar";
+import { NotificationBell } from "@/components/organiser/ui/notification-bell";
 import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
 import { WizardStepSidebar } from "@/components/organiser/sessions/wizard/wizard-step-sidebar";
 import { WizardStepIndicator } from "@/components/organiser/sessions/wizard/wizard-step-indicator";
@@ -151,12 +152,7 @@ export default function OrganiserSessionNewPage() {
           <div className="font-display font-bold">New Session</div>
 
           <div className="flex items-center gap-1">
-            <Link href="/messages">
-              <Button variant="ghost" size="icon" className="relative" data-testid="organiser-header-bell-mobile">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-destructive" />
-              </Button>
-            </Link>
+            <NotificationBell testId="organiser-header-bell-mobile" />
             <Link href={profileHref}>
               <Avatar className="h-8 w-8 border border-border">
                 <AvatarImage src={organiser.avatar || undefined} />

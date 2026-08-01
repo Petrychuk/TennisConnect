@@ -4,12 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Menu, Bell, ChevronRight, Download, UserPlus } from "lucide-react";
+import { Menu, ChevronRight, Download, UserPlus } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import SEO from "@/components/seo";
 
 import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar";
+import { NotificationBell } from "@/components/organiser/ui/notification-bell";
 import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
 import { PlayersStatStrip } from "@/components/organiser/players/players-stat-strip";
 import { PlayersToolbar } from "@/components/organiser/players/players-toolbar";
@@ -106,12 +107,7 @@ export default function OrganiserPlayersPage() {
           <div className="font-display font-bold">Players</div>
 
           <div className="flex items-center gap-1">
-            <Link href="/messages">
-              <Button variant="ghost" size="icon" className="relative" data-testid="organiser-header-bell-mobile">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-destructive" />
-              </Button>
-            </Link>
+            <NotificationBell testId="organiser-header-bell-mobile" />
             <Link href={profileHref}>
               <Avatar className="h-8 w-8 border border-border">
                 <AvatarImage src={organiser.avatar || undefined} />

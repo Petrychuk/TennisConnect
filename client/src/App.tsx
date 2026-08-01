@@ -41,6 +41,7 @@ const AdminArticlePreviewPage = lazy(() => import("@/pages/admin-article-preview
 const OrganiserDashboardPage = lazy(() => import("@/pages/organiser/organiser-dashboard"));
 const OrganiserSessionsPage = lazy(() => import("@/pages/organiser/sessions"));
 const OrganiserPlayersPage = lazy(() => import("@/pages/organiser/players"));
+const OrganiserMessagesPage = lazy(() => import("@/pages/organiser/messages"));
 const OrganiserSessionNewPage = lazy(() => import("@/pages/organiser/session-new"));
 const OrganiserSessionWorkspacePage = lazy(() => import("@/pages/organiser/session-workspace"));
 const OrganiserSessionLivePage = lazy(() => import("@/pages/organiser/session-live"));
@@ -90,6 +91,7 @@ function Router() {
         <Route path="/organiser/sessions" component={OrganiserSessionsPage} />
         <Route path="/organiser/sessions/new" component={OrganiserSessionNewPage} />
         <Route path="/organiser/players" component={OrganiserPlayersPage} />
+        <Route path="/organiser/messages" component={OrganiserMessagesPage} />
         <Route path="/organiser/sessions/:id/live" component={OrganiserSessionLivePage} />
         <Route path="/organiser/sessions/:id/edit" component={OrganiserSessionEditPage} />
         <Route path="/organiser/sessions/:id" component={OrganiserSessionWorkspacePage} />

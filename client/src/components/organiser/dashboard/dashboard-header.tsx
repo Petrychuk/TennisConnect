@@ -5,16 +5,21 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Menu, Bell, Plus, Trophy } from "lucide-react";
 import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar";
+import { useUnreadMessagesCount } from "@/hooks/use-unread-messages";
 import type { OrganiserUser } from "@/lib/organiser-hub-mock-data";
 
 interface DashboardHeaderProps {
   organiser: OrganiserUser;
   profileHref: string;
-  hasUnread?: boolean;
   onCreateSession?: () => void;
 }
 
-export function DashboardHeader({ organiser, profileHref, hasUnread = true, onCreateSession }: DashboardHeaderProps) {
+export function DashboardHeader({ organiser, profileHref, onCreateSession }: DashboardHeaderProps) {
+  // Was a hardcoded hasUnread=true - the bell showed as "you have
+  // something new" permanently, even with nothing unread. Real count
+  // from the same endpoint every other unread badge in the app uses.
+  const unreadCount = useUnreadMessagesCount();
+  const hasUnread = unreadCount > 0;
   return (
     <div data-testid="organiser-dashboard-header">
       {/* Compact bar — tablet (both orientations) & mobile, sidebar collapses
@@ -47,11 +52,13 @@ export function DashboardHeader({ organiser, profileHref, hasUnread = true, onCr
         </div>
 
         <div className="flex items-center gap-1">
-          <Link href="/messages">
+          <Link href="/organiser/messages">
             <Button variant="ghost" size="icon" className="relative" data-testid="organiser-header-bell-mobile">
               <Bell className="w-5 h-5" />
               {hasUnread && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-destructive" />
+                <span className="absolute top-1.5 right-1.5 min-w-4 h-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] leading-4 text-center">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
               )}
             </Button>
           </Link>
@@ -69,10 +76,12 @@ export function DashboardHeader({ organiser, profileHref, hasUnread = true, onCr
       {/* Desktop row — sidebar is persistent, this just holds notifications + the primary action */}
       <div className="hidden xl:flex items-center justify-end gap-3 px-8 pt-6">
         <Button variant="outline" size="icon" className="relative" asChild data-testid="organiser-header-bell-desktop">
-          <Link href="/messages">
+          <Link href="/organiser/messages">
             <Bell className="w-4 h-4" />
             {hasUnread && (
-              <Badge className="absolute -top-1.5 -right-1.5 h-4 w-4 p-0 justify-center" />
+              <Badge className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 justify-center text-[10px]">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </Badge>
             )}
           </Link>
         </Button>
