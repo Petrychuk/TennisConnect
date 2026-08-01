@@ -17,12 +17,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { useLocation, useRoute, useSearch } from "wouter";
-import { MapPin, Calendar, Trophy, Edit2, ShoppingBag, Plus, Trash2, Camera, Globe } from "lucide-react";
+import { MapPin, Calendar, Trophy, Edit2, ShoppingBag, Plus, Trash2, Camera, Globe, Phone, Mail, MessageCircle, Send, LogIn } from "lucide-react";
 import { COACHES_DATA, PARTNERS_DATA } from "@/lib/dummy-data";
 import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.png";
 import SEO from "@/components/seo";
 import { Footer } from "@/components/footer";
 import { BecomeOrganizerCard } from "@/components/profile/shared/BecomeOrganizerCard";
+import { messageSchema } from "@/lib/validations/messages";
 import { MySessionsSection } from "@/components/profile/shared/MySessionsSection";
 import { MyOrganizedSessionsSection } from "@/components/profile/shared/MyOrganizedSessionsSection";
 import { useOrganizerStatus } from "@/hooks/use-organizer-status";
@@ -64,6 +65,8 @@ export type PlayerProfile = {
   coaches: number[];          
   marketplaceItems: any[];
   tournaments: any[];
+  phone: string;
+  email: string;
 };
 
 // Default Profile State
@@ -80,7 +83,9 @@ export const DEFAULT_PLAYER_PROFILE: PlayerProfile = {
   photos: [],
   coaches: [1], // IDs of connected coaches
   marketplaceItems: [] as any[],
-  tournaments: [] as any[]
+  tournaments: [] as any[],
+  phone: "",
+  email: "",
 };
 
 export default function PlayerProfile() {
@@ -95,6 +100,13 @@ export default function PlayerProfile() {
   const isOwnProfile = isAuthenticated && user?.slug === profileSlug; 
   const organizerStatus = useOrganizerStatus(isOwnProfile);
   const [isEditing, setIsEditing] = useState(false);
+  const [showPlayerPhone, setShowPlayerPhone] = useState(false);
+  const [showPlayerEmail, setShowPlayerEmail] = useState(false);
+  const [contactSubject, setContactSubject] = useState("");
+  const [contactMessage, setContactMessage] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const [playerUserId, setPlayerUserId] = useState<string>("");
   const [profile, setProfile] = useState<PlayerProfile>(DEFAULT_PLAYER_PROFILE);
   const [originalProfile, setOriginalProfile] = useState<PlayerProfile>(DEFAULT_PLAYER_PROFILE);
   const [loading, setLoading] = useState(true);
@@ -173,10 +185,13 @@ export default function PlayerProfile() {
             preferredCourts:
               data.profile?.preferredCourts ||
               DEFAULT_PLAYER_PROFILE.preferredCourts,
+            phone: data.profile?.phone ?? "",
+            email: data.profile?.email ?? "",
           });
 
           setProfileData(data.profile || null);
           setProfileIsOrganizer(!!data.user.isOrganizer);
+          setPlayerUserId(data.user.id);
 
           /* ===== PUBLIC TOURNAMENTS ===== */
           const tournamentsRes = await fetch(
@@ -255,6 +270,68 @@ export default function PlayerProfile() {
 
       loadPrivateData();
     }, [isOwnProfile]);
+
+  const handleContactSubmit = async () => {
+    const validation = messageSchema.safeParse({
+      subject: contactSubject,
+      message: contactMessage,
+      phone: contactPhone,
+    });
+
+    if (!validation.success) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: validation.error.errors[0].message,
+      });
+      return;
+    }
+
+    if (!playerUserId) {
+      toast({
+        variant: "destructive",
+        title: "Player not found",
+      });
+      return;
+    }
+
+    try {
+      setIsSending(true);
+      const res = await fetch("/api/messages", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipientId: playerUserId,
+          recipientType: "player",
+          subject: contactSubject,
+          phone: contactPhone,
+          content: contactMessage,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to send");
+      }
+
+      toast({
+        title: "Message sent",
+        description: "The player will receive your message shortly.",
+      });
+      setContactSubject("");
+      setContactMessage("");
+      setContactPhone("");
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Failed to send message",
+        description: error.message || "Please try again.",
+      });
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   const handleSave = async () => {
     try {
@@ -738,6 +815,9 @@ export default function PlayerProfile() {
                   )}
                   <TabsTrigger value="tournaments" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">Tournaments</TabsTrigger>
                   <TabsTrigger value="marketplace" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">Selling ({marketplaceItems.length})</TabsTrigger>
+                  {!isOwnProfile && (
+                    <TabsTrigger value="contact" data-testid="contact-tab" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">Contact</TabsTrigger>
+                  )}
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-8">
@@ -1225,6 +1305,115 @@ export default function PlayerProfile() {
                     )}
                   </div>
                 </TabsContent>
+
+                {!isOwnProfile && (
+                  <TabsContent value="contact" className="space-y-8" data-testid="contact-tab-content">
+                    {!isAuthenticated ? (
+                      <Card data-testid="player-contact-signed-out">
+                        <CardContent className="py-10 text-center space-y-3">
+                          <p className="text-muted-foreground">Sign in to see contact details and send a message.</p>
+                          <Button asChild size="sm" data-testid="player-contact-sign-in">
+                            <a href={`/auth?returnTo=${encodeURIComponent(`/player/${profileSlug}`)}`}>
+                              <LogIn className="w-4 h-4 mr-2" />
+                              Sign In
+                            </a>
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <MessageCircle className="w-5 h-5 text-primary" />
+                            Get in Touch
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="flex items-center gap-3 p-4 rounded-lg bg-primary/5 border border-primary/10">
+                              <div className="w-10 h-10 rounded-full bg-card flex items-center justify-center text-primary shadow-sm">
+                                <Phone className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <p className="text-sm text-muted-foreground">Phone Number</p>
+                                {showPlayerPhone ? (
+                                  <p className="font-bold text-lg">{profile.phone || "No phone listed"}</p>
+                                ) : (
+                                  <Button
+                                    variant="link"
+                                    className="font-bold text-lg p-0 h-auto text-primary"
+                                    onClick={() => setShowPlayerPhone(true)}
+                                    disabled={!profile.phone}
+                                  >
+                                    {profile.phone ? "Show Number" : "No Phone Listed"}
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 p-4 rounded-lg bg-primary/5 border border-primary/10">
+                              <div className="w-10 h-10 rounded-full bg-card flex items-center justify-center text-primary shadow-sm">
+                                <Mail className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <p className="text-sm text-muted-foreground">Email Address</p>
+                                {showPlayerEmail ? (
+                                  <p className="font-bold text-lg">{profile.email || "No email listed"}</p>
+                                ) : (
+                                  <Button
+                                    variant="link"
+                                    className="font-bold text-lg p-0 h-auto text-primary"
+                                    onClick={() => setShowPlayerEmail(true)}
+                                    disabled={!profile.email}
+                                  >
+                                    {profile.email ? "Show Email" : "No Email Listed"}
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-4 pt-4 border-t">
+                            <h3 className="font-bold text-lg">Send a Message</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label>Subject *</Label>
+                                <Input
+                                  placeholder="Let's play tennis"
+                                  value={contactSubject}
+                                  onChange={(e) => setContactSubject(e.target.value)}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Phone (optional)</Label>
+                                <Input
+                                  placeholder="+61 4XX XXX XXX"
+                                  value={contactPhone}
+                                  onChange={(e) => setContactPhone(e.target.value)}
+                                />
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Message</Label>
+                              <Textarea
+                                placeholder="Hi, would you like to play a match sometime..."
+                                className="min-h-[120px]"
+                                value={contactMessage}
+                                onChange={(e) => setContactMessage(e.target.value)}
+                              />
+                            </div>
+                            <Button
+                              onClick={handleContactSubmit}
+                              disabled={isSending || !contactSubject.trim() || !contactMessage.trim()}
+                            >
+                              <Send className="w-4 h-4 mr-2" />
+                              {isSending ? "Sending..." : "Send Message"}
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </TabsContent>
+                )}
               </Tabs>
               )}
             </div>

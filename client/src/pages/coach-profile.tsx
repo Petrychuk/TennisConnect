@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Camera, Edit2, Save, Plus, Trophy, Clock, DollarSign, X, ShoppingBag, Mail, Phone, MessageCircle, Send, Check, ChevronsUpDown, Calendar, ChevronRight, Users } from "lucide-react";
+import { MapPin, Camera, Edit2, Save, Plus, Trophy, Clock, DollarSign, X, ShoppingBag, Mail, Phone, MessageCircle, Send, Check, ChevronsUpDown, Calendar, ChevronRight, Users, LogIn } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { useLocation, useSearch } from "wouter";
@@ -1745,7 +1745,20 @@ export default function CoachProfile() {
                     </TabsContent>
 
                     <TabsContent value="contact" className="mt-0" data-testid="contact-tab-content">
-                      {!isOwnProfile && (
+                      {!isOwnProfile && !isAuthenticated && (
+                        <Card data-testid="coach-contact-signed-out">
+                          <CardContent className="py-10 text-center space-y-3">
+                            <p className="text-muted-foreground">Sign in to see contact details and send a message.</p>
+                            <Button asChild size="sm" data-testid="coach-contact-sign-in">
+                              <a href={`/auth?returnTo=${encodeURIComponent(`/coach/${profileSlug}`)}`}>
+                                <LogIn className="w-4 h-4 mr-2" />
+                                Sign In
+                              </a>
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      )}
+                      {!isOwnProfile && isAuthenticated && (
                       <Card>
                         <CardHeader>
                           <CardTitle className="flex items-center gap-2">
