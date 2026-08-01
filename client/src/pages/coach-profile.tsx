@@ -967,19 +967,19 @@ export default function CoachProfile() {
                     bg-transparent
                     gap-2
                     scrollbar-hide">
-                  <TabsTrigger value="about" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base gap-1.5"><User className="w-4 h-4" />About</TabsTrigger>
-                  <TabsTrigger value="sessions" data-testid="my-sessions-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base gap-1.5"><Calendar className="w-4 h-4" />My Sessions</TabsTrigger>
+                  <TabsTrigger value="about" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/10 px-3 py-2 text-sm md:text-base gap-1.5"><User className="w-4 h-4" />About</TabsTrigger>
+                  <TabsTrigger value="sessions" data-testid="my-sessions-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/10 px-3 py-2 text-sm md:text-base gap-1.5"><Calendar className="w-4 h-4" />My Sessions</TabsTrigger>
                   {showOrganisingTab && (
-                    <TabsTrigger value="organizing" data-testid="my-organized-sessions-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base gap-1.5"><ClipboardList className="w-4 h-4" />Organising</TabsTrigger>
+                    <TabsTrigger value="organizing" data-testid="my-organized-sessions-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/10 px-3 py-2 text-sm md:text-base gap-1.5"><ClipboardList className="w-4 h-4" />Organising</TabsTrigger>
                   )}
-                  <TabsTrigger value="tournaments" data-testid="tournaments-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base gap-1.5"><Trophy className="w-4 h-4" />Tournaments</TabsTrigger>
-                  <TabsTrigger value="photos" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base gap-1.5"><Camera className="w-4 h-4" />Photos</TabsTrigger>
-                  <TabsTrigger value="schedule" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base gap-1.5"><MapPin className="w-4 h-4" />Schedule & Locations</TabsTrigger>
-                  <TabsTrigger value="students" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base gap-1.5"><GraduationCap className="w-4 h-4" />My Students</TabsTrigger>
+                  <TabsTrigger value="tournaments" data-testid="tournaments-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/10 px-3 py-2 text-sm md:text-base gap-1.5"><Trophy className="w-4 h-4" />Tournaments</TabsTrigger>
+                  <TabsTrigger value="photos" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/10 px-3 py-2 text-sm md:text-base gap-1.5"><Camera className="w-4 h-4" />Photos</TabsTrigger>
+                  <TabsTrigger value="schedule" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/10 px-3 py-2 text-sm md:text-base gap-1.5"><MapPin className="w-4 h-4" />Schedule & Locations</TabsTrigger>
+                  <TabsTrigger value="students" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/10 px-3 py-2 text-sm md:text-base gap-1.5"><GraduationCap className="w-4 h-4" />My Students</TabsTrigger>
                   {/* Selling tab hidden for now, per request - marketplace items still exist in profile.marketplaceItems if this needs to come back */}
-                  {/* <TabsTrigger value="marketplace" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base gap-1.5"><ShoppingBag className="w-4 h-4" />Selling ({marketplaceItems.length})</TabsTrigger> */}
+                  {/* <TabsTrigger value="marketplace" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/10 px-3 py-2 text-sm md:text-base gap-1.5"><ShoppingBag className="w-4 h-4" />Selling ({marketplaceItems.length})</TabsTrigger> */}
                   {!isOwnProfile && (
-                    <TabsTrigger value="contact" data-testid="contact-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-sm md:text-base gap-1.5"><MessageCircle className="w-4 h-4" />Contact</TabsTrigger>
+                    <TabsTrigger value="contact" data-testid="contact-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/10 px-3 py-2 text-sm md:text-base gap-1.5"><MessageCircle className="w-4 h-4" />Contact</TabsTrigger>
                   )}
                 </TabsList>
 

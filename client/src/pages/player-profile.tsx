@@ -787,7 +787,7 @@ export default function PlayerProfile() {
              />
             )}
               {loading ? (
-                <div className="space-y-4" data-testid="player-tabs-skeleton">
+                <div className="mt-12 space-y-4" data-testid="player-tabs-skeleton">
                   <div className="flex gap-4">
                     <Skeleton className="h-9 w-20" />
                     <Skeleton className="h-9 w-28" />
@@ -797,7 +797,7 @@ export default function PlayerProfile() {
                   <Skeleton className="h-40 w-full rounded-2xl" />
                 </div>
               ) : (
-              <Tabs defaultValue={initialTab} className="space-y-8">
+              <Tabs defaultValue={initialTab} className="mt-12 space-y-8">
                 <TabsList className="w-full
                       flex
                       overflow-x-auto
@@ -810,16 +810,16 @@ export default function PlayerProfile() {
                       bg-transparent
                       gap-2
                       scrollbar-hide">
-                  <TabsTrigger value="overview" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><User className="w-4 h-4" />Overview</TabsTrigger>
-                  <TabsTrigger value="sessions" data-testid="my-sessions-tab" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Calendar className="w-4 h-4" />My Sessions</TabsTrigger>
+                  <TabsTrigger value="overview" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><User className="w-4 h-4" />Overview</TabsTrigger>
+                  <TabsTrigger value="sessions" data-testid="my-sessions-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Calendar className="w-4 h-4" />My Sessions</TabsTrigger>
                   {showOrganisingTab && (
-                    <TabsTrigger value="organizing" data-testid="my-organized-sessions-tab" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><ClipboardList className="w-4 h-4" />Organising</TabsTrigger>
+                    <TabsTrigger value="organizing" data-testid="my-organized-sessions-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><ClipboardList className="w-4 h-4" />Organising</TabsTrigger>
                   )}
-                  <TabsTrigger value="tournaments" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Trophy className="w-4 h-4" />Tournaments</TabsTrigger>
+                  <TabsTrigger value="tournaments" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Trophy className="w-4 h-4" />Tournaments</TabsTrigger>
                   {/* Selling tab hidden for now, per request - marketplace items still exist in marketplaceItems if this needs to come back */}
-                  {/* <TabsTrigger value="marketplace" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><ShoppingBag className="w-4 h-4" />Selling ({marketplaceItems.length})</TabsTrigger> */}
+                  {/* <TabsTrigger value="marketplace" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><ShoppingBag className="w-4 h-4" />Selling ({marketplaceItems.length})</TabsTrigger> */}
                   {!isOwnProfile && (
-                    <TabsTrigger value="contact" data-testid="contact-tab" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><MessageCircle className="w-4 h-4" />Contact</TabsTrigger>
+                    <TabsTrigger value="contact" data-testid="contact-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><MessageCircle className="w-4 h-4" />Contact</TabsTrigger>
                   )}
                 </TabsList>
 
