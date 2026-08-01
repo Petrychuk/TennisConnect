@@ -1,10 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, MapPin, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -76,10 +76,12 @@ function guestBucketFor(session: SessionWithDetails): GuestBucket {
 export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrganizedSessionsSectionProps) {
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+  const search = useSearch();
   const queryClient = useQueryClient();
   const [joiningId, setJoiningId] = useState<string | null>(null);
   const [policyOpenId, setPolicyOpenId] = useState<string | null>(null);
+  const autoJoinAttempted = useRef(false);
 
   const mineQuery = useQuery({
     queryKey: ["/api/organizer/sessions/mine"],
@@ -117,11 +119,11 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
     return map;
   }, [myRegisteredQuery.data]);
 
-  const handleJoin = async (session: TennisSession) => {
-    if (!isAuthenticated) {
-      setLocation("/auth");
-      return;
-    }
+  // The actual join call - shared by a direct click (already signed
+  // in) and the auto-join effect below (just arrived back from
+  // /auth). `announce` controls the toast wording, since "you're in!"
+  // reads oddly right after a "welcome back" toast has already fired.
+  const performJoin = async (session: TennisSession, announce: "immediate" | "after-auth") => {
     setJoiningId(session.id);
     try {
       const { waitlisted } = await joinSessionApi(session.id);
@@ -130,9 +132,14 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
       queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine"] });
       toast({
         title: waitlisted ? "Added to the waiting list" : "You're in!",
-        description: waitlisted
-          ? `"${session.title}" is full — you'll move up automatically if a spot opens.`
-          : `You've joined "${session.title}".`,
+        description:
+          announce === "after-auth"
+            ? waitlisted
+              ? `You've been added to the waiting list for "${session.title}".`
+              : `"${session.title}" has been added to your My Sessions.`
+            : waitlisted
+              ? `"${session.title}" is full — you'll move up automatically if a spot opens.`
+              : `You've joined "${session.title}".`,
       });
     } catch (error: any) {
       toast({ title: "Couldn't join session", description: error?.message ?? "Please try again.", variant: "destructive" });
@@ -140,6 +147,44 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
       setJoiningId(null);
     }
   };
+
+  const handleJoin = async (session: TennisSession) => {
+    if (!isAuthenticated) {
+      // Send them to sign in (or register), but bring them right back
+      // here afterwards instead of to their own profile, and remember
+      // which session they were trying to join so it completes
+      // automatically the moment they're back and authenticated.
+      const returnTo = `${location}${search ? `?${search}` : ""}`;
+      const params = new URLSearchParams({ returnTo, joinSession: session.id });
+      setLocation(`/auth?${params.toString()}`);
+      return;
+    }
+    performJoin(session, "immediate");
+  };
+
+  // Completes a join that was interrupted by a sign-in/registration
+  // redirect. Runs once per mount; strips joinSession from the URL
+  // right after so refreshing the page doesn't re-trigger it.
+  useEffect(() => {
+    if (autoJoinAttempted.current) return;
+    if (!isAuthenticated) return;
+    const params = new URLSearchParams(search);
+    const pendingSessionId = params.get("joinSession");
+    if (!pendingSessionId) return;
+    if (isLoading || myRegisteredQuery.isLoading) return;
+
+    autoJoinAttempted.current = true;
+    params.delete("joinSession");
+    params.delete("returnTo");
+    const cleanQuery = params.toString();
+    setLocation(`${location}${cleanQuery ? `?${cleanQuery}` : ""}`, { replace: true });
+
+    const target = sessions.find((s) => s.id === pendingSessionId);
+    if (target && !myStatusById.get(target.id)) {
+      performJoin(target, "after-auth");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, isLoading, myRegisteredQuery.isLoading, sessions, search]);
 
   const handleLeave = async (session: TennisSession) => {
     setJoiningId(session.id);

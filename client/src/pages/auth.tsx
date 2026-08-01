@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -27,6 +27,7 @@ export default function AuthPage() {
   const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
   const [, setLocation] = useLocation();
+  const search = useSearch();
   const { toast } = useToast();
   const { login, register } = useAuth();
 
@@ -44,6 +45,21 @@ export default function AuthPage() {
     setIsLoading(true);
     try {
       const loggedInUser = await login(data.email, data.password);
+
+      const params = new URLSearchParams(search);
+      const returnTo = params.get("returnTo");
+      const joinSession = params.get("joinSession");
+
+      if (returnTo) {
+        toast({
+          title: "Welcome back!",
+          description: "You're signed in — picking up right where you left off.",
+        });
+        const target = new URL(returnTo, window.location.origin);
+        if (joinSession) target.searchParams.set("joinSession", joinSession);
+        setLocation(target.pathname + target.search);
+        return;
+      }
 
       toast({
         title: "Welcome back!",
@@ -75,6 +91,26 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
   try {
     
     const user = await register(data.email, data.password, data.name, data.role, data.wantsToOrganize);
+
+    const params = new URLSearchParams(search);
+    const returnTo = params.get("returnTo");
+    const joinSession = params.get("joinSession");
+
+    if (returnTo && joinSession) {
+      // Deliberately skips /complete-profile for this specific flow -
+      // they came here to join a session, not to fill out a profile,
+      // and role/name/email/password are already collected by this
+      // form. They can always fill the rest in later from their
+      // profile.
+      toast({
+        title: "Welcome to TennisConnect!",
+        description: "Thanks for registering — joining that session for you now.",
+      });
+      const target = new URL(returnTo, window.location.origin);
+      target.searchParams.set("joinSession", joinSession);
+      setLocation(target.pathname + target.search);
+      return;
+    }
 
     toast({
       title: "Account created",
