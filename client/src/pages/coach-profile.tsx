@@ -27,7 +27,6 @@ import { MyOrganizedSessionsSection } from "@/components/profile/shared/MyOrgani
 import { TournamentHistorySection } from "@/components/profile/shared/TournamentHistorySection";
 import { useOrganizerStatus } from "@/hooks/use-organizer-status";
 
-import { COACHES_DATA } from "@/lib/dummy-data";
 import {
   Command,
   CommandEmpty,
@@ -51,7 +50,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-import heroImage from "/assets/images/Coach_default.png";
 import avatarImage from "/assets/images/female_tennis_coach_portrait.png";
 import gallery1 from "/assets/images/kids_tennis_training_session.png";
 import gallery2 from "/assets/images/tennis_match_action_shot_in_sydney.png";
@@ -196,7 +194,6 @@ export default function CoachProfile() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [openCombobox, setOpenCombobox] = useState(false);
-  const [isDemo, setIsDemo] = useState(false);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<CoachProfile>(DEFAULT_COACH_PROFILE);
   const [originalProfile, setOriginalProfile] = useState<CoachProfile>(DEFAULT_COACH_PROFILE);
@@ -587,123 +584,6 @@ export default function CoachProfile() {
       }
     };
 
-    /* =========================
-     LOAD PUBLIC PROFILE
-     (guest / any user)
-  ========================= */
-  const loadPublicProfile = async () => {
-    if (!profileSlug) return;
-
-    setLoading(true);
-
-    try {
-      const res = await fetch(`/api/coaches/${profileSlug}`, {
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setProfile(prev => ({
-          ...prev,
-          ...data,
-        }));
-        setIsDemo(false);
-        setLoading(false);
-        return;
-      }
-    } catch (e) {
-      console.warn("Public profile fetch failed");
-    }
-
-    // 🔁 DEMO FALLBACK (важно — НЕ УДАЛЯТЬ)
-    const demoCoach = COACHES_DATA.find(c => c.slug === profileSlug);
-    if (demoCoach) {
-      setProfile(prev => ({
-        ...prev,
-        name: demoCoach.name,
-        title: demoCoach.title,
-        bio: demoCoach.bio,
-        location: demoCoach.location,
-        rate: String(demoCoach.rate),
-        tags: demoCoach.tags,
-        photos: demoCoach.photos,
-        avatar: demoCoach.image,
-        cover: demoCoach.cover,
-      }));
-      setIsDemo(true);
-      setLoading(false);
-      return;
-    }
-
-    setLocation("/coaches");
-  };
- 
-  /* =========================
-     LOAD PRIVATE PROFILE
-     (ONLY OWNER)
-  ========================= */
-  const loadPrivateProfile = async () => {
-    if (!isOwnProfile) return;
-
-    try {
-      
-      const res = await fetch("/api/me/coach-profile", {
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-
-        if (data) {
-          setProfileData(data);
-
-          setProfile(prev => ({
-            ...prev,
-
-            // user
-            name: user?.name || prev.name,
-            avatar: user?.avatar || prev.avatar,
-            cover: user?.cover || prev.cover,
-            email: user?.email || prev.email,
-
-            // profile
-            title: data.title ?? prev.title,
-            bio: data.bio ?? prev.bio,
-            location: data.location ?? prev.location,
-            locations: data.locations ?? prev.locations,
-            tags: data.tags ?? prev.tags,
-            schedule: data.schedule ?? prev.schedule,
-            phone: data.phone ?? prev.phone,
-            rate: String(data.rate ?? prev.rate),
-            experience: data.experience ?? prev.experience,
-            photos: data.photos?.length ? data.photos : prev.photos,
-
-            active_students: data.active_students ?? prev.active_students,
-            rating: data.rating ?? prev.rating,
-            attendance: data.attendance ?? prev.attendance,
-          }));
-        }
-      }
-
-      const marketplaceRes = await fetch("/api/profile/marketplace", {
-        credentials: "include",
-      });
-
-      if (marketplaceRes.ok) {
-        setMarketplaceItems(await marketplaceRes.json());
-      }
-    } catch (err) {
-      console.error(err);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to load private profile",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   /* =========================
      EFFECTS
   ========================= */
@@ -769,26 +649,8 @@ export default function CoachProfile() {
             }
 
         } catch (e) {
-          // Try to find in demo data
-          const demoCoach = COACHES_DATA.find(c => c.slug === profileSlug);
-          if (demoCoach) {
-            setProfile(prev => ({
-              ...DEFAULT_COACH_PROFILE,
-              name: demoCoach.name,
-              avatar: demoCoach.image,
-              cover: heroImage,
-              title: demoCoach.title || DEFAULT_COACH_PROFILE.title,
-              location: demoCoach.location,
-              bio: demoCoach.bio || DEFAULT_COACH_PROFILE.bio,
-              rate: String(demoCoach.rate),
-              experience: demoCoach.experience,
-              tags: demoCoach.tags || [],
-              schedule: demoCoach.schedule || DEFAULT_COACH_PROFILE.schedule,
-            }));
-            setIsDemo(true);
-          } else {
-            setLocation("/coaches");
-          }
+          console.error("Public coach profile fetch failed", e);
+          setLocation("/coaches");
         } finally {
           setLoading(false);
         }

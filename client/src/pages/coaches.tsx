@@ -33,7 +33,7 @@ export default function CoachesPage() {
   const [locationFilter, setLocationFilter] = useState("all");
   const [priceRange, setPriceRange] = useState([150]); // Max price
   const [minRating, setMinRating] = useState(0);
-  const [coaches, setCoaches] = useState(COACHES_DATA);
+  const [coaches, setCoaches] = useState<typeof COACHES_DATA>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({
@@ -98,14 +98,13 @@ export default function CoachesPage() {
       } catch (error) {
         console.error("Failed to fetch coaches:", error);
   
-        // Temporary fallback
-        setCoaches(COACHES_DATA);
+        setCoaches([]);
   
         setPagination({
           page: 1,
           limit: 16,
-          total: COACHES_DATA.length,
-          totalPages: 1,
+          total: 0,
+          totalPages: 0,
         });
       } finally {
         setLoading(false);
