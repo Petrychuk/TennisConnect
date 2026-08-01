@@ -337,6 +337,17 @@ router.get("/admin/sessions", requireAdmin, async (req, res, next) => {
     try {
       const reviewerId = (req.user as any).id;
       const session = await storage.approveSession(req.params.id, reviewerId);
+
+      const creator = await storage.getUser(session.createdBy);
+      if (creator) {
+        await sendSystemMessage(
+          creator.id,
+          creator.role,
+          "Your Session Was Approved",
+          `"${session.title}" has been approved and is now open for registration.`
+        );
+      }
+
       res.json(session);
     } catch (error) {
       next(error);
@@ -428,10 +439,30 @@ router.get("/sessions/mine/registered", requireAuth, async (req, res, next) => {
 
 router.post("/sessions/:id/join", requireAuth, async (req, res, next) => {
   try {
+    const joinerId = (req.user as any).id;
     const { registration, waitlisted } = await storage.registerForSession(
       req.params.id,
-      (req.user as any).id
+      joinerId
     );
+
+    const session = await storage.getSessionById(req.params.id);
+    if (session && session.createdBy !== joinerId) {
+      const [organizer, joiner] = await Promise.all([
+        storage.getUser(session.createdBy),
+        storage.getUser(joinerId),
+      ]);
+      if (organizer) {
+        await sendSystemMessage(
+          organizer.id,
+          organizer.role,
+          waitlisted ? "New Waiting List Signup" : "New Player Joined",
+          waitlisted
+            ? `${joiner?.name ?? "A player"} joined the waiting list for "${session.title}".`
+            : `${joiner?.name ?? "A player"} just joined "${session.title}".`
+        );
+      }
+    }
+
     res.status(201).json({ registration, waitlisted });
   } catch (error: any) {
     res.status(400).json({ message: error.message || "Unable to join session" });
@@ -440,7 +471,25 @@ router.post("/sessions/:id/join", requireAuth, async (req, res, next) => {
 
 router.delete("/sessions/:id/join", requireAuth, async (req, res, next) => {
   try {
-    const registration = await storage.cancelRegistration(req.params.id, (req.user as any).id);
+    const leaverId = (req.user as any).id;
+    const registration = await storage.cancelRegistration(req.params.id, leaverId);
+
+    const session = await storage.getSessionById(req.params.id);
+    if (session && session.createdBy !== leaverId) {
+      const [organizer, leaver] = await Promise.all([
+        storage.getUser(session.createdBy),
+        storage.getUser(leaverId),
+      ]);
+      if (organizer) {
+        await sendSystemMessage(
+          organizer.id,
+          organizer.role,
+          "A Player Left Your Session",
+          `${leaver?.name ?? "A player"} withdrew from "${session.title}".`
+        );
+      }
+    }
+
     res.json(registration);
   } catch (error: any) {
     res.status(400).json({ message: error.message || "Unable to cancel registration" });
