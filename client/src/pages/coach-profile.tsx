@@ -242,9 +242,11 @@ export default function CoachProfile() {
   const [showCoachPhone, setShowCoachPhone] = useState(false);
 
   const profileSearch = useSearch();
-  const [activeTab, setActiveTab] = useState(() =>
-    new URLSearchParams(profileSearch).has("joinSession") ? "organizing" : "about"
-  );
+  const [activeTab, setActiveTab] = useState(() => {
+    const initialParams = new URLSearchParams(profileSearch);
+    if (initialParams.has("joinSession")) return "organizing";
+    return initialParams.get("tab") || "about";
+  });
 
   /* =========================
      MODALS
@@ -1750,7 +1752,7 @@ export default function CoachProfile() {
                           <CardContent className="py-10 text-center space-y-3">
                             <p className="text-muted-foreground">Sign in to see contact details and send a message.</p>
                             <Button asChild size="sm" data-testid="coach-contact-sign-in">
-                              <a href={`/auth?returnTo=${encodeURIComponent(`/coach/${profileSlug}`)}`}>
+                              <a href={`/auth?returnTo=${encodeURIComponent(`/coach/${profileSlug}?tab=contact`)}`}>
                                 <LogIn className="w-4 h-4 mr-2" />
                                 Sign In
                               </a>

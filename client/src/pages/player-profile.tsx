@@ -95,7 +95,10 @@ export default function PlayerProfile() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const profileSearch = useSearch();
-  const initialTab = new URLSearchParams(profileSearch).has("joinSession") ? "organizing" : "overview";
+  const initialTabParams = new URLSearchParams(profileSearch);
+  const initialTab = initialTabParams.has("joinSession")
+    ? "organizing"
+    : initialTabParams.get("tab") || "overview";
 
   const isOwnProfile = isAuthenticated && user?.slug === profileSlug; 
   const organizerStatus = useOrganizerStatus(isOwnProfile);
@@ -1313,7 +1316,7 @@ export default function PlayerProfile() {
                         <CardContent className="py-10 text-center space-y-3">
                           <p className="text-muted-foreground">Sign in to see contact details and send a message.</p>
                           <Button asChild size="sm" data-testid="player-contact-sign-in">
-                            <a href={`/auth?returnTo=${encodeURIComponent(`/player/${profileSlug}`)}`}>
+                            <a href={`/auth?returnTo=${encodeURIComponent(`/player/${profileSlug}?tab=contact`)}`}>
                               <LogIn className="w-4 h-4 mr-2" />
                               Sign In
                             </a>
