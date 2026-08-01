@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
@@ -26,7 +27,10 @@ import {
   mockTopPlayersBySessions,
   mockTopPlayersByWinRate,
   mockRecentNewPlayers,
+  type OrgPlayer,
 } from "@/lib/organiser-players-mock-data";
+import { getMyPlayers } from "@/lib/api/organizer-sessions";
+import { toOrgPlayers } from "@/lib/api/session-adapter";
 
 type MobileFilter = "all" | "active" | "new";
 
@@ -39,20 +43,46 @@ export default function OrganiserPlayersPage() {
   // fields stay mock for now since there's no backend for those yet.
   const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null } : mockOrganiser;
 
+  const myPlayersQuery = useQuery({
+    queryKey: ["/api/organizer/players/mine"],
+    queryFn: getMyPlayers,
+    enabled: isAuthenticated,
+  });
+
+  // Real players first, then the mock roster padding out the rest -
+  // same "real leads, mock stays for testing volume" pattern used for
+  // the session-level Players/Registration tabs and the dashboard.
+  const allPlayers: OrgPlayer[] = useMemo(() => {
+    const real = toOrgPlayers(myPlayersQuery.data ?? []);
+    return [...real, ...mockOrgPlayers];
+  }, [myPlayersQuery.data]);
+
+  const realCount = myPlayersQuery.data?.length ?? 0;
+  // The headline "128 total" etc. describe a bigger mock org than the
+  // 10 sample rows represent (see organiser-players-mock-data.ts) -
+  // once there are real players, their count is added on top of that
+  // baseline rather than replacing it, so the summary strip and the
+  // "Showing 1 to N of totalPlayers" line stay consistent with what's
+  // actually rendered below.
+  const playersSummary = {
+    ...mockOrgPlayersSummary,
+    totalPlayers: mockOrgPlayersSummary.totalPlayers + realCount,
+  };
+
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"table" | "grid">("table");
   const [mobileFilter, setMobileFilter] = useState<MobileFilter>("all");
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return query ? mockOrgPlayers.filter((p) => p.name.toLowerCase().includes(query)) : mockOrgPlayers;
-  }, [search]);
+    return query ? allPlayers.filter((p) => p.name.toLowerCase().includes(query)) : allPlayers;
+  }, [allPlayers, search]);
 
   const mobileFiltered = useMemo(() => {
     if (mobileFilter === "active") return filtered.filter((p) => p.status === "active");
-    if (mobileFilter === "new") return mockOrgPlayers.slice(0, mockOrgPlayersSummary.newThisMonth > filtered.length ? filtered.length : mockOrgPlayersSummary.newThisMonth).filter((p) => filtered.includes(p));
+    if (mobileFilter === "new") return allPlayers.slice(0, mockOrgPlayersSummary.newThisMonth > filtered.length ? filtered.length : mockOrgPlayersSummary.newThisMonth).filter((p) => filtered.includes(p));
     return filtered;
-  }, [filtered, mobileFilter]);
+  }, [filtered, mobileFilter, allPlayers]);
 
   if (authLoading) return null;
   if (!isAuthenticated) {
@@ -152,14 +182,14 @@ export default function OrganiserPlayersPage() {
             </div>
           </div>
 
-          <PlayersStatStrip summary={mockOrgPlayersSummary} />
+          <PlayersStatStrip summary={playersSummary} />
 
           {/* Desktop */}
           <div className="hidden xl:block space-y-6">
             <PlayersToolbar search={search} onSearchChange={setSearch} view={view} onViewChange={setView} showAdvancedFilters />
             <PlayersTable players={filtered} />
             <p className="text-sm text-muted-foreground" data-testid="organiser-players-page-pagination">
-              Showing 1 to {Math.min(filtered.length, 10)} of {mockOrgPlayersSummary.totalPlayers} players
+              Showing 1 to {Math.min(filtered.length, 10)} of {playersSummary.totalPlayers} players
             </p>
             <div className="grid grid-cols-3 gap-6">
               <TopPlayersCard
@@ -181,7 +211,7 @@ export default function OrganiserPlayersPage() {
             <PlayersToolbar search={search} onSearchChange={setSearch} />
             <PlayersList players={filtered} />
             <p className="text-sm text-muted-foreground" data-testid="organiser-players-page-pagination-tablet">
-              Showing 1 to {Math.min(filtered.length, 10)} of {mockOrgPlayersSummary.totalPlayers} players
+              Showing 1 to {Math.min(filtered.length, 10)} of {playersSummary.totalPlayers} players
             </p>
             <div className="grid grid-cols-2 gap-6">
               <TopPlayersCard
@@ -202,7 +232,7 @@ export default function OrganiserPlayersPage() {
             <PlayersToolbar search={search} onSearchChange={setSearch} />
             <div className="flex items-center gap-2" data-testid="organiser-players-page-mobile-filters">
               {([
-                ["all", `All (${mockOrgPlayersSummary.totalPlayers})`],
+                ["all", `All (${playersSummary.totalPlayers})`],
                 ["active", `Active (${mockOrgPlayersSummary.activeThisSeason})`],
                 ["new", `New (${mockOrgPlayersSummary.newThisMonth})`],
               ] as [MobileFilter, string][]).map(([key, label]) => (
@@ -223,7 +253,7 @@ export default function OrganiserPlayersPage() {
             </div>
             <PlayersList players={mobileFiltered} showSessions={false} />
             <p className="text-sm text-muted-foreground" data-testid="organiser-players-page-pagination-mobile">
-              Showing 1 to {Math.min(mobileFiltered.length, 10)} of {mockOrgPlayersSummary.totalPlayers} players
+              Showing 1 to {Math.min(mobileFiltered.length, 10)} of {playersSummary.totalPlayers} players
             </p>
           </div>
         </div>

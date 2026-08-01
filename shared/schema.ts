@@ -882,6 +882,17 @@ export type RegistrationWithUser = Registration & {
   userRole: string;
 };
 
+// One row per distinct player across every session in an organization -
+// the org-wide "Players" page's real roster.
+export type OrgPlayerRow = {
+  userId: string;
+  userName: string;
+  userSlug: string;
+  userAvatar: string | null;
+  sessionsPlayed: number;
+  lastPlayedAt: string;
+};
+
 // Articles / Travel / Recreation / Tournaments schemas
 export const insertArticleSchema = createInsertSchema(articles).omit({
   id: true,

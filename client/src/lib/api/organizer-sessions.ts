@@ -5,6 +5,7 @@ import type {
   InsertSession,
   Organization,
   RegistrationWithUser,
+  OrgPlayerRow,
 } from "@shared/schema";
 
 const BASE = "/api/organizer";
@@ -42,6 +43,12 @@ export async function ensureMyOrganization(fallbackName: string): Promise<Organi
 
 export async function getMySessions(): Promise<TennisSession[]> {
   const res = await apiRequest("GET", `${BASE}/sessions/mine`);
+  return res.json();
+}
+
+/** Org-wide player roster - every distinct player who's registered for any of the organiser's sessions. */
+export async function getMyPlayers(): Promise<OrgPlayerRow[]> {
+  const res = await apiRequest("GET", `${BASE}/players/mine`);
   return res.json();
 }
 

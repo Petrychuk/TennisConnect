@@ -44,6 +44,7 @@ import {
   type InsertRegistration,
   type SessionWithDetails,
   type RegistrationWithUser,
+  type OrgPlayerRow,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, asc, sql, lte, ne, gte} from "drizzle-orm";
@@ -235,6 +236,7 @@ export interface IStorage {
  cancelSession(id: string): Promise<TennisSession>;
  deleteSession(id: string): Promise<void>;
  getRegistrationsForSession(sessionId: string): Promise<RegistrationWithUser[]>;
+ getPlayersForOrganization(organizationId: string): Promise<OrgPlayerRow[]>;
   // Admin: every session on the platform, across all organizations, so
   // nothing goes live without the admin seeing it first.
  getAllSessionsForAdmin(status?: string): Promise<SessionWithDetails[]>;
@@ -2149,6 +2151,38 @@ export class DatabaseStorage implements IStorage {
       userIsTestUser: row.userIsTestUser,
       userRole: row.userRole,
     }));
+  }
+
+  // Org-wide player roster ("Players" page) - one row per distinct
+  // player who's ever registered (non-cancelled) for any of this
+  // organization's sessions, with a real sessionsPlayed count and the
+  // most recent session they registered for. Level/win-rate aren't
+  // derivable from registration data alone (no ratings or match
+  // results exist yet) - those stay the caller's responsibility to
+  // default sensibly, this only returns what's actually knowable.
+  async getPlayersForOrganization(organizationId: string): Promise<OrgPlayerRow[]> {
+    const rows = await db
+      .select({
+        userId: registrations.userId,
+        userName: users.name,
+        userSlug: users.slug,
+        userAvatar: users.avatar,
+        sessionsPlayed: sql<number>`count(distinct ${registrations.id})`,
+        lastPlayedAt: sql<string>`max(${tennisSessions.startAt})`,
+      })
+      .from(registrations)
+      .innerJoin(tennisSessions, eq(registrations.sessionId, tennisSessions.id))
+      .innerJoin(users, eq(registrations.userId, users.id))
+      .where(
+        and(
+          eq(tennisSessions.organizationId, organizationId),
+          ne(registrations.status, "cancelled")
+        )
+      )
+      .groupBy(registrations.userId, users.name, users.slug, users.avatar)
+      .orderBy(desc(sql`count(distinct ${registrations.id})`));
+
+    return rows;
   }
 
   async getViewerRegistrationStatus(sessionId: string, userId: string): Promise<string | null> {

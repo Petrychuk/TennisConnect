@@ -221,6 +221,21 @@ router.get("/sessions/mine", requireAuth, async (req, res, next) => {
   }
 });
 
+// Org-wide Players page - every distinct player who's registered for
+// any of this organiser's sessions, not just one at a time.
+router.get("/players/mine", requireAuth, async (req, res, next) => {
+  try {
+    const organization = await storage.getOrganizationOwnedByUser((req.user as any).id);
+    if (!organization) {
+      return res.json([]);
+    }
+    const players = await storage.getPlayersForOrganization(organization.id);
+    res.json(players);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.post("/sessions", requireAuth, requireOrganizer, async (req, res, next) => {
   try {
     const ownerId = (req.user as any).id;

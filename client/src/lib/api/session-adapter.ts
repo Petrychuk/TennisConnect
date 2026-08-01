@@ -1,5 +1,6 @@
-import type { TennisSession, SessionWithDetails, RegistrationWithUser } from "@shared/schema";
+import type { TennisSession, SessionWithDetails, RegistrationWithUser, OrgPlayerRow } from "@shared/schema";
 import type { SessionListItem, SessionPlayer } from "@/lib/organiser-sessions-mock-data";
+import type { OrgPlayer } from "@/lib/organiser-players-mock-data";
 
 function isSessionWithDetails(s: TennisSession | SessionWithDetails): s is SessionWithDetails {
   return "registeredCount" in s;
@@ -123,4 +124,32 @@ export function toSessionPlayer(registration: RegistrationWithUser): SessionPlay
 
 export function toSessionPlayers(registrationsList: RegistrationWithUser[]): SessionPlayer[] {
   return registrationsList.map(toSessionPlayer);
+}
+
+/**
+ * Maps a real org-wide player row (from GET /players/mine) to the
+ * OrgPlayer shape the Players page's UI already expects. Level/win-rate
+ * aren't derivable from registration data alone - no skill ratings or
+ * match results exist yet - so those get neutral defaults rather than
+ * fabricated numbers, same reasoning as toSessionPlayer's level/group.
+ */
+export function toOrgPlayer(row: OrgPlayerRow): OrgPlayer {
+  const lastPlayed = new Date(row.lastPlayedAt);
+  const daysSinceLastPlayed = (Date.now() - lastPlayed.getTime()) / (24 * 60 * 60 * 1000);
+  return {
+    id: row.userId,
+    name: row.userName,
+    avatar: row.userAvatar,
+    level: 0,
+    levelLabel: "Social",
+    sessionsPlayed: row.sessionsPlayed,
+    winRate: 0,
+    lastPlayed: lastPlayed.toISOString(),
+    // Active if they've registered for something in the last ~90 days.
+    status: daysSinceLastPlayed <= 90 ? "active" : "inactive",
+  };
+}
+
+export function toOrgPlayers(rows: OrgPlayerRow[]): OrgPlayer[] {
+  return rows.map(toOrgPlayer);
 }
