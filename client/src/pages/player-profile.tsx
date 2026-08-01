@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { useLocation, useRoute, useSearch } from "wouter";
-import { MapPin, Calendar, Trophy, Edit2, ShoppingBag, Plus, Trash2, Camera, Globe, Phone, Mail, MessageCircle, Send, LogIn } from "lucide-react";
+import { MapPin, Calendar, Trophy, Edit2, ShoppingBag, Plus, Trash2, Camera, Globe, Phone, Mail, MessageCircle, Send, LogIn, User, ClipboardList } from "lucide-react";
 import { COACHES_DATA, PARTNERS_DATA } from "@/lib/dummy-data";
 import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.png";
 import SEO from "@/components/seo";
@@ -809,17 +809,17 @@ export default function PlayerProfile() {
                       p-0
                       bg-transparent
                       gap-2
-                      md:pl-8
                       scrollbar-hide">
-                  <TabsTrigger value="overview" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">Overview</TabsTrigger>
-                  <TabsTrigger value="sessions" data-testid="my-sessions-tab" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">My Sessions</TabsTrigger>
+                  <TabsTrigger value="overview" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><User className="w-4 h-4" />Overview</TabsTrigger>
+                  <TabsTrigger value="sessions" data-testid="my-sessions-tab" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Calendar className="w-4 h-4" />My Sessions</TabsTrigger>
                   {showOrganisingTab && (
-                    <TabsTrigger value="organizing" data-testid="my-organized-sessions-tab" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">Organising</TabsTrigger>
+                    <TabsTrigger value="organizing" data-testid="my-organized-sessions-tab" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><ClipboardList className="w-4 h-4" />Organising</TabsTrigger>
                   )}
-                  <TabsTrigger value="tournaments" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">Tournaments</TabsTrigger>
-                  <TabsTrigger value="marketplace" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">Selling ({marketplaceItems.length})</TabsTrigger>
+                  <TabsTrigger value="tournaments" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Trophy className="w-4 h-4" />Tournaments</TabsTrigger>
+                  {/* Selling tab hidden for now, per request - marketplace items still exist in marketplaceItems if this needs to come back */}
+                  {/* <TabsTrigger value="marketplace" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><ShoppingBag className="w-4 h-4" />Selling ({marketplaceItems.length})</TabsTrigger> */}
                   {!isOwnProfile && (
-                    <TabsTrigger value="contact" data-testid="contact-tab" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base">Contact</TabsTrigger>
+                    <TabsTrigger value="contact" data-testid="contact-tab" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><MessageCircle className="w-4 h-4" />Contact</TabsTrigger>
                   )}
                 </TabsList>
 
@@ -1155,6 +1155,8 @@ export default function PlayerProfile() {
                   })()}
                 </TabsContent>
 
+                {/* Selling tab content hidden for now, per request */}
+                {false && (
                 <TabsContent value="marketplace" className="space-y-8">
                   <div className="flex justify-between items-center">
                     <h3 className="text-xl font-bold">My Items for Sale</h3>
@@ -1308,6 +1310,7 @@ export default function PlayerProfile() {
                     )}
                   </div>
                 </TabsContent>
+                )}
 
                 {!isOwnProfile && (
                   <TabsContent value="contact" className="space-y-8" data-testid="contact-tab-content">
