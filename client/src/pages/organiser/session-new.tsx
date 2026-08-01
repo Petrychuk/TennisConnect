@@ -52,10 +52,15 @@ export default function OrganiserSessionNewPage() {
   };
 
   const canProceedFromStep1 = draft.type !== null;
+  const canProceedFromStep2 = draft.name.trim().length > 0 && draft.venue.trim().length > 0 && !!draft.date;
 
   const handleNext = () => {
     if (step === 1 && !canProceedFromStep1) {
       toast({ title: "Choose a session type to continue" });
+      return;
+    }
+    if (step === 2 && !canProceedFromStep2) {
+      toast({ title: "Give your session a name, venue, and date to continue", variant: "destructive" });
       return;
     }
     const next = Math.min(step + 1, 4);
@@ -69,6 +74,11 @@ export default function OrganiserSessionNewPage() {
 
   const handleSaveDraft = async () => {
     if (submitting) return;
+    if (!canProceedFromStep2) {
+      toast({ title: "Give your session a name, venue, and date first", variant: "destructive" });
+      setStep(2);
+      return;
+    }
     setSubmitting(true);
     try {
       await ensureMyOrganization(`${organiser.name}'s Sessions`);
@@ -84,6 +94,11 @@ export default function OrganiserSessionNewPage() {
 
   const handlePublish = async () => {
     if (submitting) return;
+    if (!canProceedFromStep2) {
+      toast({ title: "Give your session a name, venue, and date first", variant: "destructive" });
+      setStep(2);
+      return;
+    }
     setSubmitting(true);
     try {
       await ensureMyOrganization(`${organiser.name}'s Sessions`);
@@ -196,7 +211,7 @@ export default function OrganiserSessionNewPage() {
 
           {/* Tablet/mobile step indicator */}
           <div className="xl:hidden">
-            <WizardStepIndicator currentStep={step} />
+            <WizardStepIndicator currentStep={step} maxReachedStep={maxReachedStep} onStepClick={goToStep} />
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
