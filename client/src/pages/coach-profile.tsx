@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MapPin, Camera, Edit2, Save, Plus, Trophy, Clock, DollarSign, X, ShoppingBag, Mail, Phone, MessageCircle, Send, Check, ChevronsUpDown, Calendar, ChevronRight, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { cn } from "@/lib/utils";
 import SEO from "@/components/seo";
 import { BecomeOrganizerCard } from "@/components/profile/shared/BecomeOrganizerCard";
@@ -241,7 +241,10 @@ export default function CoachProfile() {
   const [showCoachEmail, setShowCoachEmail] = useState(false);
   const [showCoachPhone, setShowCoachPhone] = useState(false);
 
-  const [activeTab, setActiveTab] = useState("about");
+  const profileSearch = useSearch();
+  const [activeTab, setActiveTab] = useState(() =>
+    new URLSearchParams(profileSearch).has("joinSession") ? "organizing" : "about"
+  );
 
   /* =========================
      MODALS

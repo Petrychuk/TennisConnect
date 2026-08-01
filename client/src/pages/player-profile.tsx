@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogDescription, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
-import { useLocation, useRoute } from "wouter";
+import { useLocation, useRoute, useSearch } from "wouter";
 import { MapPin, Calendar, Trophy, Edit2, ShoppingBag, Plus, Trash2, Camera, Globe } from "lucide-react";
 import { COACHES_DATA, PARTNERS_DATA } from "@/lib/dummy-data";
 import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.png";
@@ -89,6 +89,8 @@ export default function PlayerProfile() {
   const { user, isAuthenticated, updateUserProfile, updateUserLocal, fetchCurrentUser } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const profileSearch = useSearch();
+  const initialTab = new URLSearchParams(profileSearch).has("joinSession") ? "organizing" : "overview";
 
   const isOwnProfile = isAuthenticated && user?.slug === profileSlug; 
   const organizerStatus = useOrganizerStatus(isOwnProfile);
@@ -715,7 +717,7 @@ export default function PlayerProfile() {
                   <Skeleton className="h-40 w-full rounded-2xl" />
                 </div>
               ) : (
-              <Tabs defaultValue="overview" className="space-y-8">
+              <Tabs defaultValue={initialTab} className="space-y-8">
                 <TabsList className="w-full
                       flex
                       overflow-x-auto
