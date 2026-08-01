@@ -1,7 +1,7 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { storage } from "../storage";
 import { requireAuth, requireAdmin } from "../requireAuth";
-import { sendSystemMessage, ORGANIZER_APPROVED_SUBJECT, ORGANIZER_APPROVED_MESSAGE } from "../services/systemMessages";
+import { sendMessageBetween, ORGANIZER_APPROVED_SUBJECT, ORGANIZER_APPROVED_MESSAGE } from "../services/systemMessages";
 import {
   insertOrganizationSchema,
   insertSessionSchema,
@@ -73,9 +73,13 @@ router.post("/requests/:id/approve", requireAdmin, async (req, res, next) => {
     const reviewerId = (req.user as any).id;
     const request = await storage.approveOrganizerRequest(req.params.id, reviewerId);
 
-    const approvedUser = await storage.getUser(request.userId);
-    if (approvedUser) {
-      await sendSystemMessage(
+    const [approvedUser, reviewer] = await Promise.all([
+      storage.getUser(request.userId),
+      storage.getUser(reviewerId),
+    ]);
+    if (approvedUser && reviewer) {
+      await sendMessageBetween(
+        reviewer,
         approvedUser.id,
         approvedUser.role,
         ORGANIZER_APPROVED_SUBJECT,
@@ -278,18 +282,23 @@ router.post("/sessions/:id/publish", requireAuth, requireOrganizer, requireOwnSe
     // an admin needs to know about - a direct admin publish doesn't
     // need this, they already know.
     if (!isAdmin) {
-      const admins = await storage.getAdminUsers();
-      await Promise.all(
-        admins.map((admin) =>
-          sendSystemMessage(
-            admin.id,
-            admin.role,
-            "New Session Pending Review",
-            `"${session.title}" was just submitted for review and is waiting for your approval.`,
-            `session-${session.id}-pending-review`
+      const [admins, organiser] = await Promise.all([
+        storage.getAdminUsers(),
+        storage.getUser((req.user as any).id),
+      ]);
+      if (organiser) {
+        await Promise.all(
+          admins.map((admin) =>
+            sendMessageBetween(
+              organiser,
+              admin.id,
+              admin.role,
+              "New Session Pending Review",
+              `"${session.title}" was just submitted for review and is waiting for your approval.`
+            )
           )
-        )
-      );
+        );
+      }
     }
 
     res.json(session);
@@ -339,14 +348,17 @@ router.get("/admin/sessions", requireAdmin, async (req, res, next) => {
       const reviewerId = (req.user as any).id;
       const session = await storage.approveSession(req.params.id, reviewerId);
 
-      const creator = await storage.getUser(session.createdBy);
-      if (creator) {
-        await sendSystemMessage(
+      const [creator, reviewer] = await Promise.all([
+        storage.getUser(session.createdBy),
+        storage.getUser(reviewerId),
+      ]);
+      if (creator && reviewer) {
+        await sendMessageBetween(
+          reviewer,
           creator.id,
           creator.role,
           "Your Session Was Approved",
-          `"${session.title}" has been approved and is now open for registration.`,
-          `session-${session.id}-approved`
+          `"${session.title}" has been approved and is now open for registration.`
         );
       }
 
@@ -361,6 +373,23 @@ router.get("/admin/sessions", requireAdmin, async (req, res, next) => {
       const reviewerId = (req.user as any).id;
       const note = typeof req.body?.note === "string" ? req.body.note.slice(0, 500) : undefined;
       const session = await storage.rejectSession(req.params.id, reviewerId, note);
+
+      const [creator, reviewer] = await Promise.all([
+        storage.getUser(session.createdBy),
+        storage.getUser(reviewerId),
+      ]);
+      if (creator && reviewer) {
+        await sendMessageBetween(
+          reviewer,
+          creator.id,
+          creator.role,
+          "Your Session Was Rejected",
+          note
+            ? `"${session.title}" was not approved. Reviewer's note: ${note}`
+            : `"${session.title}" was not approved. You can edit it and resubmit for review.`
+        );
+      }
+
       res.json(session);
     } catch (error) {
       next(error);
@@ -454,27 +483,27 @@ router.post("/sessions/:id/join", requireAuth, async (req, res, next) => {
         storage.getUser(joinerId),
       ]);
 
-      if (joiner) {
-        await sendSystemMessage(
+      if (joiner && organizer) {
+        await sendMessageBetween(
+          organizer,
           joiner.id,
           joiner.role,
           waitlisted ? "You're on the Waiting List" : "You're In!",
           waitlisted
             ? `You've been added to the waiting list for "${session.title}" — you'll move up automatically if a spot opens.`
-            : `You're registered for "${session.title}". It's now in your My Sessions.`,
-          `session-${session.id}-join-confirm-${registration.id}`
+            : `You're registered for "${session.title}". It's now in your My Sessions.`
         );
       }
 
-      if (organizer) {
-        await sendSystemMessage(
+      if (organizer && joiner) {
+        await sendMessageBetween(
+          joiner,
           organizer.id,
           organizer.role,
           waitlisted ? "New Waiting List Signup" : "New Player Joined",
           waitlisted
-            ? `${joiner?.name ?? "A player"} joined the waiting list for "${session.title}".`
-            : `${joiner?.name ?? "A player"} just joined "${session.title}".`,
-          `session-${session.id}-join-${registration.id}`
+            ? `${joiner.name} joined the waiting list for "${session.title}".`
+            : `${joiner.name} just joined "${session.title}".`
         );
       }
     }
@@ -497,23 +526,23 @@ router.delete("/sessions/:id/join", requireAuth, async (req, res, next) => {
         storage.getUser(leaverId),
       ]);
 
-      if (leaver) {
-        await sendSystemMessage(
+      if (leaver && organizer) {
+        await sendMessageBetween(
+          organizer,
           leaver.id,
           leaver.role,
           "Registration Cancelled",
-          `You're no longer registered for "${session.title}".`,
-          `session-${session.id}-leave-confirm-${registration.id}`
+          `You're no longer registered for "${session.title}".`
         );
       }
 
-      if (organizer) {
-        await sendSystemMessage(
+      if (organizer && leaver) {
+        await sendMessageBetween(
+          leaver,
           organizer.id,
           organizer.role,
           "A Player Left Your Session",
-          `${leaver?.name ?? "A player"} withdrew from "${session.title}".`,
-          `session-${session.id}-leave-${registration.id}`
+          `${leaver.name} withdrew from "${session.title}".`
         );
       }
     }

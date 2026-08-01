@@ -12,7 +12,7 @@ import { requireAuth, requireAdmin } from "./requireAuth";
 import supportRoutes from "./routes/supportRoutes";
 import playersRouter from "./routes/players";
 import coachesRouter from "./routes/coaches";
-import { sendSystemMessage, ORGANIZER_APPROVED_SUBJECT, ORGANIZER_APPROVED_MESSAGE } from "./services/systemMessages";
+import { sendSystemMessage, sendMessageBetween, ORGANIZER_APPROVED_SUBJECT, ORGANIZER_APPROVED_MESSAGE } from "./services/systemMessages";
 import uploadContentRouter from "./routes/upload-content";
 import organizerRouter from "./routes/organizer";
 import weatherRouter from "./routes/weather";
@@ -515,12 +515,16 @@ export async function registerRoutes(app: Express): Promise<void> {
           return res.status(404).json({ message: "User not found" });
         }
 
-        await sendSystemMessage(
-          user.id,
-          user.role,
-          ORGANIZER_APPROVED_SUBJECT,
-          ORGANIZER_APPROVED_MESSAGE
-        );
+        const reviewer = await storage.getUser(reviewerId);
+        if (reviewer) {
+          await sendMessageBetween(
+            reviewer,
+            user.id,
+            user.role,
+            ORGANIZER_APPROVED_SUBJECT,
+            ORGANIZER_APPROVED_MESSAGE
+          );
+        }
 
         res.json(user);
       }

@@ -1,5 +1,48 @@
 import { storage } from "../storage";
 
+// Same two people always get the same thread, regardless of who sent
+// which message or what it was about - "conversation between admin
+// and this organiser about their sessions", not a new thread per event.
+function pairConversationId(idA: string, idB: string): string {
+  return `conv-${[idA, idB].sort().join("-")}`;
+}
+
+/**
+ * A message with a real sender behind it - the actual admin, organiser,
+ * or player involved, not an impersonal "Site Admin" placeholder. This
+ * is what makes Reply work (it requires a real senderUserId) and what
+ * makes the inbox show who a notification is actually about. Groups
+ * with any other message between this same pair of people into one
+ * conversation thread.
+ */
+export async function sendMessageBetween(
+  sender: { id: string; name: string; email: string },
+  recipientId: string,
+  recipientType: string,
+  subject: string,
+  content: string
+) {
+  await storage.createMessage({
+    recipientId,
+    recipientType,
+
+    senderUserId: sender.id,
+    senderName: sender.name,
+    senderEmail: sender.email,
+
+    senderPhone: null,
+
+    conversationId: pairConversationId(sender.id, recipientId),
+
+    subject,
+    content,
+  });
+}
+
+// The one case with no other real person to attribute it to - kept as
+// a system notice from "Site Admin", not repliable. Still one thread
+// per recipient (the original admin-${recipientId} scheme), so e.g. a
+// repeated organiser-access grant doesn't create a new thread each time.
 export async function sendSystemMessage(
     recipientId: string,
     recipientType: string,
