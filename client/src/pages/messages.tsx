@@ -618,7 +618,7 @@ export default function MessagesPage() {
                           <div className="space-y-4 pr-2">
                             {conversation.map((msg) => {
                             const isMe = msg.senderUserId === user?.id;
-                            const isSystemMessage = msg.senderName === "Site Admin";
+                            const isSystemMessage = !msg.senderUserId;
 
                             return (
                               <div
