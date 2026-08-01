@@ -285,7 +285,8 @@ router.post("/sessions/:id/publish", requireAuth, requireOrganizer, requireOwnSe
             admin.id,
             admin.role,
             "New Session Pending Review",
-            `"${session.title}" was just submitted for review and is waiting for your approval.`
+            `"${session.title}" was just submitted for review and is waiting for your approval.`,
+            `session-${session.id}-pending-review`
           )
         )
       );
@@ -344,7 +345,8 @@ router.get("/admin/sessions", requireAdmin, async (req, res, next) => {
           creator.id,
           creator.role,
           "Your Session Was Approved",
-          `"${session.title}" has been approved and is now open for registration.`
+          `"${session.title}" has been approved and is now open for registration.`,
+          `session-${session.id}-approved`
         );
       }
 
@@ -451,6 +453,19 @@ router.post("/sessions/:id/join", requireAuth, async (req, res, next) => {
         storage.getUser(session.createdBy),
         storage.getUser(joinerId),
       ]);
+
+      if (joiner) {
+        await sendSystemMessage(
+          joiner.id,
+          joiner.role,
+          waitlisted ? "You're on the Waiting List" : "You're In!",
+          waitlisted
+            ? `You've been added to the waiting list for "${session.title}" — you'll move up automatically if a spot opens.`
+            : `You're registered for "${session.title}". It's now in your My Sessions.`,
+          `session-${session.id}-join-confirm-${registration.id}`
+        );
+      }
+
       if (organizer) {
         await sendSystemMessage(
           organizer.id,
@@ -458,7 +473,8 @@ router.post("/sessions/:id/join", requireAuth, async (req, res, next) => {
           waitlisted ? "New Waiting List Signup" : "New Player Joined",
           waitlisted
             ? `${joiner?.name ?? "A player"} joined the waiting list for "${session.title}".`
-            : `${joiner?.name ?? "A player"} just joined "${session.title}".`
+            : `${joiner?.name ?? "A player"} just joined "${session.title}".`,
+          `session-${session.id}-join-${registration.id}`
         );
       }
     }
@@ -480,12 +496,24 @@ router.delete("/sessions/:id/join", requireAuth, async (req, res, next) => {
         storage.getUser(session.createdBy),
         storage.getUser(leaverId),
       ]);
+
+      if (leaver) {
+        await sendSystemMessage(
+          leaver.id,
+          leaver.role,
+          "Registration Cancelled",
+          `You're no longer registered for "${session.title}".`,
+          `session-${session.id}-leave-confirm-${registration.id}`
+        );
+      }
+
       if (organizer) {
         await sendSystemMessage(
           organizer.id,
           organizer.role,
           "A Player Left Your Session",
-          `${leaver?.name ?? "A player"} withdrew from "${session.title}".`
+          `${leaver?.name ?? "A player"} withdrew from "${session.title}".`,
+          `session-${session.id}-leave-${registration.id}`
         );
       }
     }

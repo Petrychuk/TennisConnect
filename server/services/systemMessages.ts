@@ -4,10 +4,9 @@ export async function sendSystemMessage(
     recipientId: string,
     recipientType: string,
     subject: string,
-    content: string
+    content: string,
+    conversationId: string = `admin-${recipientId}`
   ) {
-  
-    const conversationId = `admin-${recipientId}`;
   
     await storage.createMessage({
       recipientId,
