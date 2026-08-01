@@ -2134,6 +2134,7 @@ export class DatabaseStorage implements IStorage {
         userSlug: users.slug,
         userAvatar: users.avatar,
         userIsTestUser: users.isTestUser,
+        userRole: users.role,
       })
       .from(registrations)
       .innerJoin(users, eq(registrations.userId, users.id))
@@ -2146,6 +2147,7 @@ export class DatabaseStorage implements IStorage {
       userSlug: row.userSlug,
       userAvatar: row.userAvatar,
       userIsTestUser: row.userIsTestUser,
+      userRole: row.userRole,
     }));
   }
 

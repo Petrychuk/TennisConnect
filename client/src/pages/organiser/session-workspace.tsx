@@ -295,7 +295,7 @@ export default function OrganiserSessionWorkspacePage() {
               <RoundsTab session={session} />
             </TabsContent>
             <TabsContent value="messages" className="mt-4">
-              <MessagesTab />
+              <MessagesTab session={session} />
             </TabsContent>
             <TabsContent value="photos" className="mt-4">
               <PhotosTab />

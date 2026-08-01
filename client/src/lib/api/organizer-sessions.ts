@@ -55,6 +55,12 @@ export async function getSessionRegistrations(id: string): Promise<RegistrationW
   return res.json();
 }
 
+/** Sends a real message to every currently-registered player - the "Session Updates" tab's Post Update action. */
+export async function broadcastToSession(id: string, message: string): Promise<{ sentTo: number }> {
+  const res = await apiRequest("POST", `${BASE}/sessions/${id}/broadcast`, { message });
+  return res.json();
+}
+
 export async function createSession(data: InsertSession): Promise<TennisSession> {
   const res = await apiRequest("POST", `${BASE}/sessions`, data);
   return res.json();

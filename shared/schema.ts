@@ -879,6 +879,7 @@ export type RegistrationWithUser = Registration & {
   userSlug: string;
   userAvatar: string | null;
   userIsTestUser: boolean;
+  userRole: string;
 };
 
 // Articles / Travel / Recreation / Tournaments schemas

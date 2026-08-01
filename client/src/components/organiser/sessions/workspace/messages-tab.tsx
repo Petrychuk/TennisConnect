@@ -2,43 +2,57 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Megaphone, CloudRain, MapPinned, Image as ImageIcon, Send } from "lucide-react";
+import { Megaphone, Send } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { broadcastToSession } from "@/lib/api/organizer-sessions";
+import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 
 interface SessionUpdate {
   id: string;
-  kind: "general" | "rain" | "court-change" | "photos";
   message: string;
   timestamp: string;
 }
 
-const KIND_ICON: Record<SessionUpdate["kind"], typeof Megaphone> = {
-  general: Megaphone,
-  rain: CloudRain,
-  "court-change": MapPinned,
-  photos: ImageIcon,
-};
+interface MessagesTabProps {
+  session: SessionListItem;
+}
 
-const initialUpdates: SessionUpdate[] = [
-  { id: "u-1", kind: "general", message: "Session Updates will show up here — registration reminders, changes, anything worth a heads-up.", timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() },
-  { id: "u-2", kind: "rain", message: "Light rain expected around 7pm — courts are covered, session is still on.", timestamp: new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString() },
-  { id: "u-3", kind: "court-change", message: "Court 3 is closed for maintenance — moved to Court 7 for this session.", timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
-];
-
-// This is the session's own update feed, not a general inbox — every
-// registered player sees these, per the brief. Posting is local-state
-// only (no backend yet) but genuinely appends, rather than being a
-// static mock.
-export function MessagesTab() {
-  const [updates, setUpdates] = useState(initialUpdates);
+// This is the session's own update feed - posting here sends a real
+// message (via the same messaging system every other real
+// notification in this app already uses) to everyone currently
+// registered for the session, not just a local-state mock. The list
+// below is a locally-kept record of what's been sent this session
+// (there's no dedicated "session updates" table to read back from -
+// the messages themselves live in each recipient's own inbox), reset
+// on page refresh.
+export function MessagesTab({ session }: MessagesTabProps) {
+  const { toast } = useToast();
+  const [updates, setUpdates] = useState<SessionUpdate[]>([]);
   const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
 
-  const handlePost = () => {
-    if (!draft.trim()) return;
-    setUpdates((prev) => [
-      { id: `u-${Date.now()}`, kind: "general", message: draft.trim(), timestamp: new Date().toISOString() },
-      ...prev,
-    ]);
-    setDraft("");
+  const handlePost = async () => {
+    if (!draft.trim() || sending) return;
+    setSending(true);
+    try {
+      const { sentTo } = await broadcastToSession(session.id, draft.trim());
+      setUpdates((prev) => [
+        { id: `u-${Date.now()}`, message: draft.trim(), timestamp: new Date().toISOString() },
+        ...prev,
+      ]);
+      toast({
+        title: sentTo > 0 ? "Update sent" : "Nothing to send yet",
+        description:
+          sentTo > 0
+            ? `Delivered to ${sentTo} registered player${sentTo === 1 ? "" : "s"}.`
+            : "No one is registered for this session yet.",
+      });
+      setDraft("");
+    } catch (error: any) {
+      toast({ title: "Couldn't send update", description: error?.message ?? "Please try again.", variant: "destructive" });
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -52,21 +66,24 @@ export function MessagesTab() {
             className="min-h-20"
             data-testid="organiser-session-messages-draft"
           />
-          <Button onClick={handlePost} disabled={!draft.trim()} className="ml-auto flex" data-testid="organiser-session-messages-post">
+          <Button onClick={handlePost} disabled={!draft.trim() || sending} className="ml-auto flex" data-testid="organiser-session-messages-post">
             <Send className="w-4 h-4 mr-2" />
-            Post Update
+            {sending ? "Sending..." : "Post Update"}
           </Button>
         </CardContent>
       </Card>
 
-      <div className="space-y-3">
-        {updates.map((update) => {
-          const Icon = KIND_ICON[update.kind];
-          return (
+      {updates.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-8" data-testid="organiser-session-messages-empty">
+          Updates you post here go straight to every registered player's inbox.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {updates.map((update) => (
             <Card key={update.id} className="shadow-sm" data-testid={`organiser-session-message-${update.id}`}>
               <CardContent className="p-4 flex items-start gap-3">
                 <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                  <Icon className="w-4 h-4" />
+                  <Megaphone className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm">{update.message}</p>
@@ -76,9 +93,9 @@ export function MessagesTab() {
                 </div>
               </CardContent>
             </Card>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

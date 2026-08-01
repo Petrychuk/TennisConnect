@@ -5,6 +5,7 @@ import { sendMessageBetween, ORGANIZER_APPROVED_SUBJECT, ORGANIZER_APPROVED_MESS
 import {
   insertOrganizationSchema,
   insertSessionSchema,
+  type TennisSession,
 } from "@shared/schema";
 
 const router = Router();
@@ -450,6 +451,45 @@ router.get("/sessions/:id/registrations", requireAuth, async (req, res, next) =>
     }
     const registrationsList = await storage.getRegistrationsForSession(req.params.id);
     res.json(registrationsList);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Session Updates ("Messages" tab) - a real broadcast to everyone
+// currently registered, not a mock feed. Uses the same
+// sendMessageBetween() every other real notification in this file
+// already uses, so a broadcast lands in the organiser's own existing
+// thread with each player, right alongside "You're In!" etc., rather
+// than being a separate, disconnected system.
+router.post("/sessions/:id/broadcast", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+  try {
+    const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+    if (!message) {
+      return res.status(400).json({ message: "Message is required" });
+    }
+    const session = (req as any).session_ as TennisSession;
+    const organizer = await storage.getUser((req.user as any).id);
+    if (!organizer) {
+      return res.status(404).json({ message: "Organiser not found" });
+    }
+
+    const registrationsList = await storage.getRegistrationsForSession(session.id);
+    const activeRecipients = registrationsList.filter((r) => r.status !== "cancelled");
+
+    await Promise.all(
+      activeRecipients.map((r) =>
+        sendMessageBetween(
+          organizer,
+          r.userId,
+          r.userRole,
+          `Update: ${session.title}`,
+          message
+        )
+      )
+    );
+
+    res.status(201).json({ sentTo: activeRecipients.length });
   } catch (error) {
     next(error);
   }
