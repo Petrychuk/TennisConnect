@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +22,6 @@ interface NavItem {
   label: string;
   icon: typeof Home;
   href?: string; // present once the page behind it actually exists
-  badge?: number;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -30,7 +30,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "players", label: "Players", icon: Users, href: "/organiser/players" },
   { key: "seasons", label: "Seasons", icon: CalendarRange },
   { key: "rankings", label: "Rankings", icon: Trophy },
-  { key: "messages", label: "Messages", icon: MessageSquare, badge: 3 },
+  { key: "messages", label: "Messages", icon: MessageSquare, href: "/messages" },
   { key: "reports", label: "Reports", icon: FileBarChart },
   { key: "settings", label: "Settings", icon: Settings },
 ];
@@ -51,6 +51,19 @@ interface OrganiserSidebarProps {
 // tokens — just their dark-theme values, scoped to this subtree.
 export function OrganiserSidebarNav({ organiser, profileHref, className }: OrganiserSidebarProps) {
   const [location] = useLocation();
+
+  // Same endpoint the navbar's own unread badge already uses - one
+  // shared inbox, so the count here always matches whatever the
+  // organiser would see opening /messages from their profile instead.
+  const unreadQuery = useQuery({
+    queryKey: ["/api/messages/unread-count"],
+    queryFn: async () => {
+      const res = await fetch("/api/messages/unread-count", { credentials: "include" });
+      if (!res.ok) return { count: 0 };
+      return res.json();
+    },
+  });
+  const unreadCount = unreadQuery.data?.count ?? 0;
 
   return (
     <div className={cn("dark flex flex-col h-full bg-background text-foreground", className)} data-testid="organiser-sidebar">
@@ -79,9 +92,9 @@ export function OrganiserSidebarNav({ organiser, profileHref, className }: Organ
             <>
               <Icon className="w-4 h-4 shrink-0" />
               <span className="flex-1">{item.label}</span>
-              {item.badge && (
+              {item.key === "messages" && unreadCount > 0 && (
                 <Badge className="h-5 min-w-5 px-1.5 justify-center" data-testid={`organiser-sidebar-nav-${item.key}-badge`}>
-                  {item.badge}
+                  {unreadCount > 9 ? "9+" : unreadCount}
                 </Badge>
               )}
             </>
