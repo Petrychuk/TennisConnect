@@ -21,10 +21,14 @@ export function UpcomingSessionsCard({ sessions, className }: UpcomingSessionsCa
     <Card className={cn("shadow-sm hover:shadow-md transition-shadow", className)} data-testid="organiser-upcoming-sessions-card">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base">Upcoming Sessions</CardTitle>
-        <span className="text-xs font-medium text-primary flex items-center gap-0.5 cursor-pointer" data-testid="organiser-upcoming-view-all">
+        <Link
+          href="/organiser/sessions"
+          className="text-xs font-medium text-primary flex items-center gap-0.5 cursor-pointer hover:underline"
+          data-testid="organiser-upcoming-view-all"
+        >
           View all
           <ChevronRight className="w-3 h-3" />
-        </span>
+        </Link>
       </CardHeader>
       <CardContent>
         {sessions.length === 0 ? (
@@ -38,8 +42,7 @@ export function UpcomingSessionsCard({ sessions, className }: UpcomingSessionsCa
               return (
                 <Link
                   key={session.id}
-                  href="#"
-                  onClick={(e) => e.preventDefault()}
+                  href={`/organiser/sessions/${session.id}`}
                   className="rounded-xl border border-border p-3 hover:border-primary/40 hover:bg-accent/40 transition-colors"
                   data-testid={`organiser-upcoming-session-${session.id}`}
                 >
