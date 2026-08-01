@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import SEO from "@/components/seo";
@@ -17,6 +18,13 @@ import { RecentActivityCard } from "./recent-activity-card";
 import { StatisticsCard } from "./statistics-card";
 
 import {
+  getMySessions,
+  getOrganizationByUserSlug,
+  getSessionRegistrations,
+} from "@/lib/api/organizer-sessions";
+import type { TennisSession, SessionWithDetails } from "@shared/schema";
+
+import {
   mockOrganiser,
   mockStatStrip,
   mockLiveSession,
@@ -26,7 +34,36 @@ import {
   mockActivity,
   mockQuickAnalytics,
   mockHighlight,
+  type MockSession,
+  type StatStripItem,
 } from "@/lib/organiser-hub-mock-data";
+
+// Real sessions take priority everywhere they're available; the mock
+// data stays as a fallback (nothing real yet) and, for Upcoming
+// Sessions specifically, padding alongside real entries so there's
+// still a fuller list to test against - same "real first, then mock
+// crowd" approach used in the Players/Registration tabs. Recent
+// Activity, Season Progress/Leaderboard, and the Statistics/Highlight
+// card have no real backend to source from yet (no activity-feed,
+// seasons, or analytics rollup endpoints exist), so those stay mock
+// entirely for now.
+function toMockSession(session: TennisSession | SessionWithDetails, checkedInCount = 0): MockSession {
+  const details = "registeredCount" in session ? session : null;
+  return {
+    id: session.id,
+    title: session.title,
+    type: (["social", "round-robin", "clinic", "tournament"].includes(session.type ?? "")
+      ? session.type
+      : "social") as MockSession["type"],
+    status: session.status as MockSession["status"],
+    location: session.location ?? "",
+    startAt: new Date(session.startAt).toISOString(),
+    registeredCount: details?.registeredCount ?? 0,
+    checkedInCount,
+    waitingCount: details?.waitlistedCount ?? 0,
+    maxParticipants: session.maxParticipants ?? null,
+  };
+}
 
 // NOTE: mock-data only for now (see organiser-hub-mock-data.ts). Every
 // prop type mirrors the shape the real /api/organizer/* endpoints already
@@ -56,6 +93,72 @@ export function OrganiserDashboard() {
   // Real name/avatar from the authenticated user - role/organization
   // fields stay mock for now since there's no backend for those yet.
   const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null } : mockOrganiser;
+
+  const mySessionsQuery = useQuery({
+    queryKey: ["/api/organizer/sessions/mine"],
+    queryFn: getMySessions,
+    enabled: isAuthenticated,
+  });
+  const orgQuery = useQuery({
+    queryKey: ["/api/organizer/organizations/by-user", user?.slug],
+    queryFn: () => getOrganizationByUserSlug(user!.slug!),
+    enabled: isAuthenticated && !!user?.slug,
+  });
+
+  const realLiveSession = useMemo(
+    () => mySessionsQuery.data?.find((s) => s.status === "live"),
+    [mySessionsQuery.data]
+  );
+
+  // Only fetched when there's actually a live session to show real
+  // check-in numbers for - registeredCount/waitlistedCount come from
+  // the enriched org query instead, this is just for checkedInCount,
+  // which needs the individual registrations.
+  const liveRegistrationsQuery = useQuery({
+    queryKey: ["/api/organizer/sessions", realLiveSession?.id, "registrations"],
+    queryFn: () => getSessionRegistrations(realLiveSession!.id),
+    enabled: !!realLiveSession,
+  });
+
+  const liveSession: MockSession | null = realLiveSession
+    ? toMockSession(
+        realLiveSession,
+        (liveRegistrationsQuery.data ?? []).filter((r) => r.checkedInAt).length
+      )
+    : mockLiveSession;
+
+  const realUpcomingSessions: MockSession[] = useMemo(
+    () => (orgQuery.data?.upcomingSessions ?? []).map((s) => toMockSession(s)),
+    [orgQuery.data]
+  );
+  // Real upcoming sessions first, then the mock ones - same "real
+  // data leads, mock pads the rest for testing" approach as the
+  // Players/Registration tabs.
+  const upcomingSessions: MockSession[] = [...realUpcomingSessions, ...mockUpcomingSessions];
+
+  const upcomingCount7Days = useMemo(() => {
+    if (!mySessionsQuery.data) return null;
+    const now = Date.now();
+    const in7Days = now + 7 * 24 * 60 * 60 * 1000;
+    return mySessionsQuery.data.filter((s) => {
+      const start = new Date(s.startAt).getTime();
+      return s.status === "published" && start >= now && start <= in7Days;
+    }).length;
+  }, [mySessionsQuery.data]);
+
+  // "Live Session"/"Upcoming Sessions" use real counts once the real
+  // sessions query has loaded; "Active Players"/"Attendance"/"Revenue"
+  // have no real rollup to source from yet, so those stay mock.
+  const statStrip: StatStripItem[] = mockStatStrip.map((stat) => {
+    if (stat.key === "live" && mySessionsQuery.data) {
+      const liveCount = mySessionsQuery.data.filter((s) => s.status === "live").length;
+      return { ...stat, value: String(liveCount) };
+    }
+    if (stat.key === "upcoming" && upcomingCount7Days !== null) {
+      return { ...stat, value: String(upcomingCount7Days) };
+    }
+    return stat;
+  });
 
   useEffect(() => {
     // Mock-data phase: nothing to actually await yet, but keeping a brief
@@ -114,18 +217,18 @@ export function OrganiserDashboard() {
           <DashboardSkeleton />
         ) : (
           <>
-            <DashboardHero organiser={organiser} stats={mockStatStrip} />
+            <DashboardHero organiser={organiser} stats={statStrip} />
 
             <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-6 xl:grid-cols-12 gap-6">
                 <LiveTodayCard
-                  session={mockLiveSession}
+                  session={liveSession}
                   className="md:col-span-6 xl:col-span-8"
-                  onEnterLive={() => setLocation(`/organiser/sessions/${mockLiveSession.id}/live`)}
+                  onEnterLive={() => liveSession && setLocation(`/organiser/sessions/${liveSession.id}/live`)}
                 />
                 <RecentActivityCard items={mockActivity} className="md:col-span-6 xl:col-span-4" />
 
-                <UpcomingSessionsCard sessions={mockUpcomingSessions} className="md:col-span-6 xl:col-span-8" />
+                <UpcomingSessionsCard sessions={upcomingSessions} className="md:col-span-6 xl:col-span-8" />
                 <SeasonProgressCard
                   seasonLabel={mockSeason.label}
                   weekLabel={mockSeason.weekLabel}

@@ -26,7 +26,7 @@ export async function createOrganization(name: string): Promise<Organization> {
   return res.json();
 }
 
-export async function getOrganizationByUserSlug(userSlug: string): Promise<(Organization & { upcomingSessions: TennisSession[] }) | null> {
+export async function getOrganizationByUserSlug(userSlug: string): Promise<(Organization & { upcomingSessions: SessionWithDetails[] }) | null> {
   const res = await apiRequest("GET", `${BASE}/organizations/by-user/${userSlug}`);
   return res.json();
 }
