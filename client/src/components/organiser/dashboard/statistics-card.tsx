@@ -62,7 +62,7 @@ export function StatisticsCard({ stats, highlight, onViewLeaderboard, className 
               <Trophy className="w-4 h-4 text-primary shrink-0" />
               {highlight}
             </div>
-            <Button size="sm" onClick={onViewLeaderboard} data-testid="organiser-statistics-view-leaderboard">
+            <Button size="sm" onClick={onViewLeaderboard} disabled={!onViewLeaderboard} title={!onViewLeaderboard ? "Coming soon" : undefined} data-testid="organiser-statistics-view-leaderboard">
               View Leaderboard
             </Button>
           </div>

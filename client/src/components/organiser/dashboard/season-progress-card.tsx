@@ -38,7 +38,11 @@ export function SeasonProgressCard({
         <div>
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-semibold">Leaderboard Top 3</p>
-            <span className="text-xs font-medium text-primary flex items-center gap-0.5 cursor-pointer" data-testid="organiser-leaderboard-view-full">
+            <span
+              className="text-xs font-medium text-muted-foreground/70 flex items-center gap-0.5 cursor-not-allowed"
+              data-testid="organiser-leaderboard-view-full"
+              title="Coming soon"
+            >
               View full
               <ChevronRight className="w-3 h-3" />
             </span>

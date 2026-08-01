@@ -29,7 +29,11 @@ export function RecentActivityCard({ items, className }: RecentActivityCardProps
     <Card className={cn("shadow-sm hover:shadow-md transition-shadow", className)} data-testid="organiser-recent-activity-card">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base">Activity Feed</CardTitle>
-        <span className="text-xs font-medium text-primary flex items-center gap-0.5 cursor-pointer" data-testid="organiser-activity-view-all">
+        <span
+          className="text-xs font-medium text-muted-foreground/70 flex items-center gap-0.5 cursor-not-allowed"
+          data-testid="organiser-activity-view-all"
+          title="Coming soon"
+        >
           View all
           <ChevronRight className="w-3 h-3" />
         </span>

@@ -202,7 +202,7 @@ export function OrganiserDashboard() {
       {/* Persistent sidebar — true desktop only (xl+). Tablet, in either
           orientation, gets the collapsible hamburger version instead
           (see DashboardHeader) so it doesn't cramp the content grid. */}
-      <aside className="hidden xl:flex xl:w-64 shrink-0 border-r border-border">
+      <aside className="hidden xl:flex xl:w-64 shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto">
         <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} className="w-full" />
       </aside>
 
@@ -238,7 +238,7 @@ export function OrganiserDashboard() {
                 />
 
                 <QuickActionsCard
-                  organizationSlug={organiser.organizationSlug}
+                  organizationSlug={orgQuery.data?.slug || organiser.organizationSlug}
                   onCreateSession={() => setLocation("/organiser/sessions/new")}
                   className="md:col-span-3 xl:col-span-4"
                 />
