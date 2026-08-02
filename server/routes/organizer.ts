@@ -522,6 +522,68 @@ router.get("/sessions/:id", requireAuth, async (req, res, next) => {
   }
 });
 
+// Divisions of a Tournament/Club Championship "container" session -
+// Men's Singles A, Mixed Doubles, etc. Same ownership rule as every
+// other session-scoped route: the container's owner, not admin-only.
+router.get("/sessions/:id/divisions", requireAuth, async (req, res, next) => {
+  try {
+    const session = await storage.getSessionById(req.params.id);
+    if (!session) {
+      return res.status(404).json({ message: "Session not found" });
+    }
+    const isAdmin = (req.user as any).isAdmin;
+    if (!isAdmin) {
+      const organization = await storage.getOrganizationById(session.organizationId);
+      if (!organization || organization.ownerId !== (req.user as any).id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+    }
+    const divisions = await storage.getSessionDivisions(session.id);
+    res.json(divisions);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Quick-create a division. Fast by design: everything is inherited
+// from a base session (the container itself, or an existing sibling
+// division when cloneFromDivisionId is given - "duplicate this
+// division" for setting up e.g. Men's Singles B once A already
+// exists) except title, which is the only required field. Any other
+// field can still be overridden (a later division on day 2 of a
+// multi-day event, a different capacity, etc.).
+router.post("/sessions/:id/divisions", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+  try {
+    const container = (req as any).session_ as TennisSession;
+    const title = typeof req.body?.title === "string" ? req.body.title.trim() : "";
+    if (!title) {
+      return res.status(400).json({ message: "Division title is required" });
+    }
+
+    let baseSession: TennisSession = container;
+    const cloneFromDivisionId = typeof req.body?.cloneFromDivisionId === "string" ? req.body.cloneFromDivisionId : null;
+    if (cloneFromDivisionId) {
+      const sibling = await storage.getSessionById(cloneFromDivisionId);
+      const belongsHere = sibling && (sibling.id === container.id || sibling.parentSessionId === container.id);
+      if (!belongsHere) {
+        return res.status(400).json({ message: "That division doesn't belong to this event" });
+      }
+      baseSession = sibling!;
+    }
+
+    const overrides: any = { title };
+    if (req.body?.startAt) overrides.startAt = new Date(req.body.startAt);
+    if (req.body?.endAt) overrides.endAt = new Date(req.body.endAt);
+    if (req.body?.maxParticipants !== undefined) overrides.maxParticipants = req.body.maxParticipants;
+    if (typeof req.body?.description === "string") overrides.description = req.body.description;
+
+    const division = await storage.createSessionDivision(baseSession, (req.user as any).id, overrides);
+    res.status(201).json(division);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Real registrations for a session (organizer-facing Players/
 // Registration tabs) - same ownership rule as the route above. Not to
 // be confused with /sessions/mine/registered (a different path, that

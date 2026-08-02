@@ -81,6 +81,28 @@ export async function getSessionById(id: string): Promise<TennisSession> {
   return res.json();
 }
 
+/** Every division (Men's Singles A, Mixed Doubles, etc.) of a Tournament/Club Championship container session. */
+export async function getSessionDivisions(id: string): Promise<TennisSession[]> {
+  const res = await apiRequest("GET", `${BASE}/sessions/${id}/divisions`);
+  return res.json();
+}
+
+export interface CreateDivisionInput {
+  title: string;
+  startAt?: Date;
+  endAt?: Date;
+  maxParticipants?: number;
+  description?: string;
+  /** Clone from an existing sibling division instead of the container itself - fastest way to set up e.g. "B" once "A" exists. */
+  cloneFromDivisionId?: string;
+}
+
+/** Quick-creates a new division under a container session - everything but title is inherited from the base session unless overridden. */
+export async function createSessionDivision(containerId: string, input: CreateDivisionInput): Promise<TennisSession> {
+  const res = await apiRequest("POST", `${BASE}/sessions/${containerId}/divisions`, input);
+  return res.json();
+}
+
 export async function getSessionRegistrations(id: string): Promise<RegistrationWithUser[]> {
   const res = await apiRequest("GET", `${BASE}/sessions/${id}/registrations`);
   return res.json();

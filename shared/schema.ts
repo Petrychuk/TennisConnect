@@ -464,6 +464,14 @@ export const tennisSessions = pgTable("sessions", {
   location: text("location"),
   startAt: timestamp("start_at").notNull(),
   endAt: timestamp("end_at"),
+  // A Tournament/Club Championship can be a "container" for several
+  // real, independently-registerable sessions - Men's Singles A,
+  // Mixed Doubles, etc. - each with its own startAt/endAt (so a
+  // multi-day event just falls out of each division having its own
+  // dates), rather than one session trying to represent the whole
+  // thing. Null for every ordinary, single-format session - this is
+  // purely additive and never required.
+  parentSessionId: varchar("parent_session_id").references((): any => tennisSessions.id),
   registrationOpensAt: timestamp("registration_opens_at"),
   registrationClosesAt: timestamp("registration_closes_at"),
   price: numeric("price", { precision: 10, scale: 2, }),

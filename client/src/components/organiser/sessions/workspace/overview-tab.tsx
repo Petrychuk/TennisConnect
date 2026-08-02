@@ -7,6 +7,7 @@ import { SessionStatusCard } from "./session-status-card";
 import { SessionReadinessCard } from "./session-readiness-card";
 import { SessionActionsCard } from "./session-actions-card";
 import { SessionNotesCard } from "./session-notes-card";
+import { DivisionsCard } from "./divisions-card";
 import { useToast } from "@/hooks/use-toast";
 import {
   mockSessionQuickStats,
@@ -35,6 +36,8 @@ export function OverviewTab({ session, onEdit }: OverviewTabProps) {
     />
   );
 
+  const isMultiDivisionType = session.type === "tournament" || session.type === "club-championship";
+
   return (
     <div data-testid="organiser-session-overview-tab">
       {/* Desktop (xl+): Summary(2) + Status + Readiness in row 1, then
@@ -45,6 +48,7 @@ export function OverviewTab({ session, onEdit }: OverviewTabProps) {
           <SessionStatusCard session={session} onEdit={onEdit} />
           <SessionReadinessCard readiness={mockSessionReadiness} onViewDetails={viewReadinessDetails} />
         </div>
+        {isMultiDivisionType && <DivisionsCard sessionId={session.id} />}
         <div className="grid grid-cols-3 gap-4">
           <SessionDetailsCard session={session} />
           <SessionActionsCard onEdit={onEdit} />
@@ -61,6 +65,7 @@ export function OverviewTab({ session, onEdit }: OverviewTabProps) {
           <SessionStatusCard session={session} showEditButton={false} />
           <SessionReadinessCard readiness={mockSessionReadiness} onViewDetails={viewReadinessDetails} />
         </div>
+        {isMultiDivisionType && <DivisionsCard sessionId={session.id} />}
         <div className="grid grid-cols-2 gap-4">
           <SessionDetailsCard session={session} />
           <SessionNotesCard initialNote={detail.notes} />
@@ -75,6 +80,7 @@ export function OverviewTab({ session, onEdit }: OverviewTabProps) {
         <SessionSummaryCard session={session} />
         <SessionStatusCard session={session} showEditButton={false} />
         <SessionReadinessCard readiness={mockSessionReadiness} onViewDetails={viewReadinessDetails} />
+        {isMultiDivisionType && <DivisionsCard sessionId={session.id} />}
         <div className="grid grid-cols-2 gap-3">
           <Button variant="outline" onClick={onEdit} data-testid="organiser-session-overview-edit-mobile">
             Edit Session

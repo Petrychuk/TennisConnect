@@ -222,6 +222,8 @@ export interface IStorage {
   // ===== SESSIONS =====
   createSession(organizationId: string, createdBy: string, session: InsertSession): Promise<TennisSession>;
   getSessionById(id: string): Promise<TennisSession | undefined>;
+ getSessionDivisions(parentSessionId: string): Promise<TennisSession[]>;
+ createSessionDivision(baseSession: TennisSession, createdBy: string, overrides: Partial<InsertSession> & { title: string }): Promise<TennisSession>;
   getSessionsByOrganization(organizationId: string): Promise<TennisSession[]>;
   getUpcomingPublishedSessionsByOrganization(organizationId: string): Promise<SessionWithDetails[]>;
   getSessionsThisWeek(): Promise<SessionWithDetails[]>;
@@ -1866,6 +1868,61 @@ export class DatabaseStorage implements IStorage {
       .from(tennisSessions)
       .where(eq(tennisSessions.id, id));
     return session;
+  }
+
+  // Every division of a Tournament/Club Championship "container"
+  // session - Men's Singles A, Mixed Doubles, etc. Ordered by start
+  // time so a multi-day event reads in a sensible order.
+  async getSessionDivisions(parentSessionId: string): Promise<TennisSession[]> {
+    return db
+      .select()
+      .from(tennisSessions)
+      .where(eq(tennisSessions.parentSessionId, parentSessionId))
+      .orderBy(asc(tennisSessions.startAt));
+  }
+
+  // Fast division creation: clones every real field from a base
+  // session (normally the parent container, but can be an existing
+  // sibling division instead - "duplicate this division" is the
+  // fastest possible way to set up e.g. Men's Singles B once A
+  // already exists) and only requires the caller to override what's
+  // actually different, usually just the title. Always draft status,
+  // regardless of the base session's status - a new division needs
+  // its own review/publish, it doesn't inherit "already published".
+  async createSessionDivision(
+    baseSession: TennisSession,
+    createdBy: string,
+    overrides: Partial<InsertSession> & { title: string }
+  ): Promise<TennisSession> {
+    const {
+      id,
+      status,
+      reviewedBy,
+      reviewedAt,
+      reviewNote,
+      createdAt,
+      updatedAt,
+      parentSessionId,
+      ...cloneable
+    } = baseSession as any;
+
+    const [created] = await db
+      .insert(tennisSessions)
+      .values({
+        ...cloneable,
+        ...overrides,
+        organizationId: baseSession.organizationId,
+        createdBy,
+        status: "draft",
+        parentSessionId: baseSession.parentSessionId ?? baseSession.id,
+        price:
+          overrides.price !== undefined
+            ? String(overrides.price)
+            : cloneable.price,
+      })
+      .returning();
+
+    return created;
   }
 
   async getSessionsByOrganization(organizationId: string): Promise<TennisSession[]> {
