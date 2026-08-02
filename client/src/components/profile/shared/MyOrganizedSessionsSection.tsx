@@ -133,9 +133,25 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
       }
     }
     const containerIds = new Set(sessions.filter((s) => !s.parentSessionId).map((s) => s.id));
-    const top = sessions.filter((s) => !s.parentSessionId || !containerIds.has(s.parentSessionId));
+    const top = sessions.filter((s) => {
+      if (s.parentSessionId) return !containerIds.has(s.parentSessionId);
+      // Guests only: a Tournament/Club Championship that's been split
+      // into divisions, but none of them have actually been published
+      // yet, has nothing joinable to show - hide it entirely rather
+      // than displaying an empty container with no divisions listed.
+      if (
+        !isOwnProfile &&
+        (s.type === "tournament" || s.type === "club-championship") &&
+        "hasDivisions" in s &&
+        s.hasDivisions &&
+        !byParent.has(s.id)
+      ) {
+        return false;
+      }
+      return true;
+    });
     return { topLevel: top, divisionsByParent: byParent };
-  }, [sessions]);
+  }, [sessions, isOwnProfile]);
 
   const [divisionInfoSession, setDivisionInfoSession] = useState<TennisSession | SessionWithDetails | null>(null);
 
@@ -312,6 +328,17 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
+                    {session.description && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setDivisionInfoSession(session)}
+                        data-testid={`session-info-${session.id}`}
+                      >
+                        <Info className="w-4 h-4 mr-1.5" />
+                        More info
+                      </Button>
+                    )}
                     {canJoin && (
                       <Button
                         size="sm"

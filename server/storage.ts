@@ -1802,6 +1802,13 @@ export class DatabaseStorage implements IStorage {
       .from(registrations)
       .where(sql`${registrations.sessionId} IN ${sessionIds}`)
       .groupBy(registrations.sessionId, registrations.status, registrations.userId);
+
+    const divisionRows = await db
+      .select({ parentSessionId: tennisSessions.parentSessionId })
+      .from(tennisSessions)
+      .where(sql`${tennisSessions.parentSessionId} IN ${sessionIds}`);
+    const sessionIdsWithDivisions = new Set(divisionRows.map((r) => r.parentSessionId));
+
       let creatorById = new Map<string, string>();
     if (includeCreatorNames) {
       const creatorIds = Array.from(new Set(rows.map((r) => r.createdBy)));
@@ -1837,6 +1844,7 @@ export class DatabaseStorage implements IStorage {
             : null,
         viewerRegistrationStatus: viewerReg ? (viewerReg.status as any) : null,
         creatorName: includeCreatorNames ? creatorById.get(session.createdBy) : undefined,
+        hasDivisions: sessionIdsWithDivisions.has(session.id),
       };
     });
   }

@@ -1,3 +1,4 @@
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { UserPlus } from "lucide-react";
 import { SessionSummaryCard } from "./session-summary-card";
@@ -8,6 +9,8 @@ import { SessionReadinessCard } from "./session-readiness-card";
 import { SessionActionsCard } from "./session-actions-card";
 import { SessionNotesCard } from "./session-notes-card";
 import { DivisionsCard } from "./divisions-card";
+import { LiveTodayCard } from "@/components/organiser/dashboard/live-today-card";
+import type { MockSession } from "@/lib/organiser-hub-mock-data";
 import { useToast } from "@/hooks/use-toast";
 import {
   mockSessionQuickStats,
@@ -25,6 +28,7 @@ interface OverviewTabProps {
 }
 
 export function OverviewTab({ session, onEdit, isDivision }: OverviewTabProps) {
+  const [, setLocation] = useLocation();
   const detail = getSessionDetail(session);
   const { toast } = useToast();
   const viewReadinessDetails = () => toast({ title: "Readiness details isn't wired up yet" });
@@ -45,10 +49,31 @@ export function OverviewTab({ session, onEdit, isDivision }: OverviewTabProps) {
   // Just what's actually needed to run this specific division:
   // readiness for TC Live, the real actions, and its own details
   // (courts/capacity/cost - not format/rounds, which belong to the
-  // container).
+  // container). A prominent Live entry point is front and center here
+  // specifically, since TC Live runs per-division, not at the
+  // container level.
   if (isDivision) {
+    const liveSession: MockSession = {
+      id: session.id,
+      title: session.title,
+      type: "tournament",
+      status: session.status,
+      location: session.location,
+      startAt: session.startAt,
+      registeredCount: session.registeredCount,
+      checkedInCount: session.checkedInCount,
+      waitingCount: session.waitingCount,
+      maxParticipants: session.maxParticipants,
+    };
+
     return (
       <div data-testid="organiser-session-overview-tab" className="space-y-4">
+        {session.status === "live" && (
+          <LiveTodayCard
+            session={liveSession}
+            onEnterLive={() => setLocation(`/organiser/sessions/${session.id}/live`)}
+          />
+        )}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <SessionReadinessCard readiness={mockSessionReadiness} onViewDetails={viewReadinessDetails} />
           <SessionActionsCard session={session} onEdit={onEdit} />
