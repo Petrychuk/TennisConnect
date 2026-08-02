@@ -328,7 +328,7 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    {session.description && (
+                    {session.description && divisions.length === 0 && (
                       <Button
                         size="sm"
                         variant="ghost"
