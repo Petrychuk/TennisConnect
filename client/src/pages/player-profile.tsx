@@ -88,6 +88,12 @@ export const DEFAULT_PLAYER_PROFILE: PlayerProfile = {
   email: "",
 };
 
+// The "main" type split inside My Sessions - everything else (social,
+// americano, round-robin, etc.) falls under "Sessions", these two
+// under "Tournaments". Kept as an explicit list rather than deriving
+// it, since it's a genuinely small, stable set.
+const TOURNAMENT_TYPES = ["tournament", "club-championship"];
+
 export default function PlayerProfile() {
   const [match, params] = useRoute("/player/:slug");
   const profileSlug = params?.slug; 
@@ -879,6 +885,31 @@ export default function PlayerProfile() {
                   )}
                 </TabsContent>
                 <TabsContent value="sessions" className="space-y-6" data-testid="my-sessions-tab-content">
+                  <Tabs defaultValue="regular">
+                    <TabsList>
+                      <TabsTrigger value="regular" data-testid="my-sessions-type-regular">Sessions</TabsTrigger>
+                      <TabsTrigger value="tournament" data-testid="my-sessions-type-tournament">
+                        <Trophy className="w-4 h-4 mr-1.5" />
+                        Tournaments
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="regular" className="mt-6">
+                      <Tabs defaultValue="upcoming">
+                        <TabsList>
+                          <TabsTrigger value="upcoming" data-testid="my-sessions-regular-subtab-upcoming">Upcoming</TabsTrigger>
+                          <TabsTrigger value="history" data-testid="my-sessions-regular-subtab-history">History</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="upcoming" className="mt-6">
+                          <MySessionsSection isOwnProfile={isOwnProfile} isAuthenticated={isAuthenticated} excludeTypes={TOURNAMENT_TYPES} timeframe="upcoming" />
+                        </TabsContent>
+                        <TabsContent value="history" className="mt-6">
+                          <MySessionsSection isOwnProfile={isOwnProfile} isAuthenticated={isAuthenticated} excludeTypes={TOURNAMENT_TYPES} timeframe="past" />
+                        </TabsContent>
+                      </Tabs>
+                    </TabsContent>
+
+                    <TabsContent value="tournament" className="mt-6">
                   <Tabs defaultValue="upcoming">
                     <TabsList>
                       <TabsTrigger value="upcoming" data-testid="my-sessions-subtab-upcoming">Upcoming</TabsTrigger>
@@ -886,7 +917,7 @@ export default function PlayerProfile() {
                     </TabsList>
 
                     <TabsContent value="upcoming" className="mt-6">
-                      <MySessionsSection isOwnProfile={isOwnProfile} isAuthenticated={isAuthenticated} />
+                      <MySessionsSection isOwnProfile={isOwnProfile} isAuthenticated={isAuthenticated} sessionTypes={TOURNAMENT_TYPES} timeframe="upcoming" />
                     </TabsContent>
 
                     <TabsContent value="history" className="space-y-8 mt-6">
@@ -1134,6 +1165,8 @@ export default function PlayerProfile() {
                       </div>
                     );
                   })()}
+                    </TabsContent>
+                  </Tabs>
                     </TabsContent>
                   </Tabs>
                 </TabsContent>

@@ -915,6 +915,7 @@ export type SessionWithDetails = TennisSession & {
   spotsLeft: number | null; // null when maxParticipants is not set (unlimited)
   viewerRegistrationStatus?: RegistrationStatusType | null;
   creatorName?: string; // populated only for the admin moderation view
+  creatorAvatar?: string | null; // populated only when creatorName is (same includeCreatorNames flag)
   hasDivisions: boolean; // true if any session (any status) has this one as its parentSessionId
 };
 

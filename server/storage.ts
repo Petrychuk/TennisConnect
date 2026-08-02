@@ -1810,13 +1810,15 @@ export class DatabaseStorage implements IStorage {
     const sessionIdsWithDivisions = new Set(divisionRows.map((r) => r.parentSessionId));
 
       let creatorById = new Map<string, string>();
+      let creatorAvatarById = new Map<string, string | null>();
     if (includeCreatorNames) {
       const creatorIds = Array.from(new Set(rows.map((r) => r.createdBy)));
      const creatorRows = await db
-        .select({ id: users.id, name: users.name })
+        .select({ id: users.id, name: users.name, avatar: users.avatar })
         .from(users)
         .where(sql`${users.id} IN ${creatorIds}`);
       creatorById = new Map(creatorRows.map((c) => [c.id, c.name]));
+      creatorAvatarById = new Map(creatorRows.map((c) => [c.id, c.avatar]));
    }
 
     return rows.map((session) => {
@@ -1844,6 +1846,7 @@ export class DatabaseStorage implements IStorage {
             : null,
         viewerRegistrationStatus: viewerReg ? (viewerReg.status as any) : null,
         creatorName: includeCreatorNames ? creatorById.get(session.createdBy) : undefined,
+        creatorAvatar: includeCreatorNames ? creatorAvatarById.get(session.createdBy) ?? null : undefined,
         hasDivisions: sessionIdsWithDivisions.has(session.id),
       };
     });
@@ -1992,7 +1995,7 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(asc(tennisSessions.startAt));
 
-    return this.attachSessionDetails(rows.map((r) => r.session), userId);
+    return this.attachSessionDetails(rows.map((r) => r.session), userId, true);
   }
 
   async updateSession(
