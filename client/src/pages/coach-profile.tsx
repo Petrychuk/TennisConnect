@@ -830,11 +830,10 @@ export default function CoachProfile() {
                     gap-2
                     scrollbar-hide">
                   <TabsTrigger value="about" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/10 px-3 py-2 text-sm md:text-base gap-1.5"><User className="w-4 h-4" />About</TabsTrigger>
-                  <TabsTrigger value="sessions" data-testid="my-sessions-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/10 px-3 py-2 text-sm md:text-base gap-1.5"><Calendar className="w-4 h-4" />My Sessions</TabsTrigger>
+                  <TabsTrigger value="sessions" data-testid="my-sessions-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/10 px-3 py-2 text-sm md:text-base gap-1.5"><Trophy className="w-4 h-4" />My Sessions</TabsTrigger>
                   {showOrganisingTab && (
                     <TabsTrigger value="organizing" data-testid="my-organized-sessions-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/10 px-3 py-2 text-sm md:text-base gap-1.5"><ClipboardList className="w-4 h-4" />Organising</TabsTrigger>
                   )}
-                  <TabsTrigger value="tournaments" data-testid="tournaments-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/10 px-3 py-2 text-sm md:text-base gap-1.5"><Trophy className="w-4 h-4" />Tournaments</TabsTrigger>
                   <TabsTrigger value="photos" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/10 px-3 py-2 text-sm md:text-base gap-1.5"><Camera className="w-4 h-4" />Photos</TabsTrigger>
                   <TabsTrigger value="schedule" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/10 px-3 py-2 text-sm md:text-base gap-1.5"><MapPin className="w-4 h-4" />Schedule & Locations</TabsTrigger>
                   <TabsTrigger value="students" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/10 px-3 py-2 text-sm md:text-base gap-1.5"><GraduationCap className="w-4 h-4" />My Students</TabsTrigger>
@@ -999,8 +998,21 @@ export default function CoachProfile() {
                       </Card>
                     </TabsContent>
 
-                    <TabsContent value="sessions" className="space-y-8 mt-0" data-testid="my-sessions-tab-content">
-                      <MySessionsSection isOwnProfile={isMyAccount} isAuthenticated={isAuthenticated} />
+                    <TabsContent value="sessions" className="space-y-6 mt-0" data-testid="my-sessions-tab-content">
+                      <Tabs defaultValue="upcoming">
+                        <TabsList>
+                          <TabsTrigger value="upcoming" data-testid="my-sessions-subtab-upcoming">Upcoming</TabsTrigger>
+                          <TabsTrigger value="history" data-testid="my-sessions-subtab-history">History</TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value="upcoming" className="mt-6">
+                          <MySessionsSection isOwnProfile={isMyAccount} isAuthenticated={isAuthenticated} />
+                        </TabsContent>
+
+                        <TabsContent value="history" className="mt-6">
+                          <TournamentHistorySection userId={coachUserId} isOwnProfile={isOwnProfile} />
+                        </TabsContent>
+                      </Tabs>
                     </TabsContent>
 
                     {showOrganisingTab && (
@@ -1008,10 +1020,6 @@ export default function CoachProfile() {
                         <MyOrganizedSessionsSection isOwnProfile={isMyAccount} profileSlug={profileSlug} />
                       </TabsContent>
                     )}
-
-                    <TabsContent value="tournaments" className="mt-0" data-testid="tournaments-tab-content">
-                      <TournamentHistorySection userId={coachUserId} isOwnProfile={isOwnProfile} />
-                    </TabsContent>
 
                     <TabsContent value="photos" className="mt-0">
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">

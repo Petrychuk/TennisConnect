@@ -182,12 +182,9 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
     setTournaments((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const today = new Date().toISOString().split("T")[0];
   const sortedTournaments = [...tournaments].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
-  const upcoming = sortedTournaments.filter((t) => t.date > today);
-  const past = sortedTournaments.filter((t) => t.date <= today);
 
   const TournamentCard = ({ t }: { t: any }) => (
     <Card key={t.id} className="overflow-hidden">
@@ -426,35 +423,18 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
         )}
       </div>
 
-      {upcoming.length > 0 && (
-        <div className="space-y-4">
-          <h4 className="text-lg font-semibold flex items-center gap-2 text-primary">
-            <Calendar className="w-5 h-5" /> Upcoming Tournaments
-          </h4>
-          <div className="grid grid-cols-1 gap-4">
-            {upcoming.map((t) => (
-              <TournamentCard key={t.id} t={t} />
-            ))}
-          </div>
+      {sortedTournaments.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-xl border-2 border-dashed" data-testid="tournament-history-empty">
+          <Trophy className="w-12 h-12 mx-auto mb-4 opacity-20" />
+          <p>No tournament history added yet.</p>
         </div>
-      )}
-
-      <div className="space-y-4">
-        <h4 className="text-lg font-semibold flex items-center gap-2 text-muted-foreground">
-          <Trophy className="w-5 h-5" /> Past Tournaments
-        </h4>
+      ) : (
         <div className="grid grid-cols-1 gap-4">
-          {past.map((t) => (
+          {sortedTournaments.map((t) => (
             <TournamentCard key={t.id} t={t} />
           ))}
         </div>
-        {past.length === 0 && upcoming.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-xl border-2 border-dashed" data-testid="tournament-history-empty">
-            <Trophy className="w-12 h-12 mx-auto mb-4 opacity-20" />
-            <p>No tournament history added yet.</p>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }
