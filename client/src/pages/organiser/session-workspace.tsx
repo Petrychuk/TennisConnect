@@ -64,7 +64,7 @@ type WorkspaceTabKey = (typeof WORKSPACE_TABS)[number]["key"];
 
 const BUCKET_BADGE_LABEL: Record<string, string> = {
   live: "LIVE",
-  "registration-open": "OPEN",
+  "registration-open": "REGISTRATION OPEN",
   upcoming: "UPCOMING",
   draft: "DRAFT",
   completed: "COMPLETED",

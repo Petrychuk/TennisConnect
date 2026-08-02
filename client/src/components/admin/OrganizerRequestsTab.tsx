@@ -29,7 +29,7 @@ interface OrganizerRequestRow {
 }
 
 const REQUEST_FILTERS = ["pending", "approved", "rejected", "revoked"] as const;
-const SESSION_FILTERS = ["pending_review", "published", "rejected", "cancelled", "draft"] as const;
+const SESSION_FILTERS = ["pending_review", "published", "rejected", "cancelled"] as const;
 
 const SESSION_STATUS_LABEL: Record<string, string> = {
   draft: "Draft",

@@ -68,6 +68,30 @@ export function Step3DetailsRules({ draft, onChange }: Step3DetailsRulesProps) {
                 </label>
               </RadioGroup>
             </div>
+            {draft.matchType !== "mixed" && (
+              <div className="space-y-1.5">
+                <Label className="text-sm">Category</Label>
+                <RadioGroup
+                  value={draft.category}
+                  onValueChange={(v) => onChange("category", v as NewSessionDraft["category"])}
+                  className="flex flex-wrap gap-4"
+                  data-testid="organiser-wizard-category"
+                >
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <RadioGroupItem value="open" data-testid="organiser-wizard-category-open" />
+                    Open
+                  </label>
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <RadioGroupItem value="mens" data-testid="organiser-wizard-category-mens" />
+                    Men's
+                  </label>
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <RadioGroupItem value="womens" data-testid="organiser-wizard-category-womens" />
+                    Women's
+                  </label>
+                </RadioGroup>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-sm">Games to</Label>

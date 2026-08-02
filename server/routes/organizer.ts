@@ -365,14 +365,27 @@ router.post("/sessions/:id/publish", requireAuth, requireOrganizer, requireOwnSe
   try {
     const reviewerId = (req.user as any).id;
     const isAdmin = (req.user as any).isAdmin;
-    const session = isAdmin
+    const thisSession = (req as any).session_ as TennisSession;
+
+    // A division of a container that's already published doesn't need
+    // its own admin review - the admin already approved the event
+    // itself, and a division is just the organiser's own internal
+    // breakdown of it (Men's Singles A, Mixed Doubles, etc.), not a
+    // new event asking for separate approval.
+    let skipsReview = isAdmin;
+    if (!skipsReview && thisSession.parentSessionId) {
+      const parent = await storage.getSessionById(thisSession.parentSessionId);
+      skipsReview = parent?.status === "published";
+    }
+
+    const session = skipsReview
       ? await storage.publishSessionDirect(req.params.id, reviewerId)
       : await storage.submitSessionForReview(req.params.id);
 
     // An organiser (not an admin) submitting for review is the moment
     // an admin needs to know about - a direct admin publish doesn't
     // need this, they already know.
-    if (!isAdmin) {
+    if (!skipsReview) {
       const [admins, organiser] = await Promise.all([
         storage.getAdminUsers(),
         storage.getUser((req.user as any).id),
@@ -428,7 +441,13 @@ router.get("/admin/sessions", requireAdmin, async (req, res, next) => {
     try {
       const status = typeof req.query.status === "string" ? req.query.status : undefined;
       const sessions = await storage.getAllSessionsForAdmin(status);
-      res.json(sessions);
+      // Drafts are the organiser's own private work-in-progress -
+      // never something the moderation queue's "everything" view
+      // should include. An explicit ?status=draft request (nothing
+      // currently sends one) still works, since only the unfiltered
+      // fetch gets this exclusion.
+      const visible = status ? sessions : sessions.filter((s) => s.status !== "draft");
+      res.json(visible);
     } catch (error) {
       next(error);
     }

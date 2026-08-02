@@ -87,6 +87,7 @@ export interface NewSessionDraft {
 
   // Step 3 - Format
   matchType: "singles" | "doubles" | "mixed";
+  category: "open" | "mens" | "womens";
   gamesTo: number;
   roundsCount: number;
   noAd: boolean;
@@ -136,6 +137,7 @@ export function createEmptyDraft(): NewSessionDraft {
     visibility: "public",
     coverImage: null,
     matchType: "doubles",
+    category: "open",
     gamesTo: 4,
     roundsCount: 5,
     noAd: true,
@@ -181,7 +183,9 @@ export function draftToInsertSession(draft: NewSessionDraft) {
     ? new Date(`${draft.date}T${draft.endTime}`)
     : undefined;
 
-  const matchTypeLabel = draft.matchType === "mixed" ? "Mixed Doubles" : draft.matchType === "doubles" ? "Doubles" : "Singles";
+  const baseMatchTypeLabel = draft.matchType === "mixed" ? "Mixed Doubles" : draft.matchType === "doubles" ? "Doubles" : "Singles";
+  const categoryPrefix = draft.category === "mens" ? "Men's " : draft.category === "womens" ? "Women's " : "";
+  const matchTypeLabel = draft.matchType === "mixed" ? baseMatchTypeLabel : `${categoryPrefix}${baseMatchTypeLabel}`;
   const pairingLabels = [
     draft.randomPartners ? "Random Partners" : null,
     draft.avoidRepeatPartners ? "Avoid Repeat Partners" : null,

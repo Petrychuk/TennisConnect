@@ -162,6 +162,21 @@ export function DivisionsCard({ sessionId }: DivisionsCardProps) {
             autoFocus
             data-testid="organiser-session-division-title-input"
           />
+          {!cloneFrom && (
+            <div className="flex flex-wrap gap-1.5" data-testid="organiser-session-division-suggestions">
+              {["Men's Singles", "Women's Singles", "Men's Doubles", "Women's Doubles", "Mixed Doubles"].map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  onClick={() => setTitle(suggestion)}
+                  className="text-xs rounded-full border border-border px-2.5 py-1 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+                  data-testid={`organiser-session-division-suggestion-${suggestion.replace(/[^a-z]/gi, "-").toLowerCase()}`}
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
