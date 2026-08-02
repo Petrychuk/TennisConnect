@@ -655,7 +655,45 @@ export const messages = pgTable("messages", {
   content: text("content").notNull(),
   isRead: boolean("is_read").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+
+  // Distinguishes an actionable invitation from a regular message, and
+  // which kind - a Community invite and a Session invite are two
+  // deliberately separate things (accepting one never implies the
+  // other). null for every ordinary message.
+  messageType: text("message_type"), // 'community_invite' | 'session_invite' | null
+  relatedSessionId: varchar("related_session_id").references(() => tennisSessions.id),
+  relatedOrganizationId: varchar("related_organization_id").references(() => organizations.id),
+  // Only meaningful when messageType is set - lets the invitation's
+  // Accept/Decline buttons in the recipient's inbox turn into a
+  // permanent status once acted on, persisted rather than local UI
+  // state that would reset on reload.
+  actionStatus: text("action_status"), // 'pending' | 'accepted' | 'declined' | null
 });
+
+// A player's relationship to an organiser's community - separate from
+// any specific session's registrations, and separate from
+// organizationMembers (which is about staff/ownership roles, not
+// players). Accepting a Session invite does NOT create one of these;
+// only accepting (or being granted) a Community invite does.
+export const communityMemberships = pgTable(
+  "community_memberships",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    organizationId: varchar("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id),
+    status: text("status").default("pending").notNull(), // 'pending' | 'accepted' | 'declined'
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgUserUnique: unique().on(table.organizationId, table.userId),
+  })
+);
+
+export type CommunityMembership = typeof communityMemberships.$inferSelect;
 
 //Support chat
 export const supportRequests = pgTable("support_requests", {

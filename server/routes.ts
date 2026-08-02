@@ -1033,6 +1033,71 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Accept/Decline an actionable invitation message (Community or
+  // Session invite) - dispatches to the correct real backend action
+  // per messageType, then flips the message's own actionStatus so the
+  // buttons in the recipient's inbox become a permanent status instead
+  // of resetting on reload. The two invitation kinds are never mixed:
+  // a Session invite accepted never creates a Community membership,
+  // and vice versa.
+  app.post("/api/messages/:id/accept", requireAuth, async (req, res, next) => {
+    try {
+      const message = await storage.getMessageById(req.params.id);
+      if (!message || message.recipientId !== req.user!.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      if (!message.messageType || message.actionStatus !== "pending") {
+        return res.status(400).json({ message: "This message can't be responded to" });
+      }
+
+      if (message.messageType === "community_invite") {
+        if (!message.relatedOrganizationId) {
+          return res.status(400).json({ message: "Missing organisation" });
+        }
+        await storage.updateOrganizationMembershipStatus(message.relatedOrganizationId, req.user!.id, "accepted");
+      } else if (message.messageType === "session_invite") {
+        if (!message.relatedSessionId) {
+          return res.status(400).json({ message: "Missing session" });
+        }
+        await storage.acceptInvitedRegistration(message.relatedSessionId, req.user!.id);
+      }
+
+      const updated = await storage.updateMessageActionStatus(message.id, "accepted");
+      res.json(updated);
+    } catch (error: any) {
+      next(error);
+    }
+  });
+
+  app.post("/api/messages/:id/decline", requireAuth, async (req, res, next) => {
+    try {
+      const message = await storage.getMessageById(req.params.id);
+      if (!message || message.recipientId !== req.user!.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      if (!message.messageType || message.actionStatus !== "pending") {
+        return res.status(400).json({ message: "This message can't be responded to" });
+      }
+
+      if (message.messageType === "community_invite") {
+        if (!message.relatedOrganizationId) {
+          return res.status(400).json({ message: "Missing organisation" });
+        }
+        await storage.updateOrganizationMembershipStatus(message.relatedOrganizationId, req.user!.id, "declined");
+      } else if (message.messageType === "session_invite") {
+        if (!message.relatedSessionId) {
+          return res.status(400).json({ message: "Missing session" });
+        }
+        await storage.cancelRegistration(message.relatedSessionId, req.user!.id);
+      }
+
+      const updated = await storage.updateMessageActionStatus(message.id, "declined");
+      res.json(updated);
+    } catch (error: any) {
+      next(error);
+    }
+  });
+
   // Delete message (requires auth + ownership)
   app.delete("/api/messages/:id", requireAuth, async (req, res, next) => {
     try {

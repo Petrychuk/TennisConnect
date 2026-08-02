@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useMutation} from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, MailOpen, Trash2, Clock, User, ArrowLeft, Reply, Send, X } from "lucide-react";
+import { Mail, MailOpen, Trash2, Clock, User, ArrowLeft, Reply, Send, X, Check } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
@@ -35,6 +35,11 @@ interface Message {
   content: string;
   isRead: boolean;
   createdAt: string;
+
+  messageType?: "community_invite" | "session_invite" | null;
+  relatedSessionId?: string | null;
+  relatedOrganizationId?: string | null;
+  actionStatus?: "pending" | "accepted" | "declined" | null;
 }
 
 // The actual inbox+conversation UI, shared between the standalone
@@ -49,6 +54,7 @@ export function MessagesInbox() {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const { user, isAuthenticated, loading: authLoading, } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyContent, setReplyContent] = useState("");
@@ -265,6 +271,7 @@ export function MessagesInbox() {
           prev.map((m) => ((m.conversationId || m.id) === conversationId ? { ...m, isRead: true } : m))
         );
         setConversation((prev) => prev.map((m) => ({ ...m, isRead: true })));
+        queryClient.invalidateQueries({ queryKey: ["/api/messages/unread-count"] });
       }
     } catch (error) {
       console.error("Failed to mark conversation as read:", error);
@@ -308,6 +315,33 @@ export function MessagesInbox() {
         : null
     );
   } */
+
+  const [respondingId, setRespondingId] = useState<string | null>(null);
+
+  const handleRespond = async (message: Message, action: "accept" | "decline") => {
+    setRespondingId(message.id);
+    try {
+      const res = await fetch(`/api/messages/${message.id}/${action}`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.message || "Failed to respond");
+      }
+      const updated = await res.json();
+      setConversation((prev) => prev.map((m) => (m.id === message.id ? { ...m, actionStatus: updated.actionStatus } : m)));
+      setMessages((prev) => prev.map((m) => (m.id === message.id ? { ...m, actionStatus: updated.actionStatus } : m)));
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Couldn't respond",
+        description: error?.message ?? "Please try again.",
+      });
+    } finally {
+      setRespondingId(null);
+    }
+  };
 
   const loadConversation = async (
     conversationId: string
@@ -630,6 +664,51 @@ export function MessagesInbox() {
                                     </p>
                                   </div>
 
+                                  {msg.messageType && msg.actionStatus === "pending" && !isMe && (
+                                    <div className="flex gap-2 mt-2" data-testid={`invitation-actions-${msg.id}`}>
+                                      <Button
+                                        size="sm"
+                                        onClick={() => handleRespond(msg, "accept")}
+                                        disabled={respondingId === msg.id}
+                                        data-testid={`invitation-accept-${msg.id}`}
+                                      >
+                                        {msg.messageType === "community_invite" ? "Accept invitation" : "Join session"}
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleRespond(msg, "decline")}
+                                        disabled={respondingId === msg.id}
+                                        data-testid={`invitation-decline-${msg.id}`}
+                                      >
+                                        Decline
+                                      </Button>
+                                    </div>
+                                  )}
+
+                                  {msg.messageType && msg.actionStatus === "accepted" && (
+                                    <div className="mt-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2" data-testid={`invitation-status-${msg.id}`}>
+                                      <p className="text-sm font-medium text-primary flex items-center gap-1.5">
+                                        <Check className="w-4 h-4" />
+                                        {msg.messageType === "community_invite" ? "Invitation accepted" : "You're joining this session"}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground mt-0.5">
+                                        {msg.messageType === "community_invite"
+                                          ? "You are now a member of this tennis community."
+                                          : "It's now in your Upcoming Sessions."}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {msg.messageType && msg.actionStatus === "declined" && (
+                                    <div className="mt-2 rounded-xl border border-border bg-muted/50 px-3 py-2" data-testid={`invitation-status-${msg.id}`}>
+                                      <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                                        <X className="w-4 h-4" />
+                                        Invitation declined
+                                      </p>
+                                    </div>
+                                  )}
+
                                   <div
                                     className={`mt-1 text-xs text-muted-foreground px-1 ${
                                       isMe ? "text-right" : ""
@@ -649,7 +728,7 @@ export function MessagesInbox() {
                       </ScrollArea>
 
                         <Separator className="h-px w-full bg-linear-to-r from-transparent via-[hsl(var(--tennis-ball))] to-transparent my-4" />                    
-                        {!showReplyForm && (
+                        {!showReplyForm && !conversation.some((m) => m.messageType && m.actionStatus === "pending") && (
                           <div className="flex flex-col sm:flex-row gap-2 mt-6">
                             <Button
                               onClick={() => setShowReplyForm(true)}

@@ -20,7 +20,12 @@ export async function sendMessageBetween(
   recipientId: string,
   recipientType: string,
   subject: string,
-  content: string
+  content: string,
+  invitation?: {
+    messageType: "community_invite" | "session_invite";
+    relatedSessionId?: string;
+    relatedOrganizationId?: string;
+  }
 ) {
   await storage.createMessage({
     recipientId,
@@ -33,6 +38,11 @@ export async function sendMessageBetween(
     senderPhone: null,
 
     conversationId: pairConversationId(sender.id, recipientId),
+
+    messageType: invitation?.messageType ?? null,
+    relatedSessionId: invitation?.relatedSessionId ?? null,
+    relatedOrganizationId: invitation?.relatedOrganizationId ?? null,
+    actionStatus: invitation ? "pending" : null,
 
     subject,
     content,

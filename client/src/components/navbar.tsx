@@ -25,6 +25,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { HeaderClockWeather } from "@/components/header-clock-weather";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useUnreadMessagesCount } from "@/hooks/use-unread-messages";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,7 +52,7 @@ export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [location, setLocation] = useLocation();
   const { user, logout, isAuthenticated } = useAuth();
-  const [unreadCount, setUnreadCount] = useState(0);
+  const unreadCount = useUnreadMessagesCount();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -72,45 +73,6 @@ export function Navbar() {
   user?.role && user?.slug
     ? `/${user.role}/${user.slug}`
     : "/";
-
-    useEffect(() => {
-      if (!user?.id) return;
-    
-      fetchUnreadCount();
-    
-      const interval = setInterval(
-        fetchUnreadCount,
-        30000
-      );
-    
-      return () => clearInterval(interval);
-    }, [user?.id]);
-
-    const fetchUnreadCount = async () => {
-      console.log("user:", user);
-      console.log("user id:", user?.id);
-    
-      try {
-        const res = await fetch(
-          "/api/messages/unread-count",
-          {
-            credentials: "include",
-          }
-        );
-    
-        console.log("status:", res.status);
-    
-        if (res.status === 401) {
-          console.log("Unauthorized request");
-          return;
-        }
-    
-        const data = await res.json();
-        setUnreadCount(data.count);
-      } catch (err) {
-        console.error(err);
-      }
-    };
 
   const navLinks = [
     { name: "Players", href: "/partners", icon: Users },

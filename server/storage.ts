@@ -13,6 +13,7 @@ import {
   organizerRequests,
   organizations,
   organizationMembers,
+  communityMemberships,
   tennisSessions,
   registrations, 
   type User, 
@@ -37,7 +38,6 @@ import {
   type InsertOrganizerRequest,
   type Organization,
   type InsertOrganization,
-  type OrganizationMember,
   type TennisSession,
   type InsertSession,
   type Registration,
@@ -45,6 +45,7 @@ import {
   type SessionWithDetails,
   type RegistrationWithUser,
   type OrgPlayerRow,
+  type CommunityMembership,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, asc, sql, lte, ne, gte, ilike} from "drizzle-orm";
@@ -238,6 +239,10 @@ export interface IStorage {
  getRegistrationsForSession(sessionId: string): Promise<RegistrationWithUser[]>;
  getPlayersForOrganization(organizationId: string): Promise<OrgPlayerRow[]>;
  createInvitedRegistration(sessionId: string, userId: string): Promise<Registration>;
+ acceptInvitedRegistration(sessionId: string, userId: string): Promise<Registration>;
+ createOrganizationMembership(organizationId: string, userId: string): Promise<CommunityMembership>;
+ updateOrganizationMembershipStatus(organizationId: string, userId: string, status: string): Promise<CommunityMembership>;
+ updateMessageActionStatus(id: string, actionStatus: string): Promise<Message>;
  searchUsers(query: string, excludeUserId: string, limit?: number): Promise<Pick<User, "id" | "name" | "slug" | "avatar" | "role">[]>;
   // Admin: every session on the platform, across all organizations, so
   // nothing goes live without the admin seeing it first.
@@ -1320,6 +1325,10 @@ export class DatabaseStorage implements IStorage {
         content: messages.content,
         isRead: messages.isRead,
         createdAt: messages.createdAt,
+        messageType: messages.messageType,
+        relatedSessionId: messages.relatedSessionId,
+        relatedOrganizationId: messages.relatedOrganizationId,
+        actionStatus: messages.actionStatus,
   
         senderAvatar: users.avatar,
       })
@@ -1352,6 +1361,10 @@ export class DatabaseStorage implements IStorage {
   
         isRead: messages.isRead,
         createdAt: messages.createdAt,
+        messageType: messages.messageType,
+        relatedSessionId: messages.relatedSessionId,
+        relatedOrganizationId: messages.relatedOrganizationId,
+        actionStatus: messages.actionStatus,
   
         senderAvatar: users.avatar,
       })
@@ -1460,6 +1473,10 @@ export class DatabaseStorage implements IStorage {
 
         isRead: messages.isRead,
         createdAt: messages.createdAt,
+        messageType: messages.messageType,
+        relatedSessionId: messages.relatedSessionId,
+        relatedOrganizationId: messages.relatedOrganizationId,
+        actionStatus: messages.actionStatus,
 
         senderAvatar: users.avatar,
       })
@@ -1509,6 +1526,10 @@ export class DatabaseStorage implements IStorage {
   
         isRead: messages.isRead,
         createdAt: messages.createdAt,
+        messageType: messages.messageType,
+        relatedSessionId: messages.relatedSessionId,
+        relatedOrganizationId: messages.relatedOrganizationId,
+        actionStatus: messages.actionStatus,
   
         senderAvatar: users.avatar,
       })
@@ -2231,6 +2252,79 @@ export class DatabaseStorage implements IStorage {
       .values({ sessionId, userId, status: "invited" })
       .returning();
     return created;
+  }
+
+  // Organiser inviting a player to their Community (not tied to any
+  // session). Same upsert shape as createInvitedRegistration - a
+  // declined membership can be re-invited, an already-pending/accepted
+  // one is left alone rather than re-triggering a message.
+  async createOrganizationMembership(organizationId: string, userId: string): Promise<CommunityMembership> {
+    const [existing] = await db
+      .select()
+      .from(communityMemberships)
+      .where(and(eq(communityMemberships.organizationId, organizationId), eq(communityMemberships.userId, userId)));
+
+    if (existing && existing.status !== "declined") {
+      return existing;
+    }
+
+    if (existing) {
+      const [updated] = await db
+        .update(communityMemberships)
+        .set({ status: "pending" })
+        .where(eq(communityMemberships.id, existing.id))
+        .returning();
+      return updated;
+    }
+
+    const [created] = await db
+      .insert(communityMemberships)
+      .values({ organizationId, userId, status: "pending" })
+      .returning();
+    return created;
+  }
+
+  // Player accepting a session invite - always a guaranteed registered
+  // spot, not subject to the usual capacity/waitlist check joinSession
+  // applies to a self-initiated join, since the organiser already
+  // decided to include this specific player when they sent the invite.
+  async acceptInvitedRegistration(sessionId: string, userId: string): Promise<Registration> {
+    const [existing] = await db
+      .select()
+      .from(registrations)
+      .where(and(eq(registrations.sessionId, sessionId), eq(registrations.userId, userId)));
+
+    if (!existing) {
+      throw new Error("Invitation not found");
+    }
+
+    const [updated] = await db
+      .update(registrations)
+      .set({ status: "registered" })
+      .where(eq(registrations.id, existing.id))
+      .returning();
+    return updated;
+  }
+
+  async updateMessageActionStatus(id: string, actionStatus: string): Promise<Message> {
+    const [updated] = await db
+      .update(messages)
+      .set({ actionStatus })
+      .where(eq(messages.id, id))
+      .returning();
+    return updated;
+  }
+
+  async updateOrganizationMembershipStatus(organizationId: string, userId: string, status: string): Promise<CommunityMembership> {
+    const [updated] = await db
+      .update(communityMemberships)
+      .set({ status })
+      .where(and(eq(communityMemberships.organizationId, organizationId), eq(communityMemberships.userId, userId)))
+      .returning();
+    if (!updated) {
+      throw new Error("Membership not found");
+    }
+    return updated;
   }
 
   // Simple name search across real (non-test) users, for both invite

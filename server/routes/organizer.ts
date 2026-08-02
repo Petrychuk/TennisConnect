@@ -269,16 +269,24 @@ router.post("/players/invite", requireAuth, requireOrganizer, async (req, res, n
     if (!organizer || !invitee) {
       return res.status(404).json({ message: "User not found" });
     }
+    if (!organization) {
+      return res.status(400).json({ message: "Create your organisation first" });
+    }
 
-    await sendMessageBetween(
-      organizer,
-      invitee.id,
-      invitee.role,
-      "You're invited!",
-      `${organizer.name}${organization ? ` from ${organization.name}` : ""} would love for you to join their tennis community on TennisConnect. Check out their upcoming sessions and say hi!`
-    );
+    const membership = await storage.createOrganizationMembership(organization.id, userId);
 
-    res.status(201).json({ invited: true });
+    if (membership.status === "pending") {
+      await sendMessageBetween(
+        organizer,
+        invitee.id,
+        invitee.role,
+        "You're invited!",
+        `${organizer.name} invited you to join ${organizer.name}'s Tennis Community.`,
+        { messageType: "community_invite", relatedOrganizationId: organization.id }
+      );
+    }
+
+    res.status(201).json({ invited: true, status: membership.status });
   } catch (error) {
     next(error);
   }
@@ -592,12 +600,18 @@ router.post("/sessions/:id/invite", requireAuth, requireOrganizer, requireOwnSes
     const registration = await storage.createInvitedRegistration(session.id, userId);
 
     if (registration.status === "invited") {
+      const sessionDate = new Date(session.startAt).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
       await sendMessageBetween(
         organizer,
         invitee.id,
         invitee.role,
         `You're invited: ${session.title}`,
-        `${organizer.name} invited you to "${session.title}" on ${new Date(session.startAt).toLocaleDateString()}. Head to the session's page to join.`
+        `${organizer.name} invited you to "${session.title}" on ${sessionDate}.`,
+        { messageType: "session_invite", relatedSessionId: session.id }
       );
     }
 
