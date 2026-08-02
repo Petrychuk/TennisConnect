@@ -24,10 +24,20 @@ export function SessionActionsCard({ session, onEdit, variant = "list" }: Sessio
     if (!session || publishing) return;
     setPublishing(true);
     try {
-      await publishSession(session.id);
+      const updated = await publishSession(session.id);
       queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine"] });
-      toast({ title: "Sent for review", description: "It'll go live once an admin approves it." });
+      if (session.parentSessionId) {
+        // This session is a division - refresh the container's own
+        // Divisions list too, or it keeps showing this one as "draft"
+        // even though it just went live (or was sent for review).
+        queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.parentSessionId, "divisions"] });
+      }
+      toast(
+        updated.status === "published"
+          ? { title: "Published", description: "It's live now - players can register." }
+          : { title: "Sent for review", description: "It'll go live once an admin approves it." }
+      );
     } catch (error: any) {
       toast({ title: "Couldn't publish", description: error?.message ?? "Please try again.", variant: "destructive" });
     } finally {
