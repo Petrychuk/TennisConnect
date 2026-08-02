@@ -25,6 +25,7 @@ import { Footer } from "@/components/footer";
 import { BecomeOrganizerCard } from "@/components/profile/shared/BecomeOrganizerCard";
 import { messageSchema } from "@/lib/validations/messages";
 import { MySessionsSection } from "@/components/profile/shared/MySessionsSection";
+import { UpcomingTournamentsSection } from "@/components/profile/shared/UpcomingTournamentsSection";
 import { MyOrganizedSessionsSection } from "@/components/profile/shared/MyOrganizedSessionsSection";
 import { useOrganizerStatus } from "@/hooks/use-organizer-status";
 import { TennisLoader } from "@/components/ui/tennisLoader";
@@ -887,7 +888,18 @@ export default function PlayerProfile() {
                     <MyOrganizedSessionsSection isOwnProfile={isOwnProfile} profileSlug={profileSlug} />
                   </TabsContent>
                 )}
-                <TabsContent value="tournaments" className="space-y-8">
+                <TabsContent value="tournaments" className="space-y-6">
+                  <Tabs defaultValue="upcoming">
+                    <TabsList>
+                      <TabsTrigger value="upcoming" data-testid="tournaments-subtab-upcoming">Upcoming</TabsTrigger>
+                      <TabsTrigger value="past" data-testid="tournaments-subtab-past">Past</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="upcoming" className="mt-6">
+                      <UpcomingTournamentsSection isOwnProfile={isOwnProfile} isAuthenticated={isAuthenticated} />
+                    </TabsContent>
+
+                    <TabsContent value="past" className="space-y-8 mt-6">
                   <div className="flex justify-between items-center">
                     <h3 className="text-xl font-bold">Tournament History</h3>
                     {isOwnProfile && (
@@ -1024,14 +1036,10 @@ export default function PlayerProfile() {
 
                   {/* Tournament Lists */}
                   {(() => {
-                    const today = new Date().toISOString().split('T')[0];
                     const sortedTournaments = [...tournaments].sort((a, b) => {
                       // Sort descending by date
                       return new Date(b.date).getTime() - new Date(a.date).getTime();
                     });
-
-                    const upcoming = sortedTournaments.filter(t => t.date > today);
-                    const past = sortedTournaments.filter(t => t.date <= today);
 
                     const TournamentCard = ({ t }: { t: any }) => (
                       <Card key={t.id} className="overflow-hidden">
@@ -1122,37 +1130,22 @@ export default function PlayerProfile() {
                     );
 
                     return (
-                      <div className="space-y-8">
-                        {/* Upcoming Section */}
-                        {upcoming.length > 0 && (
-                            <div className="space-y-4">
-                              <h4 className="text-lg font-semibold flex items-center gap-2 text-primary">
-                                <Calendar className="w-5 h-5" /> Upcoming Tournaments
-                              </h4>
-                              <div className="grid grid-cols-1 gap-4">
-                                {upcoming.map(t => <TournamentCard key={t.id} t={t} />)}
-                              </div>
-                            </div>
+                      <div className="space-y-4">
+                        {tournaments.length === 0 ? (
+                          <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-xl border-2 border-dashed">
+                            <Trophy className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                            <p>No tournament history added yet.</p>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 gap-4">
+                            {sortedTournaments.map(t => <TournamentCard key={t.id} t={t} />)}
+                          </div>
                         )}
-
-                        {/* Past Section */}
-                        <div className="space-y-4">
-                            <h4 className="text-lg font-semibold flex items-center gap-2 text-muted-foreground">
-                              <Trophy className="w-5 h-5" /> Past Tournaments
-                            </h4>
-                            <div className="grid grid-cols-1 gap-4">
-                              {past.map(t => <TournamentCard key={t.id} t={t} />)}
-                            </div>
-                            {past.length === 0 && upcoming.length === 0 && (
-                              <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-xl border-2 border-dashed">
-                                <Trophy className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                                <p>No tournament history added yet.</p>
-                              </div>
-                            )}
-                        </div>
                       </div>
                     );
                   })()}
+                    </TabsContent>
+                  </Tabs>
                 </TabsContent>
 
                 {/* Selling tab content hidden for now, per request */}
