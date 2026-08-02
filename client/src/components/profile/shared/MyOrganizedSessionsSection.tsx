@@ -267,11 +267,11 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
           const details = "registeredCount" in session ? session : null;
           const guestBucket = details ? guestBucketFor(details) : null;
           const myStatus = myStatusById.get(session.id) ?? null;
-          const canJoin = !isOwnProfile
-            ? (guestBucket === "open" || guestBucket === "waitlist") && !myStatus
-            : session.status === "published" && !myStatus; // capacity is re-checked server-side either way
-          const showPolicy = policyOpenId === session.id;
           const divisions = divisionsByParent.get(session.id) ?? [];
+          const canJoin = divisions.length === 0 && (!isOwnProfile
+            ? (guestBucket === "open" || guestBucket === "waitlist") && !myStatus
+            : session.status === "published" && !myStatus); // capacity is re-checked server-side either way
+          const showPolicy = policyOpenId === session.id;
 
           return (
             <Card key={session.id} data-testid={`my-organized-session-${session.id}`}>
