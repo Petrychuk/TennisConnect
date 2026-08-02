@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +17,7 @@ import {
 import { Layers, Plus, Copy, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getSessionDivisions, createSessionDivision } from "@/lib/api/organizer-sessions";
+import { NumberField } from "@/components/organiser/sessions/wizard/number-field";
 import type { TennisSession } from "@shared/schema";
 
 const STATUS_BADGE: Record<string, string> = {
@@ -44,6 +46,7 @@ export function DivisionsCard({ sessionId }: DivisionsCardProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [cloneFrom, setCloneFrom] = useState<TennisSession | null>(null);
   const [title, setTitle] = useState("");
+  const [maxParticipants, setMaxParticipants] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const divisionsQuery = useQuery({
@@ -54,12 +57,14 @@ export function DivisionsCard({ sessionId }: DivisionsCardProps) {
   const openCreate = () => {
     setCloneFrom(null);
     setTitle("");
+    setMaxParticipants("");
     setDialogOpen(true);
   };
 
   const openDuplicate = (division: TennisSession) => {
     setCloneFrom(division);
     setTitle(`${division.title} (copy)`);
+    setMaxParticipants(division.maxParticipants != null ? String(division.maxParticipants) : "");
     setDialogOpen(true);
   };
 
@@ -69,6 +74,7 @@ export function DivisionsCard({ sessionId }: DivisionsCardProps) {
     try {
       await createSessionDivision(sessionId, {
         title: title.trim(),
+        maxParticipants: maxParticipants.trim() ? Number(maxParticipants) : undefined,
         cloneFromDivisionId: cloneFrom?.id,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", sessionId, "divisions"] });
@@ -177,6 +183,17 @@ export function DivisionsCard({ sessionId }: DivisionsCardProps) {
               ))}
             </div>
           )}
+          <div className="space-y-1.5">
+            <Label className="text-sm">Max Players (optional)</Label>
+            <NumberField
+              min={1}
+              value={maxParticipants === "" ? NaN : Number(maxParticipants)}
+              onChange={(v) => setMaxParticipants(String(v))}
+              placeholder="Same as the event, unless set here"
+              data-testid="organiser-session-division-max-players"
+            />
+            <p className="text-xs text-muted-foreground">Leave blank to use the same capacity as the event or the division being duplicated.</p>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel

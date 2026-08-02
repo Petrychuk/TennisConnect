@@ -115,6 +115,21 @@ export default function OrganiserSessionLivePage() {
           </div>
         </div>
 
+        <div className="grid grid-cols-3 gap-3 max-w-md" data-testid="organiser-session-live-stats">
+          <div>
+            <p className="text-2xl font-bold" data-testid="organiser-session-live-registered">{session.registeredCount}</p>
+            <p className="text-xs text-primary-foreground/70">Registered</p>
+          </div>
+          <div>
+            <p className="text-2xl font-bold" data-testid="organiser-session-live-checkedin">{session.checkedInCount}</p>
+            <p className="text-xs text-primary-foreground/70">Checked In</p>
+          </div>
+          <div>
+            <p className="text-2xl font-bold" data-testid="organiser-session-live-waiting">{session.waitingCount}</p>
+            <p className="text-xs text-primary-foreground/70">Waiting List</p>
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3" data-testid="organiser-session-live-courts">
           {courts.map((court) => (
             <div
@@ -135,7 +150,7 @@ export default function OrganiserSessionLivePage() {
         </div>
 
         <div className="rounded-2xl border border-dashed border-primary-foreground/20 py-12 text-center text-primary-foreground/60" data-testid="organiser-session-live-placeholder">
-          Waiting list, scoring, and round management aren't built yet — this
+          Round generation, court assignment, and live scoring aren't built yet — this
           screen is the foundation they'll live on.
         </div>
       </div>

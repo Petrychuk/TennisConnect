@@ -66,16 +66,44 @@ export function OverviewTab({ session, onEdit, isDivision }: OverviewTabProps) {
       maxParticipants: session.maxParticipants,
     };
 
+    // Real, division-specific readiness instead of the flat mock every
+    // session used to get - registration/check-in state is genuinely
+    // knowable; courts and rounds honestly say "not available yet"
+    // rather than showing a fixed fake "6/6" for every division
+    // regardless of what's actually true.
+    const notCheckedIn = Math.max(0, session.registeredCount - session.checkedInCount);
+    const readinessItems = [
+      {
+        id: "registration",
+        label: session.registrationOpen ? "Registration Open" : "Registration Closed",
+        status: "ready" as const,
+      },
+      {
+        id: "checkin",
+        label: notCheckedIn > 0 ? `${notCheckedIn} Player${notCheckedIn === 1 ? "" : "s"} Not Checked In` : "All Players Checked In",
+        status: notCheckedIn > 0 ? ("warning" as const) : ("ready" as const),
+      },
+      { id: "courts", label: "Courts — not available yet", status: "warning" as const },
+      { id: "rounds", label: "Rounds — not available yet", status: "warning" as const },
+    ];
+    const readyCount = readinessItems.filter((i) => i.status === "ready").length;
+    const divisionReadiness = {
+      percent: Math.round((readyCount / readinessItems.length) * 100),
+      items: readinessItems,
+    };
+
     return (
       <div data-testid="organiser-session-overview-tab" className="space-y-4">
-        {session.status === "live" && (
+        {session.status === "live" ? (
           <LiveTodayCard
             session={liveSession}
             onEnterLive={() => setLocation(`/organiser/sessions/${session.id}/live`)}
           />
+        ) : (
+          <LiveTodayCard session={null} />
         )}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <SessionReadinessCard readiness={mockSessionReadiness} onViewDetails={viewReadinessDetails} />
+          <SessionReadinessCard readiness={divisionReadiness} onViewDetails={viewReadinessDetails} />
           <SessionActionsCard session={session} onEdit={onEdit} />
         </div>
         <SessionDetailsCard session={session} isDivision />
