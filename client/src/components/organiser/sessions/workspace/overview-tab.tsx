@@ -21,9 +21,10 @@ import {
 interface OverviewTabProps {
   session: SessionListItem;
   onEdit?: () => void;
+  isDivision?: boolean;
 }
 
-export function OverviewTab({ session, onEdit }: OverviewTabProps) {
+export function OverviewTab({ session, onEdit, isDivision }: OverviewTabProps) {
   const detail = getSessionDetail(session);
   const { toast } = useToast();
   const viewReadinessDetails = () => toast({ title: "Readiness details isn't wired up yet" });
@@ -37,6 +38,25 @@ export function OverviewTab({ session, onEdit }: OverviewTabProps) {
   );
 
   const isMultiDivisionType = (session.type === "tournament" || session.type === "club-championship") && !session.parentSessionId;
+
+  // A division's overview is deliberately minimal - no cover-photo
+  // Summary card, no separate Status card (Live Readiness already
+  // covers that), no Notes, no cross-session Quick Stats analytics.
+  // Just what's actually needed to run this specific division:
+  // readiness for TC Live, the real actions, and its own details
+  // (courts/capacity/cost - not format/rounds, which belong to the
+  // container).
+  if (isDivision) {
+    return (
+      <div data-testid="organiser-session-overview-tab" className="space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <SessionReadinessCard readiness={mockSessionReadiness} onViewDetails={viewReadinessDetails} />
+          <SessionActionsCard session={session} onEdit={onEdit} />
+        </div>
+        <SessionDetailsCard session={session} isDivision />
+      </div>
+    );
+  }
 
   return (
     <div data-testid="organiser-session-overview-tab">

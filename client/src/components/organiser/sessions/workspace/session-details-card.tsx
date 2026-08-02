@@ -7,19 +7,24 @@ import { getSessionDetail } from "@/lib/organiser-sessions-mock-data";
 
 interface SessionDetailsCardProps {
   session: SessionListItem;
+  isDivision?: boolean;
 }
 
-export function SessionDetailsCard({ session }: SessionDetailsCardProps) {
+export function SessionDetailsCard({ session, isDivision }: SessionDetailsCardProps) {
   const detail = getSessionDetail(session);
   const { toast } = useToast();
   const courtsCount = session.courts?.length ?? 6;
   const roundsCount = session.roundTotal ?? 5;
 
   const rows = [
-    { icon: Tag, label: "Session Type", value: session.type.replace("-", " "), testId: "type" },
-    { icon: Shuffle, label: "Format", value: "Fun Doubles", testId: "format" },
-    { icon: Layers, label: "Game Format", value: detail.gameFormat, testId: "game-format" },
-    { icon: Repeat, label: "Rounds", value: `${roundsCount} Rounds`, testId: "rounds" },
+    { icon: Tag, label: isDivision ? "Division Type" : "Session Type", value: session.type.replace("-", " "), testId: "type" },
+    ...(isDivision
+      ? []
+      : [
+          { icon: Shuffle, label: "Format", value: "Fun Doubles", testId: "format" },
+          { icon: Layers, label: "Game Format", value: detail.gameFormat, testId: "game-format" },
+          { icon: Repeat, label: "Rounds", value: `${roundsCount} Rounds`, testId: "rounds" },
+        ]),
     { icon: MapPinned, label: "Courts", value: `${courtsCount} Courts`, testId: "courts" },
     { icon: Users, label: "Max Players", value: session.maxParticipants ? `${session.maxParticipants} Players` : "No limit", testId: "max-players" },
     {
@@ -47,7 +52,7 @@ export function SessionDetailsCard({ session }: SessionDetailsCardProps) {
   return (
     <Card className="shadow-sm" data-testid="organiser-session-details-card">
       <CardHeader>
-        <CardTitle className="text-base">Session Details</CardTitle>
+        <CardTitle className="text-base">{isDivision ? "Division Details" : "Session Details"}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {rows.map((row) => {

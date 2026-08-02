@@ -95,10 +95,15 @@ export default function OrganiserSessionWorkspacePage() {
   // fields stay mock for now since there's no backend for those yet.
   const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null } : mockOrganiser;
   const [tab, setTab] = useState<WorkspaceTabKey>("overview");
+  const session = sessionQuery.data ? toSessionListItem(sessionQuery.data) : undefined;
+  // A division's workspace is deliberately stripped down - format/rules
+  // and messaging both live at the container level, not per-division.
+  const isDivision = !!session?.parentSessionId;
+  const visibleTabs = isDivision ? WORKSPACE_TABS.filter((t) => t.key !== "format" && t.key !== "messages") : WORKSPACE_TABS;
 
   useEffect(() => {
     const requested = new URLSearchParams(search).get("tab");
-    if (requested && WORKSPACE_TABS.some((t) => t.key === requested)) {
+    if (requested && visibleTabs.some((t) => t.key === requested)) {
       setTab(requested as WorkspaceTabKey);
     }
   }, [search]);
@@ -133,7 +138,6 @@ export default function OrganiserSessionWorkspacePage() {
     );
   }
 
-  const session = sessionQuery.data ? toSessionListItem(sessionQuery.data) : undefined;
 
   if (!session) {
     return (
@@ -289,7 +293,7 @@ export default function OrganiserSessionWorkspacePage() {
           {/* Tabs */}
           <Tabs value={tab} onValueChange={(v) => setTab(v as WorkspaceTabKey)}>
             <TabsList className="justify-start overflow-x-auto max-w-full whitespace-nowrap h-auto p-1 scrollbar-hide" data-testid="organiser-session-workspace-tabs">
-              {WORKSPACE_TABS.map((t) => (
+              {visibleTabs.map((t) => (
                 <TabsTrigger key={t.key} value={t.key} className="gap-1" data-testid={`organiser-session-workspace-tab-${t.key}`}>
                   {t.label}
                   {t.key === "players" && (
@@ -300,7 +304,7 @@ export default function OrganiserSessionWorkspacePage() {
             </TabsList>
 
             <TabsContent value="overview" className="mt-4">
-              <OverviewTab session={session} onEdit={goEdit} />
+              <OverviewTab session={session} onEdit={goEdit} isDivision={isDivision} />
             </TabsContent>
             <TabsContent value="players" className="mt-4">
               <PlayersTab session={session} onEdit={goEdit} />
