@@ -457,6 +457,11 @@ export const tennisSessions = pgTable("sessions", {
   createdBy: varchar("created_by").notNull().references(() => users.id),
   title: text("title").notNull(),
   description: text("description"),
+  // Base64 data URL from the wizard's Step 2 upload (FileReader, no
+  // separate object storage wired for this yet) - was always captured
+  // in the wizard draft but silently dropped on submit until this
+  // column existed. Nullable - most sessions still won't have one.
+  coverImage: text("cover_image"),
   // Free text on purpose (see shared/constants/sessions.ts SESSION_TYPES)
   // so new formats don't require a migration.
   type: text("type").default("social").notNull(),

@@ -3,11 +3,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Calendar, MapPin, LogIn, Trophy } from "lucide-react";
+import { Calendar, MapPin, LogIn, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { getMyRegisteredSessions, leaveSession } from "@/lib/api/organizer-sessions";
+import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.png";
+
+const DEFAULT_CANCELLATION_POLICY =
+  "The organiser hasn't set a specific cancellation or refund policy for this session yet. As a general guide, cancel as early as possible so your spot can go to someone on the waiting list.";
 
 interface MySessionsSectionProps {
   isOwnProfile: boolean;
@@ -31,6 +34,7 @@ export function MySessionsSection({ isOwnProfile, isAuthenticated, sessionTypes,
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [policyOpenId, setPolicyOpenId] = useState<string | null>(null);
 
   const registeredQuery = useQuery({
     queryKey: ["/api/organizer/sessions/mine/registered"],
@@ -112,17 +116,19 @@ export function MySessionsSection({ isOwnProfile, isAuthenticated, sessionTypes,
     <div className="space-y-3" data-testid="my-sessions-list">
       {joined.map((session) => {
         const canCancel = new Date(session.startAt).getTime() > Date.now();
+        const showPolicy = policyOpenId === session.id;
         return (
           <Card key={session.id} data-testid={`my-session-${session.id}`}>
             <CardContent className="py-4 flex items-center gap-4">
-              <Avatar className="h-12 w-12 shrink-0" data-testid={`my-session-${session.id}-organiser-avatar`}>
-                <AvatarImage src={session.creatorAvatar || undefined} alt={session.creatorName || session.organizationName} />
-                <AvatarFallback className="bg-primary/10 text-primary">
-                  {(session.creatorName || session.organizationName || "?").charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              <img
+                src={session.coverImage || courtImage}
+                alt=""
+                aria-hidden="true"
+                className="h-16 w-16 rounded-xl object-cover shrink-0"
+                data-testid={`my-session-${session.id}-cover`}
+              />
               <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="space-y-1">
+              <div className="space-y-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <Link href={`/organiser/sessions/${session.id}`} className="font-semibold hover:underline">
                     {session.title}
@@ -148,6 +154,20 @@ export function MySessionsSection({ isOwnProfile, isAuthenticated, sessionTypes,
                   )}
                   {session.organizationName && <span>by {session.organizationName}</span>}
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setPolicyOpenId(showPolicy ? null : session.id)}
+                  className="text-xs text-muted-foreground flex items-center gap-1 hover:text-foreground transition-colors"
+                  data-testid={`cancellation-policy-toggle-${session.id}`}
+                >
+                  Cancellation &amp; refund policy
+                  {showPolicy ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </button>
+                {showPolicy && (
+                  <p className="text-xs text-muted-foreground max-w-md" data-testid={`cancellation-policy-text-${session.id}`}>
+                    {session.description || DEFAULT_CANCELLATION_POLICY}
+                  </p>
+                )}
               </div>
               {canCancel && (
                 <Button

@@ -66,6 +66,7 @@ export function toSessionListItem(session: TennisSession | SessionWithDetails): 
   return {
     id: session.id,
     title: session.title,
+    coverImage: session.coverImage ?? undefined,
     type: (session.type ?? "custom") as SessionListItem["type"],
     status: session.status as SessionListItem["status"],
     location: session.location ?? "",

@@ -172,8 +172,10 @@ export function createEmptyDraft(): NewSessionDraft {
  * into a short, readable summary appended to the description instead,
  * which is better than losing that information outright while a
  * proper schema addition for structured format/rules storage is a
- * separate, later piece of work. season/coverImage also have no
- * backend column yet for the same reason.
+ * separate, later piece of work. season has no backend column yet
+ * for the same reason. coverImage does have a real column now (a
+ * base64 data URL, since there's no separate object storage wired
+ * for session covers yet) and is sent as-is.
  */
 export function draftToInsertSession(draft: NewSessionDraft) {
   const startAt = draft.date
@@ -216,6 +218,7 @@ export function draftToInsertSession(draft: NewSessionDraft) {
   return {
     title: draft.name || "Untitled Session",
     description: fullDescription || undefined,
+    coverImage: draft.coverImage || undefined,
     type: draft.type ?? "custom",
     location: draft.venue || undefined,
     startAt,
