@@ -80,6 +80,14 @@ export default function OrganiserSessionWorkspacePage() {
     queryFn: () => getSessionById(params!.id),
     enabled: !!params?.id,
   });
+  // Only fetched when this session is actually a division - powers the
+  // "Sessions > Parent Event > This Division" breadcrumb so it's quick
+  // to get back to the container from inside one of its divisions.
+  const parentSessionQuery = useQuery({
+    queryKey: ["/api/organizer/sessions", sessionQuery.data?.parentSessionId],
+    queryFn: () => getSessionById(sessionQuery.data!.parentSessionId!),
+    enabled: !!sessionQuery.data?.parentSessionId,
+  });
   const search = useSearch();
   const { toast } = useToast();
   const profileHref = user ? `/${user.role}/${user.slug}` : "/";
@@ -201,10 +209,22 @@ export default function OrganiserSessionWorkspacePage() {
 
         <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 md:space-y-4 max-w-6xl mx-auto">
           {/* Breadcrumb */}
-          <div className="flex items-center gap-1.5 text-sm" data-testid="organiser-session-breadcrumb">
+          <div className="flex items-center gap-1.5 text-sm flex-wrap" data-testid="organiser-session-breadcrumb">
             <Link href="/organiser/sessions" className="text-primary hover:underline">
               Sessions
             </Link>
+            {parentSessionQuery.data && (
+              <>
+                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                <Link
+                  href={`/organiser/sessions/${parentSessionQuery.data.id}`}
+                  className="text-primary hover:underline truncate max-w-[200px]"
+                  data-testid="organiser-session-breadcrumb-parent"
+                >
+                  {parentSessionQuery.data.title}
+                </Link>
+              </>
+            )}
             <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
             <span className="text-muted-foreground truncate">{session.title}</span>
           </div>

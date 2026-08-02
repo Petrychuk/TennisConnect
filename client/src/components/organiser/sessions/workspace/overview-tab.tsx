@@ -36,7 +36,7 @@ export function OverviewTab({ session, onEdit }: OverviewTabProps) {
     />
   );
 
-  const isMultiDivisionType = session.type === "tournament" || session.type === "club-championship";
+  const isMultiDivisionType = (session.type === "tournament" || session.type === "club-championship") && !session.parentSessionId;
 
   return (
     <div data-testid="organiser-session-overview-tab">

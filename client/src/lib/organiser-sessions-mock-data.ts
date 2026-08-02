@@ -62,6 +62,7 @@ export interface SessionListItem {
   format?: string; // "Fun doubles · Random partners · Balance skill"
   roundsDescription?: string; // "5 rounds · Best of 4 games (no-ad)"
   waitingListEnabled?: boolean;
+  parentSessionId?: string | null; // set when this session is a division of a container session
   costPerPlayer?: number | null;
   organizerName?: string;
   organizerSlug?: string;
