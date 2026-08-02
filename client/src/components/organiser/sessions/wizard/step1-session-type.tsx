@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Users, Repeat, Trophy, Swords, Crown, Settings2, Check, Lightbulb, Award, Shield, Heart, Activity, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { SESSION_TYPE_OPTIONS, type SessionTypeKey } from "@/lib/organiser-session-wizard-types";
 
@@ -28,6 +30,8 @@ const TYPE_ICON: Record<SessionTypeKey, typeof Users> = {
 };
 
 export function Step1SessionType({ value, onChange }: Step1SessionTypeProps) {
+  const [infoOpen, setInfoOpen] = useState(false);
+
   return (
     <div className="space-y-6" data-testid="organiser-wizard-step1">
       <div>
@@ -78,10 +82,37 @@ export function Step1SessionType({ value, onChange }: Step1SessionTypeProps) {
             Social Tennis is perfect for most club sessions. It's fun, inclusive, and keeps everyone moving!
           </p>
         </div>
-        <Button variant="outline" size="sm" className="shrink-0" data-testid="organiser-wizard-type-learn-more">
+        <Button variant="outline" size="sm" className="shrink-0" onClick={() => setInfoOpen(true)} data-testid="organiser-wizard-type-learn-more">
           Learn more
         </Button>
       </div>
+
+      <Dialog open={infoOpen} onOpenChange={setInfoOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col" data-testid="organiser-wizard-type-info-modal">
+          <DialogHeader>
+            <DialogTitle>What each session type offers</DialogTitle>
+            <DialogDescription>
+              Every type uses the same setup form below — the type you pick shapes what players expect going in and shows on the session summary.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="overflow-y-auto -mx-6 px-6 space-y-3">
+            {SESSION_TYPE_OPTIONS.map((option) => {
+              const Icon = TYPE_ICON[option.key];
+              return (
+                <div key={option.key} className="flex items-start gap-3 rounded-xl border border-border p-3" data-testid={`organiser-wizard-type-info-${option.key}`}>
+                  <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm">{option.label}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{option.details}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

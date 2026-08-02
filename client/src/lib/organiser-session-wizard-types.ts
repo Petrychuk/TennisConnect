@@ -16,6 +16,7 @@ export interface SessionTypeOption {
   key: SessionTypeKey;
   label: string;
   description: string;
+  details: string;
   mostPopular?: boolean;
 }
 
@@ -28,18 +29,18 @@ export interface SessionTypeOption {
 // doesn't require a new code path elsewhere - only Step 1 needs to know
 // the full list exists.
 export const SESSION_TYPE_OPTIONS: SessionTypeOption[] = [
-  { key: "social", label: "Social Tennis", description: "Fun, random doubles", mostPopular: true },
-  { key: "americano", label: "Americano", description: "Rotate partners · Individual points" },
-  { key: "round-robin", label: "Round Robin", description: "Everyone plays · Structured format" },
-  { key: "mexicano", label: "Mexicano", description: "Competitive doubles · Level based" },
-  { key: "king-of-the-court", label: "King of the Court", description: "Challenge and play · Elimination style" },
-  { key: "tournament", label: "Tournament", description: "Draw · Elimination · Champion" },
-  { key: "league", label: "League Match", description: "Home vs away · Team points · Season" },
-  { key: "club-championship", label: "Club Championship", description: "Seeded draw · Qualifying · Final" },
-  { key: "junior-event", label: "Junior Event", description: "Age groups · Development focused" },
-  { key: "cardio-tennis", label: "Cardio Tennis", description: "Fitness format · High rotation" },
-  { key: "coaching-clinic", label: "Coaching Clinic", description: "Instructor led · Skill building" },
-  { key: "custom", label: "Custom Session", description: "Create your own · Fully flexible" },
+  { key: "social", label: "Social Tennis", description: "Fun, random doubles", mostPopular: true, details: "Casual, no-pressure doubles with partners mixed up throughout — great for regular club nights where the point is playing, not competing." },
+  { key: "americano", label: "Americano", description: "Rotate partners · Individual points", details: "Everyone partners with everyone over several short rounds, with points tracked per player rather than per team — a lively, social format that still rewards individual play." },
+  { key: "round-robin", label: "Round Robin", description: "Everyone plays · Structured format", details: "A fixed schedule where every player or pair faces every other one — fair and predictable, with a clear result at the end." },
+  { key: "mexicano", label: "Mexicano", description: "Competitive doubles · Level based", details: "Similar to Americano, but pairings adjust round to round based on how players are performing, keeping matches close and competitive." },
+  { key: "king-of-the-court", label: "King of the Court", description: "Challenge and play · Elimination style", details: "Winners stay on and face new challengers — a fast-moving, ladder-style format that suits drop-in sessions with players of mixed availability." },
+  { key: "tournament", label: "Tournament", description: "Draw · Elimination · Champion", details: "A knockout bracket building toward a single champion — best for a headline event rather than a regular weekly session." },
+  { key: "league", label: "League Match", description: "Home vs away · Team points · Season", details: "Teams face off across a season, accumulating points toward a standings table — suits ongoing club-vs-club competition." },
+  { key: "club-championship", label: "Club Championship", description: "Seeded draw · Qualifying · Final", details: "A seeded, multi-stage event with qualifying rounds leading to a final — your club's own marquee competition." },
+  { key: "junior-event", label: "Junior Event", description: "Age groups · Development focused", details: "Structured around age groups and skill development rather than pure competition — built for coaching juniors, not just matching them up." },
+  { key: "cardio-tennis", label: "Cardio Tennis", description: "Fitness format · High rotation", details: "A fitness-first format with fast player rotation and constant movement — less about scorekeeping, more about a great workout." },
+  { key: "coaching-clinic", label: "Coaching Clinic", description: "Instructor led · Skill building", details: "Led by a coach with a focus on drills and technique rather than open play — ideal when the goal is improvement, not a result." },
+  { key: "custom", label: "Custom Session", description: "Create your own · Fully flexible", details: "No preset structure — set up format, rules, and rotation however suits your group." },
 ];
 
 export type Visibility = "public" | "members" | "invite";
@@ -88,6 +89,14 @@ export interface NewSessionDraft {
   liveScores: boolean;
   autoNextRound: boolean;
   publishResults: boolean;
+
+  // Step 3 - optional free text, all folded into the description
+  // summary on submit (no dedicated backend columns yet, same
+  // reasoning as the format/pairing settings below)
+  rulesText: string;
+  refundPolicy: string;
+  latePolicy: string;
+  cancellationPolicy: string;
 }
 
 export function createEmptyDraft(): NewSessionDraft {
@@ -127,6 +136,10 @@ export function createEmptyDraft(): NewSessionDraft {
     liveScores: true,
     autoNextRound: false,
     publishResults: true,
+    rulesText: "",
+    refundPolicy: "",
+    latePolicy: "",
+    cancellationPolicy: "",
   };
 }
 
@@ -156,19 +169,36 @@ export function draftToInsertSession(draft: NewSessionDraft) {
     : undefined;
 
   const matchTypeLabel = draft.matchType === "mixed" ? "Mixed Doubles" : draft.matchType === "doubles" ? "Doubles" : "Singles";
+  const pairingLabels = [
+    draft.randomPartners ? "Random Partners" : null,
+    draft.avoidRepeatPartners ? "Avoid Repeat Partners" : null,
+    draft.balanceWaitingList ? "Balance Waiting List" : null,
+    draft.usePlayerRating ? "Rating-Based Pairing" : null,
+    draft.allowGuests ? "Guests Allowed" : null,
+  ].filter(Boolean);
   const formatSummary = [
     `Format: ${matchTypeLabel}`,
     `Games to ${draft.gamesTo}`,
     `${draft.roundsCount} rounds`,
     draft.noAd ? "No-Ad" : null,
     draft.tiebreak ? "Tiebreak" : null,
+    pairingLabels.length ? pairingLabels.join(", ") : null,
   ]
     .filter(Boolean)
     .join(" · ");
 
+  const policySections = [
+    draft.rulesText.trim() ? `Rules: ${draft.rulesText.trim()}` : null,
+    draft.refundPolicy.trim() ? `Refund Policy: ${draft.refundPolicy.trim()}` : null,
+    draft.latePolicy.trim() ? `Late Arrivals: ${draft.latePolicy.trim()}` : null,
+    draft.cancellationPolicy.trim() ? `Cancellations: ${draft.cancellationPolicy.trim()}` : null,
+  ].filter(Boolean);
+
+  const fullDescription = [formatSummary, ...policySections].filter(Boolean).join("\n\n");
+
   return {
     title: draft.name || "Untitled Session",
-    description: formatSummary || undefined,
+    description: fullDescription || undefined,
     type: draft.type ?? "custom",
     location: draft.venue || undefined,
     startAt,

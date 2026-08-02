@@ -5,9 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { CalendarDays, ClipboardList, DollarSign, Eye, ImagePlus, X } from "lucide-react";
+import { CalendarDays, ClipboardList, DollarSign, Eye, ImagePlus, Info, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { NewSessionDraft } from "@/lib/organiser-session-wizard-types";
+import { NumberField } from "./number-field";
 
 interface Step2DateRegistrationProps {
   draft: NewSessionDraft;
@@ -56,6 +57,11 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
 
   return (
     <div className="space-y-4" data-testid="organiser-wizard-step2">
+      <div className="flex items-start gap-2 rounded-xl bg-primary/5 border border-primary/20 px-3 py-2.5 text-sm text-muted-foreground">
+        <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+        <p>You can always edit session details later — nothing here is final.</p>
+      </div>
+
       <Card className="shadow-sm" data-testid="organiser-wizard-section-cover-photo">
         <CardHeader className="flex flex-row items-center gap-2 space-y-0">
           <ImagePlus className="w-4 h-4 text-primary" />
@@ -124,11 +130,10 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
           />
         </Field>
         <Field label="Court Count">
-          <Input
-            type="number"
+          <NumberField
             min={1}
             value={draft.courtCount}
-            onChange={(e) => onChange("courtCount", Number(e.target.value))}
+            onChange={(v) => onChange("courtCount", v)}
             data-testid="organiser-wizard-session-courts"
           />
         </Field>
@@ -175,16 +180,21 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
           <Input
             type="date"
             value={draft.registrationCloses}
+            max={draft.date || undefined}
             onChange={(e) => onChange("registrationCloses", e.target.value)}
             data-testid="organiser-wizard-registration-closes"
           />
+          {draft.date && draft.registrationCloses > draft.date && (
+            <p className="text-xs text-destructive" data-testid="organiser-wizard-registration-closes-error">
+              Registration can't close after the session date.
+            </p>
+          )}
         </Field>
         <Field label="Max Players">
-          <Input
-            type="number"
+          <NumberField
             min={1}
             value={draft.maxPlayers}
-            onChange={(e) => onChange("maxPlayers", Number(e.target.value))}
+            onChange={(v) => onChange("maxPlayers", v)}
             data-testid="organiser-wizard-max-players"
           />
         </Field>
@@ -226,11 +236,10 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
         </div>
         {draft.pricing === "paid" && (
           <Field label="Price">
-            <Input
-              type="number"
+            <NumberField
               min={0}
               value={draft.price}
-              onChange={(e) => onChange("price", Number(e.target.value))}
+              onChange={(v) => onChange("price", v)}
               data-testid="organiser-wizard-price"
             />
           </Field>

@@ -52,7 +52,21 @@ export default function OrganiserSessionNewPage() {
   };
 
   const canProceedFromStep1 = draft.type !== null;
-  const canProceedFromStep2 = draft.name.trim().length > 0 && draft.venue.trim().length > 0 && !!draft.date;
+  const canProceedFromStep2 =
+    draft.name.trim().length > 0 &&
+    draft.venue.trim().length > 0 &&
+    !!draft.date &&
+    (!draft.registrationCloses || draft.registrationCloses <= draft.date);
+
+  const step2ValidationError = (): string => {
+    if (!draft.name.trim() || !draft.venue.trim() || !draft.date) {
+      return "Give your session a name, venue, and date to continue";
+    }
+    if (draft.registrationCloses && draft.registrationCloses > draft.date) {
+      return "Registration can't close after the session date";
+    }
+    return "";
+  };
 
   const handleNext = () => {
     if (step === 1 && !canProceedFromStep1) {
@@ -60,7 +74,7 @@ export default function OrganiserSessionNewPage() {
       return;
     }
     if (step === 2 && !canProceedFromStep2) {
-      toast({ title: "Give your session a name, venue, and date to continue", variant: "destructive" });
+      toast({ title: step2ValidationError(), variant: "destructive" });
       return;
     }
     const next = Math.min(step + 1, 4);
@@ -75,7 +89,7 @@ export default function OrganiserSessionNewPage() {
   const handleSaveDraft = async () => {
     if (submitting) return;
     if (!canProceedFromStep2) {
-      toast({ title: "Give your session a name, venue, and date first", variant: "destructive" });
+      toast({ title: step2ValidationError(), variant: "destructive" });
       setStep(2);
       return;
     }
@@ -95,7 +109,7 @@ export default function OrganiserSessionNewPage() {
   const handlePublish = async () => {
     if (submitting) return;
     if (!canProceedFromStep2) {
-      toast({ title: "Give your session a name, venue, and date first", variant: "destructive" });
+      toast({ title: step2ValidationError(), variant: "destructive" });
       setStep(2);
       return;
     }

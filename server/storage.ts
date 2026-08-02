@@ -1904,6 +1904,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(tennisSessions.status, "published"),
+          eq(tennisSessions.visibility, "public"),
           gte(tennisSessions.startAt, now),
           lte(tennisSessions.startAt, weekFromNow)
         )
