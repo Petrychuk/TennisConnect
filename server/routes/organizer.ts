@@ -236,6 +236,54 @@ router.get("/players/mine", requireAuth, async (req, res, next) => {
   }
 });
 
+// Search real platform users to invite - used by both the org-wide
+// Players page and a session's own Players tab invite dialogs.
+router.get("/players/search", requireAuth, async (req, res, next) => {
+  try {
+    const query = typeof req.query.q === "string" ? req.query.q.trim() : "";
+    if (query.length < 2) {
+      return res.json([]);
+    }
+    const results = await storage.searchUsers(query, (req.user as any).id, 10);
+    res.json(results);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Org-wide invite - no specific session, just a real message inviting
+// someone to check out the organiser's sessions. There's no "follow"/
+// "community member" concept on the backend, so this is intentionally
+// just a message, not a database relationship.
+router.post("/players/invite", requireAuth, requireOrganizer, async (req, res, next) => {
+  try {
+    const userId = typeof req.body?.userId === "string" ? req.body.userId : null;
+    if (!userId) {
+      return res.status(400).json({ message: "userId is required" });
+    }
+    const [organizer, invitee, organization] = await Promise.all([
+      storage.getUser((req.user as any).id),
+      storage.getUser(userId),
+      storage.getOrganizationOwnedByUser((req.user as any).id),
+    ]);
+    if (!organizer || !invitee) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    await sendMessageBetween(
+      organizer,
+      invitee.id,
+      invitee.role,
+      "You're invited!",
+      `${organizer.name}${organization ? ` from ${organization.name}` : ""} would love for you to join their tennis community on TennisConnect. Check out their upcoming sessions and say hi!`
+    );
+
+    res.status(201).json({ invited: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.post("/sessions", requireAuth, requireOrganizer, async (req, res, next) => {
   try {
     const ownerId = (req.user as any).id;
@@ -518,6 +566,42 @@ router.get("/sessions/mine/registered", requireAuth, async (req, res, next) => {
   try {
     const sessions = await storage.getSessionsUserRegisteredFor((req.user as any).id);
     res.json(sessions);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Organiser invites a specific real player to this specific session -
+// creates a real "invited" registration (shows up in the Invited tab
+// alongside the mock ones) and sends a real message with the details.
+router.post("/sessions/:id/invite", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+  try {
+    const userId = typeof req.body?.userId === "string" ? req.body.userId : null;
+    if (!userId) {
+      return res.status(400).json({ message: "userId is required" });
+    }
+    const session = (req as any).session_ as TennisSession;
+    const [organizer, invitee] = await Promise.all([
+      storage.getUser((req.user as any).id),
+      storage.getUser(userId),
+    ]);
+    if (!organizer || !invitee) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const registration = await storage.createInvitedRegistration(session.id, userId);
+
+    if (registration.status === "invited") {
+      await sendMessageBetween(
+        organizer,
+        invitee.id,
+        invitee.role,
+        `You're invited: ${session.title}`,
+        `${organizer.name} invited you to "${session.title}" on ${new Date(session.startAt).toLocaleDateString()}. Head to the session's page to join.`
+      );
+    }
+
+    res.status(201).json(registration);
   } catch (error) {
     next(error);
   }

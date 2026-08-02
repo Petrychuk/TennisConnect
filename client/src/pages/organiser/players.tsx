@@ -29,8 +29,9 @@ import {
   mockRecentNewPlayers,
   type OrgPlayer,
 } from "@/lib/organiser-players-mock-data";
-import { getMyPlayers } from "@/lib/api/organizer-sessions";
+import { getMyPlayers, inviteToOrganization } from "@/lib/api/organizer-sessions";
 import { toOrgPlayers } from "@/lib/api/session-adapter";
+import { InvitePlayersDialog } from "@/components/organiser/shared/invite-players-dialog";
 
 type MobileFilter = "all" | "active" | "new";
 
@@ -72,6 +73,7 @@ export default function OrganiserPlayersPage() {
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"table" | "grid">("table");
   const [mobileFilter, setMobileFilter] = useState<MobileFilter>("all");
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -173,7 +175,7 @@ export default function OrganiserPlayersPage() {
                 Export List
               </Button>
               <Button
-                onClick={() => toast({ title: "Invite Players isn't wired up yet" })}
+                onClick={() => setInviteOpen(true)}
                 data-testid="organiser-players-page-invite"
               >
                 <UserPlus className="w-4 h-4 mr-2" />
@@ -260,6 +262,14 @@ export default function OrganiserPlayersPage() {
       </div>
 
       <OrganiserMobileNav />
+
+      <InvitePlayersDialog
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        title="Invite Players"
+        description="Search for players on TennisConnect and invite them to join your community."
+        onInvite={(userId) => inviteToOrganization(userId).then(() => {})}
+      />
     </div>
   );
 }

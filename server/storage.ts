@@ -47,7 +47,7 @@ import {
   type OrgPlayerRow,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, or, asc, sql, lte, ne, gte} from "drizzle-orm";
+import { eq, desc, and, or, asc, sql, lte, ne, gte, ilike} from "drizzle-orm";
 import { supabaseAdmin } from "./supabaseAdmin";
 
 function slugify(text: string) {
@@ -237,6 +237,8 @@ export interface IStorage {
  deleteSession(id: string): Promise<void>;
  getRegistrationsForSession(sessionId: string): Promise<RegistrationWithUser[]>;
  getPlayersForOrganization(organizationId: string): Promise<OrgPlayerRow[]>;
+ createInvitedRegistration(sessionId: string, userId: string): Promise<Registration>;
+ searchUsers(query: string, excludeUserId: string, limit?: number): Promise<Pick<User, "id" | "name" | "slug" | "avatar" | "role">[]>;
   // Admin: every session on the platform, across all organizations, so
   // nothing goes live without the admin seeing it first.
  getAllSessionsForAdmin(status?: string): Promise<SessionWithDetails[]>;
@@ -2197,6 +2199,60 @@ export class DatabaseStorage implements IStorage {
         )
       );
     return existing?.status || null;
+  }
+
+  // Organiser inviting a specific player to a specific session - same
+  // existing/cancelled/none pattern as joinSession, except the target
+  // status is always "invited" rather than computed from capacity. If
+  // they're already registered/waitlisted/invited, this is a no-op
+  // (returns what's there rather than clobbering a real registration
+  // with an invite).
+  async createInvitedRegistration(sessionId: string, userId: string): Promise<Registration> {
+    const [existing] = await db
+      .select()
+      .from(registrations)
+      .where(and(eq(registrations.sessionId, sessionId), eq(registrations.userId, userId)));
+
+    if (existing && existing.status !== "cancelled") {
+      return existing;
+    }
+
+    if (existing) {
+      const [updated] = await db
+        .update(registrations)
+        .set({ status: "invited", checkedInAt: null })
+        .where(eq(registrations.id, existing.id))
+        .returning();
+      return updated;
+    }
+
+    const [created] = await db
+      .insert(registrations)
+      .values({ sessionId, userId, status: "invited" })
+      .returning();
+    return created;
+  }
+
+  // Simple name search across real (non-test) users, for both invite
+  // dialogs - excludes the searching organiser themselves.
+  async searchUsers(query: string, excludeUserId: string, limit = 10): Promise<Pick<User, "id" | "name" | "slug" | "avatar" | "role">[]> {
+    const rows = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        slug: users.slug,
+        avatar: users.avatar,
+        role: users.role,
+      })
+      .from(users)
+      .where(
+        and(
+          ilike(users.name, `%${query}%`),
+          ne(users.id, excludeUserId)
+        )
+      )
+      .limit(limit);
+    return rows;
   }
 
   async getSessionRegistrationCounts(

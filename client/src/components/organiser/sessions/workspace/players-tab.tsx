@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -13,7 +13,8 @@ import { GroupOverviewCard } from "./players/group-overview-card";
 import { CheckInSummaryCard } from "./players/checkin-summary-card";
 import { PlayersQuickActionsCard } from "./players/players-quick-actions-card";
 import { SessionActionsSheet } from "./session-actions-sheet";
-import { getSessionRegistrations } from "@/lib/api/organizer-sessions";
+import { InvitePlayersDialog } from "@/components/organiser/shared/invite-players-dialog";
+import { getSessionRegistrations, inviteToSession } from "@/lib/api/organizer-sessions";
 import { toSessionPlayers } from "@/lib/api/session-adapter";
 import {
   mockSessionPlayers,
@@ -32,9 +33,11 @@ type Bucket = "registered" | "checked-in" | "waiting" | "cancelled" | "invited";
 
 export function PlayersTab({ session, onEdit }: PlayersTabProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [bucket, setBucket] = useState<Bucket>("registered");
   const [actionsSheetOpen, setActionsSheetOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   const registrationsQuery = useQuery({
     queryKey: ["/api/organizer/sessions", session.id, "registrations"],
@@ -67,7 +70,7 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
   const handleCheckIn = (player: SessionPlayer) =>
     toast({ title: "Checked in", description: `${player.name} would be marked as checked in.` });
   const handleCheckInAll = () => toast({ title: "Check-in All isn't wired up yet" });
-  const handleInvitePlayers = () => toast({ title: "Invite Players isn't wired up yet" });
+  const handleInvitePlayers = () => setInviteOpen(true);
 
   const bucketTabs: { key: Bucket; label: string }[] = [
     { key: "registered", label: "Registered" },
@@ -144,6 +147,17 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
       </div>
 
       <SessionActionsSheet open={actionsSheetOpen} onOpenChange={setActionsSheetOpen} onEdit={onEdit} />
+
+      <InvitePlayersDialog
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        title={`Invite Players to ${session.title}`}
+        description="Search for players on TennisConnect and invite them to this session."
+        onInvite={async (userId) => {
+          await inviteToSession(session.id, userId);
+          queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.id, "registrations"] });
+        }}
+      />
     </div>
   );
 }

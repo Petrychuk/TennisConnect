@@ -95,6 +95,7 @@ const REGISTRATION_STATUS_TO_PLAYER_STATUS: Record<string, SessionPlayer["status
   registered: "registered",
   waitlisted: "waiting",
   cancelled: "cancelled",
+  invited: "invited",
 };
 
 /**

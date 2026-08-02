@@ -6,6 +6,7 @@ import type {
   Organization,
   RegistrationWithUser,
   OrgPlayerRow,
+  Registration,
 } from "@shared/schema";
 
 const BASE = "/api/organizer";
@@ -49,6 +50,26 @@ export async function getMySessions(): Promise<TennisSession[]> {
 /** Org-wide player roster - every distinct player who's registered for any of the organiser's sessions. */
 export async function getMyPlayers(): Promise<OrgPlayerRow[]> {
   const res = await apiRequest("GET", `${BASE}/players/mine`);
+  return res.json();
+}
+
+export type SearchablePlayer = { id: string; name: string; slug: string; avatar: string | null; role: string };
+
+/** Search real platform users by name, for either invite dialog. */
+export async function searchPlayers(query: string): Promise<SearchablePlayer[]> {
+  const res = await apiRequest("GET", `${BASE}/players/search?q=${encodeURIComponent(query)}`);
+  return res.json();
+}
+
+/** General "come play with us" invite - no specific session. */
+export async function inviteToOrganization(userId: string): Promise<{ invited: boolean }> {
+  const res = await apiRequest("POST", `${BASE}/players/invite`, { userId });
+  return res.json();
+}
+
+/** Invites a specific player to a specific session - creates a real "invited" registration. */
+export async function inviteToSession(sessionId: string, userId: string): Promise<Registration> {
+  const res = await apiRequest("POST", `${BASE}/sessions/${sessionId}/invite`, { userId });
   return res.json();
 }
 
