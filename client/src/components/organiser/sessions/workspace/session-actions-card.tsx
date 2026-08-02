@@ -1,19 +1,46 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Pencil, UserPlus, Megaphone, ListPlus, Copy, Download, MoreHorizontal } from "lucide-react";
+import { Pencil, UserPlus, Megaphone, ListPlus, Copy, Download, MoreHorizontal, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { publishSession } from "@/lib/api/organizer-sessions";
+import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 
 interface SessionActionsCardProps {
+  session?: SessionListItem;
   onEdit?: () => void;
   variant?: "list" | "grid";
 }
 
-export function SessionActionsCard({ onEdit, variant = "list" }: SessionActionsCardProps) {
+export function SessionActionsCard({ session, onEdit, variant = "list" }: SessionActionsCardProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [publishing, setPublishing] = useState(false);
   const notify = (label: string) => toast({ title: `${label} isn't wired up yet` });
 
+  const handlePublish = async () => {
+    if (!session || publishing) return;
+    setPublishing(true);
+    try {
+      await publishSession(session.id);
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine"] });
+      toast({ title: "Sent for review", description: "It'll go live once an admin approves it." });
+    } catch (error: any) {
+      toast({ title: "Couldn't publish", description: error?.message ?? "Please try again.", variant: "destructive" });
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const isDraft = session?.status === "draft";
+
   const actions = [
+    ...(isDraft
+      ? [{ key: "publish", label: publishing ? "Publishing..." : "Publish Session", icon: Send, onClick: handlePublish }]
+      : []),
     { key: "edit", label: "Edit Session", icon: Pencil, onClick: onEdit },
     { key: "invite", label: "Invite Players", icon: UserPlus, onClick: () => notify("Invite Players") },
     { key: "announce", label: "Send Announcement", icon: Megaphone, onClick: () => notify("Send Announcement") },

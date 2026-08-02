@@ -28,6 +28,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
+import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
 import { bucketFor } from "./session-utils";
 import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.png";
 
@@ -73,6 +74,7 @@ export function SessionCard({ session, onDuplicate, onDelete }: SessionCardProps
   const bucket = bucketFor(session);
   const Icon = BUCKET_ICON[bucket];
   const spots = session.maxParticipants !== null ? session.maxParticipants - session.registeredCount : null;
+  const typeLabel = SESSION_TYPE_OPTIONS.find((t) => t.key === session.type)?.label ?? "Session";
 
   const openWorkspace = () => setLocation(`/organiser/sessions/${session.id}`);
   const openLive = () => setLocation(`/organiser/sessions/${session.id}/live`);
@@ -140,7 +142,12 @@ export function SessionCard({ session, onDuplicate, onDelete }: SessionCardProps
 
           <div className="flex-1 min-w-0 p-4 flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="min-w-0 flex-1">
-              <h3 className="font-display font-bold truncate">{session.title}</h3>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-display font-bold truncate">{session.title}</h3>
+                <Badge variant="outline" className="text-[11px] font-medium shrink-0" data-testid={`organiser-session-card-${session.id}-type`}>
+                  {typeLabel}
+                </Badge>
+              </div>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground mt-1">
                 <span className="flex items-center gap-1">
                   <Calendar className="w-3 h-3" />

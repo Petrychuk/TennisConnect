@@ -3,7 +3,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, MapPin, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Calendar, MapPin, ExternalLink, ChevronDown, ChevronUp, Info, Layers } from "lucide-react";
 import { Link, useLocation, useSearch } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -108,6 +115,29 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
   const sessions: (TennisSession | SessionWithDetails)[] = isOwnProfile
     ? mineQuery.data ?? []
     : orgQuery.data?.upcomingSessions ?? [];
+
+  // A Tournament/Club Championship "container" and its divisions
+  // (Men's Singles A, Mixed Doubles, etc.) shouldn't render as flat,
+  // unrelated cards - group each container with its own divisions
+  // nested underneath. A division whose container isn't in this same
+  // list (rare - e.g. the container itself isn't published yet but a
+  // division somehow is) falls back to rendering standalone rather
+  // than being silently dropped.
+  const { topLevel, divisionsByParent } = useMemo(() => {
+    const byParent = new Map<string, (TennisSession | SessionWithDetails)[]>();
+    for (const s of sessions) {
+      if (s.parentSessionId) {
+        const arr = byParent.get(s.parentSessionId) ?? [];
+        arr.push(s);
+        byParent.set(s.parentSessionId, arr);
+      }
+    }
+    const containerIds = new Set(sessions.filter((s) => !s.parentSessionId).map((s) => s.id));
+    const top = sessions.filter((s) => !s.parentSessionId || !containerIds.has(s.parentSessionId));
+    return { topLevel: top, divisionsByParent: byParent };
+  }, [sessions]);
+
+  const [divisionInfoSession, setDivisionInfoSession] = useState<TennisSession | SessionWithDetails | null>(null);
 
   const myStatusById = useMemo(() => {
     const map = new Map<string, "registered" | "waitlisted">();
@@ -233,7 +263,7 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
           </CardContent>
         </Card>
       ) : (
-        sessions.map((session) => {
+        topLevel.map((session) => {
           const details = "registeredCount" in session ? session : null;
           const guestBucket = details ? guestBucketFor(details) : null;
           const myStatus = myStatusById.get(session.id) ?? null;
@@ -241,6 +271,7 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
             ? (guestBucket === "open" || guestBucket === "waitlist") && !myStatus
             : session.status === "published" && !myStatus; // capacity is re-checked server-side either way
           const showPolicy = policyOpenId === session.id;
+          const divisions = divisionsByParent.get(session.id) ?? [];
 
           return (
             <Card key={session.id} data-testid={`my-organized-session-${session.id}`}>
@@ -326,11 +357,94 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
                     {DEFAULT_CANCELLATION_POLICY}
                   </p>
                 )}
+
+                {divisions.length > 0 && (
+                  <div className="mt-4 pt-4 border-t space-y-2" data-testid={`session-divisions-${session.id}`}>
+                    <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5" />
+                      Divisions
+                    </p>
+                    {divisions.map((division) => {
+                      const divDetails = "registeredCount" in division ? division : null;
+                      const divGuestBucket = divDetails ? guestBucketFor(divDetails) : null;
+                      const divStatus = myStatusById.get(division.id) ?? null;
+                      const divCanJoin = !isOwnProfile
+                        ? (divGuestBucket === "open" || divGuestBucket === "waitlist") && !divStatus
+                        : division.status === "published" && !divStatus;
+
+                      return (
+                        <div
+                          key={division.id}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted/40 px-3 py-2"
+                          data-testid={`session-division-${division.id}`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-sm font-medium truncate">{division.title}</span>
+                            {isOwnProfile ? (
+                              <Badge className={OWNER_STATUS_BADGE[division.status]}>
+                                {OWNER_STATUS_LABEL[division.status] ?? division.status}
+                              </Badge>
+                            ) : (
+                              divGuestBucket && <Badge className={GUEST_STATUS_BADGE[divGuestBucket]}>{GUEST_STATUS_LABEL[divGuestBucket]}</Badge>
+                            )}
+                            {divStatus === "waitlisted" && <Badge variant="secondary">Waitlisted</Badge>}
+                            {divStatus === "registered" && <Badge className="bg-primary/10 text-primary">Joined</Badge>}
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {division.description && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setDivisionInfoSession(division)}
+                                data-testid={`division-info-${division.id}`}
+                              >
+                                <Info className="w-4 h-4 mr-1.5" />
+                                More info
+                              </Button>
+                            )}
+                            {divCanJoin && (
+                              <Button
+                                size="sm"
+                                onClick={() => handleJoin(division)}
+                                disabled={joiningId === division.id}
+                                data-testid={`join-session-${division.id}`}
+                              >
+                                {isAuthenticated ? "Join" : "Sign in to Join"}
+                              </Button>
+                            )}
+                            {divStatus && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleLeave(division)}
+                                disabled={joiningId === division.id}
+                                data-testid={`leave-session-${division.id}`}
+                              >
+                                Leave
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
           );
         })
       )}
+
+      <Dialog open={!!divisionInfoSession} onOpenChange={(open) => !open && setDivisionInfoSession(null)}>
+        <DialogContent data-testid="division-info-dialog">
+          <DialogHeader>
+            <DialogTitle>{divisionInfoSession?.title}</DialogTitle>
+            <DialogDescription className="whitespace-pre-wrap text-left">
+              {divisionInfoSession?.description || "No additional details for this division."}
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

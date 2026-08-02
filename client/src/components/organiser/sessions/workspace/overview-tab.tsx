@@ -51,7 +51,7 @@ export function OverviewTab({ session, onEdit }: OverviewTabProps) {
         {isMultiDivisionType && <DivisionsCard sessionId={session.id} />}
         <div className="grid grid-cols-3 gap-4">
           <SessionDetailsCard session={session} />
-          <SessionActionsCard onEdit={onEdit} />
+          <SessionActionsCard session={session} onEdit={onEdit} />
           <SessionNotesCard initialNote={detail.notes} />
         </div>
         {quickStats}
@@ -70,7 +70,7 @@ export function OverviewTab({ session, onEdit }: OverviewTabProps) {
           <SessionDetailsCard session={session} />
           <SessionNotesCard initialNote={detail.notes} />
         </div>
-        <SessionActionsCard onEdit={onEdit} variant="grid" />
+        <SessionActionsCard session={session} onEdit={onEdit} variant="grid" />
         {quickStats}
       </div>
 
