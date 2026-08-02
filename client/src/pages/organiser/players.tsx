@@ -269,6 +269,8 @@ export default function OrganiserPlayersPage() {
         title="Invite Players"
         description="Search for players on TennisConnect and invite them to join your community."
         onInvite={(userId) => inviteToOrganization(userId).then(() => {})}
+        searchContext={{ community: true }}
+        alreadyConnectedLabel="Already a member"
       />
     </div>
   );

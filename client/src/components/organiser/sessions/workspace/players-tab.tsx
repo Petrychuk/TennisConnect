@@ -157,6 +157,8 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
           await inviteToSession(session.id, userId);
           queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.id, "registrations"] });
         }}
+        searchContext={{ sessionId: session.id }}
+        alreadyConnectedLabel="Already joined"
       />
     </div>
   );

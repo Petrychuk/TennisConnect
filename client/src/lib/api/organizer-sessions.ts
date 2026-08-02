@@ -53,11 +53,14 @@ export async function getMyPlayers(): Promise<OrgPlayerRow[]> {
   return res.json();
 }
 
-export type SearchablePlayer = { id: string; name: string; slug: string; avatar: string | null; role: string };
+export type SearchablePlayer = { id: string; name: string; slug: string; avatar: string | null; role: string; alreadyConnected: boolean };
 
-/** Search real platform users by name, for either invite dialog. */
-export async function searchPlayers(query: string): Promise<SearchablePlayer[]> {
-  const res = await apiRequest("GET", `${BASE}/players/search?q=${encodeURIComponent(query)}`);
+/** Search real platform users by name, for either invite dialog. Pass a sessionId or community context so already-connected players are flagged instead of being re-invitable. */
+export async function searchPlayers(query: string, context?: { sessionId?: string; community?: boolean }): Promise<SearchablePlayer[]> {
+  const params = new URLSearchParams({ q: query });
+  if (context?.sessionId) params.set("sessionId", context.sessionId);
+  if (context?.community) params.set("community", "1");
+  const res = await apiRequest("GET", `${BASE}/players/search?${params.toString()}`);
   return res.json();
 }
 

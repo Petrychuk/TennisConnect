@@ -243,7 +243,7 @@ export interface IStorage {
  createOrganizationMembership(organizationId: string, userId: string): Promise<CommunityMembership>;
  updateOrganizationMembershipStatus(organizationId: string, userId: string, status: string): Promise<CommunityMembership>;
  updateMessageActionStatus(id: string, actionStatus: string): Promise<Message>;
- searchUsers(query: string, excludeUserId: string, limit?: number): Promise<Pick<User, "id" | "name" | "slug" | "avatar" | "role">[]>;
+ searchUsers(query: string, excludeUserId: string, limit?: number, context?: { sessionId?: string; organizationId?: string }): Promise<(Pick<User, "id" | "name" | "slug" | "avatar" | "role"> & { alreadyConnected: boolean })[]>;
   // Admin: every session on the platform, across all organizations, so
   // nothing goes live without the admin seeing it first.
  getAllSessionsForAdmin(status?: string): Promise<SessionWithDetails[]>;
@@ -2329,7 +2329,12 @@ export class DatabaseStorage implements IStorage {
 
   // Simple name search across real (non-test) users, for both invite
   // dialogs - excludes the searching organiser themselves.
-  async searchUsers(query: string, excludeUserId: string, limit = 10): Promise<Pick<User, "id" | "name" | "slug" | "avatar" | "role">[]> {
+  async searchUsers(
+    query: string,
+    excludeUserId: string,
+    limit = 10,
+    context?: { sessionId?: string; organizationId?: string }
+  ): Promise<(Pick<User, "id" | "name" | "slug" | "avatar" | "role"> & { alreadyConnected: boolean })[]> {
     const rows = await db
       .select({
         id: users.id,
@@ -2346,7 +2351,43 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .limit(limit);
-    return rows;
+
+    if (rows.length === 0) return [];
+
+    const userIds = rows.map((r) => r.id);
+    let connectedIds = new Set<string>();
+
+    // Already registered/waitlisted/checked-in/invited for this exact
+    // session - re-inviting them would be pointless, they're already in.
+    if (context?.sessionId) {
+      const regs = await db
+        .select({ userId: registrations.userId })
+        .from(registrations)
+        .where(
+          and(
+            eq(registrations.sessionId, context.sessionId),
+            sql`${registrations.userId} IN ${userIds}`,
+            ne(registrations.status, "cancelled")
+          )
+        );
+      connectedIds = new Set(regs.map((r) => r.userId));
+    } else if (context?.organizationId) {
+      // Already pending or accepted into this community - a declined
+      // invite can still be re-sent, everything else can't.
+      const members = await db
+        .select({ userId: communityMemberships.userId })
+        .from(communityMemberships)
+        .where(
+          and(
+            eq(communityMemberships.organizationId, context.organizationId),
+            sql`${communityMemberships.userId} IN ${userIds}`,
+            ne(communityMemberships.status, "declined")
+          )
+        );
+      connectedIds = new Set(members.map((m) => m.userId));
+    }
+
+    return rows.map((r) => ({ ...r, alreadyConnected: connectedIds.has(r.id) }));
   }
 
   async getSessionRegistrationCounts(

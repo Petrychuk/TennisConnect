@@ -19,9 +19,21 @@ interface InvitePlayersDialogProps {
   title: string;
   description: string;
   onInvite: (userId: string) => Promise<void>;
+  /** Passed straight through to the search - flags players already connected in this specific context so they can't be re-invited. */
+  searchContext?: { sessionId?: string; community?: boolean };
+  /** Label shown (instead of "Invite") for a player already connected in this context. */
+  alreadyConnectedLabel?: string;
 }
 
-export function InvitePlayersDialog({ open, onOpenChange, title, description, onInvite }: InvitePlayersDialogProps) {
+export function InvitePlayersDialog({
+  open,
+  onOpenChange,
+  title,
+  description,
+  onInvite,
+  searchContext,
+  alreadyConnectedLabel = "Already joined",
+}: InvitePlayersDialogProps) {
   const { toast } = useToast();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchablePlayer[]>([]);
@@ -45,7 +57,7 @@ export function InvitePlayersDialog({ open, onOpenChange, title, description, on
     const timer = setTimeout(async () => {
       setSearching(true);
       try {
-        setResults(await searchPlayers(query.trim()));
+        setResults(await searchPlayers(query.trim(), searchContext));
       } catch {
         setResults([]);
       } finally {
@@ -104,6 +116,7 @@ export function InvitePlayersDialog({ open, onOpenChange, title, description, on
           )}
           {results.map((player) => {
             const isInvited = invitedIds.has(player.id);
+            const isAlreadyConnected = player.alreadyConnected && !isInvited;
             return (
               <div
                 key={player.id}
@@ -119,25 +132,34 @@ export function InvitePlayersDialog({ open, onOpenChange, title, description, on
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium truncate">{player.name}</p>
                 </div>
-                <Button
-                  size="sm"
-                  variant={isInvited ? "outline" : "default"}
-                  disabled={isInvited || invitingId === player.id}
-                  onClick={() => handleInvite(player)}
-                  data-testid={`invite-players-invite-${player.id}`}
-                >
-                  {isInvited ? (
-                    <>
-                      <Check className="w-4 h-4 mr-1.5" />
-                      Invited
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="w-4 h-4 mr-1.5" />
-                      {invitingId === player.id ? "Inviting..." : "Invite"}
-                    </>
-                  )}
-                </Button>
+                {isAlreadyConnected ? (
+                  <span
+                    className="text-xs font-medium text-muted-foreground px-2 py-1"
+                    data-testid={`invite-players-already-${player.id}`}
+                  >
+                    {alreadyConnectedLabel}
+                  </span>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant={isInvited ? "outline" : "default"}
+                    disabled={isInvited || invitingId === player.id}
+                    onClick={() => handleInvite(player)}
+                    data-testid={`invite-players-invite-${player.id}`}
+                  >
+                    {isInvited ? (
+                      <>
+                        <Check className="w-4 h-4 mr-1.5" />
+                        Invited
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="w-4 h-4 mr-1.5" />
+                        {invitingId === player.id ? "Inviting..." : "Invite"}
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
             );
           })}

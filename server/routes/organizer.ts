@@ -244,7 +244,26 @@ router.get("/players/search", requireAuth, async (req, res, next) => {
     if (query.length < 2) {
       return res.json([]);
     }
-    const results = await storage.searchUsers(query, (req.user as any).id, 10);
+
+    const context: { sessionId?: string; organizationId?: string } = {};
+
+    const sessionId = typeof req.query.sessionId === "string" ? req.query.sessionId : null;
+    if (sessionId) {
+      const session = await storage.getSessionById(sessionId);
+      const organization = session ? await storage.getOrganizationById(session.organizationId) : null;
+      if (session && organization && organization.ownerId === (req.user as any).id) {
+        context.sessionId = sessionId;
+      }
+    }
+
+    if (req.query.community === "1" || req.query.community === "true") {
+      const organization = await storage.getOrganizationOwnedByUser((req.user as any).id);
+      if (organization) {
+        context.organizationId = organization.id;
+      }
+    }
+
+    const results = await storage.searchUsers(query, (req.user as any).id, 10, context);
     res.json(results);
   } catch (error) {
     next(error);
