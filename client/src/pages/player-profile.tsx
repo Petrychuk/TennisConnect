@@ -25,7 +25,6 @@ import { Footer } from "@/components/footer";
 import { BecomeOrganizerCard } from "@/components/profile/shared/BecomeOrganizerCard";
 import { messageSchema } from "@/lib/validations/messages";
 import { MySessionsSection } from "@/components/profile/shared/MySessionsSection";
-import { UpcomingTournamentsSection } from "@/components/profile/shared/UpcomingTournamentsSection";
 import { MyOrganizedSessionsSection } from "@/components/profile/shared/MyOrganizedSessionsSection";
 import { useOrganizerStatus } from "@/hooks/use-organizer-status";
 import { TennisLoader } from "@/components/ui/tennisLoader";
@@ -812,11 +811,10 @@ export default function PlayerProfile() {
                       gap-2
                       scrollbar-hide">
                   <TabsTrigger value="overview" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><User className="w-4 h-4" />Overview</TabsTrigger>
-                  <TabsTrigger value="sessions" data-testid="my-sessions-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Calendar className="w-4 h-4" />My Sessions</TabsTrigger>
+                  <TabsTrigger value="sessions" data-testid="my-sessions-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Trophy className="w-4 h-4" />My Sessions</TabsTrigger>
                   {showOrganisingTab && (
                     <TabsTrigger value="organizing" data-testid="my-organized-sessions-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><ClipboardList className="w-4 h-4" />Organising</TabsTrigger>
                   )}
-                  <TabsTrigger value="tournaments" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Trophy className="w-4 h-4" />Tournaments</TabsTrigger>
                   {/* Selling tab hidden for now, per request - marketplace items still exist in marketplaceItems if this needs to come back */}
                   {/* <TabsTrigger value="marketplace" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><ShoppingBag className="w-4 h-4" />Selling ({marketplaceItems.length})</TabsTrigger> */}
                   {!isOwnProfile && (
@@ -880,26 +878,18 @@ export default function PlayerProfile() {
                     />
                   )}
                 </TabsContent>
-                <TabsContent value="sessions" className="space-y-8" data-testid="my-sessions-tab-content">
-                  <MySessionsSection isOwnProfile={isOwnProfile} isAuthenticated={isAuthenticated} />
-                </TabsContent>
-                {showOrganisingTab && (
-                  <TabsContent value="organizing" className="space-y-8" data-testid="my-organized-sessions-tab-content">
-                    <MyOrganizedSessionsSection isOwnProfile={isOwnProfile} profileSlug={profileSlug} />
-                  </TabsContent>
-                )}
-                <TabsContent value="tournaments" className="space-y-6">
+                <TabsContent value="sessions" className="space-y-6" data-testid="my-sessions-tab-content">
                   <Tabs defaultValue="upcoming">
                     <TabsList>
-                      <TabsTrigger value="upcoming" data-testid="tournaments-subtab-upcoming">Upcoming</TabsTrigger>
-                      <TabsTrigger value="past" data-testid="tournaments-subtab-past">Past</TabsTrigger>
+                      <TabsTrigger value="upcoming" data-testid="my-sessions-subtab-upcoming">Upcoming</TabsTrigger>
+                      <TabsTrigger value="history" data-testid="my-sessions-subtab-history">History</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="upcoming" className="mt-6">
-                      <UpcomingTournamentsSection isOwnProfile={isOwnProfile} isAuthenticated={isAuthenticated} />
+                      <MySessionsSection isOwnProfile={isOwnProfile} isAuthenticated={isAuthenticated} />
                     </TabsContent>
 
-                    <TabsContent value="past" className="space-y-8 mt-6">
+                    <TabsContent value="history" className="space-y-8 mt-6">
                   <div className="flex justify-between items-center">
                     <h3 className="text-xl font-bold">Tournament History</h3>
                     {isOwnProfile && (
@@ -1147,6 +1137,12 @@ export default function PlayerProfile() {
                     </TabsContent>
                   </Tabs>
                 </TabsContent>
+
+                {showOrganisingTab && (
+                  <TabsContent value="organizing" className="space-y-8" data-testid="my-organized-sessions-tab-content">
+                    <MyOrganizedSessionsSection isOwnProfile={isOwnProfile} profileSlug={profileSlug} />
+                  </TabsContent>
+                )}
 
                 {/* Selling tab content hidden for now, per request */}
                 {false && (
