@@ -28,19 +28,32 @@ export interface SessionTypeOption {
 // not on a hardcoded "is this a tournament" check, so adding a type here
 // doesn't require a new code path elsewhere - only Step 1 needs to know
 // the full list exists.
+//
+// This list currently mixes two different concepts - session formats
+// (Americano, Mexicano, King of the Court) and event purposes/types
+// (Junior Event, Cardio Tennis, Coaching Clinic). Fine for this MVP
+// list, but don't let the database schema or backend logic bind
+// tightly to these exact 12 keys - the likely direction later is
+// splitting this into separate Session Type / Play Format / Scoring
+// Format concepts that combine (e.g. Junior Event + Round Robin, or
+// Club Championship + Knockout), rather than growing this single flat
+// list further. A Ladder format (players challenge each other within
+// a standing ranking, positions changing over time - an ongoing club
+// activity rather than a one-off event) was considered for this list
+// and deliberately left out of the first release, not forgotten.
 export const SESSION_TYPE_OPTIONS: SessionTypeOption[] = [
-  { key: "social", label: "Social Tennis", description: "Fun, random doubles", mostPopular: true, details: "Casual, no-pressure doubles with partners mixed up throughout — great for regular club nights where the point is playing, not competing." },
-  { key: "americano", label: "Americano", description: "Rotate partners · Individual points", details: "Everyone partners with everyone over several short rounds, with points tracked per player rather than per team — a lively, social format that still rewards individual play." },
-  { key: "round-robin", label: "Round Robin", description: "Everyone plays · Structured format", details: "A fixed schedule where every player or pair faces every other one — fair and predictable, with a clear result at the end." },
-  { key: "mexicano", label: "Mexicano", description: "Competitive doubles · Level based", details: "Similar to Americano, but pairings adjust round to round based on how players are performing, keeping matches close and competitive." },
-  { key: "king-of-the-court", label: "King of the Court", description: "Challenge and play · Elimination style", details: "Winners stay on and face new challengers — a fast-moving, ladder-style format that suits drop-in sessions with players of mixed availability." },
-  { key: "tournament", label: "Tournament", description: "Draw · Elimination · Champion", details: "A knockout bracket building toward a single champion — best for a headline event rather than a regular weekly session." },
-  { key: "league", label: "League Match", description: "Home vs away · Team points · Season", details: "Teams face off across a season, accumulating points toward a standings table — suits ongoing club-vs-club competition." },
-  { key: "club-championship", label: "Club Championship", description: "Seeded draw · Qualifying · Final", details: "A seeded, multi-stage event with qualifying rounds leading to a final — your club's own marquee competition." },
-  { key: "junior-event", label: "Junior Event", description: "Age groups · Development focused", details: "Structured around age groups and skill development rather than pure competition — built for coaching juniors, not just matching them up." },
-  { key: "cardio-tennis", label: "Cardio Tennis", description: "Fitness format · High rotation", details: "A fitness-first format with fast player rotation and constant movement — less about scorekeeping, more about a great workout." },
-  { key: "coaching-clinic", label: "Coaching Clinic", description: "Instructor led · Skill building", details: "Led by a coach with a focus on drills and technique rather than open play — ideal when the goal is improvement, not a result." },
-  { key: "custom", label: "Custom Session", description: "Create your own · Fully flexible", details: "No preset structure — set up format, rules, and rotation however suits your group." },
+  { key: "social", label: "Social Tennis", description: "Fun, random doubles", mostPopular: true, details: "Casual, flexible tennis focused on playing and socialising, with players and partners rotating throughout the session." },
+  { key: "americano", label: "Americano", description: "Rotate partners · Individual points", details: "Players rotate partners over a series of rounds, with points typically tracked individually to create an overall ranking." },
+  { key: "round-robin", label: "Round Robin", description: "Everyone plays · Structured format", details: "Every player, pair, or team competes against others in their group — a structured format that works well for both social and competitive play." },
+  { key: "mexicano", label: "Mexicano", description: "Competitive doubles · Level based", details: "A dynamic format where pairings are adjusted between rounds based on results, helping create increasingly balanced matches." },
+  { key: "king-of-the-court", label: "King of the Court", description: "Challenge and play · Elimination style", details: "Winners move up or stay on the top court while other players rotate — a fast-paced competitive format with continuous movement." },
+  { key: "tournament", label: "Tournament", description: "Draw · Elimination · Champion", details: "A structured competition using knockout, group, or combined formats, progressing toward final standings or a champion." },
+  { key: "league", label: "League Match", description: "Home vs away · Team points · Season", details: "Players or teams compete across scheduled matches, with results contributing to season standings or league rankings." },
+  { key: "club-championship", label: "Club Championship", description: "Seeded draw · Qualifying · Final", details: "A club competition played across one or more stages to determine champions within selected events, divisions, or categories." },
+  { key: "junior-event", label: "Junior Event", description: "Age groups · Development focused", details: "A junior-focused session or competition that can be organised by age, skill level, or development goals." },
+  { key: "cardio-tennis", label: "Cardio Tennis", description: "Fitness format · High rotation", details: "A high-energy, fitness-focused tennis session combining fast-paced drills, movement, and frequent player rotation." },
+  { key: "coaching-clinic", label: "Coaching Clinic", description: "Instructor led · Skill building", details: "A coach-led session focused on specific skills, technique, tactics, or match play through structured drills and activities." },
+  { key: "custom", label: "Custom Session", description: "Create your own · Fully flexible", details: "Build your own format by choosing the rules, scoring, rounds, player rotation, and other session settings." },
 ];
 
 export type Visibility = "public" | "members" | "invite";
