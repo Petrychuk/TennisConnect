@@ -10,7 +10,23 @@ import { getMyRegisteredSessions, leaveSession } from "@/lib/api/organizer-sessi
 import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.png";
 
 const DEFAULT_CANCELLATION_POLICY =
-  "The organiser hasn't set a specific cancellation or refund policy for this session yet. As a general guide, cancel as early as possible so your spot can go to someone on the waiting list.";
+  "Free cancellation up to 24 hours before the session starts. After that, no refund — the spot may still be offered to the waiting list.";
+
+// The session's description is a combined blob - format summary, then
+// any of Rules/Refund Policy/Late Arrivals/Cancellations the organiser
+// filled in on the wizard's Details & Rules step, each its own
+// "\n\n"-separated section labelled exactly like this (see
+// draftToInsertSession's policySections). Pull out just the two
+// sections relevant to cancelling - showing the whole description
+// here would include tournament format details that don't belong
+// under "cancellation & refund policy".
+function extractCancellationPolicy(description?: string | null): string | null {
+  if (!description) return null;
+  const sections = description
+    .split("\n\n")
+    .filter((s) => s.startsWith("Refund Policy:") || s.startsWith("Cancellations:"));
+  return sections.length > 0 ? sections.join("\n\n") : null;
+}
 
 interface MySessionsSectionProps {
   isOwnProfile: boolean;
@@ -118,16 +134,16 @@ export function MySessionsSection({ isOwnProfile, isAuthenticated, sessionTypes,
         const canCancel = new Date(session.startAt).getTime() > Date.now();
         const showPolicy = policyOpenId === session.id;
         return (
-          <Card key={session.id} data-testid={`my-session-${session.id}`}>
-            <CardContent className="py-4 flex items-center gap-4">
+          <Card key={session.id} className="overflow-hidden" data-testid={`my-session-${session.id}`}>
+            <CardContent className="p-0 flex items-stretch gap-4">
               <img
                 src={session.coverImage || courtImage}
                 alt=""
                 aria-hidden="true"
-                className="h-16 w-16 rounded-xl object-cover shrink-0"
+                className="w-24 sm:w-32 shrink-0 object-cover"
                 data-testid={`my-session-${session.id}-cover`}
               />
-              <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex-1 min-w-0 py-4 pr-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="space-y-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <Link href={`/organiser/sessions/${session.id}`} className="font-semibold hover:underline">
@@ -165,7 +181,7 @@ export function MySessionsSection({ isOwnProfile, isAuthenticated, sessionTypes,
                 </button>
                 {showPolicy && (
                   <p className="text-xs text-muted-foreground max-w-md" data-testid={`cancellation-policy-text-${session.id}`}>
-                    {session.description || DEFAULT_CANCELLATION_POLICY}
+                    {extractCancellationPolicy(session.description) || DEFAULT_CANCELLATION_POLICY}
                   </p>
                 )}
               </div>

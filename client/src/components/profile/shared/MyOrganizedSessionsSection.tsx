@@ -31,6 +31,19 @@ interface MyOrganizedSessionsSectionProps {
 const DEFAULT_CANCELLATION_POLICY =
   "Free cancellation up to 24 hours before the session starts. After that, no refund — the spot may still be offered to the waiting list.";
 
+// Same reasoning as MySessionsSection's copy of this function - the
+// description is a combined blob (format summary + whichever of
+// Rules/Refund Policy/Late Arrivals/Cancellations the organiser filled
+// in), each its own labelled section. Pull out just the two relevant
+// to cancelling instead of showing the whole thing.
+function extractCancellationPolicy(description?: string | null): string | null {
+  if (!description) return null;
+  const sections = description
+    .split("\n\n")
+    .filter((s) => s.startsWith("Refund Policy:") || s.startsWith("Cancellations:"));
+  return sections.length > 0 ? sections.join("\n\n") : null;
+}
+
 const OWNER_STATUS_BADGE: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
   pending_review: "bg-secondary text-secondary-foreground",
@@ -381,7 +394,7 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
                 )}
                 {showPolicy && (
                   <p className="text-xs text-muted-foreground mt-1.5 max-w-md" data-testid={`cancellation-policy-text-${session.id}`}>
-                    {DEFAULT_CANCELLATION_POLICY}
+                    {extractCancellationPolicy(session.description) || DEFAULT_CANCELLATION_POLICY}
                   </p>
                 )}
 
