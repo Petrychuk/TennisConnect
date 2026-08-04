@@ -46,11 +46,27 @@ export default function OrganiserSessionsPage() {
   const sessions = useMemo(() => toSessionListItems(sessionsQuery.data ?? []), [sessionsQuery.data]);
   const [activeBucket, setActiveBucket] = useState<SessionBucket>("all");
   const [search, setSearch] = useState("");
+  const [venue, setVenue] = useState("all");
+  const [format, setFormat] = useState("all");
+
+  // Real venues, derived from the organiser's own sessions - was
+  // previously a hardcoded two-item list ("All Venues" / one fixed
+  // venue) that predated there being more than one venue in the data
+  // at all.
+  const venueOptions = useMemo(() => {
+    const names = Array.from(new Set(sessions.map((s) => s.location).filter((l): l is string => !!l)));
+    return names.sort((a, b) => a.localeCompare(b));
+  }, [sessions]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return query ? sessions.filter((s) => s.title.toLowerCase().includes(query)) : sessions;
-  }, [sessions, search]);
+    return sessions.filter((s) => {
+      if (query && !s.title.toLowerCase().includes(query)) return false;
+      if (venue !== "all" && s.location !== venue) return false;
+      if (format !== "all" && s.type !== format) return false;
+      return true;
+    });
+  }, [sessions, search, venue, format]);
 
   const grouped = useMemo(() => groupSessionsByBucket(filtered), [filtered]);
   const counts: Record<SessionBucket, number> = {
@@ -180,7 +196,15 @@ export default function OrganiserSessionsPage() {
           ) : (
             <>
               <SessionStatusTabs value={activeBucket} onValueChange={setActiveBucket} counts={counts} />
-              <SessionFiltersBar search={search} onSearchChange={setSearch} />
+              <SessionFiltersBar
+                search={search}
+                onSearchChange={setSearch}
+                venue={venue}
+                onVenueChange={setVenue}
+                venueOptions={venueOptions}
+                format={format}
+                onFormatChange={setFormat}
+              />
 
               {visible.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-8 text-center" data-testid="organiser-sessions-bucket-empty">
