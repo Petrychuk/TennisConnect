@@ -1,4 +1,5 @@
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -7,8 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Search, CalendarDays, SlidersHorizontal } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
 
 interface SessionFiltersBarProps {
@@ -19,6 +20,12 @@ interface SessionFiltersBarProps {
   venueOptions: string[];
   format: string;
   onFormatChange: (value: string) => void;
+  dateFrom: string;
+  onDateFromChange: (value: string) => void;
+  dateTo: string;
+  onDateToChange: (value: string) => void;
+  calendarOpen: boolean;
+  onCalendarOpenChange: (open: boolean) => void;
 }
 
 // Venue and Format are real filters now, driven by the organiser's
@@ -35,9 +42,14 @@ export function SessionFiltersBar({
   venueOptions,
   format,
   onFormatChange,
+  dateFrom,
+  onDateFromChange,
+  dateTo,
+  onDateToChange,
+  calendarOpen,
+  onCalendarOpenChange,
 }: SessionFiltersBarProps) {
-  const { toast } = useToast();
-  const notify = (label: string) => toast({ title: `${label} isn't wired up yet` });
+  const hasDateFilter = !!dateFrom || !!dateTo;
 
   return (
     <div className="flex flex-col sm:flex-row gap-2" data-testid="organiser-sessions-filters-bar">
@@ -84,22 +96,58 @@ export function SessionFiltersBar({
 
       <div className="flex gap-2">
         <Button
-          variant="outline"
+          variant={calendarOpen ? "default" : "outline"}
           className="hidden md:inline-flex gap-2"
-          onClick={() => notify("Calendar view")}
+          onClick={() => onCalendarOpenChange(!calendarOpen)}
           data-testid="organiser-sessions-calendar-button"
         >
           <CalendarDays className="w-4 h-4" />
-          Calendar
+          {calendarOpen ? "List" : "Calendar"}
         </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => notify("More filters")}
-          data-testid="organiser-sessions-filters-button"
-        >
-          <SlidersHorizontal className="w-4 h-4" />
-        </Button>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="icon" className="relative" data-testid="organiser-sessions-filters-button">
+              <SlidersHorizontal className="w-4 h-4" />
+              {hasDateFilter && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-primary" data-testid="organiser-sessions-filters-active-dot" />
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-64 space-y-3" data-testid="organiser-sessions-more-filters">
+            <div className="space-y-1.5">
+              <Label className="text-sm">From</Label>
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => onDateFromChange(e.target.value)}
+                data-testid="organiser-sessions-date-from"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm">To</Label>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => onDateToChange(e.target.value)}
+                data-testid="organiser-sessions-date-to"
+              />
+            </div>
+            {hasDateFilter && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  onDateFromChange("");
+                  onDateToChange("");
+                }}
+                data-testid="organiser-sessions-date-clear"
+              >
+                Clear dates
+              </Button>
+            )}
+          </PopoverContent>
+        </Popover>
       </div>
     </div>
   );

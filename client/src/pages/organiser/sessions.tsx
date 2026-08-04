@@ -17,6 +17,7 @@ import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-n
 import { SessionStatusTabs } from "@/components/organiser/sessions/session-status-tabs";
 import { SessionFiltersBar } from "@/components/organiser/sessions/session-filters-bar";
 import { SessionCard } from "@/components/organiser/sessions/session-card";
+import { SessionsCalendarView } from "@/components/organiser/sessions/sessions-calendar-view";
 import { SessionsEmptyState } from "@/components/organiser/sessions/sessions-empty-state";
 import { NewSessionMenu } from "@/components/organiser/sessions/wizard/new-session-menu";
 import { groupSessionsByBucket, type SessionBucket } from "@/components/organiser/sessions/session-utils";
@@ -48,6 +49,9 @@ export default function OrganiserSessionsPage() {
   const [search, setSearch] = useState("");
   const [venue, setVenue] = useState("all");
   const [format, setFormat] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   // Real venues, derived from the organiser's own sessions - was
   // previously a hardcoded two-item list ("All Venues" / one fixed
@@ -60,13 +64,18 @@ export default function OrganiserSessionsPage() {
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
+    const from = dateFrom ? new Date(`${dateFrom}T00:00`).getTime() : null;
+    const to = dateTo ? new Date(`${dateTo}T23:59`).getTime() : null;
     return sessions.filter((s) => {
       if (query && !s.title.toLowerCase().includes(query)) return false;
       if (venue !== "all" && s.location !== venue) return false;
       if (format !== "all" && s.type !== format) return false;
+      const startAt = new Date(s.startAt).getTime();
+      if (from !== null && startAt < from) return false;
+      if (to !== null && startAt > to) return false;
       return true;
     });
-  }, [sessions, search, venue, format]);
+  }, [sessions, search, venue, format, dateFrom, dateTo]);
 
   const grouped = useMemo(() => groupSessionsByBucket(filtered), [filtered]);
   const counts: Record<SessionBucket, number> = {
@@ -204,9 +213,17 @@ export default function OrganiserSessionsPage() {
                 venueOptions={venueOptions}
                 format={format}
                 onFormatChange={setFormat}
+                dateFrom={dateFrom}
+                onDateFromChange={setDateFrom}
+                dateTo={dateTo}
+                onDateToChange={setDateTo}
+                calendarOpen={calendarOpen}
+                onCalendarOpenChange={setCalendarOpen}
               />
 
-              {visible.length === 0 ? (
+              {calendarOpen ? (
+                <SessionsCalendarView sessions={visible} />
+              ) : visible.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-8 text-center" data-testid="organiser-sessions-bucket-empty">
                   No sessions here.
                 </p>
