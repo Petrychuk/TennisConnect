@@ -21,7 +21,7 @@ import {
   ChevronRight,
   Trophy,
 } from "lucide-react";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { HeaderClockWeather } from "@/components/header-clock-weather";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
@@ -57,6 +57,7 @@ export function Navbar() {
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   
   const { toast } = useToast();
 
@@ -68,6 +69,17 @@ export function Navbar() {
     document.body.classList.toggle("has-mobile-bottom-nav", showMobileBottomNav);
     return () => document.body.classList.remove("has-mobile-bottom-nav");
   }, [showMobileBottomNav]);
+
+  // Navbar stays mounted across route changes (only the page content
+  // swaps) - close any menu that was open the moment the route
+  // actually changes, rather than relying solely on each menu's own
+  // click-to-close behavior, which could otherwise leave a menu
+  // visually stuck open through a navigation in some interaction
+  // orders.
+  useEffect(() => {
+    setMoreOpen(false);
+    setAccountMenuOpen(false);
+  }, [location]);
 
   const profileHref =
   user?.role && user?.slug
@@ -152,7 +164,7 @@ export function Navbar() {
                 </Button>
               </Link>
             
-              <DropdownMenu>
+              <DropdownMenu open={accountMenuOpen} onOpenChange={setAccountMenuOpen}>
                 <DropdownMenuTrigger  asChild>
                   <Avatar
                     data-testid="profile-menu"
@@ -255,6 +267,8 @@ export function Navbar() {
               </Button>
             </SheetTrigger>
             <SheetContent className="flex flex-col p-0">
+              <SheetTitle className="sr-only">Menu</SheetTitle>
+              <SheetDescription className="sr-only">Site navigation and account links</SheetDescription>
               <div className="flex flex-col gap-1 px-6 pt-8 pb-4 overflow-y-auto">
                 {isAuthenticated && (
                    <div className="flex items-center gap-3 pb-6" data-testid="drawer-user-summary">
@@ -539,6 +553,8 @@ export function Navbar() {
     {/* More sheet — account actions moved out of the hamburger drawer */}
     <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
       <SheetContent side="bottom" className="md:hidden rounded-t-2xl pb-[calc(1.5rem+env(safe-area-inset-bottom))]" data-testid="mobile-more-sheet">
+        <SheetTitle className="sr-only">My Account</SheetTitle>
+        <SheetDescription className="sr-only">Account and settings links</SheetDescription>
         <div className="flex items-center gap-3 pb-4 pt-2">
           <Avatar key={user?.avatar} className="h-11 w-11 border-2 border-primary/20">
             <AvatarImage src={user?.avatar || undefined} />
