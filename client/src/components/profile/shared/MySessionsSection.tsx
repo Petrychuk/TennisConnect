@@ -94,6 +94,7 @@ export function MySessionsSection({ isOwnProfile, isAuthenticated, sessionTypes,
 
   const now = Date.now();
   const joined = (registeredQuery.data ?? [])
+    .filter((s) => !("hasDivisions" in s) || !s.hasDivisions)
     .filter((s) => !sessionTypes || sessionTypes.includes(s.type))
     .filter((s) => !excludeTypes || !excludeTypes.includes(s.type))
     .filter((s) => (timeframe === "upcoming" ? new Date(s.startAt).getTime() > now : new Date(s.startAt).getTime() <= now))

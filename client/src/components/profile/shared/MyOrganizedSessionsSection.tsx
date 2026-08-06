@@ -125,9 +125,9 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
   });
 
   const isLoading = isOwnProfile ? mineQuery.isLoading : orgQuery.isLoading;
-  const sessions: (TennisSession | SessionWithDetails)[] = isOwnProfile
-    ? mineQuery.data ?? []
-    : orgQuery.data?.upcomingSessions ?? [];
+  const sessions: (TennisSession | SessionWithDetails)[] = (
+    isOwnProfile ? mineQuery.data ?? [] : orgQuery.data?.upcomingSessions ?? []
+  ).filter((s) => s.status !== "draft" && s.status !== "archived");
 
   // A Tournament/Club Championship "container" and its divisions
   // (Men's Singles A, Mixed Doubles, etc.) shouldn't render as flat,
