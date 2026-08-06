@@ -82,7 +82,7 @@ export async function getSessionById(id: string): Promise<TennisSession> {
 }
 
 /** Every division (Men's Singles A, Mixed Doubles, etc.) of a Tournament/Club Championship container session. */
-export async function getSessionDivisions(id: string): Promise<TennisSession[]> {
+export async function getSessionDivisions(id: string): Promise<SessionWithDetails[]> {
   const res = await apiRequest("GET", `${BASE}/sessions/${id}/divisions`);
   return res.json();
 }

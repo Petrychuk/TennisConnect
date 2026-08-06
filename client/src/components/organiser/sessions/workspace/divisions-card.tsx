@@ -18,7 +18,7 @@ import { Layers, Plus, Copy, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getSessionDivisions, createSessionDivision } from "@/lib/api/organizer-sessions";
 import { NumberField } from "@/components/organiser/sessions/wizard/number-field";
-import type { TennisSession } from "@shared/schema";
+import type { SessionWithDetails } from "@shared/schema";
 
 const STATUS_BADGE: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -44,7 +44,7 @@ export function DivisionsCard({ sessionId }: DivisionsCardProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [cloneFrom, setCloneFrom] = useState<TennisSession | null>(null);
+  const [cloneFrom, setCloneFrom] = useState<SessionWithDetails | null>(null);
   const [title, setTitle] = useState("");
   const [maxParticipants, setMaxParticipants] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -61,7 +61,7 @@ export function DivisionsCard({ sessionId }: DivisionsCardProps) {
     setDialogOpen(true);
   };
 
-  const openDuplicate = (division: TennisSession) => {
+  const openDuplicate = (division: SessionWithDetails) => {
     setCloneFrom(division);
     setTitle(`${division.title} (copy)`);
     setMaxParticipants(division.maxParticipants != null ? String(division.maxParticipants) : "");
@@ -87,7 +87,7 @@ export function DivisionsCard({ sessionId }: DivisionsCardProps) {
     }
   };
 
-  const divisions = divisionsQuery.data ?? [];
+  const divisions = (divisionsQuery.data ?? []).filter((d) => d.status !== "archived");
 
   return (
     <Card className="shadow-sm" data-testid="organiser-session-divisions-card">
@@ -128,6 +128,9 @@ export function DivisionsCard({ sessionId }: DivisionsCardProps) {
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {new Date(division.startAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
+                    {" · "}
+                    {division.registeredCount}
+                    {division.maxParticipants != null ? ` / ${division.maxParticipants}` : ""} registered
                   </p>
                 </div>
                 <Button

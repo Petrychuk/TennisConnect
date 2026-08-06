@@ -33,7 +33,8 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { publishSession, archiveSession, inviteToSession, broadcastToSession, getSessionRegistrations, createSessionDivision } from "@/lib/api/organizer-sessions";
+import { publishSession, archiveSession, inviteToSession, broadcastToSession, getSessionRegistrations, createSessionDivision, createSession } from "@/lib/api/organizer-sessions";
+import { createEmptyDraft, draftToInsertSession } from "@/lib/organiser-session-wizard-types";
 import { InvitePlayersDialog } from "@/components/organiser/shared/invite-players-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -172,7 +173,15 @@ export default function OrganiserSessionWorkspacePage() {
         toast({ title: "Division duplicated", description: "Saved as a new draft division." });
         setLocation(`/organiser/sessions/${copy.id}`);
       } else {
-        toast({ title: "Duplicate isn't wired up here yet", description: "Use the Sessions list for now." });
+        // Same shape a "blank" wizard draft would build, seeded with
+        // this session's own details - same pattern the Sessions list's
+        // own Duplicate already uses, a real draft copy in the
+        // database, not just a client-side clone.
+        const draft = { ...createEmptyDraft(), name: `${session.title} (Copy)`, venue: session.location, maxPlayers: session.maxParticipants ?? 24 };
+        const copy = await createSession(draftToInsertSession(draft) as any);
+        queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine"] });
+        toast({ title: "Session duplicated", description: "Saved as a new draft." });
+        setLocation(`/organiser/sessions/${copy.id}`);
       }
     } catch (error: any) {
       toast({ title: "Couldn't duplicate", description: error?.message ?? "Please try again.", variant: "destructive" });
@@ -395,7 +404,7 @@ export default function OrganiserSessionWorkspacePage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {isDivision && session.status === "draft" && (
+                  {session.status === "draft" && (
                     <DropdownMenuItem onClick={handlePublish} disabled={publishing}>
                       <Send className="w-4 h-4 mr-2" />
                       {publishing ? "Publishing..." : "Publish Session"}
@@ -405,26 +414,22 @@ export default function OrganiserSessionWorkspacePage() {
                     <Pencil className="w-4 h-4 mr-2" />
                     Edit Session
                   </DropdownMenuItem>
-                  {isDivision && (
-                    <>
-                      <DropdownMenuItem onClick={() => setInviteOpen(true)}>
-                        <UserPlus className="w-4 h-4 mr-2" />
-                        Invite Players
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setAnnounceOpen(true)}>
-                        <Megaphone className="w-4 h-4 mr-2" />
-                        Send Announcement
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setLocation(`/organiser/sessions/${session.id}?tab=registration`)}>
-                        <ListPlus className="w-4 h-4 mr-2" />
-                        Manage Waitlist
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleExportPlayers}>
-                        <Download className="w-4 h-4 mr-2" />
-                        Export Player List
-                      </DropdownMenuItem>
-                    </>
-                  )}
+                  <DropdownMenuItem onClick={() => setInviteOpen(true)}>
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Invite Players
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setAnnounceOpen(true)}>
+                    <Megaphone className="w-4 h-4 mr-2" />
+                    Send Announcement
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setLocation(`/organiser/sessions/${session.id}?tab=registration`)}>
+                    <ListPlus className="w-4 h-4 mr-2" />
+                    Manage Waitlist
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportPlayers}>
+                    <Download className="w-4 h-4 mr-2" />
+                    Export Player List
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleDuplicate} disabled={duplicating}>
                     <Copy className="w-4 h-4 mr-2" />
                     {duplicating ? "Duplicating..." : "Duplicate"}

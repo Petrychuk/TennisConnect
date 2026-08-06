@@ -223,7 +223,7 @@ export interface IStorage {
   createSession(organizationId: string, createdBy: string, session: InsertSession): Promise<TennisSession>;
   getSessionById(id: string): Promise<TennisSession | undefined>;
  getSessionByIdWithDetails(id: string, viewerId?: string): Promise<SessionWithDetails | undefined>;
- getSessionDivisions(parentSessionId: string): Promise<TennisSession[]>;
+ getSessionDivisions(parentSessionId: string): Promise<SessionWithDetails[]>;
  createSessionDivision(baseSession: TennisSession, createdBy: string, overrides: Partial<InsertSession> & { title: string }): Promise<TennisSession>;
   getSessionsByOrganization(organizationId: string): Promise<TennisSession[]>;
   getUpcomingPublishedSessionsByOrganization(organizationId: string): Promise<SessionWithDetails[]>;
@@ -1912,12 +1912,13 @@ export class DatabaseStorage implements IStorage {
   // Every division of a Tournament/Club Championship "container"
   // session - Men's Singles A, Mixed Doubles, etc. Ordered by start
   // time so a multi-day event reads in a sensible order.
-  async getSessionDivisions(parentSessionId: string): Promise<TennisSession[]> {
-    return db
+  async getSessionDivisions(parentSessionId: string): Promise<SessionWithDetails[]> {
+    const rows = await db
       .select()
       .from(tennisSessions)
       .where(eq(tennisSessions.parentSessionId, parentSessionId))
       .orderBy(asc(tennisSessions.startAt));
+    return this.attachSessionDetails(rows);
   }
 
   // Fast division creation: clones every real field from a base
@@ -1965,6 +1966,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSessionsByOrganization(organizationId: string): Promise<TennisSession[]> {
+    // A session that's genuinely wrapped up (past its end time, or its
+    // start time if it has no explicit end) moves to archived - either
+    // the organiser closed it out via TC Live, or nobody did and it's
+    // simply done now. Only published/live/completed sessions qualify;
+    // draft/cancelled/rejected/pending_review keep their own real
+    // meaning regardless of how much time has passed.
+    await db
+      .update(tennisSessions)
+      .set({ status: "archived", updatedAt: new Date() })
+      .where(
+        and(
+          eq(tennisSessions.organizationId, organizationId),
+          sql`${tennisSessions.status} IN ('published', 'live', 'completed')`,
+          sql`COALESCE(${tennisSessions.endAt}, ${tennisSessions.startAt}) < now()`
+        )
+      );
+
     return db
       .select()
       .from(tennisSessions)

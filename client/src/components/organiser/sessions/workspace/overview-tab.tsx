@@ -6,7 +6,6 @@ import { SessionDetailsCard } from "./session-details-card";
 import { SessionQuickStatsCard } from "./session-quick-stats-card";
 import { SessionStatusCard } from "./session-status-card";
 import { SessionReadinessCard } from "./session-readiness-card";
-import { SessionActionsCard } from "./session-actions-card";
 import { SessionNotesCard } from "./session-notes-card";
 import { DivisionsCard } from "./divisions-card";
 import { LiveTodayCard } from "@/components/organiser/dashboard/live-today-card";
@@ -121,16 +120,15 @@ export function OverviewTab({ session, onEdit, isDivision }: OverviewTabProps) {
           <SessionReadinessCard readiness={mockSessionReadiness} onViewDetails={viewReadinessDetails} />
         </div>
         {isMultiDivisionType && <DivisionsCard sessionId={session.id} />}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <SessionDetailsCard session={session} />
-          <SessionActionsCard session={session} onEdit={onEdit} />
           <SessionNotesCard initialNote={detail.notes} />
         </div>
         {quickStats}
       </div>
 
       {/* Tablet (md to xl): Summary full width, Status+Readiness paired,
-          Details+Notes paired, Actions as an icon grid, Quick Stats last. */}
+          Details+Notes paired, Quick Stats last. */}
       <div className="hidden md:block xl:hidden space-y-4">
         <SessionSummaryCard session={session} />
         <div className="grid grid-cols-2 gap-4">
@@ -142,7 +140,6 @@ export function OverviewTab({ session, onEdit, isDivision }: OverviewTabProps) {
           <SessionDetailsCard session={session} />
           <SessionNotesCard initialNote={detail.notes} />
         </div>
-        <SessionActionsCard session={session} onEdit={onEdit} variant="grid" />
         {quickStats}
       </div>
 
