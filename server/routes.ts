@@ -840,9 +840,18 @@ export async function registerRoutes(app: Express): Promise<void> {
       const clubs =
         await storage.getPublishedClubs();
 
+      // Best-effort only - a failure here (e.g. a pending migration)
+      // must never take down the whole listing, which is why this is
+      // deliberately its own try/catch rather than sharing the outer
+      // one. Every club still loads with isFavoriting: false if this
+      // fails, rather than the request failing entirely.
       let favoritedIds = new Set<string>();
       if (req.isAuthenticated?.()) {
-        favoritedIds = new Set(await storage.getFavoritedClubIds((req.user as any).id));
+        try {
+          favoritedIds = new Set(await storage.getFavoritedClubIds((req.user as any).id));
+        } catch (favError) {
+          console.error("Failed to load favorited club ids:", favError);
+        }
       }
 
       res.json(clubs.map((club) => ({ ...club, isFavoriting: favoritedIds.has(club.id) })));
@@ -881,10 +890,14 @@ export async function registerRoutes(app: Express): Promise<void> {
       let isFollowing = false;
       let isFavoriting = false;
       if (req.isAuthenticated?.()) {
-        [isFollowing, isFavoriting] = await Promise.all([
-          storage.isFollowingClub((req.user as any).id, club.id),
-          storage.isFavoritingClub((req.user as any).id, club.id),
-        ]);
+        try {
+          [isFollowing, isFavoriting] = await Promise.all([
+            storage.isFollowingClub((req.user as any).id, club.id),
+            storage.isFavoritingClub((req.user as any).id, club.id),
+          ]);
+        } catch (statusError) {
+          console.error("Failed to load follow/favorite status:", statusError);
+        }
       }
 
       const followersCount = await storage.getClubFollowerCount(club.id);
