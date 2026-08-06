@@ -135,6 +135,11 @@ export async function cancelSession(id: string): Promise<TennisSession> {
   return res.json();
 }
 
+export async function archiveSession(id: string): Promise<TennisSession> {
+  const res = await apiRequest("POST", `${BASE}/sessions/${id}/archive`);
+  return res.json();
+}
+
 /** Drafts only - anything past draft should be cancelled instead. */
 export async function deleteSession(id: string): Promise<void> {
   await apiRequest("DELETE", `${BASE}/sessions/${id}`);

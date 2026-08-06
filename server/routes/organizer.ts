@@ -420,6 +420,15 @@ router.post("/sessions/:id/cancel", requireAuth, requireOrganizer, requireOwnSes
   }
 });
 
+router.post("/sessions/:id/archive", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+  try {
+    const session = await storage.archiveSession(req.params.id);
+    res.json(session);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Drafts only - see storage.deleteSession for why. Anything past draft
 // should be cancelled instead (the route above), never deleted.
 router.delete("/sessions/:id", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {

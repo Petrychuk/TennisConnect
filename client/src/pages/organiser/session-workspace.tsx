@@ -33,7 +33,10 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { publishSession } from "@/lib/api/organizer-sessions";
+import { publishSession, archiveSession, inviteToSession, broadcastToSession, getSessionRegistrations, createSessionDivision } from "@/lib/api/organizer-sessions";
+import { InvitePlayersDialog } from "@/components/organiser/shared/invite-players-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import SEO from "@/components/seo";
 
 import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar";
@@ -99,7 +102,84 @@ export default function OrganiserSessionWorkspacePage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [publishing, setPublishing] = useState(false);
-  const notify = (label: string) => toast({ title: `${label} isn't wired up yet` });
+  const [archiving, setArchiving] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [announceOpen, setAnnounceOpen] = useState(false);
+  const [announceMessage, setAnnounceMessage] = useState("");
+  const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
+
+  const handleExportPlayers = async () => {
+    if (!session) return;
+    try {
+      const registrations = await getSessionRegistrations(session.id);
+      const header = "Name,Profile,Status,Registered At\n";
+      const rows = registrations
+        .map((r) => [r.userName, r.userSlug, r.status, new Date(r.createdAt).toLocaleString()].map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(","))
+        .join("\n");
+      const blob = new Blob([header + rows], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${session.title.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-players.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      toast({ title: "Couldn't export player list", description: error?.message ?? "Please try again.", variant: "destructive" });
+    }
+  };
+
+  const handleSendAnnouncement = async () => {
+    if (!session || !announceMessage.trim() || sendingAnnouncement) return;
+    setSendingAnnouncement(true);
+    try {
+      const result = await broadcastToSession(session.id, announceMessage.trim());
+      toast({ title: "Announcement sent", description: `Delivered to ${result.sentTo} registered player${result.sentTo === 1 ? "" : "s"}.` });
+      setAnnounceMessage("");
+      setAnnounceOpen(false);
+    } catch (error: any) {
+      toast({ title: "Couldn't send announcement", description: error?.message ?? "Please try again.", variant: "destructive" });
+    } finally {
+      setSendingAnnouncement(false);
+    }
+  };
+
+  const handleArchive = async () => {
+    if (!session || archiving) return;
+    setArchiving(true);
+    try {
+      await archiveSession(session.id);
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine"] });
+      toast({ title: "Archived", description: "Moved to the Archived tab on your Sessions list." });
+    } catch (error: any) {
+      toast({ title: "Couldn't archive", description: error?.message ?? "Please try again.", variant: "destructive" });
+    } finally {
+      setArchiving(false);
+    }
+  };
+
+  const handleDuplicate = async () => {
+    if (!session || duplicating) return;
+    setDuplicating(true);
+    try {
+      if (isDivision && session.parentSessionId) {
+        const copy = await createSessionDivision(session.parentSessionId, {
+          title: `${session.title} (copy)`,
+          cloneFromDivisionId: session.id,
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.parentSessionId, "divisions"] });
+        toast({ title: "Division duplicated", description: "Saved as a new draft division." });
+        setLocation(`/organiser/sessions/${copy.id}`);
+      } else {
+        toast({ title: "Duplicate isn't wired up here yet", description: "Use the Sessions list for now." });
+      }
+    } catch (error: any) {
+      toast({ title: "Couldn't duplicate", description: error?.message ?? "Please try again.", variant: "destructive" });
+    } finally {
+      setDuplicating(false);
+    }
+  };
 
   const handlePublish = async () => {
     if (!session || publishing) return;
@@ -327,31 +407,31 @@ export default function OrganiserSessionWorkspacePage() {
                   </DropdownMenuItem>
                   {isDivision && (
                     <>
-                      <DropdownMenuItem onClick={() => notify("Invite Players")}>
+                      <DropdownMenuItem onClick={() => setInviteOpen(true)}>
                         <UserPlus className="w-4 h-4 mr-2" />
                         Invite Players
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => notify("Send Announcement")}>
+                      <DropdownMenuItem onClick={() => setAnnounceOpen(true)}>
                         <Megaphone className="w-4 h-4 mr-2" />
                         Send Announcement
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => notify("Manage Waitlist")}>
+                      <DropdownMenuItem onClick={() => setLocation(`/organiser/sessions/${session.id}?tab=registration`)}>
                         <ListPlus className="w-4 h-4 mr-2" />
                         Manage Waitlist
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => notify("Export Player List")}>
+                      <DropdownMenuItem onClick={handleExportPlayers}>
                         <Download className="w-4 h-4 mr-2" />
                         Export Player List
                       </DropdownMenuItem>
                     </>
                   )}
-                  <DropdownMenuItem onClick={() => toast({ title: "Duplicate isn't wired up here yet", description: "Use the Sessions list for now." })}>
+                  <DropdownMenuItem onClick={handleDuplicate} disabled={duplicating}>
                     <Copy className="w-4 h-4 mr-2" />
-                    Duplicate
+                    {duplicating ? "Duplicating..." : "Duplicate"}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => toast({ title: "Archive isn't wired up yet" })}>
+                  <DropdownMenuItem onClick={handleArchive} disabled={archiving}>
                     <Archive className="w-4 h-4 mr-2" />
-                    Archive
+                    {archiving ? "Archiving..." : "Archive"}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -416,6 +496,43 @@ export default function OrganiserSessionWorkspacePage() {
       </div>
 
       <OrganiserMobileNav />
+
+      <InvitePlayersDialog
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        title={`Invite Players to ${session.title}`}
+        description="Search for players on TennisConnect and invite them to this session."
+        onInvite={async (userId) => {
+          await inviteToSession(session.id, userId);
+          queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.id, "registrations"] });
+        }}
+        searchContext={{ sessionId: session.id }}
+        alreadyConnectedLabel="Already joined"
+      />
+
+      <Dialog open={announceOpen} onOpenChange={setAnnounceOpen}>
+        <DialogContent data-testid="organiser-session-announcement-dialog">
+          <DialogHeader>
+            <DialogTitle>Send Announcement</DialogTitle>
+            <DialogDescription>Goes straight to every registered player's inbox for {session.title}.</DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={announceMessage}
+            onChange={(e) => setAnnounceMessage(e.target.value)}
+            placeholder="Post an update to everyone registered for this session..."
+            className="min-h-28"
+            data-testid="organiser-session-announcement-input"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAnnounceOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSendAnnouncement} disabled={!announceMessage.trim() || sendingAnnouncement} data-testid="organiser-session-announcement-send">
+              {sendingAnnouncement ? "Sending..." : "Send"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

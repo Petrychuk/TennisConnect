@@ -238,6 +238,7 @@ export interface IStorage {
   // Admin only: publish directly, bypassing review (admins don't review themselves).
  publishSessionDirect(id: string, reviewerId: string): Promise<TennisSession>;
  cancelSession(id: string): Promise<TennisSession>;
+ archiveSession(id: string): Promise<TennisSession>;
  deleteSession(id: string): Promise<void>;
  getRegistrationsForSession(sessionId: string): Promise<RegistrationWithUser[]>;
  getPlayersForOrganization(organizationId: string): Promise<OrgPlayerRow[]>;
@@ -2107,6 +2108,18 @@ export class DatabaseStorage implements IStorage {
     const [session] = await db
       .update(tennisSessions)
       .set({ status: "cancelled", updatedAt: new Date() })
+      .where(eq(tennisSessions.id, id))
+      .returning();
+    return session;
+  }
+
+  // The Sessions list's "Archived" bucket (session-utils.ts bucketFor)
+  // has always checked for status === "archived" - nothing on the
+  // backend ever actually set that status until now.
+  async archiveSession(id: string): Promise<TennisSession> {
+    const [session] = await db
+      .update(tennisSessions)
+      .set({ status: "archived", updatedAt: new Date() })
       .where(eq(tennisSessions.id, id))
       .returning();
     return session;
