@@ -104,9 +104,8 @@ export function OverviewTab({ session, onEdit, isDivision }: OverviewTabProps) {
         )}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <SessionReadinessCard readiness={divisionReadiness} onViewDetails={viewReadinessDetails} />
-          <SessionActionsCard session={session} onEdit={onEdit} />
+          <SessionDetailsCard session={session} isDivision />
         </div>
-        <SessionDetailsCard session={session} isDivision />
       </div>
     );
   }

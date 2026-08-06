@@ -24,9 +24,16 @@ import {
   Calendar,
   MapPin,
   Loader2,
+  Send,
+  UserPlus,
+  Megaphone,
+  ListPlus,
+  Download,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
+import { publishSession } from "@/lib/api/organizer-sessions";
 import SEO from "@/components/seo";
 
 import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar";
@@ -90,6 +97,31 @@ export default function OrganiserSessionWorkspacePage() {
   });
   const search = useSearch();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [publishing, setPublishing] = useState(false);
+  const notify = (label: string) => toast({ title: `${label} isn't wired up yet` });
+
+  const handlePublish = async () => {
+    if (!session || publishing) return;
+    setPublishing(true);
+    try {
+      const updated = await publishSession(session.id);
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine"] });
+      if (session.parentSessionId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.parentSessionId, "divisions"] });
+      }
+      toast(
+        updated.status === "published"
+          ? { title: "Published", description: "It's live now - players can register." }
+          : { title: "Sent for review", description: "It'll go live once an admin approves it." }
+      );
+    } catch (error: any) {
+      toast({ title: "Couldn't publish", description: error?.message ?? "Please try again.", variant: "destructive" });
+    } finally {
+      setPublishing(false);
+    }
+  };
   const profileHref = user ? `/${user.role}/${user.slug}` : "/";
   // Real name/avatar from the authenticated user - role/organization
   // fields stay mock for now since there's no backend for those yet.
@@ -269,10 +301,36 @@ export default function OrganiserSessionWorkspacePage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  {isDivision && session.status === "draft" && (
+                    <DropdownMenuItem onClick={handlePublish} disabled={publishing}>
+                      <Send className="w-4 h-4 mr-2" />
+                      {publishing ? "Publishing..." : "Publish Session"}
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={goEdit}>
                     <Pencil className="w-4 h-4 mr-2" />
                     Edit Session
                   </DropdownMenuItem>
+                  {isDivision && (
+                    <>
+                      <DropdownMenuItem onClick={() => notify("Invite Players")}>
+                        <UserPlus className="w-4 h-4 mr-2" />
+                        Invite Players
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => notify("Send Announcement")}>
+                        <Megaphone className="w-4 h-4 mr-2" />
+                        Send Announcement
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => notify("Manage Waitlist")}>
+                        <ListPlus className="w-4 h-4 mr-2" />
+                        Manage Waitlist
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => notify("Export Player List")}>
+                        <Download className="w-4 h-4 mr-2" />
+                        Export Player List
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   <DropdownMenuItem onClick={() => toast({ title: "Duplicate isn't wired up here yet", description: "Use the Sessions list for now." })}>
                     <Copy className="w-4 h-4 mr-2" />
                     Duplicate
