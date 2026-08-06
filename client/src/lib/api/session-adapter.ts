@@ -73,7 +73,7 @@ export function toSessionListItem(session: TennisSession | SessionWithDetails): 
     startAt: new Date(session.startAt).toISOString(),
     endAt: session.endAt ? new Date(session.endAt).toISOString() : undefined,
     registeredCount,
-    checkedInCount: 0,
+    checkedInCount: details?.checkedInCount ?? 0,
     waitingCount,
     maxParticipants: session.maxParticipants ?? null,
     progressPercent,
@@ -84,6 +84,7 @@ export function toSessionListItem(session: TennisSession | SessionWithDetails): 
     parentSessionId: session.parentSessionId ?? null,
     costPerPlayer: session.price != null ? Number(session.price) : 0,
     organizerName: details?.creatorName ?? undefined,
+    organizationSlug: details?.organizationSlug ?? undefined,
     createdAt: new Date(session.createdAt).toISOString(),
     reviewNote: session.reviewNote ?? undefined,
   };

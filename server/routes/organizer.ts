@@ -535,7 +535,8 @@ router.get("/sessions/:id", requireAuth, async (req, res, next) => {
         return res.status(403).json({ message: "Forbidden" });
       }
     }
-    res.json(session);
+    const enriched = await storage.getSessionByIdWithDetails(req.params.id, (req.user as any).id);
+    res.json(enriched);
   } catch (error) {
     next(error);
   }

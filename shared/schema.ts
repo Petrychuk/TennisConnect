@@ -917,6 +917,7 @@ export type SessionWithDetails = TennisSession & {
   organizationSlug: string;
   registeredCount: number;
   waitlistedCount: number;
+  checkedInCount: number;
   spotsLeft: number | null; // null when maxParticipants is not set (unlimited)
   viewerRegistrationStatus?: RegistrationStatusType | null;
   creatorName?: string; // populated only for the admin moderation view

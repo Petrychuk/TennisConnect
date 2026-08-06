@@ -290,7 +290,21 @@ export default function OrganiserSessionWorkspacePage() {
             </div>
 
             <div className="hidden xl:flex items-center gap-2 shrink-0">
-              <Button variant="outline" onClick={() => toast({ title: "Share isn't wired up yet" })} data-testid="organiser-session-share-button">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (!session.organizationSlug) {
+                    toast({ title: "Publish this session first", description: "It needs to be public before there's a link to share." });
+                    return;
+                  }
+                  const url = `${window.location.origin}/player/${session.organizationSlug}`;
+                  navigator.clipboard
+                    .writeText(url)
+                    .then(() => toast({ title: "Link copied", description: "Players can find this on the organiser's Organising tab." }))
+                    .catch(() => toast({ title: "Couldn't copy the link", description: url, variant: "destructive" }));
+                }}
+                data-testid="organiser-session-share-button"
+              >
                 <Share2 className="w-4 h-4 mr-2" />
                 Share
               </Button>

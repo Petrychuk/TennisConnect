@@ -1,7 +1,7 @@
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tag, Shuffle, Layers, Repeat, MapPinned, Users, ListPlus, DollarSign, UserCog, CalendarPlus } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 import { getSessionDetail } from "@/lib/organiser-sessions-mock-data";
 
@@ -11,8 +11,8 @@ interface SessionDetailsCardProps {
 }
 
 export function SessionDetailsCard({ session, isDivision }: SessionDetailsCardProps) {
+  const [, setLocation] = useLocation();
   const detail = getSessionDetail(session);
-  const { toast } = useToast();
   const courtsCount = session.courts?.length ?? 6;
   const roundsCount = session.roundTotal ?? 5;
 
@@ -75,7 +75,7 @@ export function SessionDetailsCard({ session, isDivision }: SessionDetailsCardPr
         <Button
           variant="outline"
           className="w-full mt-2"
-          onClick={() => toast({ title: "Full details view isn't wired up yet" })}
+          onClick={() => setLocation(`/organiser/sessions/${session.id}?tab=settings`)}
           data-testid="organiser-session-details-view-full"
         >
           View Full Details

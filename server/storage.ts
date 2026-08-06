@@ -222,6 +222,7 @@ export interface IStorage {
   // ===== SESSIONS =====
   createSession(organizationId: string, createdBy: string, session: InsertSession): Promise<TennisSession>;
   getSessionById(id: string): Promise<TennisSession | undefined>;
+ getSessionByIdWithDetails(id: string, viewerId?: string): Promise<SessionWithDetails | undefined>;
  getSessionDivisions(parentSessionId: string): Promise<TennisSession[]>;
  createSessionDivision(baseSession: TennisSession, createdBy: string, overrides: Partial<InsertSession> & { title: string }): Promise<TennisSession>;
   getSessionsByOrganization(organizationId: string): Promise<TennisSession[]>;
@@ -1809,6 +1810,19 @@ export class DatabaseStorage implements IStorage {
       .where(sql`${tennisSessions.parentSessionId} IN ${sessionIds}`);
     const sessionIdsWithDivisions = new Set(divisionRows.map((r) => r.parentSessionId));
 
+    // checkedInAt exists on registrations but nothing has ever counted
+    // it before - "Checked In" was hardcoded to 0 everywhere on the
+    // client regardless of real data. There's still no UI to actually
+    // check someone in yet (that's a separate, larger piece of work),
+    // but the count itself is now genuinely real rather than a
+    // permanent placeholder.
+    const checkInRows = await db
+      .select({ sessionId: registrations.sessionId, count: sql<number>`count(*)` })
+      .from(registrations)
+      .where(sql`${registrations.sessionId} IN ${sessionIds} AND ${registrations.checkedInAt} IS NOT NULL`)
+      .groupBy(registrations.sessionId);
+    const checkedInBySession = new Map(checkInRows.map((r) => [r.sessionId, Number(r.count)]));
+
       let creatorById = new Map<string, string>();
       let creatorAvatarById = new Map<string, string | null>();
     if (includeCreatorNames) {
@@ -1840,6 +1854,7 @@ export class DatabaseStorage implements IStorage {
         organizationSlug: org?.slug || "",
         registeredCount,
         waitlistedCount,
+        checkedInCount: checkedInBySession.get(session.id) ?? 0,
         spotsLeft:
           session.maxParticipants != null
             ? Math.max(0, session.maxParticipants - registeredCount)
@@ -1879,6 +1894,18 @@ export class DatabaseStorage implements IStorage {
       .from(tennisSessions)
       .where(eq(tennisSessions.id, id));
     return session;
+  }
+
+  // The single-session GET route needs registeredCount/checkedInCount/
+  // organizerName etc, the same as every list route already provides -
+  // this was missing entirely before, so a session's own workspace
+  // page was always showing 0 registered/checked-in and a fallback
+  // mock organiser name regardless of the session's real data.
+  async getSessionByIdWithDetails(id: string, viewerId?: string): Promise<SessionWithDetails | undefined> {
+    const session = await this.getSessionById(id);
+    if (!session) return undefined;
+    const [enriched] = await this.attachSessionDetails([session], viewerId, true);
+    return enriched;
   }
 
   // Every division of a Tournament/Club Championship "container"

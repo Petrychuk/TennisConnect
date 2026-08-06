@@ -65,6 +65,7 @@ export interface SessionListItem {
   parentSessionId?: string | null; // set when this session is a division of a container session
   costPerPlayer?: number | null;
   organizerName?: string;
+  organizationSlug?: string;
   organizerSlug?: string;
   createdAt?: string; // ISO
   notes?: string | null;

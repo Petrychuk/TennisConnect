@@ -31,7 +31,7 @@ export function OverviewTab({ session, onEdit, isDivision }: OverviewTabProps) {
   const [, setLocation] = useLocation();
   const detail = getSessionDetail(session);
   const { toast } = useToast();
-  const viewReadinessDetails = () => toast({ title: "Readiness details isn't wired up yet" });
+  const viewReadinessDetails = () => setLocation(`/organiser/sessions/${session.id}?tab=registration`);
 
   const quickStats = (
     <SessionQuickStatsCard
