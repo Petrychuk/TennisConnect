@@ -151,6 +151,11 @@ export function MySessionsSection({ isOwnProfile, isAuthenticated, sessionTypes,
                   </Link>
                   {session.viewerRegistrationStatus === "waitlisted" && <Badge variant="secondary">Waitlisted</Badge>}
                 </div>
+                {session.parentSessionTitle && (
+                  <p className="text-xs text-muted-foreground" data-testid={`my-session-${session.id}-parent`}>
+                    Part of {session.parentSessionTitle}
+                  </p>
+                )}
                 <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1">
                   <span className="flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5" />

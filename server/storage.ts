@@ -1811,6 +1811,19 @@ export class DatabaseStorage implements IStorage {
       .where(sql`${tennisSessions.parentSessionId} IN ${sessionIds}`);
     const sessionIdsWithDivisions = new Set(divisionRows.map((r) => r.parentSessionId));
 
+    // A division's own card needs to reference its tournament/event
+    // without needing a second, separate block just to show the
+    // container's name.
+    const parentIds = Array.from(new Set(rows.map((r) => r.parentSessionId).filter((id): id is string => !!id)));
+    let parentTitleById = new Map<string, string>();
+    if (parentIds.length > 0) {
+      const parentRows = await db
+        .select({ id: tennisSessions.id, title: tennisSessions.title })
+        .from(tennisSessions)
+        .where(sql`${tennisSessions.id} IN ${parentIds}`);
+      parentTitleById = new Map(parentRows.map((p) => [p.id, p.title]));
+    }
+
     // checkedInAt exists on registrations but nothing has ever counted
     // it before - "Checked In" was hardcoded to 0 everywhere on the
     // client regardless of real data. There's still no UI to actually
@@ -1864,6 +1877,7 @@ export class DatabaseStorage implements IStorage {
         creatorName: includeCreatorNames ? creatorById.get(session.createdBy) : undefined,
         creatorAvatar: includeCreatorNames ? creatorAvatarById.get(session.createdBy) ?? null : undefined,
         hasDivisions: sessionIdsWithDivisions.has(session.id),
+        parentSessionTitle: session.parentSessionId ? parentTitleById.get(session.parentSessionId) : undefined,
       };
     });
   }

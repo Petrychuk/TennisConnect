@@ -76,7 +76,7 @@ export async function inviteToSession(sessionId: string, userId: string): Promis
   return res.json();
 }
 
-export async function getSessionById(id: string): Promise<TennisSession> {
+export async function getSessionById(id: string): Promise<SessionWithDetails> {
   const res = await apiRequest("GET", `${BASE}/sessions/${id}`);
   return res.json();
 }
