@@ -839,7 +839,13 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const clubs =
         await storage.getPublishedClubs();
-      res.json(clubs); 
+
+      let favoritedIds = new Set<string>();
+      if (req.isAuthenticated?.()) {
+        favoritedIds = new Set(await storage.getFavoritedClubIds((req.user as any).id));
+      }
+
+      res.json(clubs.map((club) => ({ ...club, isFavoriting: favoritedIds.has(club.id) })));
     } catch (error: any) { 
       next(error);
     }
@@ -873,16 +879,17 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
 
       let isFollowing = false;
+      let isFavoriting = false;
       if (req.isAuthenticated?.()) {
-        isFollowing = await storage.isFollowingClub(
-          (req.user as any).id,
-          club.id
-        );
+        [isFollowing, isFavoriting] = await Promise.all([
+          storage.isFollowingClub((req.user as any).id, club.id),
+          storage.isFavoritingClub((req.user as any).id, club.id),
+        ]);
       }
 
       const followersCount = await storage.getClubFollowerCount(club.id);
 
-      res.json({ ...club, isFollowing, followersCount });
+      res.json({ ...club, isFollowing, isFavoriting, followersCount });
     } catch (error: any) { 
       next(error);
     }
@@ -917,6 +924,41 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const followed = await storage.getFollowedClubs(req.user!.id);
       res.json(followed);
+    } catch (error: any) {
+      next(error);
+    }
+  });
+
+  // Favorite / unfavorite a club as a court venue (requires auth) - same
+  // shape as follow above, deliberately a separate relationship.
+  app.post("/api/clubs/:id/favorite", requireAuth, async (req, res, next) => {
+    try {
+      const club = await storage.getClubById(req.params.id);
+      if (!club) {
+        return res.status(404).json({ message: "Club not found" });
+      }
+
+      await storage.favoriteClub(req.user!.id, club.id);
+      res.json({ favoriting: true });
+    } catch (error: any) {
+      next(error);
+    }
+  });
+
+  app.delete("/api/clubs/:id/favorite", requireAuth, async (req, res, next) => {
+    try {
+      await storage.unfavoriteClub(req.user!.id, req.params.id);
+      res.json({ favoriting: false });
+    } catch (error: any) {
+      next(error);
+    }
+  });
+
+  // Clubs the current user has favorited as courts ("My Courts" list)
+  app.get("/api/me/favorited-clubs", requireAuth, async (req, res, next) => {
+    try {
+      const favorited = await storage.getFavoritedClubs(req.user!.id);
+      res.json(favorited);
     } catch (error: any) {
       next(error);
     }

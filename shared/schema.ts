@@ -653,6 +653,24 @@ export const clubFollows = pgTable("club_follows", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// A player favouriting a club as a court venue - "I like playing here",
+// deliberately separate from clubFollows above (community membership) -
+// a user can do either, both, or neither for the same club. Surfaced
+// as a heart toggle on every club card in the listing, and a "My
+// Courts" list on the player's own profile.
+export const clubFavorites = pgTable("club_favorites", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id")
+    .references(() => users.id)
+    .notNull(),
+  clubId: varchar("club_id")
+    .references(() => clubs.id)
+    .notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Messages - for contact requests and messaging between users
 export const messages = pgTable("messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -885,6 +903,7 @@ export type Club = typeof clubs.$inferSelect;
 export type InsertClub = z.infer<typeof insertClubSchema>;
 
 export type ClubFollow = typeof clubFollows.$inferSelect;
+export type ClubFavorite = typeof clubFavorites.$inferSelect;
 export type InsertClubFollow = z.infer<typeof insertClubFollowSchema>;
 
 export type InsertMessage = z.infer<typeof insertMessageSchema>;

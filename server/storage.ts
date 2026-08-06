@@ -6,6 +6,7 @@ import {
   marketplaceItems,
   clubs,
   clubFollows,
+  clubFavorites,
   messages,
   passwordResetTokens,
   supportRequests,
@@ -29,6 +30,7 @@ import {
   type Club,
   type InsertClub,
   type ClubFollow,
+  type ClubFavorite,
   type Message,
   type MessageWithAvatar,
   type InsertMessage,
@@ -173,6 +175,14 @@ export interface IStorage {
   isFollowingClub(userId: string, clubId: string): Promise<boolean>;
   getFollowedClubs(userId: string): Promise<Club[]>;
   getClubFollowerCount(clubId: string): Promise<number>;
+
+  // Club Favorites ("My Courts") - same shape as Club Follows above,
+  // deliberately separate relationship.
+  favoriteClub(userId: string, clubId: string): Promise<ClubFavorite>;
+  unfavoriteClub(userId: string, clubId: string): Promise<void>;
+  isFavoritingClub(userId: string, clubId: string): Promise<boolean>;
+  getFavoritedClubs(userId: string): Promise<Club[]>;
+  getFavoritedClubIds(userId: string): Promise<string[]>;
   
   // Messages
   getUserMessages(userId: string): Promise<MessageWithAvatar[]>;
@@ -1100,6 +1110,87 @@ export class DatabaseStorage implements IStorage {
       .where(eq(clubFollows.clubId, clubId));
 
     return row?.count ?? 0;
+  }
+
+  async favoriteClub(
+    userId: string,
+    clubId: string
+  ): Promise<ClubFavorite> {
+
+    const existing = await db
+      .select()
+      .from(clubFavorites)
+      .where(
+        and(
+          eq(clubFavorites.userId, userId),
+          eq(clubFavorites.clubId, clubId)
+        )
+      );
+
+    if (existing[0]) {
+      return existing[0];
+    }
+
+    const [favorite] = await db
+      .insert(clubFavorites)
+      .values({ userId, clubId })
+      .returning();
+
+    return favorite;
+  }
+
+  async unfavoriteClub(
+    userId: string,
+    clubId: string
+  ): Promise<void> {
+
+    await db
+      .delete(clubFavorites)
+      .where(
+        and(
+          eq(clubFavorites.userId, userId),
+          eq(clubFavorites.clubId, clubId)
+        )
+      );
+  }
+
+  async isFavoritingClub(
+    userId: string,
+    clubId: string
+  ): Promise<boolean> {
+
+    const [existing] = await db
+      .select()
+      .from(clubFavorites)
+      .where(
+        and(
+          eq(clubFavorites.userId, userId),
+          eq(clubFavorites.clubId, clubId)
+        )
+      );
+
+    return !!existing;
+  }
+
+  async getFavoritedClubs(
+    userId: string
+  ): Promise<Club[]> {
+
+    const rows = await db
+      .select({ club: clubs })
+      .from(clubFavorites)
+      .innerJoin(clubs, eq(clubFavorites.clubId, clubs.id))
+      .where(eq(clubFavorites.userId, userId));
+
+    return rows.map((r) => r.club);
+  }
+
+  async getFavoritedClubIds(userId: string): Promise<string[]> {
+    const rows = await db
+      .select({ clubId: clubFavorites.clubId })
+      .from(clubFavorites)
+      .where(eq(clubFavorites.userId, userId));
+    return rows.map((r) => r.clubId);
   }
 
   async updateClub(

@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { useLocation, useRoute, useSearch } from "wouter";
-import { MapPin, Calendar, Trophy, Edit2, ShoppingBag, Plus, Trash2, Camera, Globe, Phone, Mail, MessageCircle, Send, LogIn, User, ClipboardList } from "lucide-react";
+import { MapPin, Calendar, Trophy, Edit2, ShoppingBag, Plus, Trash2, Camera, Globe, Phone, Mail, MessageCircle, Send, LogIn, User, ClipboardList, Users2, Heart } from "lucide-react";
 import { PARTNERS_DATA } from "@/lib/dummy-data";
 import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.png";
 import SEO from "@/components/seo";
@@ -25,6 +25,7 @@ import { Footer } from "@/components/footer";
 import { BecomeOrganizerCard } from "@/components/profile/shared/BecomeOrganizerCard";
 import { messageSchema } from "@/lib/validations/messages";
 import { MySessionsSection } from "@/components/profile/shared/MySessionsSection";
+import { MyClubsSection } from "@/components/profile/shared/MyClubsSection";
 import { MyOrganizedSessionsSection } from "@/components/profile/shared/MyOrganizedSessionsSection";
 import { useOrganizerStatus } from "@/hooks/use-organizer-status";
 import { TennisLoader } from "@/components/ui/tennisLoader";
@@ -817,6 +818,8 @@ export default function PlayerProfile() {
                       gap-2
                       scrollbar-hide">
                   <TabsTrigger value="overview" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><User className="w-4 h-4" />Overview</TabsTrigger>
+                  <TabsTrigger value="communities" data-testid="my-communities-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Users2 className="w-4 h-4" />Communities</TabsTrigger>
+                  <TabsTrigger value="courts" data-testid="my-courts-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Heart className="w-4 h-4" />My Courts</TabsTrigger>
                   <TabsTrigger value="sessions" data-testid="my-sessions-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Trophy className="w-4 h-4" />My Sessions</TabsTrigger>
                   {showOrganisingTab && (
                     <TabsTrigger value="organizing" data-testid="my-organized-sessions-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><ClipboardList className="w-4 h-4" />Organising</TabsTrigger>
@@ -884,6 +887,15 @@ export default function PlayerProfile() {
                     />
                   )}
                 </TabsContent>
+
+                <TabsContent value="communities" className="space-y-6" data-testid="my-communities-tab-content">
+                  <MyClubsSection isOwnProfile={isOwnProfile} isAuthenticated={isAuthenticated} mode="communities" />
+                </TabsContent>
+
+                <TabsContent value="courts" className="space-y-6" data-testid="my-courts-tab-content">
+                  <MyClubsSection isOwnProfile={isOwnProfile} isAuthenticated={isAuthenticated} mode="courts" />
+                </TabsContent>
+
                 <TabsContent value="sessions" className="space-y-6" data-testid="my-sessions-tab-content">
                   <Tabs defaultValue="regular">
                     <TabsList>
