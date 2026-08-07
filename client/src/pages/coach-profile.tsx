@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Camera, Edit2, Save, Plus, Trophy, Clock, DollarSign, X, ShoppingBag, Mail, Phone, MessageCircle, Send, Check, ChevronsUpDown, Calendar, ChevronRight, Users, LogIn, User, ClipboardList, GraduationCap } from "lucide-react";
+import { MapPin, Camera, Edit2, Save, Plus, Trophy, Clock, DollarSign, X, ShoppingBag, Mail, Phone, MessageCircle, Send, Check, ChevronsUpDown, Calendar, ChevronRight, Users, LogIn, User, ClipboardList, GraduationCap, Award } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { useLocation, useSearch } from "wouter";
@@ -837,6 +837,7 @@ export default function CoachProfile() {
                     scrollbar-hide">
                   <TabsTrigger value="about" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/10 px-3 py-2 text-sm md:text-base gap-1.5"><User className="w-4 h-4" />About</TabsTrigger>
                   <TabsTrigger value="sessions" data-testid="my-sessions-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/10 px-3 py-2 text-sm md:text-base gap-1.5"><Trophy className="w-4 h-4" />My Sessions</TabsTrigger>
+                  <TabsTrigger value="results" data-testid="my-results-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/10 px-3 py-2 text-sm md:text-base gap-1.5"><Award className="w-4 h-4" />Results</TabsTrigger>
                   {showOrganisingTab && (
                     <TabsTrigger value="organizing" data-testid="my-organized-sessions-tab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/10 px-3 py-2 text-sm md:text-base gap-1.5"><ClipboardList className="w-4 h-4" />Organising</TabsTrigger>
                   )}
@@ -1030,22 +1031,13 @@ export default function CoachProfile() {
                         </TabsContent>
 
                         <TabsContent value="tournament" className="mt-6">
-                          <Tabs defaultValue="upcoming">
-                            <TabsList>
-                              <TabsTrigger value="upcoming" data-testid="my-sessions-subtab-upcoming">Upcoming</TabsTrigger>
-                              <TabsTrigger value="history" data-testid="my-sessions-subtab-history">History</TabsTrigger>
-                            </TabsList>
-
-                            <TabsContent value="upcoming" className="mt-6">
-                              <MySessionsSection isOwnProfile={isMyAccount} isAuthenticated={isAuthenticated} sessionTypes={TOURNAMENT_TYPES} timeframe="upcoming" />
-                            </TabsContent>
-
-                            <TabsContent value="history" className="mt-6">
-                              <TournamentHistorySection userId={coachUserId} isOwnProfile={isOwnProfile} />
-                            </TabsContent>
-                          </Tabs>
+                          <MySessionsSection isOwnProfile={isMyAccount} isAuthenticated={isAuthenticated} sessionTypes={TOURNAMENT_TYPES} timeframe="upcoming" />
                         </TabsContent>
                       </Tabs>
+                    </TabsContent>
+
+                    <TabsContent value="results" className="space-y-6 mt-0" data-testid="my-results-tab-content">
+                      <TournamentHistorySection userId={coachUserId} isOwnProfile={isOwnProfile} />
                     </TabsContent>
 
                     {showOrganisingTab && (

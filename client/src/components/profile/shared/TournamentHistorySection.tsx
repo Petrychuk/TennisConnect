@@ -282,7 +282,7 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
   return (
     <div className="space-y-8" data-testid="tournament-history-section">
       <div className="flex justify-between items-center">
-        <h3 className="text-xl font-bold">Tournament History</h3>
+        <h3 className="text-xl font-bold">Results</h3>
         {isOwnProfile && (
           <Dialog
             open={isTournamentModalOpen}
@@ -293,21 +293,24 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
           >
             <DialogTrigger asChild>
               <Button data-testid="add-tournament-entry">
-                <Plus className="w-4 h-4 mr-2" /> Add Entry
+                <Plus className="w-4 h-4 mr-2" /> Add Result
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Add Tournament Result</DialogTitle>
-                <DialogDescription>Add your tournament result and match details.</DialogDescription>
+                <DialogTitle>Add Result</DialogTitle>
+                <DialogDescription>
+                  Record a result from a tournament, session, or match — including ones played outside
+                  TennisConnect. Not every organiser runs their sessions through here yet.
+                </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label>Tournament Name</Label>
+                  <Label>Name</Label>
                   <Input
                     value={newTournament.name}
                     onChange={(e) => setNewTournament({ ...newTournament, name: e.target.value })}
-                    placeholder="e.g. Sydney Open 2024"
+                    placeholder="e.g. Sydney Open 2024, or Saturday Social Tennis"
                     data-testid="tournament-name-input"
                   />
                 </div>
@@ -335,8 +338,14 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
                   <div className="space-y-2">
                     <Label>Result</Label>
                     <Select
-                      value={newTournament.result}
-                      onValueChange={(val) => setNewTournament({ ...newTournament, result: val })}
+                      value={
+                        ["Winner", "Runner Up", "Semi-Finalist", "Quarter-Finalist", "Round of 16", "Round of 32", "Participation"].includes(newTournament.result)
+                          ? newTournament.result
+                          : newTournament.result
+                          ? "Custom"
+                          : ""
+                      }
+                      onValueChange={(val) => setNewTournament({ ...newTournament, result: val === "Custom" ? "" : val })}
                     >
                       <SelectTrigger data-testid="tournament-result-select">
                         <SelectValue placeholder="Select Result" />
@@ -349,8 +358,18 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
                         <SelectItem value="Round of 16">Round of 16</SelectItem>
                         <SelectItem value="Round of 32">Round of 32</SelectItem>
                         <SelectItem value="Participation">Participation</SelectItem>
+                        <SelectItem value="Custom">Custom (e.g. a score)</SelectItem>
                       </SelectContent>
                     </Select>
+                    {!["Winner", "Runner Up", "Semi-Finalist", "Quarter-Finalist", "Round of 16", "Round of 32", "Participation"].includes(newTournament.result) && (
+                      <Input
+                        className="mt-2"
+                        value={newTournament.result}
+                        onChange={(e) => setNewTournament({ ...newTournament, result: e.target.value })}
+                        placeholder="e.g. Won 6-4, 6-3, or Won 3-1"
+                        data-testid="tournament-result-custom-input"
+                      />
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label>Award/Prize (Optional)</Label>
@@ -365,10 +384,10 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
 
                 <div className="space-y-2">
                   <Label>
-                    Tournament Photos (Max 5)
+                    Photos (Max 5)
                     {!newTournament.id && (
                       <span className="text-xs text-muted-foreground block">
-                        Save tournament first to upload photos
+                        Save first to upload photos
                       </span>
                     )}
                   </Label>
@@ -426,7 +445,7 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
       {sortedTournaments.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-xl border-2 border-dashed" data-testid="tournament-history-empty">
           <Trophy className="w-12 h-12 mx-auto mb-4 opacity-20" />
-          <p>No tournament history added yet.</p>
+          <p>No results added yet.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">

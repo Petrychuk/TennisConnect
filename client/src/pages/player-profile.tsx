@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { useLocation, useRoute, useSearch } from "wouter";
-import { MapPin, Calendar, Trophy, Edit2, ShoppingBag, Plus, Trash2, Camera, Globe, Phone, Mail, MessageCircle, Send, LogIn, User, ClipboardList, Users2, Heart } from "lucide-react";
+import { MapPin, Calendar, Trophy, Edit2, ShoppingBag, Plus, Trash2, Camera, Globe, Phone, Mail, MessageCircle, Send, LogIn, User, ClipboardList, Users2, Heart, Award } from "lucide-react";
 import { PARTNERS_DATA } from "@/lib/dummy-data";
 import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.png";
 import SEO from "@/components/seo";
@@ -821,6 +821,7 @@ export default function PlayerProfile() {
                   <TabsTrigger value="communities" data-testid="my-communities-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Users2 className="w-4 h-4" />Communities</TabsTrigger>
                   <TabsTrigger value="courts" data-testid="my-courts-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Heart className="w-4 h-4" />My Courts</TabsTrigger>
                   <TabsTrigger value="sessions" data-testid="my-sessions-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Trophy className="w-4 h-4" />My Sessions</TabsTrigger>
+                  <TabsTrigger value="results" data-testid="my-results-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Award className="w-4 h-4" />Results</TabsTrigger>
                   {showOrganisingTab && (
                     <TabsTrigger value="organizing" data-testid="my-organized-sessions-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><ClipboardList className="w-4 h-4" />Organising</TabsTrigger>
                   )}
@@ -922,19 +923,14 @@ export default function PlayerProfile() {
                     </TabsContent>
 
                     <TabsContent value="tournament" className="mt-6">
-                  <Tabs defaultValue="upcoming">
-                    <TabsList>
-                      <TabsTrigger value="upcoming" data-testid="my-sessions-subtab-upcoming">Upcoming</TabsTrigger>
-                      <TabsTrigger value="history" data-testid="my-sessions-subtab-history">History</TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="upcoming" className="mt-6">
                       <MySessionsSection isOwnProfile={isOwnProfile} isAuthenticated={isAuthenticated} sessionTypes={TOURNAMENT_TYPES} timeframe="upcoming" />
                     </TabsContent>
+                  </Tabs>
+                </TabsContent>
 
-                    <TabsContent value="history" className="space-y-8 mt-6">
+                    <TabsContent value="results" className="space-y-8" data-testid="my-results-tab-content">
                   <div className="flex justify-between items-center">
-                    <h3 className="text-xl font-bold">Tournament History</h3>
+                    <h3 className="text-xl font-bold">Results</h3>
                     {isOwnProfile && (
                       <Dialog
                         open={isTournamentModalOpen}
@@ -944,22 +940,23 @@ export default function PlayerProfile() {
                         }}
                       >
                         <DialogTrigger asChild>
-                          <Button><Plus className="w-4 h-4 mr-2" /> Add Entry</Button>
+                          <Button data-testid="add-result-button"><Plus className="w-4 h-4 mr-2" /> Add Result</Button>
                         </DialogTrigger>
                         <DialogContent className="max-w-2xl">
                           <DialogHeader>
-                            <DialogTitle>Add Tournament Result</DialogTitle>
+                            <DialogTitle>Add Result</DialogTitle>
                             <DialogDescription>
-                              Add your tournament result and match details.
+                              Record a result from a tournament, session, or match — including ones played
+                              outside TennisConnect. Not every organiser runs their sessions through here yet.
                             </DialogDescription>
                           </DialogHeader>
                           <div className="space-y-4 py-4">
                             <div className="space-y-2">
-                              <Label>Tournament Name</Label>
+                              <Label>Name</Label>
                               <Input 
                                 value={newTournament.name} 
                                 onChange={(e) => setNewTournament({...newTournament, name: e.target.value})} 
-                                placeholder="e.g. Sydney Open 2024" 
+                                placeholder="e.g. Sydney Open 2024, or Saturday Social Tennis" 
                               />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
@@ -983,11 +980,17 @@ export default function PlayerProfile() {
                             <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-2">
                                 <Label>Result</Label>
-                                <Select 
-                                  value={newTournament.result} 
-                                  onValueChange={(val) => setNewTournament({...newTournament, result: val})}
+                                <Select
+                                  value={
+                                    ["Winner", "Runner Up", "Semi-Finalist", "Quarter-Finalist", "Round of 16", "Round of 32", "Participation"].includes(newTournament.result)
+                                      ? newTournament.result
+                                      : newTournament.result
+                                      ? "Custom"
+                                      : ""
+                                  }
+                                  onValueChange={(val) => setNewTournament({ ...newTournament, result: val === "Custom" ? "" : val })}
                                 >
-                                  <SelectTrigger>
+                                  <SelectTrigger data-testid="result-preset-select">
                                     <SelectValue placeholder="Select Result" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -998,8 +1001,18 @@ export default function PlayerProfile() {
                                     <SelectItem value="Round of 16">Round of 16</SelectItem>
                                     <SelectItem value="Round of 32">Round of 32</SelectItem>
                                     <SelectItem value="Participation">Participation</SelectItem>
+                                    <SelectItem value="Custom">Custom (e.g. a score)</SelectItem>
                                   </SelectContent>
                                 </Select>
+                                {!["Winner", "Runner Up", "Semi-Finalist", "Quarter-Finalist", "Round of 16", "Round of 32", "Participation"].includes(newTournament.result) && (
+                                  <Input
+                                    className="mt-2"
+                                    value={newTournament.result}
+                                    onChange={(e) => setNewTournament({ ...newTournament, result: e.target.value })}
+                                    placeholder="e.g. Won 6-4, 6-3, or Won 3-1"
+                                    data-testid="result-custom-input"
+                                  />
+                                )}
                               </div>
                               <div className="space-y-2">
                                 <Label>Award/Prize (Optional)</Label>
@@ -1013,10 +1026,10 @@ export default function PlayerProfile() {
                             
                             <div className="space-y-2">
                               <Label>
-                                Tournament Photos (Max 5)
+                                Photos (Max 5)
                                 {!newTournament.id && (
                                   <span className="text-xs text-muted-foreground block">
-                                    Save tournament first to upload photos
+                                    Save first to upload photos
                                   </span>
                                 )}
                               </Label>
@@ -1167,7 +1180,7 @@ export default function PlayerProfile() {
                         {tournaments.length === 0 ? (
                           <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-xl border-2 border-dashed">
                             <Trophy className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                            <p>No tournament history added yet.</p>
+                            <p>No results added yet.</p>
                           </div>
                         ) : (
                           <div className="grid grid-cols-1 gap-4">
@@ -1178,10 +1191,6 @@ export default function PlayerProfile() {
                     );
                   })()}
                     </TabsContent>
-                  </Tabs>
-                    </TabsContent>
-                  </Tabs>
-                </TabsContent>
 
                 {showOrganisingTab && (
                   <TabsContent value="organizing" className="space-y-8" data-testid="my-organized-sessions-tab-content">
