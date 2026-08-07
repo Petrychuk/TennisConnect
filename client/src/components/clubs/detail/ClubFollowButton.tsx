@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import { Heart, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
@@ -24,13 +25,15 @@ export function ClubFollowButton({
   const { isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [following, setFollowing] = useState(initialFollowing);
   const [count, setCount] = useState(initialFollowersCount);
   const [loading, setLoading] = useState(false);
 
   const toggleFollow = async () => {
     if (!isAuthenticated) {
-      setLocation("/auth");
+      const returnTo = window.location.pathname + window.location.search;
+      setLocation(`/auth?returnTo=${encodeURIComponent(returnTo)}`);
       return;
     }
 
@@ -46,6 +49,12 @@ export function ClubFollowButton({
       });
 
       if (!res.ok) throw new Error("Request failed");
+
+      // staleTime: Infinity means the profile's own "Communities" list
+      // (GET /api/me/followed-clubs) would otherwise never refetch on
+      // its own - without this, a club followed here just wouldn't
+      // show up there until something else happened to invalidate it.
+      queryClient.invalidateQueries({ queryKey: ["/api/me/followed-clubs"] });
     } catch (err) {
       console.error(err);
       setFollowing(!nextState);

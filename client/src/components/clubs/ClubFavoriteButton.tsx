@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import { Heart } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -17,6 +18,7 @@ export function ClubFavoriteButton({ clubId, initialFavoriting, className }: Clu
   const { isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [favoriting, setFavoriting] = useState(initialFavoriting);
   const [loading, setLoading] = useState(false);
 
@@ -24,7 +26,8 @@ export function ClubFavoriteButton({ clubId, initialFavoriting, className }: Clu
     e.preventDefault();
     e.stopPropagation();
     if (!isAuthenticated) {
-      setLocation("/auth");
+      const returnTo = window.location.pathname + window.location.search;
+      setLocation(`/auth?returnTo=${encodeURIComponent(returnTo)}`);
       return;
     }
     if (loading) return;
@@ -39,6 +42,12 @@ export function ClubFavoriteButton({ clubId, initialFavoriting, className }: Clu
         credentials: "include",
       });
       if (!res.ok) throw new Error("Request failed");
+
+      // staleTime: Infinity means the profile's own "My Courts" list
+      // (GET /api/me/favorited-clubs) would otherwise never refetch on
+      // its own - without this, a court favourited here just wouldn't
+      // show up there until something else happened to invalidate it.
+      queryClient.invalidateQueries({ queryKey: ["/api/me/favorited-clubs"] });
     } catch (err) {
       console.error(err);
       setFavoriting(!nextState);

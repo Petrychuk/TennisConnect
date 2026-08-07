@@ -113,6 +113,20 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
       return;
     }
 
+    if (returnTo) {
+      // Same reasoning as above, generalised - if they came here from
+      // a specific page (following a club, favouriting a court) they
+      // should land back there and finish that action themselves,
+      // not be diverted into profile completion first.
+      toast({
+        title: "Welcome to TennisConnect!",
+        description: "Thanks for registering — picking up right where you left off.",
+      });
+      const target = new URL(returnTo, window.location.origin);
+      setLocation(target.pathname + target.search);
+      return;
+    }
+
     toast({
       title: "Account created",
        description: "Please complete your profile to get started!",
