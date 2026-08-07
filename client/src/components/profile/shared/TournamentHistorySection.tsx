@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
+import { SetScoreBuilder, looksLikeSetScore } from "./SetScoreBuilder";
 import { Calendar, Trophy, Edit2, Plus, Trash2, Camera, MapPin } from "lucide-react";
 
 type TournamentDraft = {
@@ -33,6 +34,8 @@ type TournamentDraft = {
   award: string;
   photos: string[];
 };
+
+const PRESET_RESULTS = ["Winner", "Runner Up", "Semi-Finalist", "Quarter-Finalist", "Round of 16", "Round of 32", "Participation"];
 
 const BLANK_DRAFT: TournamentDraft = {
   id: "",
@@ -58,6 +61,7 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
   const [tournaments, setTournaments] = useState<TournamentDraft[]>([]);
   const [isTournamentModalOpen, setIsTournamentModalOpen] = useState(false);
   const [newTournament, setNewTournament] = useState<TournamentDraft>(BLANK_DRAFT);
+  const [resultInputMode, setResultInputMode] = useState<"sets" | "text">("sets");
   const [editingTournament, setEditingTournament] = useState<TournamentDraft | null>(null);
 
   useEffect(() => {
@@ -75,6 +79,7 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
   const resetTournamentForm = () => {
     setNewTournament(BLANK_DRAFT);
     setEditingTournament(null);
+    setResultInputMode("sets");
   };
 
   const handleSaveTournament = async () => {
@@ -240,6 +245,7 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
                       onClick={() => {
                         setNewTournament(t);
                         setEditingTournament(t);
+                        setResultInputMode(looksLikeSetScore(t.result) ? "sets" : "text");
                         setIsTournamentModalOpen(true);
                       }}
                       data-testid={`edit-tournament-${t.id}`}
@@ -339,13 +345,25 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
                     <Label>Result</Label>
                     <Select
                       value={
-                        ["Winner", "Runner Up", "Semi-Finalist", "Quarter-Finalist", "Round of 16", "Round of 32", "Participation"].includes(newTournament.result)
+                        PRESET_RESULTS.includes(newTournament.result)
                           ? newTournament.result
-                          : newTournament.result
-                          ? "Custom"
+                          : newTournament.result || resultInputMode !== "text"
+                          ? resultInputMode === "sets"
+                            ? "Sets"
+                            : "Custom"
                           : ""
                       }
-                      onValueChange={(val) => setNewTournament({ ...newTournament, result: val === "Custom" ? "" : val })}
+                      onValueChange={(val) => {
+                        if (val === "Sets") {
+                          setResultInputMode("sets");
+                          setNewTournament({ ...newTournament, result: "" });
+                        } else if (val === "Custom") {
+                          setResultInputMode("text");
+                          setNewTournament({ ...newTournament, result: "" });
+                        } else {
+                          setNewTournament({ ...newTournament, result: val });
+                        }
+                      }}
                     >
                       <SelectTrigger data-testid="tournament-result-select">
                         <SelectValue placeholder="Select Result" />
@@ -358,17 +376,46 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
                         <SelectItem value="Round of 16">Round of 16</SelectItem>
                         <SelectItem value="Round of 32">Round of 32</SelectItem>
                         <SelectItem value="Participation">Participation</SelectItem>
-                        <SelectItem value="Custom">Custom (e.g. a score)</SelectItem>
+                        <SelectItem value="Sets">Score by sets</SelectItem>
+                        <SelectItem value="Custom">Custom (free text)</SelectItem>
                       </SelectContent>
                     </Select>
-                    {!["Winner", "Runner Up", "Semi-Finalist", "Quarter-Finalist", "Round of 16", "Round of 32", "Participation"].includes(newTournament.result) && (
-                      <Input
-                        className="mt-2"
-                        value={newTournament.result}
-                        onChange={(e) => setNewTournament({ ...newTournament, result: e.target.value })}
-                        placeholder="e.g. Won 6-4, 6-3, or Won 3-1"
-                        data-testid="tournament-result-custom-input"
-                      />
+                    {![...PRESET_RESULTS, ""].includes(newTournament.result) && (
+                      <div className="mt-2 space-y-2">
+                        <div className="flex gap-1.5">
+                          <Button
+                            type="button"
+                            variant={resultInputMode === "sets" ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setResultInputMode("sets")}
+                            data-testid="tournament-result-mode-sets"
+                          >
+                            By sets
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={resultInputMode === "text" ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setResultInputMode("text")}
+                            data-testid="tournament-result-mode-text"
+                          >
+                            Free text
+                          </Button>
+                        </div>
+                        {resultInputMode === "sets" ? (
+                          <SetScoreBuilder
+                            value={newTournament.result}
+                            onChange={(val) => setNewTournament((prev: any) => ({ ...prev, result: val }))}
+                          />
+                        ) : (
+                          <Input
+                            value={newTournament.result}
+                            onChange={(e) => setNewTournament({ ...newTournament, result: e.target.value })}
+                            placeholder="e.g. Won 3-1, or Won by retirement"
+                            data-testid="tournament-result-custom-input"
+                          />
+                        )}
+                      </div>
                     )}
                   </div>
                   <div className="space-y-2">

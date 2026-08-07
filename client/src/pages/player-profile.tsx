@@ -26,6 +26,7 @@ import { BecomeOrganizerCard } from "@/components/profile/shared/BecomeOrganizer
 import { messageSchema } from "@/lib/validations/messages";
 import { MySessionsSection } from "@/components/profile/shared/MySessionsSection";
 import { MyClubsSection } from "@/components/profile/shared/MyClubsSection";
+import { SetScoreBuilder, looksLikeSetScore } from "@/components/profile/shared/SetScoreBuilder";
 import { MyOrganizedSessionsSection } from "@/components/profile/shared/MyOrganizedSessionsSection";
 import { useOrganizerStatus } from "@/hooks/use-organizer-status";
 import { TennisLoader } from "@/components/ui/tennisLoader";
@@ -95,6 +96,8 @@ export const DEFAULT_PLAYER_PROFILE: PlayerProfile = {
 // it, since it's a genuinely small, stable set.
 const TOURNAMENT_TYPES = ["tournament", "club-championship"];
 
+const PRESET_RESULTS = ["Winner", "Runner Up", "Semi-Finalist", "Quarter-Finalist", "Round of 16", "Round of 32", "Participation"];
+
 export default function PlayerProfile() {
   const [match, params] = useRoute("/player/:slug");
   const profileSlug = params?.slug; 
@@ -128,6 +131,7 @@ export default function PlayerProfile() {
   
     // Tournament State
   const [isTournamentModalOpen, setIsTournamentModalOpen] = useState(false);
+  const [resultInputMode, setResultInputMode] = useState<"sets" | "text">("sets");
   const [newTournament, setNewTournament] = useState<TournamentDraft>({
       id: "",
       name: "",
@@ -606,6 +610,7 @@ export default function PlayerProfile() {
       photos: [],
     });
     setEditingTournament(null);
+    setResultInputMode("sets");
   };
 
   const handledeleteTournamentHistory = async (id: string) => {
@@ -993,13 +998,25 @@ export default function PlayerProfile() {
                                 <Label>Result</Label>
                                 <Select
                                   value={
-                                    ["Winner", "Runner Up", "Semi-Finalist", "Quarter-Finalist", "Round of 16", "Round of 32", "Participation"].includes(newTournament.result)
+                                    PRESET_RESULTS.includes(newTournament.result)
                                       ? newTournament.result
-                                      : newTournament.result
-                                      ? "Custom"
+                                      : newTournament.result || resultInputMode !== "text"
+                                      ? resultInputMode === "sets"
+                                        ? "Sets"
+                                        : "Custom"
                                       : ""
                                   }
-                                  onValueChange={(val) => setNewTournament({ ...newTournament, result: val === "Custom" ? "" : val })}
+                                  onValueChange={(val) => {
+                                    if (val === "Sets") {
+                                      setResultInputMode("sets");
+                                      setNewTournament({ ...newTournament, result: "" });
+                                    } else if (val === "Custom") {
+                                      setResultInputMode("text");
+                                      setNewTournament({ ...newTournament, result: "" });
+                                    } else {
+                                      setNewTournament({ ...newTournament, result: val });
+                                    }
+                                  }}
                                 >
                                   <SelectTrigger data-testid="result-preset-select">
                                     <SelectValue placeholder="Select Result" />
@@ -1012,17 +1029,46 @@ export default function PlayerProfile() {
                                     <SelectItem value="Round of 16">Round of 16</SelectItem>
                                     <SelectItem value="Round of 32">Round of 32</SelectItem>
                                     <SelectItem value="Participation">Participation</SelectItem>
-                                    <SelectItem value="Custom">Custom (e.g. a score)</SelectItem>
+                                    <SelectItem value="Sets">Score by sets</SelectItem>
+                                    <SelectItem value="Custom">Custom (free text)</SelectItem>
                                   </SelectContent>
                                 </Select>
-                                {!["Winner", "Runner Up", "Semi-Finalist", "Quarter-Finalist", "Round of 16", "Round of 32", "Participation"].includes(newTournament.result) && (
-                                  <Input
-                                    className="mt-2"
-                                    value={newTournament.result}
-                                    onChange={(e) => setNewTournament({ ...newTournament, result: e.target.value })}
-                                    placeholder="e.g. Won 6-4, 6-3, or Won 3-1"
-                                    data-testid="result-custom-input"
-                                  />
+                                {![...PRESET_RESULTS, ""].includes(newTournament.result) && (
+                                  <div className="mt-2 space-y-2">
+                                    <div className="flex gap-1.5">
+                                      <Button
+                                        type="button"
+                                        variant={resultInputMode === "sets" ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => setResultInputMode("sets")}
+                                        data-testid="result-mode-sets"
+                                      >
+                                        By sets
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant={resultInputMode === "text" ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => setResultInputMode("text")}
+                                        data-testid="result-mode-text"
+                                      >
+                                        Free text
+                                      </Button>
+                                    </div>
+                                    {resultInputMode === "sets" ? (
+                                      <SetScoreBuilder
+                                        value={newTournament.result}
+                                        onChange={(val) => setNewTournament((prev) => ({ ...prev, result: val }))}
+                                      />
+                                    ) : (
+                                      <Input
+                                        value={newTournament.result}
+                                        onChange={(e) => setNewTournament({ ...newTournament, result: e.target.value })}
+                                        placeholder="e.g. Won 3-1, or Won by retirement"
+                                        data-testid="result-custom-input"
+                                      />
+                                    )}
+                                  </div>
                                 )}
                               </div>
                               <div className="space-y-2">
@@ -1151,6 +1197,7 @@ export default function PlayerProfile() {
                                         onClick={() => {
                                           setNewTournament(t);
                                           setEditingTournament(t);
+                                          setResultInputMode(looksLikeSetScore(t.result) ? "sets" : "text");
                                           setIsTournamentModalOpen(true);
                                         }}
                                       >
