@@ -192,6 +192,15 @@ export const coachProfiles = pgTable("coach_profiles", {
 export const tournamentHistory = pgTable("tournament_history", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
+  // Nullable on purpose - a manual entry (for a tournament or session
+  // played outside TennisConnect) has no real session, so this stays
+  // null. Once TC Live can produce real results, they'd be created
+  // here with this set, linking a result back to its actual session
+  // instead of only a free-text name match - this is what would let
+  // "Results" correctly tell apart multiple entries from the same
+  // recurring session (e.g. every Wednesday) from a genuinely
+  // different one (Thursdays), once that data exists to link.
+  sessionId: varchar("session_id").references((): any => tennisSessions.id),
   name: text("name").notNull(),
   location: text("location").notNull(),
   date: text("date").notNull(),

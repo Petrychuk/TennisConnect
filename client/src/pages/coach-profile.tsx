@@ -1031,7 +1031,18 @@ export default function CoachProfile() {
                         </TabsContent>
 
                         <TabsContent value="tournament" className="mt-6">
-                          <MySessionsSection isOwnProfile={isMyAccount} isAuthenticated={isAuthenticated} sessionTypes={TOURNAMENT_TYPES} timeframe="upcoming" />
+                          <Tabs defaultValue="upcoming">
+                            <TabsList>
+                              <TabsTrigger value="upcoming" data-testid="my-sessions-subtab-upcoming">Upcoming</TabsTrigger>
+                              <TabsTrigger value="history" data-testid="my-sessions-subtab-history">History</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="upcoming" className="mt-6">
+                              <MySessionsSection isOwnProfile={isMyAccount} isAuthenticated={isAuthenticated} sessionTypes={TOURNAMENT_TYPES} timeframe="upcoming" />
+                            </TabsContent>
+                            <TabsContent value="history" className="mt-6">
+                              <MySessionsSection isOwnProfile={isMyAccount} isAuthenticated={isAuthenticated} sessionTypes={TOURNAMENT_TYPES} timeframe="past" />
+                            </TabsContent>
+                          </Tabs>
                         </TabsContent>
                       </Tabs>
                     </TabsContent>
