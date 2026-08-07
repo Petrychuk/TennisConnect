@@ -16,7 +16,9 @@ import {
   organizationMembers,
   communityMemberships,
   tennisSessions,
-  registrations, 
+  registrations,
+  sessionRounds,
+  matches,
   type User, 
   type InsertUser,
   type PlayerProfile,
@@ -48,10 +50,15 @@ import {
   type RegistrationWithUser,
   type OrgPlayerRow,
   type CommunityMembership,
+  type SessionRound,
+  type Match,
+  type MatchWithPlayers,
+  type LeaderboardRow,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, or, asc, sql, lte, ne, gte, ilike} from "drizzle-orm";
+import { eq, desc, and, or, asc, sql, lte, ne, gte, ilike, inArray, isNull } from "drizzle-orm";
 import { supabaseAdmin } from "./supabaseAdmin";
+import { planRound, computeLeaderboard, type PastMatch } from "./services/liveEngine";
 
 function slugify(text: string) {
   return text
@@ -269,6 +276,16 @@ export interface IStorage {
   getViewerRegistrationStatus(sessionId: string, userId: string): Promise<string | null>;
   getSessionRegistrationCounts(sessionId: string): Promise<{ registered: number; waitlisted: number }>;
 
+  // ===== TC LIVE ENGINE =====
+  checkInRegistration(registrationId: string): Promise<Registration>;
+  setRegistrationLiveStatus(registrationId: string, liveStatus: "unavailable" | "withdrawn" | null): Promise<Registration>;
+  goLiveSession(sessionId: string): Promise<TennisSession>;
+  finishSession(sessionId: string): Promise<TennisSession>;
+  generateNextRound(sessionId: string): Promise<{ round: SessionRound; matches: MatchWithPlayers[] }>;
+  getCurrentRound(sessionId: string): Promise<{ round: SessionRound; matches: MatchWithPlayers[] } | undefined>;
+  reportMatchScore(matchId: string, organizerId: string, teamAGames: number, teamBGames: number): Promise<Match>;
+  startMatch(matchId: string): Promise<Match>;
+  getSessionLeaderboard(sessionId: string): Promise<LeaderboardRow[]>;
 }
 export class DatabaseStorage implements IStorage {
   // =====================
@@ -2644,6 +2661,287 @@ export class DatabaseStorage implements IStorage {
     const registered = rows.find((r) => r.status === "registered")?.count || 0;
     const waitlisted = rows.find((r) => r.status === "waitlisted")?.count || 0;
     return { registered: Number(registered), waitlisted: Number(waitlisted) };
+  }
+
+  // =====================
+  // TC LIVE ENGINE
+  // =====================
+
+  async checkInRegistration(registrationId: string): Promise<Registration> {
+    const [registration] = await db
+      .update(registrations)
+      .set({ checkedInAt: new Date() })
+      .where(eq(registrations.id, registrationId))
+      .returning();
+    if (!registration) throw new Error("Registration not found");
+    return registration;
+  }
+
+  async setRegistrationLiveStatus(
+    registrationId: string,
+    liveStatus: "unavailable" | "withdrawn" | null
+  ): Promise<Registration> {
+    const [registration] = await db
+      .update(registrations)
+      .set({ liveStatus })
+      .where(eq(registrations.id, registrationId))
+      .returning();
+    if (!registration) throw new Error("Registration not found");
+    return registration;
+  }
+
+  // draft/published -> live. Caller (route) is responsible for checking
+  // there's at least 2 checked-in players first - this just flips status.
+  async goLiveSession(sessionId: string): Promise<TennisSession> {
+    const [session] = await db
+      .update(tennisSessions)
+      .set({ status: "live", updatedAt: new Date() })
+      .where(eq(tennisSessions.id, sessionId))
+      .returning();
+    return session;
+  }
+
+  // live -> completed. Leaderboard is computed on demand from confirmed
+  // matches (getSessionLeaderboard), not snapshotted here - see TC Live
+  // spec §6 for why writing into tournamentHistory is a separate, later step.
+  async finishSession(sessionId: string): Promise<TennisSession> {
+    const [session] = await db
+      .update(tennisSessions)
+      .set({ status: "completed", updatedAt: new Date() })
+      .where(eq(tennisSessions.id, sessionId))
+      .returning();
+    return session;
+  }
+
+  // Every checked-in, available (liveStatus IS NULL) player for a session -
+  // the pool round generation draws from.
+  private async getLiveEligiblePlayers(sessionId: string): Promise<{ id: string }[]> {
+    const rows = await db
+      .select({ userId: registrations.userId })
+      .from(registrations)
+      .where(
+        and(
+          eq(registrations.sessionId, sessionId),
+          sql`${registrations.checkedInAt} IS NOT NULL`,
+          isNull(registrations.liveStatus)
+        )
+      );
+    return rows.map((r) => ({ id: r.userId }));
+  }
+
+  // Rest count per player across every round generated so far, from the
+  // frozen `restingPlayerIds` snapshot on each session_rounds row.
+  private async getRestCounts(sessionId: string): Promise<Record<string, number>> {
+    const rounds = await db
+      .select({ restingPlayerIds: sessionRounds.restingPlayerIds })
+      .from(sessionRounds)
+      .where(eq(sessionRounds.sessionId, sessionId));
+
+    const counts: Record<string, number> = {};
+    for (const r of rounds) {
+      for (const id of r.restingPlayerIds ?? []) {
+        counts[id] = (counts[id] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }
+
+  private async getPastMatches(sessionId: string): Promise<PastMatch[]> {
+    const rows = await db
+      .select({ teamAIds: matches.teamAIds, teamBIds: matches.teamBIds })
+      .from(matches)
+      .where(eq(matches.sessionId, sessionId));
+    return rows.map((r) => ({ teamAIds: r.teamAIds ?? [], teamBIds: r.teamBIds ?? [] }));
+  }
+
+  // Attaches name/avatar to every player id referenced by a batch of
+  // matches, for the live screen's court cards.
+  private async attachPlayersToMatches(matchRows: Match[]): Promise<MatchWithPlayers[]> {
+    const allIds = Array.from(
+      new Set(matchRows.flatMap((m) => [...(m.teamAIds ?? []), ...(m.teamBIds ?? [])]))
+    );
+    if (allIds.length === 0) {
+      return matchRows.map((m) => ({ ...m, teamA: [], teamB: [] }));
+    }
+    const userRows = await db
+      .select({ id: users.id, name: users.name, avatar: users.avatar })
+      .from(users)
+      .where(inArray(users.id, allIds));
+    const byId = new Map(userRows.map((u) => [u.id, u]));
+    const toPlayers = (ids: string[]) =>
+      ids
+        .map((id) => byId.get(id))
+        .filter((u): u is { id: string; name: string; avatar: string | null } => !!u);
+
+    return matchRows.map((m) => ({
+      ...m,
+      teamA: toPlayers(m.teamAIds ?? []),
+      teamB: toPlayers(m.teamBIds ?? []),
+    }));
+  }
+
+  // Generates the next round: figures out who's eligible, hands the pure
+  // pairing decision to liveEngine.planRound, then persists the round +
+  // its matches. Throws if a round is already active and not fully
+  // confirmed yet - the route surfaces this as a 400, since "Generate
+  // Next Round" should be disabled on the client whenever that's true.
+  async generateNextRound(sessionId: string): Promise<{ round: SessionRound; matches: MatchWithPlayers[] }> {
+    const [session] = await db.select().from(tennisSessions).where(eq(tennisSessions.id, sessionId));
+    if (!session) throw new Error("Session not found");
+
+    const existingRounds = await db
+      .select()
+      .from(sessionRounds)
+      .where(eq(sessionRounds.sessionId, sessionId))
+      .orderBy(desc(sessionRounds.roundNumber));
+
+    const activeRound = existingRounds.find((r) => r.status === "active");
+    if (activeRound) {
+      throw new Error("Current round isn't fully confirmed yet");
+    }
+
+    const [players, pastMatches, restCounts] = await Promise.all([
+      this.getLiveEligiblePlayers(sessionId),
+      this.getPastMatches(sessionId),
+      this.getRestCounts(sessionId),
+    ]);
+
+    const plan = planRound({
+      players,
+      courtsCount: session.courtsCount ?? 1,
+      mode: (session.matchMode as "singles" | "doubles") ?? "doubles",
+      pastMatches,
+      restCounts,
+    });
+
+    const nextRoundNumber = (existingRounds[0]?.roundNumber ?? 0) + 1;
+
+    const [round] = await db
+      .insert(sessionRounds)
+      .values({
+        sessionId,
+        roundNumber: nextRoundNumber,
+        status: plan.matches.length > 0 ? "active" : "completed",
+        restingPlayerIds: plan.restingPlayerIds,
+        completedAt: plan.matches.length > 0 ? undefined : new Date(),
+      })
+      .returning();
+
+    let insertedMatches: Match[] = [];
+    if (plan.matches.length > 0) {
+      insertedMatches = await db
+        .insert(matches)
+        .values(
+          plan.matches.map((m) => ({
+            sessionId,
+            roundId: round.id,
+            courtLabel: m.courtLabel,
+            teamAIds: m.teamAIds,
+            teamBIds: m.teamBIds,
+            status: "pending" as const,
+          }))
+        )
+        .returning();
+    }
+
+    return { round, matches: await this.attachPlayersToMatches(insertedMatches) };
+  }
+
+  async getCurrentRound(sessionId: string): Promise<{ round: SessionRound; matches: MatchWithPlayers[] } | undefined> {
+    const [round] = await db
+      .select()
+      .from(sessionRounds)
+      .where(eq(sessionRounds.sessionId, sessionId))
+      .orderBy(desc(sessionRounds.roundNumber))
+      .limit(1);
+    if (!round) return undefined;
+
+    const roundMatches = await db.select().from(matches).where(eq(matches.roundId, round.id));
+    return { round, matches: await this.attachPlayersToMatches(roundMatches) };
+  }
+
+  async startMatch(matchId: string): Promise<Match> {
+    const [match] = await db
+      .update(matches)
+      .set({ status: "playing", startedAt: new Date() })
+      .where(eq(matches.id, matchId))
+      .returning();
+    if (!match) throw new Error("Match not found");
+    return match;
+  }
+
+  // Organizer-only score entry (v0.1 - see TC Live spec §5): saving a
+  // score confirms it immediately, no second-party confirmation step.
+  // reportedBy/confirmedBy are both the organizer for now, kept separate
+  // in the schema so player self-report can land later without a migration.
+  // If every match in the round is now confirmed, the round is closed -
+  // that's what unlocks "Generate Next Round" on the client.
+  async reportMatchScore(
+    matchId: string,
+    organizerId: string,
+    teamAGames: number,
+    teamBGames: number
+  ): Promise<Match> {
+    const [match] = await db
+      .update(matches)
+      .set({
+        teamAGames,
+        teamBGames,
+        status: "confirmed",
+        reportedBy: organizerId,
+        confirmedBy: organizerId,
+        confirmedAt: new Date(),
+      })
+      .where(eq(matches.id, matchId))
+      .returning();
+    if (!match) throw new Error("Match not found");
+
+    const roundMatches = await db.select().from(matches).where(eq(matches.roundId, match.roundId));
+    const allConfirmed = roundMatches.every((m) => m.status === "confirmed");
+    if (allConfirmed) {
+      await db
+        .update(sessionRounds)
+        .set({ status: "completed", completedAt: new Date() })
+        .where(eq(sessionRounds.id, match.roundId));
+    }
+
+    return match;
+  }
+
+  async getSessionLeaderboard(sessionId: string): Promise<LeaderboardRow[]> {
+    const [matchRows, restCounts, registeredPlayers] = await Promise.all([
+      db.select().from(matches).where(eq(matches.sessionId, sessionId)),
+      this.getRestCounts(sessionId),
+      db
+        .select({ userId: registrations.userId })
+        .from(registrations)
+        .where(and(eq(registrations.sessionId, sessionId), ne(registrations.status, "cancelled"))),
+    ]);
+
+    const entries = computeLeaderboard({
+      matches: matchRows.map((m) => ({
+        teamAIds: m.teamAIds ?? [],
+        teamBIds: m.teamBIds ?? [],
+        teamAGames: m.teamAGames,
+        teamBGames: m.teamBGames,
+        status: m.status,
+      })),
+      restCounts,
+      players: registeredPlayers.map((r) => ({ id: r.userId })),
+    });
+
+    if (entries.length === 0) return [];
+    const userRows = await db
+      .select({ id: users.id, name: users.name, avatar: users.avatar })
+      .from(users)
+      .where(inArray(users.id, entries.map((e) => e.userId)));
+    const byId = new Map(userRows.map((u) => [u.id, u]));
+
+    return entries.map((e) => ({
+      ...e,
+      userName: byId.get(e.userId)?.name ?? "Unknown player",
+      userAvatar: byId.get(e.userId)?.avatar ?? null,
+    }));
   }
 }
 

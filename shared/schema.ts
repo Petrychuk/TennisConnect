@@ -503,6 +503,16 @@ export const tennisSessions = pgTable("sessions", {
   .default("public")
   .notNull(),
   courtsCount: integer("courts_count"),
+  // TC Live Engine setting. Only "games" is implemented (v0.1) - see
+  // shared/constants/sessions.ts SCORING_FORMAT. Stored per-session (not
+  // hardcoded) so real Tournament sessions can move to "sets" later
+  // without a schema change.
+  scoringFormat: text("scoring_format").default("games").notNull(),
+  // "singles" | "doubles" - an organizer choice at session-creation time,
+  // not derived from `type` (a "social" session can be either). Drives
+  // team size in round generation (see liveEngine.ts). Doubles is the
+  // common case for Social Tennis, so it's the default rather than singles.
+  matchMode: text("match_mode").default("doubles").notNull(),
   waitingListEnabled: boolean("waiting_list_enabled").default(true).notNull(),
   // Admin moderation — every organizer-submitted session is reviewed
  // before it goes live. Null until an admin approves or rejects it.
@@ -535,6 +545,12 @@ export const registrations = pgTable(
 
     checkedInAt: timestamp("checked_in_at"),
 
+    // Null = present as normal. Organizer-set during a live session only
+    // (see REGISTRATION_LIVE_STATUS) - distinct from `status` above,
+    // which is about the sign-up, not live availability. Round
+    // generation skips anyone with this set.
+    liveStatus: text("live_status"),
+
     createdAt: timestamp("created_at")
       .defaultNow()
       .notNull(),
@@ -546,7 +562,103 @@ export const registrations = pgTable(
     ),
   })
 );
- 
+
+// One generated round of a live session. `restingPlayerIds` freezes the
+// set of checked-in players who didn't get a court this round (odd
+// numbers, or more checked-in players than courtsCount * teamSize
+// allow) - this is what "round roster freezes at generation time" means
+// in practice: a player who checks in after this row exists simply
+// isn't in restingPlayerIds OR any match here, and becomes eligible
+// starting the next round, without needing a separate roster table.
+export const sessionRounds = pgTable(
+  "session_rounds",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    sessionId: varchar("session_id").notNull().references(() => tennisSessions.id),
+    roundNumber: integer("round_number").notNull(),
+    status: text("status").default("active").notNull(), // active | completed
+    restingPlayerIds: json("resting_player_ids").$type<string[]>().default([]),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    completedAt: timestamp("completed_at"),
+  },
+  (table) => ({
+    sessionRoundUnique: unique().on(table.sessionId, table.roundNumber),
+  })
+);
+
+// A single match on a single court within one round. teamA/teamB are
+// json id arrays (length 1 for singles, 2 for doubles) so both share one
+// table/shape instead of a separate doubles table - see TC Live spec
+// §"singles vs doubles" for why doubles isn't bolted on later.
+export const matches = pgTable("matches", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => tennisSessions.id),
+  roundId: varchar("round_id").notNull().references(() => sessionRounds.id),
+  courtLabel: text("court_label").notNull(), // "Court 1" - matches CourtStatus.label in the live UI
+  teamAIds: json("team_a_ids").$type<string[]>().notNull(),
+  teamBIds: json("team_b_ids").$type<string[]>().notNull(),
+  status: text("status").default("pending").notNull(), // pending | playing | confirmed
+  teamAGames: integer("team_a_games"),
+  teamBGames: integer("team_b_games"),
+  // Both set to the organizer in v0.1 (organizer-only score entry) -
+  // kept as two separate columns now so player self-report (v0.2) is an
+  // additive change, not a migration.
+  reportedBy: varchar("reported_by").references(() => users.id),
+  confirmedBy: varchar("confirmed_by").references(() => users.id),
+  startedAt: timestamp("started_at"),
+  confirmedAt: timestamp("confirmed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const sessionRoundsRelations = relations(sessionRounds, ({ one, many }) => ({
+  session: one(tennisSessions, {
+    fields: [sessionRounds.sessionId],
+    references: [tennisSessions.id],
+  }),
+  matches: many(matches),
+}));
+
+export const matchesRelations = relations(matches, ({ one }) => ({
+  session: one(tennisSessions, {
+    fields: [matches.sessionId],
+    references: [tennisSessions.id],
+  }),
+  round: one(sessionRounds, {
+    fields: [matches.roundId],
+    references: [sessionRounds.id],
+  }),
+}));
+
+export type SessionRound = typeof sessionRounds.$inferSelect;
+export type Match = typeof matches.$inferSelect;
+
+// Match enriched with just enough per-player display info for the live
+// screen (name/avatar) - the live UI needs this on every court card, the
+// same way RegistrationWithUser exists for the registrations list.
+export type MatchWithPlayers = Match & {
+  teamA: { id: string; name: string; avatar: string | null }[];
+  teamB: { id: string; name: string; avatar: string | null }[];
+};
+
+export type LeaderboardRow = {
+  userId: string;
+  userName: string;
+  userAvatar: string | null;
+  matchesPlayed: number;
+  wins: number;
+  losses: number;
+  gamesWon: number;
+  gamesLost: number;
+  restRounds: number;
+};
+
+export const insertMatchScoreSchema = z.object({
+  teamAGames: z.number().int().min(0),
+  teamBGames: z.number().int().min(0),
+}).refine((v) => v.teamAGames !== v.teamBGames, {
+  message: "Games can't be tied - every match needs a winner",
+});
+
 export const organizerRequestsRelations = relations(organizerRequests, ({ one }) => ({
   user: one(users, {
     fields: [organizerRequests.userId],

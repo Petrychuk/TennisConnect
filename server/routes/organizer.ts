@@ -5,6 +5,7 @@ import { sendMessageBetween, ORGANIZER_APPROVED_SUBJECT, ORGANIZER_APPROVED_MESS
 import {
   insertOrganizationSchema,
   insertSessionSchema,
+  insertMatchScoreSchema,
   type TennisSession,
 } from "@shared/schema";
 
@@ -632,6 +633,148 @@ router.get("/sessions/:id/registrations", requireAuth, async (req, res, next) =>
     }
     const registrationsList = await storage.getRegistrationsForSession(req.params.id);
     res.json(registrationsList);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* =========================
+   TC LIVE ENGINE (v0.1)
+   Organizer-only score entry, games-count scoring, doubles+singles.
+   See memory/PRD.md TC Live section / liveEngine.ts for the full spec.
+========================= */
+
+router.post(
+  "/sessions/:id/checkin/:registrationId",
+  requireAuth,
+  requireOrganizer,
+  requireOwnSession,
+  async (req, res, next) => {
+    try {
+      const registration = await storage.checkInRegistration(req.params.registrationId);
+      res.json(registration);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// body: { liveStatus: "unavailable" | "withdrawn" | null } - null clears it
+// (e.g. organizer marked someone unavailable by mistake).
+router.post(
+  "/sessions/:id/registrations/:registrationId/live-status",
+  requireAuth,
+  requireOrganizer,
+  requireOwnSession,
+  async (req, res, next) => {
+    try {
+      const liveStatus = req.body?.liveStatus;
+      if (liveStatus !== null && liveStatus !== "unavailable" && liveStatus !== "withdrawn") {
+        return res.status(400).json({ message: "liveStatus must be 'unavailable', 'withdrawn', or null" });
+      }
+      const registration = await storage.setRegistrationLiveStatus(req.params.registrationId, liveStatus);
+      res.json(registration);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post("/sessions/:id/go-live", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+  try {
+    const registrationsList = await storage.getRegistrationsForSession(req.params.id);
+    const checkedIn = registrationsList.filter((r) => !!r.checkedInAt);
+    if (checkedIn.length < 2) {
+      return res.status(400).json({ message: "Need at least 2 checked-in players to go live" });
+    }
+    const session = await storage.goLiveSession(req.params.id);
+    res.json(session);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/sessions/:id/rounds/generate", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+  try {
+    const thisSession = (req as any).session_ as TennisSession;
+    if (thisSession.status !== "live") {
+      return res.status(400).json({ message: "Session must be live to generate a round" });
+    }
+    const result = await storage.generateNextRound(req.params.id);
+    res.status(201).json(result);
+  } catch (error: any) {
+    if (error?.message === "Current round isn't fully confirmed yet") {
+      return res.status(400).json({ message: error.message });
+    }
+    next(error);
+  }
+});
+
+router.get("/sessions/:id/rounds/current", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+  try {
+    const result = await storage.getCurrentRound(req.params.id);
+    res.json(result ?? null);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post(
+  "/sessions/:id/matches/:matchId/start",
+  requireAuth,
+  requireOrganizer,
+  requireOwnSession,
+  async (req, res, next) => {
+    try {
+      const match = await storage.startMatch(req.params.matchId);
+      res.json(match);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// body: { teamAGames: number, teamBGames: number }. Saving confirms the
+// match immediately - see storage.reportMatchScore for why (no
+// self-report/confirm step in v0.1).
+router.post(
+  "/sessions/:id/matches/:matchId/score",
+  requireAuth,
+  requireOrganizer,
+  requireOwnSession,
+  async (req, res, next) => {
+    try {
+      const parsed = insertMatchScoreSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid score", errors: parsed.error });
+      }
+      const organizerId = (req.user as any).id;
+      const match = await storage.reportMatchScore(
+        req.params.matchId,
+        organizerId,
+        parsed.data.teamAGames,
+        parsed.data.teamBGames
+      );
+      res.json(match);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post("/sessions/:id/finish", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+  try {
+    const session = await storage.finishSession(req.params.id);
+    res.json(session);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/sessions/:id/leaderboard", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+  try {
+    const leaderboard = await storage.getSessionLeaderboard(req.params.id);
+    res.json(leaderboard);
   } catch (error) {
     next(error);
   }
