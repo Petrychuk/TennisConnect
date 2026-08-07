@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   ClubVariant,
+  getClubVariant,
   CLUB_VARIANT_LABELS,
   formatLocation,
   formatHourlyPrice,
@@ -491,8 +492,8 @@ export function ClubDetailHero({
       <div className="flex flex-wrap items-center gap-2">
         <ClubSaveButton
           clubId={club.id}
-          isPremium={club.listingType === "premium"}
-          initialSaved={club.listingType === "premium" ? !!club.isFollowing : !!club.isFavoriting}
+          isCommunity={getClubVariant(club) === "community"}
+          initialSaved={getClubVariant(club) === "community" ? !!club.isFollowing : !!club.isFavoriting}
           initialFollowersCount={club.followersCount ?? 0}
           light
         />
@@ -559,8 +560,8 @@ export function ClubDetailHero({
       <div className="flex flex-wrap items-center gap-2">
         <ClubSaveButton
           clubId={club.id}
-          isPremium={club.listingType === "premium"}
-          initialSaved={club.listingType === "premium" ? !!club.isFollowing : !!club.isFavoriting}
+          isCommunity={getClubVariant(club) === "community"}
+          initialSaved={getClubVariant(club) === "community" ? !!club.isFollowing : !!club.isFavoriting}
           initialFollowersCount={club.followersCount ?? 0}
         />
         {club.phone && (

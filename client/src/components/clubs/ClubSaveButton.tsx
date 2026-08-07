@@ -8,8 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 
 interface ClubSaveButtonProps {
   clubId: string;
-  /** Premium clubs are communities (Follow -> "Communities" tab); everything else is a court venue (Favorite -> "My Courts" tab). The button itself decides which endpoint to use from this alone - the person doesn't need to know or care which relationship it is. */
-  isPremium: boolean;
+  /** community/social-group clubs go to Follow -> "Communities" tab; every other category (club, academy, public-courts, tennis-centre - courts and multi-location venues alike) goes to Favorite -> "My Courts" tab. This is about what the club actually is, independent of whether it happens to have a premium listing - a premium court is still a court. */
+  isCommunity: boolean;
   initialSaved: boolean;
   initialFollowersCount?: number;
   variant?: "icon" | "button";
@@ -20,7 +20,7 @@ interface ClubSaveButtonProps {
 
 export function ClubSaveButton({
   clubId,
-  isPremium,
+  isCommunity,
   initialSaved,
   initialFollowersCount = 0,
   variant = "button",
@@ -35,8 +35,8 @@ export function ClubSaveButton({
   const [count, setCount] = useState(initialFollowersCount);
   const [loading, setLoading] = useState(false);
 
-  const endpoint = isPremium ? "follow" : "favorite";
-  const invalidateKey = isPremium ? "/api/me/followed-clubs" : "/api/me/favorited-clubs";
+  const endpoint = isCommunity ? "follow" : "favorite";
+  const invalidateKey = isCommunity ? "/api/me/followed-clubs" : "/api/me/favorited-clubs";
 
   const toggleSaved = async (e?: React.MouseEvent) => {
     e?.preventDefault();
@@ -70,7 +70,7 @@ export function ClubSaveButton({
       toast({
         variant: "destructive",
         title: "Something went wrong",
-        description: isPremium ? "Couldn't update your follow status. Please try again." : "Couldn't update your favorite courts. Please try again.",
+        description: isCommunity ? "Couldn't update your follow status. Please try again." : "Couldn't update your favorite courts. Please try again.",
       });
     } finally {
       setLoading(false);
@@ -83,7 +83,7 @@ export function ClubSaveButton({
         type="button"
         onClick={toggleSaved}
         disabled={loading}
-        aria-label={saved ? (isPremium ? "Unfollow this community" : "Remove from My Courts") : isPremium ? "Follow this community" : "Add to My Courts"}
+        aria-label={saved ? (isCommunity ? "Unfollow this community" : "Remove from My Courts") : isCommunity ? "Follow this community" : "Add to My Courts"}
         aria-pressed={saved}
         className={`w-9 h-9 rounded-full flex items-center justify-center bg-black/20 backdrop-blur-sm hover:bg-black/30 transition-colors ${className ?? ""}`}
         data-testid="club-save-btn"
@@ -115,10 +115,10 @@ export function ClubSaveButton({
         ) : (
           <Heart className="w-4 h-4" />
         )}
-        {isPremium ? (saved ? "Following" : "Follow Community") : saved ? "Saved" : "Save Court"}
+        {isCommunity ? (saved ? "Following" : "Follow Community") : saved ? "Saved" : "Save Court"}
       </Button>
 
-      {isPremium && count > 0 && (
+      {isCommunity && count > 0 && (
         <span className={`text-sm font-medium ${light ? "text-white/85" : "text-muted-foreground"}`} data-testid="club-followers-count">
           <strong className={light ? "text-white" : "text-foreground"}>{count}</strong> following
         </span>

@@ -11,6 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ClubSaveButton } from "./ClubSaveButton";
+import { getClubVariant } from "@/lib/clubVariant";
 
 interface ClubCardProps {
   club: any;
@@ -188,7 +189,7 @@ const buttonClass =
           </div>
 
           <div className="absolute top-4 right-4">
-            <ClubSaveButton clubId={club.id} isPremium={club.listingType === "premium"} initialSaved={club.listingType === "premium" ? !!club.isFollowing : !!club.isFavoriting} variant="icon" />
+            <ClubSaveButton clubId={club.id} isCommunity={getClubVariant(club) === "community"} initialSaved={getClubVariant(club) === "community" ? !!club.isFollowing : !!club.isFavoriting} variant="icon" />
           </div>
 
           <div
