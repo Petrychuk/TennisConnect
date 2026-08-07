@@ -36,6 +36,10 @@ export function looksLikeSetScore(value: string): boolean {
   return parseSets(value).length > 0;
 }
 
+export function looksLikePoints(value: string): boolean {
+  return /^\d+\s*points?$/i.test(value.trim());
+}
+
 function serializeSets(sets: SetScore[]): string {
   return sets
     .filter((s) => s.mine !== "" || s.theirs !== "")

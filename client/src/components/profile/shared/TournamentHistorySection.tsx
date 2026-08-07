@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
-import { SetScoreBuilder, looksLikeSetScore } from "./SetScoreBuilder";
+import { SetScoreBuilder, looksLikeSetScore, looksLikePoints } from "./SetScoreBuilder";
 import { Calendar, Trophy, Edit2, Plus, Trash2, Camera, MapPin } from "lucide-react";
 
 type TournamentDraft = {
@@ -61,7 +61,7 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
   const [tournaments, setTournaments] = useState<TournamentDraft[]>([]);
   const [isTournamentModalOpen, setIsTournamentModalOpen] = useState(false);
   const [newTournament, setNewTournament] = useState<TournamentDraft>(BLANK_DRAFT);
-  const [resultInputMode, setResultInputMode] = useState<"sets" | "text">("sets");
+  const [resultInputMode, setResultInputMode] = useState<"sets" | "points" | "text">("sets");
   const [editingTournament, setEditingTournament] = useState<TournamentDraft | null>(null);
 
   useEffect(() => {
@@ -245,7 +245,7 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
                       onClick={() => {
                         setNewTournament(t);
                         setEditingTournament(t);
-                        setResultInputMode(looksLikeSetScore(t.result) ? "sets" : "text");
+                        setResultInputMode(looksLikePoints(t.result) ? "points" : looksLikeSetScore(t.result) ? "sets" : "text");
                         setIsTournamentModalOpen(true);
                       }}
                       data-testid={`edit-tournament-${t.id}`}
@@ -350,12 +350,17 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
                           : newTournament.result || resultInputMode !== "text"
                           ? resultInputMode === "sets"
                             ? "Sets"
+                            : resultInputMode === "points"
+                            ? "Points"
                             : "Custom"
                           : ""
                       }
                       onValueChange={(val) => {
                         if (val === "Sets") {
                           setResultInputMode("sets");
+                          setNewTournament({ ...newTournament, result: "" });
+                        } else if (val === "Points") {
+                          setResultInputMode("points");
                           setNewTournament({ ...newTournament, result: "" });
                         } else if (val === "Custom") {
                           setResultInputMode("text");
@@ -377,12 +382,13 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
                         <SelectItem value="Round of 32">Round of 32</SelectItem>
                         <SelectItem value="Participation">Participation</SelectItem>
                         <SelectItem value="Sets">Score by sets</SelectItem>
+                        <SelectItem value="Points">Total points (e.g. Americano)</SelectItem>
                         <SelectItem value="Custom">Custom (free text)</SelectItem>
                       </SelectContent>
                     </Select>
                     {![...PRESET_RESULTS, ""].includes(newTournament.result) && (
                       <div className="mt-2 space-y-2">
-                        <div className="flex gap-1.5">
+                        <div className="flex gap-1.5 flex-wrap">
                           <Button
                             type="button"
                             variant={resultInputMode === "sets" ? "default" : "outline"}
@@ -391,6 +397,15 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
                             data-testid="tournament-result-mode-sets"
                           >
                             By sets
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={resultInputMode === "points" ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setResultInputMode("points")}
+                            data-testid="tournament-result-mode-points"
+                          >
+                            Total points
                           </Button>
                           <Button
                             type="button"
@@ -407,6 +422,20 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
                             value={newTournament.result}
                             onChange={(val) => setNewTournament((prev: any) => ({ ...prev, result: val }))}
                           />
+                        ) : resultInputMode === "points" ? (
+                          <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground">
+                              One number for the whole session - across all rounds and partners, not per round.
+                            </p>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={newTournament.result.replace(/\D/g, "")}
+                              onChange={(e) => setNewTournament({ ...newTournament, result: e.target.value ? `${e.target.value} points` : "" })}
+                              placeholder="e.g. 24"
+                              data-testid="tournament-result-points-input"
+                            />
+                          </div>
                         ) : (
                           <Input
                             value={newTournament.result}
