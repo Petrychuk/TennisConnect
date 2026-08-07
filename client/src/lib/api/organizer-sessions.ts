@@ -7,6 +7,10 @@ import type {
   RegistrationWithUser,
   OrgPlayerRow,
   Registration,
+  SessionRound,
+  MatchWithPlayers,
+  Match,
+  LeaderboardRow,
 } from "@shared/schema";
 
 const BASE = "/api/organizer";
@@ -143,6 +147,72 @@ export async function archiveSession(id: string): Promise<TennisSession> {
 /** Drafts only - anything past draft should be cancelled instead. */
 export async function deleteSession(id: string): Promise<void> {
   await apiRequest("DELETE", `${BASE}/sessions/${id}`);
+}
+
+// ===== TC Live Engine (v0.1) =====
+
+export async function checkInRegistration(sessionId: string, registrationId: string): Promise<Registration> {
+  const res = await apiRequest("POST", `${BASE}/sessions/${sessionId}/checkin/${registrationId}`);
+  return res.json();
+}
+
+export async function setRegistrationLiveStatus(
+  sessionId: string,
+  registrationId: string,
+  liveStatus: "unavailable" | "withdrawn" | null
+): Promise<Registration> {
+  const res = await apiRequest("POST", `${BASE}/sessions/${sessionId}/registrations/${registrationId}/live-status`, {
+    liveStatus,
+  });
+  return res.json();
+}
+
+/** published -> live. Requires courtsCount set and >= 2 checked-in players (enforced server-side). */
+export async function goLiveSession(id: string): Promise<TennisSession> {
+  const res = await apiRequest("POST", `${BASE}/sessions/${id}/go-live`);
+  return res.json();
+}
+
+/** Throws (via apiRequest) if the current round isn't fully confirmed yet - callers should keep Generate disabled instead of relying on the error. */
+export async function generateNextRound(sessionId: string): Promise<{ round: SessionRound; matches: MatchWithPlayers[] }> {
+  const res = await apiRequest("POST", `${BASE}/sessions/${sessionId}/rounds/generate`);
+  return res.json();
+}
+
+/** Null if no round has been generated yet. */
+export async function getCurrentRound(sessionId: string): Promise<{ round: SessionRound; matches: MatchWithPlayers[] } | null> {
+  const res = await apiRequest("GET", `${BASE}/sessions/${sessionId}/rounds/current`);
+  return res.json();
+}
+
+export async function startMatch(sessionId: string, matchId: string): Promise<Match> {
+  const res = await apiRequest("POST", `${BASE}/sessions/${sessionId}/matches/${matchId}/start`);
+  return res.json();
+}
+
+/** Organizer-only entry (v0.1) - saving confirms the match immediately, no second-party confirmation step. */
+export async function reportMatchScore(
+  sessionId: string,
+  matchId: string,
+  teamAGames: number,
+  teamBGames: number
+): Promise<Match> {
+  const res = await apiRequest("POST", `${BASE}/sessions/${sessionId}/matches/${matchId}/score`, {
+    teamAGames,
+    teamBGames,
+  });
+  return res.json();
+}
+
+/** live -> completed. */
+export async function finishSession(id: string): Promise<TennisSession> {
+  const res = await apiRequest("POST", `${BASE}/sessions/${id}/finish`);
+  return res.json();
+}
+
+export async function getSessionLeaderboard(sessionId: string): Promise<LeaderboardRow[]> {
+  const res = await apiRequest("GET", `${BASE}/sessions/${sessionId}/leaderboard`);
+  return res.json();
 }
 
 // ===== Admin moderation =====

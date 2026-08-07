@@ -682,6 +682,13 @@ router.post(
 
 router.post("/sessions/:id/go-live", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
   try {
+    const thisSession = (req as any).session_ as TennisSession;
+    if (thisSession.status !== "published") {
+      return res.status(400).json({ message: `Can't go live from status "${thisSession.status}" - session must be published first` });
+    }
+    if (!thisSession.courtsCount || thisSession.courtsCount < 1) {
+      return res.status(400).json({ message: "Set a court count for this session before going live" });
+    }
     const registrationsList = await storage.getRegistrationsForSession(req.params.id);
     const checkedIn = registrationsList.filter((r) => !!r.checkedInAt);
     if (checkedIn.length < 2) {
