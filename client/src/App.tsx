@@ -45,6 +45,12 @@ const OrganiserMessagesPage = lazy(() => import("@/pages/organiser/messages"));
 const OrganiserSessionNewPage = lazy(() => import("@/pages/organiser/session-new"));
 const OrganiserSessionWorkspacePage = lazy(() => import("@/pages/organiser/session-workspace"));
 const OrganiserSessionLivePage = lazy(() => import("@/pages/organiser/session-live"));
+// Dev-only - the lazy() import itself is fine to leave in the bundle
+// (it's just a function reference), but the <Route> below only gets
+// registered when import.meta.env.DEV is true, so the chunk is never
+// requested - and DEV is a build-time constant Vite strips branches on
+// entirely - in a production build.
+const LiveSimulatorPage = lazy(() => import("@/pages/dev/live-simulator"));
 const OrganiserSessionEditPage = lazy(() => import("@/pages/organiser/session-edit"));
 const OrganisationDetailPage = lazy(() => import("@/pages/organisation-detail"));
 
@@ -96,6 +102,10 @@ function Router() {
         <Route path="/organiser/sessions/:id/edit" component={OrganiserSessionEditPage} />
         <Route path="/organiser/sessions/:id" component={OrganiserSessionWorkspacePage} />
         <Route path="/organisations/:slug" component={OrganisationDetailPage} />
+        {/* Dev-only: import.meta.env.DEV is a Vite build-time constant, so
+           this branch (and the LiveSimulatorPage chunk it lazy-loads) is
+           stripped out of production builds entirely, not just hidden. */}
+        {import.meta.env.DEV && <Route path="/dev/live-simulator" component={LiveSimulatorPage} />}
         <Route component={NotFound} />
       </Switch>
     </Suspense>

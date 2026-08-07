@@ -17,7 +17,6 @@ import uploadContentRouter from "./routes/upload-content";
 import organizerRouter from "./routes/organizer";
 import weatherRouter from "./routes/weather";
 
-
 import {
   insertUserSchema,
   insertPlayerProfileSchema,
@@ -80,6 +79,13 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/api/upload/content", uploadContentRouter);
   app.use("/api/organizer", organizerRouter);
   app.use("/api/weather", weatherRouter);
+
+  // TC Live dev simulator backend - only exists in development, never
+  // mounted (not even imported) in a production build.
+  if (process.env.NODE_ENV === "development") {
+    const { default: devRouter } = await import("./routes/dev");
+    app.use("/api/dev", devRouter);
+  }
 
   /* =========================
    SUPPORT CHAT

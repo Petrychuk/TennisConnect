@@ -644,6 +644,27 @@ router.get("/sessions/:id/registrations", requireAuth, async (req, res, next) =>
    See memory/PRD.md TC Live section / liveEngine.ts for the full spec.
 ========================= */
 
+// storage.ts throws plain Error with these exact messages for expected
+// domain-rule violations (not-live session, round still in progress,
+// not enough players, etc.) - surfaced as 400s here instead of falling
+// through to the generic 500 handler, which would log them as bugs.
+const LIVE_ENGINE_KNOWN_ERRORS = [
+  "Current round isn't fully confirmed yet",
+  "Need at least 2 eligible checked-in players to generate a round",
+  "Can only enter scores while the session is live",
+  "Match not found",
+  "Registration not found",
+  "Session not found",
+];
+
+function handleLiveEngineError(error: any, res: Response, next: NextFunction) {
+  if (LIVE_ENGINE_KNOWN_ERRORS.includes(error?.message)) {
+    return res.status(400).json({ message: error.message });
+  }
+  next(error);
+}
+
+
 router.post(
   "/sessions/:id/checkin/:registrationId",
   requireAuth,
@@ -654,7 +675,7 @@ router.post(
       const registration = await storage.checkInRegistration(req.params.registrationId);
       res.json(registration);
     } catch (error) {
-      next(error);
+      handleLiveEngineError(error, res, next);
     }
   }
 );
@@ -675,7 +696,7 @@ router.post(
       const registration = await storage.setRegistrationLiveStatus(req.params.registrationId, liveStatus);
       res.json(registration);
     } catch (error) {
-      next(error);
+      handleLiveEngineError(error, res, next);
     }
   }
 );
@@ -695,6 +716,7 @@ router.post("/sessions/:id/go-live", requireAuth, requireOrganizer, requireOwnSe
       return res.status(400).json({ message: "Need at least 2 checked-in players to go live" });
     }
     const session = await storage.goLiveSession(req.params.id);
+    console.log(`[TC LIVE] session ${req.params.id}: went live (${checkedIn.length} checked in)`);
     res.json(session);
   } catch (error) {
     next(error);
@@ -707,13 +729,11 @@ router.post("/sessions/:id/rounds/generate", requireAuth, requireOrganizer, requ
     if (thisSession.status !== "live") {
       return res.status(400).json({ message: "Session must be live to generate a round" });
     }
+    console.log(`[TC LIVE] session ${req.params.id}: generate round requested`);
     const result = await storage.generateNextRound(req.params.id);
     res.status(201).json(result);
   } catch (error: any) {
-    if (error?.message === "Current round isn't fully confirmed yet") {
-      return res.status(400).json({ message: error.message });
-    }
-    next(error);
+    handleLiveEngineError(error, res, next);
   }
 });
 
@@ -736,7 +756,7 @@ router.post(
       const match = await storage.startMatch(req.params.matchId);
       res.json(match);
     } catch (error) {
-      next(error);
+      handleLiveEngineError(error, res, next);
     }
   }
 );
@@ -764,7 +784,7 @@ router.post(
       );
       res.json(match);
     } catch (error) {
-      next(error);
+      handleLiveEngineError(error, res, next);
     }
   }
 );
@@ -772,9 +792,10 @@ router.post(
 router.post("/sessions/:id/finish", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
   try {
     const session = await storage.finishSession(req.params.id);
+    console.log(`[TC LIVE] session ${req.params.id}: finished`);
     res.json(session);
   } catch (error) {
-    next(error);
+    handleLiveEngineError(error, res, next);
   }
 });
 

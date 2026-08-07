@@ -2714,9 +2714,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Every checked-in, available (liveStatus IS NULL) player for a session -
-  // the pool round generation draws from.
-  private async getLiveEligiblePlayers(sessionId: string): Promise<{ id: string }[]> {
-    const rows = await db
+  // the pool round generation draws from. Accepts an optional transaction
+  // handle so generateNextRound can call this from inside db.transaction().
+  private async getLiveEligiblePlayers(sessionId: string, dbOrTx: typeof db = db): Promise<{ id: string }[]> {
+    const rows = await dbOrTx
       .select({ userId: registrations.userId })
       .from(registrations)
       .where(
@@ -2731,8 +2732,8 @@ export class DatabaseStorage implements IStorage {
 
   // Rest count per player across every round generated so far, from the
   // frozen `restingPlayerIds` snapshot on each session_rounds row.
-  private async getRestCounts(sessionId: string): Promise<Record<string, number>> {
-    const rounds = await db
+  private async getRestCounts(sessionId: string, dbOrTx: typeof db = db): Promise<Record<string, number>> {
+    const rounds = await dbOrTx
       .select({ restingPlayerIds: sessionRounds.restingPlayerIds })
       .from(sessionRounds)
       .where(eq(sessionRounds.sessionId, sessionId));
@@ -2746,8 +2747,8 @@ export class DatabaseStorage implements IStorage {
     return counts;
   }
 
-  private async getPastMatches(sessionId: string): Promise<PastMatch[]> {
-    const rows = await db
+  private async getPastMatches(sessionId: string, dbOrTx: typeof db = db): Promise<PastMatch[]> {
+    const rows = await dbOrTx
       .select({ teamAIds: matches.teamAIds, teamBIds: matches.teamBIds })
       .from(matches)
       .where(eq(matches.sessionId, sessionId));
@@ -2785,66 +2786,103 @@ export class DatabaseStorage implements IStorage {
   // its matches. Throws if a round is already active and not fully
   // confirmed yet - the route surfaces this as a 400, since "Generate
   // Next Round" should be disabled on the client whenever that's true.
+  // Generates the next round: figures out who's eligible, hands the pure
+  // pairing decision to liveEngine.planRound, then persists the round +
+  // its matches. Wrapped in a transaction (see deleteUserAccount above for
+  // the existing pattern in this file) so a crash between the round row
+  // and its matches can't leave a round with zero matches sitting active -
+  // per TC Live spec §14, round generation must be atomic.
+  //
+  // The active-round check is re-run inside the transaction (not just
+  // before it) to shrink the race window between two concurrent "Generate
+  // Round" clicks; the (sessionId, roundNumber) unique constraint on
+  // session_rounds is the final backstop if both still slip through, and
+  // that specific violation is turned into the same clean 400 the
+  // pre-check produces rather than a raw Postgres error reaching the client.
   async generateNextRound(sessionId: string): Promise<{ round: SessionRound; matches: MatchWithPlayers[] }> {
     const [session] = await db.select().from(tennisSessions).where(eq(tennisSessions.id, sessionId));
     if (!session) throw new Error("Session not found");
 
-    const existingRounds = await db
-      .select()
-      .from(sessionRounds)
-      .where(eq(sessionRounds.sessionId, sessionId))
-      .orderBy(desc(sessionRounds.roundNumber));
+    try {
+      const { round, insertedMatches } = await db.transaction(async (tx) => {
+        const existingRounds = await tx
+          .select()
+          .from(sessionRounds)
+          .where(eq(sessionRounds.sessionId, sessionId))
+          .orderBy(desc(sessionRounds.roundNumber));
 
-    const activeRound = existingRounds.find((r) => r.status === "active");
-    if (activeRound) {
-      throw new Error("Current round isn't fully confirmed yet");
-    }
+        const activeRound = existingRounds.find((r) => r.status === "active");
+        if (activeRound) {
+          throw new Error("Current round isn't fully confirmed yet");
+        }
 
-    const [players, pastMatches, restCounts] = await Promise.all([
-      this.getLiveEligiblePlayers(sessionId),
-      this.getPastMatches(sessionId),
-      this.getRestCounts(sessionId),
-    ]);
+        const [players, pastMatches, restCounts] = await Promise.all([
+          this.getLiveEligiblePlayers(sessionId, tx),
+          this.getPastMatches(sessionId, tx),
+          this.getRestCounts(sessionId, tx),
+        ]);
 
-    const plan = planRound({
-      players,
-      courtsCount: session.courtsCount ?? 1,
-      mode: (session.matchMode as "singles" | "doubles") ?? "doubles",
-      pastMatches,
-      restCounts,
-    });
+        if (players.length < 2) {
+          throw new Error("Need at least 2 eligible checked-in players to generate a round");
+        }
 
-    const nextRoundNumber = (existingRounds[0]?.roundNumber ?? 0) + 1;
+        const plan = planRound({
+          players,
+          courtsCount: session.courtsCount ?? 1,
+          mode: (session.matchMode as "singles" | "doubles") ?? "doubles",
+          pastMatches,
+          restCounts,
+        });
 
-    const [round] = await db
-      .insert(sessionRounds)
-      .values({
-        sessionId,
-        roundNumber: nextRoundNumber,
-        status: plan.matches.length > 0 ? "active" : "completed",
-        restingPlayerIds: plan.restingPlayerIds,
-        completedAt: plan.matches.length > 0 ? undefined : new Date(),
-      })
-      .returning();
+        const nextRoundNumber = (existingRounds[0]?.roundNumber ?? 0) + 1;
 
-    let insertedMatches: Match[] = [];
-    if (plan.matches.length > 0) {
-      insertedMatches = await db
-        .insert(matches)
-        .values(
-          plan.matches.map((m) => ({
+        const [round] = await tx
+          .insert(sessionRounds)
+          .values({
             sessionId,
-            roundId: round.id,
-            courtLabel: m.courtLabel,
-            teamAIds: m.teamAIds,
-            teamBIds: m.teamBIds,
-            status: "pending" as const,
-          }))
-        )
-        .returning();
-    }
+            roundNumber: nextRoundNumber,
+            status: plan.matches.length > 0 ? "active" : "completed",
+            restingPlayerIds: plan.restingPlayerIds,
+            completedAt: plan.matches.length > 0 ? undefined : new Date(),
+          })
+          .returning();
 
-    return { round, matches: await this.attachPlayersToMatches(insertedMatches) };
+        let insertedMatches: Match[] = [];
+        if (plan.matches.length > 0) {
+          insertedMatches = await tx
+            .insert(matches)
+            .values(
+              plan.matches.map((m) => ({
+                sessionId,
+                roundId: round.id,
+                courtLabel: m.courtLabel,
+                teamAIds: m.teamAIds,
+                teamBIds: m.teamBIds,
+                status: "pending" as const,
+              }))
+            )
+            .returning();
+        }
+
+        console.log(
+          `[TC LIVE] session ${sessionId}: round ${nextRoundNumber} generated - ` +
+            `${insertedMatches.length} matches, ${plan.restingPlayerIds.length} resting`
+        );
+
+        return { round, insertedMatches };
+      });
+
+      return { round, matches: await this.attachPlayersToMatches(insertedMatches) };
+    } catch (error: any) {
+      // Postgres unique_violation on the (sessionId, roundNumber) backstop -
+      // two concurrent "Generate Round" clicks both passed the pre-check
+      // and raced to insert. Surface the same message as the pre-check
+      // instead of a raw constraint error reaching the client.
+      if (error?.code === "23505") {
+        throw new Error("Current round isn't fully confirmed yet");
+      }
+      throw error;
+    }
   }
 
   async getCurrentRound(sessionId: string): Promise<{ round: SessionRound; matches: MatchWithPlayers[] } | undefined> {
@@ -2876,34 +2914,61 @@ export class DatabaseStorage implements IStorage {
   // in the schema so player self-report can land later without a migration.
   // If every match in the round is now confirmed, the round is closed -
   // that's what unlocks "Generate Next Round" on the client.
+  // Organizer-only score entry (v0.1 - see TC Live spec §5): saving a
+  // score confirms it immediately, no second-party confirmation step.
+  // reportedBy/confirmedBy are both the organizer for now, kept separate
+  // in the schema so player self-report can land later without a migration.
+  // Re-submitting a score for an already-confirmed match is allowed on
+  // purpose - organizers need to be able to correct a mis-entered score
+  // (TC Live spec §21) - the leaderboard always derives from the current
+  // stored score, so a correction can't create duplicate stats.
+  // If every match in the round is now confirmed, the round is closed -
+  // that's what unlocks "Generate Next Round" on the client.
   async reportMatchScore(
     matchId: string,
     organizerId: string,
     teamAGames: number,
     teamBGames: number
   ): Promise<Match> {
-    const [match] = await db
-      .update(matches)
-      .set({
-        teamAGames,
-        teamBGames,
-        status: "confirmed",
-        reportedBy: organizerId,
-        confirmedBy: organizerId,
-        confirmedAt: new Date(),
-      })
-      .where(eq(matches.id, matchId))
-      .returning();
-    if (!match) throw new Error("Match not found");
+    const [existing] = await db.select().from(matches).where(eq(matches.id, matchId));
+    if (!existing) throw new Error("Match not found");
 
-    const roundMatches = await db.select().from(matches).where(eq(matches.roundId, match.roundId));
-    const allConfirmed = roundMatches.every((m) => m.status === "confirmed");
-    if (allConfirmed) {
-      await db
-        .update(sessionRounds)
-        .set({ status: "completed", completedAt: new Date() })
-        .where(eq(sessionRounds.id, match.roundId));
+    const [session] = await db.select().from(tennisSessions).where(eq(tennisSessions.id, existing.sessionId));
+    if (!session || session.status !== "live") {
+      throw new Error("Can only enter scores while the session is live");
     }
+
+    const isCorrection = existing.status === "confirmed";
+
+    const match = await db.transaction(async (tx) => {
+      const [match] = await tx
+        .update(matches)
+        .set({
+          teamAGames,
+          teamBGames,
+          status: "confirmed",
+          reportedBy: organizerId,
+          confirmedBy: organizerId,
+          confirmedAt: new Date(),
+        })
+        .where(eq(matches.id, matchId))
+        .returning();
+
+      const roundMatches = await tx.select().from(matches).where(eq(matches.roundId, match.roundId));
+      const allConfirmed = roundMatches.every((m) => m.status === "confirmed");
+      if (allConfirmed) {
+        await tx
+          .update(sessionRounds)
+          .set({ status: "completed", completedAt: new Date() })
+          .where(eq(sessionRounds.id, match.roundId));
+      }
+      return match;
+    });
+
+    console.log(
+      `[TC LIVE] session ${existing.sessionId}: match ${matchId} ${isCorrection ? "corrected" : "confirmed"} - ` +
+        `${teamAGames}-${teamBGames}`
+    );
 
     return match;
   }
