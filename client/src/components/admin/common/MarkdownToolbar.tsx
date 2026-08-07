@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 interface MarkdownToolbarProps {
-  textareaRef: RefObject<HTMLTextAreaElement>;
+  textareaRef: RefObject<HTMLTextAreaElement | null>;
   value: string;
   onChange: (value: string) => void;
 }

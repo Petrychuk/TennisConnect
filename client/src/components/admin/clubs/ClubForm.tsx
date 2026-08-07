@@ -25,6 +25,13 @@ export interface ClubFormProps {
 export interface ClubFormData {
   // Listing
   listingType: "free" | "premium";
+  // Moderation status ("draft" | "pending" | "published" | "rejected" -
+  // free text on the backend, same pattern as sessions). Not filled in
+  // by the create form (a new club always starts as "draft" server-
+  // side) - only ever read/written here via loadClub()'s spread and
+  // handleUpdate's optional statusOverride, for the live-edit warning
+  // and the Unpublish-while-reviewing checkbox.
+  status?: string;
 
   // Basic
   name: string;
