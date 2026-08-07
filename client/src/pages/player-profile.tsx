@@ -956,7 +956,7 @@ export default function PlayerProfile() {
                               <Input 
                                 value={newTournament.name} 
                                 onChange={(e) => setNewTournament({...newTournament, name: e.target.value})} 
-                                placeholder="e.g. Sydney Open 2024, or Saturday Social Tennis" 
+                                placeholder="e.g. Sydney Open 2024, or Saturday Social Tennis"
                               />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
