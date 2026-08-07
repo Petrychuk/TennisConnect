@@ -79,6 +79,7 @@ router.put("/:id", requireAuth, async (req, res, next) => {
         date: req.body.date,
         result: req.body.result,
         award: req.body.award,
+        entryType: req.body.entryType,
       }
     );
 

@@ -50,6 +50,7 @@ type TournamentDraft = {
   result: string;
   award: string;
   photos: string[];
+  entryType: "session" | "tournament";
 };
 
 export type PlayerProfile = {
@@ -132,6 +133,7 @@ export default function PlayerProfile() {
     // Tournament State
   const [isTournamentModalOpen, setIsTournamentModalOpen] = useState(false);
   const [resultInputMode, setResultInputMode] = useState<"sets" | "points" | "text">("sets");
+  const [resultsFilter, setResultsFilter] = useState<"all" | "session" | "tournament">("all");
   const [newTournament, setNewTournament] = useState<TournamentDraft>({
       id: "",
       name: "",
@@ -140,6 +142,7 @@ export default function PlayerProfile() {
       result: "",
       award: "",
       photos: [],
+      entryType: "tournament",
     });
   const [tournaments, setTournaments] = useState<TournamentDraft[]>([]);
   const [editingTournament, setEditingTournament] = useState<TournamentDraft | null>(null);
@@ -608,6 +611,7 @@ export default function PlayerProfile() {
       result: "",
       award: "",
       photos: [],
+      entryType: "tournament",
     });
     setEditingTournament(null);
     setResultInputMode("sets");
@@ -968,6 +972,29 @@ export default function PlayerProfile() {
                           </DialogHeader>
                           <div className="space-y-4 py-4">
                             <div className="space-y-2">
+                              <Label>Type</Label>
+                              <div className="flex gap-1.5">
+                                <Button
+                                  type="button"
+                                  variant={newTournament.entryType === "session" ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => setNewTournament({ ...newTournament, entryType: "session" })}
+                                  data-testid="result-type-session"
+                                >
+                                  Session
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant={newTournament.entryType === "tournament" ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => setNewTournament({ ...newTournament, entryType: "tournament" })}
+                                  data-testid="result-type-tournament"
+                                >
+                                  Tournament
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="space-y-2">
                               <Label>Name</Label>
                               <Input 
                                 value={newTournament.name} 
@@ -1167,8 +1194,39 @@ export default function PlayerProfile() {
                   </div>
 
                   {/* Tournament Lists */}
+                  <div className="flex gap-1.5" data-testid="results-filter">
+                    <Button
+                      type="button"
+                      variant={resultsFilter === "all" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setResultsFilter("all")}
+                      data-testid="results-filter-all"
+                    >
+                      All
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={resultsFilter === "session" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setResultsFilter("session")}
+                      data-testid="results-filter-session"
+                    >
+                      Sessions
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={resultsFilter === "tournament" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setResultsFilter("tournament")}
+                      data-testid="results-filter-tournament"
+                    >
+                      Tournaments
+                    </Button>
+                  </div>
                   {(() => {
-                    const sortedTournaments = [...tournaments].sort((a, b) => {
+                    const sortedTournaments = [...tournaments]
+                      .filter((t) => resultsFilter === "all" || t.entryType === resultsFilter)
+                      .sort((a, b) => {
                       // Sort descending by date
                       return new Date(b.date).getTime() - new Date(a.date).getTime();
                     });
@@ -1195,6 +1253,9 @@ export default function PlayerProfile() {
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-2">
                                       <h4 className="font-bold text-xl">{t.name}</h4>
+                                      <Badge variant="outline" className="text-[11px]" data-testid={`result-type-badge-${t.id}`}>
+                                        {t.entryType === "session" ? "Session" : "Tournament"}
+                                      </Badge>
                                       {(t.result === 'Winner' || t.result === 'Champion') && (
                                           <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white gap-1 pl-1 pr-2">
                                             <Trophy className="w-3 h-3 fill-current" /> Winner
@@ -1264,10 +1325,16 @@ export default function PlayerProfile() {
 
                     return (
                       <div className="space-y-4">
-                        {tournaments.length === 0 ? (
-                          <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-xl border-2 border-dashed">
+                        {sortedTournaments.length === 0 ? (
+                          <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-xl border-2 border-dashed" data-testid="results-empty">
                             <Trophy className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                            <p>No results added yet.</p>
+                            <p>
+                              {tournaments.length === 0
+                                ? "No results added yet."
+                                : resultsFilter === "session"
+                                ? "No session results yet."
+                                : "No tournament results yet."}
+                            </p>
                           </div>
                         ) : (
                           <div className="grid grid-cols-1 gap-4">

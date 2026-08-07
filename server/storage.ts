@@ -726,6 +726,7 @@ export class DatabaseStorage implements IStorage {
         ...(data.date !== undefined && { date: data.date }),
         ...(data.result !== undefined && { result: data.result }),
         ...(data.award !== undefined && { award: data.award }),
+        ...(data.entryType !== undefined && { entryType: data.entryType }),
         ...(data.photos !== undefined && { photos: data.photos }),
       })
       .where(

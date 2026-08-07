@@ -33,6 +33,7 @@ type TournamentDraft = {
   result: string;
   award: string;
   photos: string[];
+  entryType: "session" | "tournament";
 };
 
 const PRESET_RESULTS = ["Winner", "Runner Up", "Semi-Finalist", "Quarter-Finalist", "Round of 16", "Round of 32", "Participation"];
@@ -45,6 +46,7 @@ const BLANK_DRAFT: TournamentDraft = {
   result: "",
   award: "",
   photos: [],
+  entryType: "tournament",
 };
 
 interface TournamentHistorySectionProps {
@@ -62,6 +64,7 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
   const [isTournamentModalOpen, setIsTournamentModalOpen] = useState(false);
   const [newTournament, setNewTournament] = useState<TournamentDraft>(BLANK_DRAFT);
   const [resultInputMode, setResultInputMode] = useState<"sets" | "points" | "text">("sets");
+  const [resultsFilter, setResultsFilter] = useState<"all" | "session" | "tournament">("all");
   const [editingTournament, setEditingTournament] = useState<TournamentDraft | null>(null);
 
   useEffect(() => {
@@ -187,9 +190,11 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
     setTournaments((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const sortedTournaments = [...tournaments].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
+  const sortedTournaments = [...tournaments]
+    .filter((t) => resultsFilter === "all" || t.entryType === resultsFilter)
+    .sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
 
   const TournamentCard = ({ t }: { t: any }) => (
     <Card key={t.id} className="overflow-hidden">
@@ -211,6 +216,9 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <h4 className="font-bold text-xl">{t.name}</h4>
+                  <Badge variant="outline" className="text-[11px]" data-testid={`result-type-badge-${t.id}`}>
+                    {t.entryType === "session" ? "Session" : "Tournament"}
+                  </Badge>
                   {(t.result === "Winner" || t.result === "Champion") && (
                     <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white gap-1 pl-1 pr-2">
                       <Trophy className="w-3 h-3 fill-current" /> Winner
@@ -311,6 +319,29 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Type</Label>
+                  <div className="flex gap-1.5">
+                    <Button
+                      type="button"
+                      variant={newTournament.entryType === "session" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setNewTournament({ ...newTournament, entryType: "session" })}
+                      data-testid="tournament-type-session"
+                    >
+                      Session
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={newTournament.entryType === "tournament" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setNewTournament({ ...newTournament, entryType: "tournament" })}
+                      data-testid="tournament-type-tournament"
+                    >
+                      Tournament
+                    </Button>
+                  </div>
+                </div>
                 <div className="space-y-2">
                   <Label>Name</Label>
                   <Input
@@ -518,10 +549,46 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
         )}
       </div>
 
+      <div className="flex gap-1.5" data-testid="results-filter">
+        <Button
+          type="button"
+          variant={resultsFilter === "all" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setResultsFilter("all")}
+          data-testid="results-filter-all"
+        >
+          All
+        </Button>
+        <Button
+          type="button"
+          variant={resultsFilter === "session" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setResultsFilter("session")}
+          data-testid="results-filter-session"
+        >
+          Sessions
+        </Button>
+        <Button
+          type="button"
+          variant={resultsFilter === "tournament" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setResultsFilter("tournament")}
+          data-testid="results-filter-tournament"
+        >
+          Tournaments
+        </Button>
+      </div>
+
       {sortedTournaments.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-xl border-2 border-dashed" data-testid="tournament-history-empty">
           <Trophy className="w-12 h-12 mx-auto mb-4 opacity-20" />
-          <p>No results added yet.</p>
+          <p>
+            {tournaments.length === 0
+              ? "No results added yet."
+              : resultsFilter === "session"
+              ? "No session results yet."
+              : "No tournament results yet."}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">

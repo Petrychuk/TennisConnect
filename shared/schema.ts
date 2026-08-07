@@ -201,6 +201,13 @@ export const tournamentHistory = pgTable("tournament_history", {
   // recurring session (e.g. every Wednesday) from a genuinely
   // different one (Thursdays), once that data exists to link.
   sessionId: varchar("session_id").references((): any => tennisSessions.id),
+  // "session" | "tournament" - lets the Results tab filter results the
+  // same way My Sessions already splits Sessions vs Tournaments,
+  // rather than mixing a casual Wednesday hit-up with a tournament
+  // bracket result in one undivided list. Defaults to "tournament" -
+  // every entry made before this field existed was created under what
+  // was literally called "Tournament History".
+  entryType: text("entry_type").default("tournament").notNull(),
   name: text("name").notNull(),
   location: text("location").notNull(),
   date: text("date").notNull(),
