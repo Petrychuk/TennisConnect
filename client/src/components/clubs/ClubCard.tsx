@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ClubFavoriteButton } from "./ClubFavoriteButton";
+import { ClubSaveButton } from "./ClubSaveButton";
 
 interface ClubCardProps {
   club: any;
@@ -188,7 +188,7 @@ const buttonClass =
           </div>
 
           <div className="absolute top-4 right-4">
-            <ClubFavoriteButton clubId={club.id} initialFavoriting={!!club.isFavoriting} />
+            <ClubSaveButton clubId={club.id} isPremium={club.listingType === "premium"} initialSaved={club.listingType === "premium" ? !!club.isFollowing : !!club.isFavoriting} variant="icon" />
           </div>
 
           <div

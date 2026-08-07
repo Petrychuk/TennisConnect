@@ -25,7 +25,7 @@ import {
   getSurfaceLabel,
   getServiceLabel,
 } from "@/lib/clubVariant";
-import { ClubFollowButton } from "./ClubFollowButton";
+import { ClubSaveButton } from "@/components/clubs/ClubSaveButton";
 
 interface QuickFact {
   icon: React.ReactNode;
@@ -489,9 +489,10 @@ export function ClubDetailHero({
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <ClubFollowButton
+        <ClubSaveButton
           clubId={club.id}
-          initialFollowing={!!club.isFollowing}
+          isPremium={club.listingType === "premium"}
+          initialSaved={club.listingType === "premium" ? !!club.isFollowing : !!club.isFavoriting}
           initialFollowersCount={club.followersCount ?? 0}
           light
         />
@@ -556,9 +557,10 @@ export function ClubDetailHero({
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <ClubFollowButton
+        <ClubSaveButton
           clubId={club.id}
-          initialFollowing={!!club.isFollowing}
+          isPremium={club.listingType === "premium"}
+          initialSaved={club.listingType === "premium" ? !!club.isFollowing : !!club.isFavoriting}
           initialFollowersCount={club.followersCount ?? 0}
         />
         {club.phone && (

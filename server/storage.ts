@@ -174,6 +174,7 @@ export interface IStorage {
   unfollowClub(userId: string, clubId: string): Promise<void>;
   isFollowingClub(userId: string, clubId: string): Promise<boolean>;
   getFollowedClubs(userId: string): Promise<Club[]>;
+  getFollowedClubIds(userId: string): Promise<string[]>;
   getClubFollowerCount(clubId: string): Promise<number>;
 
   // Club Favorites ("My Courts") - same shape as Club Follows above,
@@ -1098,6 +1099,14 @@ export class DatabaseStorage implements IStorage {
       .where(eq(clubFollows.userId, userId));
 
     return rows.map((r) => r.club);
+  }
+
+  async getFollowedClubIds(userId: string): Promise<string[]> {
+    const rows = await db
+      .select({ clubId: clubFollows.clubId })
+      .from(clubFollows)
+      .where(eq(clubFollows.userId, userId));
+    return rows.map((r) => r.clubId);
   }
 
   async getClubFollowerCount(

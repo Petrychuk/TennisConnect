@@ -843,18 +843,24 @@ export async function registerRoutes(app: Express): Promise<void> {
       // Best-effort only - a failure here (e.g. a pending migration)
       // must never take down the whole listing, which is why this is
       // deliberately its own try/catch rather than sharing the outer
-      // one. Every club still loads with isFavoriting: false if this
-      // fails, rather than the request failing entirely.
+      // one. Every club still loads with isFavoriting/isFollowing:
+      // false if this fails, rather than the request failing entirely.
       let favoritedIds = new Set<string>();
+      let followedIds = new Set<string>();
       if (req.isAuthenticated?.()) {
         try {
-          favoritedIds = new Set(await storage.getFavoritedClubIds((req.user as any).id));
+          const [favIds, followIds] = await Promise.all([
+            storage.getFavoritedClubIds((req.user as any).id),
+            storage.getFollowedClubIds((req.user as any).id),
+          ]);
+          favoritedIds = new Set(favIds);
+          followedIds = new Set(followIds);
         } catch (favError) {
-          console.error("Failed to load favorited club ids:", favError);
+          console.error("Failed to load favorited/followed club ids:", favError);
         }
       }
 
-      res.json(clubs.map((club) => ({ ...club, isFavoriting: favoritedIds.has(club.id) })));
+      res.json(clubs.map((club) => ({ ...club, isFavoriting: favoritedIds.has(club.id), isFollowing: followedIds.has(club.id) })));
     } catch (error: any) { 
       next(error);
     }
