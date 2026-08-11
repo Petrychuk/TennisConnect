@@ -50,9 +50,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-import avatarImage from "/assets/images/female_tennis_coach_portrait.png";
-import gallery1 from "/assets/images/kids_tennis_training_session.png";
-import gallery2 from "/assets/images/tennis_match_action_shot_in_sydney.png";
 import student1 from "/assets/images/portrait_of_a_young_male_tennis_student.png";
 import student2 from "/assets/images/portrait_of_a_female_tennis_student.png";
 import student3 from "/assets/images/portrait_of_an_older_male_tennis_student.png";
@@ -65,8 +62,6 @@ import { useRoute } from "wouter";
 
 import { Switch } from "@/components/ui/switch";
 import racketImg from "/assets/images/professional_tennis_racket_on_a_court_bench.png";
-import bagImg from "/assets/images/modern_tennis_gear_bag.png";
-import ballsImg from "/assets/images/can_of_new_tennis_balls.png";
 
 import { messageSchema } from "@/lib/validations/messages";
 
