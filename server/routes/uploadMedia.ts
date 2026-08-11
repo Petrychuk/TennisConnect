@@ -3,6 +3,7 @@ import { Router } from "express";
 import multer from "multer";
 import { supabaseAdmin } from "../supabaseAdmin";
 import { requireAuth } from "../requireAuth";
+import { storage } from "../storage";
 
 const router = Router();
 
@@ -64,16 +65,9 @@ router.post(
       }
 
       // 3. Обновляем пользователя в БД и получаем свежие данные
-      const { data: updatedUser, error: updateError } = await supabaseAdmin
-        .from("users")
-        .update({ [type]: publicUrl })
-        .eq("id", userId)
-        .select()
-        .single();
-
-      if (updateError || !updatedUser) {
-        throw new Error(`Failed to update user profile in DB: ${updateError?.message}`);
-      }
+      const updatedUser = await storage.updateUser(userId, {
+        [type]: publicUrl,
+      });
       
       const urlWithCacheBuster = `${publicUrl}?t=${new Date().getTime()}`;
 

@@ -60,6 +60,8 @@ import { eq, desc, and, or, asc, sql, lte, ne, gte, ilike, inArray, isNull } fro
 import { supabaseAdmin } from "./supabaseAdmin";
 import { planRound, computeLeaderboard, type PastMatch } from "./services/liveEngine";
 
+type DbQueryExecutor = Pick<typeof db, "select">;
+
 function slugify(text: string) {
   return text
     .toLowerCase()
@@ -2716,7 +2718,7 @@ export class DatabaseStorage implements IStorage {
   // Every checked-in, available (liveStatus IS NULL) player for a session -
   // the pool round generation draws from. Accepts an optional transaction
   // handle so generateNextRound can call this from inside db.transaction().
-  private async getLiveEligiblePlayers(sessionId: string, dbOrTx: typeof db = db): Promise<{ id: string }[]> {
+  private async getLiveEligiblePlayers(sessionId: string, dbOrTx: DbQueryExecutor = db): Promise<{ id: string }[]> {
     const rows = await dbOrTx
       .select({ userId: registrations.userId })
       .from(registrations)
@@ -2732,7 +2734,7 @@ export class DatabaseStorage implements IStorage {
 
   // Rest count per player across every round generated so far, from the
   // frozen `restingPlayerIds` snapshot on each session_rounds row.
-  private async getRestCounts(sessionId: string, dbOrTx: typeof db = db): Promise<Record<string, number>> {
+  private async getRestCounts(sessionId: string, dbOrTx: DbQueryExecutor = db): Promise<Record<string, number>> {
     const rounds = await dbOrTx
       .select({ restingPlayerIds: sessionRounds.restingPlayerIds })
       .from(sessionRounds)
@@ -2747,7 +2749,7 @@ export class DatabaseStorage implements IStorage {
     return counts;
   }
 
-  private async getPastMatches(sessionId: string, dbOrTx: typeof db = db): Promise<PastMatch[]> {
+  private async getPastMatches(sessionId: string, dbOrTx: DbQueryExecutor = db): Promise<PastMatch[]> {
     const rows = await dbOrTx
       .select({ teamAIds: matches.teamAIds, teamBIds: matches.teamBIds })
       .from(matches)

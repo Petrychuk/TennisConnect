@@ -2,7 +2,6 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { type Express } from "express";
 import session from "express-session";
-import createMemoryStore from "memorystore";
 import pgSession from "connect-pg-simple";
 import { Pool } from "pg";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
@@ -47,30 +46,46 @@ declare global {
 }
 
 export function setupAuth(app: Express) {
-  const MemoryStore = createMemoryStore(session);
   const ONE_HOUR = 1000 * 60 * 60;
   const ONE_DAY = 24 * ONE_HOUR;
 
-  // Enable trust proxy for all environments (needed for preview URLs)
+  const isProduction = process.env.NODE_ENV === "production";
+
+  // Railway / other reverse proxy
   app.set("trust proxy", 1);
 
-  // For HTTPS (preview URLs), we need secure cookies with sameSite=none
-  // Check if running behind HTTPS proxy
-  const isProduction = process.env.NODE_ENV === 'production';
-  
+  // PostgreSQL session store
+  const PgStore = pgSession(session);
+
+  const sessionPool = new Pool({
+    connectionString: env.DATABASE_URL,
+    ssl: isProduction
+      ? { rejectUnauthorized: false }
+      : undefined,
+  });
+
   const sessionSettings: session.SessionOptions = {
+    store: new PgStore({
+      pool: sessionPool,
+      tableName: "user_sessions",
+      createTableIfMissing: false,
+    }),
+
     secret: env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
+
     cookie: {
       httpOnly: true,
       maxAge: ONE_DAY,
-      secure: isProduction,
-      sameSite: isProduction ? "none" : "lax",
+
+      // localhost npm start = HTTP
+      // Railway production = HTTPS via proxy
+      secure: isProduction ? "auto" : false,
+
+      // Same domain: tennisconnect.com.au -> API
+      sameSite: "lax",
     },
-    store: new MemoryStore({
-      checkPeriod: 86400000,
-    }),
   };
 
   app.use(session(sessionSettings));
