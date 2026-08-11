@@ -279,7 +279,7 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Newsletter */}
+          {/* Newsletter — commented out for release, do not delete
           <div className="col-span-2 lg:col-span-1">
             <h4 className="font-bold text-primary text-lg mb-6 ">Newsletter</h4>
 
@@ -300,6 +300,7 @@ export function Footer() {
             </div>
             
           </div>
+          */}
         </div>
 
         {/* Bottom Bar */}
