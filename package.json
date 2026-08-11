@@ -9,7 +9,10 @@
     "start": "cross-env NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
     "db:push": "drizzle-kit push",
+    "db:push:staging": "tsx scripts/db-push.ts staging",
+    "db:push:prod": "tsx scripts/db-push.ts prod",
     "test:live-engine": "tsx server/services/liveEngine.test.ts",
+    "staging:sync": "tsx scripts/sync-staging.ts",
     "seed:live": "cross-env NODE_ENV=development tsx server/seeds/liveSessionSeed.ts",
     "seed:live:reset": "cross-env NODE_ENV=development tsx server/seeds/liveSessionSeed.ts --reset"
   },

@@ -6,18 +6,21 @@ vite.config.ts.*
 *.tar.gz
 .env.dev
 .env-e 
+
 # Environment and credential files
 .env
 .env.*
 *.env
+.env.sync
+!.env.example
 credentials.json
 *.pem
 *.key
 .credentials
 
 # Playwright
-/test-results/
-/playwright-report/
+test-results/
+playwright-report/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/

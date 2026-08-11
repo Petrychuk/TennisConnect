@@ -11,7 +11,3 @@ env.SUPABASE_SERVICE_ROLE_KEY,
     },
   }
 );
-console.log(
-  "SUPABASE ADMIN KEY START:",
-  env.SUPABASE_SERVICE_ROLE_KEY?.slice(0, 15)
-);
