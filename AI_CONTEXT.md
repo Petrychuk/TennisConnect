@@ -465,3 +465,123 @@ This project values:
 8. Clean Architecture
 
 Always follow these principles unless explicitly instructed otherwise.
+
+# Environments
+
+TennisConnect has three environments:
+
+## Development
+
+Used for local development.
+
+- Local application
+- Development environment variables
+- Never assume development credentials are valid for staging or production
+
+## Staging
+
+Used for testing before production.
+
+- Separate PostgreSQL database
+- Separate Supabase project
+- Separate Supabase Storage
+- Production data may be synced into staging
+- Staging-only data must not be deleted during normal sync
+- `user_sessions` must never be synced from production
+
+## Production
+
+Live TennisConnect environment.
+
+- Real users
+- Real production data
+- Production Supabase Storage
+- Changes must be tested on staging before production deployment
+
+# Environment Safety Rules
+
+Never assume which database is being used.
+
+Before database operations, explicitly identify the target environment:
+
+- development
+- staging
+- production
+
+Never run destructive database operations against production.
+
+Never copy staging data into production.
+
+Production → Staging is the allowed data sync direction.
+
+Database schema changes must be tested on staging before production.
+
+Never hardcode:
+
+- database URLs
+- Supabase URLs
+- service role keys
+- session secrets
+- passwords
+- environment-specific domains
+
+Use environment variables instead.
+
+# Staging Sync
+
+Production data can be synchronized into staging using:
+
+npm run staging:sync
+
+The sync is:
+
+PRODUCTION → STAGING
+
+Rules:
+
+- production is never modified
+- existing production records are upserted into staging
+- staging-only records are preserved
+- `user_sessions` are not synchronized
+- production Storage files are copied to staging Storage
+- production Storage URLs are replaced with staging Storage URLs
+
+# Database Commands
+
+Always use explicit environment-specific commands for database changes.
+
+Staging:
+
+npm run db:push:staging
+
+Production:
+
+npm run db:push:prod
+
+Never use a production database command unless production is explicitly intended.
+
+# Production Security
+
+Never commit credentials or secrets.
+
+Never store real passwords in:
+
+- documentation
+- tests
+- fixtures
+- markdown files
+- source code
+
+Secrets belong in environment variables.
+
+Authentication endpoints must use rate limiting.
+
+File uploads must validate allowed file types and size.
+
+CORS configuration must use environment-specific allowed origins.
+
+Production Express applications must use appropriate security headers.
+
+Dev-only routes, simulators and debugging tools must not be publicly accessible in production.
+
+Do not expose sensitive information through console logs or API responses.

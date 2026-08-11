@@ -75,7 +75,10 @@ export function CommunitySection({
         )
       : DEMO_SESSIONS;
 
-  const hasSessions = sessions.length > 0;
+  // Sessions block commented out for release (not part of first release) — see below.
+  // Forcing to false here (instead of deleting the sessions.length check) so the
+  // "About" column correctly expands to fill the space instead of leaving a gap.
+  const hasSessions = false; // sessions.length > 0;
   const hasGallery = (club.gallery?.length ?? 0) > 0;
 
   return (
@@ -100,6 +103,7 @@ export function CommunitySection({
           <ArticleRichContent content={club.description} testId="club-description" compact />
         </div>
 
+        {/* Upcoming Sessions block — commented out, not part of first release. Do not delete.
         {hasSessions && (
           <div
             className="rounded-2xl border bg-card p-5 md:p-6"
@@ -162,6 +166,7 @@ export function CommunitySection({
             </div>
           </div>
         )}
+        */}
 
         <div id="club-section-contact">
           <ClubContactCard club={club} personLabel="Community Lead" />
