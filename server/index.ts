@@ -12,13 +12,27 @@ const app = express();
 // off + a permissive `img-src`/`connect-src` because we load images and
 // call out to Supabase Storage from third-party origins - tighten this
 // further (esp. connect-src) once every external host we hit is known.
+// `script-src`/`connect-src` also allow Google Analytics (gtag.js in
+// client/index.html loads from googletagmanager.com, runs inline, and
+// reports events to google-analytics.com) - 'unsafe-inline' is needed
+// since that snippet is a plain inline <script>, not nonce/hash-based.
 app.use(
   helmet({
     contentSecurityPolicy: {
       useDefaults: true,
       directives: {
         "img-src": ["'self'", "data:", "https:"],
-        "connect-src": ["'self'", "https:"],
+        "connect-src": [
+          "'self'",
+          "https:",
+          "https://www.google-analytics.com",
+          "https://analytics.google.com",
+        ],
+        "script-src": [
+          "'self'",
+          "'unsafe-inline'",
+          "https://www.googletagmanager.com",
+        ],
       },
     },
     crossOriginEmbedderPolicy: false,
