@@ -4,12 +4,14 @@ import multer from "multer";
 import { supabaseAdmin } from "../supabaseAdmin";
 import { requireAuth } from "../requireAuth";
 import { storage } from "../storage";
+import { multerImageFileFilter, detectImageType } from "../lib/imageValidation";
 
 const router = Router();
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: multerImageFileFilter,
 });
 
 router.post(
@@ -30,6 +32,17 @@ router.post(
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
+
+      // Belt-and-suspenders: fileFilter already checked the declared
+      // mimetype, this checks the actual bytes so a relabelled non-image
+      // file can't be smuggled through as "image/webp".
+      const detectedType = detectImageType(req.file.buffer);
+      if (!detectedType) {
+        return res
+          .status(400)
+          .json({ message: "File content doesn't look like a valid image" });
+      }
+
       console.log("UPLOAD ROUTE HIT:", {
         type: req.params.type,
         user: req.user?.id,
@@ -46,7 +59,7 @@ router.post(
       const { error: uploadError } = await supabaseAdmin.storage
         .from("media")
         .upload(filePath, req.file.buffer, {
-          contentType: req.file.mimetype,
+          contentType: detectedType,
           upsert: true,
         });
 
@@ -64,12 +77,16 @@ router.post(
         throw new Error("Failed to get public URL after upload");
       }
 
-      // 3. Обновляем пользователя в БД и получаем свежие данные
+      // 3. Сохраняем URL со свежей версией (не голый путь) - иначе он
+      //    не меняется между загрузками (upsert перезаписывает файл по
+      //    тому же имени), и браузер/лендинг продолжают показывать
+      //    закэшированную старую картинку по старому URL даже после
+      //    успешной загрузки новой.
+      const urlWithCacheBuster = `${publicUrl}?t=${Date.now()}`;
+
       const updatedUser = await storage.updateUser(userId, {
-        [type]: publicUrl,
+        [type]: urlWithCacheBuster,
       });
-      
-      const urlWithCacheBuster = `${publicUrl}?t=${new Date().getTime()}`;
 
       // Создаем "чистый" объект пользователя вручную, чтобы избежать ошибок сериализации.
       const safeUserObject = {
@@ -97,6 +114,52 @@ router.post(
 
     } catch (err) {
       // Передаем любую ошибку в глобальный обработчик
+      return next(err);
+    }
+  }
+);
+
+// Delete a file the current user owns from the "media" bucket.
+// Takes the public URL (same shape the upload route above returns, and
+// what the client already has on hand for an avatar/cover/gallery photo)
+// rather than a raw storage path - and only ever deletes something that
+// resolves to *this* user's own folder ("coaches/{userId}/..." or
+// "players/{userId}/..."), so one account can never delete another's
+// files by guessing/knowing their path. This replaces deleting directly
+// from the browser with the public Supabase key, which had no such check.
+router.delete(
+  "/",
+  requireAuth,
+  async (req, res, next) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { url } = req.body as { url?: string };
+      if (!url || typeof url !== "string") {
+        return res.status(400).json({ message: "url is required" });
+      }
+
+      const path = url.split("/storage/v1/object/public/media/")[1]?.split("?")[0];
+      if (!path) {
+        return res.status(400).json({ message: "Not a recognised media URL" });
+      }
+
+      const { id: userId, role } = req.user;
+      const ownFolder = role === "coach" ? `coaches/${userId}/` : `players/${userId}/`;
+
+      if (!path.startsWith(ownFolder)) {
+        return res.status(403).json({ message: "You can only delete your own files" });
+      }
+
+      const { error } = await supabaseAdmin.storage.from("media").remove([path]);
+      if (error) {
+        throw new Error(`Supabase delete error: ${error.message}`);
+      }
+
+      return res.status(200).json({ success: true });
+    } catch (err) {
       return next(err);
     }
   }
