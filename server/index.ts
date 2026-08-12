@@ -26,10 +26,15 @@ app.use(
 );
 
 // CORS configuration for remote access.
-// In production only the deployed frontend (BASE_URL) is allowed;
-// in development the usual local dev ports are allowed too. Requests
-// with no Origin header (server-to-server, curl, same-origin) are let
-// through since there's nothing to check.
+// In production only the deployed frontend (BASE_URL) is allowed, PLUS
+// whatever origin the request itself came in on - this app always
+// serves the client and API from the same origin (server/static.ts in
+// prod, Vite middleware in dev), so a same-origin request should never
+// be rejected just because BASE_URL wasn't set to that exact host:port
+// (e.g. testing a local production build on a different port). Requests
+// with no Origin header (server-to-server, curl, same-origin fetches
+// some browsers omit it for) are let through since there's nothing to
+// check.
 const isProduction = process.env.NODE_ENV === "production";
 const allowedOrigins = [
   process.env.BASE_URL,
@@ -37,15 +42,15 @@ const allowedOrigins = [
 ].filter((origin): origin is string => Boolean(origin));
 
 app.use(
-  cors({
-    origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error(`Not allowed by CORS: ${origin}`));
-      }
-    },
-    credentials: true,
+  cors((req, callback) => {
+    const requestOrigin = req.header("Origin");
+    const selfOrigin = `${req.protocol}://${req.get("host")}`;
+    const allowed =
+      !requestOrigin ||
+      allowedOrigins.includes(requestOrigin) ||
+      requestOrigin === selfOrigin;
+
+    callback(null, { origin: allowed, credentials: true });
   }),
 );
 const httpServer = createServer(app);
