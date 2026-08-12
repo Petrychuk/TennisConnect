@@ -1,12 +1,20 @@
-import { supabase } from "./supabaseClient";
-
+// Deletes go through our own backend now, not straight to Supabase from
+// the browser with the public anon key - the server checks the file is
+// actually inside *this* user's own folder before removing anything
+// (see server/routes/uploadMedia.ts). Same call shape as before, so
+// nothing calling this needs to change.
 export async function deleteImage(publicUrl: string) {
   if (!publicUrl) return;
 
-  const bucket = "media";
-  const path = publicUrl.split(`/storage/v1/object/public/${bucket}/`)[1];
+  const res = await fetch("/api/uploadMedia", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ url: publicUrl }),
+  });
 
-  if (!path) return;
-
-  await supabase.storage.from(bucket).remove([path]);
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Failed to delete image: ${text || res.status}`);
+  }
 }

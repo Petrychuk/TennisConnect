@@ -1,5 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
+import helmet from "helmet";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
@@ -7,11 +8,46 @@ import { setupAuth } from "./auth";
 
 const app = express();
 
-// CORS configuration for remote access
-app.use(cors({
-  origin: "http://localhost:3000",
-  credentials: true
-}));
+// Security headers (CSP, X-Frame-Options, etc). `crossOriginEmbedderPolicy`
+// off + a permissive `img-src`/`connect-src` because we load images and
+// call out to Supabase Storage from third-party origins - tighten this
+// further (esp. connect-src) once every external host we hit is known.
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        "img-src": ["'self'", "data:", "https:"],
+        "connect-src": ["'self'", "https:"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  }),
+);
+
+// CORS configuration for remote access.
+// In production only the deployed frontend (BASE_URL) is allowed;
+// in development the usual local dev ports are allowed too. Requests
+// with no Origin header (server-to-server, curl, same-origin) are let
+// through since there's nothing to check.
+const isProduction = process.env.NODE_ENV === "production";
+const allowedOrigins = [
+  process.env.BASE_URL,
+  ...(isProduction ? [] : ["http://localhost:3000", "http://localhost:5173"]),
+].filter((origin): origin is string => Boolean(origin));
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`Not allowed by CORS: ${origin}`));
+      }
+    },
+    credentials: true,
+  }),
+);
 const httpServer = createServer(app);
 
 declare module "http" {

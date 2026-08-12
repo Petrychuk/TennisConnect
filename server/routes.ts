@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 import crypto from "crypto";
 import { createServer, type Server } from "http";
+import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import { hashPassword, comparePasswords } from "./auth";
 import uploadMediaRouter from "./routes/uploadMedia";
@@ -36,6 +37,35 @@ import sitemapRoutes from "./routes/sitemapRoutes";
 /* =========================
    HELPERS & MIDDLEWARE
 ========================= */
+
+// Storage reads pull every column (including the password hash) since
+// most internal callers need the full row. Anything that gets sent back
+// to a client goes through this first so the hash never crosses the wire.
+function omitPassword<T extends { password?: unknown }>(
+  user: T
+): Omit<T, "password"> {
+  const { password, ...safeUser } = user;
+  return safeUser;
+}
+
+// Brute-force / abuse protection for auth endpoints. Login gets the
+// tightest window since it's the classic credential-stuffing target;
+// register/forgot-password get a looser one mainly to stop spam/enum.
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many login attempts. Please try again later." },
+});
+
+const authActionLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many requests. Please try again later." },
+});
 
 function requireRole(role: "player" | "coach") {
   return (req: Request, res: Response, next: Function) => {
@@ -97,7 +127,7 @@ export async function registerRoutes(app: Express): Promise<void> {
      AUTH
   ========================= */
 
-  app.post("/api/auth/register", async (req, res, next) => {
+  app.post("/api/auth/register", authActionLimiter, async (req, res, next) => {
     try {
       const parsed = insertUserSchema
         .omit({ slug: true })
@@ -159,7 +189,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
       req.login(user, (err) => {
         if (err) return next(err);
-        res.json(user);
+        res.json(omitPassword(user));
       });
 
     } catch (e) {
@@ -167,7 +197,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  app.post("/api/auth/login", (req, res, next) => {
+  app.post("/api/auth/login", loginLimiter, (req, res, next) => {
     passport.authenticate(
       "local", 
       (
@@ -215,7 +245,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   // ==========================================
   
   // Request password reset - sends email with reset link
-  app.post("/api/auth/forgot-password", async (req, res) => {
+  app.post("/api/auth/forgot-password", authActionLimiter, async (req, res) => {
     try {
       const { email } = req.body;
       
@@ -250,10 +280,16 @@ export async function registerRoutes(app: Express): Promise<void> {
         data: { reset_password: true }
       }).catch(() => ({ error: { message: 'Email service unavailable' } }));
 
-      // Fallback: If Supabase invite doesn't work, we'll use a simpler approach
-      // For now, log the reset URL (in production, integrate proper email service)
-      console.log(`🔑 Password reset requested for ${email}`);
-      console.log(`🔗 Reset URL: ${resetUrl}`);
+      if (emailError) {
+        console.error(`Password reset email failed to send for ${email}:`, emailError.message);
+      }
+
+      // Dev convenience only - never log the raw reset link/token in
+      // production, it's equivalent to a password-reset credential.
+      if (process.env.NODE_ENV === "development") {
+        console.log(`🔑 Password reset requested for ${email}`);
+        console.log(`🔗 Reset URL: ${resetUrl}`);
+      }
 
       res.json({ 
         message: "If the email exists, a reset link has been sent",
@@ -298,7 +334,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   });
 
   // Reset password with token
-  app.post("/api/auth/reset-password", async (req, res) => {
+  app.post("/api/auth/reset-password", authActionLimiter, async (req, res) => {
     try {
       const { token, password } = req.body;
       
@@ -374,7 +410,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         });
       }
   
-      res.json(user);
+      res.json(omitPassword(user));
     } catch (e) {
       next(e);
     }
@@ -396,7 +432,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         }
 
         const usersWithOrganizerStatus = users.map((u: any) => ({
-          ...u,
+          ...omitPassword(u),
           organizerRequestStatus: u.isOrganizer
             ? null
             : latestRequestByUser.get(u.id) || null,
@@ -434,7 +470,7 @@ export async function registerRoutes(app: Express): Promise<void> {
           );
         }
 
-        res.json(user);
+        res.json(omitPassword(user));
       }
     );
 
@@ -551,7 +587,7 @@ export async function registerRoutes(app: Express): Promise<void> {
           );
         }
 
-        res.json(user);
+        res.json(omitPassword(user));
       }
     );
 
@@ -567,7 +603,7 @@ export async function registerRoutes(app: Express): Promise<void> {
           return res.status(404).json({ message: "User not found" });
         }
 
-        res.json(user);
+        res.json(omitPassword(user));
       }
     );
 
@@ -653,7 +689,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         const user = await storage.getUser(userId);
   
         res.json({
-          user,
+          user: user ? omitPassword(user) : user,
           profile,
         });
       } catch (error) {

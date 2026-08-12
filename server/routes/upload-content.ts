@@ -1,8 +1,9 @@
 import { Router } from "express";
 import multer from "multer";
 
-import { requireAuth } from "../requireAuth";
+import { requireAuth, requireAdmin } from "../requireAuth";
 import { supabaseAdmin } from "../supabaseAdmin";
+import { multerImageFileFilter, detectImageType } from "../lib/imageValidation";
 
 const router = Router();
 
@@ -11,6 +12,7 @@ const upload = multer({
   limits: {
     fileSize: 10 * 1024 * 1024,
   },
+  fileFilter: multerImageFileFilter,
 });
 
 const ALLOWED_FOLDERS = [
@@ -34,9 +36,14 @@ type Folder =
 type UploadType =
   (typeof ALLOWED_TYPES)[number];
 
+// Admin-only: the only callers are the admin content-management UI
+// (GalleryUploader / ImageUploader). Without requireAdmin here, any
+// logged-in user could hit this route directly and upload/overwrite
+// photos for any club/travel package/article by guessing its entityId.
 router.post(
   "/",
   requireAuth,
+  requireAdmin,
   upload.single("file"),
   async (req, res, next) => {
     try {
@@ -98,6 +105,16 @@ router.post(
               "entityId is required",
           });
       }
+
+      // Belt-and-suspenders: fileFilter already checked the declared
+      // mimetype, this checks the actual bytes so a relabelled non-image
+      // file can't be smuggled through as "image/webp".
+      const detectedType = detectImageType(file.buffer);
+      if (!detectedType) {
+        return res
+          .status(400)
+          .json({ message: "File content doesn't look like a valid image" });
+      }
       
       // Storage Path
 
@@ -115,7 +132,7 @@ router.post(
             file.buffer,
             {
               contentType:
-                file.mimetype,
+                detectedType,
               upsert: true,
             }
           );
@@ -168,6 +185,7 @@ router.post(
 router.delete(
   "/",
   requireAuth,
+  requireAdmin,
   async (req, res, next) => {
 
     try {
