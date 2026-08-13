@@ -407,9 +407,9 @@ export default function PartnersPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className="self-start"
               >
-                <Card className="flex
+                <Card className="h-full
+                    flex
                     flex-col
                     overflow-hidden
                     border-border/50
@@ -419,7 +419,7 @@ export default function PartnersPage() {
                     duration-300
                     group">
                   
-                  <CardContent className="p-2 md:p-6 flex flex-col items-center text-center">
+                  <CardContent className="p-2 md:p-3 grow flex flex-col items-center text-center">
                   <div className="relative w-full h-36 sm:h-44 md:h-56 mb-4 overflow-hidden rounded-xl">
                     <img
                       src={
@@ -457,7 +457,18 @@ export default function PartnersPage() {
                     )}
                   </div>
 
-                    <h3 className="text-sm md:text-lg font-bold mb-2 line-clamp-1 max-w-full">{partner.name}</h3>
+                    <Link
+                      href={
+                        partner.isDemo
+                          ? "/auth"
+                          : isMe
+                          ? `/${user.role}/${user.slug}`
+                          : `/player/${partner.slug}`
+                      }
+                      className="hover:text-primary transition-colors max-w-full"
+                    >
+                      <h3 className="text-sm md:text-lg font-bold mb-2 line-clamp-1 max-w-full">{partner.name}</h3>
+                    </Link>
 
                     <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground mb-1 md:mb-2 w-full min-w-0 px-1">
                       <MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{partner.location}</span>
@@ -472,14 +483,14 @@ export default function PartnersPage() {
                         md:block
                         text-sm
                         text-muted-foreground
-                        line-clamp-3
-                        min-h-[60px]
+                        line-clamp-4
+                        min-h-[80px]
                         mb-4">
                     {partner.bio}
                     </p>
                   </CardContent>
 
-                  <CardFooter className="p-2 md:p-4 pt-0 grid grid-cols-2 gap-3">
+                  <CardFooter className="p-2 md:p-3 pt-0 grid grid-cols-2 gap-3">
                     <Link
                       href={
                         partner.isDemo
