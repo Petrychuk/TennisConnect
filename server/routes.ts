@@ -30,7 +30,7 @@ import {
   passwordResetTokens,
 } from "@shared/schema";
 import { z } from "zod";
-import { supabaseAdmin } from "./supabaseAdmin";
+import { sendPasswordResetEmail } from "./services/emailService";
 import { db } from "./db";
 import { eq, and, gt } from "drizzle-orm";
 import sitemapRoutes from "./routes/sitemapRoutes";
@@ -316,17 +316,15 @@ export async function registerRoutes(app: Express): Promise<void> {
         expiresAt,
       });
 
-      // Send email via Supabase
+      // Send email via Resend
       const resetUrl = `${req.headers.origin || 'https://tennisconnect.com.au'}/reset-password?token=${token}`;
-      
-      // Use Supabase to send email
-      const { error: emailError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-        redirectTo: resetUrl,
-        data: { reset_password: true }
-      }).catch(() => ({ error: { message: 'Email service unavailable' } }));
 
-      if (emailError) {
-        console.error(`Password reset email failed to send for ${email}:`, emailError.message);
+      const emailResult = await sendPasswordResetEmail(email, resetUrl);
+
+      if (!emailResult.ok) {
+        console.error(
+          `❌ Password reset email failed to send for ${email}: ${emailResult.error}`
+        );
       }
 
       // Dev convenience only - never log the raw reset link/token in
