@@ -7,6 +7,8 @@ import {
   MapPin,
   Building2
 } from "lucide-react";
+import { TikTokIcon } from "@/components/icons/TikTokIcon";
+import { ThreadsIcon } from "@/components/icons/ThreadsIcon";
 import { openCookieSettings } from "@/lib/cookieConsent";
 import { useToast } from "@/hooks/use-toast";
 
@@ -131,6 +133,28 @@ export function Footer() {
                 className="text-[hsl(var(--tennis-ball))] hover:scale-110 transition-all"
               >
                 <Instagram className="w-8 h-8" />
+              </a>
+
+              {/* TikTok/Threads accounts don't exist yet - links point at
+                  the platform's homepage as a placeholder until they do. */}
+              <a
+                href="https://tiktok.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="TennisConnect on TikTok"
+                className="text-[hsl(var(--tennis-ball))] hover:scale-110 transition-all"
+              >
+                <TikTokIcon className="w-8 h-8" />
+              </a>
+
+              <a
+                href="https://threads.net"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="TennisConnect on Threads"
+                className="text-[hsl(var(--tennis-ball))] hover:scale-110 transition-all"
+              >
+                <ThreadsIcon className="w-8 h-8" />
               </a>
             </div>
           </div>

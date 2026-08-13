@@ -1,4 +1,6 @@
 import { Facebook, Instagram, Sparkle, ArrowLeft } from "lucide-react";
+import { TikTokIcon } from "@/components/icons/TikTokIcon";
+import { ThreadsIcon } from "@/components/icons/ThreadsIcon";
 import { Link } from "wouter";
 import SEO from "@/components/seo";
 import { useAuth } from "@/lib/auth-context";
@@ -112,6 +114,26 @@ export default function Maintenance() {
                 className="text-[hsl(var(--tennis-ball))] transition-all hover:scale-110 hover:opacity-80"
               >
                 <Instagram className="h-4 w-4" />
+              </a>
+              {/* TikTok/Threads accounts don't exist yet - links point at
+                  the platform's homepage as a placeholder until they do. */}
+              <a
+                href="https://tiktok.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="TennisConnect on TikTok"
+                className="text-[hsl(var(--tennis-ball))] transition-all hover:scale-110 hover:opacity-80"
+              >
+                <TikTokIcon className="h-4 w-4" />
+              </a>
+              <a
+                href="https://threads.net"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="TennisConnect on Threads"
+                className="text-[hsl(var(--tennis-ball))] transition-all hover:scale-110 hover:opacity-80"
+              >
+                <ThreadsIcon className="h-4 w-4" />
               </a>
             </div>
           </div>
