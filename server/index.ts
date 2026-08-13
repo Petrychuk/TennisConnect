@@ -8,6 +8,15 @@ import { setupAuth } from "./auth";
 
 const app = express();
 
+// Health Check
+app.get("/health", (_req, res) => {
+  res.status(200).json({
+    status: "ok",
+    environment: process.env.DB_ENV,
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Security headers (CSP, X-Frame-Options, etc). `crossOriginEmbedderPolicy`
 // off + a permissive `img-src`/`connect-src` because we load images and
 // call out to Supabase Storage from third-party origins - tighten this
