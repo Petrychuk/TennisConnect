@@ -34,7 +34,7 @@ export function Footer() {
                 rel="noopener noreferrer"
               >
                 <img
-                  src="/assets/images/sensepower_logo.png"
+                  src="/assets/images/sensepower_logo.webp"
                   alt="SensePower Digital"
                   className="h-10 w-10 rounded-xl object-cover hover:opacity-90 transition-opacity"
                 />

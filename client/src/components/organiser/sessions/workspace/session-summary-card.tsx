@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 import { CountdownTimer } from "../countdown-timer";
-import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.png";
+import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.webp";
 
 interface SessionSummaryCardProps {
   session: SessionListItem;

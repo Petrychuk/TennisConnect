@@ -1,8 +1,8 @@
 import { motion } from "framer-motion";
 import { Star, Quote } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import avatar1 from "/assets/images/tennis_club_owner_portrait.png";
-import avatar2 from "/assets/images/female_tennis_coach_portrait.png";
+import avatar1 from "/assets/images/tennis_club_owner_portrait.webp";
+import avatar2 from "/assets/images/female_tennis_coach_portrait.webp";
 
 const testimonials = [
   {

@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, MapPin, Users, LayoutGrid, Repeat, ClipboardCheck, Hourglass, QrCode } from "lucide-react";
 import { SESSION_TYPE_OPTIONS, type NewSessionDraft } from "@/lib/organiser-session-wizard-types";
-import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.png";
+import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.webp";
 
 interface Step4ReviewPublishProps {
   draft: NewSessionDraft;

@@ -7,7 +7,7 @@ import { Calendar, MapPin, LogIn, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { getMyRegisteredSessions, leaveSession } from "@/lib/api/organizer-sessions";
-import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.png";
+import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.webp";
 
 const DEFAULT_CANCELLATION_POLICY =
   "Free cancellation up to 24 hours before the session starts. After that, no refund — the spot may still be offered to the waiting list.";

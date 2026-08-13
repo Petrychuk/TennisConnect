@@ -23,7 +23,7 @@ import {
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { AppPagination } from "@/components/shared/AppPagination";
 import { Search, MapPin, Star, Filter, ArrowRight, DollarSign, X, Calendar, Trophy } from "lucide-react";
-import heroImage from "/assets/images/dashboard_coach.png";
+import heroImage from "/assets/images/dashboard_coach.webp";
 
 import { COACHES_DATA } from "@/lib/dummy-data";
 

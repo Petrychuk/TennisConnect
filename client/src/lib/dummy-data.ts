@@ -1,7 +1,7 @@
-import heroImage from "/assets/images/professional_tennis_coaching_session_on_a_sunny_court.png";
-import avatarImage from "/assets/images/female_tennis_coach_portrait.png";
-import racketImg from "/assets/images/used_professional_tennis_racket.png";
-import bagImg from "/assets/images/vintage_tennis_bag.png";
+import heroImage from "/assets/images/professional_tennis_coaching_session_on_a_sunny_court.webp";
+import avatarImage from "/assets/images/female_tennis_coach_portrait.webp";
+import racketImg from "/assets/images/used_professional_tennis_racket.webp";
+import bagImg from "/assets/images/vintage_tennis_bag.webp";
 
 // Shared Mock Data
 export const COACHES_DATA = [

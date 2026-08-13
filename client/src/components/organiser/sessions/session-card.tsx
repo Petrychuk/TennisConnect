@@ -30,7 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
 import { bucketFor } from "./session-utils";
-import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.png";
+import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.webp";
 
 interface SessionCardProps {
   session: SessionListItem;
