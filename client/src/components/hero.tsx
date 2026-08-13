@@ -6,7 +6,7 @@ import { Link } from "wouter";
 
 export function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden pt-16 bg-black">
+    <section className="relative min-h-screen flex items-end md:items-center overflow-hidden pt-16 pb-24 md:pb-0 bg-black">
       {/* Background Image - Positioned to the right with blending */}
       <div className="absolute inset-0 z-0">
         <div className="absolute right-0 top-0 bottom-0 w-full md:w-[75%] h-full">
@@ -47,22 +47,24 @@ export function Hero() {
                 leading-[1.1]
                 mb-6
                 drop-shadow-xl">
-              Find Your Perfect <br />
+              Everything You Need for  <br />
               <span className="text-primary relative inline-block">
-              Tennis Community
+              Your Tennis Journey
                 <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary/50" viewBox="0 0 100 10" preserveAspectRatio="none">
                   <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="4" fill="none" />
                 </svg>
-              </span> in Australia
+              </span> 
             </h1>
-            
+             
             <p className="text-lg md:text-xl text-gray-200 mb-8 max-w-xl leading-relaxed drop-shadow-md">
-            Where tennis creates connections. Find players, coaches, clubs, events, and a community that brings people together on and off the court.
+            Bringing Australia's tennis community together — one platform for every player.
             </p>
             
-            <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
-              <Link href="/partners">
+            <div className="flex flex-col items-center sm:items-stretch sm:flex-row gap-4 justify-center md:justify-start">
+              <Link href="/players" className="w-2/3 sm:w-auto">
                 <Button size="lg" className="h-14
+                  w-full
+                  sm:w-auto
                   bg-primary
                   text-primary-foreground
                   hover:bg-primary/90
@@ -80,8 +82,10 @@ export function Hero() {
                   <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
-              <Link href="/coaches">
+              <Link href="/coaches" className="w-2/3 sm:w-auto">
                 <Button size="lg" variant="outline" className="
+                    w-full
+                    sm:w-auto
                     bg-[rgba(163,230,53,0.08)]
                     border-primary/30
                     text-white

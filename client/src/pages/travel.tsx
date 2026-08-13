@@ -58,6 +58,23 @@ export default function TravelPage() {
   const formatDate = (s: string | null) =>
     s ? new Date(s).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" }) : "TBA";
 
+  // Packages only store startDate + a free-text duration ("7 days"),
+  // there's no explicit end date in the schema. Estimate the end by
+  // parsing a leading day count out of duration and adding it to the
+  // start; falls back to just the start date itself if that fails
+  // (e.g. duration is in some other unit).
+  const isPastStartDate = (startDate: string | null, duration?: string) => {
+    if (!startDate) return false;
+    const start = new Date(startDate);
+    if (Number.isNaN(start.getTime())) return false;
+
+    const dayMatch = duration?.match(/(\d+)\s*day/i);
+    const end = new Date(start);
+    end.setDate(end.getDate() + (dayMatch ? Number(dayMatch[1]) : 1));
+
+    return end.getTime() < Date.now();
+  };
+
   return (
     <>
         <SEO
@@ -163,12 +180,17 @@ export default function TravelPage() {
                         alt={p.title}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                       />
-                      {p.isFeatured && (
+                      {p.isFeatured && !isPastStartDate(p.startDate, p.duration) && (
                         <div className="absolute top-3 left-3">
                           <Badge className="bg-primary text-primary-foreground font-bold border-none">Featured</Badge>
                         </div>
                       )}
-                      {p.spotsLeft <= 5 && (
+                      {isPastStartDate(p.startDate, p.duration) && (
+                        <div className="absolute top-3 left-3">
+                          <Badge className="bg-muted-foreground text-white font-bold border-none">Archived</Badge>
+                        </div>
+                      )}
+                      {!isPastStartDate(p.startDate, p.duration) && p.spotsLeft > 0 && p.spotsLeft <= 5 && (
                         <div className="absolute top-3 right-3">
                           <Badge className="bg-red-500 text-white border-none">{p.spotsLeft} spots</Badge>
                         </div>

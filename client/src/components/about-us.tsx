@@ -30,7 +30,7 @@ export function AboutUs() {
     players: 0,
     coaches: 0,
     clubs: 0,
-    tournaments: 0,
+    sessions: 0,
   });
   
   useEffect(() => {
@@ -65,8 +65,8 @@ export function AboutUs() {
       label: "Clubs",
     },
     {
-      number: stats.tournaments,
-      label: "Tournaments",
+      number: stats.sessions,
+      label: "Sessions",
     },
   ];
 

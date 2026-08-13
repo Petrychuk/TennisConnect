@@ -94,7 +94,22 @@ export default function ArticlesPage() {
                 </span>
               </div>
               <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold mb-4 tracking-tight text-white drop-shadow-md">
-                Articles & <span className="text-primary">Insights</span>
+                Articles &{" "}
+                <span className="relative inline-block text-primary">
+                  Insights
+                  <svg
+                    className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40"
+                    viewBox="0 0 100 10"
+                    preserveAspectRatio="none"
+                  >
+                    <path
+                      d="M0 5 Q 50 10 100 5"
+                      stroke="currentColor"
+                      strokeWidth="8"
+                      fill="none"
+                    />
+                  </svg>
+                </span>
               </h1>
               <p className="text-lg md:text-xl text-white/85 max-w-2xl font-light drop-shadow-sm">
                 Tactics, gear, mind & body. Written for everyone who plays.

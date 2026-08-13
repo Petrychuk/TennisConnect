@@ -25,6 +25,7 @@ router.get("/", async (req, res) => {
       title: row.profile.title,
       bio: row.profile.bio,
       rate: row.profile.rate,
+      isOrganizer: row.user.isOrganizer,
     }));
 
   res.json({

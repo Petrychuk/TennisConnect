@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { AppPagination } from "@/components/shared/AppPagination";
-import { MapPin, Search, MessageCircle, User, Activity, Send, Camera } from "lucide-react";
+import { MapPin, Search, MessageCircle, User, Activity, Send, Camera, Trophy } from "lucide-react";
 import { PARTNERS_DATA } from "@/lib/dummy-data";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
@@ -29,7 +29,8 @@ interface PartnerData {
     avatar: string;
     available: boolean;
     bio: string;
-    isDemo: boolean;      
+    isDemo: boolean;
+    isOrganizer: boolean;
   }
 
 export default function PartnersPage() {
@@ -135,6 +136,7 @@ export default function PartnersPage() {
         available: p.available ?? true,
         bio: p.bio ?? "",
         isDemo: true,
+        isOrganizer: false,
       }));
   const DEFAULT_AVATAR ="";
   
@@ -153,6 +155,7 @@ export default function PartnersPage() {
       available: true,
       bio: item.bio ?? "",
       isDemo: false,
+      isOrganizer: Boolean(item.isOrganizer),
     }));
 
     useEffect(() => {
@@ -238,7 +241,7 @@ export default function PartnersPage() {
       <SEO
         title="Find Tennis Players in Australia | TennisConnect"
         description="Connect with local tennis players across Australia. Find hitting partners, doubles teammates and tennis friends based on skill level, location and availability."
-        canonical="/partners"
+        canonical="/players"
         tags={[
           "tennis partners",
           "find tennis partner",
@@ -404,9 +407,9 @@ export default function PartnersPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: index * 0.1 }}
                 viewport={{ once: true }}
+                className="self-start"
               >
-                <Card className="h-full
-                    flex
+                <Card className="flex
                     flex-col
                     overflow-hidden
                     border-border/50
@@ -416,7 +419,7 @@ export default function PartnersPage() {
                     duration-300
                     group">
                   
-                  <CardContent className="p-2 md:p-6 grow flex flex-col items-center text-center">
+                  <CardContent className="p-2 md:p-6 flex flex-col items-center text-center">
                   <div className="relative w-full h-36 sm:h-44 md:h-56 mb-4 overflow-hidden rounded-xl">
                     <img
                       src={
@@ -442,12 +445,22 @@ export default function PartnersPage() {
                         You
                       </Badge>
                     )}
+
+                    {partner.isOrganizer && (
+                      <div
+                        className="absolute top-2 left-2 z-10 bg-[hsl(var(--tennis-ball))] text-black rounded-full p-1 md:p-1.5 shadow-sm"
+                        title="Organiser"
+                        data-testid={`organizer-badge-${partner.id}`}
+                      >
+                        <Trophy className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                      </div>
+                    )}
                   </div>
 
-                    <h3 className="text-sm md:text-lg font-bold mb-2 line-clamp-1">{partner.name}</h3>
+                    <h3 className="text-sm md:text-lg font-bold mb-2 line-clamp-1 max-w-full">{partner.name}</h3>
 
-                    <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground mb-1 md:mb-2">
-                      <MapPin className="w-3 h-3" /> {partner.location}
+                    <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground mb-1 md:mb-2 w-full min-w-0 px-1">
+                      <MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{partner.location}</span>
                     </div>
 
                     <Badge variant="secondary" className="mb-1 md:mb-3 text-xs">
@@ -459,8 +472,8 @@ export default function PartnersPage() {
                         md:block
                         text-sm
                         text-muted-foreground
-                        line-clamp-2
-                        min-h-[40px]
+                        line-clamp-3
+                        min-h-[60px]
                         mb-4">
                     {partner.bio}
                     </p>

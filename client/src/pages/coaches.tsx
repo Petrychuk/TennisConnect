@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/popover";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { AppPagination } from "@/components/shared/AppPagination";
-import { Search, MapPin, Star, Filter, ArrowRight, DollarSign, X, Calendar } from "lucide-react";
+import { Search, MapPin, Star, Filter, ArrowRight, DollarSign, X, Calendar, Trophy } from "lucide-react";
 import heroImage from "/assets/images/dashboard_coach.png";
 
 import { COACHES_DATA } from "@/lib/dummy-data";
@@ -33,7 +33,9 @@ export default function CoachesPage() {
   const [locationFilter, setLocationFilter] = useState("all");
   const [priceRange, setPriceRange] = useState([150]); // Max price
   const [minRating, setMinRating] = useState(0);
-  const [coaches, setCoaches] = useState<typeof COACHES_DATA>([]);
+  const [coaches, setCoaches] = useState<
+    (typeof COACHES_DATA[number] & { isOrganizer?: boolean })[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({
@@ -92,6 +94,8 @@ export default function CoachesPage() {
           tags: coach.tags || [],
   
           schedule: coach.schedule || {},
+
+          isOrganizer: Boolean(coach.isOrganizer),
         }));
   
         setCoaches(transformedCoaches);
@@ -418,11 +422,20 @@ export default function CoachesPage() {
                         <Star className="w-3 h-3 text-primary fill-primary" />
                         {coach.rating} ({coach.reviews})
                       </div>
+                      {coach.isOrganizer && (
+                        <div
+                          className="absolute top-1 left-1 md:top-4 md:left-4 bg-[hsl(var(--tennis-ball))] text-black rounded-full p-1 md:p-1.5 shadow-sm"
+                          title="Organiser"
+                          data-testid={`organizer-badge-${coach.id}`}
+                        >
+                          <Trophy className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                        </div>
+                      )}
                     </div>
 
                     <CardHeader className="px-3 pt-3 pb-1 md:px-6 md:pb-2">
                       <div className="flex justify-between items-start">
-                        <div className="min-h-[56px] md:min-h-[85px]">
+                        <div className="min-h-[56px] md:min-h-[85px] min-w-0 w-full">
                           <h3 className="text-base md:text-lg lg:text-xl
                             font-bold
                             font-display
@@ -438,21 +451,22 @@ export default function CoachesPage() {
                     </CardHeader>
 
                     <CardContent className="px-3 pb-3 space-y-1.5 md:space-y-4">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <MapPin className="w-4 h-4 text-primary" />
-                        {coach.location}
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
+                        <MapPin className="w-4 h-4 text-primary shrink-0" />
+                        <span className="truncate">{coach.location}</span>
                       </div>
 
-                      <div className="hidden md:flex
-                          flex-wrap
-                          gap-2
-                          min-h-[56px]">
-                        {coach.tags.map(tag => (
-                          <Badge key={tag} variant="secondary" className="font-normal text-xs bg-muted/50">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
+                      {coach.tags.length > 0 && (
+                        <div className="hidden md:flex
+                            flex-wrap
+                            gap-2">
+                          {coach.tags.map(tag => (
+                            <Badge key={tag} variant="secondary" className="font-normal text-xs bg-muted/50">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
 
                       <div className="flex
                           items-center
