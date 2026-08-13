@@ -11,6 +11,7 @@ import contentRouter from "./routes/adminContent";
 import passport from "passport";
 import { requireAuth, requireAdmin } from "./requireAuth";
 import supportRoutes from "./routes/supportRoutes";
+import newsletterRoutes from "./routes/newsletter";
 import playersRouter from "./routes/players";
 import coachesRouter from "./routes/coaches";
 import { sendSystemMessage, sendMessageBetween, ORGANIZER_APPROVED_SUBJECT, ORGANIZER_APPROVED_MESSAGE } from "./services/systemMessages";
@@ -131,6 +132,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   ========================= */
 
   app.use("/api/support", supportRoutes);
+  app.use("/api/newsletter", newsletterRoutes);
   
   /* =========================
      AUTH

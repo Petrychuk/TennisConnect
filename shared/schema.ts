@@ -872,6 +872,17 @@ export const supportRequests = pgTable("support_requests", {
     .notNull(),
 });
 
+// Footer "Newsletter" signup - just captures interest for now (no
+// email-sending pipeline is wired up yet, see server/routes/newsletter.ts).
+export const newsletterSubscribers = pgTable("newsletter_subscribers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: text("email").notNull().unique(),
+  status: text("status").default("subscribed").notNull(), // subscribed | unsubscribed
+  source: text("source").default("footer").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  unsubscribedAt: timestamp("unsubscribed_at"),
+});
+
 // Password Reset Tokens
 export const passwordResetTokens = pgTable("password_reset_tokens", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
