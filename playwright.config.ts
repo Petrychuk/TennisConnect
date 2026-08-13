@@ -16,6 +16,9 @@ export default defineConfig({
   timeout: 60000,
   
   testDir: './tests',
+  /* Refuses to run against PRODUCTION unless it's the @smoke suite.
+     See tests/global-setup.ts. */
+  globalSetup: './tests/global-setup.ts',
   /* Run tests in files in parallel */
   fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
