@@ -17,6 +17,14 @@ export const env = {
   // are missing, so a misconfiguration is still visible in prod logs.
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
+  // Explicit, per-environment marker - set DB_ENV=production in the real
+  // prod .env and DB_ENV=staging in .env.dev/staging's env. Deliberately
+  // NOT derived from NODE_ENV: "npm start" sets NODE_ENV=production for
+  // every deployed instance (staging included), so NODE_ENV alone can't
+  // tell staging and prod apart. tests/global-setup.ts asks the running
+  // server "which one are you" via GET /api/health instead of trusting
+  // BASE_URL's hostname alone - this is what that answer comes from.
+  DB_ENV: process.env.DB_ENV || "unknown",
 };
 
 if (
