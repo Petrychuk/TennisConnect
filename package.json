@@ -15,6 +15,8 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
+    "test:e2e:smoke": "playwright test --grep @smoke",
+    "test:e2e:regression": "playwright test --grep-invert @smoke",
     "staging:sync": "tsx scripts/sync-staging.ts",
     "seed:live": "cross-env NODE_ENV=development tsx server/seeds/liveSessionSeed.ts",
     "seed:live:reset": "cross-env NODE_ENV=development tsx server/seeds/liveSessionSeed.ts --reset"

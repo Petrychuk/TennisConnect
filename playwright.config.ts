@@ -22,13 +22,19 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  /* Cap workers everywhere, not just CI: each worker opens its own DB
+     session, and the Supabase pooler in session mode here has pool_size 15.
+     Running unbounded workers (default = CPU core count) against a shared
+     Postgres pool is what causes EMAXCONNSESSION. Override per-run with
+     --workers=N when you know the target DB can take more (e.g. staging). */
+  workers: process.env.CI ? 1 : 4,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   
   use: {
+    // Points at STAGING by default in real usage — set BASE_URL explicitly.
+    // Never point this at PROD except for the @smoke suite (see tests/smoke/).
     baseURL: process.env.BASE_URL || 'http://localhost:3000',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
