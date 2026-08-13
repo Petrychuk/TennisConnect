@@ -118,7 +118,7 @@ export function HomeTravel() {
                       </div>
                     )}
 
-                    {pkg.spotsLeft <= 5 && (
+                    {pkg.spotsLeft > 0 && pkg.spotsLeft <= 5 && (
                       <div className="absolute top-3 right-3">
                         <Badge className="bg-red-500 text-white border-none">Only {pkg.spotsLeft} left</Badge>
                       </div>

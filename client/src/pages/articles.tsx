@@ -77,7 +77,7 @@ export default function ArticlesPage() {
           <div
             className="absolute inset-0 z-0"
             style={{
-              backgroundImage: "url('/assets/images/Dashboard_articles.png')",
+              backgroundImage: "url('/assets/images/Dashboard_articles.webp')",
               backgroundSize: "cover",
               backgroundPosition: "center",
             }}
@@ -176,6 +176,7 @@ export default function ArticlesPage() {
                         <img
                           src={a.coverImage}
                           alt={a.title}
+                          loading="lazy"
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                         />
                         <div className="absolute top-3 left-3">
