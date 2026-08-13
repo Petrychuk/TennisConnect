@@ -12,7 +12,9 @@ const app = express();
 app.get("/health", (_req, res) => {
   res.status(200).json({
     status: "ok",
-    environment: process.env.DB_ENV,
+    app: "TennisConnect",
+    env: process.env.DB_ENV,
+    version: process.env.RAILWAY_GIT_COMMIT_SHA || "local",
     timestamp: new Date().toISOString(),
   });
 });
