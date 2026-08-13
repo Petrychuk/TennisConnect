@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { MARKETPLACE_DATA } from "@/lib/dummy-data";
 import SEO from "@/components/seo";
 
-import heroBg from "/assets/images/elegant_dark_tennis_equipment_display_background.png";
+import heroBg from "/assets/images/elegant_dark_tennis_equipment_display_background.webp";
 
 import { Link } from "wouter";
 import { User, ShieldCheck } from "lucide-react";

@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import genericDefaultCover from "/assets/images/cinematic_tennis_court_abstract_background.png";
+import genericDefaultCover from "/assets/images/cinematic_tennis_court_abstract_background.webp";
 
 interface ProfileCoverProps {
   cover?: string | null;

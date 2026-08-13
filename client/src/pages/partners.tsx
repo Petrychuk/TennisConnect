@@ -17,7 +17,7 @@ import { motion } from "framer-motion";
 import { Link } from "wouter";
 import SEO from "@/components/seo";
 import { quickMessageSchema } from "@/lib/validations/messages";
-import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.png";
+import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.webp";
 
 interface PartnerData {
     id: string;
@@ -275,7 +275,7 @@ export default function PartnersPage() {
         <div
           className="absolute inset-0 z-0"
           style={{
-            backgroundImage: "url('/assets/images/dashboard_players.png')",
+            backgroundImage: "url('/assets/images/dashboard_players.webp')",
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}

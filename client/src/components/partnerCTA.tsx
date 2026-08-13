@@ -25,7 +25,7 @@ import {
   export function PartnerCTA() {
     return (
       <div className="my-10 md:my-16
-        bg-[url('/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.png')]
+        bg-[url('/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.webp')]
         border border-primary/20
         rounded-3xl
         p-4 md:p-8 lg:p-10

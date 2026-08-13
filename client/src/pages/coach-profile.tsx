@@ -50,18 +50,18 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-import student1 from "/assets/images/portrait_of_a_young_male_tennis_student.png";
-import student2 from "/assets/images/portrait_of_a_female_tennis_student.png";
-import student3 from "/assets/images/portrait_of_an_older_male_tennis_student.png";
+import student1 from "/assets/images/portrait_of_a_young_male_tennis_student.webp";
+import student2 from "/assets/images/portrait_of_a_female_tennis_student.webp";
+import student3 from "/assets/images/portrait_of_an_older_male_tennis_student.webp";
 
-import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.png";
+import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.webp";
 import { resizeImage } from "@/lib/image";
 import { uploadImage } from "@/lib/uploadImage";
 import { deleteImage } from "@/lib/deleteImage";
 import { useRoute } from "wouter";
 
 import { Switch } from "@/components/ui/switch";
-import racketImg from "/assets/images/professional_tennis_racket_on_a_court_bench.png";
+import racketImg from "/assets/images/professional_tennis_racket_on_a_court_bench.webp";
 
 import { messageSchema } from "@/lib/validations/messages";
 

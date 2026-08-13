@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, MapPin, Users, CheckCircle2, Clock, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { MockSession } from "@/lib/organiser-hub-mock-data";
-import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.png";
+import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.webp";
 
 interface LiveTodayCardProps {
   session: MockSession | null;
