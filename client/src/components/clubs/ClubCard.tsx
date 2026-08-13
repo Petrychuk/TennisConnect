@@ -140,6 +140,7 @@ const buttonClass =
           <img
             src={club.image}
             alt={club.name}
+            loading="lazy"
             data-testid="club-card-image"
             className="
               w-full

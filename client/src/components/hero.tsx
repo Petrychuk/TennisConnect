@@ -13,6 +13,8 @@ export function Hero() {
           <img
             src={heroImage}
             alt="Tennis Player"
+            fetchPriority="high"
+            decoding="async"
             className="w-full h-full object-cover object-[50%_0%]"
           />
           {/* Gradient Overlay for Text Legibility - Lighter intensity */}

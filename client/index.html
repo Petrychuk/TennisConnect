@@ -3,6 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5" />
+
+    <!-- Preload the homepage hero photo - it's the largest above-the-fold
+         image (LCP element), so start fetching it immediately instead of
+         waiting for the JS bundle to parse and request it. -->
+    <link rel="preload" as="image" href="/assets/images/tennis_main.jpg" fetchpriority="high" />
      
     <!-- Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-PB33Q552C9"></script>
