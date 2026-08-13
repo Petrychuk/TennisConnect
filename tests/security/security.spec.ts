@@ -1,8 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { dismissCookieBanner } from '../helpers/auth';
 
 test('SEC-003 Script Tags', async ({ page }) => {
 
     await page.goto('/auth');
+    await dismissCookieBanner(page);
   
     await page.getByText('Sign Up').click();
   
@@ -41,6 +43,7 @@ test('SEC-003 Script Tags', async ({ page }) => {
     const longText = 'A'.repeat(5000);
   
     await page.goto('/auth');
+    await dismissCookieBanner(page);
   
     await page.getByText('Sign Up').click();
   
@@ -58,6 +61,7 @@ test('SEC-003 Script Tags', async ({ page }) => {
   test('SEC-005 Special Characters', async ({ page }) => {
 
     await page.goto('/auth');
+    await dismissCookieBanner(page);
   
     await page.getByText('Sign Up').click();
   

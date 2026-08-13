@@ -1,8 +1,10 @@
 import { test as setup, expect } from '@playwright/test';
+import { dismissCookieBanner } from '../helpers/auth';
 import { TEST_USERS } from '../fixtures/test-users';
 
 setup('Authenticate Coach', async ({ page }) => {
   await page.goto('/auth');
+  await dismissCookieBanner(page);
 
   await page.getByTestId('login-tab').click();
 

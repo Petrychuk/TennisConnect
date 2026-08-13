@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { dismissCookieBanner } from '../helpers/auth';
 
 export const SECURITY_PAYLOADS = [
     "'",
@@ -21,6 +22,7 @@ test.describe('Registration Security', () => {
       test(`SEC-NAME: ${payload}`, async ({ page }) => {
   
         await page.goto('/auth');
+        await dismissCookieBanner(page);
   
         await page.getByText('Sign Up').click();
   
@@ -64,6 +66,7 @@ test.describe('Registration Security', () => {
       test(`SEC-LOGIN: ${payload}`, async ({ page }) => {
   
         await page.goto('/auth');
+        await dismissCookieBanner(page);
   
         await page.getByRole('tab', {
           name: /sign in/i,
@@ -95,6 +98,7 @@ test.describe('Registration Security', () => {
       test(`SEC-FORGOT: ${payload}`, async ({ page }) => {
   
         await page.goto('/auth');
+        await dismissCookieBanner(page);
   
         await page.getByTestId(
           'forgot-password-link'

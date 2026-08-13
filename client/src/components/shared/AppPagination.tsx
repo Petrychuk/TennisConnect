@@ -56,6 +56,7 @@ export function AppPagination({
           size="sm"
           disabled={currentPage === 1}
           onClick={() => onPageChange(currentPage - 1)}
+          data-testid="pagination-prev-button"
           className="
             rounded-full
             px-4
@@ -66,7 +67,7 @@ export function AppPagination({
           Previous
         </Button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" data-testid="pagination-page-numbers">
 
           {createPages().map((page, index) =>
             page === "..." ? (
@@ -85,6 +86,8 @@ export function AppPagination({
                     : "ghost"
                 }
                 onClick={() => onPageChange(page)}
+                data-testid={`pagination-page-${page}`}
+                aria-current={page === currentPage ? "page" : undefined}
                 className={`
                   h-10
                   w-10
@@ -110,6 +113,7 @@ export function AppPagination({
           size="sm"
           disabled={currentPage === totalPages}
           onClick={() => onPageChange(currentPage + 1)}
+          data-testid="pagination-next-button"
           className="
             rounded-full
             px-4
@@ -131,12 +135,14 @@ export function AppPagination({
           size="icon"
           disabled={currentPage === 1}
           onClick={() => onPageChange(currentPage - 1)}
+          data-testid="pagination-prev-button-mobile"
           className="rounded-full"
         >
           <ChevronLeft className="w-5 h-5" />
         </Button>
 
         <span
+          data-testid="pagination-current-page-mobile"
           className="
             text-sm
             font-medium
@@ -152,6 +158,7 @@ export function AppPagination({
           size="icon"
           disabled={currentPage === totalPages}
           onClick={() => onPageChange(currentPage + 1)}
+          data-testid="pagination-next-button-mobile"
           className="rounded-full"
         >
           <ChevronRight className="w-5 h-5" />

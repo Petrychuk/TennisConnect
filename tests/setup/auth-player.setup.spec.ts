@@ -1,9 +1,11 @@
 import { test as setup, expect } from '@playwright/test';
+import { dismissCookieBanner } from '../helpers/auth';
 import { TEST_USERS } from '../fixtures/test-users';
 
 setup('Authenticate Player', async ({ page }) => {
   // Открываем страницу логина
   await page.goto('/auth');
+  await dismissCookieBanner(page);
 
   // Переключаемся на Sign In
   await page.getByRole('tab', {

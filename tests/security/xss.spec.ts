@@ -1,8 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { dismissCookieBanner } from '../helpers/auth';
 
 test('SEC-002 XSS', async ({ page }) => {
 
     await page.goto('/auth');
+    await dismissCookieBanner(page);
   
     await page.getByText('Sign Up').click();
   

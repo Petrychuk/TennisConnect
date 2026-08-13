@@ -340,6 +340,7 @@ export default function PartnersPage() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground" />
 
                   <Input
+                    data-testid="players-search-input"
                     placeholder="Search by name or location..."
                     className="
                       pl-9 md:pl-10
@@ -408,7 +409,7 @@ export default function PartnersPage() {
                 transition={{ duration: 0.4, delay: index * 0.1 }}
                 viewport={{ once: true }}
               >
-                <Card className="h-full
+                <Card data-testid={`player-card-${partner.id}`} className="h-full
                     flex
                     flex-col
                     overflow-hidden

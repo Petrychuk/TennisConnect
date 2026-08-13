@@ -272,6 +272,7 @@ export default function CoachesPage() {
               <div className="relative w-full md:w-[280px] lg:w-[380px] xl:w-[450px]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
                 <Input 
+                  data-testid="coaches-search-input"
                   placeholder="Search by name or specialty..." 
                   className="pl-10
                     h-11 md:h-12
@@ -391,7 +392,7 @@ export default function CoachesPage() {
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.1 }}
                 >
-                  <Card className="h-full overflow-hidden hover:shadow-lg transition-shadow duration-300 border-border/60 group cursor-pointer">
+                  <Card data-testid={`coach-card-${coach.id}`} className="h-full overflow-hidden hover:shadow-lg transition-shadow duration-300 border-border/60 group cursor-pointer">
                     {/* Card Header with Image */}
                     <div className="relative h-36 md:h-52 lg:h-60 overflow-hidden">
                       <img 
