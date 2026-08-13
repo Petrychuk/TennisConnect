@@ -10,6 +10,7 @@ import {
   messages,
   passwordResetTokens,
   supportRequests,
+  newsletterSubscribers,
   tournaments,
   organizerRequests,
   organizations,
@@ -211,6 +212,11 @@ export interface IStorage {
   createSupportRequest(
     request: InsertSupportRequest
   ): Promise<SupportRequest>;
+
+  //Newsletter
+  subscribeToNewsletter(
+    email: string
+  ): Promise<{ email: string; alreadySubscribed: boolean }>;
 
   //Dynamic data
   getPlatformStats(): Promise<{
@@ -1689,6 +1695,35 @@ export class DatabaseStorage implements IStorage {
       .returning();
   
     return supportRequest;
+  }
+
+  // Footer newsletter signup. Upsert on email: a previously-unsubscribed
+  // address that signs up again is reactivated instead of erroring on
+  // the unique constraint.
+  async subscribeToNewsletter(
+    email: string
+  ): Promise<{ email: string; alreadySubscribed: boolean }> {
+    const [existing] = await db
+      .select()
+      .from(newsletterSubscribers)
+      .where(eq(newsletterSubscribers.email, email));
+
+    if (existing) {
+      if (existing.status === "subscribed") {
+        return { email, alreadySubscribed: true };
+      }
+
+      await db
+        .update(newsletterSubscribers)
+        .set({ status: "subscribed", unsubscribedAt: null })
+        .where(eq(newsletterSubscribers.email, email));
+
+      return { email, alreadySubscribed: false };
+    }
+
+    await db.insert(newsletterSubscribers).values({ email });
+
+    return { email, alreadySubscribed: false };
   }
 
    // =====================

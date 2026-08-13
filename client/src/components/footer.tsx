@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import {
   Facebook,
@@ -7,8 +8,48 @@ import {
   Building2
 } from "lucide-react";
 import { openCookieSettings } from "@/lib/cookieConsent";
+import { useToast } from "@/hooks/use-toast";
 
 export function Footer() {
+  const { toast } = useToast();
+  const [email, setEmail] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleNewsletterSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/newsletter/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        toast({
+          variant: "destructive",
+          title: "Couldn't subscribe",
+          description: data.message || "Please check your email and try again.",
+        });
+        return;
+      }
+
+      toast({ title: data.message || "Thanks for subscribing!" });
+      setEmail("");
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Couldn't subscribe",
+        description: "Something went wrong. Please try again.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <footer className="bg-black text-white border-t border-white/10">
       <div className="container mx-auto px-4 py-16">
@@ -279,7 +320,7 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Newsletter — commented out for release, do not delete
+          {/* Newsletter */}
           <div className="col-span-2 lg:col-span-1">
             <h4 className="font-bold text-primary text-lg mb-6 ">Newsletter</h4>
 
@@ -287,20 +328,27 @@ export function Footer() {
               Get updates on tournaments, tennis events and platform news.
             </p>
 
-            <div className="flex gap-2">
+            <form onSubmit={handleNewsletterSubmit} className="flex gap-2">
               <input
                 type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="Your email"
-                className="bg-white/10 border border-white/10 rounded-lg px-4 py-2 w-full focus:ring-2 focus:ring-primary outline-none text-white placeholder:text-gray-500"
+                disabled={isSubmitting}
+                className="bg-white/10 border border-white/10 rounded-lg px-4 py-2 w-full focus:ring-2 focus:ring-primary outline-none text-white placeholder:text-gray-500 disabled:opacity-60"
               />
 
-              <button className="bg-primary text-primary-foreground font-bold px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors">
-                OK
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="bg-primary text-primary-foreground font-bold px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? "..." : "OK"}
               </button>
-            </div>
+            </form>
             
           </div>
-          */}
         </div>
 
         {/* Bottom Bar */}
