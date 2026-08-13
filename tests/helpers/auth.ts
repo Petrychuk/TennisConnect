@@ -40,7 +40,23 @@ export async function registerPlayer(page: Page) {
 
   await page.getByTestId('agree-to-terms').check();
 
-  await page.getByTestId('register-button').click();
+  // Wait for the actual register request/response and the resulting
+  // redirect - clicking the button alone doesn't guarantee the session
+  // cookie is set yet. Every caller that immediately navigates elsewhere
+  // (e.g. straight to another profile's Contact tab) was racing this and
+  // landing on that page still logged out.
+  await Promise.all([
+    page.waitForResponse(
+      response =>
+        response.url().includes('/api/auth/register') &&
+        response.request().method() === 'POST'
+    ),
+    page.getByTestId('register-button').click(),
+  ]);
+
+  await expect(page).toHaveURL(/\/complete-profile/, {
+    timeout: 15000,
+  });
 
   return user;
 }
@@ -61,7 +77,18 @@ export async function registerCoach(page: Page) {
 
   await page.getByTestId('agree-to-terms').check();
 
-  await page.getByTestId('register-button').click();
+  await Promise.all([
+    page.waitForResponse(
+      response =>
+        response.url().includes('/api/auth/register') &&
+        response.request().method() === 'POST'
+    ),
+    page.getByTestId('register-button').click(),
+  ]);
+
+  await expect(page).toHaveURL(/\/complete-profile/, {
+    timeout: 15000,
+  });
 
   return user;
 }
