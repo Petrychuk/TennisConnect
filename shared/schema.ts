@@ -855,6 +855,20 @@ export const communityMemberships = pgTable(
 export type CommunityMembership = typeof communityMemberships.$inferSelect;
 
 //Support chat
+// connect-pg-simple's session store. It creates and manages this table
+// itself at runtime (server/auth.ts: tableName "user_sessions",
+// createTableIfMissing: false) - it was never a Drizzle-managed table.
+// Declared here ONLY so `drizzle-kit push` sees it as already correct
+// and stops offering to drop it as an "unknown" table - do not add
+// relations, indexes, or change these column definitions; they must
+// keep matching exactly what connect-pg-simple itself expects
+// (sid varchar PK, sess json, expire timestamp).
+export const userSessions = pgTable("user_sessions", {
+  sid: varchar("sid").primaryKey(),
+  sess: json("sess").notNull(),
+  expire: timestamp("expire").notNull(),
+});
+
 export const supportRequests = pgTable("support_requests", {
   id: varchar("id")
     .primaryKey()

@@ -70,6 +70,7 @@ async function main() {
     ["drizzle-kit", "push"],
     {
       stdio: "inherit",
+      shell: true,
       env: {
         ...process.env,
 
