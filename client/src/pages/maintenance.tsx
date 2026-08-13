@@ -89,7 +89,7 @@ export default function Maintenance() {
           </div>
 
           {/* Footer bar */}
-          <div className="flex flex-col-reverse items-start gap-3 border-t border-white/10 pt-4 text-xs text-gray-400 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col-reverse items-start gap-3 border-t border-white/10 pt-4 text-xs text-white/80 sm:flex-row sm:items-center sm:justify-between">
             <span>
               © {new Date().getFullYear()} TennisConnect. All rights reserved.
             </span>
@@ -100,7 +100,7 @@ export default function Maintenance() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="TennisConnect on Facebook"
-                className="text-gray-300 transition-all hover:scale-110 hover:text-[hsl(var(--tennis-ball))]"
+                className="text-[hsl(var(--tennis-ball))] transition-all hover:scale-110 hover:opacity-80"
               >
                 <Facebook className="h-4 w-4" />
               </a>
@@ -109,7 +109,7 @@ export default function Maintenance() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="TennisConnect on Instagram"
-                className="text-gray-300 transition-all hover:scale-110 hover:text-[hsl(var(--tennis-ball))]"
+                className="text-[hsl(var(--tennis-ball))] transition-all hover:scale-110 hover:opacity-80"
               >
                 <Instagram className="h-4 w-4" />
               </a>

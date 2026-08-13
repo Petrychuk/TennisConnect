@@ -98,7 +98,16 @@ function requireCompletedProfile(
   ========================= */
 
 export async function registerRoutes(app: Express): Promise<void> {
-  
+
+  // Old players-listing URL - permanent redirect for search engines,
+  // bookmarks, and any hardcoded link that still points at /partners.
+  // Registered before static/Vite's catch-all so it's a real HTTP 301,
+  // not a client-side SPA redirect after the JS bundle loads.
+  app.get("/partners", (req, res) => {
+    const query = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
+    res.redirect(301, `/players${query}`);
+  });
+
   app.use("/api/uploadMedia", uploadMediaRouter);
   app.use("/api/profile/tournament-history", profileTournamentHistoryRouter);
   app.use("/api/profile/marketplace", profileMarketplace);

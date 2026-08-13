@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Users, Trophy, GraduationCap, MapPin, Star, Plane, ShoppingBag } from "lucide-react";
+import { Users, Trophy, GraduationCap, MapPin, Star, Plane, ShoppingBag, BookOpen } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 const features = [
@@ -25,11 +25,35 @@ const features = [
     bgColor: "bg-purple-500/10",
   },
   {
+    icon: Trophy,
+    title: "Organiser Hub & Live Sessions",
+    description: "Run sessions, manage players, and score matches live from your Organiser Hub.",
+    color: "bg-yellow-500",
+    bgColor: "bg-yellow-500/10",
+  },
+  {
+    icon: MapPin,
+    title: "Courts & Community",
+    description: "Find courts near you and connect with the local tennis community.",
+    color: "bg-pink-500",
+    bgColor: "bg-pink-500/10",
+  },
+  {
+    icon: BookOpen,
+    title: "Tennis IQ",
+    description: "Level up your game with tactics breakdowns, coaching insights, and community posts.",
+    color: "bg-teal-500",
+    bgColor: "bg-teal-500/10",
+  },
+  {
     icon: ShoppingBag,
     title: "Marketplace",
     description: "Buy, sell, and discover tennis gear within the community.",
     color: "bg-orange-500",
     bgColor: "bg-orange-500/10",
+    // Hidden for now - not deleted, just not ready to show publicly yet.
+    // Flip this back to false (or remove the flag) to bring it back.
+    hidden: true,
   },
 ];
 
@@ -42,15 +66,15 @@ export function Features() {
       <div className="container mx-auto px-4 relative z-10">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">
-          Everything You Need for Tennis — <span className="text-primary">In One Place</span>
+          Discover Your <span className="text-primary">Tennis World</span>
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-            Connect, compete, learn, and explore — all within one growing tennis community.
+            Whether you're looking for a playing partner, professional coach, local club, social session, tournament or your next tennis adventure, TennisConnect brings everything together in one platform.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {features.map((feature, index) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {features.filter((feature) => !feature.hidden).map((feature, index) => (
             <motion.div
               key={feature.title}
               initial={{ opacity: 0, y: 20 }}

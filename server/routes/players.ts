@@ -24,6 +24,7 @@ router.get("/", async (req, res) => {
         location: row.profile.location,
         skillLevel: row.profile.skillLevel,
         bio: row.profile.bio,
+        isOrganizer: row.user.isOrganizer,
       }));
   
     res.json({

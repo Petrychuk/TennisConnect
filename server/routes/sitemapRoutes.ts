@@ -17,7 +17,7 @@ router.get("/sitemap.xml", async (_req, res) => {
     // Static pages
     const staticPages = [
       "",
-      "/partners",
+      "/players",
       "/coaches",
       "/clubs",
       "/tournaments",

@@ -217,7 +217,7 @@ export interface IStorage {
     players: number;
     coaches: number;
     clubs: number;
-    tournaments: number;
+    sessions: number;
   }>;
   
   // ===== ORGANIZER REQUESTS =====
@@ -1740,15 +1740,21 @@ export class DatabaseStorage implements IStorage {
       .select({ count: sql<number>`count(*)` })
       .from(clubs);
   
-    const [tournamentsResult] = await db
+    const [sessionsResult] = await db
       .select({ count: sql<number>`count(*)` })
-      .from(tournaments);
-  
+      .from(tennisSessions)
+      .where(
+        and(
+          inArray(tennisSessions.status, ["published", "live", "completed"]),
+          eq(tennisSessions.visibility, "public")
+        )
+      );
+
     return {
       players: Number(playersResult.count),
       coaches: Number(coachesResult.count),
       clubs: Number(clubsResult.count),
-      tournaments: Number(tournamentsResult.count),
+      sessions: Number(sessionsResult.count),
     };
   }
 

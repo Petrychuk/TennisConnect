@@ -87,7 +87,7 @@ export function Navbar() {
     : "/";
 
   const navLinks = [
-    { name: "Players", href: "/partners", icon: Users },
+    { name: "Players", href: "/players", icon: Users },
     { name: "Coaches", href: "/coaches", icon: Award },
     /* { name: "Tournaments", href: "/tournaments" }, */
     { name: "Club Communities", href: "/clubs", icon: Building2 },
@@ -523,6 +523,18 @@ export function Navbar() {
             Profile
           </Link>
 
+          {user?.isOrganizer ? (
+            <Link
+              href="/organiser"
+              data-testid="mobile-bottomnav-organiser-hub"
+              className={`flex flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${
+                location === "/organiser" ? "text-primary" : "text-muted-foreground"
+              }`}
+            >
+              <Trophy className={`w-5 h-5 ${location === "/organiser" ? "fill-primary/15" : ""}`} />
+              Organise Hub
+            </Link>
+          ) : (
           <Link
             href="/messages"
             data-testid="mobile-bottomnav-notifications"
@@ -536,6 +548,7 @@ export function Navbar() {
             </span>
             Notifications
           </Link>
+          )}
 
           <button
             type="button"
