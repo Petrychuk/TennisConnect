@@ -68,6 +68,40 @@ const authActionLimiter = rateLimit({
   message: { message: "Too many requests. Please try again later." },
 });
 
+// Whitelists for the self-service profile PUT endpoints below. The route
+// used to spread the entire req.body straight into the Drizzle .set() call
+// (`{ name, ...profileData }`), which meant any real column on
+// player_profiles/coach_profiles - including coachProfiles.rating and
+// .reviews - was directly settable by the profile's own owner. A coach
+// could PATCH their own rating/review count to whatever they wanted.
+// .strip() (zod's default) drops anything not listed here instead of
+// erroring, so unknown/legacy client fields are silently ignored rather
+// than 400ing.
+const playerProfileUpdateSchema = z.object({
+  location: z.string().trim().min(1).max(100).optional(),
+  age: z.string().max(10).optional(),
+  country: z.string().max(100).optional(),
+  skillLevel: z.string().max(50).optional(),
+  bio: z.string().trim().max(1000).optional(),
+  preferredCourts: z.array(z.string()).optional(),
+});
+
+const coachProfileUpdateSchema = z.object({
+  title: z.string().trim().min(1).max(100).optional(),
+  location: z.string().trim().min(1).max(100).optional(),
+  bio: z.string().trim().max(2000).optional(),
+  tags: z.array(z.string()).optional(),
+  photos: z.array(z.string()).optional(),
+  rate: z.string().max(50).optional(),
+  experience: z.string().max(50).optional(),
+  phone: z.string().max(30).optional(),
+  email: z.string().email().max(200).optional(),
+  locations: z.array(z.string()).optional(),
+  schedule: z.any().optional(),
+  // Deliberately NOT included: rating, reviews - those are earned
+  // (reviews left by other users), never self-reported.
+});
+
 function requireRole(role: "player" | "coach") {
   return (req: Request, res: Response, next: Function) => {
     if (!req.isAuthenticated()) {
@@ -353,8 +387,8 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.status(400).json({ message: "Token and password are required" });
       }
 
-      if (password.length < 6) {
-        return res.status(400).json({ message: "Password must be at least 6 characters" });
+      if (password.length < 8) {
+        return res.status(400).json({ message: "Password must be at least 8 characters" });
       }
 
       // Find valid token
@@ -645,17 +679,26 @@ export async function registerRoutes(app: Express): Promise<void> {
       try {
         const userId = req.user!.id;
 
-        const { name, ...profileData } = req.body;
+        const { name } = req.body;
+
+        const parsed = playerProfileUpdateSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({
+            message: "Invalid input",
+            errors: parsed.error,
+          });
+        }
 
         // ✅ 1. Обновляем name в users
         if (name) {
           await storage.updateUserName(userId, name);
         }
 
-        // ✅ 2. Обновляем профиль
+        // ✅ 2. Обновляем профиль (только разрешённые поля - см.
+        // playerProfileUpdateSchema)
         const profile = await storage.updatePlayerProfileByUserId(
           userId,
-          profileData
+          parsed.data
         );
 
         res.json({ success: true, profile });
@@ -683,17 +726,26 @@ export async function registerRoutes(app: Express): Promise<void> {
       try {
         const userId = req.user!.id;
   
-        const { name, ...profileData } = req.body;
+        const { name } = req.body;
+
+        const parsed = coachProfileUpdateSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({
+            message: "Invalid input",
+            errors: parsed.error,
+          });
+        }
   
         // обновляем имя пользователя в таблице users
         if (name && typeof name === "string") {
           await storage.updateUserName(userId, name);
         }
   
-        // обновляем профиль коуча
+        // обновляем профиль коуча (только разрешённые поля - см.
+        // coachProfileUpdateSchema; rating/reviews сюда намеренно не входят)
         const profile = await storage.updateCoachProfileByUserId(
           userId,
-          profileData
+          parsed.data
         );
   
         // возвращаем свежие данные
