@@ -32,6 +32,7 @@ import {
 import { z } from "zod";
 import { sendPasswordResetEmail } from "./services/emailService";
 import { db } from "./db";
+import { env } from "./env";
 import { eq, and, gt } from "drizzle-orm";
 import sitemapRoutes from "./routes/sitemapRoutes";
 
@@ -1388,6 +1389,14 @@ export async function registerRoutes(app: Express): Promise<void> {
   );
 
   // ===== STATS HOMEPAGE ROUTES =====
+  // Public, deliberately minimal - lets tests/global-setup.ts (and any
+  // monitoring) ask "which database is this instance actually talking
+  // to" without exposing the connection string itself. Never add
+  // anything secret to this response.
+  app.get("/api/health", (_req, res) => {
+    res.json({ dbEnv: env.DB_ENV });
+  });
+
   app.get("/api/stats", async (_req, res) => {
     try {
       const stats = await storage.getPlatformStats();
