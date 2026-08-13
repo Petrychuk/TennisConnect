@@ -34,7 +34,7 @@ export function Hero() {
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md mb-6">
               <span className="w-2 h-2 rounded-full bg-primary" />
               <span className="text-xs font-bold tracking-wider uppercase text-white">
-                Season Open in Sydney
+              NOW LIVE IN SYDNEY
               </span>
             </div>
             
@@ -104,7 +104,7 @@ export function Hero() {
                     duration-300
                     cursor-pointer
                   ">
-                  Choose a Coach
+                   Find a Coach
                   <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
