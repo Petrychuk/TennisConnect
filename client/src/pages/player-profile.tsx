@@ -1581,6 +1581,7 @@ export default function PlayerProfile() {
                               <div className="space-y-2">
                                 <Label>Subject *</Label>
                                 <Input
+                                  data-testid="input-contact-subject"
                                   placeholder="Let's play tennis"
                                   value={contactSubject}
                                   onChange={(e) => setContactSubject(e.target.value)}
@@ -1589,6 +1590,7 @@ export default function PlayerProfile() {
                               <div className="space-y-2">
                                 <Label>Phone (optional)</Label>
                                 <Input
+                                  data-testid="input-contact-phone"
                                   placeholder="+61 4XX XXX XXX"
                                   value={contactPhone}
                                   onChange={(e) => setContactPhone(e.target.value)}
@@ -1598,6 +1600,7 @@ export default function PlayerProfile() {
                             <div className="space-y-2">
                               <Label>Message</Label>
                               <Textarea
+                                data-testid="textarea-contact-message"
                                 placeholder="Hi, would you like to play a match sometime..."
                                 className="min-h-[120px]"
                                 value={contactMessage}
@@ -1605,6 +1608,7 @@ export default function PlayerProfile() {
                               />
                             </div>
                             <Button
+                              data-testid="button-send-contact-message"
                               onClick={handleContactSubmit}
                               disabled={isSending || !contactSubject.trim() || !contactMessage.trim()}
                             >

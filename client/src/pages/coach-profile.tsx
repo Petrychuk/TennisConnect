@@ -1722,6 +1722,7 @@ export default function CoachProfile() {
                               <div className="space-y-2">
                                 <Label>Subject *</Label>
                                 <Input
+                                  data-testid="input-contact-subject"
                                   placeholder="Lesson enquiry"
                                   value={contactSubject}
                                   onChange={(e) => setContactSubject(e.target.value)}
@@ -1731,6 +1732,7 @@ export default function CoachProfile() {
                               <div className="space-y-2">
                                 <Label>Phone (optional)</Label>
                                 <Input
+                                  data-testid="input-contact-phone"
                                   placeholder="+61 4XX XXX XXX"
                                   value={contactPhone}
                                   onChange={(e) => setContactPhone(e.target.value)}
@@ -1740,6 +1742,7 @@ export default function CoachProfile() {
                             <div className="space-y-2">
                               <Label>Message</Label>
                               <Textarea 
+                                data-testid="textarea-contact-message"
                                 placeholder="Hi, I'm interested in booking a lesson..." 
                                 className="min-h-[120px]"
                                 value={contactMessage}
@@ -1747,6 +1750,7 @@ export default function CoachProfile() {
                               />
                             </div>
                             <Button
+                              data-testid="button-send-contact-message"
                               onClick={handleContactSubmit}
                               disabled={
                                 isSending ||

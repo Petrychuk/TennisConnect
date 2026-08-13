@@ -425,7 +425,7 @@ export function MessagesInbox() {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
               </div>
             ) : !selectedMessage ? (
-              <Card className="max-w-md mx-auto">
+              <Card className="max-w-md mx-auto" data-testid="messages-empty-state">
                 <CardContent className="pt-6 text-center">
                   <MailOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
                   <h2 className="text-xl font-bold mb-2">
@@ -453,6 +453,7 @@ export function MessagesInbox() {
                         <Badge
                           variant="destructive"
                           className="ml-auto"
+                          data-testid="unread-badge"
                         >
                           {messages.filter((m) => !m.isRead).length} new
                         </Badge>
@@ -732,6 +733,7 @@ export function MessagesInbox() {
                           <div className="flex flex-col sm:flex-row gap-2 mt-6">
                             <Button
                               onClick={() => setShowReplyForm(true)}
+                              data-testid="button-reply"
                             >
                               <Reply className="w-4 h-4 mr-2" />
                               Reply
@@ -752,6 +754,7 @@ export function MessagesInbox() {
                         {showReplyForm && (
                           <div className="mt-6 pt-6 space-y-4">
                             <Textarea
+                              data-testid="textarea-reply"
                               value={replyContent}
                               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                                 setReplyContent(e.target.value)
@@ -764,6 +767,7 @@ export function MessagesInbox() {
                             <div className="grid grid-cols-2 gap-2">
                             <Button
                                 onClick={handleReply}
+                                data-testid="button-send-reply"
                                 disabled={
                                   !replyContent.trim() ||
                                   replyMutation.isPending

@@ -88,3 +88,122 @@ test('@smoke AUTH-SMOKE-001 Login and logout with seeded player', async ({ page 
   await expect(page).toHaveURL('/');
 
 });
+
+/*
+  Messaging smoke checks — read-only only. A real "send message" test
+  writes a row to the prod DB every run, which is exactly what
+  tests/global-setup.ts exists to block outside @smoke. So these 5 prove
+  the messaging system is alive on prod without ever calling
+  POST /api/messages or /api/messages/reply. Full send/reply/delete
+  flows (MSG-001..015) stay staging-only in tests/messages/messages.spec.ts.
+*/
+
+test('@smoke MSG-SMOKE-001 Guest cannot access messages', async ({ page }) => {
+
+  // ---------- Open page ----------
+
+  await page.goto('/messages');
+  await dismissCookieBanner(page);
+
+  // ---------- Verify ----------
+
+  await expect(
+    page.getByText(/sign in to view messages/i)
+  ).toBeVisible();
+
+  await expect(
+    page.locator('[data-testid^="message-item-"]')
+  ).toHaveCount(0);
+
+});
+
+test('@smoke MSG-SMOKE-002 Guest contact form redirects to sign in', async ({ page }) => {
+
+  // ---------- Open page ----------
+
+  await page.goto(`/coach/${TEST_USERS.coach.slug}?tab=contact`);
+  await dismissCookieBanner(page);
+  await page.getByTestId('contact-tab').click();
+
+  // ---------- Verify ----------
+
+  await expect(
+    page.getByTestId('coach-contact-signed-out')
+  ).toBeVisible();
+
+  // ---------- Actions ----------
+
+  await page.getByTestId('coach-contact-sign-in').click();
+
+  // ---------- Final verification ----------
+
+  await expect(page).toHaveURL(/\/auth/);
+
+});
+
+test('@smoke MSG-SMOKE-003 Empty message keeps send button disabled', async ({ page }) => {
+
+  // ---------- Login ----------
+
+  await login(
+    page,
+    TEST_USERS.player.email,
+    TEST_USERS.player.password
+  );
+
+  // ---------- Open page ----------
+
+  await page.goto(`/coach/${TEST_USERS.coach.slug}?tab=contact`);
+  await page.getByTestId('contact-tab').click();
+
+  // ---------- Verify (nothing typed - no request should ever be possible) ----------
+
+  await expect(
+    page.getByTestId('button-send-contact-message')
+  ).toBeDisabled();
+
+});
+
+test('@smoke MSG-SMOKE-004 Seeded player inbox opens without error', async ({ page }) => {
+
+  // ---------- Login ----------
+
+  await login(
+    page,
+    TEST_USERS.player.email,
+    TEST_USERS.player.password
+  );
+
+  // ---------- Open page ----------
+
+  await page.goto('/messages');
+
+  // ---------- Verify ----------
+
+  await expect(
+    page.getByTestId('text-page-title')
+  ).toBeVisible();
+
+});
+
+test('@smoke MSG-SMOKE-005 Seeded coach inbox opens without error', async ({ page }) => {
+
+  // ---------- Login ----------
+
+  await login(
+    page,
+    TEST_USERS.coach.email,
+    TEST_USERS.coach.password
+  );
+
+  // ---------- Open page ----------
+
+  await page.goto('/messages');
+
+  // ---------- Verify ----------
+
+  await expect(
+    page.getByTestId('text-page-title')
+  ).toBeVisible();
+
+});
