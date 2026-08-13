@@ -111,7 +111,7 @@ export function HomeArticles() {
                   </div>
 
                   <CardContent className="p-5">
-                    <h3 className="font-bold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                    <h3 className="font-bold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2 min-h-[3.5rem]">
                       {article.title}
                     </h3>
                     <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
