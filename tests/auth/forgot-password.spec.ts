@@ -1,8 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { dismissCookieBanner } from '../helpers/auth';
 
 test('AUTH-006 Forgot Password Success', async ({ page }) => {
 
     await page.goto('/auth');
+    await dismissCookieBanner(page);
   
     await page.getByTestId('forgot-password-link').click();
   
@@ -25,6 +27,7 @@ test('AUTH-006 Forgot Password Success', async ({ page }) => {
   test('AUTH-007 Forgot Password Empty Email', async ({ page }) => {
 
     await page.goto('/auth');
+    await dismissCookieBanner(page);
   
     await page.getByTestId('forgot-password-link').click();
   
