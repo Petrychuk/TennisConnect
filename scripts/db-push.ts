@@ -66,14 +66,13 @@ async function main() {
   await confirmProduction();
 
   const child = spawn(
-    process.platform === "win32" ? "npx.cmd" : "npx",
-    ["drizzle-kit", "push"],
+    "npx drizzle-kit push",
     {
       stdio: "inherit",
       shell: true,
       env: {
         ...process.env,
-
+  
         // drizzle.config.ts continues using DATABASE_URL,
         // but only this child process receives the selected DB.
         DATABASE_URL: databaseUrl!,
