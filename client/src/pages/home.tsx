@@ -42,7 +42,7 @@ export default function Home() {
   return (
     <>
     <SEO
-      title="TennisConnect - Find Tennis Partners in Australia"
+      title="TennisConnect | Players, Coaches, Clubs & Tennis in Australia"
       description="Connect with tennis players, coaches, clubs and tournaments across Australia."
       canonical="/"
       tags={[

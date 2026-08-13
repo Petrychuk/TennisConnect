@@ -8,7 +8,7 @@ import {
   Building2
 } from "lucide-react";
 import { TikTokIcon } from "@/components/icons/TikTokIcon";
-import { ThreadsIcon } from "@/components/icons/ThreadsIcon";
+//import { ThreadsIcon } from "@/components/icons/ThreadsIcon";
 import { openCookieSettings } from "@/lib/cookieConsent";
 import { useToast } from "@/hooks/use-toast";
 
@@ -147,7 +147,7 @@ export function Footer() {
                 <TikTokIcon className="w-8 h-8" />
               </a>
 
-              <a
+              {/* <a
                 href="https://threads.net"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -155,7 +155,7 @@ export function Footer() {
                 className="text-[hsl(var(--tennis-ball))] hover:scale-110 transition-all"
               >
                 <ThreadsIcon className="w-8 h-8" />
-              </a>
+              </a> */}
             </div>
           </div>
 

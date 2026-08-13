@@ -1,6 +1,6 @@
 import { Facebook, Instagram, Sparkle, ArrowLeft } from "lucide-react";
 import { TikTokIcon } from "@/components/icons/TikTokIcon";
-import { ThreadsIcon } from "@/components/icons/ThreadsIcon";
+//import { ThreadsIcon } from "@/components/icons/ThreadsIcon";
 import { Link } from "wouter";
 import SEO from "@/components/seo";
 import { useAuth } from "@/lib/auth-context";
@@ -126,7 +126,7 @@ export default function Maintenance() {
               >
                 <TikTokIcon className="h-4 w-4" />
               </a>
-              <a
+              {/* <a
                 href="https://threads.net"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -134,7 +134,7 @@ export default function Maintenance() {
                 className="text-[hsl(var(--tennis-ball))] transition-all hover:scale-110 hover:opacity-80"
               >
                 <ThreadsIcon className="h-4 w-4" />
-              </a>
+              </a> */}
             </div>
           </div>
         </div>
