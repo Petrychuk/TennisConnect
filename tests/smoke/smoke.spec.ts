@@ -54,7 +54,7 @@ test('@smoke PUBLIC-SMOKE-002 Players directory opens', async ({ page }) => {
 
   // ---------- Open page ----------
 
-  await page.goto('/partners');
+  await page.goto('/players');
   await dismissCookieBanner(page);
 
   // ---------- Verify ----------

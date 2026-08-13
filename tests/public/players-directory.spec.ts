@@ -4,7 +4,7 @@ test('PUBLIC-005 Players directory lists players', async ({ page }) => {
 
   // ---------- Open page ----------
 
-  await page.goto('/partners');
+  await page.goto('/players');
 
   // ---------- Verify ----------
 
@@ -18,7 +18,7 @@ test('PUBLIC-006 Players directory search filters results', async ({ page }) => 
 
   // ---------- Open page ----------
 
-  await page.goto('/partners');
+  await page.goto('/players');
 
   const searchInput = page.getByTestId('players-search-input');
   await expect(searchInput).toBeVisible();
@@ -49,7 +49,7 @@ test('PUBLIC-007 Players directory pagination navigates to next page', async ({ 
 
   // ---------- Open page ----------
 
-  await page.goto('/partners');
+  await page.goto('/players');
 
   const nextButton = page.getByTestId('pagination-next-button');
 
@@ -88,7 +88,7 @@ test('PUBLIC-008 Player card opens player profile', async ({ page }) => {
 
   // ---------- Open page ----------
 
-  await page.goto('/partners');
+  await page.goto('/players');
 
   const firstCard = page.locator('[data-testid^="player-card-"]').first();
   await expect(firstCard).toBeVisible();
