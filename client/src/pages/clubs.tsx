@@ -8,7 +8,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { MapPin, Search, Filter, Phone, Globe, DollarSign, Trophy, ArrowRight, Building2, Star, CheckCircle } from "lucide-react";
+import { MapPin, Search, Filter, SlidersHorizontal, Phone, Globe, DollarSign, Trophy, ArrowRight, Building2, Star, CheckCircle } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CLUBS_DATA } from "@/lib/dummy-data";
 import { motion } from "framer-motion";
 import SEO from "@/components/seo";
@@ -106,6 +107,7 @@ export default function ClubsPage() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
+              className="hidden md:block"
             >
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md mb-3 md:mb-6">
                 <span className="w-2 h-2 rounded-full bg-primary" />
@@ -187,33 +189,77 @@ export default function ClubsPage() {
         </div>
         </div>
 
+        {/* Hero text (mobile) — sits below the hero photo instead of
+            overlapping it */}
+        <div className="md:hidden relative z-20 bg-background pt-5 pb-1">
+          <div className="container mx-auto px-4 text-left">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 mb-3">
+              <span className="w-2 h-2 rounded-full bg-primary" />
+              <span className="text-[10px] font-bold tracking-wider uppercase text-primary">
+                Places To Play
+              </span>
+            </div>
+            <h1 className="text-3xl font-display font-bold tracking-tight text-foreground">
+              Find Tennis <span className="text-primary relative inline-block">
+                Communities
+                <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none">
+                  <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" />
+                </svg>
+              </span>
+            </h1>
+            <p className="text-sm text-gray-600 max-w-2xl font-medium leading-tight mt-2">
+              Discover tennis courts, clubs, social groups, and local communities across Australia.
+            </p>
+          </div>
+        </div>
+
         {/* Filter Bar (mobile) — sits below the hero photo instead of
             floating over it */}
         <div className="md:hidden relative z-20 bg-background pt-4 pb-2">
-          <div className="container mx-auto px-4 space-y-3">
-            <div className="relative w-full group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name or location..."
-                className="pl-10 h-11 bg-secondary/50 border-transparent focus:border-primary rounded-xl"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-              {["Grass Courts", "Hard Courts", "Coaching", "Pro Shop", "Night Tennis"].map((tag) => (
-                <button
-                  key={tag}
-                  onClick={() => setFilterService(filterService === tag ? "" : tag)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border cursor-pointer shrink-0 ${
-                    filterService === tag
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-secondary/50 hover:bg-secondary border-input hover:border-primary/50"
-                  }`}
-                >
-                  {tag}
-                </button>
-              ))}
+          <div className="container mx-auto px-4">
+            <div className="flex gap-2">
+              <div className="relative flex-1 group">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name or location..."
+                  className="pl-10 h-11 bg-secondary/50 border-transparent focus:border-primary rounded-xl"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    className={`shrink-0 h-11 w-11 flex items-center justify-center rounded-xl border cursor-pointer transition-all ${
+                      filterService
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-secondary/50 border-input"
+                    }`}
+                    aria-label="Filter by service"
+                    data-testid="clubs-service-filter-trigger"
+                  >
+                    <SlidersHorizontal className="w-4 h-4" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-48 p-2">
+                  <div className="flex flex-col gap-1">
+                    {["Grass Courts", "Hard Courts", "Coaching", "Pro Shop", "Night Tennis"].map((tag) => (
+                      <button
+                        key={tag}
+                        onClick={() => setFilterService(filterService === tag ? "" : tag)}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium text-left transition-all cursor-pointer ${
+                          filterService === tag
+                            ? "bg-primary text-primary-foreground"
+                            : "hover:bg-secondary"
+                        }`}
+                        data-testid={`clubs-service-mobile-${tag}`}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
         </div>
