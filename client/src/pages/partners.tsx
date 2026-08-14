@@ -285,7 +285,7 @@ export default function PartnersPage() {
             the page background well past the filter bar. */}
         <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100% z-10" />
 
-        <div className="relative min-h-[26vh] md:min-h-[32vh] lg:min-h-[36vh] flex items-end md:items-center justify-start">
+        <div className="relative min-h-[24vh] md:min-h-[32vh] lg:min-h-[36vh] flex items-end md:items-center justify-start">
           <div className="relative z-20 container mx-auto px-4 text-left pb-4 md:pb-0 md:mt-20">
             <motion.div 
                initial={{ opacity: 0, y: 30 }}

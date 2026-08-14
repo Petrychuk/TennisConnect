@@ -93,7 +93,7 @@ export default function Home() {
                  Connect with players, coaches, clubs, tournaments, and tennis experiences across Australia.
                 </p>
                 <Link href="/auth">
-                  <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-lg h-14 px-10 rounded-full shadow-[0_0_20px_rgba(223,255,0,0.4)] hover:shadow-[0_0_30px_rgba(223,255,0,0.6)] transition-all duration-300 transform hover:-translate-y-1 cursor-pointer">
+                  <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-lg h-11 sm:h-14 px-10 rounded-full shadow-[0_0_20px_rgba(223,255,0,0.4)] hover:shadow-[0_0_30px_rgba(223,255,0,0.6)] transition-all duration-300 transform hover:-translate-y-1 cursor-pointer">
                     Join TennisConnect
                   </Button>
                 </Link>

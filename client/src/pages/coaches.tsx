@@ -199,7 +199,7 @@ export default function CoachesPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
-                className="max-w-3xl
+                className="hidden md:block max-w-3xl
                   pt-30
                   md:pt-12
                   lg:pt-0
@@ -257,8 +257,8 @@ export default function CoachesPage() {
             </div>
             </div>
 
-          {/* Filter & Search Bar - floats over the tail of the photo */}
-          <div className="container mx-auto px-2 mt-5 relative z-20 pb-5 md:pb-10">
+          {/* Filter & Search Bar (desktop) - floats over the tail of the photo */}
+          <div className="hidden md:block container mx-auto px-2 mt-5 relative z-20 pb-5 md:pb-10">
             <div className="bg-card/50
               backdrop-blur-sm
               border border-border/40
@@ -287,10 +287,10 @@ export default function CoachesPage() {
               
               <div className="flex flex-row md:flex-row w-full md:w-auto gap-2">
                 <Select value={locationFilter} onValueChange={setLocationFilter}>
-                  <SelectTrigger className="w-full flex-1 sm:w-full md:w-[180px] lg:w-[190px] h-11 md:h-12 bg-background cursor-pointer">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-primary" />
-                      <SelectValue placeholder="Location" />
+                  <SelectTrigger className="w-full flex-1 min-w-0 sm:w-full md:w-[180px] lg:w-[190px] h-11 md:h-12 bg-background cursor-pointer">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <MapPin className="w-4 h-4 text-primary shrink-0" />
+                      <SelectValue placeholder="Location" className="flex-1 min-w-0 truncate" />
                     </div>
                   </SelectTrigger>
                   <SelectContent>
@@ -378,6 +378,133 @@ export default function CoachesPage() {
             </div>
           </div>
           </section>
+
+          {/* Hero text (mobile) — sits below the hero photo instead of
+              overlapping it */}
+          <div className="md:hidden relative z-20 bg-background pt-5 pb-1">
+            <div className="container mx-auto px-4 text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 mb-3">
+                <span className="w-2 h-2 rounded-full bg-primary" />
+                <span className="text-[10px] font-bold tracking-wider uppercase text-primary">
+                  Find Best Coach
+                </span>
+              </div>
+              <h1 className="text-3xl font-display font-bold mb-2 leading-[0.95] tracking-tight text-foreground">
+                Level Up <span className="text-primary relative inline-block">Your Game<svg
+                  className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40"
+                  viewBox="0 0 100 10"
+                  preserveAspectRatio="none"
+                >
+                  <path
+                    d="M0 5 Q 50 10 100 5"
+                    stroke="currentColor"
+                    strokeWidth="8"
+                    fill="none"
+                  />
+                </svg>
+                </span>
+              </h1>
+              <p className="text-sm text-gray-600 max-w-xl font-medium leading-snug">
+                Connect with certified tennis coaches in Sydney to take your game to the next level, whether you're a beginner or a tournament player.
+              </p>
+            </div>
+          </div>
+
+          {/* Filter & Search Bar (mobile) — sits below the hero photo
+              instead of floating over it */}
+          <div className="md:hidden relative z-20 bg-background pt-2 pb-2">
+            <div className="container mx-auto px-4 space-y-2">
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  placeholder="Search by name or specialty..."
+                  className="pl-10 h-11 text-sm bg-secondary/50 border-transparent focus:border-primary w-full rounded-xl"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+
+              <div className="flex w-full gap-2">
+                <Select value={locationFilter} onValueChange={setLocationFilter}>
+                  <SelectTrigger className="flex-1 min-w-0 h-11 bg-secondary/50 border-transparent cursor-pointer">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <MapPin className="w-4 h-4 text-primary shrink-0" />
+                      <SelectValue placeholder="Location" className="flex-1 min-w-0 truncate" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" className="cursor-pointer">All Sydney</SelectItem>
+                    {uniqueLocations.map(loc => (
+                      <SelectItem key={loc} value={loc} className="cursor-pointer">{loc}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={`h-11 w-auto px-3 shrink-0 bg-secondary/50 border-transparent cursor-pointer ${activeFiltersCount > 0 ? 'border-primary text-primary' : ''}`}>
+                      <Filter className="w-4 h-4 mr-1.5" />
+                      Filters
+                      {activeFiltersCount > 0 && (
+                        <Badge variant="secondary" className="ml-1.5 h-5 w-5 p-0 flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px]">
+                          {activeFiltersCount}
+                        </Badge>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-72 p-4 space-y-5" align="end">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-bold leading-none">Price Range</h4>
+                        <span className="text-sm text-muted-foreground">Up to ${priceRange[0]}/hr</span>
+                      </div>
+                      <Slider
+                        defaultValue={[150]}
+                        max={200}
+                        step={10}
+                        value={priceRange}
+                        onValueChange={setPriceRange}
+                        className="cursor-pointer"
+                      />
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>$0</span>
+                        <span>$100</span>
+                        <span>$200+</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h4 className="font-bold leading-none">Minimum Rating</h4>
+                      <div className="flex gap-2">
+                        {[4, 4.5, 4.8, 5].map((rating) => (
+                          <Button
+                            key={rating}
+                            variant={minRating === rating ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setMinRating(minRating === rating ? 0 : rating)}
+                            className="flex-1 cursor-pointer px-2"
+                          >
+                            {rating}+ <Star className="w-3 h-3 ml-1 fill-current" />
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {activeFiltersCount > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={clearFilters}
+                        className="w-full text-muted-foreground hover:text-destructive cursor-pointer"
+                      >
+                        Clear all filters
+                      </Button>
+                    )}
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+          </div>
 
           {/* Coaches Grid — pulled up so the photo's fade dissolves under
               the top of the first row, matching the Partners page */}
