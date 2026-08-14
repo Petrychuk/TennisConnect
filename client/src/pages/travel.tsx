@@ -80,7 +80,7 @@ export default function TravelPage() {
         <SEO
         title="Tennis Travel Packages | TennisConnect"
         description="Discover tennis holidays, tennis camps and travel experiences for players looking to combine travel with their passion for tennis."
-        canonical="/travel"
+        canonical="/travels"
         tags={[
           "tennis travel",
           "tennis holiday",
@@ -226,7 +226,7 @@ export default function TravelPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
               >
-                <Link href={`/travel/${p.slug}`}>
+                <Link href={`/travels/${p.slug}`}>
                   <Card className="group overflow-hidden border-none shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer h-full">
                     <div className="relative aspect-4/3 overflow-hidden bg-secondary/50">
                       <img

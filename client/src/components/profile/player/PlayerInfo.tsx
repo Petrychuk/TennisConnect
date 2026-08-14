@@ -21,10 +21,10 @@ export function PlayerInfo({
     <div className="flex-1 min-w-0">
 
       {isEditing ? (
-        <div className="space-y-5">
+        <div className="space-y-2.5 md:space-y-5">
 
           {/* NAME */}
-          <div className="space-y-2">
+          <div className="space-y-1 md:space-y-2">
 
             <p className="text-xs font-medium tracking-wider">
               Name
@@ -68,11 +68,11 @@ export function PlayerInfo({
 
           {/* COUNTRY + AGE + LOCATION */}
 
-          <div className="flex flex-col md:flex-row gap-6">
+          <div className="flex flex-col md:flex-row gap-3 md:gap-6">
 
             {/* COUNTRY */}
 
-            <div className="flex-1 space-y-2">
+            <div className="flex-1 space-y-1 md:space-y-2">
 
               <p className="text-xs font-medium tracking-wider text-muted-foreground">
                 Country
@@ -109,7 +109,7 @@ export function PlayerInfo({
 
             {/* AGE */}
 
-            <div className="w-full md:w-28 space-y-2">
+            <div className="w-full md:w-28 space-y-1 md:space-y-2">
 
               <p className="text-xs font-medium tracking-wider text-muted-foreground">
                 Age
@@ -146,7 +146,7 @@ export function PlayerInfo({
 
             {/* LOCATION */}
 
-            <div className="w-full md:w-56 space-y-2">
+            <div className="w-full md:w-56 space-y-1 md:space-y-2">
 
               <p className="text-xs font-medium tracking-wider text-muted-foreground">
                 Location

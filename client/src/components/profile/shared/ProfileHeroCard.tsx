@@ -75,17 +75,14 @@ export function ProfileHeroCard({
               )}
             </div>
 
-            {/* On mobile this sits pinned to the card's own top-right
-                corner (out of flow, absolute against the card itself)
-                instead of pushing the whole card taller by stacking
-                below the name/info. From md up it's back in normal flow
-                like before. */}
-            <div
-              className="absolute top-3 right-3
-                md:static md:shrink-0
-                md:self-center
-                lg:self-start"
-            >
+            {/* Positioning is left to the actions component itself now
+                (not forced here): the compact "Edit Profile" icon button
+                wants to pin to this card's corner on mobile, but the
+                wider Cancel/Save row shown while editing does not - it
+                needs to stay in normal flow or it collides with the
+                avatar, which is exactly what corner-pinning it here
+                unconditionally used to cause. */}
+            <div className="shrink-0 self-center lg:self-start">
               {actions}
             </div>
           </div>

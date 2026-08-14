@@ -210,7 +210,7 @@ export function Footer() {
 
               <li>
                 <Link
-                  href="/travel"
+                  href="/travels"
                   className="hover:text-primary transition-colors"
                 >
                   Travel

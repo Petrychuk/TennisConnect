@@ -1,11 +1,40 @@
 import express, { type Request, Response, NextFunction } from "express";
 
 // Must be registered before anything else runs. See comment below for why.
+//
+// "[CRASH-GUARD]" is a fixed, greppable prefix - when the server goes
+// unreachable in prod, search the Railway logs for that string. If it's
+// there, something below threw/rejected without a try/catch and this
+// caught it (check the stack trace for where). If it's NOT there but the
+// service still went down, the crash happened somewhere these two
+// handlers can't see (e.g. the process was OOM-killed or hard-killed by
+// the platform before it could log) - see the SIGTERM/SIGINT handlers
+// further down, which tell that apart from an ordinary redeploy.
 process.on("unhandledRejection", (reason) => {
-  console.error("Unhandled promise rejection (process kept alive):", reason);
+  console.error(
+    `[CRASH-GUARD] ${new Date().toISOString()} Unhandled promise rejection (process kept alive):`,
+    reason,
+  );
 });
 process.on("uncaughtException", (err) => {
-  console.error("Uncaught exception (process kept alive):", err);
+  console.error(
+    `[CRASH-GUARD] ${new Date().toISOString()} Uncaught exception (process kept alive):`,
+    err,
+  );
+});
+// Railway (and most platforms) send SIGTERM before stopping/replacing a
+// container - both for a normal redeploy AND right before a health-check
+// failure kills it. Logging this makes it possible to tell "the platform
+// intentionally restarted this" apart from "the process vanished with no
+// warning" (the latter means something below crashed hard enough that
+// even the guards above never ran - e.g. an out-of-memory kill).
+process.on("SIGTERM", () => {
+  console.error(`[CRASH-GUARD] ${new Date().toISOString()} Received SIGTERM - process is shutting down.`);
+  process.exit(0);
+});
+process.on("SIGINT", () => {
+  console.error(`[CRASH-GUARD] ${new Date().toISOString()} Received SIGINT - process is shutting down.`);
+  process.exit(0);
 });
 import cors from "cors";
 import helmet from "helmet";

@@ -19,6 +19,11 @@ credentials.json
 .credentials
 
 # Playwright
+# Test-only credentials (dummy accounts, not real secrets) - kept out of
+# the repo anyway so they don't show up in a public/shared clone. If this
+# file is already tracked, adding it here alone won't remove it from git -
+# also run: git rm --cached tests/fixtures/test-users.ts
+tests/fixtures/test-users.ts
 test-results/
 playwright-report/
 /blob-report/
