@@ -65,7 +65,7 @@ export function Features() {
       
       <div className="container mx-auto px-4 relative z-10">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">
+          <h2 className="text-[1.8125rem] md:text-5xl font-display font-bold mb-4">
           Discover Your <span className="text-primary">Tennis World</span>
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
