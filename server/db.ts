@@ -24,4 +24,16 @@ export const pool = new Pool({
     rejectUnauthorized: false,
   },
 });
+
+// node-postgres emits 'error' on the pool whenever an *idle* client's
+// connection is dropped (e.g. the DB closing a quiet connection) - if
+// nothing is listening for that event, Node treats it as an unhandled
+// error and crashes the whole process. A crashed process is what turns
+// a single dropped idle connection into a site-wide 502 until the host
+// restarts it, so this just logs and lets the pool reconnect on the
+// next query instead.
+pool.on("error", (err) => {
+  console.error("Unexpected error on idle Postgres client (main pool):", err);
+});
+
 export const db = drizzle(pool, { schema });

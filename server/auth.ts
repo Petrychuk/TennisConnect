@@ -64,6 +64,14 @@ export function setupAuth(app: Express) {
       : undefined,
   });
 
+  // Same reasoning as the main pool in db.ts: an unhandled 'error' on
+  // this pool would crash the whole process, and this one backs the
+  // session store - meaning every logged-in request (including the
+  // login flow itself) touches it. Log instead of crashing.
+  sessionPool.on("error", (err) => {
+    console.error("Unexpected error on idle Postgres client (session pool):", err);
+  });
+
   const sessionSettings: session.SessionOptions = {
     store: new PgStore({
       pool: sessionPool,
@@ -162,25 +170,35 @@ export function setupAuth(app: Express) {
   });
 
     passport.deserializeUser(async (id: string, done) => {
-    const user = await storage.getUser(id);
+    // Passport calls this as a plain callback - it does not await the
+    // promise this async function returns, so a rejection here would
+    // otherwise become an unhandled rejection and crash the process.
+    // This runs on every request for a logged-in user, so any transient
+    // DB hiccup would take the whole site down instead of just this
+    // one request.
+    try {
+      const user = await storage.getUser(id);
 
-    if (!user) {
-      return done(null, false);
+      if (!user) {
+        return done(null, false);
+      }
+
+      done(null, {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        slug: user.slug,
+        avatar: user.avatar,
+        cover: user.cover,
+        status: user.status,
+        profileCompleted: user.profileCompleted,
+        isAdmin: (user as any).isAdmin || false,
+        isOrganizer: (user as any).isOrganizer || false,
+      });
+    } catch (err) {
+      done(err);
     }
-
-    done(null, {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      slug: user.slug,
-      avatar: user.avatar,
-      cover: user.cover,
-      status: user.status,
-      profileCompleted: user.profileCompleted,
-      isAdmin: (user as any).isAdmin || false,
-      isOrganizer: (user as any).isOrganizer || false,
-    });
   });
 
 }
