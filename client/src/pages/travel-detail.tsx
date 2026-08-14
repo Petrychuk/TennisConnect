@@ -12,7 +12,11 @@ import {
 } from "@/components/travel/TravelDetailContent";
 
 export default function TravelDetailPage() {
-  const [, params] = useRoute("/travel/:slug");
+  // "/travels/:slug" is canonical now; "/travel/:slug" is still routed
+  // here too (old links), so this has to match either.
+  const [matchesNew, paramsNew] = useRoute("/travels/:slug");
+  const [, paramsOld] = useRoute("/travel/:slug");
+  const params = matchesNew ? paramsNew : paramsOld;
   const [pkg, setPkg] = useState<TravelPackage | null>(null);
   const [notFound, setNotFound] = useState(false);
   const { toast } = useToast();
@@ -49,7 +53,7 @@ export default function TravelDetailPage() {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-3xl font-bold mb-4">Package not found</h1>
-            <Link href="/travel">
+            <Link href="/travels">
               <Button className="bg-primary text-primary-foreground">Back to packages</Button>
             </Link>
           </div>
@@ -78,7 +82,7 @@ export default function TravelDetailPage() {
           pkg.metaDescription ||
           pkg.description
         }
-        canonical={`/travel/${pkg.slug}`}
+        canonical={`/travels/${pkg.slug}`}
         tags={[
           "tennis travel",
           "tennis holiday",

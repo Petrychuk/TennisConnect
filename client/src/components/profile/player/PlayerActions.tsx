@@ -89,31 +89,36 @@ export function PlayerActions({
     );
   }
 
+  // Only this compact, view-only button pins to the card's corner on
+  // mobile - the wider Cancel/Save row above stays in normal flow, or it
+  // would collide with the avatar the same way this used to.
   return (
-    <Button
-      variant="outline"
-      onClick={onEdit}
-      className="
-        h-10
-        w-10
-        md:w-auto
-        md:min-w-[150px]
-        px-0
-        md:px-5
+    <div className="absolute top-3 right-3 md:static">
+      <Button
+        variant="outline"
+        onClick={onEdit}
+        className="
+          h-10
+          w-10
+          md:w-auto
+          md:min-w-[150px]
+          px-0
+          md:px-5
 
-        gap-0
-        md:gap-2
+          gap-0
+          md:gap-2
 
-        text-sm
+          text-sm
 
-        border-primary/30
-        hover:border-primary
-        hover:bg-primary/5
-      "
-      data-testid="edit-profile"
-    >
-      <Edit2 className="w-4 h-4" />
-      <span className="hidden md:inline">Edit Profile</span>
-    </Button>
+          border-primary/30
+          hover:border-primary
+          hover:bg-primary/5
+        "
+        data-testid="edit-profile"
+      >
+        <Edit2 className="w-4 h-4" />
+        <span className="hidden md:inline">Edit Profile</span>
+      </Button>
+    </div>
   );
 }

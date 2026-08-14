@@ -21,7 +21,7 @@ router.get("/sitemap.xml", async (_req, res) => {
       "/coaches",
       "/clubs",
       "/tournaments",
-      "/travel",
+      "/travels",
       "/recreation",
       "/marketplace",
       "/articles",
@@ -67,7 +67,7 @@ router.get("/sitemap.xml", async (_req, res) => {
       .map(
         (item) => `
   <url>
-    <loc>${baseUrl}/travel/${item.slug}</loc>
+    <loc>${baseUrl}/travels/${item.slug}</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>`

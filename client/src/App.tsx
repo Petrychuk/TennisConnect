@@ -91,6 +91,11 @@ function Router() {
         <Route path="/tournaments" component={TournamentsPage} />
         <Route path="/articles" component={ArticlesPage} />
         <Route path="/articles/:slug" component={ArticleDetailPage} />
+        {/* "/travels" is the canonical URL going forward - "/travel"
+            (singular) is kept registered too so old links/bookmarks
+            still resolve, just no longer linked to internally. */}
+        <Route path="/travels" component={TravelPage} />
+        <Route path="/travels/:slug" component={TravelDetailPage} />
         <Route path="/travel" component={TravelPage} />
         <Route path="/travel/:slug" component={TravelDetailPage} />
         <Route path="/recreation" component={RecreationPage} />

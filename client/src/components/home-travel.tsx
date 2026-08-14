@@ -80,7 +80,7 @@ export function HomeTravel() {
             viewport={{ once: true }}
             transition={{ delay: 0.3 }}
           >
-            <Link href="/travel">
+            <Link href="/travels">
               <Button
                 className="hidden md:flex gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
                 data-testid="travel-view-all-button"
@@ -100,7 +100,7 @@ export function HomeTravel() {
               viewport={{ once: true }}
               transition={{ delay: index * 0.1 }}
             >
-              <Link href={`/travel/${pkg.slug}`}>
+              <Link href={`/travels/${pkg.slug}`}>
                 <Card
                   className="group overflow-hidden border-none shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer h-full"
                   data-testid={`travel-card-${pkg.slug}`}
@@ -165,7 +165,7 @@ export function HomeTravel() {
           viewport={{ once: true }}
           className="mt-8 md:hidden flex justify-center"
         >
-          <Link href="/travel" className="w-2/3">
+          <Link href="/travels" className="w-2/3">
             <Button className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full cursor-pointer">
               Browse Packages <ArrowRight className="w-4 h-4" />
             </Button>
