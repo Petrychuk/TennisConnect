@@ -188,7 +188,8 @@ export default function CoachesPage() {
                 className="w-full
                 h-full
                 object-cover
-                object-[60%_20%]
+                object-[60%_38%]
+                md:object-[60%_20%]
                 scale-125 md:scale-100"
               />
               <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100%" />
@@ -197,7 +198,7 @@ export default function CoachesPage() {
             <div className="relative min-h-[28vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-start">
             {/* Badge (mobile) — overlaps the bottom edge of the hero photo */}
             <div className="md:hidden absolute bottom-3 left-4 z-20">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/50 border border-white/20 backdrop-blur-md">
                 <span className="w-2 h-2 rounded-full bg-primary" />
                 <span className="text-[10px] font-bold tracking-wider uppercase text-white">
                   Find Best Coach
@@ -402,7 +403,7 @@ export default function CoachesPage() {
                   <path
                     d="M0 5 Q 50 10 100 5"
                     stroke="currentColor"
-                    strokeWidth="8"
+                    strokeWidth="4"
                     fill="none"
                   />
                 </svg>
@@ -430,10 +431,10 @@ export default function CoachesPage() {
 
               <div className="flex w-full gap-2">
                 <Select value={locationFilter} onValueChange={setLocationFilter}>
-                  <SelectTrigger className="flex-1 min-w-0 h-11 bg-secondary/50 border-transparent cursor-pointer">
-                    <div className="flex items-center gap-2 min-w-0">
+                  <SelectTrigger className="flex-1 min-w-0 h-11 bg-secondary/50 border-transparent cursor-pointer overflow-hidden">
+                    <div className="flex items-center gap-2 min-w-0 overflow-hidden">
                       <MapPin className="w-4 h-4 text-primary shrink-0" />
-                      <SelectValue placeholder="Location" className="flex-1 min-w-0 truncate" />
+                      <SelectValue placeholder="Location" className="block max-w-[140px] truncate" />
                     </div>
                   </SelectTrigger>
                   <SelectContent>

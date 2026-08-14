@@ -45,6 +45,7 @@ export default function PartnersPage() {
   
   const [searchTerm, setSearchTerm] = useState("");
   const [filterLevel, setFilterLevel] = useState("");
+  const [levelPopoverOpen, setLevelPopoverOpen] = useState(false);
   const [partners, setPartners] = useState<PartnerData[]>([]);
   const [loading, setLoading] = useState(true);
   const [messageModalOpen, setMessageModalOpen] = useState(false);
@@ -288,7 +289,7 @@ export default function PartnersPage() {
         <div className="relative min-h-[28vh] md:min-h-[32vh] lg:min-h-[36vh] flex items-end md:items-center justify-start">
           {/* Badge (mobile) — overlaps the bottom edge of the hero photo */}
           <div className="md:hidden absolute bottom-3 left-4 z-20">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/50 border border-white/20 backdrop-blur-md">
               <span className="w-2 h-2 rounded-full bg-primary" />
               <span className="text-[10px] font-bold tracking-wider uppercase text-white">
                 Find Best Player
@@ -400,7 +401,7 @@ export default function PartnersPage() {
             Find Your <span className="text-primary relative inline-block">
               Player
               <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none">
-                <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" />
+                <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="4" fill="none" />
               </svg>
             </span>
           </h1>
@@ -425,7 +426,7 @@ export default function PartnersPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Popover>
+            <Popover open={levelPopoverOpen} onOpenChange={setLevelPopoverOpen}>
               <PopoverTrigger asChild>
                 <button
                   className={`shrink-0 h-11 w-11 flex items-center justify-center rounded-xl border cursor-pointer transition-all ${
@@ -444,9 +445,10 @@ export default function PartnersPage() {
                   {["Beginner", "Intermediate", "Advanced", "Professional"].map((level) => (
                     <button
                       key={level}
-                      onClick={() =>
-                        setFilterLevel(filterLevel === level ? "" : level)
-                      }
+                      onClick={() => {
+                        setFilterLevel(filterLevel === level ? "" : level);
+                        setLevelPopoverOpen(false);
+                      }}
                       className={`px-3 py-2 rounded-lg text-sm font-medium text-left transition-all cursor-pointer ${
                         filterLevel === level
                           ? "bg-primary text-primary-foreground"
