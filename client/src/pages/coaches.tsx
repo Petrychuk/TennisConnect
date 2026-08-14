@@ -188,12 +188,22 @@ export default function CoachesPage() {
                 className="w-full
                 h-full
                 object-cover
-                object-[60%_20%]"
+                object-[60%_20%]
+                scale-125 md:scale-100"
               />
               <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100%" />
             </div>
 
-            <div className="relative min-h-[24vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-start">
+            <div className="relative min-h-[28vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-start">
+            {/* Badge (mobile) — overlaps the bottom edge of the hero photo */}
+            <div className="md:hidden absolute bottom-3 left-4 z-20">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md">
+                <span className="w-2 h-2 rounded-full bg-primary" />
+                <span className="text-[10px] font-bold tracking-wider uppercase text-white">
+                  Find Best Coach
+                </span>
+              </div>
+            </div>
             <div className="container mx-auto px-2 relative z-10">
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
@@ -381,14 +391,8 @@ export default function CoachesPage() {
 
           {/* Hero text (mobile) — sits below the hero photo instead of
               overlapping it */}
-          <div className="md:hidden relative z-20 bg-background pt-5 pb-1">
+          <div className="md:hidden relative z-20 bg-background pt-4 pb-1">
             <div className="container mx-auto px-4 text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 mb-3">
-                <span className="w-2 h-2 rounded-full bg-primary" />
-                <span className="text-[10px] font-bold tracking-wider uppercase text-primary">
-                  Find Best Coach
-                </span>
-              </div>
               <h1 className="text-3xl font-display font-bold mb-2 leading-[0.95] tracking-tight text-foreground">
                 Level Up <span className="text-primary relative inline-block">Your Game<svg
                   className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40"

@@ -76,7 +76,7 @@ export default function ArticlesPage() {
         {/* Hero — shares one photo backdrop with the filter bar below */}
         <div className="relative overflow-hidden">
           <div
-            className="absolute inset-0 z-0"
+            className="absolute inset-0 z-0 scale-125 md:scale-100"
             style={{
               backgroundImage: "url('/assets/images/Dashboard_articles.webp')",
               backgroundSize: "cover",
@@ -85,7 +85,16 @@ export default function ArticlesPage() {
           />
           <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100% z-10" />
 
-          <div className="relative min-h-[24vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-start">
+          <div className="relative min-h-[28vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-start">
+          {/* Badge (mobile) — overlaps the bottom edge of the hero photo */}
+          <div className="md:hidden absolute bottom-3 left-4 z-20">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md">
+              <BookOpen className="w-3.5 h-3.5 text-primary" />
+              <span className="text-[10px] font-bold tracking-wider uppercase text-white">
+                Tennis Journal
+              </span>
+            </div>
+          </div>
           <div className="relative z-20 container mx-auto px-4 text-left mt-24 md:mt-20">
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="hidden md:block">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md mb-6">
@@ -156,14 +165,8 @@ export default function ArticlesPage() {
 
         {/* Hero text (mobile) — sits below the hero photo instead of
             overlapping it */}
-        <div className="md:hidden relative z-20 bg-background pt-5 pb-1">
+        <div className="md:hidden relative z-20 bg-background pt-4 pb-1">
           <div className="container mx-auto px-4 text-left">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 mb-3">
-              <BookOpen className="w-3.5 h-3.5 text-primary" />
-              <span className="text-[10px] font-bold tracking-wider uppercase text-primary">
-                Tennis Journal
-              </span>
-            </div>
             <h1 className="text-3xl font-display font-bold mb-2 tracking-tight text-foreground">
               Articles &{" "}
               <span className="relative inline-block text-primary">

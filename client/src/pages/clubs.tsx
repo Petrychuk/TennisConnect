@@ -91,7 +91,7 @@ export default function ClubsPage() {
             filter bar below, same treatment as Partners/Coaches */}
         <div className="relative overflow-hidden">
           <div 
-            className="absolute inset-0 z-0"
+            className="absolute inset-0 z-0 scale-125 md:scale-100"
             style={{
               backgroundImage: "url('/assets/images/Dashboard_club.webp')",
               //backgroundImage: "url(https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?q=80&w=2000&auto=format&fit=crop)",
@@ -101,7 +101,16 @@ export default function ClubsPage() {
           />
           <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100% z-10" />
 
-          <div className="relative min-h-[24vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-start">
+          <div className="relative min-h-[28vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-start">
+          {/* Badge (mobile) — overlaps the bottom edge of the hero photo */}
+          <div className="md:hidden absolute bottom-3 left-4 z-20">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md">
+              <span className="w-2 h-2 rounded-full bg-primary" />
+              <span className="text-[10px] font-bold tracking-wider uppercase text-white">
+                Places To Play
+              </span>
+            </div>
+          </div>
           <div className="relative z-20 container mx-auto px-4 text-left mt-16 md:mt-20">
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
@@ -191,14 +200,8 @@ export default function ClubsPage() {
 
         {/* Hero text (mobile) — sits below the hero photo instead of
             overlapping it */}
-        <div className="md:hidden relative z-20 bg-background pt-5 pb-1">
+        <div className="md:hidden relative z-20 bg-background pt-4 pb-1">
           <div className="container mx-auto px-4 text-left">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 mb-3">
-              <span className="w-2 h-2 rounded-full bg-primary" />
-              <span className="text-[10px] font-bold tracking-wider uppercase text-primary">
-                Places To Play
-              </span>
-            </div>
             <h1 className="text-3xl font-display font-bold tracking-tight text-foreground">
               Find Tennis <span className="text-primary relative inline-block">
                 Communities
