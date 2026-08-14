@@ -9,6 +9,7 @@ import { AuthProvider } from "@/lib/auth-context";
 import { Loader2 } from "lucide-react";
 import Home from "@/pages/home";
 import NotFound from "@/pages/not-found";
+import { ChunkErrorBoundary } from "@/components/chunk-error-boundary";
 
 // Every other route is lazy - each only downloads its own JS chunk the
 // moment someone actually navigates there, instead of all of them
@@ -136,7 +137,9 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <ScrollToTop />
-          <Router />
+          <ChunkErrorBoundary>
+            <Router />
+          </ChunkErrorBoundary>
           <SupportChat />
           <CookieConsentManager />
         </TooltipProvider>
