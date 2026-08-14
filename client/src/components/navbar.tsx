@@ -295,7 +295,7 @@ export function Navbar() {
                         key={link.name}
                         href={link.href}
                         data-testid={`drawer-link-${link.name.toLowerCase().replace(/\s+/g, "-")}`}
-                        className={`group flex items-center gap-3 rounded-xl px-3 py-3 text-base font-medium transition-colors cursor-pointer ${
+                        className={`group flex items-center gap-3 rounded-xl pl-1 pr-1.5 py-3 text-base font-medium transition-colors cursor-pointer ${
                           active
                             ? "bg-primary/10 text-primary"
                             : "text-foreground hover:bg-muted"

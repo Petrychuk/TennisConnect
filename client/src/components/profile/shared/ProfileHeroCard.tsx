@@ -53,6 +53,7 @@ export function ProfileHeroCard({
           {/* Header + Actions */}
           <div
             className="
+              relative
               flex
               flex-col
               lg:flex-row
@@ -71,9 +72,14 @@ export function ProfileHeroCard({
               )}
             </div>
 
+            {/* On mobile this sits in the top-right corner of the card
+                (out of flow, absolute) instead of pushing the whole card
+                taller by stacking below the name/info. From md up it's
+                back in normal flow like before. */}
             <div
-              className="shrink-0
-                self-center
+              className="absolute top-0 right-0
+                md:static md:shrink-0
+                md:self-center
                 lg:self-start"
             >
               {actions}

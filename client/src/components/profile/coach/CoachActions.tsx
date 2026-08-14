@@ -94,8 +94,13 @@ export function CoachActions({
         onClick={onEdit}
         className="
           h-10
-          min-w-[150px]
-          px-5
+          w-10
+          md:w-auto
+          md:min-w-[150px]
+          px-0
+          md:px-5
+          gap-0
+          md:gap-2
           text-sm
           border-primary/30
           hover:border-primary
@@ -104,7 +109,7 @@ export function CoachActions({
         data-testid="edit-coach"
       >
         <Edit2 className="w-4 h-4" />
-        Edit Profile
+        <span className="hidden md:inline">Edit Profile</span>
       </Button>
     );
   }
