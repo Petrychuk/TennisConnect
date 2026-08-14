@@ -300,7 +300,7 @@ const buttonClass =
             text-muted-foreground
             leading-relaxed
             line-clamp-4
-            h-[100px]
+            min-h-[100px]
             overflow-hidden
         "
         data-testid="club-card-description"
@@ -430,14 +430,16 @@ const buttonClass =
 
         {/* Competitions */}
         <div
-  className="flex items-start gap-3"
+  className="flex items-start gap-2 xl:gap-3"
   data-testid="club-card-competition-section"
 >
 
   <div
     className="
-      w-10
-      h-10
+      w-8
+      h-8
+      xl:w-10
+      xl:h-10
       shrink-0
       rounded-full
       bg-primary/10
@@ -448,7 +450,7 @@ const buttonClass =
       mt-0.5
     "
   >
-    <Star className="w-5 h-5" />
+    <Star className="w-4 h-4 xl:w-5 xl:h-5" />
   </div>
 
   <div className="leading-tight">

@@ -569,19 +569,19 @@ export function MessagesInbox() {
                   {selectedMessage ? (
                     <>
                       <CardHeader className="pb-2">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3">
+                        <div className="flex items-start justify-between gap-2 min-w-0">
+                          <div className="flex items-center gap-3 min-w-0">
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="lg:hidden"
+                              className="lg:hidden shrink-0"
                               onClick={() => {
                                 setMobileView("list");
                               }}
                             >
                               <ArrowLeft className="w-5 h-5" />
                             </Button>
-                            <Avatar className="h-12 w-12">
+                            <Avatar className="h-10 w-10 lg:h-12 lg:w-12 shrink-0">
                               <AvatarImage
                                 src={selectedMessage.senderAvatar || undefined}
                               />
@@ -589,11 +589,11 @@ export function MessagesInbox() {
                                 {selectedMessage.senderName?.[0]}
                               </AvatarFallback>
                             </Avatar>
-                            <div>
-                              <CardTitle className="text-lg">{selectedMessage.senderName}</CardTitle>
-                              <p className="text-sm text-muted-foreground">{selectedMessage.senderEmail}</p>
+                            <div className="min-w-0">
+                              <CardTitle className="text-lg truncate">{selectedMessage.senderName}</CardTitle>
+                              <p className="text-sm text-muted-foreground truncate">{selectedMessage.senderEmail}</p>
                               {selectedMessage.senderPhone && (
-                                <p className="text-sm text-muted-foreground">{selectedMessage.senderPhone}</p>
+                                <p className="text-sm text-muted-foreground truncate">{selectedMessage.senderPhone}</p>
                               )}
                             </div>
                           </div>

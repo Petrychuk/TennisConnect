@@ -257,7 +257,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                             setForgotPasswordSent(false);
                             setForgotPasswordEmail("");
                           }}
-                          className="cursor-pointer"
+                          className="w-2/3 rounded-full cursor-pointer"
                           data-testid="back-to-sign-in"
                         >
                           Back to Sign In
@@ -289,7 +289,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                           </div>
                           <Button
                             type="submit"
-                            className="w-full font-bold bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                            className="w-2/3 mx-auto block font-bold bg-primary text-primary-foreground hover:bg-primary/90 rounded-full cursor-pointer"
                             disabled={forgotPasswordLoading}
                             data-testid="send-reset-link-button"
                           >
@@ -305,7 +305,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                           <Button
                             type="button"
                             variant="ghost"
-                            className="w-full cursor-pointer"
+                            className="w-2/3 mx-auto block rounded-full cursor-pointer"
                             onClick={() => setShowForgotPassword(false)}
                           >
                             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -390,7 +390,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                     </label>
                   </div>
 
-                  <Button type="submit"  data-testid="login-button" className="w-full font-bold bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer" disabled={isLoading}>
+                  <Button type="submit"  data-testid="login-button" className="w-2/3 mx-auto block font-bold bg-primary text-primary-foreground hover:bg-primary/90 rounded-full cursor-pointer" disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Sign In
                   </Button>
@@ -547,7 +547,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                     )}
                   </div>
 
-                  <Button type="submit" data-testid="register-button" className="w-full font-bold bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer" disabled={isLoading}>
+                  <Button type="submit" data-testid="register-button" className="w-2/3 mx-auto block font-bold bg-primary text-primary-foreground hover:bg-primary/90 rounded-full cursor-pointer" disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Create Account
                   </Button>
