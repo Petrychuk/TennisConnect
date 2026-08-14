@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { BookOpen, Clock, Search } from "lucide-react";
+import { BookOpen, Clock, Search, SlidersHorizontal } from "lucide-react";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import SEO from "@/components/seo";
 
 interface Article {
@@ -93,7 +94,7 @@ export default function ArticlesPage() {
                   Tennis Journal
                 </span>
               </div>
-              <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold mb-4 tracking-tight text-white drop-shadow-md">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold mb-4 tracking-tight text-white drop-shadow-md">
                 Articles &{" "}
                 <span className="relative inline-block text-primary">
                   Insights
@@ -111,15 +112,15 @@ export default function ArticlesPage() {
                   </svg>
                 </span>
               </h1>
-              <p className="text-lg md:text-xl text-white/85 max-w-2xl font-light drop-shadow-sm">
+              <p className="text-lg md:text-xl text-white/85 max-w-2xl font-medium drop-shadow-sm">
                 Tactics, gear, mind & body. Written for everyone who plays.
               </p>
             </motion.div>
           </div>
           </div>
 
-        {/* Filter bar — floats over the tail of the photo */}
-        <div className="relative z-20 mt-5 pb-5 md:pb-10">
+        {/* Filter bar (desktop) — floats over the tail of the photo */}
+        <div className="hidden md:block relative z-20 mt-5 pb-5 md:pb-10">
           <div className="container mx-auto px-4">
             <div className="bg-card/50 backdrop-blur-lg border border-border/40 shadow-lg rounded-2xl p-3 md:p-4 flex flex-col md:flex-row gap-4 justify-between">
             <div className="relative w-full md:w-96">
@@ -153,8 +154,59 @@ export default function ArticlesPage() {
         </div>
         </div>
 
+        {/* Filter bar (mobile) — sits below the hero photo instead of floating over it */}
+        <div className="md:hidden relative z-20 bg-background pt-4 pb-3">
+          <div className="container mx-auto px-4">
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search articles..."
+                  className="pl-10 h-11 bg-secondary/50 border-transparent focus:border-primary rounded-xl"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  data-testid="articles-search-input-mobile"
+                />
+              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    className={`shrink-0 h-11 w-11 flex items-center justify-center rounded-xl border cursor-pointer transition-all ${
+                      category !== "All"
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-secondary/50 border-input"
+                    }`}
+                    aria-label="Filter by category"
+                    data-testid="articles-category-filter-trigger"
+                  >
+                    <SlidersHorizontal className="w-4 h-4" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-48 p-2">
+                  <div className="flex flex-col gap-1">
+                    {CATEGORIES.map((c) => (
+                      <button
+                        key={c}
+                        onClick={() => setCategory(c)}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium text-left transition-all cursor-pointer ${
+                          category === c
+                            ? "bg-primary text-primary-foreground"
+                            : "hover:bg-secondary"
+                        }`}
+                        data-testid={`articles-category-mobile-${c}`}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+        </div>
+
         {/* Grid — pulled up so the photo dissolves under the top row */}
-        <div className="relative z-30 container mx-auto px-4 py-12 md:-mt-4">
+        <div className="relative z-30 container mx-auto px-4 pt-6 pb-12 md:py-12 md:-mt-4">
           {filtered.length === 0 ? (
             <div className="text-center py-20">
               <BookOpen className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
@@ -184,7 +236,7 @@ export default function ArticlesPage() {
                         </div>
                       </div>
                       <CardContent className="p-5">
-                        <h3 className="font-bold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                        <h3 className="font-bold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2 min-h-[3.5rem]">
                           {a.title}
                         </h3>
                         <p className="text-sm text-muted-foreground line-clamp-3 mb-4">{a.excerpt}</p>

@@ -163,9 +163,9 @@ export function HomeTravel() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="mt-8 md:hidden"
+          className="mt-8 md:hidden flex justify-center"
         >
-          <Link href="/travel">
+          <Link href="/travel" className="w-2/3">
             <Button className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full cursor-pointer">
               Browse Packages <ArrowRight className="w-4 h-4" />
             </Button>

@@ -113,7 +113,7 @@ export default function TravelPage() {
                 Tennis Travel
               </span>
             </div>
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold mb-4 tracking-tight text-white drop-shadow-md">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold mb-4 tracking-tight text-white drop-shadow-md">
               Train. Travel.{" "}
               <span className="relative inline-block text-primary">
                 Transform.
@@ -131,15 +131,15 @@ export default function TravelPage() {
                 </svg>
               </span>
             </h1>
-            <p className="text-lg md:text-xl text-white/85 max-w-2xl font-light drop-shadow-sm">
+            <p className="text-lg md:text-xl text-white/85 max-w-2xl font-medium drop-shadow-sm">
               Curated tennis getaways. Train with pros, recover in paradise.
             </p>
           </motion.div>
         </div>
         </div>
 
-      {/* Search bar — floats over the tail of the photo */}
-      <div className="relative z-20 mt-5 pb-5 md:pb-10">
+      {/* Search bar (desktop) — floats over the tail of the photo */}
+      <div className="hidden md:block relative z-20 mt-5 pb-5 md:pb-10">
         <div className="container mx-auto px-4">
           <div className="bg-card/50 backdrop-blur-lg border border-border/40 shadow-lg rounded-2xl p-3 md:p-4">
           <div className="relative w-full md:w-96">
@@ -157,7 +157,24 @@ export default function TravelPage() {
       </div>
       </div>
 
-      <div className="relative z-30 container mx-auto px-4 py-12 md:-mt-4">
+      {/* Search bar (mobile) — sits below the hero photo instead of
+          floating over it */}
+      <div className="md:hidden relative z-20 bg-background pt-4 pb-2">
+        <div className="container mx-auto px-4">
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search destinations..."
+              className="pl-10 h-11 bg-secondary/50 border-transparent focus:border-primary rounded-xl"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              data-testid="travel-search-input-mobile"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="relative z-30 container mx-auto px-4 pt-4 pb-12 md:py-12 md:-mt-4">
         {filtered.length === 0 ? (
           <div className="text-center py-20">
             <Plane className="w-12 h-12 mx-auto text-muted-foreground mb-4" />

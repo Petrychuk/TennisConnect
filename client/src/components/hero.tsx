@@ -39,7 +39,7 @@ export function Hero() {
             </div>
             
             <h1 className="
-              text-[2.2rem]
+              text-[1.75rem]
                 sm:text-5xl
                 md:text-6xl
                 lg:text-7xl
@@ -64,7 +64,8 @@ export function Hero() {
             
             <div className="flex flex-col items-center sm:items-stretch sm:flex-row gap-4 justify-center md:justify-start">
               <Link href="/players" className="w-2/3 sm:w-auto">
-                <Button size="lg" className="h-14
+                <Button size="lg" className="h-11
+                  sm:h-14
                   w-full
                   sm:w-auto
                   bg-primary
@@ -96,7 +97,8 @@ export function Hero() {
                     hover:shadow-[0_0_25px_hsl(var(--tennis-ball)/0.25)]
                     font-bold
                     text-lg
-                    h-14
+                    h-11
+                    sm:h-14
                     px-8
                     rounded-full
                     backdrop-blur-md
