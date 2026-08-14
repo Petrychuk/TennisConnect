@@ -122,7 +122,7 @@ export default function TravelPage() {
                 Tennis Travel
               </span>
             </div>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold mb-4 tracking-tight text-white drop-shadow-md">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl xl:text-7xl font-display font-bold mb-4 tracking-tight text-white drop-shadow-md">
               Train. Travel.{" "}
               <span className="relative inline-block text-primary">
                 Transform.

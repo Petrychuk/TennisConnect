@@ -76,8 +76,8 @@ const buttonClass =
           actionsCount === 1
             ? `
               w-full
-              md:w-auto
-              md:min-w-[230px]
+              xl:w-auto
+              xl:min-w-[230px]
             `
             : "flex-1";
 
@@ -108,7 +108,7 @@ const buttonClass =
         className="
         flex
         flex-col
-        lg:flex-row
+        xl:flex-row
         rounded-3xl
         border
         bg-card
@@ -118,7 +118,7 @@ const buttonClass =
         transition-all
         duration-300
         h-auto
-        lg:h-[500px]
+        xl:h-[500px]
         "
       >
 
@@ -127,10 +127,10 @@ const buttonClass =
           className="
             relative
             w-full
-            lg:w-[34%]
+            xl:w-[34%]
             h-52
             md:h-60
-            lg:h-auto
+            xl:h-auto
             shrink-0
             overflow-hidden
             bg-muted
@@ -202,7 +202,7 @@ const buttonClass =
               h-1/2
               bg-linear-to-t
               to-transparent
-              lg:hidden
+              xl:hidden
             "
           />
 
@@ -296,7 +296,7 @@ const buttonClass =
         <p
         className="
             text-sm
-            md:text-base
+            xl:text-base
             text-muted-foreground
             leading-relaxed
             line-clamp-4
@@ -373,7 +373,7 @@ const buttonClass =
             grid
             grid-cols-2
             gap-3
-            md:gap-6
+            xl:gap-6
             mb-4
             md:mb-6
             py-4
@@ -404,7 +404,7 @@ const buttonClass =
     </div>
 
     <p
-      className="font-bold text-lg md:text-xl leading-none"
+      className="font-bold text-lg xl:text-xl leading-none"
       data-testid="club-card-price"
     >
       {hourlyPrice}
@@ -457,7 +457,7 @@ const buttonClass =
       className="
         font-bold
         text-base
-        md:text-lg
+        xl:text-lg
         leading-none
       "
       data-testid="club-card-competitions"

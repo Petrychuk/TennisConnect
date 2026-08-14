@@ -128,7 +128,7 @@ export default function ClubsPage() {
                   <h1 className="text-4xl
                     sm:text-5xl
                     md:text-6xl
-                    lg:text-7xl
+                    xl:text-7xl
                     font-display
                     font-bold
                     tracking-tight
@@ -305,7 +305,7 @@ export default function ClubsPage() {
         ) : (
 
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-3 xl:gap-8">
               {currentClubs.map((club) => (
                 <ClubCard
                 key={club.id}
