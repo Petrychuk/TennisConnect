@@ -292,7 +292,13 @@ const buttonClass =
           </h2>
         )}
 
-        {/* Short description */}
+        {/* Short description — min-height lives on this wrapper, not on
+            the clamped <p> itself. -webkit-line-clamp uses a legacy
+            flexbox model to count lines, and a min-height on that same
+            element throws its line-counting off: it was rendering a
+            partial 5th line and then hard-cutting it at the min-height
+            boundary instead of cleanly stopping at line 4 with the "…". */}
+        <div className="min-h-[100px]">
         <p
         className="
             text-sm
@@ -300,7 +306,6 @@ const buttonClass =
             text-muted-foreground
             leading-relaxed
             line-clamp-4
-            min-h-[100px]
             overflow-hidden
         "
         data-testid="club-card-description"
@@ -309,6 +314,7 @@ const buttonClass =
         {description}
 
         </p>
+        </div>
 
         {/* Services */}
 
