@@ -87,7 +87,7 @@ export default function ArticlesPage() {
 
           <div className="relative min-h-[24vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-start">
           <div className="relative z-20 container mx-auto px-4 text-left mt-24 md:mt-20">
-            <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
+            <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="hidden md:block">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md mb-6">
                 <BookOpen className="w-3.5 h-3.5 text-primary" />
                 <span className="text-xs sm:text-sm font-bold tracking-wider uppercase text-white">
@@ -152,6 +152,40 @@ export default function ArticlesPage() {
             </div>
           </div>
         </div>
+        </div>
+
+        {/* Hero text (mobile) — sits below the hero photo instead of
+            overlapping it */}
+        <div className="md:hidden relative z-20 bg-background pt-5 pb-1">
+          <div className="container mx-auto px-4 text-left">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 mb-3">
+              <BookOpen className="w-3.5 h-3.5 text-primary" />
+              <span className="text-[10px] font-bold tracking-wider uppercase text-primary">
+                Tennis Journal
+              </span>
+            </div>
+            <h1 className="text-3xl font-display font-bold mb-2 tracking-tight text-foreground">
+              Articles &{" "}
+              <span className="relative inline-block text-primary">
+                Insights
+                <svg
+                  className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40"
+                  viewBox="0 0 100 10"
+                  preserveAspectRatio="none"
+                >
+                  <path
+                    d="M0 5 Q 50 10 100 5"
+                    stroke="currentColor"
+                    strokeWidth="8"
+                    fill="none"
+                  />
+                </svg>
+              </span>
+            </h1>
+            <p className="text-sm text-gray-600 max-w-2xl font-medium">
+              Tactics, gear, mind & body. Written for everyone who plays.
+            </p>
+          </div>
         </div>
 
         {/* Filter bar (mobile) — sits below the hero photo instead of floating over it */}

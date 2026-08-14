@@ -291,6 +291,7 @@ export default function PartnersPage() {
                initial={{ opacity: 0, y: 30 }}
                animate={{ opacity: 1, y: 0 }}
                transition={{ duration: 0.8 }}
+               className="hidden md:block"
             >
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md mb-3 md:mb-6">
                 <span className="w-2 h-2 rounded-full bg-primary" />
@@ -379,6 +380,30 @@ export default function PartnersPage() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Hero text (mobile) — sits below the hero photo instead of
+          overlapping it */}
+      <div className="md:hidden relative z-20 bg-background pt-5 pb-1">
+        <div className="container mx-auto px-4 text-left">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 mb-3">
+            <span className="w-2 h-2 rounded-full bg-primary" />
+            <span className="text-[10px] font-bold tracking-wider uppercase text-primary">
+              Find Best Player
+            </span>
+          </div>
+          <h1 className="text-3xl font-display font-bold mb-2 tracking-tight text-foreground">
+            Find Your <span className="text-primary relative inline-block">
+              Player
+              <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none">
+                <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" />
+              </svg>
+            </span>
+          </h1>
+          <p className="text-sm text-gray-600 max-w-2xl font-medium leading-snug">
+            Connect with partners for games, join local matches, and expand your tennis network.
+          </p>
         </div>
       </div>
 
