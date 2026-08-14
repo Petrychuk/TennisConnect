@@ -99,8 +99,17 @@ export function MessagesInbox() {
   }, [messages.length]);
   
   useEffect(() => {
-    scrollToBottom();
-  }, [conversation.length]);
+    // Let the browser finish laying out the newly-rendered messages
+    // before measuring where "the bottom" actually is - scrolling on
+    // the same tick React committed the DOM can land short when the
+    // conversation is long.
+    const raf = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollToBottom();
+      });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [selectedMessage?.conversationId, selectedMessage?.id, conversation.length]);
 
   const uniqueConversations = Array.from(
     new Map(
@@ -416,8 +425,8 @@ export function MessagesInbox() {
   }
   return(
    <>
-          <div className="mb-3 md:mb-8">
-            <h1 className="text-xl md:text-3xl font-bold font-display" data-testid="text-page-title">Messages</h1>
+          <div className="mb-3 md:mb-5">
+            <h1 className="text-xl md:text-2xl font-bold font-display" data-testid="text-page-title">Messages</h1>
           </div>
 
           {messagesLoading ? (
@@ -732,7 +741,7 @@ export function MessagesInbox() {
                         {!showReplyForm && !conversation.some((m) => m.messageType && m.actionStatus === "pending") && (
                           <div className="flex flex-row gap-2 mt-6">
                             <Button
-                              className="flex-1 px-2 md:px-4"
+                              className="flex-1 md:flex-none md:min-w-[160px] px-2 md:px-6"
                               onClick={() => setShowReplyForm(true)}
                               data-testid="button-reply"
                             >
@@ -742,7 +751,7 @@ export function MessagesInbox() {
 
                             <Button
                               variant="outline"
-                              className="flex-1 px-2 md:px-4"
+                              className="flex-1 md:flex-none md:min-w-[160px] px-2 md:px-6"
                               onClick={() => {
                                 window.location.href = `mailto:${selectedMessage.senderEmail}`;
                               }}
