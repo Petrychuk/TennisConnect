@@ -274,7 +274,7 @@ export default function PartnersPage() {
           abruptly. Same treatment on mobile (no separate mobile variant). */}
       <div className="relative overflow-hidden">
         <div
-          className="absolute inset-0 z-0"
+          className="absolute inset-0 z-0 scale-125 md:scale-100"
           style={{
             backgroundImage: "url('/assets/images/dashboard_players.webp')",
             backgroundSize: 'cover',
@@ -285,7 +285,16 @@ export default function PartnersPage() {
             the page background well past the filter bar. */}
         <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100% z-10" />
 
-        <div className="relative min-h-[24vh] md:min-h-[32vh] lg:min-h-[36vh] flex items-end md:items-center justify-start">
+        <div className="relative min-h-[28vh] md:min-h-[32vh] lg:min-h-[36vh] flex items-end md:items-center justify-start">
+          {/* Badge (mobile) — overlaps the bottom edge of the hero photo */}
+          <div className="md:hidden absolute bottom-3 left-4 z-20">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md">
+              <span className="w-2 h-2 rounded-full bg-primary" />
+              <span className="text-[10px] font-bold tracking-wider uppercase text-white">
+                Find Best Player
+              </span>
+            </div>
+          </div>
           <div className="relative z-20 container mx-auto px-4 text-left pb-4 md:pb-0 md:mt-20">
             <motion.div 
                initial={{ opacity: 0, y: 30 }}
@@ -385,14 +394,8 @@ export default function PartnersPage() {
 
       {/* Hero text (mobile) — sits below the hero photo instead of
           overlapping it */}
-      <div className="md:hidden relative z-20 bg-background pt-5 pb-1">
+      <div className="md:hidden relative z-20 bg-background pt-4 pb-1">
         <div className="container mx-auto px-4 text-left">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 mb-3">
-            <span className="w-2 h-2 rounded-full bg-primary" />
-            <span className="text-[10px] font-bold tracking-wider uppercase text-primary">
-              Find Best Player
-            </span>
-          </div>
           <h1 className="text-3xl font-display font-bold mb-2 tracking-tight text-foreground">
             Find Your <span className="text-primary relative inline-block">
               Player
