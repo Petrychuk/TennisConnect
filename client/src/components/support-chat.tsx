@@ -350,9 +350,10 @@ export function SupportChat() {
               setIsMinimized(false);
             }}
             size="lg"
-            className="h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-300 hover:scale-105"
+            className="h-[52px] w-[52px] md:h-14 md:w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-300 hover:scale-105"
           >
-            <MessageCircle className="h-7 w-7" />
+            <MessageCircle className="md:hidden" style={{ width: 24, height: 24 }} />
+            <MessageCircle className="hidden md:block" style={{ width: 28, height: 28 }} />
             <span className="sr-only">Open Support Chat</span>
           </Button>
         )}
