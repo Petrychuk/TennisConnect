@@ -48,7 +48,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Pure HTML/CSS placeholder, shown for the brief window between the
+         browser having this markup and the JS bundle finishing download +
+         parse + React mounting. Without this the person sees a fully
+         blank white page during that gap - React's root.render() below
+         replaces everything inside #root the instant it mounts, so this
+         never lingers or conflicts with anything. -->
+    <div id="root">
+      <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#fff;">
+        <div style="width:40px;height:40px;border:3px solid #e5e5e5;border-top-color:#a3e635;border-radius:50%;animation:tc-boot-spin 0.8s linear infinite;"></div>
+      </div>
+    </div>
+    <style>@keyframes tc-boot-spin{to{transform:rotate(360deg)}}</style>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

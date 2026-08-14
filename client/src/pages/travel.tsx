@@ -94,13 +94,13 @@ export default function TravelPage() {
       <Navbar />
 
       <div className="relative overflow-hidden">
-        <div
-          className="absolute inset-0 z-0 scale-125 md:scale-100"
-          style={{
-            backgroundImage: `url(${travelHero})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
+        <img
+          src={travelHero}
+          alt="Tennis travel"
+          fetchPriority="high"
+          loading="eager"
+          decoding="async"
+          className="absolute inset-0 w-full h-full object-cover z-0 scale-125 md:scale-100"
         />
         <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100% z-10" />
 

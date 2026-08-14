@@ -274,13 +274,13 @@ export default function PartnersPage() {
           dissolves under the top of the card grid instead of stopping
           abruptly. Same treatment on mobile (no separate mobile variant). */}
       <div className="relative overflow-hidden">
-        <div
-          className="absolute inset-0 z-0 scale-125 md:scale-100"
-          style={{
-            backgroundImage: "url('/assets/images/dashboard_players.webp')",
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
+        <img
+          src="/assets/images/dashboard_players.webp"
+          alt="Tennis players"
+          fetchPriority="high"
+          loading="eager"
+          decoding="async"
+          className="absolute inset-0 w-full h-full object-cover z-0 scale-125 md:scale-100"
         />
         {/* Light at the top (photo mostly visible), gradually settling to
             the page background well past the filter bar. */}
