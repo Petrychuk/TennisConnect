@@ -114,13 +114,12 @@ export default function ClubsPage() {
                 </span>
               </div>
                   <h1 className="text-4xl
-                    sm:text-4xl
+                    sm:text-5xl
                     md:text-6xl
                     lg:text-7xl
                     font-display
                     font-bold
                     tracking-tight
-                    leading-none
                     text-white
                     drop-shadow-md">
                   Find Tennis <span className="text-primary relative inline-block">
@@ -130,25 +129,15 @@ export default function ClubsPage() {
                   </svg>
                 </span>
               </h1>
-              <p className="text-sm
-                  sm:text-base
-                  md:text-xl
-                  lg:text-2xl
-                  text-white/85
-                  max-w-xl
-                  md:max-w-2xl
-                  font-normal
-                  leading-tight
-                  md:leading-[1.3]
-                  drop-shadow-sm">
+              <p className="text-lg md:text-xl text-white/85 max-w-2xl font-medium leading-tight md:leading-[1.3] drop-shadow-sm">
                  Discover tennis courts, clubs, social groups, and local communities across Australia.
               </p>
             </motion.div>
           </div>
           </div>
 
-        {/* Filter Bar — floats over the tail of the photo */}
-        <div className="relative z-20 mt-5 pb-5 md:pb-10">
+        {/* Filter Bar (desktop) — floats over the tail of the photo */}
+        <div className="hidden md:block relative z-20 mt-5 pb-5 md:pb-10">
           <div className="container mx-auto px-2 md:px-4">
             <div className="bg-card/50 backdrop-blur-lg border border-border/40 shadow-lg rounded-2xl p-3 md:p-4">
             <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
@@ -198,9 +187,40 @@ export default function ClubsPage() {
         </div>
         </div>
 
+        {/* Filter Bar (mobile) — sits below the hero photo instead of
+            floating over it */}
+        <div className="md:hidden relative z-20 bg-background pt-4 pb-2">
+          <div className="container mx-auto px-4 space-y-3">
+            <div className="relative w-full group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or location..."
+                className="pl-10 h-11 bg-secondary/50 border-transparent focus:border-primary rounded-xl"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+              {["Grass Courts", "Hard Courts", "Coaching", "Pro Shop", "Night Tennis"].map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => setFilterService(filterService === tag ? "" : tag)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border cursor-pointer shrink-0 ${
+                    filterService === tag
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-secondary/50 hover:bg-secondary border-input hover:border-primary/50"
+                  }`}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* Clubs List Section — pulled up so the photo dissolves under
             the top of the first row */}
-        <div className="relative z-30 container mx-auto px-4 py-16 md:-mt-4">
+        <div className="relative z-30 container mx-auto px-4 pt-4 pb-16 md:py-16 md:-mt-4">
 
         {filteredClubs.length === 0 ? (
 

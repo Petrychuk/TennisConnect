@@ -212,7 +212,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
     
       <div className="min-h-screen w-full flex">
         {/* Left Side - Form */}
-        <div className="w-full lg:w-1/2 flex flex-col p-8 md:p-12 lg:p-16 justify-center bg-background relative z-10">
+        <div className="w-full lg:w-1/2 flex flex-col pt-24 px-8 pb-8 md:p-12 lg:p-16 justify-center bg-background relative z-10">
           <Link href="/" className="absolute top-8 left-8 md:left-12 flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer">
             <ArrowLeft className="w-4 h-4" />
             Back to Home

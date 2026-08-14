@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { AppPagination } from "@/components/shared/AppPagination";
-import { MapPin, Search, MessageCircle, User, Activity, Send, Camera, Trophy } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { MapPin, Search, MessageCircle, User, Activity, Send, Camera, Trophy, SlidersHorizontal } from "lucide-react";
 import { PARTNERS_DATA } from "@/lib/dummy-data";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
@@ -284,8 +285,8 @@ export default function PartnersPage() {
             the page background well past the filter bar. */}
         <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100% z-10" />
 
-        <div className="relative min-h-[26vh] md:min-h-[32vh] lg:min-h-[36vh] flex items-center justify-start">
-          <div className="relative z-20 container mx-auto px-4 text-left mt-16 md:mt-20">
+        <div className="relative min-h-[26vh] md:min-h-[32vh] lg:min-h-[36vh] flex items-end md:items-center justify-start">
+          <div className="relative z-20 container mx-auto px-4 text-left pb-4 md:pb-0 md:mt-20">
             <motion.div 
                initial={{ opacity: 0, y: 30 }}
                animate={{ opacity: 1, y: 0 }}
@@ -305,24 +306,16 @@ export default function PartnersPage() {
                   </svg>
                 </span>
               </h1>
-              <p className="text-base
-                sm:text-lg
-                md:text-2xl
-                text-white/85
-                max-w-2xl
-                font-normal
-                leading-snug
-                md:leading-relaxed
-                drop-shadow-sm">
+              <p className="text-lg md:text-xl text-white/85 max-w-2xl font-medium leading-snug md:leading-relaxed drop-shadow-sm">
                 Connect with partners for games, join local matches, and expand your tennis network.
               </p>
             </motion.div>
           </div>
         </div>
 
-        {/* Filter Bar — floats over the tail of the photo instead of a
-            solid block below it */}
-        <div className="relative z-20 pb-5 md:pb-10">
+        {/* Filter Bar (desktop) — floats over the tail of the photo instead
+            of a solid block below it */}
+        <div className="hidden md:block relative z-20 pb-5 md:pb-10">
           <div className="container mx-auto px-2 mt-0 mb-3 md:mb-6">
             <div
               className="
@@ -355,7 +348,7 @@ export default function PartnersPage() {
                 </div>
 
                 <div className="flex w-full md:w-auto gap-1.5 md:gap-2 overflow-x-auto scrollbar-hide">
-                  {["Beginner", "Intermediate", "Advanced"].map((level) => (
+                  {["Beginner", "Intermediate", "Advanced", "Professional"].map((level) => (
                     <button
                       key={level}
                       onClick={() =>
@@ -389,9 +382,63 @@ export default function PartnersPage() {
         </div>
       </div>
 
+      {/* Filter Bar (mobile) — sits below the hero photo instead of
+          floating over it */}
+      <div className="md:hidden relative z-20 bg-background pt-4 pb-2">
+        <div className="container mx-auto px-4">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Input
+                data-testid="players-search-input-mobile"
+                placeholder="Search by name or location..."
+                className="pl-9 h-11 text-sm rounded-xl bg-secondary/50 border-transparent focus:border-primary"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  className={`shrink-0 h-11 w-11 flex items-center justify-center rounded-xl border cursor-pointer transition-all ${
+                    filterLevel
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-secondary/50 border-input"
+                  }`}
+                  aria-label="Filter by level"
+                  data-testid="players-level-filter-trigger"
+                >
+                  <SlidersHorizontal className="w-4 h-4" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-48 p-2">
+                <div className="flex flex-col gap-1">
+                  {["Beginner", "Intermediate", "Advanced", "Professional"].map((level) => (
+                    <button
+                      key={level}
+                      onClick={() =>
+                        setFilterLevel(filterLevel === level ? "" : level)
+                      }
+                      className={`px-3 py-2 rounded-lg text-sm font-medium text-left transition-all cursor-pointer ${
+                        filterLevel === level
+                          ? "bg-primary text-primary-foreground"
+                          : "hover:bg-secondary"
+                      }`}
+                      data-testid={`players-level-mobile-${level}`}
+                    >
+                      {level}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
+      </div>
+
       {/* Partners Grid — pulled up slightly so the photo's fade visibly
           dissolves under the top of the first card row */}
-      <div className="relative z-30 container mx-auto px-4 py-4 md:-mt-4 scroll-mt-24"
+      <div className="relative z-30 container mx-auto px-4 pt-2 pb-4 md:py-4 md:-mt-4 scroll-mt-24"
       ref={playersSectionRef}>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           {filteredPartners.map((partner, index) => {
