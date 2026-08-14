@@ -43,17 +43,20 @@ export function ProfileHeroCard({
         </div>
 
         {/* Info Card — same glass treatment as the search/filter bars
-            (bg-card/50 + backdrop-blur-md + border-border/40 + shadow-lg) */}
+            (bg-card/50 + backdrop-blur-md + border-border/40 + shadow-lg).
+            `relative` here (not on the row below) so the mobile actions
+            corner-pin below measures from this card's own edge, not from
+            inside its px-4/px-8 padding - otherwise "the corner" ends up
+            inset by that padding instead of sitting flush in it. */}
         <div
           className={cn(
-            "mt-14 sm:mt-10 md:mt-0 rounded-2xl backdrop-blur-md border border-border/40 shadow-lg pt-28 sm:pt-28 md:pt-8 pb-5 sm:pb-7 md:pb-8 px-4 sm:px-5 md:px-8 md:pl-56",
+            "relative mt-14 sm:mt-10 md:mt-0 rounded-2xl backdrop-blur-md border border-border/40 shadow-lg pt-28 sm:pt-28 md:pt-8 pb-5 sm:pb-7 md:pb-8 px-4 sm:px-5 md:px-8 md:pl-56",
             cardBackgroundClassName
           )}
         >
           {/* Header + Actions */}
           <div
             className="
-              relative
               flex
               flex-col
               lg:flex-row
@@ -72,12 +75,13 @@ export function ProfileHeroCard({
               )}
             </div>
 
-            {/* On mobile this sits in the top-right corner of the card
-                (out of flow, absolute) instead of pushing the whole card
-                taller by stacking below the name/info. From md up it's
-                back in normal flow like before. */}
+            {/* On mobile this sits pinned to the card's own top-right
+                corner (out of flow, absolute against the card itself)
+                instead of pushing the whole card taller by stacking
+                below the name/info. From md up it's back in normal flow
+                like before. */}
             <div
-              className="absolute top-0 right-0
+              className="absolute top-3 right-3
                 md:static md:shrink-0
                 md:self-center
                 lg:self-start"

@@ -617,7 +617,7 @@ export function MessagesInbox() {
                         </div>
                       </CardHeader>
                       <Separator className="h-px w-full bg-linear-to-r from-transparent via-[hsl(var(--tennis-ball))] to-transparent my-4" />
-                      <CardContent className="pt-4">
+                      <CardContent className="px-3 pt-4 pb-3 md:px-6 md:pb-6">
                       <ScrollArea
                           className="h-[45vh] pr-4"
                           type="always"
@@ -652,7 +652,7 @@ export function MessagesInbox() {
 
                                   <div
                                     className={`
-                                      w-full rounded-2xl px-4 py-3 shadow-sm transition-all
+                                      w-full rounded-2xl px-3 py-2 md:px-4 md:py-3 shadow-sm transition-all
                                       ${
                                         isMe
                                           ? "bg-primary/5 border border-primary/20"
