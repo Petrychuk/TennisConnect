@@ -188,9 +188,9 @@ export default function CoachesPage() {
                 className="w-full
                 h-full
                 object-cover
-                object-[60%_38%]
+                object-[60%_55%]
                 md:object-[60%_20%]
-                scale-125 md:scale-100"
+                scale-110 md:scale-100"
               />
               <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100%" />
             </div>
@@ -480,14 +480,14 @@ export default function CoachesPage() {
 
                     <div className="space-y-4">
                       <h4 className="font-bold leading-none">Minimum Rating</h4>
-                      <div className="flex gap-2">
+                      <div className="grid grid-cols-2 gap-2">
                         {[4, 4.5, 4.8, 5].map((rating) => (
                           <Button
                             key={rating}
                             variant={minRating === rating ? "default" : "outline"}
                             size="sm"
                             onClick={() => setMinRating(minRating === rating ? 0 : rating)}
-                            className="flex-1 cursor-pointer px-2"
+                            className="cursor-pointer px-2"
                           >
                             {rating}+ <Star className="w-3 h-3 ml-1 fill-current" />
                           </Button>
