@@ -309,7 +309,7 @@ export default function PartnersPage() {
                   Find Best Player
                 </span>
               </div>
-              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold mb-2 md:mb-6 tracking-tight text-white drop-shadow-md">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl xl:text-7xl font-display font-bold mb-2 md:mb-6 tracking-tight text-white drop-shadow-md">
                 Find Your <span className="text-primary relative inline-block">
                   Player
                   <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none">
@@ -561,7 +561,8 @@ export default function PartnersPage() {
                         md:block
                         text-sm
                         text-muted-foreground
-                        line-clamp-4
+                        line-clamp-3
+                        xl:line-clamp-4
                         min-h-[80px]
                         mb-4">
                     {partner.bio}

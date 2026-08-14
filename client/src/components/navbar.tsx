@@ -111,7 +111,7 @@ export function Navbar() {
         </Link>
 
         {/* Desktop Nav */}
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden xl:flex items-center gap-8">
           {navLinks.map((link) => (
            /*  link.external ? (
               <a
@@ -156,7 +156,7 @@ export function Navbar() {
           {/* Compact Sydney time/weather — desktop only */}
           <HeaderClockWeather />
           {isAuthenticated ? (
-            <div className="hidden md:flex items-center gap-2">
+            <div className="hidden xl:flex items-center gap-2">
               <Link href={profileHref}>
                 <Button variant="ghost" className="font-bold hover:text-lime-600 gap-2 cursor-pointer">
                   <User className="w-4 h-4" />
@@ -253,7 +253,7 @@ export function Navbar() {
             </div>
           ) : (
             <Link href="/auth">
-              <Button className="hidden md:inline-flex bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer">
+              <Button className="hidden xl:inline-flex bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer">
                 Sign In
               </Button>
             </Link>
@@ -261,7 +261,7 @@ export function Navbar() {
 
           {/* Mobile Menu */}
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
-            <SheetTrigger asChild className="md:hidden">
+            <SheetTrigger asChild className="xl:hidden">
               <Button variant="ghost" size="icon" data-testid="button-mobile-menu">
                 <Menu className="w-6 h-6" />
               </Button>

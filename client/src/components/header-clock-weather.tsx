@@ -61,7 +61,7 @@ export function HeaderClockWeather() {
 
   return (
     <div
-      className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full border border-border/50 bg-muted/40 text-xs font-medium text-muted-foreground whitespace-nowrap"
+      className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full border border-border/50 bg-muted/40 text-xs font-medium text-muted-foreground whitespace-nowrap"
       data-testid="header-clock-weather"
     >
       <span>{time}</span>

@@ -24,8 +24,8 @@ export function Hero() {
       </div>
 
       {/* Content */}
-      <div className="container relative z-10 px-4 mx-auto text-center md:text-left">
-        <div className="max-w-2xl xl:max-w-3xl mx-auto md:mx-0">
+      <div className="container relative z-10 px-4 mx-auto text-center lg:text-left">
+        <div className="max-w-2xl xl:max-w-3xl mx-auto lg:mx-0">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -41,7 +41,6 @@ export function Hero() {
             <h1 className="
               text-[1.75rem]
                 sm:text-5xl
-                md:text-6xl
                 lg:text-7xl
                 font-display
                 font-bold
@@ -62,7 +61,7 @@ export function Hero() {
             Bringing Australia's tennis community together — one platform for every player.
             </p>
             
-            <div className="flex flex-col items-center sm:items-stretch sm:flex-row gap-4 justify-center md:justify-start">
+            <div className="flex flex-col items-center sm:items-stretch sm:flex-row gap-4 justify-center lg:justify-start">
               <Link href="/players" className="w-2/3 sm:w-auto">
                 <Button size="lg" className="h-11
                   sm:h-14
