@@ -95,10 +95,14 @@ export function PlayerActions({
       onClick={onEdit}
       className="
         h-10
-        min-w-[150px]
-        px-5
+        w-10
+        md:w-auto
+        md:min-w-[150px]
+        px-0
+        md:px-5
 
-        gap-2
+        gap-0
+        md:gap-2
 
         text-sm
 
@@ -109,7 +113,7 @@ export function PlayerActions({
       data-testid="edit-profile"
     >
       <Edit2 className="w-4 h-4" />
-      Edit Profile
+      <span className="hidden md:inline">Edit Profile</span>
     </Button>
   );
 }
