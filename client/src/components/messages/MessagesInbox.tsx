@@ -416,8 +416,8 @@ export function MessagesInbox() {
   }
   return(
    <>
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold font-display" data-testid="text-page-title">Messages</h1>
+          <div className="mb-3 md:mb-8">
+            <h1 className="text-xl md:text-3xl font-bold font-display" data-testid="text-page-title">Messages</h1>
           </div>
 
           {messagesLoading ? (
@@ -730,24 +730,27 @@ export function MessagesInbox() {
 
                         <Separator className="h-px w-full bg-linear-to-r from-transparent via-[hsl(var(--tennis-ball))] to-transparent my-4" />                    
                         {!showReplyForm && !conversation.some((m) => m.messageType && m.actionStatus === "pending") && (
-                          <div className="flex flex-col sm:flex-row gap-2 mt-6">
+                          <div className="flex flex-row gap-2 mt-6">
                             <Button
+                              className="flex-1 px-2 md:px-4"
                               onClick={() => setShowReplyForm(true)}
                               data-testid="button-reply"
                             >
-                              <Reply className="w-4 h-4 mr-2" />
+                              <Reply className="w-4 h-4 mr-2 shrink-0" />
                               Reply
                             </Button>
 
                             <Button
                               variant="outline"
+                              className="flex-1 px-2 md:px-4"
                               onClick={() => {
                                 window.location.href = `mailto:${selectedMessage.senderEmail}`;
                               }}
                               data-testid="button-reply-email"
                             >
-                              <Mail className="w-4 h-4 mr-2" />
-                              Reply via Email
+                              <Mail className="w-4 h-4 mr-2 shrink-0" />
+                              <span className="md:hidden">Email</span>
+                              <span className="hidden md:inline">Reply via Email</span>
                             </Button>
                           </div>
                         )}
