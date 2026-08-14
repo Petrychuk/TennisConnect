@@ -28,6 +28,9 @@ export function ProfileCover({
         src={cover || defaultCover || genericDefaultCover}
         alt="Profile Cover"
         data-testid="profile-cover"
+        fetchPriority="high"
+        loading="eager"
+        decoding="async"
         className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
       />
 

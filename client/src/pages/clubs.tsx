@@ -91,14 +91,13 @@ export default function ClubsPage() {
         {/* Intro / Hero Section — shares one photo backdrop with the
             filter bar below, same treatment as Partners/Coaches */}
         <div className="relative overflow-hidden">
-          <div 
-            className="absolute inset-0 z-0 scale-125 md:scale-100"
-            style={{
-              backgroundImage: "url('/assets/images/Dashboard_club.webp')",
-              //backgroundImage: "url(https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?q=80&w=2000&auto=format&fit=crop)",
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-            }}
+          <img
+            src="/assets/images/Dashboard_club.webp"
+            alt="Tennis club"
+            fetchPriority="high"
+            loading="eager"
+            decoding="async"
+            className="absolute inset-0 w-full h-full object-cover z-0 scale-125 md:scale-100"
           />
           <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100% z-10" />
 
