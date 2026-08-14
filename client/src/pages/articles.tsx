@@ -38,6 +38,7 @@ export default function ArticlesPage() {
   const [items, setItems] = useState<Article[]>([]);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState(getInitialCategory);
+  const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -88,7 +89,7 @@ export default function ArticlesPage() {
           <div className="relative min-h-[28vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-start">
           {/* Badge (mobile) — overlaps the bottom edge of the hero photo */}
           <div className="md:hidden absolute bottom-3 left-4 z-20">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/50 border border-white/20 backdrop-blur-md">
               <BookOpen className="w-3.5 h-3.5 text-primary" />
               <span className="text-[10px] font-bold tracking-wider uppercase text-white">
                 Tennis Journal
@@ -179,7 +180,7 @@ export default function ArticlesPage() {
                   <path
                     d="M0 5 Q 50 10 100 5"
                     stroke="currentColor"
-                    strokeWidth="8"
+                    strokeWidth="4"
                     fill="none"
                   />
                 </svg>
@@ -205,7 +206,7 @@ export default function ArticlesPage() {
                   data-testid="articles-search-input-mobile"
                 />
               </div>
-              <Popover>
+              <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
                 <PopoverTrigger asChild>
                   <button
                     className={`shrink-0 h-11 w-11 flex items-center justify-center rounded-xl border cursor-pointer transition-all ${
@@ -224,7 +225,10 @@ export default function ArticlesPage() {
                     {CATEGORIES.map((c) => (
                       <button
                         key={c}
-                        onClick={() => setCategory(c)}
+                        onClick={() => {
+                          setCategory(c);
+                          setCategoryPopoverOpen(false);
+                        }}
                         className={`px-3 py-2 rounded-lg text-sm font-medium text-left transition-all cursor-pointer ${
                           category === c
                             ? "bg-primary text-primary-foreground"

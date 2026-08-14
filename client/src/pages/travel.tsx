@@ -107,7 +107,7 @@ export default function TravelPage() {
         <div className="relative min-h-[28vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-start">
         {/* Badge (mobile) — overlaps the bottom edge of the hero photo */}
         <div className="md:hidden absolute bottom-3 left-4 z-20">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/50 border border-white/20 backdrop-blur-md">
             <Plane className="w-3.5 h-3.5 text-primary" />
             <span className="text-[10px] font-bold tracking-wider uppercase text-white">
               Tennis Travel
@@ -182,7 +182,7 @@ export default function TravelPage() {
                 <path
                   d="M0 5 Q 50 10 100 5"
                   stroke="currentColor"
-                  strokeWidth="8"
+                  strokeWidth="4"
                   fill="none"
                 />
               </svg>

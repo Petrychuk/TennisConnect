@@ -18,6 +18,7 @@ import { PartnerCTA } from "@/components/partnerCTA";
 export default function ClubsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterService, setFilterService] = useState("");
+  const [servicePopoverOpen, setServicePopoverOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [clubs, setClubs] = useState<typeof CLUBS_DATA>([]);
   const [loading, setLoading] = useState(true);
@@ -104,7 +105,7 @@ export default function ClubsPage() {
           <div className="relative min-h-[28vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-start">
           {/* Badge (mobile) — overlaps the bottom edge of the hero photo */}
           <div className="md:hidden absolute bottom-3 left-4 z-20">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/50 border border-white/20 backdrop-blur-md">
               <span className="w-2 h-2 rounded-full bg-primary" />
               <span className="text-[10px] font-bold tracking-wider uppercase text-white">
                 Places To Play
@@ -206,7 +207,7 @@ export default function ClubsPage() {
               Find Tennis <span className="text-primary relative inline-block">
                 Communities
                 <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none">
-                  <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" />
+                  <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="4" fill="none" />
                 </svg>
               </span>
             </h1>
@@ -230,7 +231,7 @@ export default function ClubsPage() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <Popover>
+              <Popover open={servicePopoverOpen} onOpenChange={setServicePopoverOpen}>
                 <PopoverTrigger asChild>
                   <button
                     className={`shrink-0 h-11 w-11 flex items-center justify-center rounded-xl border cursor-pointer transition-all ${
@@ -249,7 +250,10 @@ export default function ClubsPage() {
                     {["Grass Courts", "Hard Courts", "Coaching", "Pro Shop", "Night Tennis"].map((tag) => (
                       <button
                         key={tag}
-                        onClick={() => setFilterService(filterService === tag ? "" : tag)}
+                        onClick={() => {
+                          setFilterService(filterService === tag ? "" : tag);
+                          setServicePopoverOpen(false);
+                        }}
                         className={`px-3 py-2 rounded-lg text-sm font-medium text-left transition-all cursor-pointer ${
                           filterService === tag
                             ? "bg-primary text-primary-foreground"
