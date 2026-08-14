@@ -89,7 +89,7 @@ export function AboutUs() {
               </span>
             </div>
             
-            <h2 className="text-3xl md:text-5xl font-display font-bold mb-6 leading-tight">
+            <h2 className="text-[1.8125rem] md:text-5xl font-display font-bold mb-6 leading-tight">
               TennisConnect — Your Gateway to <span className="text-primary">Tennis</span>
             </h2>
             

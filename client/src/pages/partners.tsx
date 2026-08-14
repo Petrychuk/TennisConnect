@@ -558,11 +558,10 @@ export default function PartnersPage() {
                     </Badge>
 
                     <p className="hidden
-                        md:block
+                        md:line-clamp-3
+                        xl:line-clamp-4
                         text-sm
                         text-muted-foreground
-                        line-clamp-3
-                        xl:line-clamp-4
                         min-h-[80px]
                         mb-4">
                     {partner.bio}
@@ -590,7 +589,7 @@ export default function PartnersPage() {
                       >
                         <User className="w-4 h-4" />
 
-                        <span className="hidden sm:inline ml-1">
+                        <span className="hidden sm:inline md:portrait:hidden ml-1">
                           Profile
                         </span>
                       </Button>
@@ -610,7 +609,7 @@ export default function PartnersPage() {
                     >
                       <MessageCircle className="w-4 h-4" />
                     
-                      <span className="hidden sm:inline ml-1">
+                      <span className="hidden sm:inline md:portrait:hidden ml-1">
                         Message
                       </span>
                     </Button>

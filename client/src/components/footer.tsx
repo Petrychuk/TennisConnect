@@ -57,10 +57,10 @@ export function Footer() {
       <div className="container mx-auto px-4 py-16">
 
         {/* Main Footer */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-10 mb-12">
+        <div className="grid grid-cols-2 lg:grid-cols-5 md:portrait:grid-cols-4 gap-10 mb-12">
 
           {/* Brand */}
-          <div className="col-span-2 lg:col-span-1 space-y-5">
+          <div className="col-span-2 lg:col-span-1 md:portrait:col-span-1 space-y-5">
            <div>
            <div className="flex flex-col items-center text-center gap-3">
               <h3 className="text-2xl font-display font-bold flex items-center gap-1">
@@ -345,7 +345,7 @@ export function Footer() {
           </div>
 
           {/* Newsletter */}
-          <div className="col-span-2 lg:col-span-1">
+          <div className="col-span-2 lg:col-span-1 md:portrait:col-span-full">
             <h4 className="font-bold text-primary text-lg mb-6 ">Newsletter</h4>
 
             <p className="text-gray-400 mb-4 text-sm">
