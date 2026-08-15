@@ -38,6 +38,39 @@
   transform: rotate(-25deg);
 }
 
+/* Compact variant for inline use in buttons */
+.tennis-ball-sm {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  background: #c7ff3d;
+  border-radius: 50%;
+  position: relative;
+  animation: spin 1.6s linear infinite;
+  flex-shrink: 0;
+}
+
+.tennis-ball-sm .line {
+  position: absolute;
+  width: 120%;
+  height: 120%;
+  border: 1.5px solid white;
+  border-color: white transparent transparent transparent;
+  border-radius: 50%;
+}
+
+.tennis-ball-sm .line-1 {
+  top: -10%;
+  left: -10%;
+  transform: rotate(25deg);
+}
+
+.tennis-ball-sm .line-2 {
+  top: -10%;
+  left: -10%;
+  transform: rotate(-25deg);
+}
+
 .loading-text {
   font-size: 14px;
   color: #9ca3af;

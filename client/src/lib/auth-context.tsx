@@ -1,6 +1,35 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
+// Plain fetch() has no timeout - if the server hangs (e.g. waiting on a
+// database connection that never frees up), the promise never settles,
+// so a caller stuck in a `loading` state stays stuck forever with no
+// error, no toast, just a spinner that never stops. This aborts and
+// throws a normal Error after a reasonable wait instead, so every
+// caller's existing try/catch/finally handles it exactly like any
+// other failed request.
+const AUTH_FETCH_TIMEOUT_MS = 15_000;
+
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init?: RequestInit
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), AUTH_FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error(
+        "The server is taking too long to respond. Please try again in a moment."
+      );
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 type UserRole = "player" | "coach" | null;
 
 interface User {
@@ -117,28 +146,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string, rememberMe?: boolean): Promise<User> => {
     setLoading(true);
 
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, rememberMe: !!rememberMe }),
-      credentials: "include",
-    });
+    try {
+      const res = await fetchWithTimeout("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, rememberMe: !!rememberMe }),
+        credentials: "include",
+      });
 
-    if (!res.ok) {
-      setLoading(false);
-      const error = await res.json();
-      throw new Error(error.message || "Login failed");
-    }
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Login failed");
+      }
 
-    const userData = await res.json();
-    setUser(userData);
+      const userData = await res.json();
+      setUser(userData);
       if (!userData.slug) {
-      console.warn("User logged in without slug");
-    }
-    setProfileLoaded(false);  // ожидаем загрузку профиля
-    setLoading(false);
+        console.warn("User logged in without slug");
+      }
+      setProfileLoaded(false);  // ожидаем загрузку профиля
 
-    return userData;
+      return userData;
+    } finally {
+      setLoading(false);
+    }
   };
 
   /**
@@ -153,28 +184,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   ): Promise<User> => {
     setLoading(true);
 
-    const res = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, name, role, wantsToOrganize }),
-      credentials: "include",
-    });
+    try {
+      const res = await fetchWithTimeout("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, name, role, wantsToOrganize }),
+        credentials: "include",
+      });
 
-    if (!res.ok) {
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Registration failed");
+      }
+
+      const userData = await res.json();
+      setUser(userData);
+      if (!userData.slug) {
+        console.warn("User logged in without slug");
+      }
+      setProfileLoaded(false);
+
+      return userData;
+    } finally {
       setLoading(false);
-      const error = await res.json();
-      throw new Error(error.message || "Registration failed");
     }
-
-    const userData = await res.json();
-    setUser(userData);
-    if (!userData.slug) {
-      console.warn("User logged in without slug");
-    }
-    setProfileLoaded(false);
-    setLoading(false);
-
-    return userData;
   };
   const fetchCurrentUser = async () => {
     const res = await fetch("/api/auth/me", {

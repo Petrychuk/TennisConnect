@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ArrowLeft, Loader2, User, Trophy, Mail, CheckCircle, Eye, EyeOff } from "lucide-react";
+import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import heroImage from "/assets/images/tennis_main.jpg";
@@ -390,9 +391,8 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                     </label>
                   </div>
 
-                  <Button type="submit"  data-testid="login-button" className="w-2/3 mx-auto block whitespace-nowrap font-bold bg-primary text-primary-foreground hover:bg-primary/90 rounded-full cursor-pointer" disabled={isLoading}>
-                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Sign In
+                  <Button type="submit"  data-testid="login-button" className="w-2/3 mx-auto flex items-center justify-center whitespace-nowrap font-bold bg-primary text-primary-foreground hover:bg-primary/90 rounded-full cursor-pointer" disabled={isLoading}>
+                    {isLoading ? <TennisBallSpinner /> : "Sign In"}
                   </Button>
                 </form>
                 )}
@@ -547,9 +547,8 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                     )}
                   </div>
 
-                  <Button type="submit" data-testid="register-button" className="w-2/3 mx-auto block whitespace-nowrap font-bold bg-primary text-primary-foreground hover:bg-primary/90 rounded-full cursor-pointer" disabled={isLoading}>
-                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Create Account
+                  <Button type="submit" data-testid="register-button" className="w-2/3 mx-auto flex items-center justify-center whitespace-nowrap font-bold bg-primary text-primary-foreground hover:bg-primary/90 rounded-full cursor-pointer" disabled={isLoading}>
+                    {isLoading ? <TennisBallSpinner /> : "Create Account"}
                   </Button>
                   
                   <div className="flex items-start space-x-2 mt-4">
