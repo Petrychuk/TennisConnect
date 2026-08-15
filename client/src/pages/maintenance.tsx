@@ -91,7 +91,7 @@ export default function Maintenance() {
           </div>
 
           {/* Footer bar */}
-          <div className="flex flex-col-reverse items-start gap-3 border-t border-white/10 pt-4 text-xs text-white/80 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col-reverse items-start gap-3 border-t border-white/10 pt-4 text-xs text-white/80 sm:flex-row sm:items-center">
             <span>
               © {new Date().getFullYear()} TennisConnect. All rights reserved.
             </span>
