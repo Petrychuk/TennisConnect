@@ -4,11 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5" />
 
-    <!-- Preload the homepage hero photo - it's the largest above-the-fold
-         image (LCP element), so start fetching it immediately instead of
-         waiting for the JS bundle to parse and request it. -->
-    <link rel="preload" as="image" href="/assets/images/tennis_main.jpg" fetchpriority="high" />
-     
+    <!-- The homepage hero photo already has fetchPriority="high" on its
+         own <img> tag (see hero.tsx), which is enough on its own to get
+         it prioritized once discovered. A blanket <link rel="preload">
+         here would apply to every page in the app (this file is the one
+         shared shell), not just the homepage - on any other page the
+         browser fetches an image nothing on that page uses, and warns
+         about it in the console ("was preloaded... but not used"). -->
     <!-- Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-PB33Q552C9"></script>
     <script>

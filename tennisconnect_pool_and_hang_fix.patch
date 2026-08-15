@@ -1,0 +1,281 @@
+From 55f2496f6b1e58581d2c5b662779b6cbb17db7bb Mon Sep 17 00:00:00 2001
+From: patch <patch@local>
+Date: Sat, 15 Aug 2026 12:32:07 +0000
+Subject: [PATCH] Fix DB pool exhaustion + stretched auth buttons + stray
+ preload + login/register hanging forever with no timeout
+
+---
+ client/index.html               |  12 ++--
+ client/src/lib/auth-context.tsx | 109 +++++++++++++++++++++-----------
+ client/src/pages/auth.tsx       |   4 +-
+ server/auth.ts                  |  25 ++------
+ server/db.ts                    |  12 ++++
+ 5 files changed, 99 insertions(+), 63 deletions(-)
+
+diff --git a/client/index.html b/client/index.html
+index bc8b566..cc60490 100644
+--- a/client/index.html
++++ b/client/index.html
+@@ -4,11 +4,13 @@
+     <meta charset="UTF-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5" />
+ 
+-    <!-- Preload the homepage hero photo - it's the largest above-the-fold
+-         image (LCP element), so start fetching it immediately instead of
+-         waiting for the JS bundle to parse and request it. -->
+-    <link rel="preload" as="image" href="/assets/images/tennis_main.jpg" fetchpriority="high" />
+-     
++    <!-- The homepage hero photo already has fetchPriority="high" on its
++         own <img> tag (see hero.tsx), which is enough on its own to get
++         it prioritized once discovered. A blanket <link rel="preload">
++         here would apply to every page in the app (this file is the one
++         shared shell), not just the homepage - on any other page the
++         browser fetches an image nothing on that page uses, and warns
++         about it in the console ("was preloaded... but not used"). -->
+     <!-- Google Analytics -->
+     <script async src="https://www.googletagmanager.com/gtag/js?id=G-PB33Q552C9"></script>
+     <script>
+diff --git a/client/src/lib/auth-context.tsx b/client/src/lib/auth-context.tsx
+index c09ef94..8cbd6e1 100644
+--- a/client/src/lib/auth-context.tsx
++++ b/client/src/lib/auth-context.tsx
+@@ -1,6 +1,35 @@
+ import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+ import { supabase } from "@/lib/supabaseClient";
+ 
++// Plain fetch() has no timeout - if the server hangs (e.g. waiting on a
++// database connection that never frees up), the promise never settles,
++// so a caller stuck in a `loading` state stays stuck forever with no
++// error, no toast, just a spinner that never stops. This aborts and
++// throws a normal Error after a reasonable wait instead, so every
++// caller's existing try/catch/finally handles it exactly like any
++// other failed request.
++const AUTH_FETCH_TIMEOUT_MS = 15_000;
++
++async function fetchWithTimeout(
++  input: RequestInfo | URL,
++  init?: RequestInit
++): Promise<Response> {
++  const controller = new AbortController();
++  const timeoutId = setTimeout(() => controller.abort(), AUTH_FETCH_TIMEOUT_MS);
++  try {
++    return await fetch(input, { ...init, signal: controller.signal });
++  } catch (err) {
++    if (err instanceof Error && err.name === "AbortError") {
++      throw new Error(
++        "The server is taking too long to respond. Please try again in a moment."
++      );
++    }
++    throw err;
++  } finally {
++    clearTimeout(timeoutId);
++  }
++}
++
+ type UserRole = "player" | "coach" | null;
+ 
+ interface User {
+@@ -117,28 +146,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
+   const login = async (email: string, password: string, rememberMe?: boolean): Promise<User> => {
+     setLoading(true);
+ 
+-    const res = await fetch("/api/auth/login", {
+-      method: "POST",
+-      headers: { "Content-Type": "application/json" },
+-      body: JSON.stringify({ email, password, rememberMe: !!rememberMe }),
+-      credentials: "include",
+-    });
+-
+-    if (!res.ok) {
+-      setLoading(false);
+-      const error = await res.json();
+-      throw new Error(error.message || "Login failed");
+-    }
++    try {
++      const res = await fetchWithTimeout("/api/auth/login", {
++        method: "POST",
++        headers: { "Content-Type": "application/json" },
++        body: JSON.stringify({ email, password, rememberMe: !!rememberMe }),
++        credentials: "include",
++      });
++
++      if (!res.ok) {
++        const error = await res.json();
++        throw new Error(error.message || "Login failed");
++      }
+ 
+-    const userData = await res.json();
+-    setUser(userData);
++      const userData = await res.json();
++      setUser(userData);
+       if (!userData.slug) {
+-      console.warn("User logged in without slug");
+-    }
+-    setProfileLoaded(false);  // ожидаем загрузку профиля
+-    setLoading(false);
++        console.warn("User logged in without slug");
++      }
++      setProfileLoaded(false);  // ожидаем загрузку профиля
+ 
+-    return userData;
++      return userData;
++    } finally {
++      setLoading(false);
++    }
+   };
+ 
+   /**
+@@ -153,28 +184,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
+   ): Promise<User> => {
+     setLoading(true);
+ 
+-    const res = await fetch("/api/auth/register", {
+-      method: "POST",
+-      headers: { "Content-Type": "application/json" },
+-      body: JSON.stringify({ email, password, name, role, wantsToOrganize }),
+-      credentials: "include",
+-    });
++    try {
++      const res = await fetchWithTimeout("/api/auth/register", {
++        method: "POST",
++        headers: { "Content-Type": "application/json" },
++        body: JSON.stringify({ email, password, name, role, wantsToOrganize }),
++        credentials: "include",
++      });
++
++      if (!res.ok) {
++        const error = await res.json();
++        throw new Error(error.message || "Registration failed");
++      }
+ 
+-    if (!res.ok) {
+-      setLoading(false);
+-      const error = await res.json();
+-      throw new Error(error.message || "Registration failed");
+-    }
++      const userData = await res.json();
++      setUser(userData);
++      if (!userData.slug) {
++        console.warn("User logged in without slug");
++      }
++      setProfileLoaded(false);
+ 
+-    const userData = await res.json();
+-    setUser(userData);
+-    if (!userData.slug) {
+-      console.warn("User logged in without slug");
++      return userData;
++    } finally {
++      setLoading(false);
+     }
+-    setProfileLoaded(false);
+-    setLoading(false);
+-
+-    return userData;
+   };
+   const fetchCurrentUser = async () => {
+     const res = await fetch("/api/auth/me", {
+diff --git a/client/src/pages/auth.tsx b/client/src/pages/auth.tsx
+index caa57e9..4b9a7ce 100644
+--- a/client/src/pages/auth.tsx
++++ b/client/src/pages/auth.tsx
+@@ -390,7 +390,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
+                     </label>
+                   </div>
+ 
+-                  <Button type="submit"  data-testid="login-button" className="w-2/3 mx-auto block font-bold bg-primary text-primary-foreground hover:bg-primary/90 rounded-full cursor-pointer" disabled={isLoading}>
++                  <Button type="submit"  data-testid="login-button" className="w-2/3 mx-auto block whitespace-nowrap font-bold bg-primary text-primary-foreground hover:bg-primary/90 rounded-full cursor-pointer" disabled={isLoading}>
+                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                     Sign In
+                   </Button>
+@@ -547,7 +547,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
+                     )}
+                   </div>
+ 
+-                  <Button type="submit" data-testid="register-button" className="w-2/3 mx-auto block font-bold bg-primary text-primary-foreground hover:bg-primary/90 rounded-full cursor-pointer" disabled={isLoading}>
++                  <Button type="submit" data-testid="register-button" className="w-2/3 mx-auto block whitespace-nowrap font-bold bg-primary text-primary-foreground hover:bg-primary/90 rounded-full cursor-pointer" disabled={isLoading}>
+                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                     Create Account
+                   </Button>
+diff --git a/server/auth.ts b/server/auth.ts
+index 9a3c820..f2dda90 100644
+--- a/server/auth.ts
++++ b/server/auth.ts
+@@ -3,11 +3,11 @@ import { Strategy as LocalStrategy } from "passport-local";
+ import { type Express } from "express";
+ import session from "express-session";
+ import pgSession from "connect-pg-simple";
+-import { Pool } from "pg";
+ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
+ import { promisify } from "util";
+ import { storage } from "./storage";
+ import { env } from "./env";
++import { pool } from "./db";
+ 
+ const scryptAsync = promisify(scrypt);
+ 
+@@ -54,27 +54,16 @@ export function setupAuth(app: Express) {
+   // Railway / other reverse proxy
+   app.set("trust proxy", 1);
+ 
+-  // PostgreSQL session store
++  // PostgreSQL session store - reuses db.ts's single, capped pool
++  // instead of opening a second independent one. Two separate pools
++  // (each defaulting to pg's max of 10) could total up to 20
++  // connections, past the Supabase pooler's 15-connection session-mode
++  // ceiling - that's what was behind the "max clients reached" crashes.
+   const PgStore = pgSession(session);
+ 
+-  const sessionPool = new Pool({
+-    connectionString: env.DATABASE_URL,
+-    ssl: isProduction
+-      ? { rejectUnauthorized: false }
+-      : undefined,
+-  });
+-
+-  // Same reasoning as the main pool in db.ts: an unhandled 'error' on
+-  // this pool would crash the whole process, and this one backs the
+-  // session store - meaning every logged-in request (including the
+-  // login flow itself) touches it. Log instead of crashing.
+-  sessionPool.on("error", (err) => {
+-    console.error("Unexpected error on idle Postgres client (session pool):", err);
+-  });
+-
+   const sessionSettings: session.SessionOptions = {
+     store: new PgStore({
+-      pool: sessionPool,
++      pool,
+       tableName: "user_sessions",
+       createTableIfMissing: false,
+     }),
+diff --git a/server/db.ts b/server/db.ts
+index 1b87a5b..36bc730 100644
+--- a/server/db.ts
++++ b/server/db.ts
+@@ -18,11 +18,23 @@ if (!process.env.DATABASE_URL) {
+   );
+ }
+ 
++// max is set well under the Supabase pooler's session-mode connection
++// ceiling (its error message literally says "pool_size: 15"). This pool
++// is now the ONLY pool in the whole app - see auth.ts, which used to
++// open a second, separate Pool for the session store. Two independent
++// pools each defaulting to pg's max of 10 could total up to 20
++// connections, well past that 15 limit - which is exactly what "max
++// clients reached in session mode" in the Railway logs was reporting.
++// Reusing this single pool everywhere plus capping it here is the fix,
++// not just logging the error and moving on.
+ export const pool = new Pool({
+   connectionString: process.env.DATABASE_URL,
+   ssl: {
+     rejectUnauthorized: false,
+   },
++  max: 8,
++  idleTimeoutMillis: 30_000,
++  connectionTimeoutMillis: 10_000,
+ });
+ 
+ // node-postgres emits 'error' on the pool whenever an *idle* client's
+-- 
+2.43.0
+

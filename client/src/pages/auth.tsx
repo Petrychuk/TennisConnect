@@ -390,7 +390,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                     </label>
                   </div>
 
-                  <Button type="submit"  data-testid="login-button" className="w-2/3 mx-auto block font-bold bg-primary text-primary-foreground hover:bg-primary/90 rounded-full cursor-pointer" disabled={isLoading}>
+                  <Button type="submit"  data-testid="login-button" className="w-2/3 mx-auto block whitespace-nowrap font-bold bg-primary text-primary-foreground hover:bg-primary/90 rounded-full cursor-pointer" disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Sign In
                   </Button>
@@ -547,7 +547,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                     )}
                   </div>
 
-                  <Button type="submit" data-testid="register-button" className="w-2/3 mx-auto block font-bold bg-primary text-primary-foreground hover:bg-primary/90 rounded-full cursor-pointer" disabled={isLoading}>
+                  <Button type="submit" data-testid="register-button" className="w-2/3 mx-auto block whitespace-nowrap font-bold bg-primary text-primary-foreground hover:bg-primary/90 rounded-full cursor-pointer" disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Create Account
                   </Button>
