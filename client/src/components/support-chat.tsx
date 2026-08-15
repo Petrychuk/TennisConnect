@@ -108,6 +108,15 @@ export function SupportChat() {
     }
   }, [isOpen ]);
 
+  // The maintenance page has its own social-links footer sitting in this
+  // exact bottom-right corner - showing the chat bubble there overlaps it.
+  // A "we're down for maintenance" page also isn't a place a live support
+  // widget makes much sense on anyway (backend may well be part of what's
+  // down), so it's simplest to just not render it there at all.
+  if (location === "/maintenance") {
+    return null;
+  }
+
   return (
     <div
       className={`fixed right-4 md:right-6 z-40 flex flex-col items-end pointer-events-none ${
