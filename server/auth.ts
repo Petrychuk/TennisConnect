@@ -3,11 +3,11 @@ import { Strategy as LocalStrategy } from "passport-local";
 import { type Express } from "express";
 import session from "express-session";
 import pgSession from "connect-pg-simple";
-import { Pool } from "pg";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { env } from "./env";
+import { pool } from "./db";
 
 const scryptAsync = promisify(scrypt);
 
@@ -54,27 +54,16 @@ export function setupAuth(app: Express) {
   // Railway / other reverse proxy
   app.set("trust proxy", 1);
 
-  // PostgreSQL session store
+  // PostgreSQL session store - reuses db.ts's single, capped pool
+  // instead of opening a second independent one. Two separate pools
+  // (each defaulting to pg's max of 10) could total up to 20
+  // connections, past the Supabase pooler's 15-connection session-mode
+  // ceiling - that's what was behind the "max clients reached" crashes.
   const PgStore = pgSession(session);
-
-  const sessionPool = new Pool({
-    connectionString: env.DATABASE_URL,
-    ssl: isProduction
-      ? { rejectUnauthorized: false }
-      : undefined,
-  });
-
-  // Same reasoning as the main pool in db.ts: an unhandled 'error' on
-  // this pool would crash the whole process, and this one backs the
-  // session store - meaning every logged-in request (including the
-  // login flow itself) touches it. Log instead of crashing.
-  sessionPool.on("error", (err) => {
-    console.error("Unexpected error on idle Postgres client (session pool):", err);
-  });
 
   const sessionSettings: session.SessionOptions = {
     store: new PgStore({
-      pool: sessionPool,
+      pool,
       tableName: "user_sessions",
       createTableIfMissing: false,
     }),

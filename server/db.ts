@@ -18,11 +18,23 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
+// max is set well under the Supabase pooler's session-mode connection
+// ceiling (its error message literally says "pool_size: 15"). This pool
+// is now the ONLY pool in the whole app - see auth.ts, which used to
+// open a second, separate Pool for the session store. Two independent
+// pools each defaulting to pg's max of 10 could total up to 20
+// connections, well past that 15 limit - which is exactly what "max
+// clients reached in session mode" in the Railway logs was reporting.
+// Reusing this single pool everywhere plus capping it here is the fix,
+// not just logging the error and moving on.
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false,
   },
+  max: 8,
+  idleTimeoutMillis: 30_000,
+  connectionTimeoutMillis: 10_000,
 });
 
 // node-postgres emits 'error' on the pool whenever an *idle* client's
