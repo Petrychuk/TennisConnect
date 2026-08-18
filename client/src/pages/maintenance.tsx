@@ -107,7 +107,7 @@ export default function Maintenance() {
                 <Facebook className="h-4 w-4" />
               </a>
               <a
-                href="https://instagram.com"
+                href="https://www.instagram.com/tennisconnect.au/"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="TennisConnect on Instagram"

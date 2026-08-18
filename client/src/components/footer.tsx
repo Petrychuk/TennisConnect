@@ -127,7 +127,7 @@ export function Footer() {
               </a>
 
               <a
-                href="https://instagram.com"
+                href="https://www.instagram.com/tennisconnect.au/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-[hsl(var(--tennis-ball))] hover:scale-110 transition-all"
