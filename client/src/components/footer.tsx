@@ -118,7 +118,7 @@ export function Footer() {
 
             <div className="flex gap-4 pt-2">
               <a
-                href="https://facebook.com"
+                href="https://www.facebook.com/tennisconnect.au/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-[hsl(var(--tennis-ball))] hover:scale-110 transition-all"

@@ -1,0 +1,43 @@
+From 7914ae5cb8d4c2d59b49cc1b6582fd5f8ab97d82 Mon Sep 17 00:00:00 2001
+From: patch <patch@local>
+Date: Tue, 18 Aug 2026 11:40:22 +0000
+Subject: [PATCH] Point Facebook link at
+ https://www.facebook.com/tennisconnect.au/
+
+---
+ client/src/components/footer.tsx | 2 +-
+ client/src/pages/maintenance.tsx | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/client/src/components/footer.tsx b/client/src/components/footer.tsx
+index 9c7c227..1f06b09 100644
+--- a/client/src/components/footer.tsx
++++ b/client/src/components/footer.tsx
+@@ -118,7 +118,7 @@ export function Footer() {
+ 
+             <div className="flex gap-4 pt-2">
+               <a
+-                href="https://facebook.com"
++                href="https://www.facebook.com/tennisconnect.au/"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 className="text-[hsl(var(--tennis-ball))] hover:scale-110 transition-all"
+diff --git a/client/src/pages/maintenance.tsx b/client/src/pages/maintenance.tsx
+index bcb10dd..fd9bf97 100644
+--- a/client/src/pages/maintenance.tsx
++++ b/client/src/pages/maintenance.tsx
+@@ -96,9 +96,9 @@ export default function Maintenance() {
+               © {new Date().getFullYear()} TennisConnect. All rights reserved.
+             </span>
+ 
+-            <div className="flex gap-4">
++            <div className="flex gap-4 sm:ml-6">
+               <a
+-                href="https://facebook.com"
++                href="https://www.facebook.com/tennisconnect.au/"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 aria-label="TennisConnect on Facebook"
+-- 
+2.43.0
+

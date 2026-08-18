@@ -96,9 +96,9 @@ export default function Maintenance() {
               © {new Date().getFullYear()} TennisConnect. All rights reserved.
             </span>
 
-            <div className="flex gap-4">
+            <div className="flex gap-4 sm:ml-6">
               <a
-                href="https://facebook.com"
+                href="https://www.facebook.com/tennisconnect.au/"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="TennisConnect on Facebook"
