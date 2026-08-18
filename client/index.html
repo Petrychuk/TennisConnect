@@ -4,13 +4,26 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5" />
 
-    <!-- The homepage hero photo already has fetchPriority="high" on its
-         own <img> tag (see hero.tsx), which is enough on its own to get
-         it prioritized once discovered. A blanket <link rel="preload">
-         here would apply to every page in the app (this file is the one
-         shared shell), not just the homepage - on any other page the
-         browser fetches an image nothing on that page uses, and warns
-         about it in the console ("was preloaded... but not used"). -->
+    <!-- Preload the homepage hero photo (the LCP element there) as early
+         as possible - before the JS bundle has even downloaded, let alone
+         parsed/executed/rendered the <img> tag that requests it. That gap
+         is most of where LCP time goes on a client-rendered SPA: without
+         this, the browser can't start fetching the image until React has
+         mounted and rendered Home, which on a slow connection can be
+         seconds after the HTML itself arrives. Scoped to "/" only (via a
+         tiny synchronous script, not a static <link>) so it doesn't also
+         fire - and trigger a "was preloaded but not used" console warning -
+         on every other page, which all share this one HTML shell. -->
+    <script>
+      if (location.pathname === "/") {
+        var l = document.createElement("link");
+        l.rel = "preload";
+        l.as = "image";
+        l.href = "/assets/images/tennis_main.jpg";
+        l.fetchPriority = "high";
+        document.head.appendChild(l);
+      }
+    </script>
     <!-- Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-PB33Q552C9"></script>
     <script>
