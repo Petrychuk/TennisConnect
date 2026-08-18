@@ -1,4 +1,5 @@
-import { ArrowLeft, RotateCw, Users, CalendarDays, TrendingUp, Trophy } from "lucide-react";
+import { ArrowLeft, RotateCw, Users, CalendarDays, TrendingUp, Trophy, Facebook, Instagram } from "lucide-react";
+import { TikTokIcon } from "@/components/icons/TikTokIcon";
 import { Link } from "wouter";
 import SEO from "@/components/seo";
 import { useAuth } from "@/lib/auth-context";
@@ -114,6 +115,46 @@ export default function Error500() {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Footer bar - copyright + social links, same pattern as
+              /maintenance */}
+          <div className="mt-5 flex flex-col-reverse items-start gap-3 border-t border-white/10 pt-4 text-xs text-white/80 sm:mt-6 sm:flex-row sm:items-center">
+            <span>
+              © {new Date().getFullYear()} TennisConnect. All rights reserved.
+            </span>
+
+            <div className="flex gap-4 sm:ml-6">
+              <a
+                href="https://www.facebook.com/tennisconnect.au/"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="TennisConnect on Facebook"
+                className="text-[hsl(var(--tennis-ball))] transition-all hover:scale-110 hover:opacity-80"
+              >
+                <Facebook className="h-4 w-4" />
+              </a>
+              <a
+                href="https://instagram.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="TennisConnect on Instagram"
+                className="text-[hsl(var(--tennis-ball))] transition-all hover:scale-110 hover:opacity-80"
+              >
+                <Instagram className="h-4 w-4" />
+              </a>
+              {/* TikTok/Threads accounts don't exist yet - link points at
+                  the platform's homepage as a placeholder until they do. */}
+              <a
+                href="https://tiktok.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="TennisConnect on TikTok"
+                className="text-[hsl(var(--tennis-ball))] transition-all hover:scale-110 hover:opacity-80"
+              >
+                <TikTokIcon className="h-4 w-4" />
+              </a>
+            </div>
           </div>
         </div>
       </div>
