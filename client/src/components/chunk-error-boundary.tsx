@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from "react";
+import Error500 from "@/pages/error-500";
 
 interface Props {
   children: ReactNode;
@@ -52,22 +53,11 @@ export class ChunkErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
-      return (
-        <div className="min-h-screen flex items-center justify-center px-4">
-          <div className="text-center max-w-sm">
-            <h1 className="text-xl font-bold mb-2">Something went wrong</h1>
-            <p className="text-muted-foreground text-sm mb-6">
-              This page failed to load. Reloading usually fixes it.
-            </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="bg-primary text-primary-foreground font-bold px-6 py-2.5 rounded-full cursor-pointer"
-            >
-              Reload
-            </button>
-          </div>
-        </div>
-      );
+      // Statically imported (not lazy) on purpose: if what got us here was
+      // a failed chunk fetch, a fallback that itself needs to fetch
+      // another chunk could fail the exact same way. This ships in the
+      // main bundle so it's always available.
+      return <Error500 />;
     }
     return this.props.children;
   }

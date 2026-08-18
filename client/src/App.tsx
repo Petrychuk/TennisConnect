@@ -55,6 +55,7 @@ const LiveSimulatorPage = lazy(() => import("@/pages/dev/live-simulator"));
 const OrganiserSessionEditPage = lazy(() => import("@/pages/organiser/session-edit"));
 const OrganisationDetailPage = lazy(() => import("@/pages/organisation-detail"));
 const MaintenancePage = lazy(() => import("@/pages/maintenance"));
+const Error500Page = lazy(() => import("@/pages/error-500"));
 
 // Minimal, unobtrusive - shows only during the brief window a lazy
 // chunk is downloading on navigation, not on every render.
@@ -89,6 +90,7 @@ function Router() {
           <Redirect to="/players" />
         </Route>
         <Route path="/maintenance" component={MaintenancePage} />
+        <Route path="/500" component={Error500Page} />
         <Route path="/tournaments" component={TournamentsPage} />
         <Route path="/articles" component={ArticlesPage} />
         <Route path="/articles/:slug" component={ArticleDetailPage} />
