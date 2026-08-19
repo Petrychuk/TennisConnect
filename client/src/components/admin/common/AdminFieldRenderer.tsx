@@ -42,12 +42,30 @@ export function AdminFieldRenderer({
 
         return (
           <div key={f.name}>
-            <Label htmlFor={f.name} className="capitalize">
-              {f.name.replace(/([A-Z])/g, " $1")}
-              {f.required && (
-                <span className="text-destructive ml-1">*</span>
+            <div className="flex items-center justify-between">
+              <Label htmlFor={f.name} className="capitalize">
+                {f.name.replace(/([A-Z])/g, " $1")}
+                {f.required && (
+                  <span className="text-destructive ml-1">*</span>
+                )}
+              </Label>
+
+              {/* Live character counter for fields with a maxLength (SEO
+                  Title / Meta Description) - turns red once over the
+                  limit, well before the person tries to submit. */}
+              {f.maxLength != null && (
+                <span
+                  className={`text-xs ${
+                    (values[f.name] || "").length > f.maxLength
+                      ? "text-destructive font-medium"
+                      : "text-muted-foreground"
+                  }`}
+                  data-testid={`admin-field-counter-${f.name}`}
+                >
+                  {(values[f.name] || "").length} / {f.maxLength}
+                </span>
               )}
-            </Label>
+            </div>
 
             {f.type === "checkbox" && switchFields?.[f.name] ? (
               <div className="flex items-center justify-between rounded-lg border p-4">
@@ -68,7 +86,18 @@ export function AdminFieldRenderer({
                 id={f.name}
                 value={values[f.name] || ""}
                 onChange={(e) => onChange(f.name, e.target.value)}
+                onBlur={(e) => {
+                  const trimmed = e.target.value.trim();
+                  if (trimmed !== e.target.value) onChange(f.name, trimmed);
+                }}
+                maxLength={f.maxLength}
                 rows={5}
+                className={
+                  f.maxLength != null &&
+                  (values[f.name] || "").length > f.maxLength
+                    ? "border-destructive focus-visible:ring-destructive"
+                    : undefined
+                }
                 data-testid={`admin-field-${f.name}`}
               />
             ) : f.type === "select" ? (
@@ -104,6 +133,17 @@ export function AdminFieldRenderer({
                 type={f.type === "number" ? "number" : "text"}
                 value={values[f.name] || ""}
                 onChange={(e) => onChange(f.name, e.target.value)}
+                onBlur={(e) => {
+                  const trimmed = e.target.value.trim();
+                  if (trimmed !== e.target.value) onChange(f.name, trimmed);
+                }}
+                maxLength={f.maxLength}
+                className={
+                  f.maxLength != null &&
+                  (values[f.name] || "").length > f.maxLength
+                    ? "border-destructive focus-visible:ring-destructive"
+                    : undefined
+                }
                 data-testid={`admin-field-${f.name}`}
               />
             )}

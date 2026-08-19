@@ -15,8 +15,8 @@ export const travelSchema = z.object({
   ctaText: z.string().trim().max(50).optional(),
   ctaUrl: z.string().url().optional().or(z.literal("")),
   tags: z.array(z.string()).max(20).optional(),
-  seoTitle: z.string().trim().max(70).optional(),
-  metaDescription: z.string().trim().max(160).optional(),
+  seoTitle: z.string().trim().max(70, "SEO Title must be 70 characters or less.").optional(),
+  metaDescription: z.string().trim().max(160, "Meta Description must be 160 characters or less.").optional(),
   spotsLeft: z.coerce
     .number()
     .min(0)
