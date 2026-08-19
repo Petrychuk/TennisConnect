@@ -103,10 +103,10 @@ export function Footer() {
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-[hsl(var(--tennis-ball))]" />
                 <a
-                  href="mailto: makeinfosense@gmail.com"
+                  href="mailto: tennisconnect.au@gmail.com"
                   className="hover:text-white transition-colors"
                 >
-                  makeinfosense@gmail.com
+                  tennisconnect.au@gmail.com
                 </a>
               </div>
 
@@ -271,7 +271,7 @@ export function Footer() {
 
               <li>
                 <a
-                  href="mailto:makeinfosense@gmail.com"
+                  href="mailto:tennisconnect.au@gmail.com"
                   className="hover:text-primary transition-colors"
                 >
                   Contact Us
