@@ -38,6 +38,7 @@ process.on("SIGINT", () => {
 });
 import cors from "cors";
 import helmet from "helmet";
+import compression from "compression";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
@@ -123,6 +124,14 @@ declare module "http" {
   }
 }
 console.log("🟢 routes.ts loaded");
+
+// gzip/brotli-compress every text response (JS/CSS/HTML/JSON) before it
+// goes over the wire - the built JS bundles were being sent completely
+// uncompressed. This typically cuts transferred bytes for text assets by
+// 60-80%, which matters most for whatever the browser needs before it can
+// render anything (the LCP path). Doesn't touch already-compressed
+// formats (images, etc.) - compression's default filter skips those.
+app.use(compression());
 
 app.use(
   express.json({
