@@ -318,7 +318,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       });
 
       // Send email via Resend
-      const resetUrl = `${req.headers.origin || 'https://tennisconnect.com.au'}/reset-password?token=${token}`;
+      const resetUrl = `${req.headers.origin || 'https://www.tennisconnect.com.au'}/reset-password?token=${token}`;
 
       const emailResult = await sendPasswordResetEmail(email, resetUrl);
 

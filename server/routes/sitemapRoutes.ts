@@ -12,7 +12,7 @@ const router = Router();
 
 router.get("/sitemap.xml", async (_req, res) => {
   try {
-    const baseUrl = "https://tennisconnect.com.au";
+    const baseUrl = "https://www.tennisconnect.com.au";
 
     // Static pages
     const staticPages = [
