@@ -3,4 +3,4 @@ Allow: /
 
 Disallow: /admin
 
-Sitemap: https://tennisconnect.com.au/sitemap.xml
+Sitemap: https://www.tennisconnect.com.au/sitemap.xml

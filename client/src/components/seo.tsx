@@ -1,6 +1,7 @@
 // client/src/components/SEO.tsx
 
 import { Helmet } from "react-helmet-async";
+import { useLocation } from "wouter";
 
 interface SEOProps {
   title: string;
@@ -16,20 +17,24 @@ export default function SEO({
   title,
   description,
   canonical,
-  image = "https://tennisconnect.com.au/og-image.jpg",
+  image = "https://www.tennisconnect.com.au/og-image.jpg",
   tags = [],
   type = "website",
   noIndex = false,
 }: SEOProps) {
+  // Falls back to the current route when a page forgets to pass its own
+  // canonical - every page ends up with a correct <link rel="canonical">
+  // by default instead of silently having none at all.
+  const [currentPath] = useLocation();
+  const canonicalPath = canonical ?? currentPath;
+
   const schema = {
     "@context": "https://schema.org",
     "@type": type === "article" ? "Article" : "WebPage",
     headline: title,
     description,
     keywords: tags,
-    url: canonical
-      ? `https://tennisconnect.com.au${canonical}`
-      : undefined,
+    url: `https://www.tennisconnect.com.au${canonicalPath}`,
     image,
   };
 
@@ -53,14 +58,17 @@ export default function SEO({
 
       {/* =========================
           CANONICAL
+
+          "www" is the domain the site now redirects the bare apex to
+          (see server/index.ts) and the one GA4's stream is set up for -
+          this must match, or search engines get the exact opposite
+          signal from what the redirect itself says.
       ========================= */}
 
-      {canonical && (
-        <link
-          rel="canonical"
-          href={`https://tennisconnect.com.au${canonical}`}
-        />
-      )}
+      <link
+        rel="canonical"
+        href={`https://www.tennisconnect.com.au${canonicalPath}`}
+      />
 
       {/* =========================
           OPEN GRAPH
@@ -86,12 +94,10 @@ export default function SEO({
         content={image}
       />
 
-      {canonical && (
-        <meta
-          property="og:url"
-          content={`https://tennisconnect.com.au${canonical}`}
-        />
-      )}
+      <meta
+        property="og:url"
+        content={`https://www.tennisconnect.com.au${canonicalPath}`}
+      />
 
       {/* =========================
           TWITTER / X
