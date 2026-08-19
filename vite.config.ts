@@ -93,10 +93,19 @@ export default defineConfig({
           // Used broadly for data fetching (React Query) - same
           // parallel-download/independent-cache reasoning as above.
           "vendor-query": ["@tanstack/react-query"],
-          // Loaded eagerly (AuthProvider wraps the whole app), so same
-          // reasoning again - isolating it avoids it bloating whichever
-          // chunk happened to import it first.
-          "vendor-supabase": ["@supabase/supabase-js"],
+          // NOT chunked (unlike the others above): this ended up an
+          // "empty chunk" at build time - @supabase/supabase-js's actual
+          // code apparently doesn't resolve to a module id Rollup's
+          // object-form manualChunks can match here, so the rule did
+          // nothing useful except create a pointless empty file. Worse,
+          // it's plausible this left something depending on that chunk
+          // (e.g. auth-context.tsx, used by the lazy-loaded profile
+          // pages) referencing a chunk that doesn't actually contain
+          // what it needs - a very plausible explanation for a brief
+          // "chunk load failed" flash right after login specifically.
+          // Leaving supabase-js out of manualChunks lets Rollup place it
+          // whichever way it naturally resolves, same as before this was
+          // added.
         },
       },
     },
