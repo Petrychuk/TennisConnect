@@ -24,6 +24,13 @@ export interface AdminFieldDef {
   required?: boolean;
   help?: string;
   options?: string[];
+  // When set, the field renders a live "N / maxLength" character counter
+  // (turns red past the limit), enforces the limit via the input's own
+  // native maxLength attribute, and trims leading/trailing whitespace on
+  // blur. Used for SEO fields (Meta Title/Description) so a content
+  // manager sees and can't exceed the limit before ever submitting, in
+  // plain terms instead of the raw Zod validation message.
+  maxLength?: number;
 }
 
 // Field definitions per resource
@@ -62,8 +69,8 @@ export const FIELDS: Record<Resource, AdminFieldDef[]> = {
     { name: "content", type: "textarea", required: true },
     { name: "coverImage", type: "text", required: true, help: "Image URL" },
     { name: "readTime", type: "number", help: "Minutes" },
-    { name: "seoTitle", type: "text" },
-    { name: "metaDescription", type: "textarea" },
+    { name: "seoTitle", type: "text", maxLength: 70, help: "Recommended length: 50–70 characters." },
+    { name: "metaDescription", type: "textarea", maxLength: 160, help: "Recommended length: 140–160 characters." },
     { name: "tags", type: "text" },
   ],
   travel: [
@@ -84,10 +91,12 @@ export const FIELDS: Record<Resource, AdminFieldDef[]> = {
     { name: "ctaText", type: "text", help: "Book Now / Learn More" },
     { name: "ctaUrl", type: "text", help: "External booking page" },
     { name: "tags", type: "list", help: "Comma separated" },
-    { name: "seoTitle", type: "text" },
+    { name: "seoTitle", type: "text", maxLength: 70, help: "Recommended length: 50–70 characters." },
     {
       name: "metaDescription",
       type: "textarea",
+      maxLength: 160,
+      help: "Recommended length: 140–160 characters.",
     },
     {
       name: "content",

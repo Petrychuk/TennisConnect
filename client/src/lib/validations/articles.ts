@@ -47,13 +47,13 @@ export const articleSchema = z.object({
   seoTitle: z
     .string()
     .trim()
-    .max(60, "SEO title should not exceed 60 characters")
+    .max(70, "SEO Title must be 70 characters or less.")
     .optional(),
 
   metaDescription: z
     .string()
     .trim()
-    .max(160, "Meta description should not exceed 160 characters")
+    .max(160, "Meta Description must be 160 characters or less.")
     .optional(),
 
   tags: z

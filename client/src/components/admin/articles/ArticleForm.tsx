@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { FIELDS, type AdminFieldDef } from "@/lib/adminFields";
 import { AdminFieldRenderer } from "@/components/admin/common/AdminFieldRenderer";
+import { SeoPreviewCard } from "@/components/admin/common/SeoPreviewCard";
 import { ImageUploader } from "@/components/admin/common/ImageUploader";
 
 export interface ArticleFormProps {
@@ -187,14 +188,22 @@ export function ArticleForm({
 
       {/* STEP 1 */}
       {step === "details" && (
-        <AdminFieldRenderer
-          fields={DETAIL_FIELDS}
-          values={form}
-          onChange={updateField}
-          isFieldVisible={(f, values) =>
-            f.name !== "legalType" || values.category === "Legal"
-          }
-        />
+        <>
+          <AdminFieldRenderer
+            fields={DETAIL_FIELDS}
+            values={form}
+            onChange={updateField}
+            isFieldVisible={(f, values) =>
+              f.name !== "legalType" || values.category === "Legal"
+            }
+          />
+
+          <SeoPreviewCard
+            title={form.seoTitle || form.title}
+            description={form.metaDescription || form.excerpt}
+            path={`/articles/${form.slug || "your-article"}`}
+          />
+        </>
       )}
 
       {/* STEP 2 */}

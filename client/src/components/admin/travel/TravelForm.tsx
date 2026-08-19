@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { FIELDS, type AdminFieldDef } from "@/lib/adminFields";
 import { AdminFieldRenderer } from "@/components/admin/common/AdminFieldRenderer";
+import { SeoPreviewCard } from "@/components/admin/common/SeoPreviewCard";
 import { ImageUploader } from "@/components/admin/common/ImageUploader";
 import { GalleryUploader } from "@/components/admin/common/GalleryUploader";
 
@@ -204,12 +205,20 @@ export function TravelForm({
 
       {/* STEP 1 */}
       {step === "details" && (
-        <AdminFieldRenderer
-          fields={DETAIL_FIELDS}
-          values={form}
-          onChange={updateField}
-          switchFields={SWITCH_FIELDS}
-        />
+        <>
+          <AdminFieldRenderer
+            fields={DETAIL_FIELDS}
+            values={form}
+            onChange={updateField}
+            switchFields={SWITCH_FIELDS}
+          />
+
+          <SeoPreviewCard
+            title={form.seoTitle || form.title}
+            description={form.metaDescription || form.description}
+            path={`/travels/${form.slug || "your-package"}`}
+          />
+        </>
       )}
 
       {/* STEP 2 */}
