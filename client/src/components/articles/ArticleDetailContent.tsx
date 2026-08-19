@@ -27,9 +27,20 @@ export interface Article {
   isPublished?: boolean;
 }
 
+// The related-articles cards only ever render id/slug/title/coverImage/
+// readTime (see the map() below) - the lightweight GET
+// /articles/:slug/related endpoint intentionally sends just those columns
+// rather than every field (including the full article body) for every
+// published article, so this type says so honestly instead of overclaiming
+// the full Article shape for data that doesn't have it.
+export type RelatedArticle = Pick<
+  Article,
+  "id" | "slug" | "title" | "coverImage" | "readTime"
+>;
+
 interface ArticleDetailContentProps {
   article: Article;
-  relatedArticles?: Article[];
+  relatedArticles?: RelatedArticle[];
 }
 
 // Landscape/default cover — a contained, moderately sized banner (matches
@@ -111,6 +122,8 @@ export function ArticleDetailContent({
                   <img
                     src={article.coverImage}
                     alt={article.title}
+                    fetchPriority="high"
+                    decoding="async"
                     onLoad={handleCoverLoad}
                     className="absolute inset-0 w-full h-full object-cover"
                   />
@@ -153,6 +166,8 @@ export function ArticleDetailContent({
             <img
               src={article.coverImage}
               alt={article.title}
+              fetchPriority="high"
+              decoding="async"
               onLoad={handleCoverLoad}
               className="absolute inset-0 w-full h-full object-cover"
             />

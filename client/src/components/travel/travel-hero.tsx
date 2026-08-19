@@ -40,6 +40,8 @@ export function TravelHero({
         <img
           src={coverImage}
           alt={title}
+          fetchPriority="high"
+          decoding="async"
           className="absolute inset-0 w-full h-full object-cover"
         />
 
