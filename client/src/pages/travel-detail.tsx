@@ -65,8 +65,20 @@ export default function TravelDetailPage() {
 
   if (!pkg) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading…</div>
+      <div className="min-h-screen bg-background font-sans">
+        <Navbar />
+        <div className="container mx-auto px-4 pt-28 pb-16 max-w-4xl animate-pulse">
+          <div className="h-4 w-24 bg-muted rounded mb-6" />
+          <div className="h-10 w-3/4 bg-muted rounded mb-4" />
+          <div className="h-4 w-1/3 bg-muted rounded mb-8" />
+          <div className="h-[300px] sm:h-[380px] md:h-[460px] bg-muted rounded-2xl mb-8" />
+          <div className="space-y-3">
+            <div className="h-4 bg-muted rounded w-full" />
+            <div className="h-4 bg-muted rounded w-full" />
+            <div className="h-4 bg-muted rounded w-5/6" />
+          </div>
+        </div>
+        <Footer />
       </div>
     );
   }

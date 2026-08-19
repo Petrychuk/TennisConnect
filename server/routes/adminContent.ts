@@ -79,6 +79,44 @@ router.get("/articles/:slug",
     res.json(row);
   })
 );
+// Lightweight "related articles" lookup - the article page only needs
+// id/slug/title/coverImage/readTime to render the 3 related cards, but
+// the client used to call GET /articles (every column, every published
+// article, no limit) and filter down to 3 in the browser. That downloads
+// the full `content` body of every article on the site just to throw
+// almost all of it away. Filtering by category + limiting to 3 here,
+// with only the columns the cards actually render, avoids that entirely.
+router.get("/articles/:slug/related",
+  asyncHandler(async (req: any, res: any) => {
+    const [current] = await db
+      .select({ id: articles.id, category: articles.category })
+      .from(articles)
+      .where(eq(articles.slug, req.params.slug));
+
+    if (!current) return res.json([]);
+
+    const rows = await db
+      .select({
+        id: articles.id,
+        slug: articles.slug,
+        title: articles.title,
+        coverImage: articles.coverImage,
+        readTime: articles.readTime,
+      })
+      .from(articles)
+      .where(
+        and(
+          eq(articles.isPublished, true),
+          eq(articles.category, current.category),
+          ne(articles.id, current.id)
+        )
+      )
+      .orderBy(desc(articles.createdAt))
+      .limit(3);
+
+    res.json(rows);
+  })
+);
 router.post("/admin/articles",
   requireAdmin,
   asyncHandler(async (req: any, res: any) => {
