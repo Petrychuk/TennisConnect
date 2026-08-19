@@ -177,10 +177,6 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
       const data = await res.json();
 
       setForgotPasswordSent(true);
-      toast({
-        title: "Check your email",
-        description: "If an account exists, we've sent a password reset link.",
-      });
 
       // In development, show the reset URL
       if (data.resetUrl) {
@@ -249,7 +245,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                         </div>
                         <h3 className="text-xl font-bold mb-2">Check your email</h3>
                         <p className="text-muted-foreground mb-6">
-                          If an account exists for {forgotPasswordEmail}, we've sent password reset instructions.
+                          If an account exists for {forgotPasswordEmail}, we've sent a password reset link. Please check your inbox and spam folder.
                         </p>
                         <Button
                           variant="outline"
