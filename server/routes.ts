@@ -253,7 +253,12 @@ export async function registerRoutes(app: Express): Promise<void> {
         ) => {
       if (err) return next(err);
       if (!user) {
-        return res.status(401).json({ message: "Login failed" });
+        // Deliberately generic (doesn't say which of email/password was
+        // wrong - that's a login-enumeration best practice, not an
+        // oversight), but previously this literally read "Login failed"
+        // - the exact same text as the toast's own title - so the toast
+        // showed the same two words twice with no actual explanation.
+        return res.status(401).json({ message: "Incorrect email or password. Please try again." });
       }
       
       // Regenerate session to prevent session fixation
