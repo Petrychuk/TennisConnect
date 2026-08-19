@@ -57,6 +57,26 @@ app.get("/health", (_req, res) => {
   });
 });
 
+// Canonical-domain redirect: the bare apex (tennisconnect.com.au) has a
+// perfectly valid SSL cert of its own (Railway issues one for every
+// connected custom domain) and serves the app directly with its own
+// 200 - it was never "insecure", it just was never redirected to the
+// www version the GA4 stream, SEO, and everything else already treat as
+// canonical. Without this, apex and www are two separate origins split-
+// ing session/analytics identity and diluting SEO between them. Placed
+// right after /health (so Railway's own health checks, which don't hit
+// this hostname, are never affected) and before everything else, so it
+// runs before any other work happens on a request that's just going to
+// be redirected anyway. Scoped to the exact apex hostname only, so local
+// dev (localhost) and the Railway-assigned *.up.railway.app hostname are
+// both untouched.
+app.use((req, res, next) => {
+  if (req.hostname === "tennisconnect.com.au") {
+    return res.redirect(301, `https://www.tennisconnect.com.au${req.originalUrl}`);
+  }
+  next();
+});
+
 // Security headers (CSP, X-Frame-Options, etc). `crossOriginEmbedderPolicy`
 // off + a permissive `img-src`/`connect-src` because we load images and
 // call out to Supabase Storage from third-party origins - tighten this
