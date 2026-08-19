@@ -90,10 +90,10 @@ export function Partnership() {
               <p className="text-sm text-gray-300">
                 Or email us directly at{" "}
                 <a
-                  href="mailto:makeinfosense@gmail.com"
+                  href="mailto:tennisconnect.au@gmail.com"
                   className="text-primary hover:underline"
                 >
-                  makeinfosense@gmail.com
+                  tennisconnect.au@gmail.com
                 </a>
               </p>
             </div>

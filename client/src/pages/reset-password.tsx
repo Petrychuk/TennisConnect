@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Lock, CheckCircle, XCircle, Loader2,Eye, EyeOff } from "lucide-react";
+import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 import heroImage from "/assets/images/tennis_main.jpg";
 import SEO from "@/components/seo";
 import { resetPasswordSchema } from "@/lib/validations/auth";
@@ -121,7 +122,7 @@ export default function ResetPasswordPage() {
             This password reset link is invalid or has expired. Please request a new one.
           </p>
           <Link href="/auth" >
-            <Button className="w-2/3 mx-auto block rounded-full bg-primary text-primary-foreground">
+            <Button className="w-2/3 mx-auto flex items-center justify-center rounded-full bg-primary text-primary-foreground">
               Back to Sign In
             </Button>
           </Link>
@@ -143,7 +144,7 @@ export default function ResetPasswordPage() {
             Your password has been successfully reset. Redirecting to sign in...
           </p>
           <Link href="/auth">
-            <Button className="w-2/3 mx-auto block rounded-full bg-primary text-primary-foreground">
+            <Button className="w-2/3 mx-auto flex items-center justify-center rounded-full bg-primary text-primary-foreground">
               Sign In Now
             </Button>
           </Link>
@@ -249,18 +250,11 @@ export default function ResetPasswordPage() {
 
               <Button
                 type="submit"
-                className="w-2/3 mx-auto block bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full h-12"
+                className="w-2/3 mx-auto flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full h-12"
                 disabled={isLoading}
                 data-testid="reset-password-button"
               >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Resetting...
-                  </>
-                ) : (
-                  "Reset Password"
-                )}
+                {isLoading ? <TennisBallSpinner /> : "Reset Password"}
               </Button>
             </form>
           </div>

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { ArrowLeft, Loader2, User, Trophy, Mail, CheckCircle, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, User, Trophy, Mail, CheckCircle, Eye, EyeOff } from "lucide-react";
 import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
@@ -290,23 +290,16 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                           </div>
                           <Button
                             type="submit"
-                            className="w-2/3 mx-auto block font-bold bg-primary text-primary-foreground hover:bg-primary/90 rounded-full cursor-pointer"
+                            className="w-2/3 mx-auto flex items-center justify-center font-bold bg-primary text-primary-foreground hover:bg-primary/90 rounded-full cursor-pointer"
                             disabled={forgotPasswordLoading}
                             data-testid="send-reset-link-button"
                           >
-                            {forgotPasswordLoading ? (
-                              <>
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                Sending...
-                              </>
-                            ) : (
-                              "Send Reset Link"
-                            )}
+                            {forgotPasswordLoading ? <TennisBallSpinner /> : "Send Reset Link"}
                           </Button>
                           <Button
                             type="button"
                             variant="ghost"
-                            className="w-2/3 mx-auto block rounded-full cursor-pointer"
+                            className="w-2/3 mx-auto flex items-center justify-center rounded-full cursor-pointer"
                             onClick={() => setShowForgotPassword(false)}
                           >
                             <ArrowLeft className="w-4 h-4 mr-2" />

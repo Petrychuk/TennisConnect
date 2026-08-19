@@ -69,7 +69,7 @@ export async function sendSystemMessage(
       senderUserId: null,
   
       senderName: "Tennis Connect",
-      senderEmail: "makeinfosense@gmail.com",
+      senderEmail: "tennisconnect.au@gmail.com",
   
       senderPhone: null,
   
