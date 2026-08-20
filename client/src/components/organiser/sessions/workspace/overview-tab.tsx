@@ -15,7 +15,6 @@ import {
   mockSessionQuickStats,
   mockSessionTopPlayers,
   mockSessionTopPlayersExtra,
-  mockSessionReadiness,
   getSessionDetail,
   type SessionListItem,
 } from "@/lib/organiser-sessions-mock-data";
@@ -31,6 +30,36 @@ export function OverviewTab({ session, onEdit, isDivision }: OverviewTabProps) {
   const detail = getSessionDetail(session);
   const { toast } = useToast();
   const viewReadinessDetails = () => setLocation(`/organiser/sessions/${session.id}?tab=registration`);
+
+  // Real registration/check-in state either way (session.registeredCount/
+  // checkedInCount are always real - see toSessionListItem). Courts uses
+  // the real courtsCount when the organizer has set one; rounds still
+  // says "not available yet" honestly, same as the division path below,
+  // since there's no structured rounds-count storage yet.
+  const notCheckedIn = Math.max(0, session.registeredCount - session.checkedInCount);
+  const readinessItems = [
+    {
+      id: "registration",
+      label: session.registrationOpen ? "Registration Open" : "Registration Closed",
+      status: "ready" as const,
+    },
+    {
+      id: "checkin",
+      label: notCheckedIn > 0 ? `${notCheckedIn} Player${notCheckedIn === 1 ? "" : "s"} Not Checked In` : "All Players Checked In",
+      status: notCheckedIn > 0 ? ("warning" as const) : ("ready" as const),
+    },
+    {
+      id: "courts",
+      label: session.courtsCount != null ? `Courts Ready (${session.courtsCount}/${session.courtsCount})` : "Courts — not set",
+      status: session.courtsCount != null ? ("ready" as const) : ("warning" as const),
+    },
+    { id: "rounds", label: "Rounds — not available yet", status: "warning" as const },
+  ];
+  const readyCount = readinessItems.filter((i) => i.status === "ready").length;
+  const sessionReadiness = {
+    percent: Math.round((readyCount / readinessItems.length) * 100),
+    items: readinessItems,
+  };
 
   const quickStats = (
     <SessionQuickStatsCard
@@ -118,12 +147,12 @@ export function OverviewTab({ session, onEdit, isDivision }: OverviewTabProps) {
         <div className="grid grid-cols-4 gap-4">
           <SessionSummaryCard session={session} className="col-span-2" />
           <SessionStatusCard session={session} onEdit={onEdit} />
-          <SessionReadinessCard readiness={mockSessionReadiness} onViewDetails={viewReadinessDetails} />
+          <SessionReadinessCard readiness={sessionReadiness} onViewDetails={viewReadinessDetails} />
         </div>
         {isMultiDivisionType && <DivisionsCard sessionId={session.id} />}
         <div className="grid grid-cols-2 gap-4">
           <SessionDetailsCard session={session} />
-          <SessionNotesCard initialNote={detail.notes} />
+          <SessionNotesCard sessionId={session.id} initialNote={detail.notes} />
         </div>
         {quickStats}
       </div>
@@ -134,12 +163,12 @@ export function OverviewTab({ session, onEdit, isDivision }: OverviewTabProps) {
         <SessionSummaryCard session={session} />
         <div className="grid grid-cols-2 gap-4">
           <SessionStatusCard session={session} showEditButton={false} />
-          <SessionReadinessCard readiness={mockSessionReadiness} onViewDetails={viewReadinessDetails} />
+          <SessionReadinessCard readiness={sessionReadiness} onViewDetails={viewReadinessDetails} />
         </div>
         {isMultiDivisionType && <DivisionsCard sessionId={session.id} />}
         <div className="grid grid-cols-2 gap-4">
           <SessionDetailsCard session={session} />
-          <SessionNotesCard initialNote={detail.notes} />
+          <SessionNotesCard sessionId={session.id} initialNote={detail.notes} />
         </div>
         {quickStats}
       </div>
@@ -149,7 +178,7 @@ export function OverviewTab({ session, onEdit, isDivision }: OverviewTabProps) {
       <div className="md:hidden space-y-6">
         <SessionSummaryCard session={session} />
         <SessionStatusCard session={session} showEditButton={false} />
-        <SessionReadinessCard readiness={mockSessionReadiness} onViewDetails={viewReadinessDetails} />
+        <SessionReadinessCard readiness={sessionReadiness} onViewDetails={viewReadinessDetails} />
         {isMultiDivisionType && <DivisionsCard sessionId={session.id} />}
         <div className="grid grid-cols-2 gap-3">
           <Button variant="outline" onClick={onEdit} data-testid="organiser-session-overview-edit-mobile">
@@ -165,7 +194,7 @@ export function OverviewTab({ session, onEdit, isDivision }: OverviewTabProps) {
           </Button>
         </div>
         <SessionDetailsCard session={session} />
-        <SessionNotesCard initialNote={detail.notes} />
+        <SessionNotesCard sessionId={session.id} initialNote={detail.notes} />
         {quickStats}
       </div>
     </div>

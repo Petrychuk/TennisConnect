@@ -2,18 +2,36 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Plus } from "lucide-react";
+import { FileText, Plus, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { updateSession } from "@/lib/api/organizer-sessions";
 
 interface SessionNotesCardProps {
+  sessionId: string;
   initialNote?: string | null;
 }
 
-// Local-state only for now (no backend for notes yet) - but genuinely
-// editable rather than a static mock, since a note only an organiser can
-// see is cheap to make real even before the API exists.
-export function SessionNotesCard({ initialNote = null }: SessionNotesCardProps) {
+// Persisted via sessions.notes (PUT /sessions/:id, the same generic
+// update route session-edit.tsx already uses) - previously this only
+// updated local component state, so "Save" looked like it worked but
+// the note was gone on the next page load.
+export function SessionNotesCard({ sessionId, initialNote = null }: SessionNotesCardProps) {
   const [note, setNote] = useState(initialNote ?? "");
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await updateSession(sessionId, { notes: note || undefined });
+      setIsEditing(false);
+    } catch {
+      toast({ title: "Couldn't save the note", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <Card className="shadow-sm" data-testid="organiser-session-notes-card">
@@ -41,7 +59,8 @@ export function SessionNotesCard({ initialNote = null }: SessionNotesCardProps) 
               className="min-h-24"
               data-testid="organiser-session-notes-textarea"
             />
-            <Button size="sm" onClick={() => setIsEditing(false)} data-testid="organiser-session-notes-save">
+            <Button size="sm" onClick={handleSave} disabled={isSaving} data-testid="organiser-session-notes-save">
+              {isSaving && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
               Save
             </Button>
           </div>
