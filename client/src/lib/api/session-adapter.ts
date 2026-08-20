@@ -70,6 +70,7 @@ export function toSessionListItem(session: TennisSession | SessionWithDetails): 
     type: (session.type ?? "custom") as SessionListItem["type"],
     status: session.status as SessionListItem["status"],
     location: session.location ?? "",
+    timeZone: session.timeZone ?? "Australia/Sydney",
     startAt: new Date(session.startAt).toISOString(),
     endAt: session.endAt ? new Date(session.endAt).toISOString() : undefined,
     registeredCount,

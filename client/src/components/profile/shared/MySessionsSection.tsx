@@ -7,6 +7,7 @@ import { Calendar, MapPin, LogIn, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { getMyRegisteredSessions, leaveSession } from "@/lib/api/organizer-sessions";
+import { formatInTimeZone } from "@/lib/timezone";
 import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.webp";
 
 const DEFAULT_CANCELLATION_POLICY =
@@ -160,7 +161,7 @@ export function MySessionsSection({ isOwnProfile, isAuthenticated, sessionTypes,
                 <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1">
                   <span className="flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5" />
-                    {new Date(session.startAt).toLocaleString(undefined, {
+                    {formatInTimeZone(session.startAt, session.timeZone, {
                       weekday: "short",
                       day: "numeric",
                       month: "short",

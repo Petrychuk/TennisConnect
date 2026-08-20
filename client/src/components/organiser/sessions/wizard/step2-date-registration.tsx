@@ -5,9 +5,11 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarDays, ClipboardList, DollarSign, Eye, ImagePlus, Info, Loader2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { uploadImage } from "@/lib/uploadImage";
+import { AU_CITY_TIMEZONES } from "@/lib/timezone";
 import type { NewSessionDraft } from "@/lib/organiser-session-wizard-types";
 import { NumberField } from "./number-field";
 
@@ -145,6 +147,20 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
             onChange={(e) => onChange("venue", e.target.value)}
             data-testid="organiser-wizard-session-venue"
           />
+        </Field>
+        <Field label="City / Timezone">
+          <Select value={draft.timeZone} onValueChange={(v) => onChange("timeZone", v)}>
+            <SelectTrigger data-testid="organiser-wizard-session-timezone">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {AU_CITY_TIMEZONES.map((c) => (
+                <SelectItem key={c.timeZone} value={c.timeZone}>
+                  {c.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </Field>
         <Field label="Court Count">
           <NumberField

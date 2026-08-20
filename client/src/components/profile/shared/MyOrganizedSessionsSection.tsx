@@ -22,6 +22,7 @@ import {
   leaveSession as leaveSessionApi,
 } from "@/lib/api/organizer-sessions";
 import type { TennisSession, SessionWithDetails } from "@shared/schema";
+import { formatInTimeZone } from "@/lib/timezone";
 
 interface MyOrganizedSessionsSectionProps {
   isOwnProfile: boolean;
@@ -320,7 +321,7 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
                     <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5" />
-                        {new Date(session.startAt).toLocaleString(undefined, {
+                        {formatInTimeZone(session.startAt, session.timeZone, {
                           weekday: "short",
                           day: "numeric",
                           month: "short",

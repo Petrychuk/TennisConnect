@@ -1,3 +1,5 @@
+import { zonedTimeToUtc } from "@/lib/timezone";
+
 export type SessionTypeKey =
   | "social"
   | "americano"
@@ -68,6 +70,12 @@ export interface NewSessionDraft {
   season: string;
   venue: string;
   courtCount: number;
+  // IANA zone the venue is in - see client/src/lib/timezone.ts. This is
+  // what "10:00" below actually means; without it the wizard has no way
+  // to know whether the organizer's "10:00" is Sydney time, Perth time,
+  // or (if their browser happens to be set to some other zone entirely)
+  // neither.
+  timeZone: string;
   // Date
   date: string; // yyyy-mm-dd
   startTime: string; // HH:mm
@@ -124,6 +132,7 @@ export function createEmptyDraft(): NewSessionDraft {
     season: "",
     venue: "Lyne Park Tennis Centre",
     courtCount: 6,
+    timeZone: "Australia/Sydney",
     date: toDateInput(in7Days),
     startTime: "18:30",
     endTime: "20:00",
@@ -178,11 +187,16 @@ export function createEmptyDraft(): NewSessionDraft {
  * for session covers yet) and is sent as-is.
  */
 export function draftToInsertSession(draft: NewSessionDraft) {
+  // See client/src/lib/timezone.ts - this is the fix for what used to be
+  // `new Date(\`${draft.date}T${draft.startTime}\`)`, which silently used
+  // the ORGANIZER'S BROWSER'S ambient local timezone instead of the
+  // venue's. A session's advertised time belongs to the venue
+  // (draft.timeZone), not to whoever happens to be creating it.
   const startAt = draft.date
-    ? new Date(`${draft.date}T${draft.startTime || "00:00"}`)
+    ? zonedTimeToUtc(draft.date, draft.startTime || "00:00", draft.timeZone)
     : new Date();
   const endAt = draft.date && draft.endTime
-    ? new Date(`${draft.date}T${draft.endTime}`)
+    ? zonedTimeToUtc(draft.date, draft.endTime, draft.timeZone)
     : undefined;
 
   const baseMatchTypeLabel = draft.matchType === "mixed" ? "Mixed Doubles" : draft.matchType === "doubles" ? "Doubles" : "Singles";
@@ -221,10 +235,11 @@ export function draftToInsertSession(draft: NewSessionDraft) {
     coverImage: draft.coverImage || undefined,
     type: draft.type ?? "custom",
     location: draft.venue || undefined,
+    timeZone: draft.timeZone,
     startAt,
     endAt,
-    registrationOpensAt: draft.registrationOpens ? new Date(`${draft.registrationOpens}T00:00`) : undefined,
-    registrationClosesAt: draft.registrationCloses ? new Date(`${draft.registrationCloses}T23:59`) : undefined,
+    registrationOpensAt: draft.registrationOpens ? zonedTimeToUtc(draft.registrationOpens, "00:00", draft.timeZone) : undefined,
+    registrationClosesAt: draft.registrationCloses ? zonedTimeToUtc(draft.registrationCloses, "23:59", draft.timeZone) : undefined,
     price: draft.pricing === "paid" ? draft.price : 0,
     maxParticipants: draft.maxPlayers || undefined,
     visibility: draft.visibility,

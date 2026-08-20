@@ -4,12 +4,14 @@ import { Link } from "wouter";
 import { CalendarDays, MapPin, ArrowRight, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { formatInTimeZone } from "@/lib/timezone";
 
 interface WeekSession {
   id: string;
   title: string;
   type: string;
   location: string | null;
+  timeZone: string;
   startAt: string;
   organizationName: string;
   organizationSlug: string;
@@ -84,7 +86,7 @@ export function PlayThisWeek() {
                       <div className="text-sm text-muted-foreground space-y-1">
                         <div className="flex items-center gap-2">
                           <CalendarDays className="w-4 h-4" />
-                          {new Date(session.startAt).toLocaleString(undefined, {
+                          {formatInTimeZone(session.startAt, session.timeZone, {
                             weekday: "short",
                             day: "numeric",
                             month: "short",

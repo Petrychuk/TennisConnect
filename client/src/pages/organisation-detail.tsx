@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import SEO from "@/components/seo";
 import { TennisLoader } from "@/components/ui/tennisLoader";
+import { formatInTimeZone } from "@/lib/timezone";
 
 interface SessionWithDetails {
   id: string;
@@ -17,6 +18,7 @@ interface SessionWithDetails {
   description: string | null;
   type: string;
   location: string | null;
+  timeZone: string;
   startAt: string;
   price: string | null;
   currency: string;
@@ -183,7 +185,7 @@ export default function OrganisationDetailPage() {
                       <div className="text-sm text-muted-foreground space-y-1">
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4" />
-                          {new Date(session.startAt).toLocaleString(undefined, {
+                          {formatInTimeZone(session.startAt, session.timeZone, {
                             weekday: "short",
                             day: "numeric",
                             month: "short",
