@@ -1,6 +1,7 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { storage } from "../storage";
 import { requireAuth, requireAdmin } from "../requireAuth";
+import { env } from "../env";
 import { sendMessageBetween, ORGANIZER_APPROVED_SUBJECT, ORGANIZER_APPROVED_MESSAGE } from "../services/systemMessages";
 import {
   insertOrganizationSchema,
@@ -664,9 +665,25 @@ function handleLiveEngineError(error: any, res: Response, next: NextFunction) {
   next(error);
 }
 
+// TC Live is staging-only until it's fully ready for real sessions -
+// production keeps a stub (client/src/pages/organiser/session-live.tsx
+// shows a "coming soon" screen instead of the real one). Gated on
+// env.DB_ENV rather than NODE_ENV because `npm start` sets
+// NODE_ENV=production on every deployed instance, staging included -
+// see server/env.ts. 404 (not 403) so the route looks like it simply
+// doesn't exist on production, and this runs before requireAuth so it
+// doesn't leak anything about auth state either.
+function requireStagingEnv(_req: Request, res: Response, next: NextFunction) {
+  if (env.DB_ENV !== "staging") {
+    return res.status(404).json({ message: "Not found" });
+  }
+  next();
+}
+
 
 router.post(
   "/sessions/:id/checkin/:registrationId",
+  requireStagingEnv,
   requireAuth,
   requireOrganizer,
   requireOwnSession,
@@ -684,6 +701,7 @@ router.post(
 // (e.g. organizer marked someone unavailable by mistake).
 router.post(
   "/sessions/:id/registrations/:registrationId/live-status",
+  requireStagingEnv,
   requireAuth,
   requireOrganizer,
   requireOwnSession,
@@ -701,7 +719,7 @@ router.post(
   }
 );
 
-router.post("/sessions/:id/go-live", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+router.post("/sessions/:id/go-live", requireStagingEnv, requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
   try {
     const thisSession = (req as any).session_ as TennisSession;
     if (thisSession.status !== "published") {
@@ -723,7 +741,7 @@ router.post("/sessions/:id/go-live", requireAuth, requireOrganizer, requireOwnSe
   }
 });
 
-router.post("/sessions/:id/rounds/generate", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+router.post("/sessions/:id/rounds/generate", requireStagingEnv, requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
   try {
     const thisSession = (req as any).session_ as TennisSession;
     if (thisSession.status !== "live") {
@@ -737,7 +755,7 @@ router.post("/sessions/:id/rounds/generate", requireAuth, requireOrganizer, requ
   }
 });
 
-router.get("/sessions/:id/rounds/current", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+router.get("/sessions/:id/rounds/current", requireStagingEnv, requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
   try {
     const result = await storage.getCurrentRound(req.params.id);
     res.json(result ?? null);
@@ -748,6 +766,7 @@ router.get("/sessions/:id/rounds/current", requireAuth, requireOrganizer, requir
 
 router.post(
   "/sessions/:id/matches/:matchId/start",
+  requireStagingEnv,
   requireAuth,
   requireOrganizer,
   requireOwnSession,
@@ -766,6 +785,7 @@ router.post(
 // self-report/confirm step in v0.1).
 router.post(
   "/sessions/:id/matches/:matchId/score",
+  requireStagingEnv,
   requireAuth,
   requireOrganizer,
   requireOwnSession,
@@ -789,7 +809,7 @@ router.post(
   }
 );
 
-router.post("/sessions/:id/finish", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+router.post("/sessions/:id/finish", requireStagingEnv, requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
   try {
     const session = await storage.finishSession(req.params.id);
     console.log(`[TC LIVE] session ${req.params.id}: finished`);
@@ -799,7 +819,7 @@ router.post("/sessions/:id/finish", requireAuth, requireOrganizer, requireOwnSes
   }
 });
 
-router.get("/sessions/:id/leaderboard", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+router.get("/sessions/:id/leaderboard", requireStagingEnv, requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
   try {
     const leaderboard = await storage.getSessionLeaderboard(req.params.id);
     res.json(leaderboard);
