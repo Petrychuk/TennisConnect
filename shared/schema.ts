@@ -483,8 +483,22 @@ export const tennisSessions = pgTable("sessions", {
   type: text("type").default("social").notNull(),
   status: text("status").default("draft").notNull(), // draft | published | cancelled | live | completed
   location: text("location"),
-  startAt: timestamp("start_at").notNull(),
-  endAt: timestamp("end_at"),
+  // withTimezone: true (-> Postgres timestamptz) is load-bearing, not
+  // cosmetic. A plain `timestamp` column discards any offset on the way
+  // in - node-postgres's serializer always appends one (based on the
+  // WRITING process's local TZ, via Date.getTimezoneOffset), but Postgres
+  // ignores it for a timezone-less column and stores the raw wall-clock
+  // digits. Reading it back then reinterprets those digits using the
+  // READING process's local TZ. That round-trip only produces the time
+  // the organizer actually picked if the browser and every server
+  // process that ever touches the row happen to share one timezone -
+  // true by coincidence on a same-machine dev box, false the moment a
+  // Sydney-based organizer's session is written by a UTC-TZ deployed
+  // server (Railway containers default to UTC), which silently shifts
+  // the stored time by the full offset. timestamptz stores/round-trips
+  // the true absolute instant regardless of any process's local TZ.
+  startAt: timestamp("start_at", { withTimezone: true }).notNull(),
+  endAt: timestamp("end_at", { withTimezone: true }),
   // A Tournament/Club Championship can be a "container" for several
   // real, independently-registerable sessions - Men's Singles A,
   // Mixed Doubles, etc. - each with its own startAt/endAt (so a
@@ -493,8 +507,8 @@ export const tennisSessions = pgTable("sessions", {
   // thing. Null for every ordinary, single-format session - this is
   // purely additive and never required.
   parentSessionId: varchar("parent_session_id").references((): any => tennisSessions.id),
-  registrationOpensAt: timestamp("registration_opens_at"),
-  registrationClosesAt: timestamp("registration_closes_at"),
+  registrationOpensAt: timestamp("registration_opens_at", { withTimezone: true }),
+  registrationClosesAt: timestamp("registration_closes_at", { withTimezone: true }),
   price: numeric("price", { precision: 10, scale: 2, }),
   currency: varchar("currency", { length: 8 }).default("AUD").notNull(),
   maxParticipants: integer("max_participants"),
