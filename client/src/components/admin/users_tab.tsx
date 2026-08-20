@@ -22,6 +22,11 @@ interface User {
   slug?: string;
   isApproved: boolean;
   isHidden: boolean;
+  // Set once the player/coach finishes their onboarding wizard - the
+  // public directory (getAllPlayers/getAllCoachesWithProfiles in
+  // storage.ts) requires this AND isApproved both true, so an approved
+  // user with an incomplete profile still won't show up there.
+  profileCompleted: boolean;
   isAdmin: boolean;
   createdAt: string;
   isTestUser?: boolean;
@@ -428,6 +433,13 @@ export default function AdminUsersTab() {
                   {user.isHidden ? (
                     <Badge variant="secondary" className="bg-orange-100 text-orange-700">
                       Hidden
+                    </Badge>
+                  ) : user.isApproved && !user.profileCompleted ? (
+                    <Badge
+                      className="bg-amber-100 text-amber-800"
+                      title="Approved, but the player/coach hasn't finished their profile yet - won't show in the public directory until they do"
+                    >
+                      Approved · Profile incomplete
                     </Badge>
                   ) : user.isApproved ? (
                     <Badge className="bg-green-100 text-green-700">
