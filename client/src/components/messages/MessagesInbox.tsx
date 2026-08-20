@@ -341,6 +341,15 @@ export function MessagesInbox() {
       const updated = await res.json();
       setConversation((prev) => prev.map((m) => (m.id === message.id ? { ...m, actionStatus: updated.actionStatus } : m)));
       setMessages((prev) => prev.map((m) => (m.id === message.id ? { ...m, actionStatus: updated.actionStatus } : m)));
+
+      // Accepting a session invite registers the player server-side, but
+      // that's a different query (MySessionsSection's "registered"
+      // list) than anything this component itself reads - without this,
+      // the newly-joined session doesn't show up anywhere until a full
+      // page reload happens to refetch it.
+      if (action === "accept" && message.messageType === "session_invite") {
+        queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine/registered"] });
+      }
     } catch (error: any) {
       toast({
         variant: "destructive",

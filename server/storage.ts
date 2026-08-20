@@ -2480,11 +2480,13 @@ export class DatabaseStorage implements IStorage {
 
   // Org-wide player roster ("Players" page) - one row per distinct
   // player who's ever registered (non-cancelled) for any of this
-  // organization's sessions, with a real sessionsPlayed count and the
-  // most recent session they registered for. Level/win-rate aren't
+  // organization's sessions, with a real sessionsPlayed count, the
+  // most recent session they registered for, and their skill level
+  // where they've set one. Win-rate/numeric rating still aren't
   // derivable from registration data alone (no ratings or match
-  // results exist yet) - those stay the caller's responsibility to
-  // default sensibly, this only returns what's actually knowable.
+  // results exist yet) - level now is, via a left join to
+  // player_profiles (left, not inner, so a player with no profile yet
+  // still shows up - just with userSkillLevel: null).
   async getPlayersForOrganization(organizationId: string): Promise<OrgPlayerRow[]> {
     const rows = await db
       .select({
@@ -2492,19 +2494,21 @@ export class DatabaseStorage implements IStorage {
         userName: users.name,
         userSlug: users.slug,
         userAvatar: users.avatar,
+        userSkillLevel: playerProfiles.skillLevel,
         sessionsPlayed: sql<number>`count(distinct ${registrations.id})`,
         lastPlayedAt: sql<string>`max(${tennisSessions.startAt})`,
       })
       .from(registrations)
       .innerJoin(tennisSessions, eq(registrations.sessionId, tennisSessions.id))
       .innerJoin(users, eq(registrations.userId, users.id))
+      .leftJoin(playerProfiles, eq(playerProfiles.userId, registrations.userId))
       .where(
         and(
           eq(tennisSessions.organizationId, organizationId),
           ne(registrations.status, "cancelled")
         )
       )
-      .groupBy(registrations.userId, users.name, users.slug, users.avatar)
+      .groupBy(registrations.userId, users.name, users.slug, users.avatar, playerProfiles.skillLevel)
       .orderBy(desc(sql`count(distinct ${registrations.id})`));
 
     return rows;

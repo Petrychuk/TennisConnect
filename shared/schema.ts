@@ -1116,6 +1116,13 @@ export type OrgPlayerRow = {
   userName: string;
   userSlug: string;
   userAvatar: string | null;
+  // From player_profiles.skill_level (Beginner/Intermediate/Advanced) -
+  // null if the player has no profile yet (e.g. draft, or a coach
+  // registered as a player for testing). Win-rate/numeric rating still
+  // aren't derivable from registration data alone (no match results at
+  // org scale) - this is the one real signal that was available and
+  // wasn't being read.
+  userSkillLevel: string | null;
   sessionsPlayed: number;
   lastPlayedAt: string;
 };
