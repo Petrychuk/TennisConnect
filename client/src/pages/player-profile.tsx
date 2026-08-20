@@ -859,6 +859,7 @@ export default function PlayerProfile() {
                                 <SelectValue placeholder="Select level" />
                               </SelectTrigger>
                               <SelectContent>
+                                <SelectItem value="Social">Social</SelectItem>
                                 <SelectItem value="Beginner">Beginner</SelectItem>
                                 <SelectItem value="Intermediate">Intermediate</SelectItem>
                                 <SelectItem value="Advanced">Advanced</SelectItem>
