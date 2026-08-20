@@ -155,6 +155,13 @@ app.use(compression());
 
 app.use(
   express.json({
+    // Default is 100kb, which is fine for almost everything - but was
+    // silently 413-ing session creation whenever a cover photo was
+    // involved, because that used to be inlined as base64 straight into
+    // this JSON body (now fixed - see server/routes/uploadMedia.ts
+    // "session-cover" - coverImage is a Storage URL by the time it gets
+    // here). Bumped as defensive headroom, not to re-allow big payloads.
+    limit: "1mb",
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },

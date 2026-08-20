@@ -1,6 +1,7 @@
 // server/routes/uploadMedia.ts
 import { Router } from "express";
 import multer from "multer";
+import crypto from "crypto";
 import { supabaseAdmin } from "../supabaseAdmin";
 import { requireAuth } from "../requireAuth";
 import { storage } from "../storage";
@@ -25,7 +26,15 @@ router.post(
       }
 
       const { type } = req.params;
-      if (!["avatar", "cover"].includes(type)) {
+      // "session-cover" is a distinct case below: unlike avatar/cover
+      // (one fixed slot per user, always overwritten), an organizer can
+      // have many sessions at once, each needing its own cover photo -
+      // see client/src/components/organiser/sessions/wizard/step2-date-registration.tsx,
+      // which used to inline the file as base64 straight into the
+      // session JSON payload and blow past express.json()'s body-size
+      // limit (413) for any real photo. Not a user field, so it must
+      // skip the storage.updateUser(...) call below.
+      if (!["avatar", "cover", "session-cover"].includes(type)) {
         return res.status(400).json({ message: "Invalid upload type" });
       }
 
@@ -52,8 +61,11 @@ router.post(
 
       const { id: userId, role } = req.user;
       // Use appropriate folder based on user role
-      const folder = role === 'coach' ? `coaches/${userId}` : `players/${userId}`;
-      const filePath = `${folder}/${type}.webp`;
+      const folder = type === "session-cover" ? `sessions/${userId}` : role === 'coach' ? `coaches/${userId}` : `players/${userId}`;
+      // avatar/cover: fixed filename, always overwritten (one slot per
+      // user). session-cover: a fresh filename per upload, since a
+      // second session's cover shouldn't clobber the first one's.
+      const filePath = type === "session-cover" ? `${folder}/${crypto.randomUUID()}.webp` : `${folder}/${type}.webp`;
 
       // 1. Загружаем файл в Storage
       const { error: uploadError } = await supabaseAdmin.storage
@@ -83,6 +95,10 @@ router.post(
       //    закэшированную старую картинку по старому URL даже после
       //    успешной загрузки новой.
       const urlWithCacheBuster = `${publicUrl}?t=${Date.now()}`;
+
+      if (type === "session-cover") {
+        return res.status(200).json({ url: urlWithCacheBuster, type });
+      }
 
       const updatedUser = await storage.updateUser(userId, {
         [type]: urlWithCacheBuster,

@@ -1,12 +1,13 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { CalendarDays, ClipboardList, DollarSign, Eye, ImagePlus, Info, X } from "lucide-react";
+import { CalendarDays, ClipboardList, DollarSign, Eye, ImagePlus, Info, Loader2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { uploadImage } from "@/lib/uploadImage";
 import type { NewSessionDraft } from "@/lib/organiser-session-wizard-types";
 import { NumberField } from "./number-field";
 
@@ -39,8 +40,9 @@ function SectionCard({ icon: Icon, title, children }: { icon: typeof CalendarDay
 export function Step2DateRegistration({ draft, onChange }: Step2DateRegistrationProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
 
-  const handlePhotoSelect = (file: File | undefined) => {
+  const handlePhotoSelect = async (file: File | undefined) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       toast({ title: "Please choose an image file", variant: "destructive" });
@@ -50,9 +52,20 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
       toast({ title: "Image is too large", description: "Please choose a file under 8MB.", variant: "destructive" });
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => onChange("coverImage", reader.result as string);
-    reader.readAsDataURL(file);
+    // Uploaded to Supabase Storage right away and only the resulting URL
+    // is kept in the draft - previously this read the file as a base64
+    // data: URL and carried the whole image through session creation's
+    // JSON body, which blew past express.json()'s size limit (413) for
+    // any real photo.
+    setIsUploadingCover(true);
+    try {
+      const { url } = await uploadImage("session-cover", file);
+      onChange("coverImage", url);
+    } catch {
+      toast({ title: "Upload failed", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setIsUploadingCover(false);
+    }
   };
 
   return (
@@ -76,7 +89,11 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
             onChange={(e) => handlePhotoSelect(e.target.files?.[0])}
             data-testid="organiser-wizard-cover-photo-input"
           />
-          {draft.coverImage ? (
+          {isUploadingCover ? (
+            <div className="w-full h-32 rounded-xl border-2 border-dashed border-border flex items-center justify-center text-muted-foreground">
+              <Loader2 className="w-6 h-6 animate-spin" />
+            </div>
+          ) : draft.coverImage ? (
             <div className="relative rounded-xl overflow-hidden h-40">
               <img src={draft.coverImage} alt="Session cover" className="absolute inset-0 w-full h-full object-cover" />
               <Button

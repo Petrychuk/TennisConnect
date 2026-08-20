@@ -1,6 +1,6 @@
 
 export async function uploadImage(
-  type: "avatar" | "cover" ,
+  type: "avatar" | "cover" | "session-cover",
   file: File
 ): Promise<{ url: string }> {
   const fd = new FormData();
