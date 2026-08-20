@@ -1424,6 +1424,7 @@ export default function PlayerProfile() {
                                 <div key={i} className="w-20 h-20 relative">
                                   <img
                                     src={photo}
+                                    alt={`Uploaded photo ${i + 1}`}
                                     className="w-full h-full object-cover rounded"
                                   />
                                 </div>

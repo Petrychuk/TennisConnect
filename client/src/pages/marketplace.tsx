@@ -297,6 +297,7 @@ export default function MarketplacePage() {
                         <div className="p-3 bg-muted/30 rounded-lg flex gap-3 items-center border">
                             <img 
                                 src={selectedItem?.image || selectedItem?.photos?.[0]} 
+                                alt={selectedItem?.title || selectedItem?.name || "Item for sale"}
                                 className="w-16 h-16 rounded object-cover bg-muted" 
                             />
                             <div>

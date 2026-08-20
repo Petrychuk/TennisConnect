@@ -1592,7 +1592,7 @@ export default function CoachProfile() {
                               </DialogHeader>
                               <div className="space-y-4 py-2">
                                   <div className="p-3 bg-muted/30 rounded-lg flex gap-3 items-center border">
-                                      <img src={selectedBuyItem?.photos?.[0] || racketImg} className="w-16 h-16 rounded object-cover bg-muted" />
+                                      <img src={selectedBuyItem?.photos?.[0] || racketImg} alt={selectedBuyItem?.name || "Item for sale"} className="w-16 h-16 rounded object-cover bg-muted" />
                                       <div>
                                           <p className="font-bold">{selectedBuyItem?.name}</p>
                                           <p className="text-primary font-bold">${selectedBuyItem?.price}</p>
