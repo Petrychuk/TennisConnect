@@ -245,5 +245,16 @@ export function draftToInsertSession(draft: NewSessionDraft) {
     visibility: draft.visibility,
     courtsCount: draft.courtCount || undefined,
     waitingListEnabled: draft.waitingListEnabled,
+    // Structured, queryable versions of what formatSummary above already
+    // folds into description as text - matchMode also drives TC Live's
+    // pairing engine (server/services/liveEngine.ts), which previously
+    // never learned what the organizer picked here and silently treated
+    // every session as doubles regardless.
+    matchMode: draft.matchType === "singles" ? "singles" : "doubles",
+    category: draft.category,
+    gamesTo: draft.gamesTo || undefined,
+    noAd: draft.noAd,
+    tiebreak: draft.tiebreak,
+    plannedRoundsCount: draft.roundsCount || undefined,
   };
 }
