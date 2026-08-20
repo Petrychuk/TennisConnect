@@ -58,6 +58,7 @@ import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
 import { useQuery } from "@tanstack/react-query";
 import { getSessionById } from "@/lib/api/organizer-sessions";
 import { toSessionListItem } from "@/lib/api/session-adapter";
+import { formatInTimeZone } from "@/lib/timezone";
 
 const WORKSPACE_TABS = [
   { key: "overview", label: "Overview" },
@@ -366,10 +367,10 @@ export default function OrganiserSessionWorkspacePage() {
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
                 <span className="flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5" />
-                  {new Date(session.startAt).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
+                  {formatInTimeZone(session.startAt, session.timeZone, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
                   {" · "}
-                  {new Date(session.startAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
-                  {session.endAt && ` - ${new Date(session.endAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`}
+                  {formatInTimeZone(session.startAt, session.timeZone, { hour: "numeric", minute: "2-digit" })}
+                  {session.endAt && ` - ${formatInTimeZone(session.endAt, session.timeZone, { hour: "numeric", minute: "2-digit" })}`}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5" />

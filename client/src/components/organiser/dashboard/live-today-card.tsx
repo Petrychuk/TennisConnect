@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, MapPin, Users, CheckCircle2, Clock, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { MockSession } from "@/lib/organiser-hub-mock-data";
+import { formatInTimeZone } from "@/lib/timezone";
 import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.webp";
 
 interface LiveTodayCardProps {
@@ -60,7 +61,7 @@ export function LiveTodayCard({ session, className, onEnterLive }: LiveTodayCard
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-primary-foreground/85 mt-1">
             <span className="flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5" />
-              {new Date(session.startAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+              {formatInTimeZone(session.startAt, session.timeZone, { hour: "2-digit", minute: "2-digit" })}
             </span>
             <span className="flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5" />

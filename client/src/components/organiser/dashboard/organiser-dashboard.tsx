@@ -57,6 +57,7 @@ function toMockSession(session: TennisSession | SessionWithDetails, checkedInCou
       : "social") as MockSession["type"],
     status: session.status as MockSession["status"],
     location: session.location ?? "",
+    timeZone: session.timeZone ?? "Australia/Sydney",
     startAt: new Date(session.startAt).toISOString(),
     registeredCount: details?.registeredCount ?? 0,
     checkedInCount,

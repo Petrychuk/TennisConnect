@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, MapPin, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { MockSession } from "@/lib/organiser-hub-mock-data";
+import { formatInTimeZone } from "@/lib/timezone";
 
 interface UpcomingSessionsCardProps {
   sessions: MockSession[];
@@ -50,7 +51,7 @@ export function UpcomingSessionsCard({ sessions, className }: UpcomingSessionsCa
                   <div className="text-xs text-muted-foreground mt-1.5 space-y-1">
                     <span className="flex items-center gap-1.5">
                       <Calendar className="w-3 h-3" />
-                      {new Date(session.startAt).toLocaleString(undefined, {
+                      {formatInTimeZone(session.startAt, session.timeZone, {
                         day: "numeric",
                         month: "short",
                         hour: "2-digit",

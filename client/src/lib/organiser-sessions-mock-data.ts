@@ -37,6 +37,11 @@ export interface SessionListItem {
   type: SessionTypeKey | "clinic";
   status: SessionStatus;
   location: string;
+  // IANA zone the venue is in (e.g. "Australia/Sydney") - startAt/endAt
+  // below should always be displayed in THIS zone, not the viewer's own
+  // browser timezone (a session's advertised time belongs to the venue -
+  // see client/src/lib/timezone.ts formatInTimeZone).
+  timeZone: string;
   startAt: string; // ISO
   endAt?: string; // ISO — for the "6:30 PM - 8:30 PM" range display
   registeredCount: number;
@@ -89,6 +94,7 @@ export const mockSessionsList: SessionListItem[] = [
     type: "social",
     status: "live",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: hoursFromNow(-1.5),
     endAt: hoursFromNow(0.72),
     registeredCount: 24,
@@ -127,6 +133,7 @@ export const mockSessionsList: SessionListItem[] = [
     type: "social",
     status: "published",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysFromNow(6),
     registeredCount: 18,
     checkedInCount: 0,
@@ -142,6 +149,7 @@ export const mockSessionsList: SessionListItem[] = [
     type: "clinic",
     status: "published",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysFromNow(5),
     registeredCount: 8,
     checkedInCount: 0,
@@ -159,6 +167,7 @@ export const mockSessionsList: SessionListItem[] = [
     type: "round-robin",
     status: "published",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysFromNow(8),
     registeredCount: 24,
     checkedInCount: 0,
@@ -173,6 +182,7 @@ export const mockSessionsList: SessionListItem[] = [
     type: "social",
     status: "pending_review",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysFromNow(10),
     registeredCount: 12,
     checkedInCount: 0,
@@ -187,6 +197,7 @@ export const mockSessionsList: SessionListItem[] = [
     type: "clinic",
     status: "published",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysFromNow(12),
     registeredCount: 6,
     checkedInCount: 0,
@@ -201,6 +212,7 @@ export const mockSessionsList: SessionListItem[] = [
     type: "round-robin",
     status: "published",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysFromNow(15),
     registeredCount: 14,
     checkedInCount: 0,
@@ -217,6 +229,7 @@ export const mockSessionsList: SessionListItem[] = [
     type: "tournament",
     status: "draft",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysFromNow(20),
     registeredCount: 0,
     checkedInCount: 0,
@@ -231,6 +244,7 @@ export const mockSessionsList: SessionListItem[] = [
     type: "round-robin",
     status: "draft",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysFromNow(25),
     registeredCount: 0,
     checkedInCount: 0,
@@ -245,6 +259,7 @@ export const mockSessionsList: SessionListItem[] = [
     type: "clinic",
     status: "draft",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysFromNow(30),
     registeredCount: 0,
     checkedInCount: 0,
@@ -261,6 +276,7 @@ export const mockSessionsList: SessionListItem[] = [
     type: "social",
     status: "completed",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysAgo(2),
     registeredCount: 26,
     checkedInCount: 25,
@@ -276,6 +292,7 @@ export const mockSessionsList: SessionListItem[] = [
     type: "round-robin",
     status: "completed",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysAgo(6),
     registeredCount: 32,
     checkedInCount: 30,
@@ -291,6 +308,7 @@ export const mockSessionsList: SessionListItem[] = [
     type: "clinic",
     status: "completed",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysAgo(9),
     registeredCount: 10,
     checkedInCount: 9,
@@ -306,6 +324,7 @@ export const mockSessionsList: SessionListItem[] = [
     type: "social",
     status: "completed",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysAgo(13),
     registeredCount: 20,
     checkedInCount: 18,
@@ -323,6 +342,7 @@ export const mockSessionsList: SessionListItem[] = [
     type: "tournament",
     status: "archived",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysAgo(120),
     registeredCount: 48,
     checkedInCount: 46,
@@ -338,6 +358,7 @@ export const mockSessionsList: SessionListItem[] = [
     type: "social",
     status: "archived",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysAgo(150),
     registeredCount: 22,
     checkedInCount: 20,
@@ -353,6 +374,7 @@ export const mockSessionsList: SessionListItem[] = [
     type: "round-robin",
     status: "archived",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysAgo(210),
     registeredCount: 30,
     checkedInCount: 28,

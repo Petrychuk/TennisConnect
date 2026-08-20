@@ -16,6 +16,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAdminSessions, approveSession as approveSessionApi, rejectSession as rejectSessionApi } from "@/lib/api/organizer-sessions";
 import { toSessionListItems } from "@/lib/api/session-adapter";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
+import { formatInTimeZone } from "@/lib/timezone";
 
 interface OrganizerRequestRow {
   id: string;
@@ -176,7 +177,7 @@ function SessionModerationPanel() {
                 <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1">
                   <span className="flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5" />
-                    {new Date(session.startAt).toLocaleString(undefined, {
+                    {formatInTimeZone(session.startAt, session.timeZone, {
                       day: "numeric",
                       month: "short",
                       hour: "2-digit",

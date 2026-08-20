@@ -58,6 +58,7 @@ export function OverviewTab({ session, onEdit, isDivision }: OverviewTabProps) {
       type: "tournament",
       status: session.status,
       location: session.location,
+      timeZone: session.timeZone,
       startAt: session.startAt,
       registeredCount: session.registeredCount,
       checkedInCount: session.checkedInCount,

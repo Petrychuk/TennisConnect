@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { formatInTimeZone } from "@/lib/timezone";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -151,7 +152,7 @@ export function SessionCard({ session, onDuplicate, onDelete }: SessionCardProps
               <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground mt-1">
                 <span className="flex items-center gap-1">
                   <Calendar className="w-3 h-3" />
-                  {new Date(session.startAt).toLocaleString(undefined, {
+                  {formatInTimeZone(session.startAt, session.timeZone, {
                     day: "numeric",
                     month: "short",
                     hour: "2-digit",

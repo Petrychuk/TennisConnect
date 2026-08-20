@@ -483,6 +483,16 @@ export const tennisSessions = pgTable("sessions", {
   type: text("type").default("social").notNull(),
   status: text("status").default("draft").notNull(), // draft | published | cancelled | live | completed
   location: text("location"),
+  // IANA zone the VENUE is in (e.g. "Australia/Sydney") - not the
+  // organizer's or any viewer's own timezone. A session's advertised
+  // time is a property of where it physically happens: "6:30pm" at a
+  // Sydney court means 6:30pm Sydney time no matter who's looking at it
+  // or from where. Defaults to Sydney since that's the platform's only
+  // real market today - see client/src/lib/timezone.ts for the
+  // write-time (wall clock -> UTC) and read-time (UTC -> wall clock)
+  // conversion this powers, and step2-date-registration.tsx for the
+  // wizard's city picker that sets it.
+  timeZone: text("time_zone").default("Australia/Sydney").notNull(),
   // withTimezone: true (-> Postgres timestamptz) is load-bearing, not
   // cosmetic. A plain `timestamp` column discards any offset on the way
   // in - node-postgres's serializer always appends one (based on the
