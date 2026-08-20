@@ -48,6 +48,10 @@ export interface SessionListItem {
   checkedInCount: number;
   waitingCount: number;
   maxParticipants: number | null;
+  // Real value from sessions.courts_count - unlike `courts` below (only
+  // meaningful while status is "live"), this is set whenever the
+  // organizer configures it and never goes away once the session ends.
+  courtsCount: number | null;
   progressPercent: number; // for the thin bar under each card
   progressLabel: string; // e.g. "Ends in 1h 13m", "Registration closes in 21h 45m", "Starts in 3 days"
   roundCurrent?: number;
@@ -101,6 +105,7 @@ export const mockSessionsList: SessionListItem[] = [
     checkedInCount: 21,
     waitingCount: 3,
     maxParticipants: 24,
+    courtsCount: 6,
     progressPercent: 40,
     progressLabel: "Ends in 1h 13m",
     roundCurrent: 2,
@@ -139,6 +144,7 @@ export const mockSessionsList: SessionListItem[] = [
     checkedInCount: 0,
     waitingCount: 2,
     maxParticipants: 24,
+    courtsCount: 6,
     progressPercent: 75,
     progressLabel: "Registration closes in 21h 45m",
     registrationOpen: true,
@@ -155,6 +161,7 @@ export const mockSessionsList: SessionListItem[] = [
     checkedInCount: 0,
     waitingCount: 0,
     maxParticipants: 12,
+    courtsCount: 3,
     progressPercent: 55,
     progressLabel: "Registration closes in 2 days",
     registrationOpen: true,
@@ -173,6 +180,7 @@ export const mockSessionsList: SessionListItem[] = [
     checkedInCount: 0,
     waitingCount: 6,
     maxParticipants: 32,
+    courtsCount: 8,
     progressPercent: 20,
     progressLabel: "Starts in 3 days",
   },
@@ -188,6 +196,7 @@ export const mockSessionsList: SessionListItem[] = [
     checkedInCount: 0,
     waitingCount: 0,
     maxParticipants: 16,
+    courtsCount: 4,
     progressPercent: 10,
     progressLabel: "Awaiting admin approval",
   },
@@ -203,6 +212,7 @@ export const mockSessionsList: SessionListItem[] = [
     checkedInCount: 0,
     waitingCount: 0,
     maxParticipants: 10,
+    courtsCount: 2,
     progressPercent: 10,
     progressLabel: "Starts in 12 days",
   },
@@ -218,6 +228,7 @@ export const mockSessionsList: SessionListItem[] = [
     checkedInCount: 0,
     waitingCount: 0,
     maxParticipants: 24,
+    courtsCount: 6,
     progressPercent: 5,
     progressLabel: "Starts in 15 days",
   },
@@ -235,6 +246,7 @@ export const mockSessionsList: SessionListItem[] = [
     checkedInCount: 0,
     waitingCount: 0,
     maxParticipants: 64,
+    courtsCount: 16,
     progressPercent: 0,
     progressLabel: "Not published",
   },
@@ -250,6 +262,7 @@ export const mockSessionsList: SessionListItem[] = [
     checkedInCount: 0,
     waitingCount: 0,
     maxParticipants: 24,
+    courtsCount: 6,
     progressPercent: 0,
     progressLabel: "Not published",
   },
@@ -265,6 +278,7 @@ export const mockSessionsList: SessionListItem[] = [
     checkedInCount: 0,
     waitingCount: 0,
     maxParticipants: 20,
+    courtsCount: 5,
     progressPercent: 0,
     progressLabel: "Not published",
   },
@@ -282,6 +296,7 @@ export const mockSessionsList: SessionListItem[] = [
     checkedInCount: 25,
     waitingCount: 0,
     maxParticipants: 26,
+    courtsCount: 6,
     progressPercent: 100,
     progressLabel: "Completed",
     resultsPublished: true,
@@ -298,6 +313,7 @@ export const mockSessionsList: SessionListItem[] = [
     checkedInCount: 30,
     waitingCount: 0,
     maxParticipants: 32,
+    courtsCount: 8,
     progressPercent: 100,
     progressLabel: "Completed",
     resultsPublished: true,
@@ -314,6 +330,7 @@ export const mockSessionsList: SessionListItem[] = [
     checkedInCount: 9,
     waitingCount: 0,
     maxParticipants: 10,
+    courtsCount: 2,
     progressPercent: 100,
     progressLabel: "Completed",
     resultsPublished: false,
@@ -330,6 +347,7 @@ export const mockSessionsList: SessionListItem[] = [
     checkedInCount: 18,
     waitingCount: 0,
     maxParticipants: 24,
+    courtsCount: 6,
     progressPercent: 100,
     progressLabel: "Completed",
     resultsPublished: true,
@@ -348,6 +366,7 @@ export const mockSessionsList: SessionListItem[] = [
     checkedInCount: 46,
     waitingCount: 0,
     maxParticipants: 48,
+    courtsCount: 12,
     progressPercent: 100,
     progressLabel: "Archived",
     resultsPublished: true,
@@ -364,6 +383,7 @@ export const mockSessionsList: SessionListItem[] = [
     checkedInCount: 20,
     waitingCount: 0,
     maxParticipants: 24,
+    courtsCount: 6,
     progressPercent: 100,
     progressLabel: "Archived",
     resultsPublished: true,
@@ -380,6 +400,7 @@ export const mockSessionsList: SessionListItem[] = [
     checkedInCount: 28,
     waitingCount: 0,
     maxParticipants: 32,
+    courtsCount: 8,
     progressPercent: 100,
     progressLabel: "Archived",
     resultsPublished: true,
@@ -403,7 +424,7 @@ export function getSessionDetail(session: SessionListItem): Required<
     | "createdAt"
     | "notes"
   >
-> & { gameFormat: string; cancellationPolicy: string } {
+> & { gameFormat: string | null; cancellationPolicy: string } {
   const start = new Date(session.startAt);
   return {
     endAt: session.endAt ?? new Date(start.getTime() + 90 * 60 * 1000).toISOString(),
@@ -417,7 +438,12 @@ export function getSessionDetail(session: SessionListItem): Required<
     organizerName: session.organizerName ?? "Henry Coach",
     createdAt: session.createdAt ?? daysAgo(14),
     notes: session.notes ?? null,
-    gameFormat: "4 Games (No-Ad)",
+    // No real column for this yet (games-to-win / no-ad are wizard Step
+    // 3 fields folded into free-text description on creation, not
+    // stored structured) - was a bare hardcoded "4 Games (No-Ad)" for
+    // every session regardless of what was actually picked. Honest null
+    // until there's a real settings column to read from.
+    gameFormat: null,
     cancellationPolicy:
       session.cancellationPolicy ??
       "Free cancellation up to 24 hours before the session starts. After that, no refund — the spot may still be offered to the waiting list.",

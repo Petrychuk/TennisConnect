@@ -77,6 +77,7 @@ export function toSessionListItem(session: TennisSession | SessionWithDetails): 
     checkedInCount: details?.checkedInCount ?? 0,
     waitingCount,
     maxParticipants: session.maxParticipants ?? null,
+    courtsCount: session.courtsCount ?? null,
     progressPercent,
     progressLabel,
     registrationOpen,
@@ -88,6 +89,7 @@ export function toSessionListItem(session: TennisSession | SessionWithDetails): 
     organizationSlug: details?.organizationSlug ?? undefined,
     createdAt: new Date(session.createdAt).toISOString(),
     reviewNote: session.reviewNote ?? undefined,
+    notes: session.notes ?? null,
   };
 }
 

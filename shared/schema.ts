@@ -538,6 +538,10 @@ export const tennisSessions = pgTable("sessions", {
   // common case for Social Tennis, so it's the default rather than singles.
   matchMode: text("match_mode").default("doubles").notNull(),
   waitingListEnabled: boolean("waiting_list_enabled").default(true).notNull(),
+  // Organizer's own private reference notes - shown only to them on the
+  // Session Workspace overview, nothing to do with reviewNote below
+  // (that's admin moderation feedback, this is the organizer's own).
+  notes: text("notes"),
   // Admin moderation — every organizer-submitted session is reviewed
  // before it goes live. Null until an admin approves or rejects it.
   reviewedBy: varchar("reviewed_by").references(() => users.id),
