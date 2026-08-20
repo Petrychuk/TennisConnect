@@ -25,6 +25,8 @@ export default function Error500() {
         <img
           src="/assets/images/error-500-hero.jpg"
           alt=""
+          fetchPriority="high"
+          decoding="async"
           className="absolute inset-0 h-full w-full object-cover object-[68%_center] sm:object-center"
         />
 

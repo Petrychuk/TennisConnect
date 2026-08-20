@@ -41,74 +41,17 @@ export default defineConfig({
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
     chunkSizeWarningLimit: 700,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          "vendor-react": ["react", "react-dom", "wouter"],
-          // Every @radix-ui/react-* package actually used in the app (see
-          // the grep that generated this list) - previously only about
-          // half of them were listed here, so the rest (slot, toast,
-          // label, separator, etc. - all pulled in by very foundational
-          // UI primitives like Button/Toaster) were leaking into the
-          // main entry chunk instead of this shared, separately-cached
-          // one. This is a pure bundling change: it only affects which
-          // file each import ends up in, not what the code does.
-          "vendor-radix": [
-            "@radix-ui/react-accordion",
-            "@radix-ui/react-alert-dialog",
-            "@radix-ui/react-aspect-ratio",
-            "@radix-ui/react-avatar",
-            "@radix-ui/react-checkbox",
-            "@radix-ui/react-collapsible",
-            "@radix-ui/react-context-menu",
-            "@radix-ui/react-dialog",
-            "@radix-ui/react-dropdown-menu",
-            "@radix-ui/react-hover-card",
-            "@radix-ui/react-label",
-            "@radix-ui/react-menubar",
-            "@radix-ui/react-navigation-menu",
-            "@radix-ui/react-popover",
-            "@radix-ui/react-progress",
-            "@radix-ui/react-radio-group",
-            "@radix-ui/react-scroll-area",
-            "@radix-ui/react-select",
-            "@radix-ui/react-separator",
-            "@radix-ui/react-slider",
-            "@radix-ui/react-slot",
-            "@radix-ui/react-switch",
-            "@radix-ui/react-tabs",
-            "@radix-ui/react-toast",
-            "@radix-ui/react-toggle",
-            "@radix-ui/react-toggle-group",
-            "@radix-ui/react-tooltip",
-          ],
-          // framer-motion is used on the homepage itself (hero.tsx etc.),
-          // so it can't be deferred out of the initial load entirely -
-          // but as its own chunk it downloads in parallel with the main
-          // entry chunk instead of being baked into one large sequential
-          // file, and it's cached independently: a deploy that only
-          // touches app code (not this library's version) won't force
-          // returning visitors to re-download it.
-          "vendor-motion": ["framer-motion"],
-          // Used broadly for data fetching (React Query) - same
-          // parallel-download/independent-cache reasoning as above.
-          "vendor-query": ["@tanstack/react-query"],
-          // NOT chunked (unlike the others above): this ended up an
-          // "empty chunk" at build time - @supabase/supabase-js's actual
-          // code apparently doesn't resolve to a module id Rollup's
-          // object-form manualChunks can match here, so the rule did
-          // nothing useful except create a pointless empty file. Worse,
-          // it's plausible this left something depending on that chunk
-          // (e.g. auth-context.tsx, used by the lazy-loaded profile
-          // pages) referencing a chunk that doesn't actually contain
-          // what it needs - a very plausible explanation for a brief
-          // "chunk load failed" flash right after login specifically.
-          // Leaving supabase-js out of manualChunks lets Rollup place it
-          // whichever way it naturally resolves, same as before this was
-          // added.
-        },
-      },
-    },
+    // No manualChunks. Three rounds of hand-written vendor-chunking rules
+    // went through here (list form, then a function form meant to fix an
+    // "empty chunk" warning from the first) - none of it could be
+    // verified against a real `vite build` in this environment, and
+    // production started showing intermittent 500s and worse Core Web
+    // Vitals shortly after. Rather than risk a fourth unverified guess,
+    // this reverts to Vite/Rollup's own default chunking, which needs no
+    // package-path assumptions and is what was running before any of
+    // this was touched. If custom vendor chunking is worth revisiting
+    // later, it should be done with a real build available to check the
+    // output against, not blind.
   },
   server: {
     host: "0.0.0.0",

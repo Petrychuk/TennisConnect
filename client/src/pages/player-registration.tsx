@@ -166,6 +166,8 @@ export default function PlayerRegistration() {
             <img 
               src={heroImage} 
               alt="Tennis Player" 
+              fetchPriority="high"
+              decoding="async"
               className="w-full h-full object-cover object-[50%_0%] opacity-80"
             />
             <div className="absolute inset-0 bg-linear-to-l from-transparent via-black/20 to-black/80" />

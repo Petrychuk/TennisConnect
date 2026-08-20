@@ -26,6 +26,8 @@ export default function Maintenance() {
         <img
           src="/assets/images/maintenance-hero.jpg"
           alt=""
+          fetchPriority="high"
+          decoding="async"
           className="absolute inset-0 h-full w-full object-cover object-[68%_center] sm:object-center"
         />
 
