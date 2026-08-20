@@ -537,6 +537,22 @@ export const tennisSessions = pgTable("sessions", {
   // team size in round generation (see liveEngine.ts). Doubles is the
   // common case for Social Tennis, so it's the default rather than singles.
   matchMode: text("match_mode").default("doubles").notNull(),
+  // Wizard Step 3 fields the organizer actually picks, previously only
+  // folded into a free-text description summary (still is, for
+  // backwards compat with anywhere that reads description) and never
+  // stored anywhere queryable - meaning the Session Details card had
+  // nothing real to show and matchMode above never got set from the
+  // wizard at all (silently defaulting to "doubles" regardless of what
+  // was chosen). All nullable since sessions created before this column
+  // existed genuinely don't have a value.
+  category: text("category"), // "open" | "mens" | "womens"
+  gamesTo: integer("games_to"),
+  noAd: boolean("no_ad"),
+  tiebreak: boolean("tiebreak"),
+  // The organizer's planned round count from the wizard - distinct from
+  // TC Live's actual generated round count (session_rounds rows, which
+  // only exist once "Generate Round" has actually been pressed).
+  plannedRoundsCount: integer("planned_rounds_count"),
   waitingListEnabled: boolean("waiting_list_enabled").default(true).notNull(),
   // Organizer's own private reference notes - shown only to them on the
   // Session Workspace overview, nothing to do with reviewNote below

@@ -22,20 +22,28 @@ export function SessionDetailsCard({ session, isDivision }: SessionDetailsCardPr
   // folds it into the free-text description instead of a real column -
   // see organiser-session-wizard-types.ts draftToInsertSession) so
   // there's nothing real to show outside TC Live's own round tracking.
-  const roundsCount = session.roundTotal ?? null;
+  const roundsCount = session.roundTotal ?? session.plannedRoundsCount ?? null;
+
+  const matchTypeLabel =
+    session.matchMode == null
+      ? null
+      : session.category === "mens"
+      ? `Men's ${session.matchMode === "singles" ? "Singles" : "Doubles"}`
+      : session.category === "womens"
+      ? `Women's ${session.matchMode === "singles" ? "Singles" : "Doubles"}`
+      : session.matchMode === "singles"
+      ? "Singles"
+      : "Doubles";
+  const gameFormatLabel =
+    session.gamesTo != null ? `${session.gamesTo} Games${session.noAd ? " (No-Ad)" : ""}` : null;
 
   const rows = [
     { icon: Tag, label: isDivision ? "Division Type" : "Session Type", value: session.type.replace("-", " "), testId: "type" },
     ...(isDivision
       ? []
       : [
-          // Format/Game Format aren't backed by real columns yet either
-          // (same Step 3 gap as rounds above) - showing "Not set" is
-          // honest; a specific-looking value like "Fun Doubles" here
-          // was a hardcoded placeholder true for every session
-          // regardless of what was actually configured.
-          { icon: Shuffle, label: "Format", value: session.format ?? "Not set", testId: "format" },
-          { icon: Layers, label: "Game Format", value: detail.gameFormat ?? "Not set", testId: "game-format" },
+          { icon: Shuffle, label: "Format", value: matchTypeLabel ?? "Not set", testId: "format" },
+          { icon: Layers, label: "Game Format", value: gameFormatLabel ?? "Not set", testId: "game-format" },
           { icon: Repeat, label: "Rounds", value: roundsCount != null ? `${roundsCount} Rounds` : "Not set", testId: "rounds" },
         ]),
     { icon: MapPinned, label: "Courts", value: courtsCount != null ? `${courtsCount} Courts` : "Not set", testId: "courts" },
