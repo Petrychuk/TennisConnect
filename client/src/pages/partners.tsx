@@ -27,7 +27,7 @@ interface PartnerData {
     name: string;
     location: string;
     skillLevel: string;
-    avatar: string;
+    avatar: string | null;
     available: boolean;
     bio: string;
     isDemo: boolean;
@@ -140,8 +140,6 @@ export default function PartnersPage() {
         isDemo: true,
         isOrganizer: false,
       }));
-  const DEFAULT_AVATAR ="";
-  
   const normalizeApiPlayers = (data: any[]): PartnerData[] =>
     data.map((item) => ({
       id: item.id,
@@ -151,9 +149,9 @@ export default function PartnersPage() {
       location: item.location ?? "Sydney",
       skillLevel: item.skillLevel ?? "Beginner",
       avatar:
-        item.avatar 
+        item.avatar
         ? `${item.avatar}?t=${item.updatedAt ?? Date.now()}`
-      : DEFAULT_AVATAR,
+        : null,
       available: true,
       bio: item.bio ?? "",
       isDemo: false,
@@ -499,24 +497,32 @@ export default function PartnersPage() {
                   
                   <CardContent className="p-2 md:p-3 grow flex flex-col items-center text-center">
                   <div className="relative w-full h-36 sm:h-44 md:h-56 mb-4 overflow-hidden rounded-xl">
-                    <img
-                      src={
-                        isMe && user?.avatar
-                          ? user.avatar
-                          : partner.avatar
-                      }
-                      alt={partner.name}
-                      loading="lazy"
-                      className="
-                        w-full
-                        h-full
-                        object-cover
-                        object-center
-                        transition-transform
-                        duration-300
-                        group-hover:scale-105
-                      "
-                    />
+                    {(isMe && user?.avatar) || partner.avatar ? (
+                      <img
+                        src={isMe && user?.avatar ? user.avatar : (partner.avatar as string)}
+                        alt={partner.name}
+                        loading="lazy"
+                        className="
+                          w-full
+                          h-full
+                          object-cover
+                          object-center
+                          transition-transform
+                          duration-300
+                          group-hover:scale-105
+                        "
+                      />
+                    ) : (
+                      // No photo on file - initials fallback, same look as
+                      // ProfileAvatar.tsx / the navbar account menu, instead
+                      // of an <img src=""> broken-image icon.
+                      <div
+                        className="w-full h-full flex items-center justify-center bg-primary/10 text-primary font-bold select-none"
+                        data-testid={`player-card-${partner.id}-initials`}
+                      >
+                        <span className="text-4xl">{partner.name?.trim()?.[0]?.toUpperCase() || "U"}</span>
+                      </div>
+                    )}
 
                     {isMe && (
                       <Badge className="absolute top-2 right-2 bg-primary text-primary-foreground z-10">
