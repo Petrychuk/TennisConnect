@@ -19,7 +19,9 @@
     "test:e2e:regression": "playwright test --grep-invert @smoke",
     "staging:sync": "tsx scripts/sync-staging.ts",
     "seed:live": "cross-env NODE_ENV=development tsx server/seeds/liveSessionSeed.ts",
-    "seed:live:reset": "cross-env NODE_ENV=development tsx server/seeds/liveSessionSeed.ts --reset"
+    "seed:live:reset": "cross-env NODE_ENV=development tsx server/seeds/liveSessionSeed.ts --reset",
+    "seed:test-players": "cross-env NODE_ENV=development tsx server/seeds/testPlayersSeed.ts",
+    "seed:test-players:reset": "cross-env NODE_ENV=development tsx server/seeds/testPlayersSeed.ts --reset"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
