@@ -42,7 +42,7 @@ export const users = pgTable("users", {
   .default(false)
   .notNull(),
   isHidden: boolean("is_hidden").default(false),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // Articles - blog posts about tennis
@@ -61,7 +61,7 @@ export const articles = pgTable("articles", {
   author: text("author").notNull(),
   readTime: integer("read_time").default(5).notNull(),
   isPublished: boolean("is_published").default(true).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // Travel Packages - tennis tour packages
@@ -99,7 +99,7 @@ export const travelPackages = pgTable("travel_packages", {
   isActive: boolean("is_active")
     .default(true)
     .notNull(),
-  createdAt: timestamp("created_at")
+  createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
 });
@@ -122,7 +122,7 @@ export const recreationServices = pgTable("recreation_services", {
   phone: text("phone"),
   email: text("email"),
   isActive: boolean("is_active").default(true).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // Tournaments (events) - separate from tournamentHistory (which is per-user history)
@@ -150,7 +150,7 @@ export const tournaments = pgTable("tournaments", {
   ageGroups: json("age_groups").$type<string[]>().default([]),
   winner: text("winner"),
   finalist: text("finalist"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // Player profiles
@@ -164,7 +164,7 @@ export const playerProfiles = pgTable("player_profiles", {
   bio: text("bio"),
   preferredCourts: json("preferred_courts").$type<string[]>().default([]),
   isDraft: boolean("is_draft").default(true).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // Coach profiles
@@ -185,7 +185,7 @@ export const coachProfiles = pgTable("coach_profiles", {
   phone: text("phone"),
   email: text("email"),
   isDraft: boolean("is_draft").default(true).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // Tournaments History
@@ -214,7 +214,7 @@ export const tournamentHistory = pgTable("tournament_history", {
   result: text("result"),
   award: text("award"),
   photos: json("photos").$type<string[]>().default([]),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // Marketplace items
@@ -230,7 +230,7 @@ export const marketplaceItems = pgTable("marketplace_items", {
   type: text("type").notNull().default("second-hand"),
   sellerName: text("seller_name").notNull(),
   sellerEmail: text("seller_email"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   isActive: boolean("is_active").default(true),
 });
 
@@ -363,10 +363,10 @@ export const clubs = pgTable("clubs", {
   rating: text("rating"),
 
   // Dates
-  createdAt: timestamp("created_at")
+  createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
-  updatedAt: timestamp("updated_at")
+  updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
 });
@@ -391,8 +391,8 @@ export const organizerRequests = pgTable("organizer_requests", {
   status: text("status").default("pending").notNull(), // pending | approved | rejected
   note: text("note"), // optional message from the requester
   reviewedBy: varchar("reviewed_by").references(() => users.id),
-  reviewedAt: timestamp("reviewed_at"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // An organizing entity (a person or a group) that runs Sessions.
@@ -429,10 +429,10 @@ export const organizations = pgTable("organizations", {
   status: text("status")
     .default("draft")
     .notNull(),
-  createdAt: timestamp("created_at")
+  createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
-  updatedAt: timestamp("updated_at")
+  updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
 });
@@ -454,7 +454,7 @@ export const organizationMembers = pgTable(
       .default("owner")
       .notNull(),
 
-    createdAt: timestamp("created_at")
+    createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
   },
@@ -531,10 +531,10 @@ export const tennisSessions = pgTable("sessions", {
   // Admin moderation — every organizer-submitted session is reviewed
  // before it goes live. Null until an admin approves or rejects it.
   reviewedBy: varchar("reviewed_by").references(() => users.id),
-  reviewedAt: timestamp("reviewed_at"),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
   reviewNote: text("review_note"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 
 });
 
@@ -557,7 +557,7 @@ export const registrations = pgTable(
       .default("registered")
       .notNull(),
 
-    checkedInAt: timestamp("checked_in_at"),
+    checkedInAt: timestamp("checked_in_at", { withTimezone: true }),
 
     // Null = present as normal. Organizer-set during a live session only
     // (see REGISTRATION_LIVE_STATUS) - distinct from `status` above,
@@ -565,7 +565,7 @@ export const registrations = pgTable(
     // generation skips anyone with this set.
     liveStatus: text("live_status"),
 
-    createdAt: timestamp("created_at")
+    createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
   },
@@ -592,8 +592,8 @@ export const sessionRounds = pgTable(
     roundNumber: integer("round_number").notNull(),
     status: text("status").default("active").notNull(), // active | completed
     restingPlayerIds: json("resting_player_ids").$type<string[]>().default([]),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    completedAt: timestamp("completed_at"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
   },
   (table) => ({
     sessionRoundUnique: unique().on(table.sessionId, table.roundNumber),
@@ -619,9 +619,9 @@ export const matches = pgTable("matches", {
   // additive change, not a migration.
   reportedBy: varchar("reported_by").references(() => users.id),
   confirmedBy: varchar("confirmed_by").references(() => users.id),
-  startedAt: timestamp("started_at"),
-  confirmedAt: timestamp("confirmed_at"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const sessionRoundsRelations = relations(sessionRounds, ({ one, many }) => ({
@@ -792,7 +792,7 @@ export const clubFollows = pgTable("club_follows", {
   clubId: varchar("club_id")
     .references(() => clubs.id)
     .notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // A player favouriting a club as a court venue - "I like playing here",
@@ -810,7 +810,7 @@ export const clubFavorites = pgTable("club_favorites", {
   clubId: varchar("club_id")
     .references(() => clubs.id)
     .notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // Messages - for contact requests and messaging between users
@@ -827,7 +827,7 @@ export const messages = pgTable("messages", {
   subject: text("subject"),
   content: text("content").notNull(),
   isRead: boolean("is_read").default(false).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 
   // Distinguishes an actionable invitation from a regular message, and
   // which kind - a Community invite and a Session invite are two
@@ -859,7 +859,7 @@ export const communityMemberships = pgTable(
       .notNull()
       .references(() => users.id),
     status: text("status").default("pending").notNull(), // 'pending' | 'accepted' | 'declined'
-    createdAt: timestamp("created_at").defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => ({
     orgUserUnique: unique().on(table.organizationId, table.userId),
@@ -895,7 +895,7 @@ export const supportRequests = pgTable("support_requests", {
   status: text("status")
     .default("new")
     .notNull(),
-  createdAt: timestamp("created_at")
+  createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
 });
@@ -907,8 +907,8 @@ export const newsletterSubscribers = pgTable("newsletter_subscribers", {
   email: text("email").notNull().unique(),
   status: text("status").default("subscribed").notNull(), // subscribed | unsubscribed
   source: text("source").default("footer").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  unsubscribedAt: timestamp("unsubscribed_at"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
 });
 
 // Password Reset Tokens
@@ -916,9 +916,9 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
   token: varchar("token", { length: 255 }).notNull().unique(),
-  expiresAt: timestamp("expires_at").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   used: boolean("used").default(false).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // Relations
