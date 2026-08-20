@@ -50,6 +50,15 @@ function coachName(n: number) {
   return `Test Coach ${String(n).padStart(2, "0")}`;
 }
 
+// pravatar.cc serves stable, free placeholder headshots by index (1-70) -
+// exactly what test data needs: a real photo so avatar rendering/cropping
+// can actually be tested, without hosting or licensing any images
+// ourselves. Players and coaches use non-overlapping index ranges so no
+// two seeded accounts share a face.
+function avatarUrl(index: number) {
+  return `https://i.pravatar.cc/300?img=${((index - 1) % 70) + 1}`;
+}
+
 async function upsertUser(values: typeof users.$inferInsert) {
   const [user] = await db
     .insert(users)
@@ -89,6 +98,7 @@ async function seedTestPlayers() {
       name: playerName(i),
       role: "player",
       slug: playerSlug(i),
+      avatar: avatarUrl(i),
       isApproved: true,
       isTestUser: true,
       profileCompleted: true,
@@ -108,6 +118,7 @@ async function seedTestPlayers() {
       name: coachName(i),
       role: "coach",
       slug: coachSlug(i),
+      avatar: avatarUrl(PLAYER_COUNT + i),
       isApproved: true,
       isTestUser: true,
       profileCompleted: true,
