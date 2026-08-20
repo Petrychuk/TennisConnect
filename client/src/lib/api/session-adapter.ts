@@ -137,25 +137,15 @@ export function toSessionPlayers(registrationsList: RegistrationWithUser[]): Ses
  * match results exist yet - so those get neutral defaults rather than
  * fabricated numbers, same reasoning as toSessionPlayer's level/group.
  */
-// player_profiles.skill_level is just a text label (Beginner/Intermediate/
-// Advanced) - there's no numeric rating anywhere in the data model yet.
-// The org players table wants a decimal (e.g. "4.5") alongside the label,
-// so this maps each label to its band's midpoint as a clearly-approximate
-// stand-in until a real rating system exists - never invented for a
-// player with no skill level on file (level: 0 in that case, same as
-// before, since there's nothing to approximate from).
-const SKILL_LEVEL_MIDPOINT: Record<string, number> = {
-  Beginner: 2.5,
-  Intermediate: 3.5,
-  Advanced: 4.5,
-};
+import { skillLevelToUtr } from "@/lib/skillLevel";
 
 function toLevelLabel(skillLevel: string | null): OrgPlayer["levelLabel"] {
   if (skillLevel === "Beginner" || skillLevel === "Intermediate" || skillLevel === "Advanced") {
     return skillLevel;
   }
-  // No profile / skill level on file - "Social" here means "unrated",
-  // not an actual skill tier (there's no such tier in SKILL_LEVELS).
+  // No profile / skill level on file, or they picked "Social" - both
+  // mean "unrated" for this table's purposes (Social isn't a skill
+  // tier, it's the no-numeric-rating tier - see skillLevel.ts).
   return "Social";
 }
 
@@ -166,7 +156,7 @@ export function toOrgPlayer(row: OrgPlayerRow): OrgPlayer {
     id: row.userId,
     name: row.userName,
     avatar: row.userAvatar,
-    level: row.userSkillLevel ? SKILL_LEVEL_MIDPOINT[row.userSkillLevel] ?? 0 : 0,
+    level: skillLevelToUtr(row.userSkillLevel) ?? 0,
     levelLabel: toLevelLabel(row.userSkillLevel),
     sessionsPlayed: row.sessionsPlayed,
     winRate: 0,

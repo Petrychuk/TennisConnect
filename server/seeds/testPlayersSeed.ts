@@ -29,7 +29,7 @@ const TEST_PASSWORD = "TcTestPlayer123!";
 const PLAYER_COUNT = 20;
 const COACH_COUNT = 5;
 const LOCATIONS = ["Sydney", "Melbourne", "Brisbane", "Perth", "Adelaide"];
-const SKILL_LEVELS = ["Beginner", "Intermediate", "Advanced"];
+const SKILL_LEVELS = ["Social", "Beginner", "Intermediate", "Advanced"];
 
 function playerEmail(n: number) {
   return `test-player-${String(n).padStart(2, "0")}@tennisconnect.test`;
