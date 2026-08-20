@@ -185,6 +185,8 @@ export default function CoachesPage() {
               <img 
                 src={heroImage}
                 alt="Tennis coach" 
+                fetchPriority="high"
+                decoding="async"
                 className="w-full
                 h-full
                 object-cover
@@ -568,7 +570,7 @@ export default function CoachesPage() {
 
                     <CardHeader className="px-3 pt-3 pb-1 md:px-6 md:pb-2">
                       <div className="flex justify-between items-start">
-                        <div className="min-h-[56px] md:min-h-[85px] min-w-0 w-full">
+                        <div className="min-h-14 md:min-h-[85px] min-w-0 w-full">
                           <h3 className="text-base md:text-lg lg:text-xl
                             font-bold
                             font-display
@@ -576,8 +578,8 @@ export default function CoachesPage() {
                             transition-colors
 
                             line-clamp-2
-                            min-h-[48px]
-                            md:min-h-[56px]">{coach.name}</h3>
+                            min-h-12
+                            md:min-h-14">{coach.name}</h3>
                           <p className="text-sm text-muted-foreground line-clamp-1">{coach.title}</p>
                         </div>
                       </div>
