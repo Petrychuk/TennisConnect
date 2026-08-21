@@ -40,7 +40,7 @@ export function LiveTodayCard({ session, className, onEnterLive }: LiveTodayCard
       data-testid="organiser-live-today-card"
     >
       <img
-        src={courtImage}
+        src={session.coverImage || courtImage}
         alt=""
         aria-hidden="true"
         className="absolute inset-0 w-full h-full object-cover"

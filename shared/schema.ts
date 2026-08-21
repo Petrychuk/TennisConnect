@@ -696,6 +696,22 @@ export type LeaderboardRow = {
   restRounds: number;
 };
 
+// Dashboard's Activity Feed - derived from real registration events
+// (there's no dedicated activity-log table), so only what's actually
+// timestamped and attributable is included: a player joining
+// (registrations.createdAt) or checking in (registrations.checkedInAt).
+// Cancellations aren't derivable this way - registrations has no
+// cancelledAt/updatedAt column to sort a "cancelled" event by, so that
+// event type from the old mock data is intentionally not reproduced.
+export type ActivityFeedItem = {
+  id: string; // registrationId - type suffix, so join+check-in on the same registration don't collide
+  type: "joined" | "checked_in";
+  userName: string;
+  sessionTitle: string;
+  at: string; // ISO
+};
+
+
 export const insertMatchScoreSchema = z.object({
   teamAGames: z.number().int().min(0),
   teamBGames: z.number().int().min(0),

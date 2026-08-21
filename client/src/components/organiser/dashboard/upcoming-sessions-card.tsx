@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, MapPin, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar, MapPin, ChevronRight, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { MockSession } from "@/lib/organiser-hub-mock-data";
 import { formatInTimeZone } from "@/lib/timezone";
@@ -8,6 +9,7 @@ import { formatInTimeZone } from "@/lib/timezone";
 interface UpcomingSessionsCardProps {
   sessions: MockSession[];
   className?: string;
+  onCreateSession?: () => void;
 }
 
 function sessionStatusLabel(session: MockSession) {
@@ -17,7 +19,7 @@ function sessionStatusLabel(session: MockSession) {
   return "Registration Open";
 }
 
-export function UpcomingSessionsCard({ sessions, className }: UpcomingSessionsCardProps) {
+export function UpcomingSessionsCard({ sessions, className, onCreateSession }: UpcomingSessionsCardProps) {
   return (
     <Card className={cn("shadow-sm hover:shadow-md transition-shadow", className)} data-testid="organiser-upcoming-sessions-card">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -33,9 +35,15 @@ export function UpcomingSessionsCard({ sessions, className }: UpcomingSessionsCa
       </CardHeader>
       <CardContent>
         {sessions.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-2" data-testid="organiser-upcoming-empty">
-            Nothing on the calendar yet.
-          </p>
+          <div className="flex flex-col items-center text-center gap-2 py-6" data-testid="organiser-upcoming-empty">
+            <p className="text-sm text-muted-foreground">Nothing on the calendar yet.</p>
+            {onCreateSession && (
+              <Button size="sm" onClick={onCreateSession} data-testid="organiser-upcoming-empty-create">
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                Create your first session
+              </Button>
+            )}
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {sessions.map((session) => {
