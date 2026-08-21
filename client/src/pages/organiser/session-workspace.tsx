@@ -23,7 +23,6 @@ import {
   Archive,
   Calendar,
   MapPin,
-  Loader2,
   Send,
   UserPlus,
   Megaphone,
@@ -58,6 +57,7 @@ import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
 import { useQuery } from "@tanstack/react-query";
 import { getSessionById } from "@/lib/api/organizer-sessions";
 import { toSessionListItem } from "@/lib/api/session-adapter";
+import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 import { formatInTimeZone } from "@/lib/timezone";
 
 const WORKSPACE_TABS = [
@@ -255,7 +255,7 @@ export default function OrganiserSessionWorkspacePage() {
   if (sessionQuery.isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        <TennisBallSpinner />
       </div>
     );
   }

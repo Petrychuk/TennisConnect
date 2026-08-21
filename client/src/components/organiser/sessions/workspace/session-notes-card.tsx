@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Plus, Loader2 } from "lucide-react";
+import { FileText, Plus } from "lucide-react";
+import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 import { useToast } from "@/hooks/use-toast";
 import { updateSession } from "@/lib/api/organizer-sessions";
 
@@ -60,7 +61,7 @@ export function SessionNotesCard({ sessionId, initialNote = null }: SessionNotes
               data-testid="organiser-session-notes-textarea"
             />
             <Button size="sm" onClick={handleSave} disabled={isSaving} data-testid="organiser-session-notes-save">
-              {isSaving && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+              {isSaving && <TennisBallSpinner className="mr-1.5" />}
               Save
             </Button>
           </div>

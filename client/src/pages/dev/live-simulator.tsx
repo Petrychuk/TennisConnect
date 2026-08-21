@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 import {
   getSessionRegistrations,
   checkInRegistration,
@@ -151,7 +151,7 @@ export default function LiveSimulatorPage() {
             <Button size="sm" variant="secondary" disabled={busy || !sessionId} onClick={handleFinish}>Finish Session</Button>
             <Button size="sm" disabled={busy || !sessionId} onClick={handleSimulateFullSession}>Simulate Full Session</Button>
             <Button size="sm" variant="destructive" disabled={busy || !sessionId} onClick={handleReset}>Reset</Button>
-            {busy && <Loader2 className="w-4 h-4 animate-spin self-center" />}
+            {busy && <TennisBallSpinner className="self-center" />}
           </CardContent>
         </Card>
 
