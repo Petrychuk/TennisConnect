@@ -80,6 +80,11 @@ export interface SessionListItem {
   format?: string; // "Fun doubles · Random partners · Balance skill"
   roundsDescription?: string; // "5 rounds · Best of 4 games (no-ad)"
   waitingListEnabled?: boolean;
+  // Real value (sessions.waiting_list_capacity) - null/undefined means
+  // unlimited, previously session-details-card.tsx always showed the
+  // same hardcoded "(10 spots)" regardless of what was actually set
+  // (there was nowhere real to store it).
+  waitingListCapacity?: number | null;
   parentSessionId?: string | null; // set when this session is a division of a container session
   costPerPlayer?: number | null;
   organizerName?: string;

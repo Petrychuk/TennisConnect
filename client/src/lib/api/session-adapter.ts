@@ -89,6 +89,7 @@ export function toSessionListItem(session: TennisSession | SessionWithDetails): 
     registrationOpen,
     registrationClosesAt: session.registrationClosesAt ? new Date(session.registrationClosesAt).toISOString() : undefined,
     waitingListEnabled: session.waitingListEnabled,
+    waitingListCapacity: session.waitingListCapacity ?? null,
     parentSessionId: session.parentSessionId ?? null,
     costPerPlayer: session.price != null ? Number(session.price) : 0,
     organizerName: details?.creatorName ?? undefined,

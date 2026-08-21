@@ -69,3 +69,32 @@ export function formatInTimeZone(
   const d = typeof date === "string" ? new Date(date) : date;
   return d.toLocaleString("en-US", { ...options, timeZone });
 }
+
+/**
+ * The reverse-parsing counterpart to zonedTimeToUtc - splits a stored
+ * UTC instant back into the "YYYY-MM-DD" / "HH:mm" wall-clock strings a
+ * <input type="date">/<input type="time"> pair needs, as read in
+ * `timeZone`. Built for edit forms pre-filling from a real session:
+ * `new Date(startAt).toISOString().split("T")[0]` and
+ * `.toTimeString().slice(0, 5)` (the bug this replaces) read the UTC
+ * calendar date and the BROWSER's own local clock time respectively -
+ * neither is the venue's wall clock, which is what the form fields
+ * need to show back correctly.
+ */
+export function toZonedDateTimeInputs(date: Date | string, timeZone: string): { date: string; time: string } {
+  const d = typeof date === "string" ? new Date(date) : date;
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return {
+    date: `${get("year")}-${get("month")}-${get("day")}`,
+    time: `${get("hour")}:${get("minute")}`,
+  };
+}

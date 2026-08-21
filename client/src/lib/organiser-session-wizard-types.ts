@@ -85,6 +85,8 @@ export interface NewSessionDraft {
   registrationCloses: string; // yyyy-mm-dd
   maxPlayers: number;
   waitingListEnabled: boolean;
+  // null = unlimited. Only meaningful while waitingListEnabled is true.
+  waitingListCapacity: number | null;
   allowLateRegistration: boolean;
   // Pricing
   pricing: PricingMode;
@@ -123,23 +125,23 @@ export interface NewSessionDraft {
 
 export function createEmptyDraft(): NewSessionDraft {
   const today = new Date();
-  const in7Days = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
   const toDateInput = (d: Date) => d.toISOString().slice(0, 10);
 
   return {
     type: null,
     name: "",
     season: "",
-    venue: "Lyne Park Tennis Centre",
+    venue: "",
     courtCount: 6,
     timeZone: "Australia/Sydney",
-    date: toDateInput(in7Days),
+    date: toDateInput(today),
     startTime: "18:30",
     endTime: "20:00",
     registrationOpens: toDateInput(today),
-    registrationCloses: toDateInput(in7Days),
+    registrationCloses: toDateInput(today),
     maxPlayers: 24,
     waitingListEnabled: true,
+    waitingListCapacity: 10,
     allowLateRegistration: true,
     pricing: "free",
     price: 15,
@@ -245,6 +247,7 @@ export function draftToInsertSession(draft: NewSessionDraft) {
     visibility: draft.visibility,
     courtsCount: draft.courtCount || undefined,
     waitingListEnabled: draft.waitingListEnabled,
+    waitingListCapacity: draft.waitingListEnabled ? draft.waitingListCapacity : undefined,
     // Structured, queryable versions of what formatSummary above already
     // folds into description as text - matchMode also drives TC Live's
     // pairing engine (server/services/liveEngine.ts), which previously
