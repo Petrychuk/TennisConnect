@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 
-import { Upload, Trash2, Loader2, Link as LinkIcon } from "lucide-react";
+import { Upload, Trash2, Link as LinkIcon } from "lucide-react";
+import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -262,7 +263,7 @@ export function ImageUploader({
           {loading ? (
 
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <TennisBallSpinner className="mr-2" />
               Uploading...
             </>
 

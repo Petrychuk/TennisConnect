@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { Heart, Check, Loader2 } from "lucide-react";
+import { Heart, Check } from "lucide-react";
+import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -109,7 +110,7 @@ export function ClubSaveButton({
         data-testid="club-save-btn"
       >
         {loading ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
+          <TennisBallSpinner />
         ) : saved ? (
           <Check className="w-4 h-4" />
         ) : (

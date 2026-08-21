@@ -5,11 +5,11 @@ import { Footer } from "@/components/footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, MapPin, Users, Loader2 } from "lucide-react";
+import { Calendar, MapPin, Users } from "lucide-react";
+import { TennisBallSpinner, TennisLoader } from "@/components/ui/tennisLoader";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import SEO from "@/components/seo";
-import { TennisLoader } from "@/components/ui/tennisLoader";
 import { formatInTimeZone } from "@/lib/timezone";
 
 interface SessionWithDetails {
@@ -225,7 +225,7 @@ export default function OrganisationDetailPage() {
                           disabled={joiningId === session.id}
                           data-testid={`leave-session-${session.id}`}
                         >
-                          {joiningId === session.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          {joiningId === session.id && <TennisBallSpinner className="mr-2" />}
                           {isWaitlisted ? "Leave Waiting List" : "Cancel"}
                         </Button>
                       ) : (
@@ -235,7 +235,7 @@ export default function OrganisationDetailPage() {
                           disabled={joiningId === session.id}
                           data-testid={`join-session-${session.id}`}
                         >
-                          {joiningId === session.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          {joiningId === session.id && <TennisBallSpinner className="mr-2" />}
                           {isFull ? "Join Waiting List" : "Join Session"}
                         </Button>
                       )}

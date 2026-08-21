@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, User, MapPin } from "lucide-react";
+import { User, MapPin } from "lucide-react";
+import { TennisLoader, TennisBallSpinner } from "@/components/ui/tennisLoader";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import SEO from "@/components/seo";
@@ -213,7 +214,7 @@ export default function CompleteProfilePage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" />
+        <TennisLoader />
       </div>
     );
   }
@@ -343,7 +344,7 @@ export default function CompleteProfilePage() {
                   </div>
 
                   <Button type="submit" className="w-full" disabled={isLoading} data-testid="button-save">
-                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isLoading && <TennisBallSpinner className="mr-2" />}
                     Save Profile
                   </Button>
                 </form>
@@ -415,7 +416,7 @@ export default function CompleteProfilePage() {
                   </div>
 
                   <Button type="submit" className="w-full" disabled={isLoading} data-testid="button-save">
-                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isLoading && <TennisBallSpinner className="mr-2" />}
                     Save Profile
                   </Button>
                 </form>
