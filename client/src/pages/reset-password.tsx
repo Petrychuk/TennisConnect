@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Lock, CheckCircle, XCircle, Loader2,Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Lock, CheckCircle, XCircle, Eye, EyeOff } from "lucide-react";
 import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 import heroImage from "/assets/images/tennis_main.jpg";
 import SEO from "@/components/seo";
@@ -102,7 +102,7 @@ export default function ResetPasswordPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
+          <TennisBallSpinner className="mx-auto mb-4" />
           <p className="text-muted-foreground">Verifying reset link...</p>
         </div>
       </div>
