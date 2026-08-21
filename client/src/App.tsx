@@ -109,8 +109,8 @@ function Router() {
         <Route path="/messages" component={MessagesPage} />
         <Route path="/coach/profile" component={CoachProfile} />
         <Route path="/coach/:id" component={CoachProfile} />
-        { /* <Route path="/organiser" component={OrganiserDashboardPage} /> - disabled for now */ }
-        <Route path="/organiser" component={MaintenancePage} />
+        <Route path="/organiser" component={OrganiserDashboardPage} /> 
+        {/* <Route path="/organiser" component={MaintenancePage} /> */}
         <Route path="/organiser/sessions" component={OrganiserSessionsPage} />
         <Route path="/organiser/sessions/new" component={OrganiserSessionNewPage} />
         <Route path="/organiser/players" component={OrganiserPlayersPage} />
