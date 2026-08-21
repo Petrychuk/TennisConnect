@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarDays, ClipboardList, DollarSign, Eye, ImagePlus, Info, Loader2, X } from "lucide-react";
+import { CalendarDays, ClipboardList, DollarSign, Eye, ImagePlus, Info, X } from "lucide-react";
+import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 import { useToast } from "@/hooks/use-toast";
 import { uploadImage } from "@/lib/uploadImage";
 import { AU_CITY_TIMEZONES } from "@/lib/timezone";
@@ -93,7 +94,7 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
           />
           {isUploadingCover ? (
             <div className="w-full h-32 rounded-xl border-2 border-dashed border-border flex items-center justify-center text-muted-foreground">
-              <Loader2 className="w-6 h-6 animate-spin" />
+              <TennisBallSpinner />
             </div>
           ) : draft.coverImage ? (
             <div className="relative rounded-xl overflow-hidden h-40">
