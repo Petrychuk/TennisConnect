@@ -7,65 +7,128 @@
   gap: 16px;
 }
 
-/* Two oversized white-bordered circles, clipped by the ball's own
-   circular overflow, produce the tennis ball's characteristic curved
-   seam far more convincingly than two straight rotated arcs did. */
-.tennis-ball {
-  width: 40px;
-  height: 40px;
-  background: #c7ff3d; /* теннисный */
-  border-radius: 50%;
+/* Real ball image, rotating and bouncing, instead of a CSS-drawn circle
+   - the white seam always looks exactly like the actual TennisConnect
+   ball mark this way, at any size.
+
+   Structure is deliberately two nested layers, not one element doing
+   both: .tennis-ball-bounce positions/squashes via `bottom` + transform,
+   .tennis-ball-spin (inside it) only rotates via its own transform. Two
+   animations that both set `transform` on the SAME element don't
+   combine - the later one just overrides the earlier one's value each
+   frame - so bounce and spin need to live on different elements to
+   both actually show up at once. */
+.tennis-ball-bounce {
   position: relative;
-  overflow: hidden;
-  animation: spin 1.6s linear infinite;
-  box-shadow: 0 0 10px rgba(199, 255, 61, 0.6);
+  width: 56px;
+  height: 90px; /* ball height + room for the bounce travel above it */
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
 }
 
-.tennis-ball .line {
+.tennis-ball-spin {
   position: absolute;
-  width: 130%;
-  height: 130%;
-  top: -15%;
-  border: 2.5px solid white;
+  bottom: 8px;
+  left: 50%;
+  width: 56px;
+  height: 56px;
+  animation: tennis-ball-bounce 0.85s ease-in-out infinite;
+}
+
+.tennis-ball-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  animation: tennis-ball-rotate 1.7s linear infinite;
+}
+
+.tennis-ball-shadow {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  width: 65%;
+  height: 6px;
   border-radius: 50%;
+  background: rgba(0, 0, 0, 0.2);
+  filter: blur(2px);
+  animation: tennis-ball-shadow 0.85s ease-in-out infinite;
 }
 
-.tennis-ball .line-1 {
-  left: -85%;
-}
-
-.tennis-ball .line-2 {
-  left: 55%;
-}
-
-/* Compact variant for inline use in buttons */
-.tennis-ball-sm {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  background: #c7ff3d;
-  border-radius: 50%;
+/* Compact inline variant - same character, smaller and no shadow/text,
+   for use inside buttons and other small spaces. */
+.tennis-ball-bounce-sm {
   position: relative;
-  overflow: hidden;
-  animation: spin 1.6s linear infinite;
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 18px;
+  height: 26px;
   flex-shrink: 0;
+  vertical-align: middle;
 }
 
-.tennis-ball-sm .line {
+.tennis-ball-spin-sm {
   position: absolute;
-  width: 130%;
-  height: 130%;
-  top: -15%;
-  border: 1.2px solid white;
-  border-radius: 50%;
+  bottom: 2px;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  animation: tennis-ball-bounce-sm 0.65s ease-in-out infinite;
 }
 
-.tennis-ball-sm .line-1 {
-  left: -85%;
+.tennis-ball-img-sm {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  animation: tennis-ball-rotate 1.2s linear infinite;
 }
 
-.tennis-ball-sm .line-2 {
-  left: 55%;
+/* bottom + squash/stretch + horizontal centering, all fine together on
+   one element/property since none of these is `transform: rotate` -
+   only the ball image itself (a separate nested element) rotates. */
+@keyframes tennis-ball-bounce {
+  0%, 100% {
+    bottom: 8px;
+    transform: translateX(-50%) scaleX(1.05) scaleY(0.95);
+  }
+  50% {
+    bottom: 32px;
+    transform: translateX(-50%) scaleX(1) scaleY(1);
+  }
+}
+
+@keyframes tennis-ball-bounce-sm {
+  0%, 100% {
+    bottom: 2px;
+    transform: translateX(-50%) scaleX(1.05) scaleY(0.95);
+  }
+  50% {
+    bottom: 9px;
+    transform: translateX(-50%) scaleX(1) scaleY(1);
+  }
+}
+
+@keyframes tennis-ball-shadow {
+  0%, 100% {
+    transform: translateX(-50%) scaleX(1);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translateX(-50%) scaleX(0.5);
+    opacity: 0.12;
+  }
+}
+
+@keyframes tennis-ball-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-text {
@@ -74,12 +137,12 @@
   letter-spacing: 0.05em;
 }
 
-/* animation */
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
+@media (prefers-reduced-motion: reduce) {
+  .tennis-ball-spin,
+  .tennis-ball-spin-sm,
+  .tennis-ball-img,
+  .tennis-ball-img-sm,
+  .tennis-ball-shadow {
+    animation: none;
   }
 }
