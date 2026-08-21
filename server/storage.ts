@@ -55,6 +55,7 @@ import {
   type Match,
   type MatchWithPlayers,
   type LeaderboardRow,
+  type ActivityFeedItem,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, asc, sql, lte, ne, gte, ilike, inArray, isNull } from "drizzle-orm";
@@ -268,6 +269,8 @@ export interface IStorage {
  deleteSession(id: string): Promise<void>;
  getRegistrationsForSession(sessionId: string): Promise<RegistrationWithUser[]>;
  getPlayersForOrganization(organizationId: string): Promise<OrgPlayerRow[]>;
+  getOrganizerDashboardStats(organizationId: string): Promise<{ activePlayers: number; attendancePercent: number; revenueThisWeek: number; revenueCurrency: string }>;
+  getRecentActivityForOrganization(organizationId: string, limit: number): Promise<ActivityFeedItem[]>;
  createInvitedRegistration(sessionId: string, userId: string): Promise<Registration>;
  acceptInvitedRegistration(sessionId: string, userId: string): Promise<Registration>;
  createOrganizationMembership(organizationId: string, userId: string): Promise<CommunityMembership>;
@@ -2512,6 +2515,128 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(sql`count(distinct ${registrations.id})`));
 
     return rows;
+  }
+
+  // Dashboard's stat strip (Active Players / Attendance / Revenue) -
+  // these previously stayed hardcoded mock numbers since nothing
+  // computed them. "Active players" reuses the same distinct-player
+  // count as the Players tab. "Attendance" is checked-in ratio across
+  // every non-draft session that's actually happened (live/completed/
+  // archived) - there's no real "season" concept yet (Season Overview
+  // is still mock), so this isn't season-scoped, just "to date".
+  // "Revenue" sums price * registered count for sessions that started
+  // in the last 7 days and actually went ahead (not cancelled) -
+  // rolling window, not calendar-week, to match the existing 7-day
+  // "upcoming" stat already on this page.
+  async getOrganizerDashboardStats(
+    organizationId: string
+  ): Promise<{ activePlayers: number; attendancePercent: number; revenueThisWeek: number; revenueCurrency: string }> {
+    const [players, attendanceRows, revenueRows] = await Promise.all([
+      this.getPlayersForOrganization(organizationId),
+      db
+        .select({
+          registered: sql<number>`count(*)`,
+          checkedIn: sql<number>`count(*) filter (where ${registrations.checkedInAt} is not null)`,
+        })
+        .from(registrations)
+        .innerJoin(tennisSessions, eq(registrations.sessionId, tennisSessions.id))
+        .where(
+          and(
+            eq(tennisSessions.organizationId, organizationId),
+            sql`${tennisSessions.status} IN ('live', 'completed', 'archived')`,
+            ne(registrations.status, "cancelled")
+          )
+        ),
+      db
+        .select({
+          price: tennisSessions.price,
+          currency: tennisSessions.currency,
+          registeredCount: sql<number>`count(${registrations.id})`,
+        })
+        .from(tennisSessions)
+        .leftJoin(
+          registrations,
+          and(eq(registrations.sessionId, tennisSessions.id), ne(registrations.status, "cancelled"))
+        )
+        .where(
+          and(
+            eq(tennisSessions.organizationId, organizationId),
+            sql`${tennisSessions.status} IN ('live', 'completed', 'archived')`,
+            sql`${tennisSessions.startAt} >= now() - interval '7 days'`,
+            sql`${tennisSessions.startAt} <= now()`
+          )
+        )
+        .groupBy(tennisSessions.id, tennisSessions.price, tennisSessions.currency),
+    ]);
+
+    const registered = Number(attendanceRows[0]?.registered ?? 0);
+    const checkedIn = Number(attendanceRows[0]?.checkedIn ?? 0);
+    const attendancePercent = registered > 0 ? Math.round((checkedIn / registered) * 100) : 0;
+
+    const revenueThisWeek = revenueRows.reduce(
+      (sum, r) => sum + Number(r.price ?? 0) * Number(r.registeredCount ?? 0),
+      0
+    );
+    const revenueCurrency = revenueRows[0]?.currency ?? "AUD";
+
+    return { activePlayers: players.length, attendancePercent, revenueThisWeek, revenueCurrency };
+  }
+
+  async getRecentActivityForOrganization(organizationId: string, limit: number): Promise<ActivityFeedItem[]> {
+    const [joinRows, checkinRows] = await Promise.all([
+      db
+        .select({
+          id: registrations.id,
+          userName: users.name,
+          sessionTitle: tennisSessions.title,
+          at: registrations.createdAt,
+        })
+        .from(registrations)
+        .innerJoin(tennisSessions, eq(registrations.sessionId, tennisSessions.id))
+        .innerJoin(users, eq(registrations.userId, users.id))
+        .where(and(eq(tennisSessions.organizationId, organizationId), ne(registrations.status, "cancelled")))
+        .orderBy(desc(registrations.createdAt))
+        .limit(limit),
+      db
+        .select({
+          id: registrations.id,
+          userName: users.name,
+          sessionTitle: tennisSessions.title,
+          at: registrations.checkedInAt,
+        })
+        .from(registrations)
+        .innerJoin(tennisSessions, eq(registrations.sessionId, tennisSessions.id))
+        .innerJoin(users, eq(registrations.userId, users.id))
+        .where(
+          and(
+            eq(tennisSessions.organizationId, organizationId),
+            sql`${registrations.checkedInAt} IS NOT NULL`
+          )
+        )
+        .orderBy(desc(registrations.checkedInAt))
+        .limit(limit),
+    ]);
+
+    const items: ActivityFeedItem[] = [
+      ...joinRows.map((r) => ({
+        id: `${r.id}-joined`,
+        type: "joined" as const,
+        userName: r.userName,
+        sessionTitle: r.sessionTitle,
+        at: new Date(r.at).toISOString(),
+      })),
+      ...checkinRows
+        .filter((r) => r.at != null)
+        .map((r) => ({
+          id: `${r.id}-checked_in`,
+          type: "checked_in" as const,
+          userName: r.userName,
+          sessionTitle: r.sessionTitle,
+          at: new Date(r.at as Date).toISOString(),
+        })),
+    ];
+
+    return items.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()).slice(0, limit);
   }
 
   async getViewerRegistrationStatus(sessionId: string, userId: string): Promise<string | null> {

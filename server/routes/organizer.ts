@@ -238,6 +238,35 @@ router.get("/players/mine", requireAuth, async (req, res, next) => {
   }
 });
 
+// Dashboard stat strip - Active Players / Attendance / Revenue.
+router.get("/dashboard/stats", requireAuth, async (req, res, next) => {
+  try {
+    const organization = await storage.getOrganizationOwnedByUser((req.user as any).id);
+    if (!organization) {
+      return res.json({ activePlayers: 0, attendancePercent: 0, revenueThisWeek: 0, revenueCurrency: "AUD" });
+    }
+    const stats = await storage.getOrganizerDashboardStats(organization.id);
+    res.json(stats);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Dashboard Activity Feed - real join/check-in events, most recent first.
+router.get("/dashboard/activity", requireAuth, async (req, res, next) => {
+  try {
+    const organization = await storage.getOrganizationOwnedByUser((req.user as any).id);
+    if (!organization) {
+      return res.json([]);
+    }
+    const limit = Math.min(Number(req.query.limit) || 8, 20);
+    const activity = await storage.getRecentActivityForOrganization(organization.id, limit);
+    res.json(activity);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Search real platform users to invite - used by both the org-wide
 // Players page and a session's own Players tab invite dialogs.
 router.get("/players/search", requireAuth, async (req, res, next) => {

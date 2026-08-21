@@ -30,6 +30,7 @@ export interface MockSession {
   // formatInTimeZone. startAt should always be shown in this zone, not
   // the viewer's own browser timezone.
   timeZone: string;
+  coverImage?: string | null;
   startAt: string; // ISO
   registeredCount: number;
   checkedInCount: number;

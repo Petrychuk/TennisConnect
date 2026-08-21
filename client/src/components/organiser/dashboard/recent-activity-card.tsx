@@ -1,20 +1,23 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { UserPlus, CheckCircle2, XCircle, MessageSquare, ChevronRight } from "lucide-react";
+import { UserPlus, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { ActivityItem } from "@/lib/organiser-hub-mock-data";
+import type { ActivityFeedItem } from "@shared/schema";
 
 interface RecentActivityCardProps {
-  items: ActivityItem[];
+  items: ActivityFeedItem[];
   className?: string;
 }
 
-const KIND_ICON: Record<ActivityItem["kind"], typeof UserPlus> = {
-  registration: UserPlus,
-  join: UserPlus,
-  checkin: CheckCircle2,
-  cancellation: XCircle,
-  message: MessageSquare,
+const TYPE_ICON: Record<ActivityFeedItem["type"], typeof UserPlus> = {
+  joined: UserPlus,
+  checked_in: CheckCircle2,
 };
+
+function activityMessage(item: ActivityFeedItem): string {
+  return item.type === "joined"
+    ? `${item.userName} joined ${item.sessionTitle}`
+    : `${item.userName} checked in for ${item.sessionTitle}`;
+}
 
 function timeAgo(iso: string) {
   const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
@@ -24,19 +27,14 @@ function timeAgo(iso: string) {
   return `${Math.round(hours / 24)}d ago`;
 }
 
+// "View all" was previously a disabled/"coming soon" link - removed
+// entirely rather than shown-but-unclickable, since there's not enough
+// activity yet for a fuller view to be worth linking to.
 export function RecentActivityCard({ items, className }: RecentActivityCardProps) {
   return (
     <Card className={cn("shadow-sm hover:shadow-md transition-shadow", className)} data-testid="organiser-recent-activity-card">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+      <CardHeader>
         <CardTitle className="text-base">Activity Feed</CardTitle>
-        <span
-          className="text-xs font-medium text-muted-foreground/70 flex items-center gap-0.5 cursor-not-allowed"
-          data-testid="organiser-activity-view-all"
-          title="Coming soon"
-        >
-          View all
-          <ChevronRight className="w-3 h-3" />
-        </span>
       </CardHeader>
       <CardContent>
         {items.length === 0 ? (
@@ -46,15 +44,15 @@ export function RecentActivityCard({ items, className }: RecentActivityCardProps
         ) : (
           <ul className="space-y-3.5">
             {items.map((item) => {
-              const Icon = KIND_ICON[item.kind];
+              const Icon = TYPE_ICON[item.type];
               return (
                 <li key={item.id} className="flex items-start gap-3" data-testid={`organiser-activity-${item.id}`}>
                   <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
                     <Icon className="w-3.5 h-3.5" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm leading-snug">{item.message}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{timeAgo(item.timestamp)}</p>
+                    <p className="text-sm leading-snug">{activityMessage(item)}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{timeAgo(item.at)}</p>
                   </div>
                 </li>
               );
