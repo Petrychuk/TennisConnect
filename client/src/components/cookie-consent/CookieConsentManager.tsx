@@ -4,7 +4,6 @@ import { CookieSettingsModal } from "./CookieSettingsModal";
 import {
   acceptAllCookies,
   applyConsentToGtag,
-  applyDefaultDeniedConsent,
   getStoredConsent,
   OPEN_COOKIE_SETTINGS_EVENT,
   rejectOptionalCookies,
@@ -19,8 +18,6 @@ export function CookieConsentManager() {
 
   useEffect(() => {
     // Make sure any tag that fires before the user answers stays non-tracking.
-    applyDefaultDeniedConsent();
-
     const stored = getStoredConsent();
     setConsent(stored);
 
