@@ -16,7 +16,9 @@ export function SettingsTab({ session }: SettingsTabProps) {
   const detail = getSessionDetail(session);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  // Local-only toggles - no real backend column for either of these yet.
+  // Local-only - no real backend column for either of these yet (see
+  // the toast copy below, which says so honestly instead of claiming
+  // "updated" like the two real, persisted toggles below do).
   const [checkInOpen, setCheckInOpen] = useState(!!detail.checkInOpen);
   const [notifyChanges, setNotifyChanges] = useState(true);
 
@@ -73,7 +75,7 @@ export function SettingsTab({ session }: SettingsTabProps) {
       checked: checkInOpen,
       onCheckedChange: (v: boolean) => {
         setCheckInOpen(v);
-        toast({ title: "Check-in Open updated" });
+        toast({ title: "Check-in Open (not saved yet)", description: "This setting isn't persisted - it'll reset next time you load this session." });
       },
       disabled: false,
     },
@@ -92,7 +94,7 @@ export function SettingsTab({ session }: SettingsTabProps) {
       checked: notifyChanges,
       onCheckedChange: (v: boolean) => {
         setNotifyChanges(v);
-        toast({ title: "Notify Players of Changes updated" });
+        toast({ title: "Notify Players of Changes (not saved yet)", description: "This setting isn't persisted - it'll reset next time you load this session." });
       },
       disabled: false,
     },
