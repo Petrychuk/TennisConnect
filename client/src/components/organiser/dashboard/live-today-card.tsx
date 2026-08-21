@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import type { MockSession } from "@/lib/organiser-hub-mock-data";
 import { formatInTimeZone } from "@/lib/timezone";
 import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.webp";
+import noLiveSessionImage from "/assets/images/no_live_session_court_bench.webp";
 
 interface LiveTodayCardProps {
   session: MockSession | null;
@@ -13,20 +14,31 @@ interface LiveTodayCardProps {
 }
 
 // This is the one card allowed to be big and photographic — everything
-// else on the page stays quiet by comparison.
+// else on the page stays quiet by comparison. Same photographic
+// treatment when nothing's live (noLiveSessionImage) as when a session
+// actually is (session.coverImage/courtImage) - this card automatically
+// swaps back to this empty state the moment `session` goes back to
+// null (session finishes), no extra logic needed for that transition.
 export function LiveTodayCard({ session, className, onEnterLive }: LiveTodayCardProps) {
   if (!session) {
     return (
       <div
         className={cn(
-          "rounded-2xl border border-border bg-card shadow-sm p-8 flex flex-col items-center justify-center text-center gap-2",
+          "relative overflow-hidden rounded-2xl shadow-sm min-h-[280px] flex flex-col items-center justify-center text-center gap-2",
           className
         )}
         data-testid="organiser-live-today-card-empty"
       >
-        <Clock className="w-6 h-6 text-muted-foreground" />
-        <p className="font-semibold">Nothing live right now</p>
-        <p className="text-sm text-muted-foreground">Your next session will show up here on the day.</p>
+        <img
+          src={noLiveSessionImage}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-linear-to-t from-foreground/85 via-foreground/50 to-foreground/20" />
+        <Clock className="relative w-6 h-6 text-primary" />
+        <p className="relative font-semibold text-primary">Nothing live right now</p>
+        <p className="relative text-sm text-primary/80">Your next session will show up here on the day.</p>
       </div>
     );
   }
