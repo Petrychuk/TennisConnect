@@ -24,24 +24,53 @@
         document.head.appendChild(l);
       }
     </script>
-    <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-PB33Q552C9"></script>
+   <!-- Google Analytics + Consent Mode -->
     <script>
       window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
 
-      gtag('consent', 'default', {
-        'analytics_storage': 'denied',
-        'ad_storage': 'denied',
-        'ad_user_data': 'denied',
-        'ad_personalization': 'denied',
-        'functionality_storage': 'denied',
-        'personalization_storage': 'denied',
-        'security_storage': 'granted'
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+
+      // Default: optional cookies are denied.
+      var analyticsConsent = "denied";
+      var marketingConsent = "denied";
+      var preferencesConsent = "denied";
+
+      // Restore the user's previously saved consent before GA4 starts.
+      try {
+        var storedConsent = localStorage.getItem("tennisconnect_cookie_consent");
+
+        if (storedConsent) {
+          var consent = JSON.parse(storedConsent);
+
+          if (consent.version === 1) {
+            analyticsConsent = consent.analytics ? "granted" : "denied";
+            marketingConsent = consent.marketing ? "granted" : "denied";
+            preferencesConsent = consent.preferences ? "granted" : "denied";
+          }
+        }
+      } catch (e) {
+        // If consent cannot be read, keep optional cookies denied.
+      }
+
+      gtag("consent", "default", {
+        analytics_storage: analyticsConsent,
+        ad_storage: marketingConsent,
+        ad_user_data: marketingConsent,
+        ad_personalization: marketingConsent,
+        functionality_storage: preferencesConsent,
+        personalization_storage: preferencesConsent,
+        security_storage: "granted"
       });
 
-      gtag('config', 'G-PB33Q552C9');
+      gtag("js", new Date());
+      gtag("config", "G-PB33Q552C9");
+    </script>
+
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-PB33Q552C9">
     </script>
     
     <!-- Additional SEO -->
