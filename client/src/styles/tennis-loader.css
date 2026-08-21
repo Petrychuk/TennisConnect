@@ -7,68 +7,65 @@
   gap: 16px;
 }
 
+/* Two oversized white-bordered circles, clipped by the ball's own
+   circular overflow, produce the tennis ball's characteristic curved
+   seam far more convincingly than two straight rotated arcs did. */
 .tennis-ball {
-  width: 80px;
-  height: 80px;
+  width: 40px;
+  height: 40px;
   background: #c7ff3d; /* теннисный */
   border-radius: 50%;
   position: relative;
+  overflow: hidden;
   animation: spin 1.6s linear infinite;
-  box-shadow: 0 0 20px rgba(199, 255, 61, 0.6);
+  box-shadow: 0 0 10px rgba(199, 255, 61, 0.6);
 }
 
 .tennis-ball .line {
   position: absolute;
-  width: 120%;
-  height: 120%;
-  border: 3px solid white;
-  border-color: white transparent transparent transparent;
+  width: 130%;
+  height: 130%;
+  top: -15%;
+  border: 2.5px solid white;
   border-radius: 50%;
 }
 
 .tennis-ball .line-1 {
-  top: -10%;
-  left: -10%;
-  transform: rotate(25deg);
+  left: -85%;
 }
 
 .tennis-ball .line-2 {
-  top: -10%;
-  left: -10%;
-  transform: rotate(-25deg);
+  left: 55%;
 }
 
 /* Compact variant for inline use in buttons */
 .tennis-ball-sm {
   display: inline-block;
-  width: 20px;
-  height: 20px;
+  width: 10px;
+  height: 10px;
   background: #c7ff3d;
   border-radius: 50%;
   position: relative;
+  overflow: hidden;
   animation: spin 1.6s linear infinite;
   flex-shrink: 0;
 }
 
 .tennis-ball-sm .line {
   position: absolute;
-  width: 120%;
-  height: 120%;
-  border: 1.5px solid white;
-  border-color: white transparent transparent transparent;
+  width: 130%;
+  height: 130%;
+  top: -15%;
+  border: 1.2px solid white;
   border-radius: 50%;
 }
 
 .tennis-ball-sm .line-1 {
-  top: -10%;
-  left: -10%;
-  transform: rotate(25deg);
+  left: -85%;
 }
 
 .tennis-ball-sm .line-2 {
-  top: -10%;
-  left: -10%;
-  transform: rotate(-25deg);
+  left: 55%;
 }
 
 .loading-text {
