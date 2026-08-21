@@ -146,6 +146,7 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
           <Input
             value={draft.venue}
             onChange={(e) => onChange("venue", e.target.value)}
+            placeholder="e.g. Lyne Park Tennis Centre"
             data-testid="organiser-wizard-session-venue"
           />
         </Field>
@@ -240,6 +241,28 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
             data-testid="organiser-wizard-waiting-list-toggle"
           />
         </div>
+        {draft.waitingListEnabled && (
+          <Field label="Waiting List Spots">
+            <div className="flex items-center gap-2">
+              <NumberField
+                min={1}
+                value={draft.waitingListCapacity ?? NaN}
+                onChange={(v) => onChange("waitingListCapacity", v)}
+                placeholder="Unlimited"
+                data-testid="organiser-wizard-waiting-list-capacity"
+              />
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={draft.waitingListCapacity == null}
+                  onChange={(e) => onChange("waitingListCapacity", e.target.checked ? null : 10)}
+                  data-testid="organiser-wizard-waiting-list-unlimited"
+                />
+                Unlimited
+              </label>
+            </div>
+          </Field>
+        )}
         <div className="flex items-center justify-between rounded-xl border border-border px-3 py-2.5 sm:col-span-2">
           <Label className="text-sm">Allow Late Registration</Label>
           <Switch

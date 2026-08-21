@@ -554,6 +554,11 @@ export const tennisSessions = pgTable("sessions", {
   // only exist once "Generate Round" has actually been pressed).
   plannedRoundsCount: integer("planned_rounds_count"),
   waitingListEnabled: boolean("waiting_list_enabled").default(true).notNull(),
+  // null = unlimited. Only meaningful while waitingListEnabled is true -
+  // was previously always shown as a hardcoded "(10 spots)" in the UI
+  // regardless of what actually happened, since there was nowhere real
+  // to store this.
+  waitingListCapacity: integer("waiting_list_capacity"),
   // Organizer's own private reference notes - shown only to them on the
   // Session Workspace overview, nothing to do with reviewNote below
   // (that's admin moderation feedback, this is the organizer's own).

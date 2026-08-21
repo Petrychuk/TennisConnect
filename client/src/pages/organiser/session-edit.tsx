@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import SEO from "@/components/seo";
 import { getSessionById, updateSession } from "@/lib/api/organizer-sessions";
 import { NumberField } from "@/components/organiser/sessions/wizard/number-field";
-import { AU_CITY_TIMEZONES } from "@/lib/timezone";
+import { AU_CITY_TIMEZONES, zonedTimeToUtc, toZonedDateTimeInputs } from "@/lib/timezone";
 
 // A single-page edit form for the core, always-real fields (title,
 // venue, date/time, capacity, pricing, registration window, waiting
@@ -56,21 +56,27 @@ export default function OrganiserSessionEditPage() {
   useEffect(() => {
     const session = sessionQuery.data;
     if (!session || loaded) return;
-    const start = new Date(session.startAt);
+    const zone = session.timeZone ?? "Australia/Sydney";
+    // Reads the venue's own wall-clock date/time (see
+    // toZonedDateTimeInputs) - was previously `new Date(session.startAt)`
+    // + `.toISOString()`/`.toTimeString()`, which read the UTC calendar
+    // date and the BROWSER's own local clock time respectively, neither
+    // of which is what the organizer actually set for the venue.
+    const { date: startDate, time: startTimeStr } = toZonedDateTimeInputs(session.startAt, zone);
     setTitle(session.title);
     setDescription(session.description ?? "");
     setVenue(session.location ?? "");
-    setTimeZone(session.timeZone ?? "Australia/Sydney");
+    setTimeZone(zone);
     setCourtsCount(session.courtsCount != null ? String(session.courtsCount) : "");
-    setDate(start.toISOString().split("T")[0]);
-    setStartTime(start.toTimeString().slice(0, 5));
-    setEndTime(session.endAt ? new Date(session.endAt).toTimeString().slice(0, 5) : "");
+    setDate(startDate);
+    setStartTime(startTimeStr);
+    setEndTime(session.endAt ? toZonedDateTimeInputs(session.endAt, zone).time : "");
     setMaxParticipants(session.maxParticipants != null ? String(session.maxParticipants) : "");
     const priceNum = session.price != null ? Number(session.price) : 0;
     setPricing(priceNum > 0 ? "paid" : "free");
     setPrice(priceNum > 0 ? String(priceNum) : "");
     setWaitingListEnabled(session.waitingListEnabled);
-    setRegistrationCloses(session.registrationClosesAt ? new Date(session.registrationClosesAt).toISOString().split("T")[0] : "");
+    setRegistrationCloses(session.registrationClosesAt ? toZonedDateTimeInputs(session.registrationClosesAt, zone).date : "");
     setLoaded(true);
   }, [sessionQuery.data, loaded]);
 
@@ -124,12 +130,12 @@ export default function OrganiserSessionEditPage() {
         location: venue.trim(),
         timeZone,
         courtsCount: courtsCount.trim() ? Number(courtsCount) : undefined,
-        startAt: new Date(`${date}T${startTime || "00:00"}`),
-        endAt: endTime ? new Date(`${date}T${endTime}`) : undefined,
+        startAt: zonedTimeToUtc(date, startTime || "00:00", timeZone),
+        endAt: endTime ? zonedTimeToUtc(date, endTime, timeZone) : undefined,
         maxParticipants: maxParticipants.trim() ? Number(maxParticipants) : undefined,
         price: pricing === "paid" ? Number(price || 0) : 0,
         waitingListEnabled,
-        registrationClosesAt: registrationCloses ? new Date(`${registrationCloses}T23:59`) : undefined,
+        registrationClosesAt: registrationCloses ? zonedTimeToUtc(registrationCloses, "23:59", timeZone) : undefined,
       } as any);
       queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", params.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine"] });

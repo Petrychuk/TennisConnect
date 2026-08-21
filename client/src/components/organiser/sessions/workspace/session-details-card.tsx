@@ -51,7 +51,11 @@ export function SessionDetailsCard({ session, isDivision }: SessionDetailsCardPr
     {
       icon: ListPlus,
       label: "Waiting List",
-      value: detail.waitingListEnabled ? "Enabled (10 spots)" : "Disabled",
+      value: detail.waitingListEnabled
+        ? session.waitingListCapacity != null
+          ? `Enabled (${session.waitingListCapacity} spots)`
+          : "Enabled (unlimited)"
+        : "Disabled",
       testId: "waiting-list",
     },
     { icon: DollarSign, label: "Cost", value: detail.costPerPlayer ? `$${detail.costPerPlayer} per player` : "Free", testId: "cost" },
