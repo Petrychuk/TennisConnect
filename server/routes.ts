@@ -325,13 +325,23 @@ export async function registerRoutes(app: Express): Promise<void> {
       // Send email via Resend
       const resetUrl = `${req.headers.origin || 'https://www.tennisconnect.com.au'}/reset-password?token=${token}`;
 
-      const emailResult = await sendPasswordResetEmail(email, resetUrl);
-
-      if (!emailResult.ok) {
-        console.error(
-          `❌ Password reset email failed to send for ${email}: ${emailResult.error}`
-        );
-      }
+      // Fired, not awaited: the response message below is already fixed
+      // regardless of whether the email actually sends (same reason the
+      // !user branch above never reveals anything either - no
+      // information here should depend on delivery status). Awaiting it
+      // was making every "forgot password" request block on Resend's
+      // full round trip - a slow response from Resend, or the previously
+      // timeout-less fetch inside sendPasswordResetEmail, held the HTTP
+      // response open the whole time for no reason the user could see.
+      sendPasswordResetEmail(email, resetUrl)
+        .then((emailResult) => {
+          if (!emailResult.ok) {
+            console.error(`❌ Password reset email failed to send for ${email}: ${emailResult.error}`);
+          }
+        })
+        .catch((error) => {
+          console.error(`❌ Password reset email threw for ${email}:`, error);
+        });
 
       // Dev convenience only - never log the raw reset link/token in
       // production, it's equivalent to a password-reset credential.
