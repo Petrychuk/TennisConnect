@@ -4,6 +4,16 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 import { bucketFor } from "./session-utils";
+import { toZonedDateTimeInputs } from "@/lib/timezone";
+
+// Plain "YYYY-MM-DD" for a calendar grid cell (no timezone conversion -
+// `day` here is already just a calendar-day marker for navigating
+// months, not tied to any instant) - kept separate from
+// toZonedDateTimeInputs's date output only so the two call sites read
+// clearly for what they each are, even though the format matches.
+function dayKey(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 const BUCKET_DOT: Record<string, string> = {
   live: "bg-primary",
@@ -27,7 +37,10 @@ export function SessionsCalendarView({ sessions }: SessionsCalendarViewProps) {
   const byDay = useMemo(() => {
     const map = new Map<string, SessionListItem[]>();
     for (const s of sessions) {
-      const key = new Date(s.startAt).toDateString();
+      // The venue's own calendar day, not the viewer's - a Sydney 11pm
+      // session shouldn't land on the wrong grid cell just because
+      // whoever's looking at this calendar is in a different timezone.
+      const key = toZonedDateTimeInputs(s.startAt, s.timeZone).date;
       const arr = map.get(key) ?? [];
       arr.push(s);
       map.set(key, arr);
@@ -52,7 +65,7 @@ export function SessionsCalendarView({ sessions }: SessionsCalendarViewProps) {
   }, [cursor]);
 
   const monthLabel = cursor.toLocaleDateString(undefined, { month: "long", year: "numeric" });
-  const today = new Date().toDateString();
+  const today = dayKey(new Date());
 
   return (
     <div className="space-y-3" data-testid="organiser-sessions-calendar">
@@ -97,8 +110,8 @@ export function SessionsCalendarView({ sessions }: SessionsCalendarViewProps) {
         <div className="grid grid-cols-7">
           {weeks.flat().map((day, i) => {
             const inMonth = day.getMonth() === cursor.getMonth();
-            const daySessions = byDay.get(day.toDateString()) ?? [];
-            const isToday = day.toDateString() === today;
+            const daySessions = byDay.get(dayKey(day)) ?? [];
+            const isToday = dayKey(day) === today;
             return (
               <div
                 key={i}
