@@ -42,20 +42,34 @@ async function sendEmail(params: {
   }
 
   try {
-    const response = await fetch(RESEND_API_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from,
-        to: params.to,
-        subject: params.subject,
-        html: params.html,
-        text: params.text,
-      }),
-    });
+    const controller = new AbortController();
+    // Resend is normally sub-second; this is a circuit breaker, not a
+    // realistic expected duration - a provider-side hiccup or network
+    // stall here was previously blocking the whole HTTP request open
+    // with no ceiling at all (matches the ~20s p99 spikes seen in
+    // Railway's Response Time graph - undici's default fetch has no
+    // meaningful timeout of its own to fall back on).
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    let response: Response;
+    try {
+      response = await fetch(RESEND_API_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from,
+          to: params.to,
+          subject: params.subject,
+          html: params.html,
+          text: params.text,
+        }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!response.ok) {
       const body = await response.text().catch(() => "");
@@ -68,8 +82,12 @@ async function sendEmail(params: {
 
     return { ok: true };
   } catch (error: any) {
-    console.error(`❌ Failed to reach Resend API for ${params.to}:`, error?.message || error);
-    return { ok: false, error: "Failed to reach email service" };
+    const timedOut = error?.name === "AbortError";
+    console.error(
+      `❌ Failed to reach Resend API for ${params.to}:`,
+      timedOut ? "timed out after 8s" : error?.message || error
+    );
+    return { ok: false, error: timedOut ? "Email service timed out" : "Failed to reach email service" };
   }
 }
 

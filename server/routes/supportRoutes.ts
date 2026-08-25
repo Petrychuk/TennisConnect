@@ -23,12 +23,21 @@ router.post("/", async (req, res) => {
         message,
       });
 
-    await sendTelegramNotification({
+    // Fired, not awaited: this is just an internal alert to staff, not
+    // something the submitter's success response should depend on. It
+    // used to be awaited here, which meant a slow/failing Telegram call
+    // both held the HTTP response open (see telegramService.ts's now-
+    // fixed missing timeout) AND, since it was inside this same try
+    // block, turned into a 500 error response even though the support
+    // request itself had already saved successfully to the database.
+    sendTelegramNotification({
       category,
       name,
       email,
       phone,
       message,
+    }).catch((error) => {
+      console.error("Telegram notification failed for support request", supportRequest.id, error);
     });
 
     return res.status(201).json(supportRequest);
