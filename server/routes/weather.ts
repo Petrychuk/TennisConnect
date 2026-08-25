@@ -23,7 +23,18 @@ router.get("/sydney", async (_req, res) => {
     }
 
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${SYDNEY_LAT}&longitude=${SYDNEY_LON}&current=temperature_2m,weather_code&timezone=Australia%2FSydney`;
-    const response = await fetch(url);
+    const controller = new AbortController();
+    // Same reasoning as emailService.ts/telegramService.ts - previously
+    // no ceiling at all, so a slow Open-Meteo response would hold this
+    // request open indefinitely instead of falling through to the
+    // stale-cache fallback below, which is the whole point of having it.
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    let response: Response;
+    try {
+      response = await fetch(url, { signal: controller.signal });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!response.ok) {
       throw new Error(`Open-Meteo responded ${response.status}`);
