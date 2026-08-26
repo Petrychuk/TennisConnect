@@ -32,12 +32,10 @@ export async function completePlayerProfile(page: Page) {
   await page.getByTestId('input-location')
     .fill('Sydney, NSW');
 
-  await page.getByTestId('select-skill')
-    .click();
-
-  await page.getByRole('option', {
-    name: 'Intermediate',
-  }).click();
+  // Skill Level is a card/radio group now, not a <Select> - see
+  // complete-profile.tsx's SKILL_LEVELS.
+  await page.getByTestId('radio-skill-intermediate')
+    .check();
 
   await page.getByTestId('input-courts')
     .fill('Bondi, Manly');
