@@ -496,6 +496,44 @@ export default function CompleteProfilePage() {
               ) : (
                 <form onSubmit={coachForm.handleSubmit(onCoachSubmit)} className="space-y-6">
                   <div className="space-y-2">
+                    <Label htmlFor="title">Title</Label>
+                    <Input
+                      id="title"
+                      placeholder="Head Tennis Coach"
+                      {...coachForm.register("title")}
+                      data-testid="input-title"
+                    />
+                    {coachForm.formState.errors.title && (
+                      <p className="text-sm text-destructive">{coachForm.formState.errors.title.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-3 rounded-xl border border-border px-3.5 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <Label htmlFor="isCertified" className="cursor-pointer">Certified / Accredited Coach</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Self-declared - e.g. Tennis Australia accreditation. Not verified by TennisConnect.
+                        </p>
+                      </div>
+                      <Switch
+                        id="isCertified"
+                        checked={coachForm.watch("isCertified")}
+                        onCheckedChange={(v) => coachForm.setValue("isCertified", v)}
+                        data-testid="switch-certified"
+                      />
+                    </div>
+                    {coachForm.watch("isCertified") && (
+                      <Input
+                        placeholder="e.g. Tennis Australia Level 1"
+                        autoComplete="off"
+                        {...coachForm.register("certificationDetails")}
+                        data-testid="input-certification-details"
+                      />
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
                       <Label htmlFor="coach-country">Country</Label>
                       <Popover open={countryOpen} onOpenChange={setCountryOpen}>
                         <PopoverTrigger asChild>
@@ -540,44 +578,6 @@ export default function CompleteProfilePage() {
                         </PopoverContent>
                       </Popover>
                     </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="title">Title</Label>
-                    <Input
-                      id="title"
-                      placeholder="Head Tennis Coach"
-                      {...coachForm.register("title")}
-                      data-testid="input-title"
-                    />
-                    {coachForm.formState.errors.title && (
-                      <p className="text-sm text-destructive">{coachForm.formState.errors.title.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-3 rounded-xl border border-border px-3.5 py-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <Label htmlFor="isCertified" className="cursor-pointer">Certified / Accredited Coach</Label>
-                        <p className="text-xs text-muted-foreground">
-                          Self-declared - e.g. Tennis Australia accreditation. Not verified by TennisConnect.
-                        </p>
-                      </div>
-                      <Switch
-                        id="isCertified"
-                        checked={coachForm.watch("isCertified")}
-                        onCheckedChange={(v) => coachForm.setValue("isCertified", v)}
-                        data-testid="switch-certified"
-                      />
-                    </div>
-                    {coachForm.watch("isCertified") && (
-                      <Input
-                        placeholder="e.g. Tennis Australia Level 1"
-                        autoComplete="off"
-                        {...coachForm.register("certificationDetails")}
-                        data-testid="input-certification-details"
-                      />
-                    )}
-                  </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="location">Location</Label>
