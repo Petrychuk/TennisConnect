@@ -88,6 +88,9 @@ const playerProfileUpdateSchema = z.object({
 });
 
 const coachProfileUpdateSchema = z.object({
+  country: z.string().max(100).optional(),
+  isCertified: z.boolean().optional(),
+  certificationDetails: z.string().max(200).optional(),
   title: z.string().trim().min(1).max(100).optional(),
   location: z.string().trim().min(1).max(100).optional(),
   bio: z.string().trim().max(2000).optional(),
@@ -810,9 +813,23 @@ export async function registerRoutes(app: Express): Promise<void> {
     success: true,
   });
     
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete account error:", error);
-  
+
+      // The two known, expected "blocked" cases from
+      // storage.deleteUserAccount (owns an organization / has created
+      // sessions) get their real message back to the user instead of a
+      // generic 500 - everything else stays a generic failure message,
+      // since an unexpected DB/constraint error isn't something the
+      // user can act on anyway.
+      const knownBlock =
+        typeof error?.message === "string" &&
+        (error.message.includes("You own an organization") ||
+          error.message.includes("You've created sessions"));
+      if (knownBlock) {
+        return res.status(400).json({ message: error.message });
+      }
+
       return res.status(500).json({
         message: "Failed to delete account",
       });
