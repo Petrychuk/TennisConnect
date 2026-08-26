@@ -1,9 +1,11 @@
 import { z } from "zod";
 
 export const playerProfileSchema = z.object({
-  age: z
-    .string()
-    .min(1, "Age is required"),
+  // No longer collected/shown anywhere in the UI - kept optional here
+  // (not removed outright) so the field can still round-trip safely for
+  // any existing profile that already has one on file, without either
+  // this form's submit or its own validation ever depending on it again.
+  age: z.string().optional(),
 
   country: z
     .string()

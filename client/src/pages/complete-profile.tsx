@@ -24,7 +24,6 @@ export default function CompleteProfilePage() {
   const playerForm = useForm<z.infer<typeof playerProfileSchema>>({
     resolver: zodResolver(playerProfileSchema),
     defaultValues: {
-      age: "",
       country: "Australia",
       location: "",
       bio: "",
@@ -248,21 +247,7 @@ export default function CompleteProfilePage() {
             <CardContent>
               {user?.role === "player" ? (
                 <form onSubmit={playerForm.handleSubmit(onPlayerSubmit)} className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="age">Age</Label>
-                      <Input
-                        id="age"
-                        type="number"
-                        placeholder="25"
-                        {...playerForm.register("age")}
-                        data-testid="input-age"
-                      />
-                      {playerForm.formState.errors.age && (
-                        <p className="text-sm text-destructive">{playerForm.formState.errors.age.message}</p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
+                  <div className="space-y-2">
                       <Label htmlFor="country">Country</Label>
                       <Select
                         defaultValue="Australia"
@@ -280,7 +265,6 @@ export default function CompleteProfilePage() {
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="location">City</Label>
