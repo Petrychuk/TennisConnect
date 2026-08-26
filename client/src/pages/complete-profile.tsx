@@ -14,6 +14,61 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import SEO from "@/components/seo";
 import { playerProfileSchema, coachProfileSchema } from "@/lib/validations/profile"
+import { cn } from "@/lib/utils";
+
+// Kept in one place since both the Country <Select> and any future
+// country-dependent logic should read from the same list. "USA"/"UK"
+// (not "United States"/"United Kingdom") are kept exactly as they were
+// in the original short list - changing an existing option's stored
+// value string would silently orphan any profile that already saved
+// with it, so only new entries were added around them, nothing renamed.
+const COUNTRIES = [
+  "Australia",
+  "New Zealand",
+  "USA",
+  "Canada",
+  "UK",
+  "Ireland",
+  "France",
+  "Germany",
+  "Italy",
+  "Spain",
+  "Portugal",
+  "Netherlands",
+  "Belgium",
+  "Switzerland",
+  "Austria",
+  "Sweden",
+  "Norway",
+  "Denmark",
+  "Poland",
+  "Ukraine",
+  "China",
+  "Japan",
+  "South Korea",
+  "India",
+  "Singapore",
+  "Philippines",
+  "Indonesia",
+  "Thailand",
+  "Vietnam",
+  "United Arab Emirates",
+  "South Africa",
+  "Brazil",
+  "Argentina",
+  "Mexico",
+] as const;
+
+// Short, friendly one-liners rather than the full bullet-point
+// breakdown - most people can place themselves from a single sentence,
+// and the linked guide (below the list) is there for anyone who
+// genuinely can't.
+const SKILL_LEVELS = [
+  { value: "Beginner", emoji: "🎾", blurb: "New to tennis and learning the basics." },
+  { value: "Intermediate", emoji: "🎾🎾", blurb: "Regular social player, comfortable with a rally." },
+  { value: "Advanced", emoji: "🎾🎾🎾", blurb: "Competitive club or tournament player." },
+  { value: "Professional", emoji: "🏆", blurb: "Elite or professional level." },
+] as const;
 
 export default function CompleteProfilePage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -23,6 +78,7 @@ export default function CompleteProfilePage() {
 
   const playerForm = useForm<z.infer<typeof playerProfileSchema>>({
     resolver: zodResolver(playerProfileSchema),
+    mode: "onChange",
     defaultValues: {
       country: "Australia",
       location: "",
@@ -34,10 +90,17 @@ export default function CompleteProfilePage() {
 
   const coachForm = useForm<z.infer<typeof coachProfileSchema>>({
     resolver: zodResolver(coachProfileSchema),
+    mode: "onChange",
     defaultValues: {
       location: "",
       bio: "",
-      title: "Tennis Coach",
+      // Was a literal default value, not a placeholder - the field
+      // already has a real placeholder="Head Tennis Coach" attribute
+      // (react-hook-form's defaultValues sets the actual value, which
+      // masks the placeholder since the field is never truly empty).
+      // Every coach who didn't notice and change it submitted the exact
+      // same "Tennis Coach" title.
+      title: "",
       experience: "",
       rate: "",
     },
@@ -257,11 +320,9 @@ export default function CompleteProfilePage() {
                           <SelectValue placeholder="Select country" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Australia">Australia</SelectItem>
-                          <SelectItem value="USA">USA</SelectItem>
-                          <SelectItem value="UK">UK</SelectItem>
-                          <SelectItem value="Canada">Canada</SelectItem>
-                          <SelectItem value="New Zealand">New Zealand</SelectItem>
+                          {COUNTRIES.map((c) => (
+                            <SelectItem key={c} value={c}>{c}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -284,21 +345,49 @@ export default function CompleteProfilePage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="skillLevel">Skill Level</Label>
-                    <Select
-                      defaultValue="Beginner"
-                      onValueChange={(value) => playerForm.setValue("skillLevel", value)}
-                    >
-                      <SelectTrigger data-testid="select-skill">
-                        <SelectValue placeholder="Select skill level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Beginner">Beginner</SelectItem>
-                        <SelectItem value="Intermediate">Intermediate</SelectItem>
-                        <SelectItem value="Advanced">Advanced</SelectItem>
-                        <SelectItem value="Professional">Professional</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label>Skill Level</Label>
+                    <div className="space-y-2" role="radiogroup" aria-label="Skill level">
+                      {SKILL_LEVELS.map((level) => {
+                        const selected = playerForm.watch("skillLevel") === level.value;
+                        return (
+                          <label
+                            key={level.value}
+                            className={cn(
+                              "flex items-start gap-3 rounded-xl border px-3.5 py-3 cursor-pointer transition-colors",
+                              selected ? "border-primary bg-primary/5" : "border-border hover:bg-muted/40"
+                            )}
+                          >
+                            <input
+                              type="radio"
+                              name="skillLevel"
+                              value={level.value}
+                              checked={selected}
+                              onChange={() => playerForm.setValue("skillLevel", level.value, { shouldValidate: true })}
+                              className="mt-1 accent-primary"
+                              data-testid={`radio-skill-${level.value.toLowerCase()}`}
+                            />
+                            <div>
+                              <p className="font-medium text-sm">
+                                {level.value} <span aria-hidden="true">{level.emoji}</span>
+                              </p>
+                              <p className="text-xs text-muted-foreground">{level.blurb}</p>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-muted-foreground pt-1">
+                      Not sure which level you are?{" "}
+                      <a
+                        href="/articles/what-is-your-tennis-level-guide"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                        data-testid="link-skill-guide"
+                      >
+                        Read our Tennis Level Guide →
+                      </a>
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -325,7 +414,12 @@ export default function CompleteProfilePage() {
                     )}
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={isLoading} data-testid="button-save">
+                  <Button
+                    type="submit"
+                    className={cn("w-full transition-opacity", !playerForm.formState.isValid && "opacity-50 hover:opacity-60")}
+                    disabled={isLoading}
+                    data-testid="button-save"
+                  >
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Save Profile
                   </Button>
@@ -397,7 +491,12 @@ export default function CompleteProfilePage() {
                     )}
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={isLoading} data-testid="button-save">
+                  <Button
+                    type="submit"
+                    className={cn("w-full transition-opacity", !coachForm.formState.isValid && "opacity-50 hover:opacity-60")}
+                    disabled={isLoading}
+                    data-testid="button-save"
+                  >
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Save Profile
                   </Button>
