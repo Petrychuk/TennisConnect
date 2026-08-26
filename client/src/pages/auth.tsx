@@ -445,6 +445,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                       id="reg-name" 
                       data-testid="reg-name"
                       placeholder="John Doe" 
+                      autoComplete="off"
                       {...registerForm.register("name")} 
                       className={registerForm.formState.errors.name ? "border-destructive focus-visible:ring-destructive" : ""}
                     />
