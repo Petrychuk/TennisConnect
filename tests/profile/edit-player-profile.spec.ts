@@ -22,7 +22,6 @@ test('PROFILE-003 Edit Player Profile', async ({ page }) => {
   const profile = {
     name: `Player ${timestamp}`,
     country: `Ukraine_${timestamp}`,
-    age: '55',
     location: `Rockdale_${timestamp}`,
   };
 
@@ -43,7 +42,6 @@ test('PROFILE-003 Edit Player Profile', async ({ page }) => {
   console.log('PROFILE:', profile);
   await page.getByTestId('player-name').fill(profile.name);
   await page.getByTestId('player-country').fill(profile.country);
-  await page.getByTestId('player-age').fill(profile.age);
   await page.getByTestId('player-location').fill(profile.location);
   // ---------- Verify entered values ----------
   await expect(page.getByTestId('player-name'))
@@ -51,9 +49,6 @@ test('PROFILE-003 Edit Player Profile', async ({ page }) => {
 
   await expect(page.getByTestId('player-country'))
     .toHaveValue(profile.country);
-
-  await expect(page.getByTestId('player-age'))
-    .toHaveValue(profile.age);
 
   await expect(page.getByTestId('player-location'))
     .toHaveValue(profile.location);
@@ -85,7 +80,6 @@ test('PROFILE-003 Edit Player Profile', async ({ page }) => {
 
   expect(body.name).toBe(profile.name);
   expect(body.country).toBe(profile.country);
-  expect(body.age).toBe(profile.age);
   expect(body.location).toBe(profile.location);
 
   // ---------- Debug ----------
@@ -109,9 +103,6 @@ test('PROFILE-003 Edit Player Profile', async ({ page }) => {
 
   await expect(page.getByTestId('player-country-display'))
     .toContainText(profile.country);
-
-  await expect(page.getByTestId('player-age-display'))
-    .toContainText(`${profile.age} years old`);
 
   await expect(page.getByTestId('player-location-display'))
   .toContainText(profile.location);

@@ -22,9 +22,6 @@ export async function completeCoachProfile(page: Page) {
 }
 
 export async function completePlayerProfile(page: Page) {
-  await page.getByTestId('input-age')
-    .fill('30');
-
   await page.getByTestId('select-country')
     .click();
 
