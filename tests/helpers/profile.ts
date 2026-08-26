@@ -22,12 +22,10 @@ export async function completeCoachProfile(page: Page) {
 }
 
 export async function completePlayerProfile(page: Page) {
-  await page.getByTestId('select-country')
-    .click();
-
-  await page.getByRole('option', {
-    name: 'Australia',
-  }).click();
+  // Country defaults to "Australia" (see complete-profile.tsx's
+  // playerForm defaultValues) - no interaction needed to exercise that;
+  // the field used to be a native <Select> matched via role="option",
+  // now it's a Command/Popover combobox that doesn't expose that role.
 
   await page.getByTestId('input-location')
     .fill('Sydney, NSW');
