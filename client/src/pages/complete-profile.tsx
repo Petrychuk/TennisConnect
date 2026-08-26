@@ -7,16 +7,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, User, MapPin } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Loader2, User, MapPin, Check, ChevronsUpDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import SEO from "@/components/seo";
 import { playerProfileSchema, coachProfileSchema } from "@/lib/validations/profile"
 import { cn } from "@/lib/utils";
 
-// Kept in one place since both the Country <Select> and any future
+// Kept in one place since both the Country combobox and any future
 // country-dependent logic should read from the same list. "USA"/"UK"
 // (not "United States"/"United Kingdom") are kept exactly as they were
 // in the original short list - changing an existing option's stored
@@ -59,19 +60,22 @@ const COUNTRIES = [
   "Mexico",
 ] as const;
 
-// Short, friendly one-liners rather than the full bullet-point
-// breakdown - most people can place themselves from a single sentence,
-// and the linked guide (below the list) is there for anyone who
-// genuinely can't.
+// Short one-liners rather than the full bullet-point breakdown - most
+// people can place themselves from a single sentence, and the linked
+// guide (below the list) is there for anyone who genuinely can't.
+// The UTR range is a rough approximation, not sourced from her article's
+// exact numbers - flagged to her to confirm/correct against the real
+// article rather than presented as authoritative.
 const SKILL_LEVELS = [
-  { value: "Beginner", emoji: "🎾", blurb: "New to tennis and learning the basics." },
-  { value: "Intermediate", emoji: "🎾🎾", blurb: "Regular social player, comfortable with a rally." },
-  { value: "Advanced", emoji: "🎾🎾🎾", blurb: "Competitive club or tournament player." },
-  { value: "Professional", emoji: "🏆", blurb: "Elite or professional level." },
+  { value: "Beginner", dots: 1, utr: "1.0–3.0", blurb: "New to tennis and learning the basics." },
+  { value: "Intermediate", dots: 2, utr: "3.0–5.0", blurb: "Regular social player, comfortable with a rally." },
+  { value: "Advanced", dots: 3, utr: "5.0–7.0", blurb: "Competitive club or tournament player." },
+  { value: "Professional", dots: 4, utr: "7.0+", blurb: "Elite or professional level." },
 ] as const;
 
 export default function CompleteProfilePage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [countryOpen, setCountryOpen] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user, loading, updateUserProfile } = useAuth();
@@ -288,17 +292,17 @@ export default function CompleteProfilePage() {
         canonical="/complete-profile"
         noIndex
       />
-      <div className="min-h-screen bg-linear-to-b from-background to-muted/20 py-12 px-4">
+      <div className="min-h-screen bg-linear-to-b from-background to-muted/20 py-6 px-3 sm:py-12 sm:px-4">
         <div className="max-w-2xl mx-auto">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold mb-2">Complete Your Profile</h1>
-            <p className="text-muted-foreground">
+          <div className="text-center mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">Complete Your Profile</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">
               Fill in the details below to start connecting with {user?.role === "coach" ? "students" : "other players"}
             </p>
           </div>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="p-4 sm:p-6">
               <CardTitle className="flex items-center gap-2">
                 <User className="w-5 h-5" />
                 {user?.role === "coach" ? "Coach Profile" : "Player Profile"}
@@ -307,24 +311,53 @@ export default function CompleteProfilePage() {
                 This information will be shown on your public profile
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 sm:p-6 pt-0">
               {user?.role === "player" ? (
                 <form onSubmit={playerForm.handleSubmit(onPlayerSubmit)} className="space-y-6">
                   <div className="space-y-2">
                       <Label htmlFor="country">Country</Label>
-                      <Select
-                        defaultValue="Australia"
-                        onValueChange={(value) => playerForm.setValue("country", value)}
-                      >
-                        <SelectTrigger data-testid="select-country">
-                          <SelectValue placeholder="Select country" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {COUNTRIES.map((c) => (
-                            <SelectItem key={c} value={c}>{c}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Popover open={countryOpen} onOpenChange={setCountryOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={countryOpen}
+                            className="w-full justify-between font-normal"
+                            data-testid="select-country"
+                          >
+                            {playerForm.watch("country") || "Select country"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[300px] p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Search country..." />
+                            <CommandList>
+                              <CommandEmpty>No country found.</CommandEmpty>
+                              <CommandGroup className="max-h-[280px] overflow-auto">
+                                {COUNTRIES.map((c) => (
+                                  <CommandItem
+                                    key={c}
+                                    value={c}
+                                    onSelect={() => {
+                                      playerForm.setValue("country", c, { shouldValidate: true });
+                                      setCountryOpen(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        playerForm.watch("country") === c ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    {c}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     </div>
 
                   <div className="space-y-2">
@@ -353,7 +386,7 @@ export default function CompleteProfilePage() {
                           <label
                             key={level.value}
                             className={cn(
-                              "flex items-start gap-3 rounded-xl border px-3.5 py-3 cursor-pointer transition-colors",
+                              "flex items-start gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-colors",
                               selected ? "border-primary bg-primary/5" : "border-border hover:bg-muted/40"
                             )}
                           >
@@ -363,12 +396,29 @@ export default function CompleteProfilePage() {
                               value={level.value}
                               checked={selected}
                               onChange={() => playerForm.setValue("skillLevel", level.value, { shouldValidate: true })}
-                              className="mt-1 accent-primary"
+                              className="mt-1 shrink-0 accent-primary"
                               data-testid={`radio-skill-${level.value.toLowerCase()}`}
                             />
-                            <div>
-                              <p className="font-medium text-sm">
-                                {level.value} <span aria-hidden="true">{level.emoji}</span>
+                            <div className="min-w-0">
+                              <p className="font-medium text-sm flex items-center gap-2 flex-wrap">
+                                {level.value}
+                                {/* Branded level indicator (filled dots) instead of
+                                    emoji - a plain, consistent way to show
+                                    increasing skill without needing an icon asset. */}
+                                <span className="inline-flex items-center gap-0.5" aria-hidden="true">
+                                  {Array.from({ length: 4 }).map((_, i) => (
+                                    <span
+                                      key={i}
+                                      className={cn(
+                                        "w-1.5 h-1.5 rounded-full",
+                                        i < level.dots ? "bg-primary" : "bg-muted-foreground/25"
+                                      )}
+                                    />
+                                  ))}
+                                </span>
+                                <span className="text-xs font-normal text-muted-foreground">
+                                  (~UTR {level.utr})
+                                </span>
                               </p>
                               <p className="text-xs text-muted-foreground">{level.blurb}</p>
                             </div>
@@ -416,7 +466,7 @@ export default function CompleteProfilePage() {
 
                   <Button
                     type="submit"
-                    className={cn("w-full transition-opacity", !playerForm.formState.isValid && "opacity-50 hover:opacity-60")}
+                    className={cn("w-full sm:w-1/3 sm:mx-auto flex items-center justify-center rounded-full transition-opacity", !playerForm.formState.isValid && "opacity-50 hover:opacity-60")}
                     disabled={isLoading}
                     data-testid="button-save"
                   >
@@ -493,7 +543,7 @@ export default function CompleteProfilePage() {
 
                   <Button
                     type="submit"
-                    className={cn("w-full transition-opacity", !coachForm.formState.isValid && "opacity-50 hover:opacity-60")}
+                    className={cn("w-full sm:w-1/3 sm:mx-auto flex items-center justify-center rounded-full transition-opacity", !coachForm.formState.isValid && "opacity-50 hover:opacity-60")}
                     disabled={isLoading}
                     data-testid="button-save"
                   >
