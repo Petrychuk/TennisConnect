@@ -355,6 +355,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteUserAccount(userId: string): Promise<void> {
+    // Owning an organization or having created sessions means real
+    // infrastructure other people are actively using (members,
+    // registrations, live matches) sits on this account - silently
+    // cascading that deletion would be far more destructive than a
+    // self-service "delete my account" click should ever cause, and
+    // both organizations.ownerId and tennisSessions.createdBy are
+    // NOT NULL, so there's no "just null it out" option either. Blocked
+    // with a clear, actionable message instead of either crashing on
+    // the FK constraint (the previous behavior) or cascading silently.
+    const [ownedOrg] = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.ownerId, userId)).limit(1);
+    if (ownedOrg) {
+      throw new Error("You own an organization - transfer ownership or delete it before deleting your account");
+    }
+    const [createdSession] = await db.select({ id: tennisSessions.id }).from(tennisSessions).where(eq(tennisSessions.createdBy, userId)).limit(1);
+    if (createdSession) {
+      throw new Error("You've created sessions - these need to be cancelled or reassigned before deleting your account");
+    }
+
     await db.transaction(async (tx) => {
   
       // Messages
@@ -386,6 +404,62 @@ export class DatabaseStorage implements IStorage {
       await tx
         .delete(coachProfiles)
         .where(eq(coachProfiles.userId, userId));
+
+      // Organizer Requests - their own requests to become an organizer
+      // (pending, approved, or rejected). reviewedBy is a separate,
+      // nullable "an admin reviewed someone ELSE's request" column -
+      // nulled rather than deleted, since it's not this user's own row.
+      await tx
+        .delete(organizerRequests)
+        .where(eq(organizerRequests.userId, userId));
+      await tx
+        .update(organizerRequests)
+        .set({ reviewedBy: null })
+        .where(eq(organizerRequests.reviewedBy, userId));
+
+      // Organization membership (staff/member role on someone else's
+      // org) - their own membership, not the org itself.
+      await tx
+        .delete(organizationMembers)
+        .where(eq(organizationMembers.userId, userId));
+
+      // Session registrations - their own signups.
+      await tx
+        .delete(registrations)
+        .where(eq(registrations.userId, userId));
+
+      // Club follows/favorites - their own.
+      await tx
+        .delete(clubFollows)
+        .where(eq(clubFollows.userId, userId));
+      await tx
+        .delete(clubFavorites)
+        .where(eq(clubFavorites.userId, userId));
+
+      // Community membership requests - their own.
+      await tx
+        .delete(communityMemberships)
+        .where(eq(communityMemberships.userId, userId));
+
+      // TC Live match attribution - nulled, not deleted: the match
+      // result itself (and the session it belongs to) isn't this
+      // user's to remove just because they reported or confirmed a
+      // score in it.
+      await tx
+        .update(matches)
+        .set({ reportedBy: null })
+        .where(eq(matches.reportedBy, userId));
+      await tx
+        .update(matches)
+        .set({ confirmedBy: null })
+        .where(eq(matches.confirmedBy, userId));
+
+      // Session review attribution (admin moderation) - same reasoning
+      // as organizerRequests.reviewedBy above.
+      await tx
+        .update(tennisSessions)
+        .set({ reviewedBy: null })
+        .where(eq(tennisSessions.reviewedBy, userId));
   
       // Password Reset Tokens
       await tx

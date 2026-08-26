@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -96,7 +97,11 @@ export default function CompleteProfilePage() {
     resolver: zodResolver(coachProfileSchema),
     mode: "onChange",
     defaultValues: {
+      country: "Australia",
       location: "",
+      trainingLocations: "",
+      isCertified: false,
+      certificationDetails: "",
       bio: "",
       // Was a literal default value, not a placeholder - the field
       // already has a real placeholder="Head Tennis Coach" attribute
@@ -190,10 +195,23 @@ export default function CompleteProfilePage() {
     // 🔹 1. Save coach profile
     console.log("➡️ Step 1: Saving coach profile");
 
+    const { trainingLocations, ...rest } = data;
+    const profileData = {
+      ...rest,
+      // Backend whitelist (coachProfileUpdateSchema) expects a real
+      // array here, same split-on-comma treatment as the player form's
+      // preferredCourts - the field maps to the same coachProfiles.
+      // locations column coach-profile.tsx's own suburb picker already
+      // writes to, just filled in during onboarding this time.
+      locations: trainingLocations
+        ? trainingLocations.split(",").map((c) => c.trim()).filter(Boolean)
+        : [],
+    };
+
     const res = await fetch("/api/me/coach-profile", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify(profileData),
       credentials: "include",
     });
 
@@ -322,7 +340,7 @@ export default function CompleteProfilePage() {
                             variant="outline"
                             role="combobox"
                             aria-expanded={countryOpen}
-                            className="w-full justify-between font-normal"
+                            className="w-full justify-between font-normal border-input"
                             data-testid="select-country"
                           >
                             {playerForm.watch("country") || "Select country"}
@@ -478,6 +496,52 @@ export default function CompleteProfilePage() {
               ) : (
                 <form onSubmit={coachForm.handleSubmit(onCoachSubmit)} className="space-y-6">
                   <div className="space-y-2">
+                      <Label htmlFor="coach-country">Country</Label>
+                      <Popover open={countryOpen} onOpenChange={setCountryOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={countryOpen}
+                            className="w-full justify-between font-normal border-input"
+                            data-testid="select-coach-country"
+                          >
+                            {coachForm.watch("country") || "Select country"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Search country..." />
+                            <CommandList>
+                              <CommandEmpty>No country found.</CommandEmpty>
+                              <CommandGroup className="max-h-[280px] overflow-auto">
+                                {COUNTRIES.map((c) => (
+                                  <CommandItem
+                                    key={c}
+                                    value={c}
+                                    onSelect={() => {
+                                      coachForm.setValue("country", c, { shouldValidate: true });
+                                      setCountryOpen(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        coachForm.watch("country") === c ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    {c}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                  <div className="space-y-2">
                     <Label htmlFor="title">Title</Label>
                     <Input
                       id="title"
@@ -487,6 +551,31 @@ export default function CompleteProfilePage() {
                     />
                     {coachForm.formState.errors.title && (
                       <p className="text-sm text-destructive">{coachForm.formState.errors.title.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-3 rounded-xl border border-border px-3.5 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <Label htmlFor="isCertified" className="cursor-pointer">Certified / Accredited Coach</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Self-declared - e.g. Tennis Australia accreditation. Not verified by TennisConnect.
+                        </p>
+                      </div>
+                      <Switch
+                        id="isCertified"
+                        checked={coachForm.watch("isCertified")}
+                        onCheckedChange={(v) => coachForm.setValue("isCertified", v)}
+                        data-testid="switch-certified"
+                      />
+                    </div>
+                    {coachForm.watch("isCertified") && (
+                      <Input
+                        placeholder="e.g. Tennis Australia Level 1"
+                        autoComplete="off"
+                        {...coachForm.register("certificationDetails")}
+                        data-testid="input-certification-details"
+                      />
                     )}
                   </div>
 
@@ -507,12 +596,26 @@ export default function CompleteProfilePage() {
                     )}
                   </div>
 
+                  <div className="space-y-2">
+                    <Label htmlFor="trainingLocations">Where I Coach (comma separated)</Label>
+                    <Input
+                      id="trainingLocations"
+                      placeholder="Bondi Beach, Manly, Sydney CBD"
+                      autoComplete="off"
+                      {...coachForm.register("trainingLocations")}
+                      data-testid="input-training-locations"
+                    />
+                    {coachForm.formState.errors.trainingLocations && (
+                      <p className="text-sm text-destructive">{coachForm.formState.errors.trainingLocations.message}</p>
+                    )}
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="experience">Years of Experience</Label>
                       <Input
                         id="experience"
-                        placeholder="10+ years"
+                        placeholder="e.g. 10+"
                         {...coachForm.register("experience")}
                         data-testid="input-experience"
                       />
@@ -521,7 +624,7 @@ export default function CompleteProfilePage() {
                       <Label htmlFor="rate">Hourly Rate</Label>
                       <Input
                         id="rate"
-                        placeholder="$80/hour"
+                        placeholder="e.g. $80"
                         {...coachForm.register("rate")}
                         data-testid="input-rate"
                       />
