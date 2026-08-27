@@ -98,6 +98,13 @@ export type CoachProfile = {
   name: string;
   title: string;
   location: string;
+  // Self-declared, not verified against Tennis Australia/NCAS or any
+  // other accrediting body - see CoachInfo.tsx's badge, which used to
+  // read "Verified Coach" unconditionally for every profile regardless
+  // of this.
+  country?: string;
+  isCertified?: boolean;
+  certificationDetails?: string;
   bio: string;
   avatar?: string | null;
   cover?: string | null;
@@ -123,6 +130,9 @@ export const DEFAULT_COACH_PROFILE: CoachProfile = {
   name: "Nataliia Petrychuk",
   title: "Tennis Coach | Beginner & Intermediate Specialist",
   location: "Manly, Sydney",
+  country: "Australia",
+  isCertified: false,
+  certificationDetails: "",
   bio: "Passionate tennis coach dedicated to helping beginners and intermediate players fall in love with the game.",
 
   avatar: null,
@@ -507,6 +517,9 @@ export default function CoachProfile() {
           
             title: profile.title,
             location: profile.location,
+            country: profile.country,
+            isCertified: profile.isCertified,
+            certificationDetails: profile.certificationDetails,
             bio: profile.bio,
           
             tags: profile.tags,
@@ -619,6 +632,9 @@ export default function CoachProfile() {
             // profile-level
             title: data.profile.title ?? DEFAULT_COACH_PROFILE.title,
             location: data.profile.location ?? DEFAULT_COACH_PROFILE.location,
+            country: data.profile.country ?? DEFAULT_COACH_PROFILE.country,
+            isCertified: data.profile.isCertified ?? DEFAULT_COACH_PROFILE.isCertified,
+            certificationDetails: data.profile.certificationDetails ?? DEFAULT_COACH_PROFILE.certificationDetails,
             bio: data.profile.bio ?? DEFAULT_COACH_PROFILE.bio,
 
             rate: data.profile.rate ?? DEFAULT_COACH_PROFILE.rate,

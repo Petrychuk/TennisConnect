@@ -440,11 +440,12 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="reg-name">Full Name</Label>
+                    <Label htmlFor="reg-name">Name/Nickname</Label>
                     <Input 
                       id="reg-name" 
                       data-testid="reg-name"
                       placeholder="John Doe" 
+                      autoComplete="off"
                       {...registerForm.register("name")} 
                       className={registerForm.formState.errors.name ? "border-destructive focus-visible:ring-destructive" : ""}
                     />
