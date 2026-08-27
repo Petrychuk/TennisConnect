@@ -1,6 +1,5 @@
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ShieldCheck, MapPin, Globe } from "lucide-react";
+import { MapPin, Globe } from "lucide-react";
 
 interface CoachInfoProps {
   profile: any;
@@ -234,32 +233,6 @@ export function CoachInfo({
             >
               {profile.name}
             </h1>
-
-            {profile.isCertified && (
-              <Badge
-                className="
-                  rounded-full
-
-                  border-primary/20
-                  bg-primary/10
-                  text-primary
-
-                  px-3
-                  py-1
-
-                  font-semibold
-
-                  flex
-                  items-center
-                  gap-1.5
-                "
-                title={profile.certificationDetails || undefined}
-                data-testid="coach-certified-badge"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 fill-primary/20" />
-                Certified Coach
-              </Badge>
-            )}
 
           </div>
 

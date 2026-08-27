@@ -53,7 +53,10 @@ test('PROFILE-009 Complete Coach Profile - success with Country/Certified/Traini
   await expect(page).toHaveURL(/\/coach\/.+/);
 
   await expect(page.getByTestId('coach-certified-badge')).toBeVisible();
-  await expect(page.getByTestId('coach-certified-badge')).toContainText('Certified Coach');
+  // Icon-only overlay on the avatar now (see ProfileAvatar.tsx's badge
+  // prop) - no visible text to assert, the detail lives in the title
+  // attribute (hover tooltip) instead.
+  await expect(page.getByTestId('coach-certified-badge')).toHaveAttribute('title', 'Tennis Australia Level 1');
   await expect(page.getByTestId('coach-country-display')).toContainText('Canada');
 });
 
