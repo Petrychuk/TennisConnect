@@ -202,6 +202,11 @@ export async function registerRoutes(app: Express): Promise<void> {
       // it out later, which is the flicker we don't want.
       const user = await storage.createUser({
         ...parsed.data,
+        // Stored lowercase from here on so new rows are consistent -
+        // getUserByEmail's lookup is already case-insensitive
+        // regardless (handles the older mixed-case rows this wasn't
+        // true for), this just keeps things clean going forward.
+        email: parsed.data.email.toLowerCase(),
         password: hashedPassword,
       });
 
