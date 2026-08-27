@@ -278,6 +278,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                               id="forgot-email"
                               type="email"
                               placeholder="name@example.com"
+                              autoComplete="email"
                               value={forgotPasswordEmail}
                               onChange={(e) => setForgotPasswordEmail(e.target.value)}
                               required
@@ -314,6 +315,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                       id="email"
                       data-testid="login-email" 
                       placeholder="name@example.com" 
+                      autoComplete="username"
                       {...loginForm.register("email")} 
                       className={loginForm.formState.errors.email ? "border-destructive focus-visible:ring-destructive" : ""}
                     />
@@ -338,6 +340,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                           id="password"
                           data-testid="login-password"
                           type={showLoginPassword ? "text" : "password"}
+                          autoComplete="current-password"
                           {...loginForm.register("password")}
                           className={`pr-10 ${
                             loginForm.formState.errors.password
@@ -445,7 +448,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                       id="reg-name" 
                       data-testid="reg-name"
                       placeholder="John Doe" 
-                      autoComplete="off"
+                      autoComplete="name"
                       {...registerForm.register("name")} 
                       className={registerForm.formState.errors.name ? "border-destructive focus-visible:ring-destructive" : ""}
                     />
@@ -459,6 +462,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                       id="reg-email"
                       data-testid="reg-email" 
                       placeholder="name@example.com" 
+                      autoComplete="email"
                       {...registerForm.register("email")} 
                       className={registerForm.formState.errors.email ? "border-destructive focus-visible:ring-destructive" : ""}
                     />
@@ -473,6 +477,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                         id="reg-password"
                         data-testid="reg-password"
                         type={showRegisterPassword ? "text" : "password"}
+                        autoComplete="new-password"
                         {...registerForm.register("password")}
                         className={`pr-10 ${
                           registerForm.formState.errors.password
@@ -508,6 +513,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                         id="confirm-password"
                         data-testid="confirm-password"
                         type={showConfirmPassword ? "text" : "password"}
+                        autoComplete="new-password"
                         {...registerForm.register("confirmPassword")}
                         className={`pr-10 ${
                           registerForm.formState.errors.confirmPassword
