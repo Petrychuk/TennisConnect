@@ -269,13 +269,6 @@ export function CoachInfo({
             className="
               mt-3
 
-              flex
-              flex-wrap
-              items-center
-
-              gap-x-2
-              gap-y-1
-
               text-sm
               md:text-base
 
@@ -283,16 +276,7 @@ export function CoachInfo({
             "
             data-testid="coach-title-display"
           >
-            <span className="font-medium">
-              Tennis Coach
-            </span>
-
-            <span className="hidden sm:inline opacity-50">
-              •
-            </span>
-
-            <span>{profile.title}</span>
-
+            {profile.title}
           </div>
 
           {/* LOCATION + COUNTRY */}
