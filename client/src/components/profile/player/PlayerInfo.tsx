@@ -1,5 +1,4 @@
 import {
-  Calendar,
   Globe,
   MapPin,
   BadgeCheck,
@@ -66,7 +65,7 @@ export function PlayerInfo({
 
           </div>
 
-          {/* COUNTRY + AGE + LOCATION */}
+          {/* COUNTRY + LOCATION */}
 
           <div className="flex flex-col md:flex-row gap-3 md:gap-6">
 
@@ -103,43 +102,6 @@ export function PlayerInfo({
                   focus-visible:border-primary
                 "
                 data-testid="player-country"
-              />
-
-            </div>
-
-            {/* AGE */}
-
-            <div className="w-full md:w-28 space-y-1 md:space-y-2">
-
-              <p className="text-xs font-medium tracking-wider text-muted-foreground">
-                Age
-              </p>
-
-              <Input
-                value={profile.age}
-                onChange={(e) =>
-                  setProfile({
-                    ...profile,
-                    age: e.target.value,
-                  })
-                }
-                className="
-                  h-11
-                  w-full
-
-                  border-0
-                  border-b
-                  rounded-none
-
-                  px-0
-                  shadow-none
-
-                  text-base
-
-                  focus-visible:ring-0
-                  focus-visible:border-primary
-                "
-                data-testid="player-age"
               />
 
             </div>
@@ -246,12 +208,6 @@ export function PlayerInfo({
             >
               <Globe className="w-4 h-4 shrink-0" />
               {profile.country}
-            </div>
-
-            <div className="flex items-center gap-1.5"
-                 data-testid="player-age-display">
-              <Calendar className="w-4 h-4 shrink-0" />
-              {profile.age} years old
             </div>
 
             <div className="flex items-center gap-1.5"

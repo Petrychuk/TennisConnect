@@ -172,6 +172,12 @@ export const coachProfiles = pgTable("coach_profiles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
   title: text("title").notNull(),
+  // Added alongside player profiles' own country field - previously
+  // coaches had no country at all, only players did.
+  country: text("country"),
+  // Self-declared, not verified - see validations/profile.ts for why.
+  isCertified: boolean("is_certified").default(false).notNull(),
+  certificationDetails: text("certification_details"),
   location: text("location").notNull(),
   locations: json("locations").$type<string[]>().default([]),
   bio: text("bio"),

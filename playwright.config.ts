@@ -28,9 +28,17 @@ export default defineConfig({
   /* Cap workers everywhere, not just CI: each worker opens its own DB
      session, and the Supabase pooler in session mode here has pool_size 15.
      Running unbounded workers (default = CPU core count) against a shared
-     Postgres pool is what causes EMAXCONNSESSION. Override per-run with
-     --workers=N when you know the target DB can take more (e.g. staging). */
-  workers: process.env.CI ? 1 : 4,
+     Postgres pool is what causes EMAXCONNSESSION.
+     Local runs (no BASE_URL - hitting your own machine's dev server)
+     default to 1: 4 parallel browsers + 4 concurrent hits against a Vite
+     dev server that compiles modules on demand is enough to starve a
+     laptop - symptoms look exactly like "everything hangs" (60s+
+     timeouts on a plain page.goto, 12-minute test files) even though
+     nothing is actually broken, just contended. Runs against a real
+     remote server (BASE_URL set, e.g. staging) default back to 4, since
+     that server's resources aren't your laptop's. Override either way
+     with --workers=N. */
+  workers: process.env.CI ? 1 : (process.env.BASE_URL ? 4 : 1),
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */

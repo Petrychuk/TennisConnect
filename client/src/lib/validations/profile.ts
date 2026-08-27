@@ -1,9 +1,11 @@
 import { z } from "zod";
 
 export const playerProfileSchema = z.object({
-  age: z
-    .string()
-    .min(1, "Age is required"),
+  // No longer collected/shown anywhere in the UI - kept optional here
+  // (not removed outright) so the field can still round-trip safely for
+  // any existing profile that already has one on file, without either
+  // this form's submit or its own validation ever depending on it again.
+  age: z.string().optional(),
 
   country: z
     .string()
@@ -33,11 +35,30 @@ export const playerProfileSchema = z.object({
 });
 
 export const coachProfileSchema = z.object({
+    country: z
+      .string()
+      .min(1, "Country is required"),
+
     location: z
       .string()
       .trim()
-      .min(2, "City is required")
-      .max(100, "City is too long"),
+      .min(2, "Location is required")
+      .max(100, "Location is too long"),
+
+    trainingLocations: z
+      .string()
+      .max(300, "That's a lot of locations - try trimming the list")
+      .optional(),
+
+    // Self-declared, not verified against Tennis Australia/NCAS or any
+    // other body - a verified-certification workflow (uploaded
+    // documents, admin review) is a bigger feature than this toggle,
+    // not built here.
+    isCertified: z.boolean().optional(),
+    certificationDetails: z
+      .string()
+      .max(200, "That's a bit long - try a shorter summary")
+      .optional(),
   
     title: z
       .string()

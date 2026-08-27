@@ -22,25 +22,18 @@ export async function completeCoachProfile(page: Page) {
 }
 
 export async function completePlayerProfile(page: Page) {
-  await page.getByTestId('input-age')
-    .fill('30');
-
-  await page.getByTestId('select-country')
-    .click();
-
-  await page.getByRole('option', {
-    name: 'Australia',
-  }).click();
+  // Country defaults to "Australia" (see complete-profile.tsx's
+  // playerForm defaultValues) - no interaction needed to exercise that;
+  // the field used to be a native <Select> matched via role="option",
+  // now it's a Command/Popover combobox that doesn't expose that role.
 
   await page.getByTestId('input-location')
     .fill('Sydney, NSW');
 
-  await page.getByTestId('select-skill')
-    .click();
-
-  await page.getByRole('option', {
-    name: 'Intermediate',
-  }).click();
+  // Skill Level is a card/radio group now, not a <Select> - see
+  // complete-profile.tsx's SKILL_LEVELS.
+  await page.getByTestId('radio-skill-intermediate')
+    .check();
 
   await page.getByTestId('input-courts')
     .fill('Bondi, Manly');

@@ -7,25 +7,85 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, MapPin } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Loader2, User, MapPin, Check, ChevronsUpDown } from "lucide-react";
 import { TennisLoader, TennisBallSpinner } from "@/components/ui/tennisLoader";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import SEO from "@/components/seo";
 import { playerProfileSchema, coachProfileSchema } from "@/lib/validations/profile"
+import { cn } from "@/lib/utils";
+
+// Kept in one place since both the Country combobox and any future
+// country-dependent logic should read from the same list. "USA"/"UK"
+// (not "United States"/"United Kingdom") are kept exactly as they were
+// in the original short list - changing an existing option's stored
+// value string would silently orphan any profile that already saved
+// with it, so only new entries were added around them, nothing renamed.
+const COUNTRIES = [
+  "Australia",
+  "New Zealand",
+  "USA",
+  "Canada",
+  "UK",
+  "Ireland",
+  "France",
+  "Germany",
+  "Italy",
+  "Spain",
+  "Portugal",
+  "Netherlands",
+  "Belgium",
+  "Switzerland",
+  "Austria",
+  "Sweden",
+  "Norway",
+  "Denmark",
+  "Poland",
+  "Ukraine",
+  "China",
+  "Japan",
+  "South Korea",
+  "India",
+  "Singapore",
+  "Philippines",
+  "Indonesia",
+  "Thailand",
+  "Vietnam",
+  "United Arab Emirates",
+  "South Africa",
+  "Brazil",
+  "Argentina",
+  "Mexico",
+] as const;
+
+// Short one-liners rather than the full bullet-point breakdown - most
+// people can place themselves from a single sentence, and the linked
+// guide (below the list) is there for anyone who genuinely can't.
+// The UTR range is a rough approximation, not sourced from her article's
+// exact numbers - flagged to her to confirm/correct against the real
+// article rather than presented as authoritative.
+const SKILL_LEVELS = [
+  { value: "Beginner", dots: 1, utr: "1.0–3.0", blurb: "New to tennis and learning the basics." },
+  { value: "Intermediate", dots: 2, utr: "3.0–5.0", blurb: "Regular social player, comfortable with a rally." },
+  { value: "Advanced", dots: 3, utr: "5.0–7.0", blurb: "Competitive club or tournament player." },
+  { value: "Professional", dots: 4, utr: "7.0+", blurb: "Elite or professional level." },
+] as const;
 
 export default function CompleteProfilePage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [countryOpen, setCountryOpen] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user, loading, updateUserProfile } = useAuth();
 
   const playerForm = useForm<z.infer<typeof playerProfileSchema>>({
     resolver: zodResolver(playerProfileSchema),
+    mode: "onChange",
     defaultValues: {
-      age: "",
       country: "Australia",
       location: "",
       bio: "",
@@ -36,10 +96,21 @@ export default function CompleteProfilePage() {
 
   const coachForm = useForm<z.infer<typeof coachProfileSchema>>({
     resolver: zodResolver(coachProfileSchema),
+    mode: "onChange",
     defaultValues: {
+      country: "Australia",
       location: "",
+      trainingLocations: "",
+      isCertified: false,
+      certificationDetails: "",
       bio: "",
-      title: "Tennis Coach",
+      // Was a literal default value, not a placeholder - the field
+      // already has a real placeholder="Head Tennis Coach" attribute
+      // (react-hook-form's defaultValues sets the actual value, which
+      // masks the placeholder since the field is never truly empty).
+      // Every coach who didn't notice and change it submitted the exact
+      // same "Tennis Coach" title.
+      title: "",
       experience: "",
       rate: "",
     },
@@ -125,10 +196,23 @@ export default function CompleteProfilePage() {
     // 🔹 1. Save coach profile
     console.log("➡️ Step 1: Saving coach profile");
 
+    const { trainingLocations, ...rest } = data;
+    const profileData = {
+      ...rest,
+      // Backend whitelist (coachProfileUpdateSchema) expects a real
+      // array here, same split-on-comma treatment as the player form's
+      // preferredCourts - the field maps to the same coachProfiles.
+      // locations column coach-profile.tsx's own suburb picker already
+      // writes to, just filled in during onboarding this time.
+      locations: trainingLocations
+        ? trainingLocations.split(",").map((c) => c.trim()).filter(Boolean)
+        : [],
+    };
+
     const res = await fetch("/api/me/coach-profile", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify(profileData),
       credentials: "include",
     });
 
@@ -227,17 +311,17 @@ export default function CompleteProfilePage() {
         canonical="/complete-profile"
         noIndex
       />
-      <div className="min-h-screen bg-linear-to-b from-background to-muted/20 py-12 px-4">
+      <div className="min-h-screen bg-linear-to-b from-background to-muted/20 py-6 px-3 sm:py-12 sm:px-4">
         <div className="max-w-2xl mx-auto">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold mb-2">Complete Your Profile</h1>
-            <p className="text-muted-foreground">
+          <div className="text-center mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">Complete Your Profile</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">
               Fill in the details below to start connecting with {user?.role === "coach" ? "students" : "other players"}
             </p>
           </div>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="p-4 sm:p-6">
               <CardTitle className="flex items-center gap-2">
                 <User className="w-5 h-5" />
                 {user?.role === "coach" ? "Coach Profile" : "Player Profile"}
@@ -246,42 +330,54 @@ export default function CompleteProfilePage() {
                 This information will be shown on your public profile
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 sm:p-6 pt-0">
               {user?.role === "player" ? (
                 <form onSubmit={playerForm.handleSubmit(onPlayerSubmit)} className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="age">Age</Label>
-                      <Input
-                        id="age"
-                        type="number"
-                        placeholder="25"
-                        {...playerForm.register("age")}
-                        data-testid="input-age"
-                      />
-                      {playerForm.formState.errors.age && (
-                        <p className="text-sm text-destructive">{playerForm.formState.errors.age.message}</p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
+                  <div className="space-y-2">
                       <Label htmlFor="country">Country</Label>
-                      <Select
-                        defaultValue="Australia"
-                        onValueChange={(value) => playerForm.setValue("country", value)}
-                      >
-                        <SelectTrigger data-testid="select-country">
-                          <SelectValue placeholder="Select country" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Australia">Australia</SelectItem>
-                          <SelectItem value="USA">USA</SelectItem>
-                          <SelectItem value="UK">UK</SelectItem>
-                          <SelectItem value="Canada">Canada</SelectItem>
-                          <SelectItem value="New Zealand">New Zealand</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Popover open={countryOpen} onOpenChange={setCountryOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={countryOpen}
+                            className="w-full justify-between font-normal border-input"
+                            data-testid="select-country"
+                          >
+                            {playerForm.watch("country") || "Select country"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Search country..." />
+                            <CommandList>
+                              <CommandEmpty>No country found.</CommandEmpty>
+                              <CommandGroup className="max-h-[280px] overflow-auto">
+                                {COUNTRIES.map((c) => (
+                                  <CommandItem
+                                    key={c}
+                                    value={c}
+                                    onSelect={() => {
+                                      playerForm.setValue("country", c, { shouldValidate: true });
+                                      setCountryOpen(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        playerForm.watch("country") === c ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    {c}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     </div>
-                  </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="location">City</Label>
@@ -301,22 +397,66 @@ export default function CompleteProfilePage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="skillLevel">Skill Level</Label>
-                    <Select
-                      defaultValue="Beginner"
-                      onValueChange={(value) => playerForm.setValue("skillLevel", value)}
-                    >
-                      <SelectTrigger data-testid="select-skill">
-                        <SelectValue placeholder="Select skill level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Social">Social</SelectItem>
-                        <SelectItem value="Beginner">Beginner</SelectItem>
-                        <SelectItem value="Intermediate">Intermediate</SelectItem>
-                        <SelectItem value="Advanced">Advanced</SelectItem>
-                        <SelectItem value="Professional">Professional</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label>Skill Level</Label>
+                    <div className="space-y-2" role="radiogroup" aria-label="Skill level">
+                      {SKILL_LEVELS.map((level) => {
+                        const selected = playerForm.watch("skillLevel") === level.value;
+                        return (
+                          <label
+                            key={level.value}
+                            className={cn(
+                              "flex items-start gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-colors",
+                              selected ? "border-primary bg-primary/5" : "border-border hover:bg-muted/40"
+                            )}
+                          >
+                            <input
+                              type="radio"
+                              name="skillLevel"
+                              value={level.value}
+                              checked={selected}
+                              onChange={() => playerForm.setValue("skillLevel", level.value, { shouldValidate: true })}
+                              className="mt-1 shrink-0 accent-primary"
+                              data-testid={`radio-skill-${level.value.toLowerCase()}`}
+                            />
+                            <div className="min-w-0">
+                              <p className="font-medium text-sm flex items-center gap-2 flex-wrap">
+                                {level.value}
+                                {/* Branded level indicator (filled dots) instead of
+                                    emoji - a plain, consistent way to show
+                                    increasing skill without needing an icon asset. */}
+                                <span className="inline-flex items-center gap-0.5" aria-hidden="true">
+                                  {Array.from({ length: 4 }).map((_, i) => (
+                                    <span
+                                      key={i}
+                                      className={cn(
+                                        "w-1.5 h-1.5 rounded-full",
+                                        i < level.dots ? "bg-primary" : "bg-muted-foreground/25"
+                                      )}
+                                    />
+                                  ))}
+                                </span>
+                                <span className="text-xs font-normal text-muted-foreground">
+                                  (~UTR {level.utr})
+                                </span>
+                              </p>
+                              <p className="text-xs text-muted-foreground">{level.blurb}</p>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-muted-foreground pt-1">
+                      Not sure which level you are?{" "}
+                      <a
+                        href="/articles/what-is-your-tennis-level-guide"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                        data-testid="link-skill-guide"
+                      >
+                        Read our Tennis Level Guide →
+                      </a>
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -324,6 +464,7 @@ export default function CompleteProfilePage() {
                     <Input
                       id="preferredCourts"
                       placeholder="Bondi Beach, Manly, Sydney CBD"
+                      autoComplete="off"
                       {...playerForm.register("preferredCourts")}
                       data-testid="input-courts"
                     />
@@ -343,8 +484,13 @@ export default function CompleteProfilePage() {
                     )}
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={isLoading} data-testid="button-save">
-                    {isLoading && <TennisBallSpinner className="mr-2" />}
+                  <Button
+                    type="submit"
+                    className={cn("w-full sm:w-1/3 sm:mx-auto flex items-center justify-center rounded-full transition-opacity", !playerForm.formState.isValid && "opacity-50 hover:opacity-60")}
+                    disabled={isLoading}
+                    data-testid="button-save"
+                  >
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Save Profile
                   </Button>
                 </form>
@@ -363,6 +509,77 @@ export default function CompleteProfilePage() {
                     )}
                   </div>
 
+                  <div className="space-y-3 rounded-xl border border-border px-3.5 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <Label htmlFor="isCertified" className="cursor-pointer">Certified / Accredited Coach</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Self-declared - e.g. Tennis Australia accreditation. Not verified by TennisConnect.
+                        </p>
+                      </div>
+                      <Switch
+                        id="isCertified"
+                        checked={coachForm.watch("isCertified")}
+                        onCheckedChange={(v) => coachForm.setValue("isCertified", v)}
+                        data-testid="switch-certified"
+                      />
+                    </div>
+                    {coachForm.watch("isCertified") && (
+                      <Input
+                        placeholder="e.g. Tennis Australia Level 1"
+                        autoComplete="off"
+                        {...coachForm.register("certificationDetails")}
+                        data-testid="input-certification-details"
+                      />
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                      <Label htmlFor="coach-country">Country</Label>
+                      <Popover open={countryOpen} onOpenChange={setCountryOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={countryOpen}
+                            className="w-full justify-between font-normal border-input"
+                            data-testid="select-coach-country"
+                          >
+                            {coachForm.watch("country") || "Select country"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Search country..." />
+                            <CommandList>
+                              <CommandEmpty>No country found.</CommandEmpty>
+                              <CommandGroup className="max-h-[280px] overflow-auto">
+                                {COUNTRIES.map((c) => (
+                                  <CommandItem
+                                    key={c}
+                                    value={c}
+                                    onSelect={() => {
+                                      coachForm.setValue("country", c, { shouldValidate: true });
+                                      setCountryOpen(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        coachForm.watch("country") === c ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    {c}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="location">Location</Label>
                     <div className="relative">
@@ -380,12 +597,26 @@ export default function CompleteProfilePage() {
                     )}
                   </div>
 
+                  <div className="space-y-2">
+                    <Label htmlFor="trainingLocations">Where I Coach (comma separated)</Label>
+                    <Input
+                      id="trainingLocations"
+                      placeholder="Bondi Beach, Manly, Sydney CBD"
+                      autoComplete="off"
+                      {...coachForm.register("trainingLocations")}
+                      data-testid="input-training-locations"
+                    />
+                    {coachForm.formState.errors.trainingLocations && (
+                      <p className="text-sm text-destructive">{coachForm.formState.errors.trainingLocations.message}</p>
+                    )}
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="experience">Years of Experience</Label>
                       <Input
                         id="experience"
-                        placeholder="10+ years"
+                        placeholder="e.g. 10+"
                         {...coachForm.register("experience")}
                         data-testid="input-experience"
                       />
@@ -394,7 +625,7 @@ export default function CompleteProfilePage() {
                       <Label htmlFor="rate">Hourly Rate</Label>
                       <Input
                         id="rate"
-                        placeholder="$80/hour"
+                        placeholder="e.g. $80"
                         {...coachForm.register("rate")}
                         data-testid="input-rate"
                       />
@@ -415,8 +646,13 @@ export default function CompleteProfilePage() {
                     )}
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={isLoading} data-testid="button-save">
-                    {isLoading && <TennisBallSpinner className="mr-2" />}
+                  <Button
+                    type="submit"
+                    className={cn("w-full sm:w-1/3 sm:mx-auto flex items-center justify-center rounded-full transition-opacity", !coachForm.formState.isValid && "opacity-50 hover:opacity-60")}
+                    disabled={isLoading}
+                    data-testid="button-save"
+                  >
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Save Profile
                   </Button>
                 </form>

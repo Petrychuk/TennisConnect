@@ -7,6 +7,16 @@ interface ProfileAvatarProps {
   name: string;
   isOwner: boolean;
   onEdit?: () => void;
+  // "tinted" (default) is the original light-primary-tint fallback,
+  // unchanged for players. "solid" is a full-color fill - opt-in only,
+  // so this shared component's default behavior never changes for
+  // anything that doesn't explicitly ask for it.
+  fallbackVariant?: "tinted" | "solid";
+  // Small corner overlay (e.g. a certified-coach checkmark) - purely
+  // presentational here, this component doesn't know what the badge
+  // means, just where to put it. Sits bottom-left specifically so it
+  // never overlaps the bottom-right edit/camera button.
+  badge?: React.ReactNode;
 }
 
 // Same look as the navbar's account-menu avatar fallback (light primary
@@ -19,11 +29,16 @@ function getInitial(name: string) {
 const AVATAR_SIZE_CLASSES =
   "h-34 w-34 sm:h-32 sm:w-32 lg:h-60 lg:w-60 rounded-full border border-background shadow-2xl";
 
+// Roughly a third of the avatar's own diameter at each breakpoint.
+const BADGE_SIZE_CLASSES = "h-10 w-10 sm:h-10 sm:w-10 lg:h-16 lg:w-16";
+
 export function ProfileAvatar({
   avatar,
   name,
   isOwner,
   onEdit,
+  fallbackVariant = "tinted",
+  badge,
 }: ProfileAvatarProps) {
   return (
     <div className="relative group">
@@ -40,7 +55,10 @@ export function ProfileAvatar({
         <div
           className={cn(
             AVATAR_SIZE_CLASSES,
-            "flex items-center justify-center bg-primary/10 text-primary font-bold select-none"
+            "flex items-center justify-center font-bold select-none",
+            fallbackVariant === "solid"
+              ? "bg-primary text-primary-foreground"
+              : "bg-primary/10 text-primary"
           )}
           data-testid="profile-avatar-initials"
         >
@@ -76,6 +94,20 @@ export function ProfileAvatar({
         </Button>
       )}
 
+      {/* Badge overlay (e.g. Certified Coach) */}
+      {badge && (
+        <div
+          className={cn(
+            BADGE_SIZE_CLASSES,
+            "absolute bottom-1 left-1 flex items-center justify-center rounded-full border-2 border-background shadow-md bg-primary text-primary-foreground"
+          )}
+          data-testid="profile-avatar-badge"
+        >
+          {badge}
+        </div>
+      )}
+
     </div>
   );
 }
+
