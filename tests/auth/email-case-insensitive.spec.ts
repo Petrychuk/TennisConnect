@@ -46,7 +46,7 @@ test('AUTH-011 Register - a duplicate email is rejected regardless of casing', a
   // doesn't redirect an already-logged-in user away from /auth, so no
   // logout needed here to reach the register form again.
   await page.goto('/auth');
-  const [, response] = await registerWithEmail(
+  const [response] = await registerWithEmail(
     page,
     `Case Test Dupe ${timestamp}`,
     mixedCaseEmail(email),
