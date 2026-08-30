@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
@@ -21,10 +21,11 @@ import { Step4ReviewPublish } from "@/components/organiser/sessions/wizard/step4
 import { PendingApprovalDialog } from "@/components/organiser/sessions/wizard/pending-approval-dialog";
 
 import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
-import { ensureMyOrganization, createSession, publishSession } from "@/lib/api/organizer-sessions";
+import { ensureMyOrganization, createSession, publishSession, getSessionById } from "@/lib/api/organizer-sessions";
 import {
   createEmptyDraft,
   draftToInsertSession,
+  sessionToDraft,
   SESSION_TYPE_OPTIONS,
   type NewSessionDraft,
 } from "@/lib/organiser-session-wizard-types";
@@ -42,6 +43,36 @@ export default function OrganiserSessionNewPage() {
   const [step, setStep] = useState(1);
   const [maxReachedStep, setMaxReachedStep] = useState(1);
   const [pendingApprovalOpen, setPendingApprovalOpen] = useState(false);
+
+  // "Duplicate" (from the sessions list or a session's own workspace
+  // page) lands here with ?duplicateFrom=<id> instead of silently
+  // creating a copy server-side with no review step - loads the real
+  // source session and pre-fills the draft from it (sessionToDraft),
+  // so duplicating behaves exactly like starting a fresh session that
+  // merely has last time's values pre-filled: reviewable, editable, and
+  // going through the same publish step as any other new session
+  // (which is also what actually sets a sensible status - the session
+  // this replaced never called publishSession, so it sat stuck as
+  // "draft" forever).
+  const search = useSearch();
+  const duplicateFromId = new URLSearchParams(search).get("duplicateFrom");
+  useEffect(() => {
+    if (!duplicateFromId) return;
+    let cancelled = false;
+    getSessionById(duplicateFromId)
+      .then((source) => {
+        if (!cancelled) setDraft(sessionToDraft(source));
+      })
+      .catch(() => {
+        if (!cancelled) {
+          toast({ title: "Couldn't load that session to duplicate", variant: "destructive" });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [duplicateFromId]);
 
   const updateDraft = <K extends keyof NewSessionDraft>(key: K, value: NewSessionDraft[K]) => {
     setDraft((prev) => ({ ...prev, [key]: value }));

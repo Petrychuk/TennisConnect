@@ -24,9 +24,8 @@ import { groupSessionsByBucket, type SessionBucket } from "@/components/organise
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
-import { getMySessions, createSession, deleteSession } from "@/lib/api/organizer-sessions";
+import { getMySessions, deleteSession } from "@/lib/api/organizer-sessions";
 import { toSessionListItems } from "@/lib/api/session-adapter";
-import { draftToInsertSession, createEmptyDraft } from "@/lib/organiser-session-wizard-types";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 
 export default function OrganiserSessionsPage() {
@@ -92,18 +91,13 @@ export default function OrganiserSessionsPage() {
 
   const invalidateSessions = () => queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine"] });
 
-  const handleDuplicate = async (session: SessionListItem) => {
-    try {
-      // Same shape a "blank" wizard draft would build, seeded with this
-      // session's own details - a real draft copy in the database, not
-      // just a client-side clone.
-      const draft = { ...createEmptyDraft(), name: `${session.title} (Copy)`, venue: session.location, maxPlayers: session.maxParticipants ?? 24 };
-      await createSession(draftToInsertSession(draft) as any);
-      invalidateSessions();
-      toast({ title: "Session duplicated", description: `"${session.title}" was copied as a new draft.` });
-    } catch (error: any) {
-      toast({ title: "Couldn't duplicate session", description: error?.message ?? "Please try again.", variant: "destructive" });
-    }
+  const handleDuplicate = (session: SessionListItem) => {
+    // Goes through the real wizard (pre-filled) instead of silently
+    // POSTing a near-copy directly - see session-new.tsx's own comment
+    // on the duplicateFrom param for why: values actually carry over
+    // now, and it gets a real review + publish step instead of being
+    // left stuck in "draft" status forever.
+    setLocation(`/organiser/sessions/new?duplicateFrom=${session.id}`);
   };
 
   const handleDelete = async (session: SessionListItem) => {

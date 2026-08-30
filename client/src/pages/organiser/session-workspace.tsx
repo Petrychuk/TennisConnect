@@ -32,8 +32,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { publishSession, archiveSession, inviteToSession, broadcastToSession, getSessionRegistrations, createSessionDivision, createSession } from "@/lib/api/organizer-sessions";
-import { createEmptyDraft, draftToInsertSession } from "@/lib/organiser-session-wizard-types";
+import { publishSession, archiveSession, inviteToSession, broadcastToSession, getSessionRegistrations, createSessionDivision } from "@/lib/api/organizer-sessions";
 import { InvitePlayersDialog } from "@/components/organiser/shared/invite-players-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -161,34 +160,33 @@ export default function OrganiserSessionWorkspacePage() {
     }
   };
 
-  const handleDuplicate = async () => {
-    if (!session || duplicating) return;
-    setDuplicating(true);
-    try {
-      if (isDivision && session.parentSessionId) {
-        const copy = await createSessionDivision(session.parentSessionId, {
-          title: `${session.title} (copy)`,
-          cloneFromDivisionId: session.id,
-        });
-        queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.parentSessionId, "divisions"] });
-        toast({ title: "Division duplicated", description: "Saved as a new draft division." });
-        setLocation(`/organiser/sessions/${copy.id}`);
-      } else {
-        // Same shape a "blank" wizard draft would build, seeded with
-        // this session's own details - same pattern the Sessions list's
-        // own Duplicate already uses, a real draft copy in the
-        // database, not just a client-side clone.
-        const draft = { ...createEmptyDraft(), name: `${session.title} (Copy)`, venue: session.location, maxPlayers: session.maxParticipants ?? 24 };
-        const copy = await createSession(draftToInsertSession(draft) as any);
-        queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine"] });
-        toast({ title: "Session duplicated", description: "Saved as a new draft." });
-        setLocation(`/organiser/sessions/${copy.id}`);
-      }
-    } catch (error: any) {
-      toast({ title: "Couldn't duplicate", description: error?.message ?? "Please try again.", variant: "destructive" });
-    } finally {
-      setDuplicating(false);
+  const handleDuplicate = () => {
+    if (!session) return;
+    if (isDivision && session.parentSessionId) {
+      setDuplicating(true);
+      createSessionDivision(session.parentSessionId, {
+        title: `${session.title} (copy)`,
+        cloneFromDivisionId: session.id,
+      })
+        .then((copy) => {
+          queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.parentSessionId, "divisions"] });
+          toast({ title: "Division duplicated", description: "Saved as a new draft division." });
+          setLocation(`/organiser/sessions/${copy.id}`);
+        })
+        .catch((error: any) => {
+          toast({ title: "Couldn't duplicate", description: error?.message ?? "Please try again.", variant: "destructive" });
+        })
+        .finally(() => setDuplicating(false));
+      return;
     }
+    // Goes through the real wizard (pre-filled) instead of silently
+    // POSTing a near-copy directly - see session-new.tsx's own comment
+    // on the duplicateFrom param for why: values actually carry over
+    // now, and it gets a real review + publish step instead of being
+    // left stuck in "draft" status forever (which is exactly what this
+    // page's old version did - createSession with no matching
+    // publishSession call).
+    setLocation(`/organiser/sessions/new?duplicateFrom=${session.id}`);
   };
 
   const handlePublish = async () => {
