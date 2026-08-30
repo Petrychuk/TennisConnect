@@ -1,4 +1,5 @@
-import { zonedTimeToUtc } from "@/lib/timezone";
+import { zonedTimeToUtc, toZonedDateTimeInputs } from "@/lib/timezone";
+import type { SessionWithDetails } from "@shared/schema";
 
 export type SessionTypeKey =
   | "social"
@@ -188,6 +189,62 @@ export function createEmptyDraft(): NewSessionDraft {
  * base64 data URL, since there's no separate object storage wired
  * for session covers yet) and is sent as-is.
  */
+/**
+ * The inverse of draftToInsertSession, for the "Duplicate" action - lets
+ * a past/archived session become the STARTING POINT of a real wizard
+ * pass (Step 1 through publish) instead of silently POSTing a
+ * near-empty session directly with no review step, which is what
+ * "Duplicate" used to do (only title/venue/maxPlayers actually carried
+ * over, everything else silently reset to createEmptyDraft()'s
+ * defaults, and the copy was left stuck in "draft" status forever since
+ * nothing ever called publishSession on it).
+ *
+ * Only fields with a real column can round-trip - see
+ * draftToInsertSession's own comment for which Step 3 fields
+ * (pairing/live-settings toggles, free-text policies) only ever get
+ * folded into the description as a read-only summary rather than
+ * stored as structured data. Those can't be recovered from a past
+ * session's description text without fragile parsing, so they reset to
+ * createEmptyDraft()'s own defaults here rather than guessing.
+ *
+ * date/registrationOpens/registrationCloses deliberately reset to
+ * TODAY rather than copying the source session's own (likely past, for
+ * an archived session) dates - the organizer is about to pick new ones
+ * for the next meeting anyway, and starting from today is a more
+ * useful default than a stale date they'd have to change regardless.
+ */
+export function sessionToDraft(session: SessionWithDetails): NewSessionDraft {
+  const empty = createEmptyDraft();
+  const startInputs = toZonedDateTimeInputs(session.startAt, session.timeZone);
+  const endInputs = session.endAt ? toZonedDateTimeInputs(session.endAt, session.timeZone) : null;
+
+  return {
+    ...empty,
+    type: (session.type as SessionTypeKey) ?? empty.type,
+    name: session.title ? `${session.title} (Copy)` : empty.name,
+    venue: session.location ?? empty.venue,
+    courtCount: session.courtsCount ?? empty.courtCount,
+    timeZone: session.timeZone ?? empty.timeZone,
+    // Time of day carries over (same session format, same usual start
+    // time) - only the DATE resets to today, per the reasoning above.
+    startTime: startInputs.time,
+    endTime: endInputs?.time ?? empty.endTime,
+    maxPlayers: session.maxParticipants ?? empty.maxPlayers,
+    waitingListEnabled: session.waitingListEnabled ?? empty.waitingListEnabled,
+    waitingListCapacity: session.waitingListCapacity ?? empty.waitingListCapacity,
+    pricing: session.price && Number(session.price) > 0 ? "paid" : "free",
+    price: session.price ? Number(session.price) : empty.price,
+    visibility: (session.visibility as Visibility) ?? empty.visibility,
+    coverImage: session.coverImage ?? empty.coverImage,
+    matchType: session.matchMode === "singles" ? "singles" : "doubles",
+    category: (session.category as NewSessionDraft["category"]) ?? empty.category,
+    gamesTo: session.gamesTo ?? empty.gamesTo,
+    roundsCount: session.plannedRoundsCount ?? empty.roundsCount,
+    noAd: session.noAd ?? empty.noAd,
+    tiebreak: session.tiebreak ?? empty.tiebreak,
+  };
+}
+
 export function draftToInsertSession(draft: NewSessionDraft) {
   // See client/src/lib/timezone.ts - this is the fix for what used to be
   // `new Date(\`${draft.date}T${draft.startTime}\`)`, which silently used
