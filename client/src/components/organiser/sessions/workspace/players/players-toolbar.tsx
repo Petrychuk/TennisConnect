@@ -8,22 +8,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Search, SlidersHorizontal, CheckCircle2, UserPlus } from "lucide-react";
+import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 
 interface PlayersToolbarProps {
   search: string;
   onSearchChange: (value: string) => void;
   onCheckInAll?: () => void;
+  checkInAllLoading?: boolean;
   onInvitePlayers?: () => void;
   showAdvancedFilters?: boolean;
 }
 
 // Level/Group filtering is visual-only for now (desktop shows the
 // selects to match the mockup) — real filtering waits for the backend
-// pass, search already works client-side against the mock list.
+// pass, search already works client-side against the real list.
 export function PlayersToolbar({
   search,
   onSearchChange,
   onCheckInAll,
+  checkInAllLoading = false,
   onInvitePlayers,
   showAdvancedFilters = false,
 }: PlayersToolbarProps) {
@@ -84,8 +87,8 @@ export function PlayersToolbar({
       </Button>
 
       <div className="flex gap-2">
-        <Button variant="outline" className="flex-1 sm:flex-none" onClick={onCheckInAll} data-testid="organiser-players-checkin-all">
-          <CheckCircle2 className="w-4 h-4 mr-2" />
+        <Button variant="outline" className="flex-1 sm:flex-none" onClick={onCheckInAll} disabled={checkInAllLoading} data-testid="organiser-players-checkin-all">
+          {checkInAllLoading ? <TennisBallSpinner className="mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
           Check-in All
         </Button>
         <Button className="flex-1 sm:flex-none" onClick={onInvitePlayers} data-testid="organiser-players-invite-button">
