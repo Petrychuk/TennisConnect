@@ -47,10 +47,38 @@ export const AU_CITY_TIMEZONES: { label: string; timeZone: string }[] = [
  * own local timezone.
  */
 export function zonedTimeToUtc(dateStr: string, timeStr: string, timeZone: string): Date {
-  const asIfUtc = new Date(`${dateStr}T${timeStr || "00:00"}:00Z`);
-  const readAsZoned = new Date(asIfUtc.toLocaleString("en-US", { timeZone }));
-  const offsetMs = asIfUtc.getTime() - readAsZoned.getTime();
-  return new Date(asIfUtc.getTime() + offsetMs);
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const [hour, minute] = (timeStr || "00:00").split(":").map(Number);
+
+  // Start with the wall-clock treated as if it were already UTC - this
+  // first guess is wrong by exactly the target zone's offset, which is
+  // what the correction below solves for.
+  const guess = Date.UTC(year, month - 1, day, hour, minute, 0);
+
+  // Ask Intl what wall-clock time that guess actually corresponds to in
+  // the target zone - explicit `timeZone` here, so this never touches
+  // the calling machine/browser's OWN ambient timezone at all.
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date(guess));
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
+  // Intl can format midnight as "24" instead of "00" depending on the
+  // engine - normalize before feeding it back into Date.UTC.
+  const gotHour = get("hour") % 24;
+  const gotAsUtcMs = Date.UTC(get("year"), get("month") - 1, get("day"), gotHour, get("minute"), get("second"));
+
+  // How far the guess's own wall-clock (as read in the target zone)
+  // drifted from the guess itself is exactly the correction needed -
+  // one pass is enough outside the DST-transition instant itself.
+  const diff = guess - gotAsUtcMs;
+  return new Date(guess + diff);
 }
 
 /**
