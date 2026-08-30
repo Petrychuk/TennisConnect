@@ -9,20 +9,13 @@ import { PlayersTable } from "./players/players-table";
 import { PlayersList } from "./players/players-list";
 import { WaitingListCard } from "./players/waiting-list-card";
 import { InvitePlayersCard } from "./players/invite-players-card";
-import { GroupOverviewCard } from "./players/group-overview-card";
 import { CheckInSummaryCard } from "./players/checkin-summary-card";
 import { PlayersQuickActionsCard } from "./players/players-quick-actions-card";
 import { SessionActionsSheet } from "./session-actions-sheet";
 import { InvitePlayersDialog } from "@/components/organiser/shared/invite-players-dialog";
-import { getSessionRegistrations, inviteToSession } from "@/lib/api/organizer-sessions";
+import { getSessionRegistrations, inviteToSession, checkInRegistration } from "@/lib/api/organizer-sessions";
 import { toSessionPlayers } from "@/lib/api/session-adapter";
-import {
-  mockSessionPlayers,
-  mockWaitingList,
-  mockGroupOverview,
-  type SessionListItem,
-  type SessionPlayer,
-} from "@/lib/organiser-sessions-mock-data";
+import { type SessionListItem, type SessionPlayer } from "@/lib/organiser-sessions-mock-data";
 
 interface PlayersTabProps {
   session: SessionListItem;
@@ -38,20 +31,21 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
   const [bucket, setBucket] = useState<Bucket>("registered");
   const [actionsSheetOpen, setActionsSheetOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [checkingInAll, setCheckingInAll] = useState(false);
 
   const registrationsQuery = useQuery({
     queryKey: ["/api/organizer/sessions", session.id, "registrations"],
     queryFn: () => getSessionRegistrations(session.id),
   });
 
-  // Real registrations first, then the mock "crowd" - lets an organiser
-  // preview what a fuller session looks like (e.g. 24 registered)
-  // without needing dozens of real test accounts to actually join,
-  // while a genuine registration still shows up right alongside it.
-  const allPlayers: SessionPlayer[] = useMemo(() => {
-    const real = toSessionPlayers(registrationsQuery.data ?? []);
-    return [...real, ...mockSessionPlayers];
-  }, [registrationsQuery.data]);
+  // Real registrations only now - this used to pad the list with a
+  // fixed mock "crowd" (8 fake players, always the same names/levels)
+  // alongside whatever real registrations existed, which is exactly
+  // why a session capped at 4 players showed "8 Registered".
+  const allPlayers: SessionPlayer[] = useMemo(
+    () => toSessionPlayers(registrationsQuery.data ?? []),
+    [registrationsQuery.data]
+  );
 
   const buckets: Record<Bucket, SessionPlayer[]> = useMemo(() => {
     const registered = allPlayers.filter((p) => p.status === "registered");
@@ -67,9 +61,31 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
   const query = search.trim().toLowerCase();
   const visible = (query ? buckets[bucket].filter((p) => p.name.toLowerCase().includes(query)) : buckets[bucket]);
 
-  const handleCheckIn = (player: SessionPlayer) =>
-    toast({ title: "Checked in", description: `${player.name} would be marked as checked in.` });
-  const handleCheckInAll = () => toast({ title: "Check-in All isn't wired up yet" });
+  const checkInMutation = useMutation({
+    mutationFn: (registrationId: string) => checkInRegistration(session.id, registrationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.id, "registrations"] });
+    },
+    onError: () => {
+      toast({ title: "Couldn't check that player in", variant: "destructive" });
+    },
+  });
+
+  const handleCheckIn = (player: SessionPlayer) => checkInMutation.mutate(player.id);
+
+  const handleCheckInAll = async () => {
+    const notYetCheckedIn = buckets.registered.filter((p) => !p.checkedIn);
+    if (notYetCheckedIn.length === 0) return;
+    setCheckingInAll(true);
+    try {
+      await Promise.all(notYetCheckedIn.map((p) => checkInRegistration(session.id, p.id)));
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.id, "registrations"] });
+    } catch {
+      toast({ title: "Some players couldn't be checked in", variant: "destructive" });
+    } finally {
+      setCheckingInAll(false);
+    }
+  };
   const handleInvitePlayers = () => setInviteOpen(true);
 
   const bucketTabs: { key: Bucket; label: string }[] = [
@@ -109,13 +125,14 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
           search={search}
           onSearchChange={setSearch}
           onCheckInAll={handleCheckInAll}
+          checkInAllLoading={checkingInAll}
           onInvitePlayers={handleInvitePlayers}
           showAdvancedFilters
         />
         <PlayersTable players={visible} onCheckIn={handleCheckIn} />
         {paginationText}
         <div className="grid grid-cols-2 gap-6">
-          <WaitingListCard players={mockWaitingList} />
+          <WaitingListCard players={buckets.waiting} />
           <InvitePlayersCard sessionId={session.id} />
         </div>
       </div>
@@ -124,14 +141,11 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
       <div className="hidden md:block xl:hidden space-y-6">
         <PlayersStatStrip session={session} players={allPlayers} />
         {bucketTabsList}
-        <PlayersToolbar search={search} onSearchChange={setSearch} onCheckInAll={handleCheckInAll} onInvitePlayers={handleInvitePlayers} />
+        <PlayersToolbar search={search} onSearchChange={setSearch} onCheckInAll={handleCheckInAll} checkInAllLoading={checkingInAll} onInvitePlayers={handleInvitePlayers} />
         <PlayersList players={visible} onCheckIn={handleCheckIn} />
         {paginationText}
-        <WaitingListCard players={mockWaitingList} />
-        <div className="grid grid-cols-2 gap-6">
-          <GroupOverviewCard groups={mockGroupOverview} />
-          <CheckInSummaryCard players={allPlayers} />
-        </div>
+        <WaitingListCard players={buckets.waiting} />
+        <CheckInSummaryCard players={allPlayers} />
         <PlayersQuickActionsCard lastLabel="Manage Groups" lastIcon={Users2} onMore={() => setActionsSheetOpen(true)} />
       </div>
 
@@ -139,10 +153,10 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
       <div className="md:hidden space-y-6">
         <PlayersStatStrip session={session} players={allPlayers} />
         {bucketTabsList}
-        <PlayersToolbar search={search} onSearchChange={setSearch} onCheckInAll={handleCheckInAll} onInvitePlayers={handleInvitePlayers} />
+        <PlayersToolbar search={search} onSearchChange={setSearch} onCheckInAll={handleCheckInAll} checkInAllLoading={checkingInAll} onInvitePlayers={handleInvitePlayers} />
         <PlayersList players={visible} onCheckIn={handleCheckIn} />
         {paginationText}
-        <WaitingListCard players={mockWaitingList} />
+        <WaitingListCard players={buckets.waiting} />
         <PlayersQuickActionsCard onMore={() => setActionsSheetOpen(true)} />
       </div>
 
