@@ -13,6 +13,7 @@ import { uploadImage } from "@/lib/uploadImage";
 import { AU_CITY_TIMEZONES } from "@/lib/timezone";
 import type { NewSessionDraft } from "@/lib/organiser-session-wizard-types";
 import { NumberField } from "./number-field";
+import { SessionWeatherPreview } from "./session-weather-preview";
 
 interface Step2DateRegistrationProps {
   draft: NewSessionDraft;
@@ -181,6 +182,10 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
             value={draft.date}
             onChange={(e) => onChange("date", e.target.value)}
             data-testid="organiser-wizard-date"
+          />
+          <SessionWeatherPreview
+            city={AU_CITY_TIMEZONES.find((c) => c.timeZone === draft.timeZone)?.label ?? ""}
+            date={draft.date}
           />
         </Field>
         <div />
