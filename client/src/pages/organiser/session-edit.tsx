@@ -50,6 +50,7 @@ export default function OrganiserSessionEditPage() {
   const [price, setPrice] = useState("");
   const [waitingListEnabled, setWaitingListEnabled] = useState(true);
   const [registrationCloses, setRegistrationCloses] = useState("");
+  const [registrationClosesTime, setRegistrationClosesTime] = useState("23:59");
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
@@ -77,6 +78,7 @@ export default function OrganiserSessionEditPage() {
     setPrice(priceNum > 0 ? String(priceNum) : "");
     setWaitingListEnabled(session.waitingListEnabled);
     setRegistrationCloses(session.registrationClosesAt ? toZonedDateTimeInputs(session.registrationClosesAt, zone).date : "");
+    setRegistrationClosesTime(session.registrationClosesAt ? toZonedDateTimeInputs(session.registrationClosesAt, zone).time : "23:59");
     setLoaded(true);
   }, [sessionQuery.data, loaded]);
 
@@ -135,7 +137,7 @@ export default function OrganiserSessionEditPage() {
         maxParticipants: maxParticipants.trim() ? Number(maxParticipants) : undefined,
         price: pricing === "paid" ? Number(price || 0) : 0,
         waitingListEnabled,
-        registrationClosesAt: registrationCloses ? zonedTimeToUtc(registrationCloses, "23:59", timeZone) : undefined,
+        registrationClosesAt: registrationCloses ? zonedTimeToUtc(registrationCloses, registrationClosesTime || "23:59", timeZone) : undefined,
       } as any);
       queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", params.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine"] });
@@ -211,7 +213,10 @@ export default function OrganiserSessionEditPage() {
 
             <div className="space-y-1.5">
               <Label>Registration Closes</Label>
-              <Input type="date" value={registrationCloses} max={date || undefined} onChange={(e) => setRegistrationCloses(e.target.value)} data-testid="organiser-session-edit-registration-closes" />
+              <div className="flex gap-2">
+                <Input type="date" value={registrationCloses} max={date || undefined} onChange={(e) => setRegistrationCloses(e.target.value)} className="flex-1" data-testid="organiser-session-edit-registration-closes" />
+                <Input type="time" value={registrationClosesTime} onChange={(e) => setRegistrationClosesTime(e.target.value)} className="w-28 shrink-0" data-testid="organiser-session-edit-registration-closes-time" />
+              </div>
               {date && registrationCloses > date && (
                 <p className="text-xs text-destructive">Registration can't close after the session date.</p>
               )}

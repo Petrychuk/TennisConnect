@@ -13,7 +13,7 @@ import { CheckInSummaryCard } from "./players/checkin-summary-card";
 import { PlayersQuickActionsCard } from "./players/players-quick-actions-card";
 import { SessionActionsSheet } from "./session-actions-sheet";
 import { InvitePlayersDialog } from "@/components/organiser/shared/invite-players-dialog";
-import { getSessionRegistrations, inviteToSession, checkInRegistration } from "@/lib/api/organizer-sessions";
+import { getSessionRegistrations, inviteToSession, checkInRegistration, removeRegistration, moveRegistrationToWaitlist } from "@/lib/api/organizer-sessions";
 import { toSessionPlayers } from "@/lib/api/session-adapter";
 import { type SessionListItem, type SessionPlayer } from "@/lib/organiser-sessions-mock-data";
 
@@ -73,6 +73,38 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
 
   const handleCheckIn = (player: SessionPlayer) => checkInMutation.mutate(player.id);
 
+  const removeMutation = useMutation({
+    mutationFn: (registrationId: string) => removeRegistration(session.id, registrationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.id, "registrations"] });
+      toast({ title: "Player removed" });
+    },
+    onError: () => {
+      toast({ title: "Couldn't remove that player", variant: "destructive" });
+    },
+  });
+  const handleRemove = (player: SessionPlayer) => removeMutation.mutate(player.id);
+
+  const moveToWaitingMutation = useMutation({
+    mutationFn: (registrationId: string) => moveRegistrationToWaitlist(session.id, registrationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.id, "registrations"] });
+      toast({ title: "Moved to the waiting list" });
+    },
+    onError: () => {
+      toast({ title: "Couldn't move that player", variant: "destructive" });
+    },
+  });
+  const handleMoveToWaiting = (player: SessionPlayer) => moveToWaitingMutation.mutate(player.id);
+
+  const handleViewProfile = (player: SessionPlayer) => {
+    if (!player.isReal || !player.slug) {
+      toast({ title: "No profile to view", description: "This is demo data, not a real player." });
+      return;
+    }
+    window.open(`/${player.role === "coach" ? "coach" : "player"}/${player.slug}`, "_blank", "noopener,noreferrer");
+  };
+
   const handleCheckInAll = async () => {
     const notYetCheckedIn = buckets.registered.filter((p) => !p.checkedIn);
     if (notYetCheckedIn.length === 0) return;
@@ -129,7 +161,7 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
           onInvitePlayers={handleInvitePlayers}
           showAdvancedFilters
         />
-        <PlayersTable players={visible} onCheckIn={handleCheckIn} />
+        <PlayersTable players={visible} onCheckIn={handleCheckIn} onRemove={handleRemove} onMoveToWaiting={handleMoveToWaiting} onViewProfile={handleViewProfile} />
         {paginationText}
         <div className="grid grid-cols-2 gap-6">
           <WaitingListCard players={buckets.waiting} />
@@ -142,7 +174,7 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
         <PlayersStatStrip session={session} players={allPlayers} />
         {bucketTabsList}
         <PlayersToolbar search={search} onSearchChange={setSearch} onCheckInAll={handleCheckInAll} checkInAllLoading={checkingInAll} onInvitePlayers={handleInvitePlayers} />
-        <PlayersList players={visible} onCheckIn={handleCheckIn} />
+        <PlayersList players={visible} onCheckIn={handleCheckIn} onRemove={handleRemove} onMoveToWaiting={handleMoveToWaiting} onViewProfile={handleViewProfile} />
         {paginationText}
         <WaitingListCard players={buckets.waiting} />
         <CheckInSummaryCard players={allPlayers} />
@@ -154,7 +186,7 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
         <PlayersStatStrip session={session} players={allPlayers} />
         {bucketTabsList}
         <PlayersToolbar search={search} onSearchChange={setSearch} onCheckInAll={handleCheckInAll} checkInAllLoading={checkingInAll} onInvitePlayers={handleInvitePlayers} />
-        <PlayersList players={visible} onCheckIn={handleCheckIn} />
+        <PlayersList players={visible} onCheckIn={handleCheckIn} onRemove={handleRemove} onMoveToWaiting={handleMoveToWaiting} onViewProfile={handleViewProfile} />
         {paginationText}
         <WaitingListCard players={buckets.waiting} />
         <PlayersQuickActionsCard onMore={() => setActionsSheetOpen(true)} />

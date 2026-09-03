@@ -29,7 +29,11 @@ export function OverviewTab({ session, onEdit, isDivision }: OverviewTabProps) {
   const [, setLocation] = useLocation();
   const detail = getSessionDetail(session);
   const { toast } = useToast();
-  const viewReadinessDetails = () => setLocation(`/organiser/sessions/${session.id}?tab=registration`);
+  // Readiness itself (registration open/closed, who's checked in) is
+  // what the Players tab's own stat strip and table already show in
+  // full - pointing here instead of the old, now-removed Registration
+  // tab (which just duplicated the same numbers via a different UI).
+  const viewReadinessDetails = () => setLocation(`/organiser/sessions/${session.id}?tab=players`);
 
   // Real registration/check-in state either way (session.registeredCount/
   // checkedInCount are always real - see toSessionListItem). Courts uses

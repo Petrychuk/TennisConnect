@@ -83,7 +83,9 @@ export interface NewSessionDraft {
   endTime: string; // HH:mm
   // Registration
   registrationOpens: string; // yyyy-mm-dd
+  registrationOpensTime: string; // HH:mm
   registrationCloses: string; // yyyy-mm-dd
+  registrationClosesTime: string; // HH:mm
   maxPlayers: number;
   waitingListEnabled: boolean;
   // null = unlimited. Only meaningful while waitingListEnabled is true.
@@ -139,7 +141,16 @@ export function createEmptyDraft(): NewSessionDraft {
     startTime: "18:30",
     endTime: "20:00",
     registrationOpens: toDateInput(today),
+    registrationOpensTime: "00:00",
     registrationCloses: toDateInput(today),
+    // Defaults to the session's own start time (registration closes
+    // right as it begins) rather than the old hardcoded end-of-day -
+    // that let registration nominally stay "open" for hours after a
+    // session had already started (even finished, for an evening
+    // session), which is exactly what made the sessions list progress
+    // bar's "Registration closes in Xh" look wrong for a session that
+    // was actually already underway. Still freely editable either way.
+    registrationClosesTime: "18:30",
     maxPlayers: 24,
     waitingListEnabled: true,
     waitingListCapacity: 10,
@@ -297,8 +308,8 @@ export function draftToInsertSession(draft: NewSessionDraft) {
     timeZone: draft.timeZone,
     startAt,
     endAt,
-    registrationOpensAt: draft.registrationOpens ? zonedTimeToUtc(draft.registrationOpens, "00:00", draft.timeZone) : undefined,
-    registrationClosesAt: draft.registrationCloses ? zonedTimeToUtc(draft.registrationCloses, "23:59", draft.timeZone) : undefined,
+    registrationOpensAt: draft.registrationOpens ? zonedTimeToUtc(draft.registrationOpens, draft.registrationOpensTime || "00:00", draft.timeZone) : undefined,
+    registrationClosesAt: draft.registrationCloses ? zonedTimeToUtc(draft.registrationCloses, draft.registrationClosesTime || "23:59", draft.timeZone) : undefined,
     price: draft.pricing === "paid" ? draft.price : 0,
     maxParticipants: draft.maxPlayers || undefined,
     visibility: draft.visibility,

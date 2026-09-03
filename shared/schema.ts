@@ -1178,6 +1178,10 @@ export type RegistrationWithUser = Registration & {
   userAvatar: string | null;
   userIsTestUser: boolean;
   userRole: string;
+  // From player_profiles.skill_level (left join - null for a registrant
+  // with no player profile yet, e.g. a coach/organiser or someone who
+  // hasn't finished onboarding).
+  userSkillLevel: string | null;
 };
 
 // One row per distinct player across every session in an organization -

@@ -43,7 +43,6 @@ import { NotificationBell } from "@/components/organiser/ui/notification-bell";
 import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
 import { OverviewTab } from "@/components/organiser/sessions/workspace/overview-tab";
 import { PlayersTab } from "@/components/organiser/sessions/workspace/players-tab";
-import { RegistrationTab } from "@/components/organiser/sessions/workspace/registration-tab";
 import { FormatRulesTab } from "@/components/organiser/sessions/workspace/format-rules-tab";
 import { RoundsTab } from "@/components/organiser/sessions/workspace/rounds-tab";
 import { MessagesTab } from "@/components/organiser/sessions/workspace/messages-tab";
@@ -62,7 +61,6 @@ import { formatInTimeZone } from "@/lib/timezone";
 const WORKSPACE_TABS = [
   { key: "overview", label: "Overview" },
   { key: "players", label: "Players" },
-  { key: "registration", label: "Registration" },
   { key: "format", label: "Format & Rules" },
   { key: "rounds", label: "Rounds" },
   { key: "messages", label: "Messages" },
@@ -227,6 +225,20 @@ export default function OrganiserSessionWorkspacePage() {
       setTab(requested as WorkspaceTabKey);
     }
   }, [search]);
+
+  // Clicking a tab only ever updated the in-memory `tab` state - the
+  // URL's own ?tab= param never followed along, so it stayed stuck at
+  // whatever it was when the page first loaded (e.g. "settings" if
+  // Edit was how you got here) no matter which tab you actually
+  // switched to afterward. replaceState (not setLocation/pushState) so
+  // switching tabs doesn't pile up separate Back-button history entries
+  // for every tab visited.
+  const handleTabChange = (v: string) => {
+    setTab(v as WorkspaceTabKey);
+    if (params?.id) {
+      window.history.replaceState(null, "", `/organiser/sessions/${params.id}?tab=${v}`);
+    }
+  };
 
   if (authLoading) return null;
   if (!isAuthenticated) {
@@ -421,7 +433,7 @@ export default function OrganiserSessionWorkspacePage() {
                     <Megaphone className="w-4 h-4 mr-2" />
                     Send Announcement
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setLocation(`/organiser/sessions/${session.id}?tab=registration`)}>
+                  <DropdownMenuItem onClick={() => setLocation(`/organiser/sessions/${session.id}?tab=players`)}>
                     <ListPlus className="w-4 h-4 mr-2" />
                     Manage Waitlist
                   </DropdownMenuItem>
@@ -447,7 +459,7 @@ export default function OrganiserSessionWorkspacePage() {
           </div>
 
           {/* Tabs */}
-          <Tabs value={tab} onValueChange={(v) => setTab(v as WorkspaceTabKey)}>
+          <Tabs value={tab} onValueChange={handleTabChange}>
             <TabsList className="justify-start overflow-x-auto max-w-full whitespace-nowrap h-auto p-1 scrollbar-hide" data-testid="organiser-session-workspace-tabs">
               {visibleTabs.map((t) => (
                 <TabsTrigger key={t.key} value={t.key} className="gap-1" data-testid={`organiser-session-workspace-tab-${t.key}`}>
@@ -464,9 +476,6 @@ export default function OrganiserSessionWorkspacePage() {
             </TabsContent>
             <TabsContent value="players" className="mt-4">
               <PlayersTab session={session} onEdit={goEdit} />
-            </TabsContent>
-            <TabsContent value="registration" className="mt-4">
-              <RegistrationTab session={session} onEnterLive={goLive} />
             </TabsContent>
             <TabsContent value="format" className="mt-4">
               <FormatRulesTab session={session} />

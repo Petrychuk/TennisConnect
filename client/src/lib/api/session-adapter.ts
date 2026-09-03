@@ -39,14 +39,27 @@ function computeProgress(session: TennisSession | SessionWithDetails): { progres
     return { progressPercent: 100, progressLabel: "Completed" };
   }
   if (session.status === "published") {
+    // Session already started (even if it's not literally in TC Live
+    // "live" status - not every organizer clicks "Go Live") - showing
+    // "Registration closes in Xh" as the headline once it's genuinely
+    // underway is misleading, no matter what the raw closesAt value
+    // says (this is exactly what a same-day closesAt defaulting to
+    // 23:59 caused: a 2-4pm session, checked at 3pm, said "Registration
+    // closes in 8h" instead of reflecting that it had already started).
+    if (startAt.getTime() <= now) {
+      if (endAt && endAt.getTime() > now) {
+        return { progressPercent: 50, progressLabel: `Ends in ${formatTimeUntil(endAt)}` };
+      }
+      return { progressPercent: 90, progressLabel: "Session time has passed" };
+    }
     const closesAt = session.registrationClosesAt ? new Date(session.registrationClosesAt) : null;
     if (closesAt && closesAt.getTime() > now) {
       return { progressPercent: 60, progressLabel: `Registration closes in ${formatTimeUntil(closesAt)}` };
     }
-    if (startAt.getTime() > now) {
-      return { progressPercent: 20, progressLabel: `Starts in ${formatTimeUntil(startAt)}` };
-    }
-    return { progressPercent: 40, progressLabel: "Registration open" };
+    // startAt > now is guaranteed here (the startAt <= now case already
+    // returned above), so this is always "hasn't started, registration
+    // already closed or was never set" - not a redundant check.
+    return { progressPercent: 20, progressLabel: `Starts in ${formatTimeUntil(startAt)}` };
   }
   return { progressPercent: 0, progressLabel: "" };
 }
@@ -114,10 +127,15 @@ const REGISTRATION_STATUS_TO_PLAYER_STATUS: Record<string, SessionPlayer["status
 /**
  * Maps a real registration (from GET /sessions/:id/registrations) to
  * the SessionPlayer shape the Players/Registration tab UI already
- * expects, so a real registration can be merged straight into the
- * existing mock "crowd" list without that UI needing to change.
- * Level/group/rating aren't modelled on a real registration yet, so
- * those get a neutral default rather than fabricated data.
+ * expects. Level now comes from the real player_profiles.skill_level
+ * (same toLevelLabel mapping the org-wide Players page already uses -
+ * see below), so it reflects whatever the player has actually set on
+ * their own profile and updates automatically the next time this list
+ * is fetched after they change it - there's no separate copy of it
+ * stored on the registration itself to go stale.
+ * Group/numeric rating still aren't modelled on a real registration -
+ * no grouping feature or rating pipeline exists yet, so those stay a
+ * neutral default rather than fabricated data.
  */
 export function toSessionPlayer(registration: RegistrationWithUser): SessionPlayer {
   return {
@@ -125,7 +143,7 @@ export function toSessionPlayer(registration: RegistrationWithUser): SessionPlay
     name: registration.userName,
     avatar: registration.userAvatar,
     level: 0,
-    levelLabel: "Social",
+    levelLabel: toLevelLabel(registration.userSkillLevel),
     group: null,
     status: REGISTRATION_STATUS_TO_PLAYER_STATUS[registration.status] ?? "registered",
     checkedIn: !!registration.checkedInAt,
@@ -133,6 +151,7 @@ export function toSessionPlayer(registration: RegistrationWithUser): SessionPlay
     joinedAt: new Date(registration.createdAt).toISOString(),
     isReal: true,
     slug: registration.userSlug,
+    role: registration.userRole,
   };
 }
 

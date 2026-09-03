@@ -616,7 +616,7 @@ export interface SessionPlayer {
   name: string;
   avatar: string | null;
   level: number;
-  levelLabel: "Advanced" | "Intermediate" | "Social";
+  levelLabel: "Advanced" | "Intermediate" | "Beginner" | "Social";
   group: "A" | "B" | "C" | null;
   status: "registered" | "waiting" | "cancelled" | "invited" | "no-response";
   checkedIn: boolean;
@@ -629,6 +629,7 @@ export interface SessionPlayer {
   // looks like without needing dozens of real test accounts to join.
   isReal?: boolean;
   slug?: string; // real player's profile slug, when isReal
+  role?: string; // real user's role ("player"/"coach"), when isReal - needed to build the right /player/ vs /coach/ profile link
 }
 
 function minutesAgo(minutes: number) {

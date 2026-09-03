@@ -710,9 +710,16 @@ function requireStagingEnv(_req: Request, res: Response, next: NextFunction) {
 }
 
 
+// Check-in itself is a normal, everyday Players-tab action (an
+// organizer marking who's physically arrived) - not staging-only TC
+// Live tooling, even though it's also used by the live engine.
+// requireStagingEnv deliberately NOT applied here (unlike go-live and
+// the rest of the TC Live routes below) - it was gating this
+// unintentionally until the regular Players tab started calling it
+// too, which would have made a completely ordinary check-in button
+// 404 outside staging.
 router.post(
   "/sessions/:id/checkin/:registrationId",
-  requireStagingEnv,
   requireAuth,
   requireOrganizer,
   requireOwnSession,
@@ -722,6 +729,41 @@ router.post(
       res.json(registration);
     } catch (error) {
       handleLiveEngineError(error, res, next);
+    }
+  }
+);
+
+// Players tab's "Remove" action - cancels this specific player's
+// registration. Same effect as the player cancelling their own spot
+// (DELETE /sessions/:id/join), just organizer-initiated.
+router.delete(
+  "/sessions/:id/registrations/:registrationId",
+  requireAuth,
+  requireOrganizer,
+  requireOwnSession,
+  async (req, res, next) => {
+    try {
+      const registration = await storage.cancelRegistrationById(req.params.registrationId);
+      res.json(registration);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Players tab's "Move to Waiting" action - an admin override moving an
+// already-registered player onto the waiting list.
+router.post(
+  "/sessions/:id/registrations/:registrationId/waitlist",
+  requireAuth,
+  requireOrganizer,
+  requireOwnSession,
+  async (req, res, next) => {
+    try {
+      const registration = await storage.moveRegistrationToWaitlist(req.params.registrationId);
+      res.json(registration);
+    } catch (error) {
+      next(error);
     }
   }
 );
