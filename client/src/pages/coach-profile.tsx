@@ -618,7 +618,6 @@ export default function CoachProfile() {
           const data = await res.json();
           setCoachUserId(data.user.id);
           setProfileIsOrganizer(!!data.user.isOrganizer);
-          console.log("Coach ID:", data.user.id);
 
           setProfile(prev => ({
             ...DEFAULT_COACH_PROFILE,
@@ -680,14 +679,6 @@ export default function CoachProfile() {
       console.log("Buy request for:", itemId);
     };  
    
-    console.log({
-      isAuthenticated,
-      role: user?.role,
-      userSlug: user?.slug,
-      profileSlug,
-      isOwnProfile,
-    });
-
   return (
     <>
       <SEO
