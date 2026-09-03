@@ -2258,7 +2258,13 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(tennisSessions.organizationId, organizationId),
           eq(tennisSessions.status, "published"),
-          gte(tennisSessions.startAt, new Date())
+          // A session currently in progress (started, hasn't ended)
+          // still belongs here - comparing against startAt alone
+          // dropped it the moment it started, well before it actually
+          // finished. endAt is nullable (older/manually-edited
+          // sessions), so this falls back to startAt only when there's
+          // no real end time to compare against.
+          sql`COALESCE(${tennisSessions.endAt}, ${tennisSessions.startAt}) >= ${new Date()}`
         )
       )
       .orderBy(asc(tennisSessions.startAt));
@@ -2545,9 +2551,14 @@ export class DatabaseStorage implements IStorage {
         userAvatar: users.avatar,
         userIsTestUser: users.isTestUser,
         userRole: users.role,
+        userSkillLevel: playerProfiles.skillLevel,
       })
       .from(registrations)
       .innerJoin(users, eq(registrations.userId, users.id))
+      // Left, not inner - a registrant with no player profile yet (e.g.
+      // signed up as a coach/organiser, or hasn't finished onboarding)
+      // still needs to show up here, just with userSkillLevel: null.
+      .leftJoin(playerProfiles, eq(playerProfiles.userId, registrations.userId))
       .where(eq(registrations.sessionId, sessionId))
       .orderBy(asc(registrations.createdAt));
 
@@ -2558,6 +2569,7 @@ export class DatabaseStorage implements IStorage {
       userAvatar: row.userAvatar,
       userIsTestUser: row.userIsTestUser,
       userRole: row.userRole,
+      userSkillLevel: row.userSkillLevel,
     }));
   }
 
@@ -2923,6 +2935,39 @@ export class DatabaseStorage implements IStorage {
     const [registration] = await db
       .update(registrations)
       .set({ checkedInAt: new Date() })
+      .where(eq(registrations.id, registrationId))
+      .returning();
+    if (!registration) throw new Error("Registration not found");
+    return registration;
+  }
+
+  // Organizer removing a specific player from their session - the
+  // Players tab's own "Remove" action (used to be a fake toast, no
+  // request ever sent). Same cancelled status a player's own
+  // self-service leaveSession sets, just organizer-initiated and
+  // looked up by registrationId directly rather than needing the
+  // player's own userId first.
+  async cancelRegistrationById(registrationId: string): Promise<Registration> {
+    const [registration] = await db
+      .update(registrations)
+      .set({ status: "cancelled" })
+      .where(eq(registrations.id, registrationId))
+      .returning();
+    if (!registration) throw new Error("Registration not found");
+    return registration;
+  }
+
+  // Organizer manually moving a registered player to the waiting list -
+  // an admin override (e.g. correcting a mistake, or freeing a spot for
+  // someone else) rather than the normal "session is full" path a new
+  // registration takes on its own. Deliberately simple: flips status
+  // only, no capacity/reordering logic - the existing waiting-list
+  // display already sorts by joinedAt, so this player just takes
+  // whatever position their (unchanged) original joinedAt puts them at.
+  async moveRegistrationToWaitlist(registrationId: string): Promise<Registration> {
+    const [registration] = await db
+      .update(registrations)
+      .set({ status: "waitlisted" })
       .where(eq(registrations.id, registrationId))
       .returning();
     if (!registration) throw new Error("Registration not found");

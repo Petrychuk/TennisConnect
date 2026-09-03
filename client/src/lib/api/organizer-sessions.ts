@@ -174,6 +174,16 @@ export async function checkInRegistration(sessionId: string, registrationId: str
   return res.json();
 }
 
+export async function removeRegistration(sessionId: string, registrationId: string): Promise<Registration> {
+  const res = await apiRequest("DELETE", `${BASE}/sessions/${sessionId}/registrations/${registrationId}`);
+  return res.json();
+}
+
+export async function moveRegistrationToWaitlist(sessionId: string, registrationId: string): Promise<Registration> {
+  const res = await apiRequest("POST", `${BASE}/sessions/${sessionId}/registrations/${registrationId}/waitlist`);
+  return res.json();
+}
+
 export async function setRegistrationLiveStatus(
   sessionId: string,
   registrationId: string,

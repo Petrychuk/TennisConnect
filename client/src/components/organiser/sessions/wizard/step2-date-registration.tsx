@@ -209,21 +209,41 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
 
       <SectionCard icon={ClipboardList} title="Registration">
         <Field label="Opens">
-          <Input
-            type="date"
-            value={draft.registrationOpens}
-            onChange={(e) => onChange("registrationOpens", e.target.value)}
-            data-testid="organiser-wizard-registration-opens"
-          />
+          <div className="flex gap-2">
+            <Input
+              type="date"
+              value={draft.registrationOpens}
+              onChange={(e) => onChange("registrationOpens", e.target.value)}
+              className="flex-1"
+              data-testid="organiser-wizard-registration-opens"
+            />
+            <Input
+              type="time"
+              value={draft.registrationOpensTime}
+              onChange={(e) => onChange("registrationOpensTime", e.target.value)}
+              className="w-28 shrink-0"
+              data-testid="organiser-wizard-registration-opens-time"
+            />
+          </div>
         </Field>
         <Field label="Closes">
-          <Input
-            type="date"
-            value={draft.registrationCloses}
-            max={draft.date || undefined}
-            onChange={(e) => onChange("registrationCloses", e.target.value)}
-            data-testid="organiser-wizard-registration-closes"
-          />
+          <div className="flex gap-2">
+            <Input
+              type="date"
+              value={draft.registrationCloses}
+              max={draft.date || undefined}
+              onChange={(e) => onChange("registrationCloses", e.target.value)}
+              className="flex-1"
+              data-testid="organiser-wizard-registration-closes"
+            />
+            <Input
+              type="time"
+              value={draft.registrationClosesTime}
+              onChange={(e) => onChange("registrationClosesTime", e.target.value)}
+              className="w-28 shrink-0"
+              data-testid="organiser-wizard-registration-closes-time"
+            />
+          </div>
           {draft.date && draft.registrationCloses > draft.date && (
             <p className="text-xs text-destructive" data-testid="organiser-wizard-registration-closes-error">
               Registration can't close after the session date.

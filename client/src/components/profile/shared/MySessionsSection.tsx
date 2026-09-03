@@ -98,7 +98,19 @@ export function MySessionsSection({ isOwnProfile, isAuthenticated, sessionTypes,
     .filter((s) => !("hasDivisions" in s) || !s.hasDivisions)
     .filter((s) => !sessionTypes || sessionTypes.includes(s.type))
     .filter((s) => !excludeTypes || !excludeTypes.includes(s.type))
-    .filter((s) => (timeframe === "upcoming" ? new Date(s.startAt).getTime() > now : new Date(s.startAt).getTime() <= now))
+    // A session that's currently in progress (started, hasn't ended)
+    // needs to still count as "upcoming", not fall into the gap
+    // between the two tabs - comparing against startAt alone meant a
+    // session running 2:00-4:00 PM, checked at 3:25 PM, was neither:
+    // startAt (2:00) is no longer > now, so it failed "upcoming", but
+    // it also isn't really "past" yet since it won't finish until 4:00.
+    // endAt is nullable (some older/manually-edited sessions never got
+    // one) - falls back to startAt's own instant when missing, same as
+    // the previous behavior for those.
+    .filter((s) => {
+      const boundary = new Date(s.endAt ?? s.startAt).getTime();
+      return timeframe === "upcoming" ? boundary > now : boundary <= now;
+    })
     .sort((a, b) =>
       timeframe === "upcoming"
         ? new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
