@@ -17,6 +17,17 @@ let refreshing: Promise<void> | null = null;
 const CACHE_MS = 10 * 60 * 1000; // 10 minutes — plenty fresh for a header widget
 const FETCH_TIMEOUT_MS = 8000;
 
+// Reads `cache` through a function rather than referencing the module
+// variable directly. TypeScript's narrowing of a `let` doesn't get
+// invalidated by an intervening `await` on a call that reassigns it
+// (a known TS control-flow limitation), so a direct `if (cache)` after
+// an earlier `if (cache) return` + `await refreshCache()` gets wrongly
+// narrowed to `never`. Going through a function call sidesteps that -
+// each call re-reads the current value with its declared type.
+function getCache(): CachedWeather | null {
+  return cache;
+}
+
 // Talks to Open-Meteo and updates `cache` on success. Never throws -
 // callers don't need to handle failure, they just keep whatever was
 // in `cache` before (possibly nothing, possibly stale).
@@ -78,7 +89,8 @@ setInterval(() => void triggerRefresh(), CACHE_MS);
 
 // GET /api/weather/sydney -> { temperature: number, weatherCode: number }
 router.get("/sydney", async (_req, res) => {
-  const isStale = !cache || Date.now() - cache.fetchedAt >= CACHE_MS;
+  const cached = getCache();
+  const isStale = !cached || Date.now() - cached.fetchedAt >= CACHE_MS;
 
   if (isStale) {
     // Stale-while-revalidate: kick a refresh off in the background,
@@ -86,19 +98,20 @@ router.get("/sydney", async (_req, res) => {
     void triggerRefresh();
   }
 
-  if (cache) {
+  if (cached) {
     // Fresh or briefly stale, always served from memory - a slightly
     // old temperature beats a blank widget, and either way this
     // never blocks on the network.
-    return res.json({ temperature: cache.temperature, weatherCode: cache.weatherCode });
+    return res.json({ temperature: cached.temperature, weatherCode: cached.weatherCode });
   }
 
   // Only reachable in the first moments after boot, before the
   // startup warm-up above has resolved for the first time.
   await triggerRefresh();
 
-  if (cache) {
-    return res.json({ temperature: cache.temperature, weatherCode: cache.weatherCode });
+  const refreshed = getCache();
+  if (refreshed) {
+    return res.json({ temperature: refreshed.temperature, weatherCode: refreshed.weatherCode });
   }
 
   res.status(503).json({ message: "Weather unavailable" });
