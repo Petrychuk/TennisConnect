@@ -19,6 +19,7 @@ import { Link } from "wouter";
 import SEO from "@/components/seo";
 import { quickMessageSchema } from "@/lib/validations/messages";
 import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.webp";
+import { resolveAvatarUrl } from "@/lib/defaultAvatar";
 
 interface PartnerData {
     id: string;
@@ -134,14 +135,12 @@ export default function PartnersPage() {
         name: p.name ?? "Demo Player",
         location: p.location ?? "Sydney",
         skillLevel: p.skillLevel ?? "Beginner",
-        avatar: p.avatar,
+        avatar: resolveAvatarUrl(p.avatar),
         available: p.available ?? true,
         bio: p.bio ?? "",
         isDemo: true,
         isOrganizer: false,
       }));
-  const DEFAULT_AVATAR ="";
-  
   const normalizeApiPlayers = (data: any[]): PartnerData[] =>
     data.map((item) => ({
       id: item.id,
@@ -150,10 +149,9 @@ export default function PartnersPage() {
       name: item.name,
       location: item.location ?? "Sydney",
       skillLevel: item.skillLevel ?? "Beginner",
-      avatar:
-        item.avatar 
-        ? `${item.avatar}?t=${item.updatedAt ?? Date.now()}`
-      : DEFAULT_AVATAR,
+      avatar: resolveAvatarUrl(
+        item.avatar ? `${item.avatar}?t=${item.updatedAt ?? Date.now()}` : null
+      ),
       available: true,
       bio: item.bio ?? "",
       isDemo: false,
@@ -502,7 +500,7 @@ export default function PartnersPage() {
                     <img
                       src={
                         isMe && user?.avatar
-                          ? user.avatar
+                          ? resolveAvatarUrl(user.avatar)
                           : partner.avatar
                       }
                       alt={partner.name}
