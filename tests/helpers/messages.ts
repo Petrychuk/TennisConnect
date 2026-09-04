@@ -1,4 +1,5 @@
 import { expect, Page } from '@playwright/test';
+import { login, logout } from './auth';
 
 // ---------- Send via profile "Contact" tab ----------
 
@@ -36,4 +37,50 @@ export async function sendContactMessage(
   ]);
 
   return response;
+}
+
+// ---------- Service-message setup ----------
+
+// The current session's own user id - needed wherever a test has to
+// name itself as a message recipient (e.g. inviting "this user" to a
+// community) without the test file reaching into fixture internals to
+// get it.
+export async function getMyUserId(page: Page): Promise<string> {
+  const res = await page.request.get('/api/auth/me');
+  const me = await res.json();
+  return me.id;
+}
+
+// Same recipe as MSG-007 (admin grants organiser access via the admin
+// panel), extracted here since the service-message tests need it more
+// than once (organizer-approval message itself, plus every test that
+// needs an organiser to send a community/session invite from). Logs
+// the admin in, grants access, logs back out - the caller logs in as
+// whoever they need next.
+export async function grantOrganizerAccess(
+  page: Page,
+  adminEmail: string,
+  adminPassword: string,
+  organiserEmail: string
+) {
+  await login(page, adminEmail, adminPassword);
+  await page.goto('/admin');
+  await page.getByTestId('admin-tab-users').click();
+
+  const row = page.locator('tr', {
+    has: page.getByText(organiserEmail, { exact: true }),
+  });
+
+  await row.getByTitle('Grant Organiser Access').click();
+
+  await Promise.all([
+    page.waitForResponse(
+      response =>
+        /\/api\/admin\/users\/.+\/grant-organizer$/.test(response.url()) &&
+        response.request().method() === 'PATCH'
+    ),
+    page.getByTestId('user-action-confirm').click(),
+  ]);
+
+  await logout(page);
 }
