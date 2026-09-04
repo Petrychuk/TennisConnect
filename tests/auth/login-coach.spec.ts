@@ -9,7 +9,7 @@ import {
   completeCoachProfile,
 } from '../helpers/profile';
 
-test('AUTH-004 Login - Coach', async ({ page }) => {
+test('@smoke AUTH-004 Login - Coach', async ({ page }) => {
 
   const coach = await registerCoach(page);
 
