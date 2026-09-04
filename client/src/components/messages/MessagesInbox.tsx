@@ -32,6 +32,15 @@ interface Message {
   subject: string | null;
   senderAvatar?: string | null;
 
+  // Who a conversation-LIST row is "with" - always the other
+  // participant, even when the current user sent the most recent
+  // message in the thread. Only present on rows from
+  // /api/messages/conversations; individual message bubbles inside an
+  // open thread keep using senderName/senderAvatar, which correctly
+  // describe who sent that specific message.
+  otherPartyName?: string;
+  otherPartyAvatar?: string | null;
+
   content: string;
   isRead: boolean;
   createdAt: string;
@@ -40,6 +49,19 @@ interface Message {
   relatedSessionId?: string | null;
   relatedOrganizationId?: string | null;
   actionStatus?: "pending" | "accepted" | "declined" | null;
+}
+
+// A conversation-list row (or the detail header above an open thread)
+// should always show the OTHER participant, whether the current
+// viewer sent the most recent message in it or received it - senderName/
+// senderAvatar alone would show the viewer's own identity for a
+// conversation they started that hasn't been replied to yet. Falls
+// back to sender fields for rows from before otherParty existed.
+function conversationPartner(message: Message) {
+  return {
+    name: message.otherPartyName ?? message.senderName,
+    avatar: message.otherPartyAvatar ?? message.senderAvatar,
+  };
 }
 
 // The actual inbox+conversation UI, shared between the standalone
@@ -480,7 +502,9 @@ export function MessagesInbox() {
                     
                     <div className="p-2">
                       <AnimatePresence>
-                        {uniqueConversations.map((message) => (
+                        {uniqueConversations.map((message) => {
+                          const partner = conversationPartner(message);
+                          return (
                           <motion.div
                             key={message.conversationId || message.id}
                             animate={{ opacity: 1, x: 0 }}
@@ -517,7 +541,7 @@ export function MessagesInbox() {
                               <div className="flex items-start gap-3">
                                 <Avatar className="h-10 w-10 shrink-0 border">
                                   <AvatarImage
-                                    src={message.senderAvatar || undefined}
+                                    src={partner.avatar || undefined}
                                   />
 
                                   <AvatarFallback
@@ -527,7 +551,7 @@ export function MessagesInbox() {
                                         : "bg-primary/10 text-primary"
                                     }
                                   >
-                                    {message.senderName?.[0]}
+                                    {partner.name?.[0]}
                                   </AvatarFallback>
                                 </Avatar>
 
@@ -543,7 +567,7 @@ export function MessagesInbox() {
                                         }
                                       `}
                                     >
-                                      {message.senderName}
+                                      {partner.name}
                                     </p>
 
                                     {!message.isRead && (
@@ -566,7 +590,8 @@ export function MessagesInbox() {
                               </div>
                             </button>
                           </motion.div>
-                        ))}
+                          );
+                        })}
                       </AnimatePresence>
                     </div>
                   </ScrollArea>
@@ -576,6 +601,22 @@ export function MessagesInbox() {
               {(mobileView === "chat" || window.innerWidth >= 1024) && (
                 <Card className="lg:col-span-2">
                   {selectedMessage ? (
+                    (() => {
+                      // The representative row (selectedMessage) might be
+                      // one the current viewer sent themselves - its
+                      // senderEmail/senderPhone would then be the
+                      // viewer's own contact info, not the other
+                      // person's. Look through the actually-loaded
+                      // thread for a message the other person sent, and
+                      // use their contact info from that instead. If
+                      // nobody's replied yet, there simply isn't one.
+                      const otherPartyMessage = conversation.find(
+                        (m) => m.senderUserId !== user?.id
+                      );
+                      const otherPartyEmail = otherPartyMessage?.senderEmail;
+                      const otherPartyPhone = otherPartyMessage?.senderPhone;
+
+                      return (
                     <>
                       <CardHeader className="pb-2">
                         <div className="flex items-start justify-between gap-2 min-w-0">
@@ -592,17 +633,19 @@ export function MessagesInbox() {
                             </Button>
                             <Avatar className="h-10 w-10 lg:h-12 lg:w-12 shrink-0">
                               <AvatarImage
-                                src={selectedMessage.senderAvatar || undefined}
+                                src={conversationPartner(selectedMessage).avatar || undefined}
                               />
                               <AvatarFallback className="bg-primary/10 text-primary">
-                                {selectedMessage.senderName?.[0]}
+                                {conversationPartner(selectedMessage).name?.[0]}
                               </AvatarFallback>
                             </Avatar>
                             <div className="min-w-0">
-                              <CardTitle className="text-lg truncate">{selectedMessage.senderName}</CardTitle>
-                              <p className="text-sm text-muted-foreground truncate">{selectedMessage.senderEmail}</p>
-                              {selectedMessage.senderPhone && (
-                                <p className="text-sm text-muted-foreground truncate">{selectedMessage.senderPhone}</p>
+                              <CardTitle className="text-lg truncate">{conversationPartner(selectedMessage).name}</CardTitle>
+                              {otherPartyEmail && (
+                                <p className="text-sm text-muted-foreground truncate">{otherPartyEmail}</p>
+                              )}
+                              {otherPartyPhone && (
+                                <p className="text-sm text-muted-foreground truncate">{otherPartyPhone}</p>
                               )}
                             </div>
                           </div>
@@ -749,18 +792,20 @@ export function MessagesInbox() {
                               Reply
                             </Button>
 
-                            <Button
-                              variant="outline"
-                              className="flex-1 md:flex-none md:min-w-[160px] px-2 md:px-6"
-                              onClick={() => {
-                                window.location.href = `mailto:${selectedMessage.senderEmail}`;
-                              }}
-                              data-testid="button-reply-email"
-                            >
-                              <Mail className="w-4 h-4 mr-2 shrink-0" />
-                              <span className="md:hidden">Email</span>
-                              <span className="hidden md:inline">Reply via Email</span>
-                            </Button>
+                            {otherPartyEmail && (
+                              <Button
+                                variant="outline"
+                                className="flex-1 md:flex-none md:min-w-[160px] px-2 md:px-6"
+                                onClick={() => {
+                                  window.location.href = `mailto:${otherPartyEmail}`;
+                                }}
+                                data-testid="button-reply-email"
+                              >
+                                <Mail className="w-4 h-4 mr-2 shrink-0" />
+                                <span className="md:hidden">Email</span>
+                                <span className="hidden md:inline">Reply via Email</span>
+                              </Button>
+                            )}
                           </div>
                         )}
                         {showReplyForm && (
@@ -807,6 +852,8 @@ export function MessagesInbox() {
                         )}
                       </CardContent>
                     </>
+                      );
+                    })()
                   ) : (
                     <CardContent className="flex items-center justify-center h-[500px]">
                       <div className="text-center text-muted-foreground">
