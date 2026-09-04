@@ -19,7 +19,7 @@ import { Link } from "wouter";
 import SEO from "@/components/seo";
 import { quickMessageSchema } from "@/lib/validations/messages";
 import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.webp";
-import { resolveAvatarUrl } from "@/lib/defaultAvatar";
+import { resolveAvatarUrl, DEFAULT_AVATAR_URL, DEFAULT_AVATAR_ALT } from "@/lib/defaultAvatar";
 
 interface PartnerData {
     id: string;
@@ -503,7 +503,11 @@ export default function PartnersPage() {
                           ? resolveAvatarUrl(user.avatar)
                           : partner.avatar
                       }
-                      alt={partner.name}
+                      alt={
+                        partner.avatar === DEFAULT_AVATAR_URL
+                          ? DEFAULT_AVATAR_ALT
+                          : partner.name
+                      }
                       loading="lazy"
                       className="
                         w-full

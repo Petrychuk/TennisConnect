@@ -1,7 +1,7 @@
 import { Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { DEFAULT_AVATAR_URL } from "@/lib/defaultAvatar";
+import { DEFAULT_AVATAR_URL, resolveAvatarAlt } from "@/lib/defaultAvatar";
 
 interface ProfileAvatarProps {
   avatar?: string | null;
@@ -44,7 +44,7 @@ export function ProfileAvatar({
           everywhere, not just here. */}
       <img
         src={avatar || DEFAULT_AVATAR_URL}
-        alt={name}
+        alt={resolveAvatarAlt(avatar, name)}
         className={cn(AVATAR_SIZE_CLASSES, "object-cover bg-white")}
         data-testid={avatar ? "profile-avatar" : "profile-avatar-initials"}
       />
