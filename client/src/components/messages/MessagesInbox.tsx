@@ -64,6 +64,21 @@ function conversationPartner(message: Message) {
   };
 }
 
+// The stored avatar URL doesn't change when someone re-uploads their
+// photo (it's the same file path, just new bytes behind it - see the
+// upload flow's own note about this), so the browser can keep serving
+// whatever it cached for that URL from before the change. Other pages
+// (the players/coaches listing) already work around this with a fresh
+// cache-buster on every fetch; messaging polls every 3s though, so
+// busting on every render/poll would re-download every visible
+// avatar that often. One timestamp captured when the inbox mounts is
+// enough to guarantee a reload picks up a since-changed avatar,
+// without re-fetching on every 3s poll in between.
+function useAvatarCacheBust() {
+  const stamp = useRef(Date.now()).current;
+  return (avatar?: string | null) => (avatar ? `${avatar}?t=${stamp}` : undefined);
+}
+
 // The actual inbox+conversation UI, shared between the standalone
 // /messages page (wrapped in Navbar/Footer) and the Organiser Hub's
 // own /organiser/messages (wrapped in the Hub's own dark sidebar
@@ -77,6 +92,7 @@ export function MessagesInbox() {
   const { user, isAuthenticated, loading: authLoading, } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const withCacheBust = useAvatarCacheBust();
   
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyContent, setReplyContent] = useState("");
@@ -541,7 +557,7 @@ export function MessagesInbox() {
                               <div className="flex items-start gap-3">
                                 <Avatar className="h-10 w-10 shrink-0 border">
                                   <AvatarImage
-                                    src={partner.avatar || undefined}
+                                    src={withCacheBust(partner.avatar)}
                                   />
 
                                   <AvatarFallback
@@ -633,7 +649,7 @@ export function MessagesInbox() {
                             </Button>
                             <Avatar className="h-10 w-10 lg:h-12 lg:w-12 shrink-0">
                               <AvatarImage
-                                src={conversationPartner(selectedMessage).avatar || undefined}
+                                src={withCacheBust(conversationPartner(selectedMessage).avatar)}
                               />
                               <AvatarFallback className="bg-primary/10 text-primary">
                                 {conversationPartner(selectedMessage).name?.[0]}
@@ -683,7 +699,7 @@ export function MessagesInbox() {
                               <div key={msg.id} className="flex gap-3 w-full">
                                 <Avatar className="h-10 w-10 shrink-0 ml-1">
                                   <AvatarImage
-                                    src={msg.senderAvatar || undefined}
+                                    src={withCacheBust(msg.senderAvatar)}
                                     alt={msg.senderName}
                                   />
                                   <AvatarFallback className="bg-primary/10 text-primary">
