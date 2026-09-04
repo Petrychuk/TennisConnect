@@ -14,7 +14,7 @@ import supportRoutes from "./routes/supportRoutes";
 import newsletterRoutes from "./routes/newsletter";
 import playersRouter from "./routes/players";
 import coachesRouter from "./routes/coaches";
-import { sendSystemMessage, sendMessageBetween, ORGANIZER_APPROVED_SUBJECT, ORGANIZER_APPROVED_MESSAGE } from "./services/systemMessages";
+import { sendSystemMessage, sendMessageBetween, pairConversationId, ORGANIZER_APPROVED_SUBJECT, ORGANIZER_APPROVED_MESSAGE } from "./services/systemMessages";
 import uploadContentRouter from "./routes/upload-content";
 import organizerRouter from "./routes/organizer";
 import weatherRouter from "./routes/weather";
@@ -1165,12 +1165,22 @@ export async function registerRoutes(app: Express): Promise<void> {
         });
       }
 
-      // Ищем существующую переписку между пользователями
-      const existingConversation =
-        await storage.findConversationBetweenUsers(
-          req.user!.id,
-          result.data.recipientId
-        );
+      // Reuse whatever conversationId this pair already has - however
+      // it was assigned, including from before this fix - so someone
+      // you already have a thread with never splits into a second tab
+      // just because you're sending the next message after this
+      // patch went in. Only a genuinely first-ever message between
+      // this pair falls back to the deterministic pairConversationId
+      // (same scheme sendMessageBetween/invitations already use), so
+      // a regular message and a later invite between two new people
+      // still land in one thread instead of two.
+      const existingConversation = await storage.findConversationBetweenUsers(
+        req.user!.id,
+        result.data.recipientId
+      );
+      const conversationId =
+        existingConversation?.conversationId ||
+        pairConversationId(req.user!.id, result.data.recipientId);
 
       // Создаем сообщение
       const message = await storage.createMessage({
@@ -1179,8 +1189,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
         parentMessageId: null,
 
-        conversationId:
-          existingConversation?.conversationId || null,
+        conversationId,
 
         subject: result.data.subject,
         content: result.data.content,
@@ -1190,17 +1199,6 @@ export async function registerRoutes(app: Express): Promise<void> {
         senderEmail: req.user!.email,
         senderPhone: result.data.phone,
       });
-
-      // Если это первая переписка —
-      // создаем conversationId = id первого сообщения
-      if (!existingConversation) {
-        await storage.updateMessageConversation(
-          message.id,
-          message.id
-        );
-
-        message.conversationId = message.id;
-      }
 
       res.json(message);
 
@@ -1300,15 +1298,35 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // Delete message (requires auth + ownership)
+  // Delete message (requires auth + being a participant - sender or
+  // recipient - in it)
   app.delete("/api/messages/:id", requireAuth, async (req, res, next) => {
     try {
       const existingMessage = await storage.getMessageById(req.params.id);
-      if (!existingMessage || existingMessage.recipientId !== req.user!.id) {
+      if (!existingMessage) {
+        return res.status(404).json({ message: "Message not found" });
+      }
+      const isParticipant =
+        existingMessage.recipientId === req.user!.id ||
+        existingMessage.senderUserId === req.user!.id;
+      if (!isParticipant) {
         return res.status(403).json({ message: "Forbidden" });
       }
-      await storage.deleteMessage(req.params.id);
-      res.json({ message: "Message deleted" });
+
+      // The inbox always deletes by conversation, not by this one
+      // representative message - otherwise the earlier messages in
+      // the thread stay behind and the "deleted" conversation comes
+      // right back the next time the inbox refetches. conversationId
+      // should always be set (every message gets one on creation),
+      // but fall back to deleting just this row for any pre-existing
+      // message that predates that guarantee.
+      if (existingMessage.conversationId) {
+        await storage.deleteConversation(existingMessage.conversationId);
+      } else {
+        await storage.deleteMessage(req.params.id);
+      }
+
+      res.json({ message: "Conversation deleted" });
     } catch (error: any) {
       next(error);
     }
@@ -1385,13 +1403,43 @@ export async function registerRoutes(app: Express): Promise<void> {
             message: "Original message not found",
           });
         }
-        
+
+        // Was missing entirely before - anyone authenticated could
+        // pass any message id and inject a reply into a conversation
+        // they aren't part of.
+        const isParticipant =
+          originalMessage.recipientId === req.user!.id ||
+          originalMessage.senderUserId === req.user!.id;
+        if (!isParticipant) {
+          return res.status(403).json({ message: "Forbidden" });
+        }
+
+        // Reply always used to go to originalMessage.senderUserId -
+        // correct when replying to a message you received, but wrong
+        // the moment a conversation the current user themselves
+        // started (and nobody had replied to yet) could be the
+        // "original" message: that message's senderUserId is the
+        // current user, so this would send the reply to themselves.
+        // Direction now follows whichever side of the row isn't the
+        // current user.
+        const iSentOriginal = originalMessage.senderUserId === req.user!.id;
+
+        const replyRecipientId = iSentOriginal
+          ? originalMessage.recipientId
+          : originalMessage.senderUserId;
+
         // ✅ Проверяем что можно ответить
-        if (!originalMessage.senderUserId) {
+        if (!replyRecipientId) {
           return res.status(400).json({
             message: "Cannot reply to this message",
           });
         }
+
+        const replyRecipientType = iSentOriginal
+          ? originalMessage.recipientType
+          : originalMessage.recipientType === "coach"
+            ? "player"
+            : "coach";
         
         const conversationId =
           originalMessage.conversationId ||
@@ -1401,11 +1449,8 @@ export async function registerRoutes(app: Express): Promise<void> {
           parentMessageId: originalMessage.id,
           conversationId,
   
-          recipientId: originalMessage.senderUserId!,
-          recipientType:
-            originalMessage.recipientType === "coach"
-              ? "player"
-              : "coach",
+          recipientId: replyRecipientId,
+          recipientType: replyRecipientType,
   
           senderUserId: req.user!.id,
           senderName: req.user!.name,

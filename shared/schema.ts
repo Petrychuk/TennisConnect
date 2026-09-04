@@ -1069,6 +1069,14 @@ export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
 export type MessageWithAvatar = Message & {
   senderAvatar?: string | null;
+  // Who a conversation-list row should say it's "with" - the other
+  // participant, regardless of whether they or the current viewer
+  // sent the most recent message in the thread. Only populated by
+  // getUserConversations(); undefined everywhere else (senderName/
+  // senderAvatar already correctly identify "who sent this message"
+  // for message-bubble rendering, which needs no such override).
+  otherPartyName?: string;
+  otherPartyAvatar?: string | null;
 };
 
 export type SupportRequest = typeof supportRequests.$inferSelect;
