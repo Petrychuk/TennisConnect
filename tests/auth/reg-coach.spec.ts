@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { registerCoach } from '../helpers/auth';
 import { completeCoachProfile } from '../helpers/profile';
 
-test('AUTH-002 Registration - Coach', async ({ page }) => {
+test('@smoke REG-002 Coach can register', async ({ page }) => {
 
   await registerCoach(page);
 

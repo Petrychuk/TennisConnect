@@ -38,7 +38,7 @@ export default defineConfig({
      remote server (BASE_URL set, e.g. staging) default back to 4, since
      that server's resources aren't your laptop's. Override either way
      with --workers=N. */
-  workers: process.env.CI ? 1 : (process.env.BASE_URL ? 4 : 1),
+  workers: process.env.CI ? 1 : 1,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */

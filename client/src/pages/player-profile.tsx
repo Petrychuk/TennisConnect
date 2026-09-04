@@ -178,14 +178,25 @@ export default function PlayerProfile() {
 
           const data = await res.json();
 
+          // The stored avatar/cover URL already has its own cache-buster
+          // baked in from upload time (server/routes/uploadMedia.ts's
+          // urlWithCacheBuster) - the upload path there is fixed
+          // (players/<id>/avatar.webp, not a fresh filename per upload),
+          // so a NEW upload needs a NEW query string for the browser to
+          // notice it changed, and the server already does exactly
+          // that once, at upload time. Appending ANOTHER ?t=Date.now()
+          // here on every single page load defeated that: the URL
+          // became different on every render, so the browser could
+          // never cache the image at all, even when it hadn't
+          // actually changed since the last visit. Using the stored
+          // URL as-is lets the browser cache it normally between
+          // visits, while still busting the cache correctly the
+          // moment a real new upload happens (a new value arrives from
+          // the server, not a client-invented one).
           const normalizedUser = {
             ...data.user,
-            avatar: data.user.avatar
-              ? `${data.user.avatar}?t=${Date.now()}`
-              : null,
-            cover: data.user.cover
-              ? `${data.user.cover}?t=${Date.now()}`
-              : null,
+            avatar: data.user.avatar || null,
+            cover: data.user.cover || null,
           };
 
           setProfile({
@@ -210,22 +221,20 @@ export default function PlayerProfile() {
           setProfileIsOrganizer(!!data.user.isOrganizer);
           setPlayerUserId(data.user.id);
 
-          /* ===== PUBLIC TOURNAMENTS ===== */
-          const tournamentsRes = await fetch(
-            `/api/profile/tournament-history?userId=${data.user.id}`
-          );
+          /* ===== PUBLIC TOURNAMENTS + MARKETPLACE (parallel - neither
+             depends on the other, only on data.user.id from the fetch
+             above, but they were previously awaited one after another,
+             tripling this part of the wait for no reason) ===== */
+          const [tournamentsRes, marketplaceRes] = await Promise.all([
+            fetch(`/api/profile/tournament-history?userId=${data.user.id}`),
+            fetch(`/api/profile/marketplace/public/${data.user.id}`),
+          ]);
           if (!tournamentsRes.ok) {
             console.error("❌ tournaments fetch failed", tournamentsRes.status);
           } else {
             const tournamentsData = await tournamentsRes.json();
-            console.log("✅ PUBLIC TOURNAMENTS:", tournamentsData);
             setTournaments(tournamentsData);
           }
-
-          /* ===== PUBLIC MARKETPLACE ===== */
-          const marketplaceRes = await fetch(
-            `/api/profile/marketplace/public/${data.user.id}`
-          );
           if (marketplaceRes.ok) {
             setMarketplaceItems(await marketplaceRes.json());
           }
@@ -256,38 +265,6 @@ export default function PlayerProfile() {
       loadPublicProfile();
     }, [profileSlug]);
       
-    useEffect(() => {
-      if (!isOwnProfile) return;
-
-      const loadPrivateData = async () => {
-        try {
-          const res = await fetch("/api/me/player-profile", {
-            credentials: "include",
-          });
-
-          if (res.ok) {
-            const data = await res.json();
-
-            setProfileData(data);
-
-            setProfile(prev => ({
-              ...prev,
-              location: data.location,
-              age: data.age,
-              country: data.country,
-              skillLevel: data.skillLevel,
-              bio: data.bio,
-              preferredCourts: data.preferredCourts,
-            }));
-          }
-        } catch (e) {
-          console.error("Private data load failed", e);
-        }
-      };
-
-      loadPrivateData();
-    }, [isOwnProfile]);
-
   const handleContactSubmit = async () => {
     const validation = messageSchema.safeParse({
       subject: contactSubject,
