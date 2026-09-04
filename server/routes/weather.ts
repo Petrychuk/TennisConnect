@@ -13,29 +13,20 @@ interface CachedWeather {
 }
 
 let cache: CachedWeather | null = null;
+let refreshing: Promise<void> | null = null;
 const CACHE_MS = 10 * 60 * 1000; // 10 minutes — plenty fresh for a header widget
+const FETCH_TIMEOUT_MS = 8000;
 
-// GET /api/weather/sydney -> { temperature: number, weatherCode: number }
-router.get("/sydney", async (_req, res) => {
+// Talks to Open-Meteo and updates `cache` on success. Never throws -
+// callers don't need to handle failure, they just keep whatever was
+// in `cache` before (possibly nothing, possibly stale).
+async function refreshCache(): Promise<void> {
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${SYDNEY_LAT}&longitude=${SYDNEY_LON}&current=temperature_2m,weather_code&timezone=Australia%2FSydney`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
   try {
-    if (cache && Date.now() - cache.fetchedAt < CACHE_MS) {
-      return res.json({ temperature: cache.temperature, weatherCode: cache.weatherCode });
-    }
-
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${SYDNEY_LAT}&longitude=${SYDNEY_LON}&current=temperature_2m,weather_code&timezone=Australia%2FSydney`;
-    const controller = new AbortController();
-    // Same reasoning as emailService.ts/telegramService.ts - previously
-    // no ceiling at all, so a slow Open-Meteo response would hold this
-    // request open indefinitely instead of falling through to the
-    // stale-cache fallback below, which is the whole point of having it.
-    const timeout = setTimeout(() => controller.abort(), 8000);
-    let response: Response;
-    try {
-      response = await fetch(url, { signal: controller.signal });
-    } finally {
-      clearTimeout(timeout);
-    }
-
+    const response = await fetch(url, { signal: controller.signal });
     if (!response.ok) {
       throw new Error(`Open-Meteo responded ${response.status}`);
     }
@@ -49,15 +40,68 @@ router.get("/sydney", async (_req, res) => {
     }
 
     cache = { temperature, weatherCode, fetchedAt: Date.now() };
-    res.json({ temperature, weatherCode });
   } catch (error) {
-    // If we have any cached value, even a stale one, prefer it over a
-    // broken widget — a slightly old temperature is fine, a blank one isn't.
-    if (cache) {
-      return res.json({ temperature: cache.temperature, weatherCode: cache.weatherCode });
-    }
-    res.status(503).json({ message: "Weather unavailable" });
+    // Leave whatever's already in `cache` alone - a failed refresh
+    // shouldn't wipe out the last good reading. Logged, not thrown:
+    // this runs in the background, there's no request to fail here.
+    console.error(
+      "[weather] refresh failed:",
+      error instanceof Error ? error.message : error
+    );
+  } finally {
+    clearTimeout(timeout);
   }
+}
+
+// De-dupes concurrent refresh attempts (startup warm-up, the
+// interval, and any request that notices a stale cache can all call
+// this around the same time) down to a single in-flight fetch.
+function triggerRefresh(): Promise<void> {
+  if (!refreshing) {
+    refreshing = refreshCache().finally(() => {
+      refreshing = null;
+    });
+  }
+  return refreshing;
+}
+
+// Warm the cache as soon as the server boots, then keep it warm on a
+// timer, so requests read from memory instead of waiting on
+// Open-Meteo. This is what actually fixes the
+// "[SLOW REQUEST] ... /api/weather/sydney ... 8014ms" pattern: before
+// this, every request that landed on an expired (or never-populated)
+// cache paid the full network round trip - and the full 8s timeout
+// whenever Open-Meteo was slow or unreachable - before the client saw
+// a response.
+void triggerRefresh();
+setInterval(() => void triggerRefresh(), CACHE_MS);
+
+// GET /api/weather/sydney -> { temperature: number, weatherCode: number }
+router.get("/sydney", async (_req, res) => {
+  const isStale = !cache || Date.now() - cache.fetchedAt >= CACHE_MS;
+
+  if (isStale) {
+    // Stale-while-revalidate: kick a refresh off in the background,
+    // but this request doesn't wait on it.
+    void triggerRefresh();
+  }
+
+  if (cache) {
+    // Fresh or briefly stale, always served from memory - a slightly
+    // old temperature beats a blank widget, and either way this
+    // never blocks on the network.
+    return res.json({ temperature: cache.temperature, weatherCode: cache.weatherCode });
+  }
+
+  // Only reachable in the first moments after boot, before the
+  // startup warm-up above has resolved for the first time.
+  await triggerRefresh();
+
+  if (cache) {
+    return res.json({ temperature: cache.temperature, weatherCode: cache.weatherCode });
+  }
+
+  res.status(503).json({ message: "Weather unavailable" });
 });
 
 export default router;

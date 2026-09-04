@@ -1,0 +1,16 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Default profile photo">
+  <defs>
+    <clipPath id="avatarCircleClip">
+      <circle cx="100" cy="100" r="100" />
+    </clipPath>
+  </defs>
+
+  <!-- Pale lime background, matches the app's --accent tint -->
+  <circle cx="100" cy="100" r="100" fill="#F2FCD9" />
+
+  <!-- Person silhouette, clipped so the shoulders never poke past the circle -->
+  <g clip-path="url(#avatarCircleClip)" fill="#90C610">
+    <circle cx="100" cy="80" r="36" />
+    <path d="M100 128c-42 0-66 26-66 72h132c0-46-24-72-66-72z" />
+  </g>
+</svg>
