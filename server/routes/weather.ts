@@ -94,7 +94,10 @@ router.get("/sydney", async (_req, res) => {
 
   if (isStale) {
     // Stale-while-revalidate: kick a refresh off in the background,
-    // but this request doesn't wait on it.
+    // but this request doesn't wait on it, ever - not even on cold
+    // start. If Open-Meteo is slow or unreachable, that's this
+    // refresh's problem to eventually resolve (or keep failing at),
+    // not this request's.
     void triggerRefresh();
   }
 
@@ -105,15 +108,12 @@ router.get("/sydney", async (_req, res) => {
     return res.json({ temperature: cached.temperature, weatherCode: cached.weatherCode });
   }
 
-  // Only reachable in the first moments after boot, before the
-  // startup warm-up above has resolved for the first time.
-  await triggerRefresh();
-
-  const refreshed = getCache();
-  if (refreshed) {
-    return res.json({ temperature: refreshed.temperature, weatherCode: refreshed.weatherCode });
-  }
-
+  // Cache hasn't been populated yet - either the first few seconds
+  // after boot, or Open-Meteo has been unreachable for every attempt
+  // so far. Either way, respond immediately rather than making this
+  // request pay for the upstream's own timeout; the background
+  // refresh kicked off above (or the next one on the interval) will
+  // populate the cache for the next request.
   res.status(503).json({ message: "Weather unavailable" });
 });
 
