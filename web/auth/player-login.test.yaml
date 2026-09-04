@@ -1,0 +1,23 @@
+fileType: momentic/test/v2
+id: tennisconnect-player-login
+description: Verify that an existing TennisConnect player can log in successfully
+retries: 1
+defaultEnv: local-staging
+disabled: false
+
+steps:
+  - act: Open the TennisConnect login page
+
+  - type:
+      text: "{{env.PLAYER_EMAIL}}"
+      into: email input
+      clear: inputs
+
+  - type:
+      text: "{{env.PLAYER_PASSWORD}}"
+      into: password input
+      clear: inputs
+
+  - click: login button
+
+  - assert: Verify that the player is successfully logged in and an authenticated TennisConnect page is displayed
