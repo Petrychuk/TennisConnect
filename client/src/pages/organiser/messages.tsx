@@ -87,7 +87,7 @@ export default function OrganiserMessagesPage() {
           </div>
         </div>
 
-        <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        <div className="px-2 sm:px-6 lg:px-8 py-6 space-y-6">
           <div className="flex items-center gap-1.5 text-sm" data-testid="organiser-messages-page-breadcrumb">
             <Link href="/organiser" className="text-primary hover:underline">
               Home

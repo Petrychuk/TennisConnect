@@ -26,6 +26,7 @@ import { Search, MapPin, Star, Filter, ArrowRight, DollarSign, X, Calendar, Trop
 import heroImage from "/assets/images/dashboard_coach.webp";
 
 import { COACHES_DATA } from "@/lib/dummy-data";
+import { resolveAvatarUrl, DEFAULT_AVATAR_URL, DEFAULT_AVATAR_ALT } from "@/lib/defaultAvatar";
 
 export default function CoachesPage() {
   const coachesSectionRef = useRef<HTMLDivElement>(null);
@@ -87,9 +88,7 @@ export default function CoachesPage() {
           experience:
             coach.experience || "5 years",
   
-          image:
-            coach.avatar ??
-            "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop",
+          image: resolveAvatarUrl(coach.avatar),
   
           tags: coach.tags || [],
   
@@ -531,7 +530,11 @@ export default function CoachesPage() {
                     <div className="relative h-36 md:h-52 lg:h-60 overflow-hidden">
                       <img 
                         src={coach.image} 
-                        alt={coach.name} 
+                        alt={
+                          coach.image === DEFAULT_AVATAR_URL
+                            ? DEFAULT_AVATAR_ALT
+                            : coach.name
+                        } 
                         loading="lazy"
                         className="w-full h-full object-cover object-[50%_35%] transition-transform duration-500 group-hover:scale-105"
                       />

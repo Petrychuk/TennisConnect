@@ -2,13 +2,23 @@ import { useState, useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, MailOpen, Trash2, Clock, User, ArrowLeft, Reply, Send, X, Check } from "lucide-react";
+import { Mail, MailOpen, Trash2, ArrowLeft, Reply, Send, X, Check } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
@@ -33,14 +43,53 @@ interface Message {
   subject: string | null;
   senderAvatar?: string | null;
 
+  // Who a conversation-LIST row is "with" - always the other
+  // participant, even when the current user sent the most recent
+  // message in the thread. Only present on rows from
+  // /api/messages/conversations; individual message bubbles inside an
+  // open thread keep using senderName/senderAvatar, which correctly
+  // describe who sent that specific message.
+  otherPartyName?: string;
+  otherPartyAvatar?: string | null;
+  otherPartyEmail?: string;
+
   content: string;
   isRead: boolean;
+  isUnreadForViewer?: boolean;
   createdAt: string;
 
   messageType?: "community_invite" | "session_invite" | null;
   relatedSessionId?: string | null;
   relatedOrganizationId?: string | null;
   actionStatus?: "pending" | "accepted" | "declined" | null;
+}
+
+// A conversation-list row (or the detail header above an open thread)
+// should always show the OTHER participant, whether the current
+// viewer sent the most recent message in it or received it - senderName/
+// senderAvatar alone would show the viewer's own identity for a
+// conversation they started that hasn't been replied to yet. Falls
+// back to sender fields for rows from before otherParty existed.
+function conversationPartner(message: Message) {
+  return {
+    name: message.otherPartyName ?? message.senderName,
+    avatar: message.otherPartyAvatar ?? message.senderAvatar,
+  };
+}
+
+// The stored avatar URL doesn't change when someone re-uploads their
+// photo (it's the same file path, just new bytes behind it - see the
+// upload flow's own note about this), so the browser can keep serving
+// whatever it cached for that URL from before the change. Other pages
+// (the players/coaches listing) already work around this with a fresh
+// cache-buster on every fetch; messaging polls every 3s though, so
+// busting on every render/poll would re-download every visible
+// avatar that often. One timestamp captured when the inbox mounts is
+// enough to guarantee a reload picks up a since-changed avatar,
+// without re-fetching on every 3s poll in between.
+function useAvatarCacheBust() {
+  const stamp = useRef(Date.now()).current;
+  return (avatar?: string | null) => (avatar ? `${avatar}?t=${stamp}` : undefined);
 }
 
 // The actual inbox+conversation UI, shared between the standalone
@@ -56,6 +105,7 @@ export function MessagesInbox() {
   const { user, isAuthenticated, loading: authLoading, } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const withCacheBust = useAvatarCacheBust();
   
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyContent, setReplyContent] = useState("");
@@ -278,7 +328,11 @@ export function MessagesInbox() {
       });
       if (res.ok) {
         setMessages((prev) =>
-          prev.map((m) => ((m.conversationId || m.id) === conversationId ? { ...m, isRead: true } : m))
+          prev.map((m) =>
+            (m.conversationId || m.id) === conversationId
+              ? { ...m, isRead: true, isUnreadForViewer: false }
+              : m
+          )
         );
         setConversation((prev) => prev.map((m) => ({ ...m, isRead: true })));
         queryClient.invalidateQueries({ queryKey: ["/api/messages/unread-count"] });
@@ -465,18 +519,7 @@ export function MessagesInbox() {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Mail className="w-5 h-5" />
-
                       Inbox
-
-                      {messages.filter((m) => !m.isRead).length > 0 && (
-                        <Badge
-                          variant="destructive"
-                          className="ml-auto"
-                          data-testid="unread-badge"
-                        >
-                          {messages.filter((m) => !m.isRead).length} new
-                        </Badge>
-                      )}
                     </CardTitle>
                   </CardHeader>
                   
@@ -484,99 +527,128 @@ export function MessagesInbox() {
                   <ScrollArea             
                     className="
                       h-[52vh]"
+                      thumbClassName="bg-primary/30 hover:bg-primary/50"
                       onWheel={(e) => e.stopPropagation()}
                     
                   >
                     
                     <div className="p-2">
                       <AnimatePresence>
-                        {uniqueConversations.map((message) => (
+                        {uniqueConversations.map((message) => {
+                          const partner = conversationPartner(message);
+                          const isSelected =
+                            selectedMessage?.conversationId === message.conversationId ||
+                            selectedMessage?.id === message.id;
+                          const isUnread = message.isUnreadForViewer ?? false;
+                          return (
                           <motion.div
                             key={message.conversationId || message.id}
                             animate={{ opacity: 1, x: 0 }}
+                            className={`
+                              group relative flex items-center gap-1
+                              rounded-xl transition-all duration-200 mb-1.5
+                              ${
+                                isSelected
+                                  ? "bg-primary/10 border border-primary/20 shadow-sm"
+                                  : isUnread
+                                  ? "bg-muted hover:bg-muted/80"
+                                  : "hover:bg-muted/50"
+                              }
+                            `}
                           >
                             <button
                               type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                selectMessage(message);
-                              }}
-                              className={`
-                                w-full
-                                text-left
-                                p-3
-                                rounded-xl
-                                transition-all
-                                duration-200
-                                mb-2
-                                cursor-pointer
-
-                                ${
-                                  selectedMessage?.conversationId ===
-                                    message.conversationId ||
-                                  selectedMessage?.id === message.id
-                                    ? "bg-primary/10 border border-primary/20 shadow-sm"
-                                    : message.isRead
-                                    ? "hover:bg-muted/50"
-                                    : "bg-muted hover:bg-muted/80"
-                                }
-                              `}
+                              onClick={() => selectMessage(message)}
+                              className="flex-1 min-w-0 flex items-center gap-3 text-left p-2.5 sm:p-3"
                               data-testid={`message-item-${message.id}`}
                             >
-                              <div className="flex items-start gap-3">
-                                <Avatar className="h-10 w-10 shrink-0 border">
+                              <div className="relative shrink-0">
+                                <Avatar className="h-10 w-10 sm:h-11 sm:w-11 border">
                                   <AvatarImage
-                                    src={message.senderAvatar || undefined}
+                                    src={withCacheBust(partner.avatar)}
                                   />
-
                                   <AvatarFallback
                                     className={
-                                      !message.isRead
+                                      isUnread
                                         ? "bg-primary text-primary-foreground"
                                         : "bg-primary/10 text-primary"
                                     }
                                   >
-                                    {message.senderName?.[0]}
+                                    {partner.name?.[0]}
                                   </AvatarFallback>
                                 </Avatar>
 
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <p
-                                      className={`
-                                        truncate
-                                        ${
-                                          !message.isRead
-                                            ? "font-semibold"
-                                            : "font-medium"
-                                        }
-                                      `}
-                                    >
-                                      {message.senderName}
-                                    </p>
-
-                                    {!message.isRead && (
-                                      <div className="w-2 h-2 rounded-full bg-primary shrink-0 animate-pulse" />
-                                    )}
-                                  </div>
-
-                                  <p className="text-sm text-muted-foreground line-clamp-2 wrap-break-word mt-0.5">
-                                    {message.content}
-                                  </p>
-
-                                  <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                                    <Clock className="w-3 h-3" />
-                                    {format(
-                                      new Date(message.createdAt),
-                                      "MMM d, h:mm a"
-                                    )}
-                                  </p>
-                                </div>
+                                {/* Unread badge - a count doesn't exist per
+                                    conversation (isRead is a single flag for
+                                    the whole thread), so this is a presence
+                                    dot rather than a number. Only lights up
+                                    when the viewer is actually the recipient
+                                    of the latest message - sending several
+                                    people a message from the listing page
+                                    used to light all of them up here too,
+                                    since the raw isRead flag describes "has
+                                    the recipient read this", which is never
+                                    true for your own outgoing copy and isn't
+                                    about you at all when you're the sender. */}
+                                {isUnread && (
+                                  <span
+                                    className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-primary border-2 border-background"
+                                    data-testid={`message-item-unread-${message.id}`}
+                                  />
+                                )}
                               </div>
+
+                              <p
+                                className={`
+                                  flex-1 min-w-0 truncate text-sm sm:text-base
+                                  ${isUnread ? "font-semibold" : "font-medium"}
+                                `}
+                              >
+                                {partner.name}
+                              </p>
                             </button>
+
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <button
+                                  type="button"
+                                  onClick={(e) => e.stopPropagation()}
+                                  aria-label={`Delete conversation with ${partner.name}`}
+                                  className="
+                                    shrink-0 mr-2 p-1.5 rounded-lg text-muted-foreground
+                                    hover:text-destructive hover:bg-destructive/10
+                                    transition-all
+                                  "
+                                  data-testid={`message-item-delete-${message.id}`}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete this conversation?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will permanently delete your conversation with {partner.name}.
+                                    This can't be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel data-testid={`message-item-delete-cancel-${message.id}`}>
+                                    Cancel
+                                  </AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteMessage(message.id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    data-testid={`message-item-delete-confirm-${message.id}`}
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </motion.div>
-                        ))}
+                          );
+                        })}
                       </AnimatePresence>
                     </div>
                   </ScrollArea>
@@ -586,92 +658,93 @@ export function MessagesInbox() {
               {(mobileView === "chat" || window.innerWidth >= 1024) && (
                 <Card className="lg:col-span-2">
                   {selectedMessage ? (
+                    (() => {
+                      // Resolved server-side now (getUserConversations),
+                      // the same way regardless of reply history - the
+                      // old approach (scanning the loaded thread for a
+                      // message the other person had sent) meant the
+                      // "Reply via Email" button was simply missing for
+                      // any conversation the viewer started that hasn't
+                      // gotten a reply yet, i.e. most brand-new
+                      // conversations. Only offered for plain private
+                      // messages - never for invitations (they have their
+                      // own Accept/Decline actions) or system messages
+                      // (no real person on the other end to email).
+                      const otherPartyEmail = selectedMessage.messageType
+                        ? undefined
+                        : selectedMessage.otherPartyEmail;
+
+                      // A system notice ("Tennis Connect", no real
+                      // sender - see MSG-108/109) can never actually be
+                      // replied to server-side (POST /api/messages/reply
+                      // 400s when there's no real senderUserId behind
+                      // the message you're replying to). Previously the
+                      // Reply button still showed for these, so clicking
+                      // it and sending just produced a "Failed to send
+                      // reply" error toast - offering an action that's
+                      // guaranteed to fail is worse than not offering it.
+                      // True for any real conversation (private or
+                      // invitation), including ones the viewer started
+                      // themselves where the other side hasn't sent
+                      // anything yet - the recipient is still a real
+                      // person even before their first reply.
+                      const hasRealCorrespondent =
+                        conversation.some((m) => !!m.senderUserId) ||
+                        !!selectedMessage.otherPartyEmail;
+
+                      return (
                     <>
-                      <CardHeader className="pb-2">
-                        <div className="flex items-start justify-between gap-2 min-w-0">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="lg:hidden shrink-0"
-                              onClick={() => {
-                                setMobileView("list");
-                              }}
-                            >
-                              <ArrowLeft className="w-5 h-5" />
-                            </Button>
-                            <Avatar className="h-10 w-10 lg:h-12 lg:w-12 shrink-0">
-                              <AvatarImage
-                                src={selectedMessage.senderAvatar || undefined}
-                              />
-                              <AvatarFallback className="bg-primary/10 text-primary">
-                                {selectedMessage.senderName?.[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="min-w-0">
-                              <CardTitle className="text-lg truncate">{selectedMessage.senderName}</CardTitle>
-                              <p className="text-sm text-muted-foreground truncate">{selectedMessage.senderEmail}</p>
-                              {selectedMessage.senderPhone && (
-                                <p className="text-sm text-muted-foreground truncate">{selectedMessage.senderPhone}</p>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                          {/*  {selectedMessage.senderUserId && (
-                              <Badge variant="secondary" className="flex items-center gap-1">
-                                <User className="w-3 h-3" />
-                                Registered User
-                              </Badge>
-                            )} */}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => handleDeleteMessage(selectedMessage.id)}
-                              data-testid="button-delete-message"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <Separator className="h-px w-full bg-linear-to-r from-transparent via-[hsl(var(--tennis-ball))] to-transparent my-4" />
-                      <CardContent className="px-3 pt-4 pb-3 md:px-6 md:pb-6">
+                      {/* Compact - no avatar/email header (that's what the
+                          list on the left already shows). Mobile only:
+                          just enough to get back to the list and know
+                          which thread this is. */}
+                      <div className="lg:hidden flex items-center gap-2 p-2 border-b border-border">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setMobileView("list")}
+                          data-testid="button-back-to-list"
+                        >
+                          <ArrowLeft className="w-5 h-5" />
+                        </Button>
+                        <span className="font-semibold truncate">
+                          {conversationPartner(selectedMessage).name}
+                        </span>
+                      </div>
+                      <CardContent className="px-1.5 pt-3 pb-3 sm:px-3 md:px-6 md:pb-6">
                       <ScrollArea
-                          className="h-[45vh] pr-4"
+                          className="h-[42vh] sm:h-[52vh] pr-3 sm:pr-4"
+                          thumbClassName="bg-primary/30 hover:bg-primary/50"
                           type="always"
                           onWheel={(e) => e.stopPropagation()}
                         >
-                          <div className="space-y-4 pr-2">
+                          <div className="space-y-3 pr-1 sm:pr-2">
                             {conversation.map((msg) => {
                             const isMe = msg.senderUserId === user?.id;
 
                             return (
-                              <div key={msg.id} className="flex gap-3 w-full">
-                                <Avatar className="h-10 w-10 shrink-0 ml-1">
+                              <div
+                                key={msg.id}
+                                className={`flex gap-2 sm:gap-3 w-full ${isMe ? "" : "flex-row-reverse"}`}
+                              >
+                                <Avatar className="h-8 w-8 sm:h-10 sm:w-10 shrink-0">
                                   <AvatarImage
-                                    src={msg.senderAvatar || undefined}
+                                    src={withCacheBust(msg.senderAvatar)}
                                     alt={msg.senderName}
                                   />
-                                  <AvatarFallback className="bg-primary/10 text-primary">
+                                  <AvatarFallback className="bg-primary/10 text-primary text-xs sm:text-sm">
                                     {msg.senderName?.charAt(0)?.toUpperCase()}
                                   </AvatarFallback>
                                 </Avatar>
 
-                                <div className="flex-1 min-w-0">
-                                  <div
-                                    className={`text-xs mb-1 px-1 ${
-                                      isMe
-                                        ? "text-right text-muted-foreground"
-                                        : "text-muted-foreground"
-                                    }`}
-                                  >
+                                <div className={`flex-1 min-w-0 flex flex-col ${isMe ? "items-start" : "items-end"}`}>
+                                  <div className="text-xs mb-1 px-1 text-muted-foreground">
                                     {msg.senderName}
                                   </div>
 
                                   <div
                                     className={`
-                                      w-full rounded-2xl px-3 py-2 md:px-4 md:py-3 shadow-sm transition-all
+                                      max-w-[92%] sm:max-w-[75%] rounded-2xl px-2.5 py-1.5 sm:px-3 sm:py-2 md:px-4 md:py-3 shadow-sm transition-all
                                       ${
                                         isMe
                                           ? "bg-primary/5 border border-primary/20"
@@ -679,7 +752,10 @@ export function MessagesInbox() {
                                       }
                                     `}
                                   >
-                                    <p className="whitespace-pre-wrap wrap-break-word text-sm leading-relaxed">
+                                    <p
+                                      className="whitespace-pre-wrap wrap-break-word text-sm leading-relaxed"
+                                      data-testid={`message-bubble-content-${msg.id}`}
+                                    >
                                       {msg.content}
                                     </p>
                                   </div>
@@ -729,11 +805,7 @@ export function MessagesInbox() {
                                     </div>
                                   )}
 
-                                  <div
-                                    className={`mt-1 text-xs text-muted-foreground px-1 ${
-                                      isMe ? "text-right" : ""
-                                    }`}
-                                  >
+                                  <div className="mt-1 text-xs text-muted-foreground px-1">
                                     {format(
                                       new Date(msg.createdAt),
                                       "MMM d, h:mm a"
@@ -747,9 +819,11 @@ export function MessagesInbox() {
                         </div>
                       </ScrollArea>
 
-                        <Separator className="h-px w-full bg-linear-to-r from-transparent via-[hsl(var(--tennis-ball))] to-transparent my-4" />                    
+                      {hasRealCorrespondent && (
+                        <>
+                        <Separator className="h-px w-full bg-linear-to-r from-transparent via-[hsl(var(--tennis-ball))] to-transparent my-3" />                    
                         {!showReplyForm && !conversation.some((m) => m.messageType && m.actionStatus === "pending") && (
-                          <div className="flex flex-row gap-2 mt-6">
+                          <div className="flex flex-row gap-2 mt-3">
                             <Button
                               className="flex-1 md:flex-none md:min-w-[160px] px-2 md:px-6"
                               onClick={() => setShowReplyForm(true)}
@@ -759,22 +833,24 @@ export function MessagesInbox() {
                               Reply
                             </Button>
 
-                            <Button
-                              variant="outline"
-                              className="flex-1 md:flex-none md:min-w-[160px] px-2 md:px-6"
-                              onClick={() => {
-                                window.location.href = `mailto:${selectedMessage.senderEmail}`;
-                              }}
-                              data-testid="button-reply-email"
-                            >
-                              <Mail className="w-4 h-4 mr-2 shrink-0" />
-                              <span className="md:hidden">Email</span>
-                              <span className="hidden md:inline">Reply via Email</span>
-                            </Button>
+                            {otherPartyEmail && (
+                              <Button
+                                variant="outline"
+                                className="flex-1 md:flex-none md:min-w-[160px] px-2 md:px-6"
+                                onClick={() => {
+                                  window.location.href = `mailto:${otherPartyEmail}`;
+                                }}
+                                data-testid="button-reply-email"
+                              >
+                                <Mail className="w-4 h-4 mr-2 shrink-0" />
+                                <span className="md:hidden">Email</span>
+                                <span className="hidden md:inline">Reply via Email</span>
+                              </Button>
+                            )}
                           </div>
                         )}
                         {showReplyForm && (
-                          <div className="mt-6 pt-6 space-y-4">
+                          <div className="mt-3 pt-3 space-y-4">
                             <Textarea
                               data-testid="textarea-reply"
                               value={replyContent}
@@ -815,8 +891,12 @@ export function MessagesInbox() {
                             </div>
                           </div>
                         )}
+                        </>
+                      )}
                       </CardContent>
                     </>
+                      );
+                    })()
                   ) : (
                     <CardContent className="flex items-center justify-center h-[500px]">
                       <div className="text-center text-muted-foreground">

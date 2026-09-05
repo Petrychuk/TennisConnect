@@ -201,7 +201,7 @@ const TOURNAMENT_TYPES = ["tournament", "club-championship"];
 export default function CoachProfile() {
   const [match, params] = useRoute("/coach/:slug");
   const profileSlug = params?.slug;
-  const { user, isAuthenticated, updateUserLocal, fetchCurrentUser} = useAuth();
+  const { user, isAuthenticated, loading: authLoading, updateUserLocal, fetchCurrentUser} = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [openCombobox, setOpenCombobox] = useState(false);
@@ -601,6 +601,13 @@ export default function CoachProfile() {
   /* =========================
      EFFECTS
   ========================= */
+  useEffect(() => {
+    if (authLoading) return;
+    if (isOwnProfile && user && !user.profileCompleted) {
+      setLocation("/complete-profile");
+    }
+  }, [authLoading, isOwnProfile, user, setLocation]);
+
   useEffect(() => {
       if (!profileSlug) return;
 

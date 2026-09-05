@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, json, real,  numeric, unique, } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, json, real,  numeric, unique, index, } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import {
@@ -898,7 +898,19 @@ export const messages = pgTable("messages", {
   // permanent status once acted on, persisted rather than local UI
   // state that would reset on reload.
   actionStatus: text("action_status"), // 'pending' | 'accepted' | 'declined' | null
-});
+}, (table) => ({
+  // Every read path in the messaging system (conversation list, thread
+  // load, unread count, the sender/recipient lookup that decides
+  // whether a new message joins an existing thread) filters by one of
+  // these three columns - none were indexed, so each one was a full
+  // table scan that gets slower as the table grows. This table only
+  // grows (no delete-by-age job), and this project's own automated
+  // test suite creates a meaningful number of rows on every run, so
+  // "getting slower over time" here isn't hypothetical.
+  recipientIdIdx: index("messages_recipient_id_idx").on(table.recipientId),
+  senderUserIdIdx: index("messages_sender_user_id_idx").on(table.senderUserId),
+  conversationIdIdx: index("messages_conversation_id_idx").on(table.conversationId),
+}));
 
 // A player's relationship to an organiser's community - separate from
 // any specific session's registrations, and separate from
@@ -1134,6 +1146,25 @@ export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
 export type MessageWithAvatar = Message & {
   senderAvatar?: string | null;
+  // Who a conversation-list row should say it's "with" - the other
+  // participant, regardless of whether they or the current viewer
+  // sent the most recent message in the thread. Only populated by
+  // getUserConversations(); undefined everywhere else (senderName/
+  // senderAvatar already correctly identify "who sent this message"
+  // for message-bubble rendering, which needs no such override).
+  otherPartyName?: string;
+  otherPartyAvatar?: string | null;
+  // Same idea for email - resolved via the recipient's own account
+  // when the viewer is the sender, so the "Reply via Email" button
+  // works even before the other person has replied at all.
+  otherPartyEmail?: string;
+  // isRead describes "has the recipient read this", which is only
+  // meaningful when the viewer actually IS the recipient of this
+  // representative message - true for the sender's own copy. Only
+  // getUserConversations() computes this viewer-relative flag; use it
+  // instead of isRead for anything about whether to show this
+  // conversation as unread to the current viewer.
+  isUnreadForViewer?: boolean;
 };
 
 export type SupportRequest = typeof supportRequests.$inferSelect;

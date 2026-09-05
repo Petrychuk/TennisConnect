@@ -19,6 +19,7 @@ import { Link } from "wouter";
 import SEO from "@/components/seo";
 import { quickMessageSchema } from "@/lib/validations/messages";
 import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.webp";
+import { resolveAvatarUrl, DEFAULT_AVATAR_URL, DEFAULT_AVATAR_ALT } from "@/lib/defaultAvatar";
 
 interface PartnerData {
     id: string;
@@ -134,7 +135,7 @@ export default function PartnersPage() {
         name: p.name ?? "Demo Player",
         location: p.location ?? "Sydney",
         skillLevel: p.skillLevel ?? "Beginner",
-        avatar: p.avatar,
+        avatar: resolveAvatarUrl(p.avatar),
         available: p.available ?? true,
         bio: p.bio ?? "",
         isDemo: true,
@@ -148,10 +149,9 @@ export default function PartnersPage() {
       name: item.name,
       location: item.location ?? "Sydney",
       skillLevel: item.skillLevel ?? "Beginner",
-      avatar:
-        item.avatar
-        ? `${item.avatar}?t=${item.updatedAt ?? Date.now()}`
-        : null,
+      avatar: resolveAvatarUrl(
+        item.avatar ? `${item.avatar}?t=${item.updatedAt ?? Date.now()}` : null
+      ),
       available: true,
       bio: item.bio ?? "",
       isDemo: false,
@@ -497,6 +497,7 @@ export default function PartnersPage() {
                   
                   <CardContent className="p-2 md:p-3 grow flex flex-col items-center text-center">
                   <div className="relative w-full h-36 sm:h-44 md:h-56 mb-4 overflow-hidden rounded-xl">
+<<<<<<< HEAD
                     {(isMe && user?.avatar) || partner.avatar ? (
                       <img
                         src={isMe && user?.avatar ? user.avatar : (partner.avatar as string)}
@@ -523,6 +524,30 @@ export default function PartnersPage() {
                         <span className="text-4xl">{partner.name?.trim()?.[0]?.toUpperCase() || "U"}</span>
                       </div>
                     )}
+=======
+                    <img
+                      src={
+                        isMe && user?.avatar
+                          ? resolveAvatarUrl(user.avatar)
+                          : partner.avatar
+                      }
+                      alt={
+                        partner.avatar === DEFAULT_AVATAR_URL
+                          ? DEFAULT_AVATAR_ALT
+                          : partner.name
+                      }
+                      loading="lazy"
+                      className="
+                        w-full
+                        h-full
+                        object-cover
+                        object-center
+                        transition-transform
+                        duration-300
+                        group-hover:scale-105
+                      "
+                    />
+>>>>>>> main
 
                     {isMe && (
                       <Badge className="absolute top-2 right-2 bg-primary text-primary-foreground z-10">
@@ -612,6 +637,7 @@ export default function PartnersPage() {
                         cursor-pointer
                       "
                       onClick={() => openMessageModal(partner)}
+                      data-testid={`button-message-${partner.id}`}
                     >
                       <MessageCircle className="w-4 h-4" />
                     

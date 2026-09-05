@@ -1,6 +1,7 @@
 import { Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { DEFAULT_AVATAR_URL, resolveAvatarAlt } from "@/lib/defaultAvatar";
 
 interface ProfileAvatarProps {
   avatar?: string | null;
@@ -17,13 +18,6 @@ interface ProfileAvatarProps {
   // means, just where to put it. Sits bottom-left specifically so it
   // never overlaps the bottom-right edit/camera button.
   badge?: React.ReactNode;
-}
-
-// Same look as the navbar's account-menu avatar fallback (light primary
-// tint, primary-colored initial) so the "no photo" presentation is
-// consistent across the app, not a separate style just for this page.
-function getInitial(name: string) {
-  return name?.trim()?.[0]?.toUpperCase() || "U";
 }
 
 const AVATAR_SIZE_CLASSES =
@@ -43,28 +37,17 @@ export function ProfileAvatar({
   return (
     <div className="relative group">
 
-      {/* Avatar */}
-      {avatar ? (
-        <img
-          src={avatar}
-          alt={name}
-          className={cn(AVATAR_SIZE_CLASSES, "object-cover bg-white")}
-          data-testid="profile-avatar"
-        />
-      ) : (
-        <div
-          className={cn(
-            AVATAR_SIZE_CLASSES,
-            "flex items-center justify-center font-bold select-none",
-            fallbackVariant === "solid"
-              ? "bg-primary text-primary-foreground"
-              : "bg-primary/10 text-primary"
-          )}
-          data-testid="profile-avatar-initials"
-        >
-          <span className="text-3xl lg:text-6xl">{getInitial(name)}</span>
-        </div>
-      )}
+      {/* Avatar - falls back to the shared default avatar image (not a
+          broken <img src=""> or an empty div) whenever the profile
+          hasn't uploaded a photo yet. Same asset used on the player/
+          coach listing cards so the "no photo" look is consistent
+          everywhere, not just here. */}
+      <img
+        src={avatar || DEFAULT_AVATAR_URL}
+        alt={resolveAvatarAlt(avatar, name)}
+        className={cn(AVATAR_SIZE_CLASSES, "object-cover bg-white")}
+        data-testid={avatar ? "profile-avatar" : "profile-avatar-initials"}
+      />
 
       {/* Camera Button */}
       {isOwner && (
