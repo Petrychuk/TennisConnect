@@ -517,6 +517,7 @@ export function MessagesInbox() {
                   <ScrollArea             
                     className="
                       h-[52vh]"
+                      thumbClassName="bg-primary/30 hover:bg-primary/50"
                       onWheel={(e) => e.stopPropagation()}
                     
                   >
@@ -684,11 +685,12 @@ export function MessagesInbox() {
                       </div>
                       <CardContent className="px-1.5 pt-3 pb-3 sm:px-3 md:px-6 md:pb-6">
                       <ScrollArea
-                          className="h-[52vh] pr-0 sm:pr-4"
+                          className="h-[42vh] sm:h-[52vh] pr-3 sm:pr-4"
+                          thumbClassName="bg-primary/30 hover:bg-primary/50"
                           type="always"
                           onWheel={(e) => e.stopPropagation()}
                         >
-                          <div className="space-y-3 pr-0 sm:pr-2">
+                          <div className="space-y-3 pr-1 sm:pr-2">
                             {conversation.map((msg) => {
                             const isMe = msg.senderUserId === user?.id;
 
