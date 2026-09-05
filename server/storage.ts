@@ -20,6 +20,7 @@ import {
   registrations,
   sessionRounds,
   matches,
+  payments,
   type User, 
   type InsertUser,
   type PlayerProfile,
@@ -39,6 +40,8 @@ import {
   type InsertMessage,
   type SupportRequest,
   type InsertSupportRequest,
+  type Payment,
+  type InsertPayment,
   type OrganizerRequest,
   type InsertOrganizerRequest,
   type Organization,
@@ -221,6 +224,18 @@ export interface IStorage {
   createSupportRequest(
     request: InsertSupportRequest
   ): Promise<SupportRequest>;
+
+  // Payments - "Back the Rally" support today; paymentType leaves room
+  // for subscriptions/premium pages later without a new table. Not to
+  // be confused with "Support chat" just above, an unrelated
+  // pre-existing help-desk/contact feature that happens to share the
+  // word "support".
+  createPayment(payment: InsertPayment): Promise<Payment>;
+  getPaymentByStripeSessionId(sessionId: string): Promise<Payment | undefined>;
+  markPaymentPaid(
+    sessionId: string,
+    details: { stripePaymentIntentId: string | null; receiptUrl: string | null }
+  ): Promise<Payment | undefined>;
 
   //Newsletter
   subscribeToNewsletter(
@@ -1859,6 +1874,45 @@ export class DatabaseStorage implements IStorage {
       .returning();
   
     return supportRequest;
+  }
+
+  async createPayment(payment: InsertPayment): Promise<Payment> {
+    const [row] = await db
+      .insert(payments)
+      .values(payment)
+      .returning();
+
+    return row;
+  }
+
+  async getPaymentByStripeSessionId(sessionId: string): Promise<Payment | undefined> {
+    const [row] = await db
+      .select()
+      .from(payments)
+      .where(eq(payments.stripeCheckoutSessionId, sessionId));
+
+    return row;
+  }
+
+  // Only ever called from the webhook handler after Stripe's signature
+  // is verified - the client-facing success-page redirect never gets
+  // to mark anything paid on its own (see server/routes/support.ts).
+  async markPaymentPaid(
+    sessionId: string,
+    details: { stripePaymentIntentId: string | null; receiptUrl: string | null }
+  ): Promise<Payment | undefined> {
+    const [row] = await db
+      .update(payments)
+      .set({
+        status: "paid",
+        paidAt: new Date(),
+        stripePaymentIntentId: details.stripePaymentIntentId,
+        receiptUrl: details.receiptUrl,
+      })
+      .where(eq(payments.stripeCheckoutSessionId, sessionId))
+      .returning();
+
+    return row;
   }
 
   // Footer newsletter signup. Upsert on email: a previously-unsubscribed
