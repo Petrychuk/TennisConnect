@@ -35,6 +35,16 @@ export const pool = new Pool({
   max: 8,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 10_000,
+  // Without this, a connection that goes stale mid-query - the laptop
+  // sleeping, a brief WiFi drop between here and the remote Supabase
+  // DB - just hangs until the OS's own TCP retransmission timeout
+  // gives up, commonly around two minutes. That's the exact shape of
+  // a "[SLOW REQUEST] ... 121177ms" on an otherwise ordinary query:
+  // not the query being slow, the socket being dead and nobody
+  // noticing yet. TCP keepalive probes let the OS notice much sooner
+  // and fail the query with a normal connection error instead.
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10_000,
 });
 
 // node-postgres emits 'error' on the pool whenever an *idle* client's
