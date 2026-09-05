@@ -1597,6 +1597,7 @@ export class DatabaseStorage implements IStorage {
         // fallback below rather than assumed present.
         recipientName: recipientUsers.name,
         recipientAvatar: recipientUsers.avatar,
+        recipientEmail: recipientUsers.email,
       })
       .from(messages)
       .leftJoin(users, eq(messages.senderUserId, users.id))
@@ -1629,7 +1630,7 @@ export class DatabaseStorage implements IStorage {
         // viewer's own identity. otherParty always resolves to the
         // actual other participant instead.
         const iAmSender = message.senderUserId === userId;
-        const { recipientName, recipientAvatar, ...rest } = message;
+        const { recipientName, recipientAvatar, recipientEmail, ...rest } = message;
 
         uniqueConversations.set(key, {
           ...rest,
@@ -1637,6 +1638,29 @@ export class DatabaseStorage implements IStorage {
             ? recipientName ?? (message.recipientType === "coach" ? "Coach" : "Player")
             : message.senderName,
           otherPartyAvatar: iAmSender ? recipientAvatar : message.senderAvatar,
+          // Resolved the same way regardless of reply history, unlike
+          // the client's old approach of scanning the loaded thread for
+          // a message the other side had sent - that left the "Reply
+          // via Email" button missing entirely for any conversation
+          // the viewer started that hasn't gotten a reply yet. Only
+          // trusts senderEmail as a real person's address when there's
+          // an actual senderUserId behind it - system messages
+          // (senderUserId null) don't get an otherPartyEmail at all,
+          // so there's no "email a real person" button for a thread
+          // that was never with a real person.
+          otherPartyEmail: iAmSender
+            ? recipientEmail ?? undefined
+            : message.senderUserId
+              ? message.senderEmail
+              : undefined,
+          // isRead means "has the recipient read this" - true for the
+          // sender's own copy is meaningless (you're not the one who's
+          // supposed to read your own message), but was still being
+          // read as "this conversation is unread" whenever the viewer
+          // happened to be the sender of the representative row. Only
+          // counts as unread here when the viewer is actually the one
+          // who received it.
+          isUnreadForViewer: !iAmSender && !message.isRead,
         });
       }
     }
