@@ -497,39 +497,12 @@ export default function PartnersPage() {
                   
                   <CardContent className="p-2 md:p-3 grow flex flex-col items-center text-center">
                   <div className="relative w-full h-36 sm:h-44 md:h-56 mb-4 overflow-hidden rounded-xl">
-<<<<<<< HEAD
-                    {(isMe && user?.avatar) || partner.avatar ? (
-                      <img
-                        src={isMe && user?.avatar ? user.avatar : (partner.avatar as string)}
-                        alt={partner.name}
-                        loading="lazy"
-                        className="
-                          w-full
-                          h-full
-                          object-cover
-                          object-center
-                          transition-transform
-                          duration-300
-                          group-hover:scale-105
-                        "
-                      />
-                    ) : (
-                      // No photo on file - initials fallback, same look as
-                      // ProfileAvatar.tsx / the navbar account menu, instead
-                      // of an <img src=""> broken-image icon.
-                      <div
-                        className="w-full h-full flex items-center justify-center bg-primary/10 text-primary font-bold select-none"
-                        data-testid={`player-card-${partner.id}-initials`}
-                      >
-                        <span className="text-4xl">{partner.name?.trim()?.[0]?.toUpperCase() || "U"}</span>
-                      </div>
-                    )}
-=======
+
                     <img
                       src={
                         isMe && user?.avatar
                           ? resolveAvatarUrl(user.avatar)
-                          : partner.avatar
+                          : partner.avatar ?? DEFAULT_AVATAR_URL
                       }
                       alt={
                         partner.avatar === DEFAULT_AVATAR_URL
@@ -547,7 +520,6 @@ export default function PartnersPage() {
                         group-hover:scale-105
                       "
                     />
->>>>>>> main
 
                     {isMe && (
                       <Badge className="absolute top-2 right-2 bg-primary text-primary-foreground z-10">
