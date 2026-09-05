@@ -279,24 +279,6 @@ test('MSG-113 Reply Via Email Shows For A Conversation You Started, Before Any R
 
 });
 
-test('MSG-114 Reply Via Email Does Not Show For The Welcome System Message', async ({ page }) => {
-
-  // ---------- Login ----------
-
-  await registerPlayer(page);
-
-  // ---------- Open page ----------
-
-  await page.goto('/messages');
-  await page.locator('[data-testid^="message-item-"]').first().click();
-
-  // ---------- Final verification ----------
-  // There's no real person behind a system message to email.
-
-  await expect(page.getByTestId('button-reply-email')).toHaveCount(0);
-
-});
-
 test('MSG-115 Reply Via Email Does Not Show For A Pending Invitation', async ({ page }) => {
 
   // ---------- Test data (organiser with their own organisation) ----------
@@ -532,24 +514,15 @@ test('MSG-109 Cannot Reply To A System Message With No Real Sender', async ({ pa
   // A brand-new account has exactly one conversation: the welcome message.
   await page.locator('[data-testid^="message-item-"]').first().click();
 
-  // ---------- Actions ----------
-
-  await page.getByTestId('button-reply').click();
-  await page.getByTestId('textarea-reply').fill('Is anyone there?');
-
-  const [replyResponse] = await Promise.all([
-    page.waitForResponse(
-      response =>
-        response.url().includes('/api/messages/reply') &&
-        response.request().method() === 'POST'
-    ),
-    page.getByTestId('button-send-reply').click(),
-  ]);
-
   // ---------- Final verification ----------
+  // Previously the Reply button was clickable here and sending always
+  // failed server-side ("Failed to send reply" toast) - offering an
+  // action that's guaranteed to fail is worse than not offering it,
+  // so there's no real sender behind this message, the button doesn't
+  // show at all now.
 
-  expect(replyResponse.ok()).toBeFalsy();
-  await expect(page.getByText(/failed to send reply/i)).toBeVisible();
+  await expect(page.getByTestId('button-reply')).toHaveCount(0);
+  await expect(page.getByTestId('button-reply-email')).toHaveCount(0);
 
 });
 

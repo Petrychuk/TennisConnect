@@ -664,6 +664,24 @@ export function MessagesInbox() {
                         ? undefined
                         : selectedMessage.otherPartyEmail;
 
+                      // A system notice ("Tennis Connect", no real
+                      // sender - see MSG-108/109) can never actually be
+                      // replied to server-side (POST /api/messages/reply
+                      // 400s when there's no real senderUserId behind
+                      // the message you're replying to). Previously the
+                      // Reply button still showed for these, so clicking
+                      // it and sending just produced a "Failed to send
+                      // reply" error toast - offering an action that's
+                      // guaranteed to fail is worse than not offering it.
+                      // True for any real conversation (private or
+                      // invitation), including ones the viewer started
+                      // themselves where the other side hasn't sent
+                      // anything yet - the recipient is still a real
+                      // person even before their first reply.
+                      const hasRealCorrespondent =
+                        conversation.some((m) => !!m.senderUserId) ||
+                        !!selectedMessage.otherPartyEmail;
+
                       return (
                     <>
                       {/* Compact - no avatar/email header (that's what the
@@ -791,6 +809,8 @@ export function MessagesInbox() {
                         </div>
                       </ScrollArea>
 
+                      {hasRealCorrespondent && (
+                        <>
                         <Separator className="h-px w-full bg-linear-to-r from-transparent via-[hsl(var(--tennis-ball))] to-transparent my-3" />                    
                         {!showReplyForm && !conversation.some((m) => m.messageType && m.actionStatus === "pending") && (
                           <div className="flex flex-row gap-2 mt-3">
@@ -861,6 +881,8 @@ export function MessagesInbox() {
                             </div>
                           </div>
                         )}
+                        </>
+                      )}
                       </CardContent>
                     </>
                       );
