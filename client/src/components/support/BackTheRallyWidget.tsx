@@ -25,43 +25,39 @@ export function BackTheRallyWidget({
       data-testid="button-back-the-rally"
       aria-label="Back the Rally - support TennisConnect"
       className={`
-        group relative inline-flex items-center gap-2 shrink-0
-        cursor-pointer select-none
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-full
-        ${fullWidth ? "w-full justify-center py-3" : "px-1 py-1.5"}
+        group relative inline-flex items-center gap-1.5 shrink-0
+        cursor-pointer select-none px-2
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-md
+        ${fullWidth ? "w-full justify-center py-3" : "py-1.5"}
         ${className}
       `}
     >
-      {/* The "brush stroke"/highlighter mark behind the text - a plain
-          CSS asymmetric border-radius blob (the classic "marker
-          highlight" trick), not an image or SVG asset. Rotated very
-          slightly for a hand-drawn feel; straightens out a touch on
-          hover as the only motion here besides the arrow nudge -
-          subtle and instant to disable via prefers-reduced-motion
-          (see the motion-safe: prefixes below; without motion-safe
-          support the transform simply never runs, so nothing needs a
-          JS media-query check for this).  */}
-      <span
+      {/* The "brush stroke"/highlighter mark behind the text - a real
+          SVG shape (previous version used a Tailwind arbitrary-value
+          border-radius with a "/" in it, which Tailwind almost
+          certainly parsed as an opacity-modifier separator instead of
+          part of the radius value, silently dropping the whole
+          utility). preserveAspectRatio="none" stretches this exact
+          hand-drawn-ish path to fill the button regardless of how
+          wide "Back the Rally" actually renders, so this doesn't need
+          to know the text's pixel width ahead of time. */}
+      <svg
         aria-hidden="true"
+        viewBox="0 0 100 30"
+        preserveAspectRatio="none"
         className="
-          absolute inset-y-0 left-6 right-0
-          bg-[hsl(var(--tennis-ball))]/80
+          absolute -inset-x-1.5 -inset-y-1
+          text-[hsl(var(--tennis-ball))]
           -rotate-1 group-hover:rotate-0
           motion-safe:transition-transform motion-safe:duration-300
-          rounded-[255px_15px_225px_15px/15px_225px_15px_255px]
         "
-      />
-
-      <span
-        className="
-          relative z-10 text-xl leading-none shrink-0
-          motion-safe:transition-transform motion-safe:duration-300
-          group-hover:-rotate-12
-        "
-        aria-hidden="true"
       >
-        🎾
-      </span>
+        <path
+          d="M 2,8 C 20,3 65,2 98,5 C 99,13 99,20 97,26 C 65,29 22,28 3,25 C 1,19 1,13 2,8 Z"
+          fill="currentColor"
+          opacity="0.85"
+        />
+      </svg>
 
       <span className="relative z-10 font-bold text-foreground whitespace-nowrap">
         Back the Rally
@@ -78,3 +74,4 @@ export function BackTheRallyWidget({
     </button>
   );
 }
+
