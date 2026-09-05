@@ -613,3 +613,131 @@ test('MSG-015 Toast Notifications', async ({ page }) => {
   ).toBeVisible();
 
 });
+
+// ========================================================================
+// Players listing quick-message modal (/players -> "Message" on a card)
+// - a second, independent entry point into POST /api/messages, distinct
+//   from the profile Contact tab tested above (different component,
+//   different validation schema - quickMessageSchema vs messageSchema,
+//   no subject field). Not a duplicate of MSG-005 (player -> player):
+//   that test exercises the Contact tab; these exercise the listing
+//   modal specifically.
+// ========================================================================
+
+test('MSG-016 Send Message Via Players Listing (Player → Player)', async ({ page }) => {
+
+  // ---------- Test data ----------
+
+  const content = `Listing message check ${Date.now()}`;
+
+  // ---------- Login ----------
+
+  const sender = await registerPlayer(page);
+
+  // TEST_USERS.player is a stable, pre-approved fixture account -
+  // needed here specifically because the public listing (unlike a
+  // profile page reached directly by slug) only shows
+  // isApproved/profileCompleted accounts, which a test-registered
+  // player isn't without an extra admin-approval step.
+  const targetResponse = await page.request.get(`/api/players/${TEST_USERS.player.slug}`);
+  const { user: target } = await targetResponse.json();
+
+  // ---------- Open page ----------
+
+  await page.goto('/players');
+
+  const card = page.getByTestId(`player-card-${target.id}`);
+  await expect(card).toBeVisible();
+
+  // ---------- Actions ----------
+
+  await card.getByTestId(`button-message-${target.id}`).click();
+
+  await expect(page.getByTestId('input-message')).toBeVisible();
+  await page.getByTestId('input-message').fill(content);
+
+  const [response] = await Promise.all([
+    page.waitForResponse(
+      r => r.url().includes('/api/messages') && r.request().method() === 'POST'
+    ),
+    page.getByTestId('button-send-message').click(),
+  ]);
+
+  // ---------- Verify request ----------
+
+  expect(response.ok()).toBeTruthy();
+  await expect(page.getByText(/message sent/i)).toBeVisible();
+
+  // ---------- Final verification (target receives it) ----------
+
+  await logout(page);
+  await login(page, TEST_USERS.player.email, TEST_USERS.player.password);
+  await page.goto('/messages');
+
+  await page
+    .locator('[data-testid^="message-item-"]', { hasText: sender.name })
+    .first()
+    .click();
+
+  await expect(page.getByText(content)).toBeVisible();
+
+});
+
+test('MSG-017 Guest Cannot Send Message Via Players Listing', async ({ page }) => {
+
+  // ---------- Test data ----------
+
+  const targetResponse = await page.request.get(`/api/players/${TEST_USERS.player.slug}`);
+  const { user: target } = await targetResponse.json();
+
+  // ---------- Open page (guest, never logged in) ----------
+
+  await page.goto('/players');
+
+  const card = page.getByTestId(`player-card-${target.id}`);
+  await expect(card).toBeVisible();
+
+  // ---------- Actions ----------
+
+  await card.getByTestId(`button-message-${target.id}`).click();
+
+  // ---------- Final verification ----------
+  // Blocked before the modal even opens - a toast, rather than the
+  // Contact tab's inline sign-in card, but a guest still can't reach
+  // the actual send action either way.
+
+  await expect(page.getByText(/registration required/i)).toBeVisible();
+  await expect(page.getByTestId('input-message')).toHaveCount(0);
+
+});
+
+test('MSG-018 Players Listing Message Validation', async ({ page }) => {
+
+  // ---------- Login ----------
+
+  await registerPlayer(page);
+
+  const targetResponse = await page.request.get(`/api/players/${TEST_USERS.player.slug}`);
+  const { user: target } = await targetResponse.json();
+
+  // ---------- Open page ----------
+
+  await page.goto('/players');
+  await page.getByTestId(`button-message-${target.id}`).click();
+
+  // ---------- Actions (message too short) ----------
+  // Unlike the Contact tab (button-send-contact-message is disabled
+  // until the fields are valid), this Send button stays enabled and
+  // relies on quickMessageSchema's own validation, surfaced as a
+  // toast after clicking.
+
+  await page.getByTestId('input-message').fill('hi');
+  await page.getByTestId('button-send-message').click();
+
+  // ---------- Verify ----------
+
+  await expect(
+    page.getByText(/at least 5 characters|validation error/i)
+  ).toBeVisible();
+
+});
