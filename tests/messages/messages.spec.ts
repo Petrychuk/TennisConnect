@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { registerPlayer, login, logout } from '../helpers/auth';
 import { completePlayerProfile } from '../helpers/profile';
-import { sendContactMessage } from '../helpers/messages';
+import { sendContactMessage, getMyUserId, approveUser } from '../helpers/messages';
 import { TEST_USERS } from '../fixtures/test-users';
 
 /*
@@ -98,7 +98,7 @@ test('MSG-002 Reply Message', async ({ page }) => {
   await page.goto('/messages');
 
   await expect(
-    page.getByText(replyContent)
+    page.locator('[data-testid^="message-bubble-content-"]', { hasText: replyContent })
   ).toBeVisible();
 
 });
@@ -447,13 +447,31 @@ test('MSG-009 Message Timestamp Display', async ({ page }) => {
 
 test('MSG-010 Empty Conversation State', async ({ page }) => {
 
-  // ---------- Login (brand-new player, no messages ever) ----------
+  // ---------- Login (brand-new player) ----------
+  // Registration itself sends an automatic "Welcome to TennisConnect"
+  // system message (see MSG-108) - a brand-new account is never
+  // actually empty, so the only way to reach the empty state is to
+  // delete that one conversation first.
 
   await registerPlayer(page);
 
-  // ---------- Open page ----------
-
   await page.goto('/messages');
+
+  const row = page
+    .locator('[data-testid^="message-item-"]')
+    .first()
+    .locator('xpath=..');
+
+  await row.locator('[data-testid^="message-item-delete-"]').click();
+
+  await Promise.all([
+    page.waitForResponse(
+      response =>
+        /\/api\/messages\/[^/]+$/.test(response.url()) &&
+        response.request().method() === 'DELETE'
+    ),
+    page.locator('[data-testid^="message-item-delete-confirm-"]').click(),
+  ]);
 
   // ---------- Verify ----------
 
@@ -630,28 +648,45 @@ test('MSG-016 Send Message Via Players Listing (Player → Player)', async ({ pa
 
   const content = `Listing message check ${Date.now()}`;
 
-  // ---------- Login ----------
+  // ---------- Login (sender) ----------
 
   const sender = await registerPlayer(page);
 
-  // TEST_USERS.player is a stable, pre-approved fixture account -
-  // needed here specifically because the public listing (unlike a
-  // profile page reached directly by slug) only shows
-  // isApproved/profileCompleted accounts, which a test-registered
-  // player isn't without an extra admin-approval step.
-  const targetResponse = await page.request.get(`/api/players/${TEST_USERS.player.slug}`);
-  const { user: target } = await targetResponse.json();
+  // ---------- Test data (a target that's actually listing-visible) ----------
+  // The public listing needs isApproved on top of profileCompleted
+  // (see storage.getAllPlayers) - unlike a profile page reached
+  // directly by slug, which only needs profileCompleted. A fresh
+  // account isn't approved by default, so this test creates and
+  // approves its own target rather than assuming any particular
+  // fixture account already is.
+
+  await logout(page);
+  const target = await registerPlayer(page);
+  await completePlayerProfile(page);
+  const targetId = await getMyUserId(page);
+  await logout(page);
+
+  await approveUser(
+    page,
+    TEST_USERS.admin.email,
+    TEST_USERS.admin.password,
+    targetId
+  );
+
+  // ---------- Login (sender again) ----------
+
+  await login(page, sender.email, sender.password);
 
   // ---------- Open page ----------
 
   await page.goto('/players');
 
-  const card = page.getByTestId(`player-card-${target.id}`);
+  const card = page.getByTestId(`player-card-${targetId}`);
   await expect(card).toBeVisible();
 
   // ---------- Actions ----------
 
-  await card.getByTestId(`button-message-${target.id}`).click();
+  await card.getByTestId(`button-message-${targetId}`).click();
 
   await expect(page.getByTestId('input-message')).toBeVisible();
   await page.getByTestId('input-message').fill(content);
@@ -671,7 +706,7 @@ test('MSG-016 Send Message Via Players Listing (Player → Player)', async ({ pa
   // ---------- Final verification (target receives it) ----------
 
   await logout(page);
-  await login(page, TEST_USERS.player.email, TEST_USERS.player.password);
+  await login(page, target.email, target.password);
   await page.goto('/messages');
 
   await page
@@ -679,27 +714,38 @@ test('MSG-016 Send Message Via Players Listing (Player → Player)', async ({ pa
     .first()
     .click();
 
-  await expect(page.getByText(content)).toBeVisible();
+  await expect(
+    page.locator('[data-testid^="message-bubble-content-"]', { hasText: content })
+  ).toBeVisible();
 
 });
 
 test('MSG-017 Guest Cannot Send Message Via Players Listing', async ({ page }) => {
 
-  // ---------- Test data ----------
+  // ---------- Test data (a target that's actually listing-visible) ----------
 
-  const targetResponse = await page.request.get(`/api/players/${TEST_USERS.player.slug}`);
-  const { user: target } = await targetResponse.json();
+  const target = await registerPlayer(page);
+  await completePlayerProfile(page);
+  const targetId = await getMyUserId(page);
+  await logout(page);
 
-  // ---------- Open page (guest, never logged in) ----------
+  await approveUser(
+    page,
+    TEST_USERS.admin.email,
+    TEST_USERS.admin.password,
+    targetId
+  );
+
+  // ---------- Open page (guest, logged out above and never logged back in) ----------
 
   await page.goto('/players');
 
-  const card = page.getByTestId(`player-card-${target.id}`);
+  const card = page.getByTestId(`player-card-${targetId}`);
   await expect(card).toBeVisible();
 
   // ---------- Actions ----------
 
-  await card.getByTestId(`button-message-${target.id}`).click();
+  await card.getByTestId(`button-message-${targetId}`).click();
 
   // ---------- Final verification ----------
   // Blocked before the modal even opens - a toast, rather than the
@@ -713,17 +759,28 @@ test('MSG-017 Guest Cannot Send Message Via Players Listing', async ({ page }) =
 
 test('MSG-018 Players Listing Message Validation', async ({ page }) => {
 
-  // ---------- Login ----------
+  // ---------- Test data (a target that's actually listing-visible) ----------
+
+  const target = await registerPlayer(page);
+  await completePlayerProfile(page);
+  const targetId = await getMyUserId(page);
+  await logout(page);
+
+  await approveUser(
+    page,
+    TEST_USERS.admin.email,
+    TEST_USERS.admin.password,
+    targetId
+  );
+
+  // ---------- Login (sender) ----------
 
   await registerPlayer(page);
-
-  const targetResponse = await page.request.get(`/api/players/${TEST_USERS.player.slug}`);
-  const { user: target } = await targetResponse.json();
 
   // ---------- Open page ----------
 
   await page.goto('/players');
-  await page.getByTestId(`button-message-${target.id}`).click();
+  await page.getByTestId(`button-message-${targetId}`).click();
 
   // ---------- Actions (message too short) ----------
   // Unlike the Contact tab (button-send-contact-message is disabled
