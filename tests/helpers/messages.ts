@@ -84,3 +84,33 @@ export async function grantOrganizerAccess(
 
   await logout(page);
 }
+
+// The public players/coaches listings require isApproved (on top of
+// profileCompleted - see storage.getAllPlayers), unlike a profile page
+// reached directly by slug, which only needs profileCompleted. A
+// fresh test account isn't approved by default, so anything that
+// needs its target to actually show up on a listing (not just be
+// reachable by URL) needs this first.
+export async function approveUser(
+  page: Page,
+  adminEmail: string,
+  adminPassword: string,
+  userId: string
+) {
+  await login(page, adminEmail, adminPassword);
+  await page.goto('/admin');
+  await page.getByTestId('admin-tab-users').click();
+
+  await page.getByTestId(`approve-user-${userId}`).click();
+
+  await Promise.all([
+    page.waitForResponse(
+      response =>
+        /\/api\/admin\/users\/.+\/approve$/.test(response.url()) &&
+        response.request().method() === 'PATCH'
+    ),
+    page.getByTestId('user-action-confirm').click(),
+  ]);
+
+  await logout(page);
+}

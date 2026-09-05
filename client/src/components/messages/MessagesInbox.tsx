@@ -724,7 +724,10 @@ export function MessagesInbox() {
                                       }
                                     `}
                                   >
-                                    <p className="whitespace-pre-wrap wrap-break-word text-sm leading-relaxed">
+                                    <p
+                                      className="whitespace-pre-wrap wrap-break-word text-sm leading-relaxed"
+                                      data-testid={`message-bubble-content-${msg.id}`}
+                                    >
                                       {msg.content}
                                     </p>
                                   </div>

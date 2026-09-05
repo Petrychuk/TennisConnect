@@ -70,10 +70,10 @@ test('MSG-101 Two Different Conversations Show As Two Separate Tabs', async ({ p
   await expect(items).toHaveCount(3);
 
   await items.nth(0).click();
-  await expect(page.getByText(contentToPlayer)).toBeVisible();
+  await expect(page.locator('[data-testid^="message-bubble-content-"]', { hasText: contentToPlayer })).toBeVisible();
 
   await items.nth(1).click();
-  await expect(page.getByText(contentToCoach)).toBeVisible();
+  await expect(page.locator('[data-testid^="message-bubble-content-"]', { hasText: contentToCoach })).toBeVisible();
 
 });
 
@@ -118,8 +118,8 @@ test('MSG-102 A Second Message To The Same Person Joins The Same Conversation', 
 
   // ---------- Final verification (both messages, one thread) ----------
 
-  await expect(page.getByText(firstContent)).toBeVisible();
-  await expect(page.getByText(secondContent)).toBeVisible();
+  await expect(page.locator('[data-testid^="message-bubble-content-"]', { hasText: firstContent })).toBeVisible();
+  await expect(page.locator('[data-testid^="message-bubble-content-"]', { hasText: secondContent })).toBeVisible();
 
 });
 
@@ -237,7 +237,7 @@ test('MSG-104 A Conversation You Started Shows In Your Own Inbox Before Any Repl
   await expect(conversationItem).not.toContainText(me.name);
 
   await conversationItem.click();
-  await expect(page.getByText(content)).toBeVisible();
+  await expect(page.locator('[data-testid^="message-bubble-content-"]', { hasText: content })).toBeVisible();
 
   // A conversation you started yourself should never show as unread -
   // isRead describes whether the recipient (them) has read it, which
@@ -345,7 +345,7 @@ test('MSG-115 Reply Via Email Does Not Show For A Pending Invitation', async ({ 
 
   const inviteItem = page.locator('[data-testid^="message-item-"]').first();
   await inviteItem.click();
-  await expect(page.getByText(/invited you to join/i)).toBeVisible();
+  await expect(page.locator('[data-testid^="message-bubble-content-"]', { hasText: /invited you to join/i })).toBeVisible();
 
   // ---------- Final verification ----------
   // Invitations have their own Accept/Decline actions, not a generic
@@ -381,7 +381,7 @@ test('MSG-105 Replying To Your Own Just-Sent Message Reaches The Recipient, Not 
   // The coach conversation is the more recent of the two rows
   // (welcome message + this one).
   await page.locator('[data-testid^="message-item-"]').first().click();
-  await expect(page.getByText(content)).toBeVisible();
+  await expect(page.locator('[data-testid^="message-bubble-content-"]', { hasText: content })).toBeVisible();
 
   await page.getByTestId('button-reply').click();
   await page.getByTestId('textarea-reply').fill(followUp);
@@ -416,8 +416,8 @@ test('MSG-105 Replying To Your Own Just-Sent Message Reaches The Recipient, Not 
   // (they just "received" the follow-up).
   await page.locator('[data-testid^="message-item-"]').first().click();
 
-  await expect(page.getByText(content)).toBeVisible();
-  await expect(page.getByText(followUp)).toBeVisible();
+  await expect(page.locator('[data-testid^="message-bubble-content-"]', { hasText: content })).toBeVisible();
+  await expect(page.locator('[data-testid^="message-bubble-content-"]', { hasText: followUp })).toBeVisible();
 
 });
 
@@ -515,7 +515,7 @@ test('MSG-108 Welcome System Message Appears On Registration', async ({ page }) 
   await expect(welcomeItem).toContainText('Tennis Connect');
 
   await welcomeItem.click();
-  await expect(page.getByText(/welcome to tennisconnect/i)).toBeVisible();
+  await expect(page.locator('[data-testid^="message-bubble-content-"]', { hasText: /welcome to tennisconnect/i })).toBeVisible();
 
 });
 
@@ -580,7 +580,7 @@ test('MSG-110 Organiser-Approval Message Has A Real Sender And Can Be Replied To
   const approvalItem = page.locator('[data-testid^="message-item-"]').first();
   await expect(approvalItem).toBeVisible();
   await approvalItem.click();
-  await expect(page.getByText(/approved as an organiser/i)).toBeVisible();
+  await expect(page.locator('[data-testid^="message-bubble-content-"]', { hasText: /approved as an organiser/i })).toBeVisible();
 
   // ---------- Actions (reply to it) ----------
 
@@ -655,7 +655,7 @@ test('MSG-111 Community Invite - Accept', async ({ page }) => {
   const inviteItem = page.locator('[data-testid^="message-item-"]').first();
   await expect(inviteItem).toBeVisible();
   await inviteItem.click();
-  await expect(page.getByText(/invited you to join/i)).toBeVisible();
+  await expect(page.locator('[data-testid^="message-bubble-content-"]', { hasText: /invited you to join/i })).toBeVisible();
 
   const acceptButton = page.locator('[data-testid^="invitation-accept-"]');
   await expect(acceptButton).toBeVisible();
@@ -730,7 +730,7 @@ test('MSG-112 Community Invite - Decline', async ({ page }) => {
   const inviteItem = page.locator('[data-testid^="message-item-"]').first();
   await expect(inviteItem).toBeVisible();
   await inviteItem.click();
-  await expect(page.getByText(/invited you to join/i)).toBeVisible();
+  await expect(page.locator('[data-testid^="message-bubble-content-"]', { hasText: /invited you to join/i })).toBeVisible();
 
   const declineButton = page.locator('[data-testid^="invitation-decline-"]');
   await expect(declineButton).toBeVisible();
