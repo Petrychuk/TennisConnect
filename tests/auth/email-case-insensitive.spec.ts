@@ -88,7 +88,18 @@ test('AUTH-012 Login succeeds with a different email casing than used at registr
   ]);
 
   await expect(page).toHaveURL(/\/complete-profile|\/player\/.+|\/coach\/.+/);
-  await expect(page.getByTestId('profile-menu')).toBeVisible();
+
+  // This account never completes its profile (registered, then
+  // logged straight out), so after the /complete-profile redirect fix
+  // it correctly lands back there - which has no navbar/profile-menu
+  // at all (see AUTH-014's own reasoning). Only expect the menu when
+  // landing on an actual profile page.
+  const url = page.url();
+  if (/\/(player|coach)\//.test(url)) {
+    await expect(page.getByTestId('profile-menu')).toBeVisible();
+  } else {
+    await expect(page).toHaveURL(/\/complete-profile/);
+  }
 });
 
 test('AUTH-013 Registered email is stored lowercase regardless of the casing typed', async ({ page }) => {
