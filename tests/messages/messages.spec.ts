@@ -70,7 +70,7 @@ test('MSG-002 Reply Message', async ({ page }) => {
   await page.goto('/messages');
 
   const conversationItem = page.locator('[data-testid^="message-item-"]', {
-    hasText: content,
+    hasText: player.name,
   }).first();
 
   await conversationItem.click();
@@ -141,7 +141,7 @@ test('MSG-003 Unread Counter', async ({ page }) => {
   // ---------- Actions (open the new conversation) ----------
 
   await page
-    .locator('[data-testid^="message-item-"]', { hasText: content })
+    .locator('[data-testid^="message-item-"]', { hasText: player.name })
     .first()
     .click();
 
@@ -179,7 +179,7 @@ test('MSG-004 Mark Conversation as Read', async ({ page }) => {
   await page.goto('/messages');
 
   const conversationItem = page.locator('[data-testid^="message-item-"]', {
-    hasText: content,
+    hasText: player.name,
   }).first();
 
   // ---------- Actions ----------
@@ -202,9 +202,15 @@ test('MSG-004 Mark Conversation as Read', async ({ page }) => {
   await page.reload();
 
   // ---------- Final verification ----------
+  // The read/unread background class lives on the row wrapper (the
+  // button's parent), not the button itself - the button only holds
+  // the click target now that the delete icon is a sibling within the
+  // same row.
 
   await expect(
-    page.locator('[data-testid^="message-item-"]', { hasText: content })
+    page
+      .locator('[data-testid^="message-item-"]', { hasText: player.name })
+      .locator('xpath=..')
   ).not.toHaveClass(/bg-muted hover:bg-muted\/80/);
 
 });
@@ -340,7 +346,7 @@ test('MSG-008 Conversation Ordering (Latest Message First)', async ({ browser })
 
   const contextB = await browser.newContext();
   const pageB = await contextB.newPage();
-  await registerPlayer(pageB);
+  const playerB = await registerPlayer(pageB);
   await sendContactMessage(
     pageB,
     `/coach/${TEST_USERS.coach.slug}`,
@@ -357,9 +363,12 @@ test('MSG-008 Conversation Ordering (Latest Message First)', async ({ browser })
   await pageC.goto('/messages');
 
   // ---------- Verify ----------
+  // The list row shows the other participant's name, not the message
+  // content - playerB's conversation should sort first since their
+  // message is the more recent of the two.
 
   const firstItem = pageC.locator('[data-testid^="message-item-"]').first();
-  await expect(firstItem).toContainText(newerContent);
+  await expect(firstItem).toContainText(playerB.name);
 
   await contextC.close();
 
@@ -385,7 +394,7 @@ test('MSG-009 Message Timestamp Display', async ({ page }) => {
   await page.goto('/messages');
 
   await page
-    .locator('[data-testid^="message-item-"]', { hasText: content })
+    .locator('[data-testid^="message-item-"]', { hasText: player.name })
     .first()
     .click();
 
@@ -499,7 +508,7 @@ test('MSG-014 Message Persists After Page Refresh', async ({ page }) => {
 
   // ---------- Actions (player sends to coach) ----------
 
-  await registerPlayer(page);
+  const player = await registerPlayer(page);
 
   await sendContactMessage(
     page,
@@ -515,7 +524,7 @@ test('MSG-014 Message Persists After Page Refresh', async ({ page }) => {
   await page.goto('/messages');
 
   await expect(
-    page.locator('[data-testid^="message-item-"]', { hasText: content })
+    page.locator('[data-testid^="message-item-"]', { hasText: player.name })
   ).toBeVisible();
 
   // ---------- Reload ----------
@@ -525,7 +534,7 @@ test('MSG-014 Message Persists After Page Refresh', async ({ page }) => {
   // ---------- Final verification ----------
 
   await expect(
-    page.locator('[data-testid^="message-item-"]', { hasText: content })
+    page.locator('[data-testid^="message-item-"]', { hasText: player.name })
   ).toBeVisible();
 
 });

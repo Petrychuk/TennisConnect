@@ -6,9 +6,20 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, MailOpen, Trash2, Clock, User, ArrowLeft, Reply, Send, X, Check } from "lucide-react";
+import { Mail, MailOpen, Trash2, ArrowLeft, Reply, Send, X, Check } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
@@ -520,46 +531,36 @@ export function MessagesInbox() {
                       <AnimatePresence>
                         {uniqueConversations.map((message) => {
                           const partner = conversationPartner(message);
+                          const isSelected =
+                            selectedMessage?.conversationId === message.conversationId ||
+                            selectedMessage?.id === message.id;
                           return (
                           <motion.div
                             key={message.conversationId || message.id}
                             animate={{ opacity: 1, x: 0 }}
+                            className={`
+                              group relative flex items-center gap-1
+                              rounded-xl transition-all duration-200 mb-1.5
+                              ${
+                                isSelected
+                                  ? "bg-primary/10 border border-primary/20 shadow-sm"
+                                  : message.isRead
+                                  ? "hover:bg-muted/50"
+                                  : "bg-muted hover:bg-muted/80"
+                              }
+                            `}
                           >
                             <button
                               type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                selectMessage(message);
-                              }}
-                              className={`
-                                w-full
-                                text-left
-                                p-3
-                                rounded-xl
-                                transition-all
-                                duration-200
-                                mb-2
-                                cursor-pointer
-
-                                ${
-                                  selectedMessage?.conversationId ===
-                                    message.conversationId ||
-                                  selectedMessage?.id === message.id
-                                    ? "bg-primary/10 border border-primary/20 shadow-sm"
-                                    : message.isRead
-                                    ? "hover:bg-muted/50"
-                                    : "bg-muted hover:bg-muted/80"
-                                }
-                              `}
+                              onClick={() => selectMessage(message)}
+                              className="flex-1 min-w-0 flex items-center gap-3 text-left p-2.5 sm:p-3"
                               data-testid={`message-item-${message.id}`}
                             >
-                              <div className="flex items-start gap-3">
-                                <Avatar className="h-10 w-10 shrink-0 border">
+                              <div className="relative shrink-0">
+                                <Avatar className="h-10 w-10 sm:h-11 sm:w-11 border">
                                   <AvatarImage
                                     src={withCacheBust(partner.avatar)}
                                   />
-
                                   <AvatarFallback
                                     className={
                                       !message.isRead
@@ -571,40 +572,67 @@ export function MessagesInbox() {
                                   </AvatarFallback>
                                 </Avatar>
 
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <p
-                                      className={`
-                                        truncate
-                                        ${
-                                          !message.isRead
-                                            ? "font-semibold"
-                                            : "font-medium"
-                                        }
-                                      `}
-                                    >
-                                      {partner.name}
-                                    </p>
-
-                                    {!message.isRead && (
-                                      <div className="w-2 h-2 rounded-full bg-primary shrink-0 animate-pulse" />
-                                    )}
-                                  </div>
-
-                                  <p className="text-sm text-muted-foreground line-clamp-2 wrap-break-word mt-0.5">
-                                    {message.content}
-                                  </p>
-
-                                  <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                                    <Clock className="w-3 h-3" />
-                                    {format(
-                                      new Date(message.createdAt),
-                                      "MMM d, h:mm a"
-                                    )}
-                                  </p>
-                                </div>
+                                {/* Unread badge - a count doesn't exist per
+                                    conversation (isRead is a single flag for
+                                    the whole thread), so this is a presence
+                                    dot rather than a number. */}
+                                {!message.isRead && (
+                                  <span
+                                    className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-primary border-2 border-background"
+                                    data-testid={`message-item-unread-${message.id}`}
+                                  />
+                                )}
                               </div>
+
+                              <p
+                                className={`
+                                  flex-1 min-w-0 truncate text-sm sm:text-base
+                                  ${!message.isRead ? "font-semibold" : "font-medium"}
+                                `}
+                              >
+                                {partner.name}
+                              </p>
                             </button>
+
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <button
+                                  type="button"
+                                  onClick={(e) => e.stopPropagation()}
+                                  aria-label={`Delete conversation with ${partner.name}`}
+                                  className="
+                                    shrink-0 mr-2 p-1.5 rounded-lg text-muted-foreground
+                                    opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100
+                                    hover:text-destructive hover:bg-destructive/10
+                                    transition-all
+                                  "
+                                  data-testid={`message-item-delete-${message.id}`}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete this conversation?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will permanently delete your conversation with {partner.name}.
+                                    This can't be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel data-testid={`message-item-delete-cancel-${message.id}`}>
+                                    Cancel
+                                  </AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteMessage(message.id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    data-testid={`message-item-delete-confirm-${message.id}`}
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </motion.div>
                           );
                         })}
@@ -620,107 +648,70 @@ export function MessagesInbox() {
                     (() => {
                       // The representative row (selectedMessage) might be
                       // one the current viewer sent themselves - its
-                      // senderEmail/senderPhone would then be the
-                      // viewer's own contact info, not the other
-                      // person's. Look through the actually-loaded
-                      // thread for a message the other person sent, and
-                      // use their contact info from that instead. If
+                      // senderEmail would then be the viewer's own contact
+                      // info, not the other person's. Look through the
+                      // actually-loaded thread for a message the other
+                      // person sent, and use their email from that
+                      // instead (for the "Reply via Email" mailto target
+                      // below - not displayed anywhere anymore). If
                       // nobody's replied yet, there simply isn't one.
                       const otherPartyMessage = conversation.find(
                         (m) => m.senderUserId !== user?.id
                       );
                       const otherPartyEmail = otherPartyMessage?.senderEmail;
-                      const otherPartyPhone = otherPartyMessage?.senderPhone;
 
                       return (
                     <>
-                      <CardHeader className="pb-2">
-                        <div className="flex items-start justify-between gap-2 min-w-0">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="lg:hidden shrink-0"
-                              onClick={() => {
-                                setMobileView("list");
-                              }}
-                            >
-                              <ArrowLeft className="w-5 h-5" />
-                            </Button>
-                            <Avatar className="h-10 w-10 lg:h-12 lg:w-12 shrink-0">
-                              <AvatarImage
-                                src={withCacheBust(conversationPartner(selectedMessage).avatar)}
-                              />
-                              <AvatarFallback className="bg-primary/10 text-primary">
-                                {conversationPartner(selectedMessage).name?.[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="min-w-0">
-                              <CardTitle className="text-lg truncate">{conversationPartner(selectedMessage).name}</CardTitle>
-                              {otherPartyEmail && (
-                                <p className="text-sm text-muted-foreground truncate">{otherPartyEmail}</p>
-                              )}
-                              {otherPartyPhone && (
-                                <p className="text-sm text-muted-foreground truncate">{otherPartyPhone}</p>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                          {/*  {selectedMessage.senderUserId && (
-                              <Badge variant="secondary" className="flex items-center gap-1">
-                                <User className="w-3 h-3" />
-                                Registered User
-                              </Badge>
-                            )} */}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => handleDeleteMessage(selectedMessage.id)}
-                              data-testid="button-delete-message"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <Separator className="h-px w-full bg-linear-to-r from-transparent via-[hsl(var(--tennis-ball))] to-transparent my-4" />
-                      <CardContent className="px-3 pt-4 pb-3 md:px-6 md:pb-6">
+                      {/* Compact - no avatar/email header (that's what the
+                          list on the left already shows). Mobile only:
+                          just enough to get back to the list and know
+                          which thread this is. */}
+                      <div className="lg:hidden flex items-center gap-2 p-2 border-b border-border">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setMobileView("list")}
+                          data-testid="button-back-to-list"
+                        >
+                          <ArrowLeft className="w-5 h-5" />
+                        </Button>
+                        <span className="font-semibold truncate">
+                          {conversationPartner(selectedMessage).name}
+                        </span>
+                      </div>
+                      <CardContent className="px-3 pt-3 pb-3 md:px-6 md:pb-6">
                       <ScrollArea
-                          className="h-[45vh] pr-4"
+                          className="h-[52vh] pr-4"
                           type="always"
                           onWheel={(e) => e.stopPropagation()}
                         >
-                          <div className="space-y-4 pr-2">
+                          <div className="space-y-3 pr-2">
                             {conversation.map((msg) => {
                             const isMe = msg.senderUserId === user?.id;
 
                             return (
-                              <div key={msg.id} className="flex gap-3 w-full">
-                                <Avatar className="h-10 w-10 shrink-0 ml-1">
+                              <div
+                                key={msg.id}
+                                className={`flex gap-2 sm:gap-3 w-full ${isMe ? "flex-row-reverse" : ""}`}
+                              >
+                                <Avatar className="h-8 w-8 sm:h-10 sm:w-10 shrink-0">
                                   <AvatarImage
                                     src={withCacheBust(msg.senderAvatar)}
                                     alt={msg.senderName}
                                   />
-                                  <AvatarFallback className="bg-primary/10 text-primary">
+                                  <AvatarFallback className="bg-primary/10 text-primary text-xs sm:text-sm">
                                     {msg.senderName?.charAt(0)?.toUpperCase()}
                                   </AvatarFallback>
                                 </Avatar>
 
-                                <div className="flex-1 min-w-0">
-                                  <div
-                                    className={`text-xs mb-1 px-1 ${
-                                      isMe
-                                        ? "text-right text-muted-foreground"
-                                        : "text-muted-foreground"
-                                    }`}
-                                  >
+                                <div className={`flex-1 min-w-0 flex flex-col ${isMe ? "items-end" : "items-start"}`}>
+                                  <div className="text-xs mb-1 px-1 text-muted-foreground">
                                     {msg.senderName}
                                   </div>
 
                                   <div
                                     className={`
-                                      w-full rounded-2xl px-3 py-2 md:px-4 md:py-3 shadow-sm transition-all
+                                      max-w-[85%] sm:max-w-[75%] rounded-2xl px-3 py-2 md:px-4 md:py-3 shadow-sm transition-all
                                       ${
                                         isMe
                                           ? "bg-primary/5 border border-primary/20"
@@ -778,11 +769,7 @@ export function MessagesInbox() {
                                     </div>
                                   )}
 
-                                  <div
-                                    className={`mt-1 text-xs text-muted-foreground px-1 ${
-                                      isMe ? "text-right" : ""
-                                    }`}
-                                  >
+                                  <div className="mt-1 text-xs text-muted-foreground px-1">
                                     {format(
                                       new Date(msg.createdAt),
                                       "MMM d, h:mm a"
@@ -796,9 +783,9 @@ export function MessagesInbox() {
                         </div>
                       </ScrollArea>
 
-                        <Separator className="h-px w-full bg-linear-to-r from-transparent via-[hsl(var(--tennis-ball))] to-transparent my-4" />                    
+                        <Separator className="h-px w-full bg-linear-to-r from-transparent via-[hsl(var(--tennis-ball))] to-transparent my-3" />                    
                         {!showReplyForm && !conversation.some((m) => m.messageType && m.actionStatus === "pending") && (
-                          <div className="flex flex-row gap-2 mt-6">
+                          <div className="flex flex-row gap-2 mt-3">
                             <Button
                               className="flex-1 md:flex-none md:min-w-[160px] px-2 md:px-6"
                               onClick={() => setShowReplyForm(true)}
@@ -825,7 +812,7 @@ export function MessagesInbox() {
                           </div>
                         )}
                         {showReplyForm && (
-                          <div className="mt-6 pt-6 space-y-4">
+                          <div className="mt-3 pt-3 space-y-4">
                             <Textarea
                               data-testid="textarea-reply"
                               value={replyContent}

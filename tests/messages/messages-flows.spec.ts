@@ -12,6 +12,15 @@ import { TEST_USERS } from '../fixtures/test-users';
   MESSAGING FLOWS - STAGING ONLY (creates real conversations/messages).
   Do not add anything from this file to the @smoke suite.
 
+  The inbox list row only shows an avatar and a name (no content
+  preview, no timestamp - see the compact redesign), so these tests
+  identify a conversation by position (list is newest-first, and every
+  test here uses a freshly-registered account so the set of
+  conversations is fully known) rather than by message text. Opening a
+  conversation and reading the thread panel is unaffected by that
+  redesign, so anywhere a specific message's content needs verifying,
+  these tests open the thread first and check it there.
+
   Two groups:
   - Private messages (MSG-101 to MSG-107): regression coverage for the
     "everything merged into one tab" / "delete brings it back" bugfix -
@@ -53,15 +62,18 @@ test('MSG-101 Two Different Conversations Show As Two Separate Tabs', async ({ p
 
   await page.goto('/messages');
 
-  // ---------- Verify (both show up as their own list row) ----------
+  // ---------- Verify ----------
+  // Three rows: the automatic welcome message plus the two just sent.
+  // Newest first - the player conversation was sent last.
 
-  await expect(
-    page.locator('[data-testid^="message-item-"]', { hasText: contentToCoach })
-  ).toBeVisible();
+  const items = page.locator('[data-testid^="message-item-"]');
+  await expect(items).toHaveCount(3);
 
-  await expect(
-    page.locator('[data-testid^="message-item-"]', { hasText: contentToPlayer })
-  ).toBeVisible();
+  await items.nth(0).click();
+  await expect(page.getByText(contentToPlayer)).toBeVisible();
+
+  await items.nth(1).click();
+  await expect(page.getByText(contentToCoach)).toBeVisible();
 
 });
 
@@ -92,21 +104,17 @@ test('MSG-102 A Second Message To The Same Person Joins The Same Conversation', 
 
   await page.goto('/messages');
 
-  // ---------- Verify (one row, showing only the latest content) ----------
+  // ---------- Verify ----------
+  // Two rows total (welcome message + the coach thread) - proves the
+  // second message joined the first instead of splitting into its own
+  // conversation.
 
-  await expect(
-    page.locator('[data-testid^="message-item-"]', { hasText: secondContent })
-  ).toBeVisible();
+  const items = page.locator('[data-testid^="message-item-"]');
+  await expect(items).toHaveCount(2);
 
-  await expect(
-    page.locator('[data-testid^="message-item-"]', { hasText: firstContent })
-  ).toHaveCount(0);
+  // ---------- Actions (open the coach conversation - the more recent of the two) ----------
 
-  // ---------- Actions (open it) ----------
-
-  await page
-    .locator('[data-testid^="message-item-"]', { hasText: secondContent })
-    .click();
+  await items.first().click();
 
   // ---------- Final verification (both messages, one thread) ----------
 
@@ -115,7 +123,7 @@ test('MSG-102 A Second Message To The Same Person Joins The Same Conversation', 
 
 });
 
-test('MSG-103 Deleting A Conversation Removes The Whole Thread, Not Just The Latest Message', async ({ page }) => {
+test('MSG-103 Deleting A Conversation Removes The Whole Thread - Cancel Keeps It, Confirm Removes It For Good', async ({ page }) => {
 
   // ---------- Test data ----------
 
@@ -142,11 +150,26 @@ test('MSG-103 Deleting A Conversation Removes The Whole Thread, Not Just The Lat
 
   await page.goto('/messages');
 
-  await page
-    .locator('[data-testid^="message-item-"]', { hasText: secondContent })
-    .click();
+  // The coach conversation (index 0) is the most recent of the two
+  // rows (welcome message + coach thread).
+  const row = page
+    .locator('[data-testid^="message-item-"]')
+    .first()
+    .locator('xpath=..');
 
-  // ---------- Actions (delete it) ----------
+  // ---------- Actions (open the confirm dialog, then cancel) ----------
+
+  await row.locator('[data-testid^="message-item-delete-"]').click();
+  await expect(page.getByText(/permanently delete your conversation/i)).toBeVisible();
+  await page.locator('[data-testid^="message-item-delete-cancel-"]').click();
+
+  // ---------- Verify (cancelling keeps the conversation) ----------
+
+  await expect(page.locator('[data-testid^="message-item-"]')).toHaveCount(2);
+
+  // ---------- Actions (delete for real) ----------
+
+  await row.locator('[data-testid^="message-item-delete-"]').click();
 
   const [deleteResponse] = await Promise.all([
     page.waitForResponse(
@@ -154,33 +177,27 @@ test('MSG-103 Deleting A Conversation Removes The Whole Thread, Not Just The Lat
         /\/api\/messages\/[^/]+$/.test(response.url()) &&
         response.request().method() === 'DELETE'
     ),
-    page.getByTestId('button-delete-message').click(),
+    page.locator('[data-testid^="message-item-delete-confirm-"]').click(),
   ]);
 
-  // ---------- Verify request ----------
+  // ---------- Verify request and toast ----------
 
   expect(deleteResponse.ok()).toBeTruthy();
+  await expect(page.getByText(/conversation deleted/i)).toBeVisible();
 
-  await expect(
-    page.locator('[data-testid^="message-item-"]', { hasText: secondContent })
-  ).toHaveCount(0);
+  // Only the welcome message conversation should remain.
+  await expect(page.locator('[data-testid^="message-item-"]')).toHaveCount(1);
 
   // ---------- Final verification ----------
-  // The actual regression: previously only the latest message
-  // (secondContent) was deleted from the DB, so the still-present
-  // earlier message (firstContent) would resurface as the new list
-  // representative the next time the inbox re-fetches - reload
-  // simulates exactly that re-fetch.
+  // The actual regression this guards against: previously only the
+  // latest message (secondContent) was deleted from the DB, so the
+  // still-present earlier message (firstContent) would resurface as
+  // the new list representative the next time the inbox re-fetches -
+  // reload simulates exactly that re-fetch.
 
   await page.reload();
 
-  await expect(
-    page.locator('[data-testid^="message-item-"]', { hasText: secondContent })
-  ).toHaveCount(0);
-
-  await expect(
-    page.locator('[data-testid^="message-item-"]', { hasText: firstContent })
-  ).toHaveCount(0);
+  await expect(page.locator('[data-testid^="message-item-"]')).toHaveCount(1);
 
 });
 
@@ -207,16 +224,20 @@ test('MSG-104 A Conversation You Started Shows In Your Own Inbox Before Any Repl
   // ---------- Verify ----------
   // Previously this conversation simply wasn't queried at all (the
   // inbox only looked up messages where you're the recipient), so it
-  // never appeared until the coach replied.
+  // never appeared until the coach replied. The coach conversation is
+  // the more recent of the two rows (welcome message + this one).
 
-  const conversationItem = page.locator('[data-testid^="message-item-"]', { hasText: content });
+  const conversationItem = page.locator('[data-testid^="message-item-"]').first();
   await expect(conversationItem).toBeVisible();
 
   // And when it does appear, it must show the coach's identity, not
-  // the current viewer's own - the list row used to fall back to
+  // the current viewer's own - the row used to fall back to
   // senderName/senderAvatar, which for a message you sent yourself is
   // your own name.
   await expect(conversationItem).not.toContainText(me.name);
+
+  await conversationItem.click();
+  await expect(page.getByText(content)).toBeVisible();
 
 });
 
@@ -242,9 +263,11 @@ test('MSG-105 Replying To Your Own Just-Sent Message Reaches The Recipient, Not 
   const me = await getMyUserId(page);
 
   await page.goto('/messages');
-  await page
-    .locator('[data-testid^="message-item-"]', { hasText: content })
-    .click();
+
+  // The coach conversation is the more recent of the two rows
+  // (welcome message + this one).
+  await page.locator('[data-testid^="message-item-"]').first().click();
+  await expect(page.getByText(content)).toBeVisible();
 
   await page.getByTestId('button-reply').click();
   await page.getByTestId('textarea-reply').fill(followUp);
@@ -275,9 +298,9 @@ test('MSG-105 Replying To Your Own Just-Sent Message Reaches The Recipient, Not 
   await login(page, TEST_USERS.coach.email, TEST_USERS.coach.password);
   await page.goto('/messages');
 
-  await page
-    .locator('[data-testid^="message-item-"]', { hasText: followUp })
-    .click();
+  // The most recently active conversation for the coach is this one
+  // (they just "received" the follow-up).
+  await page.locator('[data-testid^="message-item-"]').first().click();
 
   await expect(page.getByText(content)).toBeVisible();
   await expect(page.getByText(followUp)).toBeVisible();
@@ -370,14 +393,15 @@ test('MSG-108 Welcome System Message Appears On Registration', async ({ page }) 
   await page.goto('/messages');
 
   // ---------- Verify ----------
+  // A brand-new account has exactly one conversation: the automatic
+  // welcome message.
 
-  const welcomeItem = page.locator(
-    '[data-testid^="message-item-"]',
-    { hasText: /welcome to tennisconnect/i }
-  );
-
-  await expect(welcomeItem).toBeVisible();
+  const welcomeItem = page.locator('[data-testid^="message-item-"]');
+  await expect(welcomeItem).toHaveCount(1);
   await expect(welcomeItem).toContainText('Tennis Connect');
+
+  await welcomeItem.click();
+  await expect(page.getByText(/welcome to tennisconnect/i)).toBeVisible();
 
 });
 
@@ -391,9 +415,8 @@ test('MSG-109 Cannot Reply To A System Message With No Real Sender', async ({ pa
 
   await page.goto('/messages');
 
-  await page
-    .locator('[data-testid^="message-item-"]', { hasText: /welcome to tennisconnect/i })
-    .click();
+  // A brand-new account has exactly one conversation: the welcome message.
+  await page.locator('[data-testid^="message-item-"]').first().click();
 
   // ---------- Actions ----------
 
@@ -438,12 +461,12 @@ test('MSG-110 Organiser-Approval Message Has A Real Sender And Can Be Replied To
   await login(page, organiser.email, organiser.password);
   await page.goto('/messages');
 
-  const approvalItem = page.locator(
-    '[data-testid^="message-item-"]',
-    { hasText: /approved as an organiser/i }
-  );
+  // Two rows: the organiser's own welcome message, and the approval
+  // message - the approval message is the more recent of the two.
+  const approvalItem = page.locator('[data-testid^="message-item-"]').first();
   await expect(approvalItem).toBeVisible();
   await approvalItem.click();
+  await expect(page.getByText(/approved as an organiser/i)).toBeVisible();
 
   // ---------- Actions (reply to it) ----------
 
@@ -513,12 +536,12 @@ test('MSG-111 Community Invite - Accept', async ({ page }) => {
   await login(page, invitee.email, invitee.password);
   await page.goto('/messages');
 
-  const inviteItem = page.locator(
-    '[data-testid^="message-item-"]',
-    { hasText: /invited you to join/i }
-  );
+  // Two rows: the invitee's own welcome message, and the invite - the
+  // invite is the more recent of the two.
+  const inviteItem = page.locator('[data-testid^="message-item-"]').first();
   await expect(inviteItem).toBeVisible();
   await inviteItem.click();
+  await expect(page.getByText(/invited you to join/i)).toBeVisible();
 
   const acceptButton = page.locator('[data-testid^="invitation-accept-"]');
   await expect(acceptButton).toBeVisible();
@@ -590,12 +613,10 @@ test('MSG-112 Community Invite - Decline', async ({ page }) => {
   await login(page, invitee.email, invitee.password);
   await page.goto('/messages');
 
-  const inviteItem = page.locator(
-    '[data-testid^="message-item-"]',
-    { hasText: /invited you to join/i }
-  );
+  const inviteItem = page.locator('[data-testid^="message-item-"]').first();
   await expect(inviteItem).toBeVisible();
   await inviteItem.click();
+  await expect(page.getByText(/invited you to join/i)).toBeVisible();
 
   const declineButton = page.locator('[data-testid^="invitation-decline-"]');
   await expect(declineButton).toBeVisible();
