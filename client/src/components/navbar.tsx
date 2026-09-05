@@ -361,19 +361,6 @@ export function Navbar() {
                   })}
                 </nav>
 
-                {/* After all nav links, before Account/Sign In - same
-                    single component and modal as the desktop header
-                    slot, just full-width for the drawer's layout. */}
-                <div className="border-t border-border mt-4 pt-4 flex justify-center">
-                  <BackTheRallyWidget
-                    fullWidth
-                    onClick={() => {
-                      setIsOpen(false);
-                      openBackTheRally();
-                    }}
-                  />
-                </div>
-
                 {isAuthenticated ? (
                   <>
                     <div className="border-t border-border mt-4 pt-4">
@@ -404,6 +391,22 @@ export function Navbar() {
                     </Button>
                   </Link>
                 )}
+
+                {/* Last thing in the drawer either way - after the nav
+                    links AND after Account/Sign In, with its own
+                    clear space above so it doesn't read as crowding
+                    whatever's right above it. Same single component
+                    and modal as the desktop header slot, just
+                    full-width for the drawer's layout. */}
+                <div className="mt-6 pt-4 border-t border-border flex justify-center">
+                  <BackTheRallyWidget
+                    fullWidth
+                    onClick={() => {
+                      setIsOpen(false);
+                      openBackTheRally();
+                    }}
+                  />
+                </div>
               </div>
             </SheetContent>
           </Sheet>
