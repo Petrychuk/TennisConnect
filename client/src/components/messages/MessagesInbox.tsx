@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -51,9 +50,11 @@ interface Message {
   // describe who sent that specific message.
   otherPartyName?: string;
   otherPartyAvatar?: string | null;
+  otherPartyEmail?: string;
 
   content: string;
   isRead: boolean;
+  isUnreadForViewer?: boolean;
   createdAt: string;
 
   messageType?: "community_invite" | "session_invite" | null;
@@ -326,7 +327,11 @@ export function MessagesInbox() {
       });
       if (res.ok) {
         setMessages((prev) =>
-          prev.map((m) => ((m.conversationId || m.id) === conversationId ? { ...m, isRead: true } : m))
+          prev.map((m) =>
+            (m.conversationId || m.id) === conversationId
+              ? { ...m, isRead: true, isUnreadForViewer: false }
+              : m
+          )
         );
         setConversation((prev) => prev.map((m) => ({ ...m, isRead: true })));
         queryClient.invalidateQueries({ queryKey: ["/api/messages/unread-count"] });
@@ -504,18 +509,7 @@ export function MessagesInbox() {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Mail className="w-5 h-5" />
-
                       Inbox
-
-                      {messages.filter((m) => !m.isRead).length > 0 && (
-                        <Badge
-                          variant="destructive"
-                          className="ml-auto"
-                          data-testid="unread-badge"
-                        >
-                          {messages.filter((m) => !m.isRead).length} new
-                        </Badge>
-                      )}
                     </CardTitle>
                   </CardHeader>
                   
@@ -534,6 +528,7 @@ export function MessagesInbox() {
                           const isSelected =
                             selectedMessage?.conversationId === message.conversationId ||
                             selectedMessage?.id === message.id;
+                          const isUnread = message.isUnreadForViewer ?? false;
                           return (
                           <motion.div
                             key={message.conversationId || message.id}
@@ -544,9 +539,9 @@ export function MessagesInbox() {
                               ${
                                 isSelected
                                   ? "bg-primary/10 border border-primary/20 shadow-sm"
-                                  : message.isRead
-                                  ? "hover:bg-muted/50"
-                                  : "bg-muted hover:bg-muted/80"
+                                  : isUnread
+                                  ? "bg-muted hover:bg-muted/80"
+                                  : "hover:bg-muted/50"
                               }
                             `}
                           >
@@ -563,7 +558,7 @@ export function MessagesInbox() {
                                   />
                                   <AvatarFallback
                                     className={
-                                      !message.isRead
+                                      isUnread
                                         ? "bg-primary text-primary-foreground"
                                         : "bg-primary/10 text-primary"
                                     }
@@ -575,8 +570,16 @@ export function MessagesInbox() {
                                 {/* Unread badge - a count doesn't exist per
                                     conversation (isRead is a single flag for
                                     the whole thread), so this is a presence
-                                    dot rather than a number. */}
-                                {!message.isRead && (
+                                    dot rather than a number. Only lights up
+                                    when the viewer is actually the recipient
+                                    of the latest message - sending several
+                                    people a message from the listing page
+                                    used to light all of them up here too,
+                                    since the raw isRead flag describes "has
+                                    the recipient read this", which is never
+                                    true for your own outgoing copy and isn't
+                                    about you at all when you're the sender. */}
+                                {isUnread && (
                                   <span
                                     className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-primary border-2 border-background"
                                     data-testid={`message-item-unread-${message.id}`}
@@ -587,7 +590,7 @@ export function MessagesInbox() {
                               <p
                                 className={`
                                   flex-1 min-w-0 truncate text-sm sm:text-base
-                                  ${!message.isRead ? "font-semibold" : "font-medium"}
+                                  ${isUnread ? "font-semibold" : "font-medium"}
                                 `}
                               >
                                 {partner.name}
@@ -602,7 +605,6 @@ export function MessagesInbox() {
                                   aria-label={`Delete conversation with ${partner.name}`}
                                   className="
                                     shrink-0 mr-2 p-1.5 rounded-lg text-muted-foreground
-                                    opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100
                                     hover:text-destructive hover:bg-destructive/10
                                     transition-all
                                   "
@@ -646,19 +648,20 @@ export function MessagesInbox() {
                 <Card className="lg:col-span-2">
                   {selectedMessage ? (
                     (() => {
-                      // The representative row (selectedMessage) might be
-                      // one the current viewer sent themselves - its
-                      // senderEmail would then be the viewer's own contact
-                      // info, not the other person's. Look through the
-                      // actually-loaded thread for a message the other
-                      // person sent, and use their email from that
-                      // instead (for the "Reply via Email" mailto target
-                      // below - not displayed anywhere anymore). If
-                      // nobody's replied yet, there simply isn't one.
-                      const otherPartyMessage = conversation.find(
-                        (m) => m.senderUserId !== user?.id
-                      );
-                      const otherPartyEmail = otherPartyMessage?.senderEmail;
+                      // Resolved server-side now (getUserConversations),
+                      // the same way regardless of reply history - the
+                      // old approach (scanning the loaded thread for a
+                      // message the other person had sent) meant the
+                      // "Reply via Email" button was simply missing for
+                      // any conversation the viewer started that hasn't
+                      // gotten a reply yet, i.e. most brand-new
+                      // conversations. Only offered for plain private
+                      // messages - never for invitations (they have their
+                      // own Accept/Decline actions) or system messages
+                      // (no real person on the other end to email).
+                      const otherPartyEmail = selectedMessage.messageType
+                        ? undefined
+                        : selectedMessage.otherPartyEmail;
 
                       return (
                     <>
@@ -679,20 +682,20 @@ export function MessagesInbox() {
                           {conversationPartner(selectedMessage).name}
                         </span>
                       </div>
-                      <CardContent className="px-3 pt-3 pb-3 md:px-6 md:pb-6">
+                      <CardContent className="px-1.5 pt-3 pb-3 sm:px-3 md:px-6 md:pb-6">
                       <ScrollArea
-                          className="h-[52vh] pr-4"
+                          className="h-[52vh] pr-0 sm:pr-4"
                           type="always"
                           onWheel={(e) => e.stopPropagation()}
                         >
-                          <div className="space-y-3 pr-2">
+                          <div className="space-y-3 pr-0 sm:pr-2">
                             {conversation.map((msg) => {
                             const isMe = msg.senderUserId === user?.id;
 
                             return (
                               <div
                                 key={msg.id}
-                                className={`flex gap-2 sm:gap-3 w-full ${isMe ? "flex-row-reverse" : ""}`}
+                                className={`flex gap-2 sm:gap-3 w-full ${isMe ? "" : "flex-row-reverse"}`}
                               >
                                 <Avatar className="h-8 w-8 sm:h-10 sm:w-10 shrink-0">
                                   <AvatarImage
@@ -704,14 +707,14 @@ export function MessagesInbox() {
                                   </AvatarFallback>
                                 </Avatar>
 
-                                <div className={`flex-1 min-w-0 flex flex-col ${isMe ? "items-end" : "items-start"}`}>
+                                <div className={`flex-1 min-w-0 flex flex-col ${isMe ? "items-start" : "items-end"}`}>
                                   <div className="text-xs mb-1 px-1 text-muted-foreground">
                                     {msg.senderName}
                                   </div>
 
                                   <div
                                     className={`
-                                      max-w-[85%] sm:max-w-[75%] rounded-2xl px-3 py-2 md:px-4 md:py-3 shadow-sm transition-all
+                                      max-w-[92%] sm:max-w-[75%] rounded-2xl px-2.5 py-1.5 sm:px-3 sm:py-2 md:px-4 md:py-3 shadow-sm transition-all
                                       ${
                                         isMe
                                           ? "bg-primary/5 border border-primary/20"

@@ -239,6 +239,120 @@ test('MSG-104 A Conversation You Started Shows In Your Own Inbox Before Any Repl
   await conversationItem.click();
   await expect(page.getByText(content)).toBeVisible();
 
+  // A conversation you started yourself should never show as unread -
+  // isRead describes whether the recipient (them) has read it, which
+  // says nothing about whether there's anything new for you to see.
+  await expect(
+    page.locator('[data-testid^="message-item-unread-"]')
+  ).toHaveCount(0);
+
+});
+
+test('MSG-113 Reply Via Email Shows For A Conversation You Started, Before Any Reply', async ({ page }) => {
+
+  // ---------- Test data ----------
+
+  const content = `Email button check ${Date.now()}`;
+
+  // ---------- Login ----------
+
+  await registerPlayer(page);
+
+  // ---------- Actions (message someone who hasn't replied yet) ----------
+
+  await sendContactMessage(
+    page,
+    `/coach/${TEST_USERS.coach.slug}`,
+    { subject: 'New chat', message: content }
+  );
+
+  await page.goto('/messages');
+  await page.locator('[data-testid^="message-item-"]').first().click();
+
+  // ---------- Final verification ----------
+  // Previously this button relied on scanning the loaded thread for a
+  // message the other person had sent - with no reply yet, there was
+  // none to find, so the button was simply missing for exactly this
+  // (very common) case: a brand-new outgoing conversation.
+
+  await expect(page.getByTestId('button-reply-email')).toBeVisible();
+
+});
+
+test('MSG-114 Reply Via Email Does Not Show For The Welcome System Message', async ({ page }) => {
+
+  // ---------- Login ----------
+
+  await registerPlayer(page);
+
+  // ---------- Open page ----------
+
+  await page.goto('/messages');
+  await page.locator('[data-testid^="message-item-"]').first().click();
+
+  // ---------- Final verification ----------
+  // There's no real person behind a system message to email.
+
+  await expect(page.getByTestId('button-reply-email')).toHaveCount(0);
+
+});
+
+test('MSG-115 Reply Via Email Does Not Show For A Pending Invitation', async ({ page }) => {
+
+  // ---------- Test data (organiser with their own organisation) ----------
+
+  const organiser = await registerPlayer(page);
+  await completePlayerProfile(page);
+  await logout(page);
+
+  await grantOrganizerAccess(
+    page,
+    TEST_USERS.admin.email,
+    TEST_USERS.admin.password,
+    organiser.email
+  );
+
+  await login(page, organiser.email, organiser.password);
+
+  const orgResponse = await page.request.post('/api/organizer/organizations', {
+    data: { name: `Playwright Club ${Date.now()}` },
+  });
+  expect(orgResponse.ok()).toBeTruthy();
+
+  await logout(page);
+
+  // ---------- Test data (the invitee) ----------
+
+  const invitee = await registerPlayer(page);
+  const inviteeId = await getMyUserId(page);
+  await logout(page);
+
+  // ---------- Actions (organiser sends the invite) ----------
+
+  await login(page, organiser.email, organiser.password);
+
+  const inviteResponse = await page.request.post('/api/organizer/players/invite', {
+    data: { userId: inviteeId },
+  });
+  expect(inviteResponse.ok()).toBeTruthy();
+
+  await logout(page);
+
+  // ---------- Login (invitee checks their inbox) ----------
+
+  await login(page, invitee.email, invitee.password);
+  await page.goto('/messages');
+
+  const inviteItem = page.locator('[data-testid^="message-item-"]').first();
+  await inviteItem.click();
+  await expect(page.getByText(/invited you to join/i)).toBeVisible();
+
+  // ---------- Final verification ----------
+  // Invitations have their own Accept/Decline actions, not a generic
+  // reply-by-email escape hatch.
+
+  await expect(page.getByTestId('button-reply-email')).toHaveCount(0);
+
 });
 
 test('MSG-105 Replying To Your Own Just-Sent Message Reaches The Recipient, Not Yourself', async ({ page }) => {

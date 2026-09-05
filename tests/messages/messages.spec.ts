@@ -103,11 +103,11 @@ test('MSG-002 Reply Message', async ({ page }) => {
 
 });
 
-test('MSG-003 Unread Counter', async ({ page }) => {
+test('MSG-003 Unread Indicator Clears After Opening', async ({ page }) => {
 
   // ---------- Test data ----------
 
-  const content = `Unread counter check ${Date.now()}`;
+  const content = `Unread indicator check ${Date.now()}`;
 
   // ---------- Actions (player sends a fresh message to coach) ----------
 
@@ -129,32 +129,71 @@ test('MSG-003 Unread Counter', async ({ page }) => {
 
   // ---------- Verify ----------
 
-  const badge = page.getByTestId('unread-badge');
-  await expect(badge).toBeVisible();
+  const conversationItem = page.locator('[data-testid^="message-item-"]', {
+    hasText: player.name,
+  }).first();
 
-  const countBefore = parseInt(
-    (await badge.textContent()) || '0',
-    10
-  );
-  expect(countBefore).toBeGreaterThan(0);
+  await expect(
+    conversationItem.locator('xpath=..').locator('[data-testid^="message-item-unread-"]')
+  ).toBeVisible();
 
   // ---------- Actions (open the new conversation) ----------
 
-  await page
-    .locator('[data-testid^="message-item-"]', { hasText: player.name })
-    .first()
-    .click();
+  await conversationItem.click();
 
-  // ---------- Final verification (counter drops) ----------
+  // ---------- Final verification (indicator clears) ----------
 
   await page.reload();
 
-  const badgeAfter = page.getByTestId('unread-badge');
-  const countAfter = (await badgeAfter.isVisible().catch(() => false))
-    ? parseInt((await badgeAfter.textContent()) || '0', 10)
-    : 0;
+  await expect(
+    page
+      .locator('[data-testid^="message-item-"]', { hasText: player.name })
+      .locator('xpath=..')
+      .locator('[data-testid^="message-item-unread-"]')
+  ).toHaveCount(0);
 
-  expect(countAfter).toBeLessThan(countBefore);
+});
+
+test('MSG-003b Sending To Several People Does Not Mark Them Unread In Your Own Inbox', async ({ page }) => {
+
+  // ---------- Test data ----------
+  // Regression: sending several people a message from the listing
+  // page used to light up an unread indicator for every one of those
+  // conversations in the sender's own inbox - isRead describes "has
+  // the recipient read this", which was never true for the sender's
+  // own outgoing copy and isn't a meaningful "unread" signal for the
+  // person who just wrote it.
+
+  const contentToCoach = `Broadcast check coach ${Date.now()}`;
+  const contentToPlayer = `Broadcast check player ${Date.now()}`;
+
+  // ---------- Login ----------
+
+  await registerPlayer(page);
+
+  // ---------- Actions (message two different people, nobody's replied) ----------
+
+  await sendContactMessage(
+    page,
+    `/coach/${TEST_USERS.coach.slug}`,
+    { subject: 'Broadcast', message: contentToCoach }
+  );
+
+  await sendContactMessage(
+    page,
+    `/player/${TEST_USERS.player.slug}`,
+    { subject: 'Broadcast', message: contentToPlayer }
+  );
+
+  await page.goto('/messages');
+
+  // ---------- Final verification ----------
+  // None of the three conversations (welcome message + the two just
+  // sent) should show an unread indicator - the viewer authored two
+  // of them and hasn't been sent anything new in the third.
+
+  await expect(page.locator('[data-testid^="message-item-"]')).toHaveCount(3);
+  await expect(page.locator('[data-testid^="message-item-unread-"]')).toHaveCount(0);
 
 });
 

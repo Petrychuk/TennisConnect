@@ -1077,6 +1077,17 @@ export type MessageWithAvatar = Message & {
   // for message-bubble rendering, which needs no such override).
   otherPartyName?: string;
   otherPartyAvatar?: string | null;
+  // Same idea for email - resolved via the recipient's own account
+  // when the viewer is the sender, so the "Reply via Email" button
+  // works even before the other person has replied at all.
+  otherPartyEmail?: string;
+  // isRead describes "has the recipient read this", which is only
+  // meaningful when the viewer actually IS the recipient of this
+  // representative message - true for the sender's own copy. Only
+  // getUserConversations() computes this viewer-relative flag; use it
+  // instead of isRead for anything about whether to show this
+  // conversation as unread to the current viewer.
+  isUnreadForViewer?: boolean;
 };
 
 export type SupportRequest = typeof supportRequests.$inferSelect;
