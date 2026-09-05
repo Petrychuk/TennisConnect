@@ -102,7 +102,7 @@ const PRESET_RESULTS = ["Winner", "Runner Up", "Semi-Finalist", "Quarter-Finalis
 export default function PlayerProfile() {
   const [match, params] = useRoute("/player/:slug");
   const profileSlug = params?.slug; 
-  const { user, isAuthenticated, updateUserProfile, updateUserLocal, fetchCurrentUser } = useAuth();
+  const { user, isAuthenticated, loading: authLoading, updateUserProfile, updateUserLocal, fetchCurrentUser } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const profileSearch = useSearch();
@@ -161,6 +161,13 @@ export default function PlayerProfile() {
       files: [],
     });
   const [marketplaceItems, setMarketplaceItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (isOwnProfile && user && !user.profileCompleted) {
+      setLocation("/complete-profile");
+    }
+  }, [authLoading, isOwnProfile, user, setLocation]);
 
    useEffect(() => {
     if (!profileSlug) return;
