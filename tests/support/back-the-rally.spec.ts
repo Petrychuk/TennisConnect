@@ -52,6 +52,7 @@ test('SUPPORT-003 Opening The Modal Shows The Tier Picker, Not Card Fields', asy
   await expect(page.getByTestId('support-tier-keep_the_rally_going')).toContainText('A$10');
   await expect(page.getByTestId('support-tier-keep_the_rally_going')).toContainText(/most popular/i);
   await expect(page.getByTestId('support-tier-game_point')).toContainText('A$20');
+  await expect(page.getByTestId('support-tier-game_changer')).toContainText('A$50');
   await expect(page.getByTestId('input-custom-amount')).toBeVisible();
 
   await expect(page.getByTestId('button-continue-to-payment')).toBeVisible();

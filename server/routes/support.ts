@@ -14,6 +14,7 @@ const SUPPORT_TIERS: Record<string, { amountCents: number; label: string }> = {
   first_serve: { amountCents: 500, label: "First Serve" },
   keep_the_rally_going: { amountCents: 1000, label: "Keep the Rally Going" },
   game_point: { amountCents: 2000, label: "Game Point" },
+  game_changer: { amountCents: 5000, label: "Game Changer" },
 };
 
 // A custom amount is still fully server-validated - these bounds are
@@ -23,7 +24,7 @@ const MIN_CUSTOM_CENTS = 300; // $3
 const MAX_CUSTOM_CENTS = 100_000; // $1,000
 
 const createCheckoutSchema = z.object({
-  tier: z.enum(["first_serve", "keep_the_rally_going", "game_point", "custom"]),
+  tier: z.enum(["first_serve", "keep_the_rally_going", "game_point", "game_changer", "custom"]),
   customAmountCents: z.number().int().positive().optional(),
   email: z.string().email().optional(),
 });

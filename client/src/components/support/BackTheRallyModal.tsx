@@ -8,6 +8,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Lock, ArrowRight, Check } from "lucide-react";
+import desktopPhoto from "/assets/images/back-the-rally-desktop.webp";
+import mobilePhoto from "/assets/images/back-the-rally-mobile.webp";
 
 interface BackTheRallyModalProps {
   open: boolean;
@@ -19,12 +21,13 @@ interface BackTheRallyModalProps {
   initialView?: "select" | "success" | "cancelled";
 }
 
-type SupportTier = "first_serve" | "keep_the_rally_going" | "game_point";
+type SupportTier = "first_serve" | "keep_the_rally_going" | "game_point" | "game_changer";
 
-const TIERS: { id: SupportTier; amount: string; label: string; popular?: boolean }[] = [
-  { id: "first_serve", amount: "A$5", label: "First Serve" },
-  { id: "keep_the_rally_going", amount: "A$10", label: "Keep the Rally Going", popular: true },
-  { id: "game_point", amount: "A$20", label: "Game Point" },
+const TIERS: { id: SupportTier; amount: string; label: string; icon: string; note: string; popular?: boolean }[] = [
+  { id: "first_serve", amount: "A$5", label: "A coffee for the cause", icon: "☕", note: "A small boost" },
+  { id: "keep_the_rally_going", amount: "A$10", label: "Keep the rally going", icon: "🎾", note: "Our most popular", popular: true },
+  { id: "game_point", amount: "A$20", label: "Stronger together", icon: "🎾", note: "Big thanks!" },
+  { id: "game_changer", amount: "A$50", label: "Game changer", icon: "🏆", note: "A real impact" },
 ];
 
 export function BackTheRallyModal({
@@ -62,6 +65,10 @@ export function BackTheRallyModal({
     setIsSubmitting(true);
 
     try {
+      // "game_changer" ($50) is still just a fourth SUPPORT_TIERS entry
+      // server-side (server/routes/support.ts) - the server looks up
+      // its real amount from the tier name, same as the other three,
+      // never trusting a client-sent dollar figure.
       const res = await fetch("/api/support/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -109,123 +116,166 @@ export function BackTheRallyModal({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md" data-testid="back-the-rally-modal">
+      <DialogContent
+        className="max-w-md md:max-w-3xl p-0 gap-0 overflow-hidden max-h-[90vh]"
+        data-testid="back-the-rally-modal"
+      >
         {initialView === "success" ? (
-          <SuccessView onClose={() => onOpenChange(false)} />
+          <div className="p-6">
+            <SuccessView onClose={() => onOpenChange(false)} />
+          </div>
         ) : initialView === "cancelled" ? (
-          <CancelledView onTryAgain={() => onOpenChange(true)} onClose={() => onOpenChange(false)} />
+          <div className="p-6">
+            <CancelledView onTryAgain={() => onOpenChange(true)} onClose={() => onOpenChange(false)} />
+          </div>
         ) : (
-          <>
-            <div className="flex flex-col items-center text-center gap-2 pt-2">
-              <span
-                className="flex h-12 w-12 items-center justify-center rounded-full bg-[hsl(var(--tennis-ball))]/20 text-2xl"
-                aria-hidden="true"
-              >
-                💚
-              </span>
-              <DialogTitle className="text-2xl font-bold">Back the Rally</DialogTitle>
-              <DialogDescription className="text-muted-foreground">
-                Your support helps us keep TennisConnect growing and make tennis
-                more connected for everyone.
-              </DialogDescription>
-            </div>
-
+          <div className="grid md:grid-cols-2 max-h-[90vh] overflow-y-auto md:overflow-visible">
+            {/* Desktop-only photo panel - decorative, the actual
+                "Small support. A bigger game." message is baked into
+                the photo itself, not overlaid separately. Never
+                contains anything interactive, so it never competes
+                with the form for clicks/taps. */}
             <div
-              role="radiogroup"
-              aria-label="Choose a support amount"
-              className="grid grid-cols-3 gap-2"
+              className="hidden md:block bg-cover bg-left"
+              style={{ backgroundImage: `url(${desktopPhoto})` }}
+              aria-hidden="true"
+            />
+
+            {/* Mobile-only decorative strip - same idea, condensed to
+                a fixed-height band ABOVE the functional form rather
+                than layered over any of it, so it's purely
+                decorative background and never sits on top of a
+                button or input. A semi-transparent tint over the
+                photo keeps it from fighting the tier grid for
+                attention right below it. */}
+            <div
+              className="md:hidden relative h-28 bg-cover shrink-0"
+              style={{ backgroundImage: `url(${mobilePhoto})`, backgroundPosition: "center 62%" }}
+              aria-hidden="true"
             >
-              {TIERS.map((tier) => {
-                const isSelected = selectedTier === tier.id && !usingCustom;
-                return (
-                  <button
-                    key={tier.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={isSelected}
-                    onClick={() => selectTier(tier.id)}
-                    data-testid={`support-tier-${tier.id}`}
-                    className={`
-                      relative flex flex-col items-center gap-0.5 rounded-xl border-2 px-2 py-3
-                      text-sm font-semibold transition-colors
-                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2
-                      ${
-                        isSelected
-                          ? "border-primary bg-primary/10"
-                          : "border-border hover:border-primary/40"
-                      }
-                    `}
-                  >
-                    {isSelected && (
-                      <Check
-                        className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-primary text-primary-foreground p-0.5"
-                        aria-hidden="true"
-                      />
-                    )}
-                    <span className="text-base">{tier.amount}</span>
-                    <span className="text-xs font-normal text-muted-foreground leading-tight text-center">
-                      {tier.label}
-                    </span>
-                    {tier.popular && (
-                      <span className="mt-1 text-[10px] font-bold uppercase tracking-wide text-primary">
-                        Most popular
+              <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/25 to-background" />
+              <div className="absolute inset-0 flex items-center justify-center gap-2">
+                <span className="text-2xl drop-shadow" aria-hidden="true">🎾</span>
+                <span className="font-bold text-white drop-shadow">Support TennisConnect</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-4 p-6">
+              <div className="flex flex-col items-center text-center gap-2">
+                <span
+                  className="hidden md:flex h-12 w-12 items-center justify-center rounded-full bg-[hsl(var(--tennis-ball))]/20 text-2xl"
+                  aria-hidden="true"
+                >
+                  💚
+                </span>
+                <DialogTitle className="text-2xl font-bold">Back the Rally</DialogTitle>
+                <DialogDescription className="text-muted-foreground">
+                  Your support helps us grow a stronger, more connected tennis
+                  community across Australia.
+                </DialogDescription>
+              </div>
+
+              <div
+                role="radiogroup"
+                aria-label="Choose a support amount"
+                className="grid grid-cols-2 gap-2"
+              >
+                {TIERS.map((tier) => {
+                  const isSelected = selectedTier === tier.id && !usingCustom;
+                  return (
+                    <button
+                      key={tier.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() => selectTier(tier.id)}
+                      data-testid={`support-tier-${tier.id}`}
+                      className={`
+                        relative flex flex-col items-center gap-0.5 rounded-xl border-2 px-2 py-3
+                        text-sm font-semibold transition-colors
+                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2
+                        ${
+                          isSelected
+                            ? "border-primary bg-primary/10"
+                            : "border-border hover:border-primary/40"
+                        }
+                      `}
+                    >
+                      {isSelected && (
+                        <Check
+                          className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-primary text-primary-foreground p-0.5"
+                          aria-hidden="true"
+                        />
+                      )}
+                      <span className="text-xl" aria-hidden="true">{tier.icon}</span>
+                      <span className="text-xs font-medium text-muted-foreground leading-tight text-center">
+                        {tier.label}
                       </span>
-                    )}
-                  </button>
-                );
-              })}
+                      <span className="text-base">{tier.amount}</span>
+                      <span className="text-[11px] font-normal text-muted-foreground leading-tight text-center">
+                        {tier.note}
+                      </span>
+                      {tier.popular && (
+                        <span className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+                          Most popular
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">
+                  A$
+                </span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min={3}
+                  max={1000}
+                  placeholder="Custom amount"
+                  value={customAmount}
+                  onChange={(e) => handleCustomAmountChange(e.target.value)}
+                  data-testid="input-custom-amount"
+                  aria-label="Custom support amount in Australian dollars"
+                  className="w-full rounded-xl border-2 border-border pl-8 pr-3 py-2.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus:border-primary"
+                />
+                {usingCustom && !customAmountValid && (
+                  <p className="mt-1.5 text-xs text-destructive" data-testid="custom-amount-error">
+                    Enter an amount between A$3 and A$1,000.
+                  </p>
+                )}
+              </div>
+
+              <Button
+                onClick={handleContinue}
+                disabled={!canContinue || isSubmitting}
+                data-testid="button-continue-to-payment"
+                className="w-full h-12 text-base font-bold"
+              >
+                {isSubmitting ? (
+                  "Redirecting..."
+                ) : (
+                  <>
+                    Continue to payment
+                    <ArrowRight className="w-4 h-4 ml-1" />
+                  </>
+                )}
+              </Button>
+
+              <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+                <Lock className="w-3.5 h-3.5" aria-hidden="true" />
+                Secure payment powered by Stripe
+              </p>
+
+              <div className="rounded-xl bg-primary/5 px-4 py-3 text-sm text-muted-foreground text-center">
+                Your support goes directly towards developing TennisConnect and
+                growing the tennis community. Thank you for being part of the
+                journey! 💚
+              </div>
             </div>
-
-            <div className="relative">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">
-                A$
-              </span>
-              <input
-                type="number"
-                inputMode="decimal"
-                min={3}
-                max={1000}
-                placeholder="Custom amount"
-                value={customAmount}
-                onChange={(e) => handleCustomAmountChange(e.target.value)}
-                data-testid="input-custom-amount"
-                aria-label="Custom support amount in Australian dollars"
-                className="w-full rounded-xl border-2 border-border pl-8 pr-3 py-2.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus:border-primary"
-              />
-              {usingCustom && !customAmountValid && (
-                <p className="mt-1.5 text-xs text-destructive" data-testid="custom-amount-error">
-                  Enter an amount between A$3 and A$1,000.
-                </p>
-              )}
-            </div>
-
-            <div className="rounded-xl bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
-              Your support goes directly towards developing TennisConnect and
-              growing the tennis community. Thank you for being part of the
-              journey! 💚
-            </div>
-
-            <Button
-              onClick={handleContinue}
-              disabled={!canContinue || isSubmitting}
-              data-testid="button-continue-to-payment"
-              className="w-full h-12 text-base font-bold"
-            >
-              {isSubmitting ? (
-                "Redirecting..."
-              ) : (
-                <>
-                  Continue to payment
-                  <ArrowRight className="w-4 h-4 ml-1" />
-                </>
-              )}
-            </Button>
-
-            <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-              <Lock className="w-3.5 h-3.5" aria-hidden="true" />
-              Secure payment powered by Stripe
-            </p>
-          </>
+          </div>
         )}
       </DialogContent>
     </Dialog>
