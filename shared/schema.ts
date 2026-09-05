@@ -1206,3 +1206,96 @@ export type InsertRecreationService = z.infer<typeof insertRecreationServiceSche
 export type RecreationService = typeof recreationServices.$inferSelect;
 export type InsertTournament = z.infer<typeof insertTournamentSchema>;
 export type Tournament = typeof tournaments.$inferSelect;
+
+// PAYMENTS
+// One table for every kind of money that ever moves through
+// TennisConnect, not just "Back the Rally" support - paymentType is
+// the discriminator so subscriptions and premium-page payments (both
+// explicitly out of scope for the Back the Rally MVP, but named as
+// "build the foundation now" in the brief) can land in the same table
+// later without a schema rework. Only paymentType = 'support' is
+// actually written to today; supportTier/relatedEntityId are nullable
+// specifically because they only apply to some payment types.
+//
+// Australian-context notes (not legal/tax advice - flagging what the
+// schema needs to be ABLE to record once you have real guidance from
+// an accountant, not making a determination that GST does or doesn't
+// apply here):
+// - gstAmountCents/isGstInclusive exist so a GST breakdown can be
+//   recorded per payment if TennisConnect becomes GST-registered
+//   (mandatory past $75k AUD turnover) - both nullable/unset for now,
+//   deliberately not guessing a treatment for "support" payments.
+// - No hard-delete path is provided anywhere for this table - the ATO
+//   expects business records kept for 5 years; rows here are meant to
+//   be permanent.
+// - receiptUrl stores Stripe's own hosted receipt link rather than
+//   generating our own - Stripe already emails one automatically, and
+//   duplicating that isn't necessary for the MVP.
+// - No raw card data of any kind ever - Stripe Checkout owns that
+//   entirely, this table only ever sees Stripe's own IDs and the
+//   amount/status that came back from a verified webhook.
+export const payments = pgTable("payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+  // Who paid - both nullable since a guest can support TennisConnect
+  // without an account (email is how we'd ever need to reach them,
+  // e.g. a receipt resend request).
+  userId: varchar("user_id").references(() => users.id),
+  guestEmail: text("guest_email"),
+
+  // 'support' today; 'subscription' | 'premium_page' reserved for
+  // later work, not implemented by anything yet.
+  paymentType: text("payment_type").notNull(),
+
+  // Only meaningful when paymentType = 'support':
+  // 'first_serve' ($5) | 'keep_the_rally_going' ($10) | 'game_point'
+  // ($20) | 'custom'. The actual amount is never trusted from the
+  // client - this tier is what the client sends, the server looks up
+  // (or validates, for 'custom') the real amountCents from it.
+  supportTier: text("support_tier"),
+
+  // Free-form reference for future payment types to point at whatever
+  // they're for (a premium page's id, a subscription plan's id) -
+  // intentionally not a foreign key, since what it points to depends
+  // on paymentType and none of those targets exist yet.
+  relatedEntityId: varchar("related_entity_id"),
+
+  // Always the smallest currency unit (cents for AUD), matching what
+  // Stripe itself uses - contributor-facing dollar amounts are
+  // formatted from this, never stored as a separate dollar value.
+  amountCents: integer("amount_cents").notNull(),
+  currency: varchar("currency", { length: 8 }).default("AUD").notNull(),
+
+  // See the Australian-context note above - both left null until
+  // there's an actual GST treatment decision to record.
+  gstAmountCents: integer("gst_amount_cents"),
+  isGstInclusive: boolean("is_gst_inclusive"),
+
+  stripeCheckoutSessionId: varchar("stripe_checkout_session_id").notNull(),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id"),
+  receiptUrl: text("receipt_url"),
+
+  // 'pending' | 'paid' | 'failed' | 'refunded'. Only ever moves to
+  // 'paid' from the webhook handler, never from the client-facing
+  // success redirect - see server/routes/support.ts.
+  status: text("status").default("pending").notNull(),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  // Set once, by the webhook, at the moment Stripe confirms payment -
+  // deliberately separate from createdAt (when the checkout session
+  // was started) for accurate record-keeping of when money actually
+  // moved.
+  paidAt: timestamp("paid_at"),
+}, (table) => ({
+  userIdIdx: index("payments_user_id_idx").on(table.userId),
+  stripeSessionIdIdx: index("payments_stripe_session_id_idx").on(table.stripeCheckoutSessionId),
+}));
+
+export const insertPaymentSchema = createInsertSchema(payments).omit({
+  id: true,
+  createdAt: true,
+  paidAt: true,
+});
+
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type Payment = typeof payments.$inferSelect;

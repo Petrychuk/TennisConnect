@@ -18,6 +18,7 @@ import { sendSystemMessage, sendMessageBetween, pairConversationId, ORGANIZER_AP
 import uploadContentRouter from "./routes/upload-content";
 import organizerRouter from "./routes/organizer";
 import weatherRouter from "./routes/weather";
+import supportRouter from "./routes/support";
 
 import {
   insertUserSchema,
@@ -157,6 +158,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/api/upload/content", uploadContentRouter);
   app.use("/api/organizer", organizerRouter);
   app.use("/api/weather", weatherRouter);
+  app.use("/api/support", supportRouter);
 
   // TC Live dev simulator backend - only exists in development, never
   // mounted (not even imported) in a production build.
