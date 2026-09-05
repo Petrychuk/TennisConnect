@@ -608,6 +608,7 @@ export default function PartnersPage() {
                         cursor-pointer
                       "
                       onClick={() => openMessageModal(partner)}
+                      data-testid={`button-message-${partner.id}`}
                     >
                       <MessageCircle className="w-4 h-4" />
                     
