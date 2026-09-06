@@ -196,7 +196,7 @@ export function BackTheRallyModal({
                 style={{ backgroundImage: `url(${mobilePhoto})`, backgroundPosition: "center 55%" }}
                 aria-hidden="true"
               />
-              <div className="md:hidden absolute inset-0 -z-10 bg-background/50 rounded-lg" aria-hidden="true" />
+              <div className="md:hidden absolute inset-0 -z-10 bg-gradient-to-b from-background/50 to-background/20 rounded-lg" aria-hidden="true" />
 
               {renderContent()}
             </div>
@@ -238,16 +238,14 @@ export function BackTheRallyModal({
                       aria-checked={isSelected}
                       onClick={() => selectTier(tier.id)}
                       data-testid={`support-tier-${tier.id}`}
-                      className={`
-                        relative flex flex-col items-center gap-0.5 rounded-xl border-2 px-2 py-3
-                        text-sm font-semibold transition-colors bg-background
-                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2
-                        ${
-                          isSelected
-                            ? "border-primary bg-primary/10"
-                            : "border-border hover:border-primary/40"
-                        }
-                      `}
+                      className={cn(
+                        "relative flex flex-col items-center gap-0.5 rounded-xl border-2 px-2 py-3",
+                        "text-sm font-semibold transition-colors bg-background",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                        isSelected
+                          ? "border-primary bg-accent"
+                          : "border-border hover:border-primary/40"
+                      )}
                     >
                       {isSelected && (
                         <Check
