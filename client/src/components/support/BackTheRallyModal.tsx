@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import { Lock, ArrowRight, Check, Coffee, Trophy, Heart } from "lucide-react";
 import desktopPhoto from "/assets/images/back-the-rally-desktop.webp";
 import mobilePhoto from "/assets/images/back-the-rally-mobile.webp";
@@ -257,21 +258,28 @@ export function BackTheRallyModal({
               </div>
 
               <div className="relative">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">
-                  A$
-                </span>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  min={3}
-                  max={1000}
-                  placeholder="Custom amount"
-                  value={customAmount}
-                  onChange={(e) => handleCustomAmountChange(e.target.value)}
-                  data-testid="input-custom-amount"
-                  aria-label="Custom support amount in Australian dollars"
-                  className="w-full rounded-xl border border-border pl-8 pr-3 py-2.5 text-sm font-semibold focus-visible:outline-none focus:border-2 focus:border-primary"
-                />
+                <div
+                  className={cn(
+                    "flex items-center gap-1.5 w-full rounded-xl border border-border pl-3 pr-3",
+                    "focus-within:border-2 focus-within:border-primary focus-within:pl-[11px] focus-within:pr-[11px]"
+                  )}
+                >
+                  <span className="shrink-0 text-sm font-semibold text-muted-foreground leading-none">
+                    A$
+                  </span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min={3}
+                    max={1000}
+                    placeholder="Custom amount"
+                    value={customAmount}
+                    onChange={(e) => handleCustomAmountChange(e.target.value)}
+                    data-testid="input-custom-amount"
+                    aria-label="Custom support amount in Australian dollars"
+                    className="w-full py-2.5 text-sm font-semibold leading-none bg-transparent focus-visible:outline-none"
+                  />
+                </div>
                 {/* Fixed-height reserved space regardless of whether
                     the error is showing - it flips in and out as
                     someone types (e.g. "2" too low, "22" valid, "222"
