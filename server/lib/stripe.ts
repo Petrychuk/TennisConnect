@@ -12,8 +12,9 @@ export const isStripeConfigured = () => !!process.env.STRIPE_SECRET_KEY;
 export const stripe = new Stripe(
   process.env.STRIPE_SECRET_KEY || "sk_test_not_configured",
   {
-    // Pinned so a Stripe API upgrade can't silently change behaviour
-    // out from under this integration.
-    apiVersion: "2024-06-20",
+    // out from under this integration. Matches whatever version
+   // ships with the installed `stripe` package's own types - bump
+   // this together with the package, not independently of it.
+   apiVersion: "2025-02-24.acacia",
   }
 );
