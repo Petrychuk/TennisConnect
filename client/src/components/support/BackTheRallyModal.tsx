@@ -173,26 +173,42 @@ export function BackTheRallyModal({
               aria-hidden="true"
             />
 
-            {/* Mobile-only decorative strip - same idea, condensed to
-                a fixed-height band ABOVE the functional form rather
-                than layered over any of it, so it's purely
-                decorative background and never sits on top of a
-                button or input. A semi-transparent tint over the
-                photo keeps it from fighting the tier grid for
-                attention right below it. */}
-            <div
-              className="md:hidden relative h-28 bg-cover shrink-0"
-              style={{ backgroundImage: `url(${mobilePhoto})`, backgroundPosition: "center 62%" }}
-              aria-hidden="true"
-            >
-              <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/10 to-background" />
-              <div className="absolute inset-0 flex items-center justify-center gap-2">
-                <TennisBallIcon className="w-6 h-6 text-white drop-shadow" />
-                <span className="font-bold text-white drop-shadow">Support TennisConnect</span>
-              </div>
-            </div>
+            {/* Single content instance either way - the mobile photo
+                backdrop below is a purely decorative absolutely-
+                positioned layer behind it (hidden on desktop), not a
+                second parallel copy of the form. Two copies would
+                mean two elements sharing every data-testid at once
+                whenever the viewport is below md, since both would
+                exist in the DOM simultaneously (CSS only hides one
+                visually) - exactly the kind of duplicate-testid bug
+                fixed elsewhere in this project's test suite already. */}
+            <div className="relative flex flex-col gap-4 p-6">
+              {/* Mobile-only: the photo as this whole panel's
+                  background, with a 50% background-colour overlay
+                  between it and the content so text stays legible
+                  while the photo still reads clearly through it. The
+                  tier cards, custom-amount field, and Continue button
+                  all keep their own solid backgrounds regardless, so
+                  those specific pieces stay fully opaque - only the
+                  empty space around them shows the photo. */}
+              <div
+                className="md:hidden absolute inset-0 -z-10 bg-cover rounded-lg"
+                style={{ backgroundImage: `url(${mobilePhoto})`, backgroundPosition: "center 55%" }}
+                aria-hidden="true"
+              />
+              <div className="md:hidden absolute inset-0 -z-10 bg-background/50 rounded-lg" aria-hidden="true" />
 
-            <div className="flex flex-col gap-4 p-6">
+              {renderContent()}
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+
+  function renderContent() {
+    return (
+      <>
               <div className="flex flex-col items-center text-center gap-2">
                 <span
                   className="hidden md:flex h-12 w-12 items-center justify-center rounded-full bg-[hsl(var(--tennis-ball))]/20"
@@ -224,7 +240,7 @@ export function BackTheRallyModal({
                       data-testid={`support-tier-${tier.id}`}
                       className={`
                         relative flex flex-col items-center gap-0.5 rounded-xl border-2 px-2 py-3
-                        text-sm font-semibold transition-colors
+                        text-sm font-semibold transition-colors bg-background
                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2
                         ${
                           isSelected
@@ -260,7 +276,7 @@ export function BackTheRallyModal({
               <div className="relative">
                 <div
                   className={cn(
-                    "flex items-center gap-1.5 w-full rounded-xl border border-border pl-3 pr-3",
+                    "flex items-center gap-1.5 w-full rounded-xl border border-border bg-background pl-3 pr-3",
                     "focus-within:border-2 focus-within:border-primary focus-within:pl-[11px] focus-within:pr-[11px]"
                   )}
                 >
@@ -324,12 +340,9 @@ export function BackTheRallyModal({
                 </span>
                 <Heart className="w-4 h-4 shrink-0 text-[hsl(var(--tennis-ball))]" fill="currentColor" aria-hidden="true" />
               </div>
-            </div>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
+      </>
+    );
+  }
 }
 
 function SuccessView({ onClose }: { onClose: () => void }) {
