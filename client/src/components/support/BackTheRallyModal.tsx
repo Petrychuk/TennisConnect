@@ -196,7 +196,7 @@ export function BackTheRallyModal({
                 style={{ backgroundImage: `url(${mobilePhoto})`, backgroundPosition: "center 55%" }}
                 aria-hidden="true"
               />
-              <div className="md:hidden absolute inset-0 -z-10 bg-gradient-to-b from-background/50 to-background/20 rounded-lg" aria-hidden="true" />
+              <div className="md:hidden absolute inset-0 -z-10 bg-gradient-to-b from-background/70 to-background/55 rounded-lg" aria-hidden="true" />
 
               {renderContent()}
             </div>
@@ -211,13 +211,13 @@ export function BackTheRallyModal({
       <>
               <div className="flex flex-col items-center text-center gap-2">
                 <span
-                  className="hidden md:flex h-12 w-12 items-center justify-center rounded-full bg-[hsl(var(--tennis-ball))]/20"
+                  className="flex h-12 w-12 items-center justify-center rounded-full bg-[hsl(var(--tennis-ball))]/20"
                   aria-hidden="true"
                 >
                   <Heart className="w-6 h-6 text-[hsl(var(--tennis-ball))]" fill="currentColor" />
                 </span>
                 <DialogTitle className="text-2xl font-bold">Back the Rally</DialogTitle>
-                <DialogDescription className="text-muted-foreground">
+                <DialogDescription className="text-foreground/70 md:text-muted-foreground">
                   Your support helps us grow a stronger, more connected tennis
                   community across Australia.
                 </DialogDescription>
@@ -325,12 +325,12 @@ export function BackTheRallyModal({
                 )}
               </Button>
 
-              <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+              <p className="flex items-center justify-center gap-1.5 text-xs text-foreground/70 md:text-muted-foreground">
                 <Lock className="w-3.5 h-3.5" aria-hidden="true" />
                 Secure payment powered by Stripe
               </p>
 
-              <div className="rounded-xl bg-primary/5 px-4 py-3 text-sm text-muted-foreground text-center flex items-center justify-center gap-1.5">
+              <div className="rounded-xl bg-background/80 md:bg-primary/5 px-4 py-3 text-sm text-foreground/70 md:text-muted-foreground text-center flex items-center justify-center gap-1.5">
                 <span>
                   Your support helps us keep improving TennisConnect and
                   growing the tennis community. Thank you for being part of the
