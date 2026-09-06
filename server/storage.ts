@@ -236,6 +236,11 @@ export interface IStorage {
     sessionId: string,
     details: { stripePaymentIntentId: string | null; receiptUrl: string | null }
   ): Promise<Payment | undefined>;
+  // Sweeps pending rows old enough that Stripe's own checkout session
+  // (24h expiry by default) can no longer possibly complete - doesn't
+  // touch anything already 'paid'. Returns how many rows were
+  // updated, purely for logging.
+  expireOldPendingPayments(olderThanHours: number): Promise<number>;
 
   //Newsletter
   subscribeToNewsletter(
@@ -1913,6 +1918,23 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     return row;
+  }
+
+  // Only ever WHERE status = 'pending' - a row that's already 'paid'
+  // (or already 'expired', from a previous sweep) is never touched by
+  // this, regardless of how old it is. That's what makes this safe to
+  // run repeatedly and safe to add without risk to the payment
+  // confirmation path above, which is entirely separate code.
+  async expireOldPendingPayments(olderThanHours: number): Promise<number> {
+    const cutoff = new Date(Date.now() - olderThanHours * 60 * 60 * 1000);
+
+    const rows = await db
+      .update(payments)
+      .set({ status: "expired" })
+      .where(and(eq(payments.status, "pending"), lte(payments.createdAt, cutoff)))
+      .returning({ id: payments.id });
+
+    return rows.length;
   }
 
   // Footer newsletter signup. Upsert on email: a previously-unsubscribed
