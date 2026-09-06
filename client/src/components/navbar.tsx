@@ -185,7 +185,7 @@ export function Navbar() {
         </div>
 
         {/* CTA & Mobile Menu */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-8">
           {/* Back the Rally replaces the weather/time widget in this
               slot (see the brief this came from) - HeaderClockWeather
               itself is untouched and still fully working, just not
@@ -195,7 +195,7 @@ export function Navbar() {
               which already covers "show it on tablet if it fits". */}
           {/* <HeaderClockWeather /> */}
           <BackTheRallyWidget
-            className="hidden md:inline-flex ml-6"
+            className="hidden md:inline-flex ml-8"
             onClick={openBackTheRally}
           />
           {isAuthenticated ? (

@@ -332,7 +332,7 @@ export function BackTheRallyModal({
 
               <div className="rounded-xl bg-primary/5 px-4 py-3 text-sm text-muted-foreground text-center flex items-center justify-center gap-1.5">
                 <span>
-                  Your support goes directly towards developing TennisConnect and
+                  Your support helps us keep improving TennisConnect and
                   growing the tennis community. Thank you for being part of the
                   journey!
                 </span>

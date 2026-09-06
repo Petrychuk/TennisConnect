@@ -11,11 +11,20 @@ import { TikTokIcon } from "@/components/icons/TikTokIcon";
 //import { ThreadsIcon } from "@/components/icons/ThreadsIcon";
 import { openCookieSettings } from "@/lib/cookieConsent";
 import { useToast } from "@/hooks/use-toast";
+import { BackTheRallyWidget } from "@/components/support/BackTheRallyWidget";
+import { BackTheRallyModal } from "@/components/support/BackTheRallyModal";
 
 export function Footer() {
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Own local instance rather than lifting state up to share the
+  // header's - the header and footer triggers are never visible/
+  // clickable at exactly the same moment by the same user, so two
+  // independent instances of the same shared component is simpler
+  // than threading modal state through a common ancestor for no
+  // practical benefit.
+  const [backTheRallyOpen, setBackTheRallyOpen] = useState(false);
 
   async function handleNewsletterSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -371,7 +380,18 @@ export function Footer() {
                 {isSubmitting ? "..." : "OK"}
               </button>
             </form>
-            
+
+            {/* Same reusable trigger as the header - own modal
+                instance below, not the header's, but the identical
+                component either way. Centered in this block on every
+                breakpoint; the block itself already goes full-width
+                on mobile (md:portrait:col-span-full above), so
+                centering here reads as "below the form, then a gap,
+                then centered" there too. */}
+            <div className="mt-6 flex justify-center">
+              <BackTheRallyWidget fullWidth onClick={() => setBackTheRallyOpen(true)} />
+            </div>
+
           </div>
         </div>
 
@@ -416,6 +436,8 @@ export function Footer() {
       </div>
 
       </div>
+
+      <BackTheRallyModal open={backTheRallyOpen} onOpenChange={setBackTheRallyOpen} />
     </footer>
   );
 }
