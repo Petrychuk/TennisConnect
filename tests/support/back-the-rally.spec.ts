@@ -314,3 +314,60 @@ test('SUPPORT-014 Heart Icon Shows In The Modal Header On Mobile Too, Not Just D
   await expect(modal.locator('svg.lucide-heart').first()).toBeVisible();
 
 });
+
+test('SUPPORT-015 Header Click Reports location: "header" To gtag/dataLayer', async ({ page }) => {
+
+  await page.goto('/');
+
+  // Spy on window.gtag before anything can call it - the real
+  // gtag.js from client/index.html is still present and still pushes
+  // to window.dataLayer underneath (which GTM would also read from),
+  // this just additionally records the calls this test cares about.
+  await page.evaluate(() => {
+    (window as any).__gtagCalls = [];
+    const original = (window as any).gtag;
+    (window as any).gtag = (...args: any[]) => {
+      (window as any).__gtagCalls.push(args);
+      original?.(...args);
+    };
+  });
+
+  await page.locator('nav').getByTestId('button-back-the-rally').click();
+
+  const calls = await page.evaluate(() => (window as any).__gtagCalls);
+  const clickEvent = calls.find((c: any[]) => c[0] === 'event' && c[1] === 'back_the_rally_click');
+
+  expect(clickEvent).toBeDefined();
+  expect(clickEvent[2]).toMatchObject({ location: 'header' });
+
+});
+
+test('SUPPORT-016 Footer Click Reports location: "footer", Not "header"', async ({ page }) => {
+
+  // Regression-shaped test for the obvious way this could go wrong -
+  // every placement passing the same location prop (or copy-pasting
+  // the header's) would make every event indistinguishable, which
+  // defeats the entire point of adding this per-location at all.
+
+  await page.goto('/');
+
+  await page.evaluate(() => {
+    (window as any).__gtagCalls = [];
+    const original = (window as any).gtag;
+    (window as any).gtag = (...args: any[]) => {
+      (window as any).__gtagCalls.push(args);
+      original?.(...args);
+    };
+  });
+
+  const footerWidget = page.locator('footer').getByTestId('button-back-the-rally');
+  await footerWidget.scrollIntoViewIfNeeded();
+  await footerWidget.click();
+
+  const calls = await page.evaluate(() => (window as any).__gtagCalls);
+  const clickEvent = calls.find((c: any[]) => c[0] === 'event' && c[1] === 'back_the_rally_click');
+
+  expect(clickEvent).toBeDefined();
+  expect(clickEvent[2]).toMatchObject({ location: 'footer' });
+
+});

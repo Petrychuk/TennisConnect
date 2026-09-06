@@ -204,6 +204,7 @@ export function Navbar() {
           {/* <HeaderClockWeather /> */}
           <BackTheRallyWidget
             className="hidden md:inline-flex ml-8"
+            location="header"
             onClick={openBackTheRally}
           />
           {isAuthenticated ? (
@@ -409,6 +410,7 @@ export function Navbar() {
                 <div className="mt-6 pt-4 border-t border-border flex justify-center">
                   <BackTheRallyWidget
                     fullWidth
+                    location="mobile_drawer"
                     onClick={() => {
                       setIsOpen(false);
                       openBackTheRally();

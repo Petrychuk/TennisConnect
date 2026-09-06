@@ -15,6 +15,14 @@ interface BackTheRallyWidgetProps {
   // with that text recoloured white instead of re-deriving the
   // composition in CSS for one context.
   darkBackground?: boolean;
+  // Which of the three placements this particular instance is - fired
+  // as a parameter on every click so click volume can be broken down
+  // by location (header vs mobile drawer vs footer) rather than only
+  // knowing the modal opened at all, with no idea which button drove
+  // it. Required rather than optional/defaulted - every call site
+  // should have to say which one it is, not silently fall back to a
+  // guess that's wrong for two of the three placements.
+  location: "header" | "mobile_drawer" | "footer";
   onClick: () => void;
 }
 
@@ -38,6 +46,7 @@ export function BackTheRallyWidget({
   className,
   fullWidth = false,
   darkBackground = false,
+  location,
   onClick,
 }: BackTheRallyWidgetProps) {
   // The modal's two photo backgrounds are only ever referenced via a
@@ -52,10 +61,25 @@ export function BackTheRallyWidget({
     new Image().src = "/assets/images/back-the-rally-mobile.webp";
   }
 
+  function handleClick() {
+    // window.gtag is the same Consent-Mode-aware gtag() already wired
+    // up in client/index.html - it pushes into window.dataLayer under
+    // the hood either way, which is what GTM (if a container ever
+    // gets added on top of this) also reads from, so this needs no
+    // separate integration to show up there. Fires here, on every
+    // actual click on any of the three placements, separate from
+    // back_the_rally_opened (still fired from the modal itself) -
+    // that one also fires on the ?support=success/cancelled
+    // reopen, which isn't a button click at all, so it can't answer
+    // "which button gets clicked how often" on its own.
+    (window as any).gtag?.("event", "back_the_rally_click", { location });
+    onClick();
+  }
+
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={handleClick}
       onMouseEnter={preloadModalPhotos}
       onFocus={preloadModalPhotos}
       data-testid="button-back-the-rally"
