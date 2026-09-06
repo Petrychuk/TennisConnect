@@ -23,7 +23,7 @@ test('SUPPORT-001 Back The Rally Widget Is Visible In The Header', async ({ page
 
   await page.goto('/');
 
-  await expect(page.getByTestId('button-back-the-rally')).toBeVisible();
+  await expect(page.locator('nav').getByTestId('button-back-the-rally')).toBeVisible();
 
 });
 
@@ -42,7 +42,7 @@ test('SUPPORT-002 Back The Rally Is Visible In The Mobile Menu, After The Nav Li
 test('SUPPORT-003 Opening The Modal Shows The Tier Picker, Not Card Fields', async ({ page }) => {
 
   await page.goto('/');
-  await page.getByTestId('button-back-the-rally').click();
+  await page.locator('nav').getByTestId('button-back-the-rally').click();
 
   const modal = page.getByTestId('back-the-rally-modal');
   await expect(modal).toBeVisible();
@@ -73,7 +73,7 @@ test('SUPPORT-003 Opening The Modal Shows The Tier Picker, Not Card Fields', asy
 test('SUPPORT-004 Modal Closes With Escape', async ({ page }) => {
 
   await page.goto('/');
-  await page.getByTestId('button-back-the-rally').click();
+  await page.locator('nav').getByTestId('button-back-the-rally').click();
 
   await expect(page.getByTestId('back-the-rally-modal')).toBeVisible();
 
@@ -86,7 +86,7 @@ test('SUPPORT-004 Modal Closes With Escape', async ({ page }) => {
 test('SUPPORT-005 Selecting A Tier And Typing A Custom Amount Are Mutually Exclusive', async ({ page }) => {
 
   await page.goto('/');
-  await page.getByTestId('button-back-the-rally').click();
+  await page.locator('nav').getByTestId('button-back-the-rally').click();
 
   const tenDollarTier = page.getByTestId('support-tier-keep_the_rally_going');
   const twentyDollarTier = page.getByTestId('support-tier-game_point');
@@ -114,7 +114,7 @@ test('SUPPORT-005 Selecting A Tier And Typing A Custom Amount Are Mutually Exclu
 test('SUPPORT-006 Invalid Custom Amount Blocks Continue And Shows An Error', async ({ page }) => {
 
   await page.goto('/');
-  await page.getByTestId('button-back-the-rally').click();
+  await page.locator('nav').getByTestId('button-back-the-rally').click();
 
   await page.getByTestId('input-custom-amount').fill('1');
 
@@ -131,7 +131,7 @@ test('SUPPORT-006 Invalid Custom Amount Blocks Continue And Shows An Error', asy
 test('SUPPORT-007 Continue To Payment Opens A New Tab, Doesn\'t Navigate The Current One', async ({ page, context }) => {
 
   await page.goto('/');
-  await page.getByTestId('button-back-the-rally').click();
+  await page.locator('nav').getByTestId('button-back-the-rally').click();
 
   const [request, popup] = await Promise.all([
     page.waitForRequest(
@@ -175,7 +175,7 @@ test('SUPPORT-007 Continue To Payment Opens A New Tab, Doesn\'t Navigate The Cur
 test('SUPPORT-008 Custom Amount Sends Cents, Not Dollars', async ({ page }) => {
 
   await page.goto('/');
-  await page.getByTestId('button-back-the-rally').click();
+  await page.locator('nav').getByTestId('button-back-the-rally').click();
 
   await page.getByTestId('input-custom-amount').fill('25.50');
 
@@ -234,7 +234,7 @@ test('SUPPORT-011 Selected Tier Stays Fully Opaque On Mobile (Doesn\'t Let The P
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
-  await page.getByTestId('button-back-the-rally').click();
+  await page.locator('nav').getByTestId('button-back-the-rally').click();
 
   const tenDollarTier = page.getByTestId('support-tier-keep_the_rally_going');
   await expect(tenDollarTier).toHaveAttribute('aria-checked', 'true');
@@ -263,7 +263,7 @@ test('SUPPORT-012 Widget Has Fixed Spacing From The Nav Links, Not Just Whatever
 
   await page.goto('/');
 
-  const widget = page.getByTestId('button-back-the-rally');
+  const widget = page.locator('nav').getByTestId('button-back-the-rally');
   await expect(widget).toBeVisible();
 
   const marginLeft = await widget.evaluate(
@@ -271,5 +271,34 @@ test('SUPPORT-012 Widget Has Fixed Spacing From The Nav Links, Not Just Whatever
   );
 
   expect(marginLeft).toBeGreaterThan(0);
+
+});
+
+test('SUPPORT-013 Back The Rally Is Also In The Footer, After The Newsletter Form, Centered', async ({ page }) => {
+
+  // The header and footer both render the same shared component with
+  // the identical data-testid - scoping to the footer landmark here
+  // the same way other tests scope to nav, rather than introducing a
+  // second testid scheme just to tell the two instances apart.
+
+  await page.goto('/');
+
+  const footer = page.locator('footer');
+  const footerWidget = footer.getByTestId('button-back-the-rally');
+
+  await footerWidget.scrollIntoViewIfNeeded();
+  await expect(footerWidget).toBeVisible();
+
+  // Comes after the newsletter form specifically, not before it or
+  // somewhere unrelated elsewhere in the footer.
+  const formBox = await footer.getByPlaceholder('Your email').boundingBox();
+  const widgetBox = await footerWidget.boundingBox();
+  expect(formBox).not.toBeNull();
+  expect(widgetBox).not.toBeNull();
+  expect(widgetBox!.y).toBeGreaterThan(formBox!.y);
+
+  // Opens the same modal as the header trigger does.
+  await footerWidget.click();
+  await expect(page.getByTestId('back-the-rally-modal')).toBeVisible();
 
 });
