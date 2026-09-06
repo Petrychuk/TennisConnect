@@ -1237,11 +1237,14 @@ export type Tournament = typeof tournaments.$inferSelect;
 export const payments = pgTable("payments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
 
-  // Who paid - both nullable since a guest can support TennisConnect
-  // without an account (email is how we'd ever need to reach them,
-  // e.g. a receipt resend request).
+  // Who paid. userId is set for a logged-in payer, null for a guest -
+  // payerEmail is always set either way (previously only set for
+  // guests, relying on a join through userId for anyone logged in,
+  // which made "who paid" harder to see at a glance and meant the
+  // record didn't capture the email actually in use at the time of
+  // payment if the account's email changes later).
   userId: varchar("user_id").references(() => users.id),
-  guestEmail: text("guest_email"),
+  payerEmail: text("payer_email"),
 
   // 'support' today; 'subscription' | 'premium_page' reserved for
   // later work, not implemented by anything yet.

@@ -234,7 +234,7 @@ export interface IStorage {
   getPaymentByStripeSessionId(sessionId: string): Promise<Payment | undefined>;
   markPaymentPaid(
     sessionId: string,
-    details: { stripePaymentIntentId: string | null; receiptUrl: string | null }
+    details: { stripePaymentIntentId: string | null; receiptUrl: string | null; payerEmail: string | null }
   ): Promise<Payment | undefined>;
   // Sweeps pending rows old enough that Stripe's own checkout session
   // (24h expiry by default) can no longer possibly complete - doesn't
@@ -1904,7 +1904,7 @@ export class DatabaseStorage implements IStorage {
   // to mark anything paid on its own (see server/routes/support.ts).
   async markPaymentPaid(
     sessionId: string,
-    details: { stripePaymentIntentId: string | null; receiptUrl: string | null }
+    details: { stripePaymentIntentId: string | null; receiptUrl: string | null; payerEmail: string | null }
   ): Promise<Payment | undefined> {
     const [row] = await db
       .update(payments)
@@ -1913,6 +1913,16 @@ export class DatabaseStorage implements IStorage {
         paidAt: new Date(),
         stripePaymentIntentId: details.stripePaymentIntentId,
         receiptUrl: details.receiptUrl,
+        // COALESCE rather than a flat overwrite - a logged-in payer's
+        // email was already captured at session-creation time
+        // (server/routes/support.ts), so a null here (Stripe not
+        // returning customer_details for some edge-case reason)
+        // shouldn't clobber it. Stripe's value still wins when it
+        // has one, since it's the most accurate source (the guest
+        // case has no other source at all).
+        payerEmail: details.payerEmail
+          ? details.payerEmail
+          : sql`${payments.payerEmail}`,
       })
       .where(eq(payments.stripeCheckoutSessionId, sessionId))
       .returning();
