@@ -128,17 +128,28 @@ test('SUPPORT-006 Invalid Custom Amount Blocks Continue And Shows An Error', asy
 
 });
 
-test('SUPPORT-007 Continue To Payment Calls The Checkout Endpoint (Guest, No Login)', async ({ page }) => {
+test('SUPPORT-007 Continue To Payment Opens A New Tab, Doesn\'t Navigate The Current One', async ({ page, context }) => {
 
   await page.goto('/');
   await page.getByTestId('button-back-the-rally').click();
 
-  const [request] = await Promise.all([
+  const [request, popup] = await Promise.all([
     page.waitForRequest(
       r =>
         r.url().includes('/api/support/create-checkout-session') &&
         r.method() === 'POST'
     ),
+    // Whether Stripe is actually configured in this environment or
+    // not, the client handles both outcomes: a new tab opens to a
+    // real Stripe Checkout URL, or a clear error toast if support
+    // payments aren't set up yet here - never a silent failure
+    // either way. context.waitForEvent races against the toast
+    // rather than requiring the popup, since an unconfigured
+    // environment never opens one at all.
+    Promise.race([
+      context.waitForEvent('page', { timeout: 10_000 }),
+      expect(page.getByText(/couldn't start payment/i)).toBeVisible({ timeout: 10_000 }).then(() => null),
+    ]),
     page.getByTestId('button-continue-to-payment').click(),
   ]);
 
@@ -150,14 +161,14 @@ test('SUPPORT-007 Continue To Payment Calls The Checkout Endpoint (Guest, No Log
   expect(body.tier).toBe('keep_the_rally_going');
   expect(body.customAmountCents).toBeUndefined();
 
-  // Whether Stripe is actually configured in this environment or not,
-  // the client handles both outcomes: redirected to a real Stripe
-  // Checkout URL, or a clear error toast if support payments aren't
-  // set up yet here - never a silent failure either way.
-  await Promise.race([
-    page.waitForURL(/^https:\/\/checkout\.stripe\.com\//, { timeout: 10_000 }),
-    expect(page.getByText(/couldn't start payment/i)).toBeVisible({ timeout: 10_000 }),
-  ]);
+  // The original tab never navigates away from the site itself - only
+  // a new tab (if Stripe is configured) does.
+  await expect(page).toHaveURL(/^http:\/\/localhost/);
+
+  if (popup) {
+    await popup.waitForLoadState();
+    expect(popup.url()).toMatch(/^https:\/\/checkout\.stripe\.com\//);
+  }
 
 });
 
