@@ -1,0 +1,121 @@
+import { cn } from "@/lib/utils";
+import buttonImage from "/assets/images/back-the-rally-button.webp";
+import buttonImageDarkBg from "/assets/images/back-the-rally-button-dark-bg.webp";
+
+interface BackTheRallyWidgetProps {
+  className?: string;
+  // Header uses the full-nav-height treatment; the mobile drawer
+  // (after all nav links) uses the same component full-width instead
+  // of introducing a second visual treatment for the same CTA.
+  fullWidth?: boolean;
+  // The "Support TennisConnect" subtitle (and, in this variant, "Back
+  // the Rally" itself) is dark navy text baked into the graphic -
+  // readable on the header's light background, invisible against the
+  // footer's black one. Swaps in a second version of the same image
+  // with that text recoloured white instead of re-deriving the
+  // composition in CSS for one context.
+  darkBackground?: boolean;
+  // Which of the three placements this particular instance is - fired
+  // as a parameter on every click so click volume can be broken down
+  // by location (header vs mobile drawer vs footer) rather than only
+  // knowing the modal opened at all, with no idea which button drove
+  // it. Required rather than optional/defaulted - every call site
+  // should have to say which one it is, not silently fall back to a
+  // guess that's wrong for two of the three placements.
+  location: "header" | "mobile_drawer" | "footer";
+  onClick: () => void;
+}
+
+// One reusable trigger for both the desktop/tablet header slot (where
+// the weather/time widget used to sit) and the mobile hamburger drawer
+// - same component, same modal behind it either way (see
+// BackTheRallyModal), just different layout context.
+//
+// This renders the supplied graphic directly (transparent background -
+// the original had a light rounded-card frame around it that isn't
+// wanted here, removed by keying out near-white/near-gray pixels with
+// a smooth alpha falloff rather than a hard cutoff, so the brush
+// stroke's own soft edges didn't turn into jagged pixel-stairs).
+// A plain <button><img></button> rather than reproducing the
+// composition in SVG/CSS text - the graphic is the source of truth for
+// exactly how "Back the Rally" and its highlighter stroke look now,
+// rather than an approximation of it. Aspect ratio is preserved at
+// every size (w-auto against a fixed height) so it never looks
+// stretched.
+export function BackTheRallyWidget({
+  className,
+  fullWidth = false,
+  darkBackground = false,
+  location,
+  onClick,
+}: BackTheRallyWidgetProps) {
+  // The modal's two photo backgrounds are only ever referenced via a
+  // CSS background-image once the modal actually opens, so the
+  // browser has no reason to start fetching them any earlier than
+  // that - warming the cache on hover/focus (a reasonable signal of
+  // intent to click, not just "the button happened to be on the
+  // page") means they're often already cached by the time someone
+  // actually opens the modal instead of only starting to load then.
+  function preloadModalPhotos() {
+    new Image().src = "/assets/images/back-the-rally-desktop.webp";
+    new Image().src = "/assets/images/back-the-rally-mobile.webp";
+  }
+
+  function handleClick() {
+    // window.gtag is the same Consent-Mode-aware gtag() already wired
+    // up in client/index.html - it pushes into window.dataLayer under
+    // the hood either way, which is what GTM (if a container ever
+    // gets added on top of this) also reads from, so this needs no
+    // separate integration to show up there. Fires here, on every
+    // actual click on any of the three placements, separate from
+    // back_the_rally_opened (still fired from the modal itself) -
+    // that one also fires on the ?support=success/cancelled
+    // reopen, which isn't a button click at all, so it can't answer
+    // "which button gets clicked how often" on its own.
+    (window as any).gtag?.("event", "back_the_rally_click", { location });
+    onClick();
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      onMouseEnter={preloadModalPhotos}
+      onFocus={preloadModalPhotos}
+      data-testid="button-back-the-rally"
+      aria-label="Back the Rally - support TennisConnect"
+      className={cn(
+        "group relative inline-flex items-center justify-center shrink-0",
+        "bg-transparent border-0 cursor-pointer",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md",
+        "transition-colors duration-150",
+        fullWidth
+          ? "w-full py-3"
+          : [
+              // Claims the nav's full height (h-16 = 64px) as its
+              // clickable area rather than being a small pill inside
+              // a much larger empty hit-target. No visible border
+              // around it anymore (was a hairline border-l/border-r,
+              // removed per feedback) - just padding, so it blends
+              // into the header with nothing but hover feedback to
+              // mark its edges.
+              "self-stretch px-4",
+              "hover:bg-primary/5",
+            ],
+        className
+      )}
+    >
+      <img
+        src={darkBackground ? buttonImageDarkBg : buttonImage}
+        alt="Back the Rally - Support TennisConnect"
+        className={cn(
+          "w-auto object-contain",
+          "motion-safe:transition-transform motion-safe:duration-200",
+          "group-hover:-rotate-1 group-hover:scale-[1.04]",
+          fullWidth ? "h-20 max-w-[340px]" : "h-12"
+        )}
+        draggable={false}
+      />
+    </button>
+  );
+}

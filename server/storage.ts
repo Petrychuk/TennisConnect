@@ -20,6 +20,7 @@ import {
   registrations,
   sessionRounds,
   matches,
+  payments,
   type User, 
   type InsertUser,
   type PlayerProfile,
@@ -39,6 +40,8 @@ import {
   type InsertMessage,
   type SupportRequest,
   type InsertSupportRequest,
+  type Payment,
+  type InsertPayment,
   type OrganizerRequest,
   type InsertOrganizerRequest,
   type Organization,
@@ -222,6 +225,23 @@ export interface IStorage {
   createSupportRequest(
     request: InsertSupportRequest
   ): Promise<SupportRequest>;
+
+  // Payments - "Back the Rally" support today; paymentType leaves room
+  // for subscriptions/premium pages later without a new table. Not to
+  // be confused with "Support chat" just above, an unrelated
+  // pre-existing help-desk/contact feature that happens to share the
+  // word "support".
+  createPayment(payment: InsertPayment): Promise<Payment>;
+  getPaymentByStripeSessionId(sessionId: string): Promise<Payment | undefined>;
+  markPaymentPaid(
+    sessionId: string,
+    details: { stripePaymentIntentId: string | null; receiptUrl: string | null; payerEmail: string | null }
+  ): Promise<Payment | undefined>;
+  // Sweeps pending rows old enough that Stripe's own checkout session
+  // (24h expiry by default) can no longer possibly complete - doesn't
+  // touch anything already 'paid'. Returns how many rows were
+  // updated, purely for logging.
+  expireOldPendingPayments(olderThanHours: number): Promise<number>;
 
   //Newsletter
   subscribeToNewsletter(
@@ -1862,6 +1882,72 @@ export class DatabaseStorage implements IStorage {
       .returning();
   
     return supportRequest;
+  }
+
+  async createPayment(payment: InsertPayment): Promise<Payment> {
+    const [row] = await db
+      .insert(payments)
+      .values(payment)
+      .returning();
+
+    return row;
+  }
+
+  async getPaymentByStripeSessionId(sessionId: string): Promise<Payment | undefined> {
+    const [row] = await db
+      .select()
+      .from(payments)
+      .where(eq(payments.stripeCheckoutSessionId, sessionId));
+
+    return row;
+  }
+
+  // Only ever called from the webhook handler after Stripe's signature
+  // is verified - the client-facing success-page redirect never gets
+  // to mark anything paid on its own (see server/routes/support.ts).
+  async markPaymentPaid(
+    sessionId: string,
+    details: { stripePaymentIntentId: string | null; receiptUrl: string | null; payerEmail: string | null }
+  ): Promise<Payment | undefined> {
+    const [row] = await db
+      .update(payments)
+      .set({
+        status: "paid",
+        paidAt: new Date(),
+        stripePaymentIntentId: details.stripePaymentIntentId,
+        receiptUrl: details.receiptUrl,
+        // COALESCE rather than a flat overwrite - a logged-in payer's
+        // email was already captured at session-creation time
+        // (server/routes/support.ts), so a null here (Stripe not
+        // returning customer_details for some edge-case reason)
+        // shouldn't clobber it. Stripe's value still wins when it
+        // has one, since it's the most accurate source (the guest
+        // case has no other source at all).
+        payerEmail: details.payerEmail
+          ? details.payerEmail
+          : sql`${payments.payerEmail}`,
+      })
+      .where(eq(payments.stripeCheckoutSessionId, sessionId))
+      .returning();
+
+    return row;
+  }
+
+  // Only ever WHERE status = 'pending' - a row that's already 'paid'
+  // (or already 'expired', from a previous sweep) is never touched by
+  // this, regardless of how old it is. That's what makes this safe to
+  // run repeatedly and safe to add without risk to the payment
+  // confirmation path above, which is entirely separate code.
+  async expireOldPendingPayments(olderThanHours: number): Promise<number> {
+    const cutoff = new Date(Date.now() - olderThanHours * 60 * 60 * 1000);
+
+    const rows = await db
+      .update(payments)
+      .set({ status: "expired" })
+      .where(and(eq(payments.status, "pending"), lte(payments.createdAt, cutoff)))
+      .returning({ id: payments.id });
+
+    return rows.length;
   }
 
   // Footer newsletter signup. Upsert on email: a previously-unsubscribed

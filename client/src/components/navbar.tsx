@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { HeaderClockWeather } from "@/components/header-clock-weather";
+import { BackTheRallyWidget } from "@/components/support/BackTheRallyWidget";
+import { BackTheRallyModal } from "@/components/support/BackTheRallyModal";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useUnreadMessagesCount } from "@/hooks/use-unread-messages";
@@ -58,10 +60,41 @@ export function Navbar() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [backTheRallyOpen, setBackTheRallyOpen] = useState(false);
+  const [backTheRallyView, setBackTheRallyView] = useState<"select" | "success" | "cancelled">("select");
   
   const { toast } = useToast();
 
   const showMobileBottomNav = isAuthenticated && location !== "/auth";
+
+  // Stripe Checkout is fully hosted, so the only way back into this
+  // app after paying (or cancelling) is the success_url/cancel_url
+  // redirect from server/routes/support.ts - both land back on
+  // whichever page the visitor started from, with a ?support= query
+  // param. Reopen the same modal straight into its success/cancelled
+  // view instead of building a separate confirmation page. The query
+  // param is stripped from the URL right after so refreshing the page
+  // doesn't reopen it again.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const support = params.get("support");
+    if (support === "success" || support === "cancelled") {
+      setBackTheRallyView(support);
+      setBackTheRallyOpen(true);
+      params.delete("support");
+      const newSearch = params.toString();
+      window.history.replaceState(
+        {},
+        "",
+        window.location.pathname + (newSearch ? `?${newSearch}` : "") + window.location.hash
+      );
+    }
+  }, []);
+
+  function openBackTheRally() {
+    setBackTheRallyView("select");
+    setBackTheRallyOpen(true);
+  }
 
   // Reserve space at the bottom of every page on mobile so content/footer
   // never sits underneath the fixed mobile bottom nav.
@@ -153,8 +186,27 @@ export function Navbar() {
 
         {/* CTA & Mobile Menu */}
         <div className="flex items-center gap-4">
-          {/* Compact Sydney time/weather — desktop only */}
-          <HeaderClockWeather />
+          {/* Back the Rally replaces the weather/time widget in this
+              slot (see the brief this came from) - HeaderClockWeather
+              itself is untouched and still fully working, just not
+              rendered, so restoring it later is a one-line change.
+              Same hidden md:flex breakpoint the weather widget already
+              used - that's 768px and up, tablet and desktop both,
+              which already covers "show it on tablet if it fits".
+              A prior attempt wrapped this in its own flex-1 slot
+              between nav-links and this CTA group to genuinely center
+              it regardless of viewport width - reverted, since it
+              also pulled nav-links away from their own established
+              justify-between position, crowding them against the
+              logo instead. Back to a plain margin - less perfectly
+              centered, but doesn't disturb everything else's
+              positioning to get there. */}
+          {/* <HeaderClockWeather /> */}
+          <BackTheRallyWidget
+            className="hidden md:inline-flex ml-8"
+            location="header"
+            onClick={openBackTheRally}
+          />
           {isAuthenticated ? (
             <div className="hidden xl:flex items-center gap-2">
               <Link href={profileHref}>
@@ -348,6 +400,23 @@ export function Navbar() {
                     </Button>
                   </Link>
                 )}
+
+                {/* Last thing in the drawer either way - after the nav
+                    links AND after Account/Sign In, with its own
+                    clear space above so it doesn't read as crowding
+                    whatever's right above it. Same single component
+                    and modal as the desktop header slot, just
+                    full-width for the drawer's layout. */}
+                <div className="mt-6 pt-4 border-t border-border flex justify-center">
+                  <BackTheRallyWidget
+                    fullWidth
+                    location="mobile_drawer"
+                    onClick={() => {
+                      setIsOpen(false);
+                      openBackTheRally();
+                    }}
+                  />
+                </div>
               </div>
             </SheetContent>
           </Sheet>
@@ -471,6 +540,12 @@ export function Navbar() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <BackTheRallyModal
+        open={backTheRallyOpen}
+        onOpenChange={setBackTheRallyOpen}
+        initialView={backTheRallyView}
+      />
     </nav>
 
     {/* Mobile bottom nav — logged-in account management lives here now (mobile only) */}
