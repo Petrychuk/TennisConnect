@@ -195,7 +195,7 @@ export function Navbar() {
               which already covers "show it on tablet if it fits". */}
           {/* <HeaderClockWeather /> */}
           <BackTheRallyWidget
-            className="hidden md:inline-flex"
+            className="hidden md:inline-flex ml-6"
             onClick={openBackTheRally}
           />
           {isAuthenticated ? (

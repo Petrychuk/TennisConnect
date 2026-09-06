@@ -219,3 +219,57 @@ test('SUPPORT-010 Returning From Checkout With ?support=cancelled Shows The Canc
   await expect(page.getByText(/no worries/i)).toBeVisible();
 
 });
+
+test('SUPPORT-011 Selected Tier Stays Fully Opaque On Mobile (Doesn\'t Let The Photo Show Through)', async ({ page }) => {
+
+  // Regression test: the selected state originally used a translucent
+  // bg-primary/10 background, which - on mobile, where the modal's
+  // photo backdrop sits behind the whole panel - let the photo bleed
+  // through the selected card, clashing with its own text baked into
+  // the photo. Fixed by using the opaque --accent colour instead.
+  // Checking the actual computed alpha here rather than just the
+  // class name, since a class swap alone wouldn't have caught this -
+  // bg-primary/10 is translucent by definition regardless of which
+  // background class "wins" the cascade.
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByTestId('button-back-the-rally').click();
+
+  const tenDollarTier = page.getByTestId('support-tier-keep_the_rally_going');
+  await expect(tenDollarTier).toHaveAttribute('aria-checked', 'true');
+
+  const alpha = await tenDollarTier.evaluate((el) => {
+    const bg = getComputedStyle(el).backgroundColor;
+    const match = bg.match(/rgba?\(([^)]+)\)/);
+    if (!match) return 1;
+    const parts = match[1].split(',').map((p) => parseFloat(p.trim()));
+    return parts.length === 4 ? parts[3] : 1;
+  });
+
+  expect(alpha).toBe(1);
+
+});
+
+test('SUPPORT-012 Widget Has Fixed Spacing From The Nav Links, Not Just Whatever Room Is Left Over', async ({ page }) => {
+
+  // Regression test for "too close to Sign In, not centered" - the
+  // widget needs deliberate, constant spacing on its left regardless
+  // of how many nav links happen to be rendered, rather than however
+  // much room justify-between happens to leave over. Checking the
+  // actual margin is applied rather than just that the widget is
+  // visible, since a missing className would still pass a plain
+  // visibility check.
+
+  await page.goto('/');
+
+  const widget = page.getByTestId('button-back-the-rally');
+  await expect(widget).toBeVisible();
+
+  const marginLeft = await widget.evaluate(
+    (el) => parseFloat(getComputedStyle(el).marginLeft)
+  );
+
+  expect(marginLeft).toBeGreaterThan(0);
+
+});
