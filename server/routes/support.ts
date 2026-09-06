@@ -69,7 +69,17 @@ router.post("/create-checkout-session", async (req, res, next) => {
 
     // Optional - a guest can support TennisConnect without an account.
     const isLoggedIn = req.isAuthenticated?.();
-    const userId = isLoggedIn ? (req.user as any)?.id ?? null : null;
+    const loggedInUser = isLoggedIn ? (req.user as any) : null;
+    const userId = loggedInUser?.id ?? null;
+    // The frontend modal doesn't currently collect an email field at
+    // all (the zod schema's `email` above is optional and, right now,
+    // always undefined) - for a logged-in payer their own account
+    // email is already known server-side, no need to wait on that.
+    // Whatever Stripe itself ends up collecting during checkout gets
+    // captured from the webhook once payment completes (see below),
+    // which is the accurate source either way - this is just the
+    // best guess available at session-creation time.
+    const payerEmail = loggedInUser?.email ?? email ?? null;
 
     const origin = req.headers.origin || `${req.protocol}://${req.get("host")}`;
 
@@ -95,7 +105,7 @@ router.post("/create-checkout-session", async (req, res, next) => {
           },
         },
       ],
-      customer_email: email,
+      customer_email: payerEmail ?? undefined,
       success_url: `${origin}/?support=success`,
       cancel_url: `${origin}/?support=cancelled`,
       metadata: {
@@ -108,7 +118,7 @@ router.post("/create-checkout-session", async (req, res, next) => {
     // a trace - only the webhook (below) ever moves it to 'paid'.
     await storage.createPayment({
       userId,
-      guestEmail: userId ? null : email ?? null,
+      payerEmail,
       paymentType: "support",
       supportTier: tier,
       relatedEntityId: null,
@@ -163,6 +173,12 @@ router.post("/webhook", async (req, res) => {
         ? session.payment_intent
         : session.payment_intent?.id ?? null;
 
+    // Stripe's own record of whichever email was actually used at
+    // checkout - the most accurate source there is, and the only way
+    // a guest's email ever gets captured at all, since the frontend
+    // modal doesn't collect one itself.
+    const payerEmail = session.customer_details?.email ?? null;
+
     // Stripe's hosted receipt lives on the PaymentIntent's charge, not
     // the session itself - leaving this null for the MVP rather than
     // an extra API round-trip to fetch it. Stripe already emails the
@@ -170,6 +186,7 @@ router.post("/webhook", async (req, res) => {
     await storage.markPaymentPaid(session.id, {
       stripePaymentIntentId: paymentIntentId,
       receiptUrl: null,
+      payerEmail,
     });
   }
 
