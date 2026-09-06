@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import buttonImage from "/assets/images/back-the-rally-button.webp";
+import buttonImageDarkBg from "/assets/images/back-the-rally-button-dark-bg.webp";
 
 interface BackTheRallyWidgetProps {
   className?: string;
@@ -7,6 +8,13 @@ interface BackTheRallyWidgetProps {
   // (after all nav links) uses the same component full-width instead
   // of introducing a second visual treatment for the same CTA.
   fullWidth?: boolean;
+  // The "Support TennisConnect" subtitle (and, in this variant, "Back
+  // the Rally" itself) is dark navy text baked into the graphic -
+  // readable on the header's light background, invisible against the
+  // footer's black one. Swaps in a second version of the same image
+  // with that text recoloured white instead of re-deriving the
+  // composition in CSS for one context.
+  darkBackground?: boolean;
   onClick: () => void;
 }
 
@@ -29,12 +37,27 @@ interface BackTheRallyWidgetProps {
 export function BackTheRallyWidget({
   className,
   fullWidth = false,
+  darkBackground = false,
   onClick,
 }: BackTheRallyWidgetProps) {
+  // The modal's two photo backgrounds are only ever referenced via a
+  // CSS background-image once the modal actually opens, so the
+  // browser has no reason to start fetching them any earlier than
+  // that - warming the cache on hover/focus (a reasonable signal of
+  // intent to click, not just "the button happened to be on the
+  // page") means they're often already cached by the time someone
+  // actually opens the modal instead of only starting to load then.
+  function preloadModalPhotos() {
+    new Image().src = "/assets/images/back-the-rally-desktop.webp";
+    new Image().src = "/assets/images/back-the-rally-mobile.webp";
+  }
+
   return (
     <button
       type="button"
       onClick={onClick}
+      onMouseEnter={preloadModalPhotos}
+      onFocus={preloadModalPhotos}
       data-testid="button-back-the-rally"
       aria-label="Back the Rally - support TennisConnect"
       className={cn(
@@ -59,7 +82,7 @@ export function BackTheRallyWidget({
       )}
     >
       <img
-        src={buttonImage}
+        src={darkBackground ? buttonImageDarkBg : buttonImage}
         alt="Back the Rally - Support TennisConnect"
         className={cn(
           "w-auto object-contain",

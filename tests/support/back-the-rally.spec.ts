@@ -251,26 +251,48 @@ test('SUPPORT-011 Selected Tier Stays Fully Opaque On Mobile (Doesn\'t Let The P
 
 });
 
-test('SUPPORT-012 Widget Has Fixed Spacing From The Nav Links, Not Just Whatever Room Is Left Over', async ({ page }) => {
+test('SUPPORT-012 Widget Is Genuinely Centered Between The Last Nav Link And Sign In, Not Just Given A Fixed Margin', async ({ page }) => {
 
-  // Regression test for "too close to Sign In, not centered" - the
-  // widget needs deliberate, constant spacing on its left regardless
-  // of how many nav links happen to be rendered, rather than however
-  // much room justify-between happens to leave over. Checking the
-  // actual margin is applied rather than just that the widget is
-  // visible, since a missing className would still pass a plain
-  // visibility check.
+  // Regression test for "too close to Sign In, not centered" - two
+  // earlier attempts at this gave the widget a fixed left margin,
+  // which couldn't actually work: the space on the nav-links side is
+  // structurally whatever's left over from justify-between across the
+  // whole header (large at wide viewports), while a fixed margin is
+  // constant, so the two sides could never match at every width. The
+  // fix instead wraps the widget in its own flex-1 slot between the
+  // nav links and the CTA group, so it centers itself in whatever
+  // space is actually there. Checking that directly via bounding
+  // boxes - comparing the gap on each side - rather than checking any
+  // specific CSS property, since centering here is an emergent result
+  // of the layout, not one property on the widget itself.
 
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
 
-  const widget = page.locator('nav').getByTestId('button-back-the-rally');
+  const nav = page.locator('nav');
+  const widget = nav.getByTestId('button-back-the-rally');
+  const lastLink = nav.getByRole('link', { name: 'Tennis IQ' });
+  const signIn = nav.getByText('Sign In', { exact: true });
+
   await expect(widget).toBeVisible();
+  await expect(lastLink).toBeVisible();
+  await expect(signIn).toBeVisible();
 
-  const marginLeft = await widget.evaluate(
-    (el) => parseFloat(getComputedStyle(el).marginLeft)
-  );
+  const linkBox = await lastLink.boundingBox();
+  const widgetBox = await widget.boundingBox();
+  const signInBox = await signIn.boundingBox();
+  expect(linkBox).not.toBeNull();
+  expect(widgetBox).not.toBeNull();
+  expect(signInBox).not.toBeNull();
 
-  expect(marginLeft).toBeGreaterThan(0);
+  const gapBefore = widgetBox!.x - (linkBox!.x + linkBox!.width);
+  const gapAfter = signInBox!.x - (widgetBox!.x + widgetBox!.width);
+
+  // Not pixel-identical (real text/image metrics never land exactly
+  // even), just genuinely comparable rather than one side dwarfing
+  // the other the way "large natural gap" vs "small fixed gap-4"
+  // used to.
+  expect(Math.abs(gapBefore - gapAfter)).toBeLessThan(40);
 
 });
 
@@ -300,5 +322,17 @@ test('SUPPORT-013 Back The Rally Is Also In The Footer, After The Newsletter For
   // Opens the same modal as the header trigger does.
   await footerWidget.click();
   await expect(page.getByTestId('back-the-rally-modal')).toBeVisible();
+
+});
+
+test('SUPPORT-014 Heart Icon Shows In The Modal Header On Mobile Too, Not Just Desktop', async ({ page }) => {
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.locator('nav').getByTestId('button-back-the-rally').click();
+
+  const modal = page.getByTestId('back-the-rally-modal');
+  await expect(modal).toBeVisible();
+  await expect(modal.locator('svg.lucide-heart').first()).toBeVisible();
 
 });
