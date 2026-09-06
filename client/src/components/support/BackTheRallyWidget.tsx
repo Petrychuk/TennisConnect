@@ -43,15 +43,16 @@ export function BackTheRallyWidget({
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md",
         "transition-colors duration-150",
         fullWidth
-          ? "w-full py-2"
+          ? "w-full py-3"
           : [
               // Claims the nav's full height (h-16 = 64px) as its
               // clickable area rather than being a small pill inside
-              // a much larger empty hit-target, with hairline
-              // dividers separating it from its neighbours instead of
-              // a visible box around the whole thing.
-              "self-stretch px-5",
-              "border-l border-r border-black/[0.06] dark:border-white/[0.06]",
+              // a much larger empty hit-target. No visible border
+              // around it anymore (was a hairline border-l/border-r,
+              // removed per feedback) - just padding, so it blends
+              // into the header with nothing but hover feedback to
+              // mark its edges.
+              "self-stretch px-4",
               "hover:bg-primary/5",
             ],
         className
@@ -64,7 +65,7 @@ export function BackTheRallyWidget({
           "w-auto object-contain",
           "motion-safe:transition-transform motion-safe:duration-200",
           "group-hover:-rotate-1 group-hover:scale-[1.04]",
-          fullWidth ? "h-12 max-w-[240px]" : "h-12"
+          fullWidth ? "h-20 max-w-[340px]" : "h-12"
         )}
         draggable={false}
       />
