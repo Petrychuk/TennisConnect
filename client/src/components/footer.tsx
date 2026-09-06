@@ -389,7 +389,7 @@ export function Footer() {
                 centering here reads as "below the form, then a gap,
                 then centered" there too. */}
             <div className="mt-6 flex justify-center">
-              <BackTheRallyWidget fullWidth darkBackground onClick={() => setBackTheRallyOpen(true)} />
+              <BackTheRallyWidget fullWidth darkBackground location="footer" onClick={() => setBackTheRallyOpen(true)} />
             </div>
 
           </div>
