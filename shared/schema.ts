@@ -1275,9 +1275,13 @@ export const payments = pgTable("payments", {
   stripePaymentIntentId: varchar("stripe_payment_intent_id"),
   receiptUrl: text("receipt_url"),
 
-  // 'pending' | 'paid' | 'failed' | 'refunded'. Only ever moves to
-  // 'paid' from the webhook handler, never from the client-facing
-  // success redirect - see server/routes/support.ts.
+  // 'pending' | 'paid' | 'expired' | 'failed' | 'refunded'. Only ever
+  // moves to 'paid' from the webhook handler, never from the
+  // client-facing success redirect - see server/routes/support.ts.
+  // Moves from 'pending' to 'expired' via a periodic sweep once a
+  // checkout session is old enough that Stripe's own session (which
+  // expires after 24h by default) could not possibly still be
+  // completed - see expireOldPendingPayments in server/storage.ts.
   status: text("status").default("pending").notNull(),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),

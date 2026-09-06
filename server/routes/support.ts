@@ -176,4 +176,35 @@ router.post("/webhook", async (req, res) => {
   res.json({ received: true });
 });
 
+// Pending rows accumulate from every abandoned checkout (closed the
+// tab before entering a card, or entered one that got declined) -
+// genuinely useful to keep around for a while as a record of "started
+// but didn't finish", but not useful forever once Stripe's own
+// checkout session (24h expiry by default) could not possibly still
+// complete. This only ever moves 'pending' rows to 'expired' - never
+// touches 'paid' ones, so it can't affect the actual payment-
+// confirmation path in the webhook handler above regardless of timing
+// or how this interval happens to line up with it.
+const EXPIRE_SWEEP_INTERVAL_MS = 60 * 60 * 1000; // hourly
+const PENDING_EXPIRY_HOURS = 24;
+
+async function sweepExpiredPendingPayments() {
+  try {
+    const count = await storage.expireOldPendingPayments(PENDING_EXPIRY_HOURS);
+    if (count > 0) {
+      console.log(`[support] expired ${count} stale pending payment(s)`);
+    }
+  } catch (error) {
+    // Same reasoning as the weather cache's own background refresh -
+    // this runs on a timer, not in response to a request, so there's
+    // no request to fail here; just log and let the next sweep retry.
+    console.error("[support] failed to sweep expired pending payments:", error);
+  }
+}
+
+setInterval(() => void sweepExpiredPendingPayments(), EXPIRE_SWEEP_INTERVAL_MS);
+// Run once shortly after boot too, rather than waiting a full hour
+// for the first sweep.
+setTimeout(() => void sweepExpiredPendingPayments(), 60_000);
+
 export default router;
