@@ -153,9 +153,7 @@ export function BackTheRallyModal({
         data-testid="back-the-rally-modal"
       >
         {initialView === "success" ? (
-          <div className="p-6">
-            <SuccessView onClose={() => onOpenChange(false)} />
-          </div>
+          <SuccessView onClose={() => onOpenChange(false)} />
         ) : initialView === "cancelled" ? (
           <div className="p-6">
             <CancelledView onTryAgain={() => onOpenChange(true)} onClose={() => onOpenChange(false)} />
@@ -345,14 +343,28 @@ export function BackTheRallyModal({
 
 function SuccessView({ onClose }: { onClose: () => void }) {
   return (
-    <div className="flex flex-col items-center text-center gap-3 py-4" data-testid="support-success-view">
-      <TennisBallIcon className="w-10 h-10 text-[hsl(var(--tennis-ball))]" />
-      <DialogTitle className="text-2xl font-bold">You backed the rally!</DialogTitle>
-      <DialogDescription className="text-muted-foreground">
-        Thanks for supporting TennisConnect. You're helping us build a
-        stronger tennis community.
+    <div
+      className="relative flex flex-col items-center text-center gap-3 py-8 px-6 overflow-hidden"
+      data-testid="support-success-view"
+    >
+      {/* A soft celebratory tint rather than a photo - a photo would
+          reopen the same legibility fight already fixed elsewhere in
+          this modal, for a screen that's on-screen only briefly. */}
+      <div
+        className="absolute inset-0 -z-10 bg-gradient-to-b from-[hsl(var(--tennis-ball))]/20 via-[hsl(var(--tennis-ball))]/5 to-transparent"
+        aria-hidden="true"
+      />
+      <TennisBallIcon className="w-12 h-12 text-[hsl(var(--tennis-ball))]" />
+      <DialogTitle className="text-2xl font-bold">Nice return!</DialogTitle>
+      <DialogDescription className="text-muted-foreground max-w-xs">
+        The rally continues - and so does TennisConnect. Thanks for helping
+        us keep building for the whole community.
       </DialogDescription>
-      <Button onClick={onClose} className="w-full h-12 mt-2 font-bold" data-testid="button-back-to-tennisconnect">
+      <Button
+        onClick={onClose}
+        className="w-full md:w-auto md:px-12 h-12 mt-2 font-bold"
+        data-testid="button-back-to-tennisconnect"
+      >
         Back to TennisConnect
       </Button>
     </div>

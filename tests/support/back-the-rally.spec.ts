@@ -200,7 +200,7 @@ test('SUPPORT-009 Returning From Checkout With ?support=success Shows The Succes
   await page.goto('/?support=success');
 
   await expect(page.getByTestId('support-success-view')).toBeVisible();
-  await expect(page.getByText(/you backed the rally/i)).toBeVisible();
+  await expect(page.getByText(/nice return/i)).toBeVisible();
 
   // The query param is cleaned up immediately so a refresh doesn't
   // reopen the success view on its own.
@@ -251,48 +251,26 @@ test('SUPPORT-011 Selected Tier Stays Fully Opaque On Mobile (Doesn\'t Let The P
 
 });
 
-test('SUPPORT-012 Widget Is Genuinely Centered Between The Last Nav Link And Sign In, Not Just Given A Fixed Margin', async ({ page }) => {
+test('SUPPORT-012 Widget Has Deliberate Spacing From The Nav Links, Not Just Whatever Room Is Left Over', async ({ page }) => {
 
-  // Regression test for "too close to Sign In, not centered" - two
-  // earlier attempts at this gave the widget a fixed left margin,
-  // which couldn't actually work: the space on the nav-links side is
-  // structurally whatever's left over from justify-between across the
-  // whole header (large at wide viewports), while a fixed margin is
-  // constant, so the two sides could never match at every width. The
-  // fix instead wraps the widget in its own flex-1 slot between the
-  // nav links and the CTA group, so it centers itself in whatever
-  // space is actually there. Checking that directly via bounding
-  // boxes - comparing the gap on each side - rather than checking any
-  // specific CSS property, since centering here is an emergent result
-  // of the layout, not one property on the widget itself.
+  // Regression test for "too close to Sign In". A follow-up attempt
+  // at fully-symmetric centering (wrapping the widget in its own
+  // flex-1 slot between nav-links and the CTA group) got reverted -
+  // it also pulled nav-links away from their own established
+  // justify-between position, crowding them against the logo instead,
+  // which was a worse regression than the spacing issue it was meant
+  // to fix. Back to checking the plain margin this settled on.
 
-  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
 
-  const nav = page.locator('nav');
-  const widget = nav.getByTestId('button-back-the-rally');
-  const lastLink = nav.getByRole('link', { name: 'Tennis IQ' });
-  const signIn = nav.getByText('Sign In', { exact: true });
-
+  const widget = page.locator('nav').getByTestId('button-back-the-rally');
   await expect(widget).toBeVisible();
-  await expect(lastLink).toBeVisible();
-  await expect(signIn).toBeVisible();
 
-  const linkBox = await lastLink.boundingBox();
-  const widgetBox = await widget.boundingBox();
-  const signInBox = await signIn.boundingBox();
-  expect(linkBox).not.toBeNull();
-  expect(widgetBox).not.toBeNull();
-  expect(signInBox).not.toBeNull();
+  const marginLeft = await widget.evaluate(
+    (el) => parseFloat(getComputedStyle(el).marginLeft)
+  );
 
-  const gapBefore = widgetBox!.x - (linkBox!.x + linkBox!.width);
-  const gapAfter = signInBox!.x - (widgetBox!.x + widgetBox!.width);
-
-  // Not pixel-identical (real text/image metrics never land exactly
-  // even), just genuinely comparable rather than one side dwarfing
-  // the other the way "large natural gap" vs "small fixed gap-4"
-  // used to.
-  expect(Math.abs(gapBefore - gapAfter)).toBeLessThan(40);
+  expect(marginLeft).toBeGreaterThan(0);
 
 });
 

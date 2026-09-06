@@ -143,61 +143,49 @@ export function Navbar() {
           <div className="w-2 h-2 rounded-full bg-[hsl(var(--tennis-ball))] mt-1 animate-pulse" />
         </Link>
 
-        {/* Everything except the logo shares one flex row now, rather
-            than nav-links and the CTA group being two separate
-            justify-between regions with the widget sandwiched at the
-            edge of one of them. That arrangement made the widget's
-            spacing depend on whatever was structurally "left over"
-            across the whole header - large at wide viewports, nothing
-            like the CTA group's own fixed gap, so no fixed margin on
-            the widget alone could ever look symmetric on both sides
-            at every width. The widget's own wrapper below is flex-1:
-            it expands to fill exactly the space between nav-links and
-            the CTA group, whatever that happens to be, and centers
-            the image within it - genuinely centered at any viewport
-            width instead of a constant guessed at one width. */}
-        <div className="flex-1 flex items-center justify-end xl:justify-between min-w-0">
-          {/* Desktop Nav */}
-          <div className="hidden xl:flex items-center gap-8">
-            {navLinks.map((link) => (
-             /*  link.external ? (
-                <a
-                  key={link.name}
-                  href={link.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm font-medium hover:text-lime-600 transition-colors cursor-pointer flex items-center gap-1"
-                >
-                  {link.name}
-                  <svg className="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </a>
-              ) : (
-                <Link
-                  key={link.name}
-                  href={link.href}
-                  className="text-sm font-medium hover:text-lime-600 transition-colors cursor-pointer"
-                >
-                  {link.name}
-                </Link> ) */
-                <Link
+        {/* Desktop Nav */}
+        <div className="hidden xl:flex items-center gap-8">
+          {navLinks.map((link) => (
+           /*  link.external ? (
+              <a
                 key={link.name}
                 href={link.href}
-                className={`text-sm font-medium transition-colors cursor-pointer relative ${
-                  location.startsWith(link.href)
-                    ? "text-primary font-bold"
-                    : "hover:text-lime-600"
-                }`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-medium hover:text-lime-600 transition-colors cursor-pointer flex items-center gap-1"
               >
                 {link.name}
-                {location.startsWith(link.href) && (
-                  <span className="absolute -bottom-1.5 left-0 right-0 h-0.5 rounded-full bg-primary" />
-                )}
-              </Link>  
-            ))}
-          </div>
+                <svg className="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+            ) : (
+              <Link
+                key={link.name}
+                href={link.href}
+                className="text-sm font-medium hover:text-lime-600 transition-colors cursor-pointer"
+              >
+                {link.name}
+              </Link> ) */
+              <Link
+              key={link.name}
+              href={link.href}
+              className={`text-sm font-medium transition-colors cursor-pointer relative ${
+                location.startsWith(link.href)
+                  ? "text-primary font-bold"
+                  : "hover:text-lime-600"
+              }`}
+            >
+              {link.name}
+              {location.startsWith(link.href) && (
+                <span className="absolute -bottom-1.5 left-0 right-0 h-0.5 rounded-full bg-primary" />
+              )}
+            </Link>  
+          ))}
+        </div>
 
+        {/* CTA & Mobile Menu */}
+        <div className="flex items-center gap-4">
           {/* Back the Rally replaces the weather/time widget in this
               slot (see the brief this came from) - HeaderClockWeather
               itself is untouched and still fully working, just not
@@ -205,20 +193,19 @@ export function Navbar() {
               Same hidden md:flex breakpoint the weather widget already
               used - that's 768px and up, tablet and desktop both,
               which already covers "show it on tablet if it fits".
-              flex-1 + justify-center centers it in whatever space is
-              actually between the nav links and the CTA group - see
-              the comment on the parent above for why a fixed margin
-              wasn't enough on its own. Below xl (where nav links are
-              hidden), this still just centers it in the remaining
-              header space next to the mobile-menu trigger, which
-              reads fine on its own. */}
+              A prior attempt wrapped this in its own flex-1 slot
+              between nav-links and this CTA group to genuinely center
+              it regardless of viewport width - reverted, since it
+              also pulled nav-links away from their own established
+              justify-between position, crowding them against the
+              logo instead. Back to a plain margin - less perfectly
+              centered, but doesn't disturb everything else's
+              positioning to get there. */}
           {/* <HeaderClockWeather /> */}
-          <div className="hidden md:flex self-stretch flex-1 justify-center min-w-0 px-4">
-            <BackTheRallyWidget onClick={openBackTheRally} />
-          </div>
-
-          {/* CTA & Mobile Menu */}
-          <div className="flex items-center gap-4 shrink-0">
+          <BackTheRallyWidget
+            className="hidden md:inline-flex ml-8"
+            onClick={openBackTheRally}
+          />
           {isAuthenticated ? (
             <div className="hidden xl:flex items-center gap-2">
               <Link href={profileHref}>
@@ -431,7 +418,6 @@ export function Navbar() {
               </div>
             </SheetContent>
           </Sheet>
-        </div>
         </div>
       </div>
       <Dialog
