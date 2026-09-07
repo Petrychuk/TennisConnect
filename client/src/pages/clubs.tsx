@@ -21,19 +21,22 @@ import { CLUBS_DATA } from "@/lib/dummy-data";
 import { motion } from "framer-motion";
 import SEO from "@/components/seo";
 import { PartnerCTA } from "@/components/partnerCTA";
-import { COURT_SURFACES } from "@shared/constants/clubs";
+import { COURT_SURFACES, CLUB_SERVICES, CLUB_CATEGORIES } from "@shared/constants/clubs";
 import { getServiceLabel, getSurfaceLabel, formatLocation } from "@/lib/clubVariant";
 
 // Quick filter chips shown above/near the search bar. Each tag is matched
-// against a club's combined searchable text (see getClubSearchText) via
-// keywords, so it works whether the underlying data stores service labels
-// (dummy data, e.g. "Grass Courts") or slug values from CLUB_SERVICES /
-// COURT_SURFACES (real API data, e.g. "grass", "coaching").
+// against a club's *facet* text only (see getClubFacetText) - i.e. its
+// actual services / court surfaces / lighting flag - never free-text
+// name/description. That's deliberate: matching against prose meant a
+// club whose description happened to mention "...2 hard courts..." would
+// show up under "Hard Courts" even if hard wasn't really one of its
+// recorded surfaces. Keywords stay short since the facet text is a
+// curated list of tags/labels, not sentences.
 const SERVICE_FILTER_TAGS: { label: string; keywords: string[] }[] = [
   { label: "Grass Courts", keywords: ["grass"] },
-  { label: "Hard Courts", keywords: ["hard court", "hard-court", "hardcourt", " hard "] },
+  { label: "Hard Courts", keywords: ["hard"] },
   { label: "Coaching", keywords: ["coach"] },
-  { label: "Pro Shop", keywords: ["pro-shop", "pro shop", "proshop"] },
+  { label: "Pro Shop", keywords: ["pro-shop", "pro shop"] },
   { label: "Night Tennis", keywords: ["light", "night"] },
 ];
 
@@ -45,12 +48,16 @@ const PRICE_RANGE_OPTIONS = [
   { value: "35-plus", label: "$35+/hr" },
 ];
 
+// Services grouped the same way the club admin form groups them (Courts,
+// Coaching, Community, Facilities, Extras), for the "Services" filter.
+const SERVICE_GROUPS: string[] = Array.from(new Set(CLUB_SERVICES.map((s) => s.group)));
+
 // Builds one lowercase blob of everything a club could reasonably be
-// searched/filtered by, so a single .includes() check covers name,
-// location (both the legacy `location` string and real suburb/state),
-// services and court surfaces/courts info - resolving slugs (e.g. "hard",
-// "pro-shop") to their human labels ("Hard Court", "Pro Shop") as well,
-// so search and filters work regardless of which data shape a club uses.
+// searched by in the free-text search box: name, location (both the
+// legacy `location` string and real suburb/state), description, services
+// and court surfaces - resolving slugs (e.g. "hard", "pro-shop") to their
+// human labels ("Hard Court", "Pro Shop") as well, so search works
+// regardless of which data shape a club uses.
 function getClubSearchText(club: any): string {
   const parts: (string | undefined | null)[] = [
     club?.name,
@@ -67,6 +74,24 @@ function getClubSearchText(club: any): string {
     ...(Array.isArray(club?.courtSurfaces)
       ? club.courtSurfaces.flatMap((s: string) => [s, getSurfaceLabel(s)])
       : []),
+  ];
+  return parts.filter(Boolean).join(" ").toLowerCase();
+}
+
+// Narrower blob used by the structured filters (surface/service chips and
+// the Surface/Services dropdowns) - built ONLY from a club's actual
+// services + court surfaces + lighting flag, never from name/description/
+// location. This is what keeps a filter like "Hard Courts" from matching
+// a club just because "hard" happens to appear somewhere in its prose.
+function getClubFacetText(club: any): string {
+  const parts: (string | undefined | null)[] = [
+    ...(Array.isArray(club?.services)
+      ? club.services.flatMap((s: string) => [s, getServiceLabel(s)])
+      : []),
+    ...(Array.isArray(club?.courtSurfaces)
+      ? club.courtSurfaces.flatMap((s: string) => [s, getSurfaceLabel(s)])
+      : []),
+    club?.hasLighting ? "night lighting" : undefined,
   ];
   return parts.filter(Boolean).join(" ").toLowerCase();
 }
@@ -92,12 +117,24 @@ function getClubLocationLabel(club: any): string {
   return formatLocation(club) || club?.location || "";
 }
 
+// A club "has" a service if it's an exact hit on the real data's slug
+// array, or a case-insensitive match against the dummy fallback data's
+// display-label array - checked against facet text only (see
+// getClubFacetText), never against free-text description.
+function clubHasServiceValue(club: any, value: string, facetText: string): boolean {
+  const target = value.toLowerCase();
+  const label = getServiceLabel(value).toLowerCase();
+  return facetText.includes(target) || facetText.includes(label);
+}
+
 export default function ClubsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterService, setFilterService] = useState("");
   const [filterSurface, setFilterSurface] = useState("all");
   const [filterPriceRange, setFilterPriceRange] = useState("all");
   const [filterLocation, setFilterLocation] = useState("all");
+  const [filterServices, setFilterServices] = useState<string[]>([]);
+  const [filterCategory, setFilterCategory] = useState("all");
   const [servicePopoverOpen, setServicePopoverOpen] = useState(false);
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -105,10 +142,18 @@ export default function ClubsPage() {
   const [loading, setLoading] = useState(true);
   const itemsPerPage = 10;
 
+  function toggleFilterService(value: string) {
+    setFilterServices((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+    );
+  }
+
   const activeAdvancedFiltersCount =
     (filterSurface !== "all" ? 1 : 0) +
     (filterPriceRange !== "all" ? 1 : 0) +
-    (filterLocation !== "all" ? 1 : 0);
+    (filterLocation !== "all" ? 1 : 0) +
+    (filterServices.length > 0 ? 1 : 0) +
+    (filterCategory !== "all" ? 1 : 0);
 
   // Locations are derived from whatever clubs actually loaded (real API
   // data or the dummy fallback), so the dropdown never shows an option
@@ -127,6 +172,8 @@ export default function ClubsPage() {
     setFilterSurface("all");
     setFilterPriceRange("all");
     setFilterLocation("all");
+    setFilterServices([]);
+    setFilterCategory("all");
   }
 
   useEffect(() => {
@@ -160,30 +207,57 @@ export default function ClubsPage() {
   // Filter Logic
   const filteredClubs = clubs.filter((club: any) => {
     const searchText = getClubSearchText(club);
+    const facetText = getClubFacetText(club);
     const term = searchTerm.trim().toLowerCase();
 
-    // Searches name, location (suburb/state or legacy location), services
-    // and court surfaces together - so searching "grass", "hard court",
-    // a suburb, or a service all work, not just the club name.
+    // Free-text search covers name, location (suburb/state or legacy
+    // location), description, services and court surfaces together - so
+    // searching "grass", "hard court", a suburb, or a service all work,
+    // not just the club name.
     const matchesSearch = term ? searchText.includes(term) : true;
 
+    // Quick tag chip - checked against facet text only (services/surfaces/
+    // lighting), never description, so it can't false-match on a club that
+    // merely *mentions* a surface in its prose.
     const activeTag = SERVICE_FILTER_TAGS.find((t) => t.label === filterService);
     const matchesService = activeTag
-      ? activeTag.keywords.some((k) => searchText.includes(k))
+      ? activeTag.keywords.some((k) => facetText.includes(k))
       : true;
 
     const matchesSurface =
       filterSurface === "all"
         ? true
-        : searchText.includes(filterSurface.toLowerCase()) ||
-          searchText.includes(getSurfaceLabel(filterSurface).toLowerCase());
+        : facetText.includes(filterSurface.toLowerCase()) ||
+          facetText.includes(getSurfaceLabel(filterSurface).toLowerCase());
+
+    // Services filter (multi-select) - a club must have ALL selected
+    // services to match, so picking more services narrows the results.
+    const matchesServices =
+      filterServices.length === 0
+        ? true
+        : filterServices.every((v) => clubHasServiceValue(club, v, facetText));
+
+    // Organisation type - club / community / academy / public courts /
+    // tennis centre / social group. Only real API clubs carry `category`;
+    // dummy fallback data has none, so this filter simply won't match it
+    // (fine, since it only ever shows if there's no real data yet).
+    const matchesCategory =
+      filterCategory === "all" ? true : club?.category === filterCategory;
 
     const matchesPrice = matchesPriceRange(club, filterPriceRange);
 
     const matchesLocation =
       filterLocation === "all" ? true : getClubLocationLabel(club) === filterLocation;
 
-    return matchesSearch && matchesService && matchesSurface && matchesPrice && matchesLocation;
+    return (
+      matchesSearch &&
+      matchesService &&
+      matchesSurface &&
+      matchesServices &&
+      matchesCategory &&
+      matchesPrice &&
+      matchesLocation
+    );
   });
 
   // Pagination Logic
@@ -334,7 +408,29 @@ export default function ClubsPage() {
                       )}
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent align="end" className="w-72 p-4 space-y-4">
+                  <PopoverContent
+                    align="end"
+                    className="w-80 p-4 space-y-4 max-h-[70vh] overflow-y-auto"
+                  >
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Organisation Type
+                      </Label>
+                      <Select value={filterCategory} onValueChange={setFilterCategory}>
+                        <SelectTrigger data-testid="clubs-category-filter">
+                          <SelectValue placeholder="Any type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Any type</SelectItem>
+                          {CLUB_CATEGORIES.map((cat) => (
+                            <SelectItem key={cat.value} value={cat.value}>
+                              {cat.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
                     <div className="space-y-1.5">
                       <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                         Court Surface
@@ -391,6 +487,38 @@ export default function ClubsPage() {
                       </Select>
                     </div>
 
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Services
+                      </Label>
+                      <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
+                        {SERVICE_GROUPS.map((group) => (
+                          <div key={group}>
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70 mb-1.5">
+                              {group}
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {CLUB_SERVICES.filter((s) => s.group === group).map((service) => (
+                                <button
+                                  key={service.value}
+                                  type="button"
+                                  onClick={() => toggleFilterService(service.value)}
+                                  data-testid={`clubs-service-option-${service.value}`}
+                                  className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer ${
+                                    filterServices.includes(service.value)
+                                      ? "bg-primary text-primary-foreground border-primary"
+                                      : "bg-background/80 hover:bg-secondary border-input hover:border-primary/50"
+                                  }`}
+                                >
+                                  {service.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
                     {activeAdvancedFiltersCount > 0 && (
                       <Button
                         variant="ghost"
@@ -400,6 +528,8 @@ export default function ClubsPage() {
                           setFilterSurface("all");
                           setFilterPriceRange("all");
                           setFilterLocation("all");
+                          setFilterServices([]);
+                          setFilterCategory("all");
                         }}
                       >
                         Reset these filters
@@ -465,7 +595,7 @@ export default function ClubsPage() {
                     )}
                   </button>
                 </PopoverTrigger>
-                <PopoverContent align="end" className="w-64 p-3 space-y-3">
+                <PopoverContent align="end" className="w-72 p-3 space-y-3 max-h-[70vh] overflow-y-auto">
                   <div className="flex flex-col gap-1">
                     {SERVICE_FILTER_TAGS.map(({ label: tag }) => (
                       <button
@@ -487,6 +617,25 @@ export default function ClubsPage() {
                   </div>
 
                   <div className="pt-2 border-t border-border/50 space-y-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Organisation Type
+                      </Label>
+                      <Select value={filterCategory} onValueChange={setFilterCategory}>
+                        <SelectTrigger data-testid="clubs-category-filter-mobile">
+                          <SelectValue placeholder="Any type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Any type</SelectItem>
+                          {CLUB_CATEGORIES.map((cat) => (
+                            <SelectItem key={cat.value} value={cat.value}>
+                              {cat.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
                     <div className="space-y-1.5">
                       <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                         Court Surface
@@ -541,6 +690,38 @@ export default function ClubsPage() {
                           ))}
                         </SelectContent>
                       </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Services
+                      </Label>
+                      <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
+                        {SERVICE_GROUPS.map((group) => (
+                          <div key={group}>
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70 mb-1.5">
+                              {group}
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {CLUB_SERVICES.filter((s) => s.group === group).map((service) => (
+                                <button
+                                  key={service.value}
+                                  type="button"
+                                  onClick={() => toggleFilterService(service.value)}
+                                  data-testid={`clubs-service-option-mobile-${service.value}`}
+                                  className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer ${
+                                    filterServices.includes(service.value)
+                                      ? "bg-primary text-primary-foreground border-primary"
+                                      : "bg-background/80 hover:bg-secondary border-input hover:border-primary/50"
+                                  }`}
+                                >
+                                  {service.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </PopoverContent>
