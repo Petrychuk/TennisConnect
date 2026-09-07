@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { MapPin, Search, Filter, SlidersHorizontal, Phone, Globe, DollarSign, Trophy, ArrowRight, Building2, Star, CheckCircle, Users, GraduationCap, Trees, Handshake } from "lucide-react";
+import { MapPin, Search, Filter, SlidersHorizontal, Phone, Globe, DollarSign, Trophy, ArrowRight, Building2, Star, CheckCircle, Users, GraduationCap, Trees, Handshake, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
@@ -282,6 +282,8 @@ export default function ClubsPage() {
     filterPriceRange !== "all" ||
     filterServices.length > 0;
 
+  const hasAnyActiveFilter = searchTerm.trim() !== "" || hasActiveFacets;
+
   const strictMatches = evaluatedClubs.filter((e) => e.matchesSearch && e.matchesAllFacets);
   const usedRelaxedMatch = hasActiveFacets && strictMatches.length === 0;
   const filteredClubs = (
@@ -543,6 +545,17 @@ export default function ClubsPage() {
                     )}
                   </PopoverContent>
                 </Popover>
+
+                {hasAnyActiveFilter && (
+                  <button
+                    onClick={clearAllFilters}
+                    className="shrink-0 h-11 px-3 flex items-center gap-1.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-all cursor-pointer"
+                    data-testid="clubs-clear-all-filters"
+                  >
+                    <X className="w-4 h-4" />
+                    Clear all
+                  </button>
+                )}
               </div>
             </div>
             </div>
@@ -719,6 +732,22 @@ export default function ClubsPage() {
                       </div>
                     </div>
                   </div>
+
+                  {hasAnyActiveFilter && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full mt-3"
+                      onClick={() => {
+                        clearAllFilters();
+                        setServicePopoverOpen(false);
+                      }}
+                      data-testid="clubs-clear-all-filters-mobile"
+                    >
+                      <X className="w-4 h-4" />
+                      Clear all filters
+                    </Button>
+                  )}
                 </PopoverContent>
               </Popover>
             </div>
