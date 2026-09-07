@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { MapPin, Search, Filter, SlidersHorizontal, Phone, Globe, DollarSign, Trophy, ArrowRight, Building2, Star, CheckCircle } from "lucide-react";
+import { MapPin, Search, Filter, SlidersHorizontal, Phone, Globe, DollarSign, Trophy, ArrowRight, Building2, Star, CheckCircle, Users, GraduationCap, Trees, Handshake } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
@@ -23,6 +23,32 @@ import SEO from "@/components/seo";
 import { PartnerCTA } from "@/components/partnerCTA";
 import { COURT_SURFACES, CLUB_SERVICES, CLUB_CATEGORIES } from "@shared/constants/clubs";
 import { getServiceLabel, getSurfaceLabel, formatLocation } from "@/lib/clubVariant";
+
+// Organisation Type options come from CLUB_CATEGORIES (shared with the
+// admin form), but its labels carry emoji prefixes meant for the admin
+// UI. For this page we pair each value with a proper lucide icon instead,
+// matching the app's icon style - CLUB_CATEGORIES itself is left
+// untouched since other screens (e.g. the club admin form) still use its
+// emoji labels as-is.
+const CATEGORY_DISPLAY: Record<string, { label: string; icon: typeof Trophy }> = {
+  club: { label: "Tennis Club", icon: Trophy },
+  community: { label: "Tennis Community", icon: Users },
+  academy: { label: "Tennis Academy", icon: GraduationCap },
+  "public-courts": { label: "Public Courts", icon: Trees },
+  "tennis-centre": { label: "Tennis Centre", icon: Building2 },
+  "social-group": { label: "Social Group", icon: Handshake },
+};
+
+function getCategoryDisplay(value: string) {
+  if (CATEGORY_DISPLAY[value]) return CATEGORY_DISPLAY[value];
+  // Fallback for any category value not in the map above (keeps this
+  // page working even if CLUB_CATEGORIES gains a new entry later).
+  const label = value
+    .split("-")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+  return { label, icon: Trophy };
+}
 
 // Price buckets for the price filter, based on hourly court/session price.
 const PRICE_RANGE_OPTIONS = [
@@ -194,51 +220,75 @@ export default function ClubsPage() {
   }, []);
 
   // Filter Logic
-  const filteredClubs = clubs.filter((club: any) => {
+  //
+  // Free-text search is always required when present (it's a deliberate
+  // query, not a facet toggle). The structured facet filters (Organisation
+  // Type, Court Surface, Location, Price, Services) are evaluated per
+  // club, then combined in two passes:
+  //   1. Strict AND across every active facet - the precise, narrow
+  //      result set (e.g. "Hard Court" + "Lane Cove, NSW" together should
+  //      behave as a direct combined match).
+  //   2. If that strict pass comes back empty but at least one facet is
+  //      active, fall back to OR across the active facets - clubs
+  //      matching at least one selected facet - so combining several
+  //      filters on a small dataset never dead-ends on zero results. A
+  //      banner in the UI makes it clear when this relaxed match kicked
+  //      in, so it never looks like a silent/wrong match.
+  const searchTerm_ = searchTerm.trim().toLowerCase();
+
+  const evaluatedClubs = clubs.map((club: any) => {
     const searchText = getClubSearchText(club);
     const facetText = getClubFacetText(club);
-    const term = searchTerm.trim().toLowerCase();
 
-    // Free-text search covers name, location (suburb/state or legacy
-    // location), services and court surfaces - so searching "grass",
-    // "hard court", a suburb, or a service all work precisely, without
-    // also matching clubs that merely mention a surface in passing.
-    const matchesSearch = term ? searchText.includes(term) : true;
+    const matchesSearch = searchTerm_ ? searchText.includes(searchTerm_) : true;
 
-    const matchesSurface =
-      filterSurface === "all"
-        ? true
-        : facetText.includes(filterSurface.toLowerCase()) ||
-          facetText.includes(getSurfaceLabel(filterSurface).toLowerCase());
+    const facetChecks: boolean[] = [];
 
-    // Services filter (multi-select) - a club must have ALL selected
-    // services to match, so picking more services narrows the results.
-    const matchesServices =
-      filterServices.length === 0
-        ? true
-        : filterServices.every((v) => clubHasServiceValue(club, v, facetText));
+    if (filterSurface !== "all") {
+      facetChecks.push(
+        facetText.includes(filterSurface.toLowerCase()) ||
+          facetText.includes(getSurfaceLabel(filterSurface).toLowerCase())
+      );
+    }
+    if (filterLocation !== "all") {
+      facetChecks.push(getClubLocationLabel(club) === filterLocation);
+    }
+    if (filterCategory !== "all") {
+      facetChecks.push(club?.category === filterCategory);
+    }
+    if (filterPriceRange !== "all") {
+      facetChecks.push(matchesPriceRange(club, filterPriceRange));
+    }
+    if (filterServices.length > 0) {
+      // Within the Services facet itself, a club still needs ALL picked
+      // services - only the combination ACROSS different facet types
+      // (surface vs location vs category vs price vs services) gets the
+      // OR fallback above.
+      facetChecks.push(filterServices.every((v) => clubHasServiceValue(club, v, facetText)));
+    }
 
-    // Organisation type - club / community / academy / public courts /
-    // tennis centre / social group. Only real API clubs carry `category`;
-    // dummy fallback data has none, so this filter simply won't match it
-    // (fine, since it only ever shows if there's no real data yet).
-    const matchesCategory =
-      filterCategory === "all" ? true : club?.category === filterCategory;
-
-    const matchesPrice = matchesPriceRange(club, filterPriceRange);
-
-    const matchesLocation =
-      filterLocation === "all" ? true : getClubLocationLabel(club) === filterLocation;
-
-    return (
-      matchesSearch &&
-      matchesSurface &&
-      matchesServices &&
-      matchesCategory &&
-      matchesPrice &&
-      matchesLocation
-    );
+    return {
+      club,
+      matchesSearch,
+      matchesAllFacets: facetChecks.every(Boolean),
+      matchesAnyFacet: facetChecks.length === 0 || facetChecks.some(Boolean),
+    };
   });
+
+  const hasActiveFacets =
+    filterSurface !== "all" ||
+    filterLocation !== "all" ||
+    filterCategory !== "all" ||
+    filterPriceRange !== "all" ||
+    filterServices.length > 0;
+
+  const strictMatches = evaluatedClubs.filter((e) => e.matchesSearch && e.matchesAllFacets);
+  const usedRelaxedMatch = hasActiveFacets && strictMatches.length === 0;
+  const filteredClubs = (
+    usedRelaxedMatch
+      ? evaluatedClubs.filter((e) => e.matchesSearch && e.matchesAnyFacet)
+      : strictMatches
+  ).map((e) => e.club);
 
   // Pagination Logic
   const totalPages = Math.ceil(filteredClubs.length / itemsPerPage);
@@ -347,24 +397,30 @@ export default function ClubsPage() {
               <div className="flex flex-wrap items-center gap-2 flex-1 lg:flex-none">
                 <Select value={filterCategory} onValueChange={setFilterCategory}>
                   <SelectTrigger
-                    className={`h-11 w-[9.5rem] rounded-xl ${filterCategory !== "all" ? "border-primary text-primary" : "bg-background/80"}`}
+                    className={`h-11 w-[10.5rem] rounded-xl ${filterCategory !== "all" ? "bg-primary/15 border-primary text-primary font-medium" : "bg-background/80"}`}
                     data-testid="clubs-category-filter"
                   >
                     <SelectValue placeholder="Any type" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Any type</SelectItem>
-                    {CLUB_CATEGORIES.map((cat) => (
-                      <SelectItem key={cat.value} value={cat.value}>
-                        {cat.label}
-                      </SelectItem>
-                    ))}
+                    {CLUB_CATEGORIES.map((cat) => {
+                      const { label, icon: Icon } = getCategoryDisplay(cat.value);
+                      return (
+                        <SelectItem key={cat.value} value={cat.value}>
+                          <span className="flex items-center gap-2">
+                            <Icon className="w-4 h-4" />
+                            {label}
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
 
                 <Select value={filterSurface} onValueChange={setFilterSurface}>
                   <SelectTrigger
-                    className={`h-11 w-[9.5rem] rounded-xl ${filterSurface !== "all" ? "border-primary text-primary" : "bg-background/80"}`}
+                    className={`h-11 w-[9.5rem] rounded-xl ${filterSurface !== "all" ? "bg-primary/15 border-primary text-primary font-medium" : "bg-background/80"}`}
                     data-testid="clubs-surface-filter"
                   >
                     <SelectValue placeholder="Any surface" />
@@ -381,7 +437,7 @@ export default function ClubsPage() {
 
                 <Select value={filterLocation} onValueChange={setFilterLocation}>
                   <SelectTrigger
-                    className={`h-11 w-[10.5rem] rounded-xl ${filterLocation !== "all" ? "border-primary text-primary" : "bg-background/80"}`}
+                    className={`h-11 w-[10.5rem] rounded-xl ${filterLocation !== "all" ? "bg-primary/15 border-primary text-primary font-medium" : "bg-background/80"}`}
                     data-testid="clubs-location-filter"
                   >
                     <SelectValue placeholder="Any location" />
@@ -557,16 +613,25 @@ export default function ClubsPage() {
                         Organisation Type
                       </Label>
                       <Select value={filterCategory} onValueChange={setFilterCategory}>
-                        <SelectTrigger data-testid="clubs-category-filter-mobile">
+                        <SelectTrigger
+                          className={filterCategory !== "all" ? "bg-primary/15 border-primary text-primary font-medium" : undefined}
+                          data-testid="clubs-category-filter-mobile"
+                        >
                           <SelectValue placeholder="Any type" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">Any type</SelectItem>
-                          {CLUB_CATEGORIES.map((cat) => (
-                            <SelectItem key={cat.value} value={cat.value}>
-                              {cat.label}
-                            </SelectItem>
-                          ))}
+                          {CLUB_CATEGORIES.map((cat) => {
+                            const { label, icon: Icon } = getCategoryDisplay(cat.value);
+                            return (
+                              <SelectItem key={cat.value} value={cat.value}>
+                                <span className="flex items-center gap-2">
+                                  <Icon className="w-4 h-4" />
+                                  {label}
+                                </span>
+                              </SelectItem>
+                            );
+                          })}
                         </SelectContent>
                       </Select>
                     </div>
@@ -691,6 +756,18 @@ export default function ClubsPage() {
         ) : (
 
           <>
+            {usedRelaxedMatch && (
+              <div
+                className="mb-6 px-4 py-3 rounded-xl bg-primary/10 border border-primary/30 text-sm text-foreground flex items-center gap-2"
+                data-testid="clubs-relaxed-match-notice"
+              >
+                <SlidersHorizontal className="w-4 h-4 text-primary shrink-0" />
+                <span>
+                  No clubs match every selected filter - showing clubs that match at least one of them instead.
+                </span>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-3 xl:gap-8">
               {currentClubs.map((club) => (
                 <ClubCard
