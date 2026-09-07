@@ -43,7 +43,13 @@ router.get("/", async (req, res) => {
 router.get("/:slug", async (req, res) => {
   const user = await storage.getUserBySlug(req.params.slug);
 
-  if (!user || user.role !== "coach") {
+  // Matches the same check GET /api/players/:slug already has - a coach
+  // who hasn't finished their onboarding wizard (still holding the
+  // registration-time defaults: title "Coach", location "Sydney") isn't
+  // in the public /api/coaches list, but was still directly reachable
+  // by anyone who knew or guessed their slug, since only the role was
+  // checked here, not profileCompleted.
+  if (!user || user.role !== "coach" || !user.profileCompleted) {
     return res.status(404).json({
       message: "Coach not found",
     });
