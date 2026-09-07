@@ -34,6 +34,17 @@ export async function setupVite(server: Server, app: Express) {
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
 
+    // Chrome (with DevTools open, "automatic workspace folders" feature)
+    // probes this exact path on every page load looking for a devtools
+    // config file - it's not a real page request. Left to fall through
+    // to vite.transformIndexHtml, Vite misreads the "?html-proxy&direct&
+    // index=0.css" query it comes tagged with in some Chrome versions and
+    // throws "Failed to parse JSON file" trying to treat it as an inline
+    // module. Skip it here so it just 404s normally instead.
+    if (url.startsWith("/.well-known/")) {
+      return next();
+    }
+
     try {
       const clientTemplate = path.resolve(
         import.meta.dirname,
