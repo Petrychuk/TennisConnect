@@ -304,8 +304,8 @@ export function Navbar() {
               </Link>
             </div>
           ) : (
-            <Link href="/auth">
-              <Button className="hidden xl:inline-flex bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer">
+            <Link href="/auth" className="hidden xl:inline-flex">
+              <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer">
                 Sign In
               </Button>
             </Link>
@@ -314,7 +314,7 @@ export function Navbar() {
           {/* Mobile Menu */}
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild className="xl:hidden">
-              <Button variant="ghost" size="icon" data-testid="button-mobile-menu">
+              <Button variant="ghost" size="icon" aria-label="Open menu" data-testid="button-mobile-menu">
                 <Menu className="w-6 h-6" />
               </Button>
             </SheetTrigger>

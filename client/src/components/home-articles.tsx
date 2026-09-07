@@ -73,9 +73,9 @@ export function HomeArticles() {
             viewport={{ once: true }}
             transition={{ delay: 0.3 }}
           >
-            <Link href="/articles">
+            <Link href="/articles" className="hidden md:block">
               <Button
-                className="hidden md:flex gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
+                className="flex gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
                 data-testid="articles-view-all-button"
               >
                 Explore Articles <ArrowRight className="w-4 h-4" />
