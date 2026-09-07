@@ -85,6 +85,34 @@ export async function grantOrganizerAccess(
   await logout(page);
 }
 
+// Admin Hide/Restore Profile - the "real sender" version of a service
+// message (see systemMessages.ts: sendMessageBetween puts the acting
+// admin's own id in senderUserId, unlike sendSystemMessage's
+// senderUserId: null). Deliberately does NOT log out afterwards - the
+// caller needs to stay on the admin session to check the admin's own
+// inbox for this conversation.
+export async function hideUserAsAdmin(
+  page: Page,
+  adminEmail: string,
+  adminPassword: string,
+  userId: string
+) {
+  await login(page, adminEmail, adminPassword);
+  await page.goto('/admin');
+  await page.getByTestId('admin-tab-users').click();
+
+  await page.getByTestId(`hide-user-${userId}`).click();
+
+  await Promise.all([
+    page.waitForResponse(
+      response =>
+        /\/api\/admin\/users\/.+\/hide$/.test(response.url()) &&
+        response.request().method() === 'PATCH'
+    ),
+    page.getByTestId('user-action-confirm').click(),
+  ]);
+}
+
 // The public players/coaches listings require isApproved (on top of
 // profileCompleted - see storage.getAllPlayers), unlike a profile page
 // reached directly by slug, which only needs profileCompleted. A
