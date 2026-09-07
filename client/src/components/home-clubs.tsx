@@ -23,6 +23,18 @@ interface Club {
   listingType?: string;
 }
 
+// Picks `count` random, non-repeating items from the list (Fisher-Yates),
+// so the homepage shows a different trio of clubs on each page load
+// instead of always the same first 3 from the API response.
+function pickRandomClubs<T>(list: T[], count: number): T[] {
+  const pool = [...list];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, count);
+}
+
 export function HomeClubs() {
   const [items, setItems] = useState<Club[]>([]);
 
@@ -31,7 +43,7 @@ export function HomeClubs() {
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
-          setItems(data.slice(0, 3));
+          setItems(pickRandomClubs(data, 3));
         }
       })
       .catch(() => {
