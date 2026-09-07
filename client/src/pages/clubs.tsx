@@ -48,10 +48,6 @@ const PRICE_RANGE_OPTIONS = [
   { value: "35-plus", label: "$35+/hr" },
 ];
 
-// Services grouped the same way the club admin form groups them (Courts,
-// Coaching, Community, Facilities, Extras), for the "Services" filter.
-const SERVICE_GROUPS: string[] = Array.from(new Set(CLUB_SERVICES.map((s) => s.group)));
-
 // Builds one lowercase blob of everything a club could reasonably be
 // searched by in the free-text search box: name, location (both the
 // legacy `location` string and real suburb/state), description, services
@@ -408,114 +404,122 @@ export default function ClubsPage() {
                       )}
                     </button>
                   </PopoverTrigger>
+                  {/* Two-column layout keeps the whole panel short and wide
+                      instead of one long vertical list that can run off
+                      the bottom of the screen. `sticky="always"` plus a
+                      collision boundary keep the panel anchored to the
+                      trigger (rather than jumping/hiding) as the page
+                      scrolls; the outer max-height is only a safety net
+                      for very short viewports - the Services list carries
+                      its own independent scroll area so it never forces
+                      the whole panel to scroll. */}
                   <PopoverContent
                     align="end"
-                    className="w-80 p-4 space-y-4 max-h-[70vh] overflow-y-auto"
+                    sticky="always"
+                    collisionPadding={16}
+                    className="w-[34rem] max-w-[92vw] p-4 max-h-[85vh] overflow-y-auto"
                   >
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Organisation Type
-                      </Label>
-                      <Select value={filterCategory} onValueChange={setFilterCategory}>
-                        <SelectTrigger data-testid="clubs-category-filter">
-                          <SelectValue placeholder="Any type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Any type</SelectItem>
-                          {CLUB_CATEGORIES.map((cat) => (
-                            <SelectItem key={cat.value} value={cat.value}>
-                              {cat.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Organisation Type
+                        </Label>
+                        <Select value={filterCategory} onValueChange={setFilterCategory}>
+                          <SelectTrigger data-testid="clubs-category-filter">
+                            <SelectValue placeholder="Any type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Any type</SelectItem>
+                            {CLUB_CATEGORIES.map((cat) => (
+                              <SelectItem key={cat.value} value={cat.value}>
+                                {cat.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Court Surface
-                      </Label>
-                      <Select value={filterSurface} onValueChange={setFilterSurface}>
-                        <SelectTrigger data-testid="clubs-surface-filter">
-                          <SelectValue placeholder="Any surface" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Any surface</SelectItem>
-                          {COURT_SURFACES.map((surface) => (
-                            <SelectItem key={surface.value} value={surface.value}>
-                              {surface.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Court Surface
+                        </Label>
+                        <Select value={filterSurface} onValueChange={setFilterSurface}>
+                          <SelectTrigger data-testid="clubs-surface-filter">
+                            <SelectValue placeholder="Any surface" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Any surface</SelectItem>
+                            {COURT_SURFACES.map((surface) => (
+                              <SelectItem key={surface.value} value={surface.value}>
+                                {surface.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Price
-                      </Label>
-                      <Select value={filterPriceRange} onValueChange={setFilterPriceRange}>
-                        <SelectTrigger data-testid="clubs-price-filter">
-                          <SelectValue placeholder="Any price" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {PRICE_RANGE_OPTIONS.map((range) => (
-                            <SelectItem key={range.value} value={range.value}>
-                              {range.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Price
+                        </Label>
+                        <Select value={filterPriceRange} onValueChange={setFilterPriceRange}>
+                          <SelectTrigger data-testid="clubs-price-filter">
+                            <SelectValue placeholder="Any price" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PRICE_RANGE_OPTIONS.map((range) => (
+                              <SelectItem key={range.value} value={range.value}>
+                                {range.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Location
-                      </Label>
-                      <Select value={filterLocation} onValueChange={setFilterLocation}>
-                        <SelectTrigger data-testid="clubs-location-filter">
-                          <SelectValue placeholder="Any location" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Any location</SelectItem>
-                          {locationOptions.map((loc) => (
-                            <SelectItem key={loc} value={loc}>
-                              {loc}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Location
+                        </Label>
+                        <Select value={filterLocation} onValueChange={setFilterLocation}>
+                          <SelectTrigger data-testid="clubs-location-filter">
+                            <SelectValue placeholder="Any location" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Any location</SelectItem>
+                            {locationOptions.map((loc) => (
+                              <SelectItem key={loc} value={loc}>
+                                {loc}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                    <div className="space-y-2">
-                      <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Services
-                      </Label>
-                      <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
-                        {SERVICE_GROUPS.map((group) => (
-                          <div key={group}>
-                            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70 mb-1.5">
-                              {group}
-                            </p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {CLUB_SERVICES.filter((s) => s.group === group).map((service) => (
-                                <button
-                                  key={service.value}
-                                  type="button"
-                                  onClick={() => toggleFilterService(service.value)}
-                                  data-testid={`clubs-service-option-${service.value}`}
-                                  className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer ${
-                                    filterServices.includes(service.value)
-                                      ? "bg-primary text-primary-foreground border-primary"
-                                      : "bg-background/80 hover:bg-secondary border-input hover:border-primary/50"
-                                  }`}
-                                >
-                                  {service.label}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
+                      <div className="col-span-2 space-y-1.5">
+                        <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Services
+                        </Label>
+                        <div
+                          className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto pr-1 border border-border/50 rounded-lg p-2"
+                          onWheel={(e) => e.stopPropagation()}
+                          data-testid="clubs-services-scroll-area"
+                        >
+                          {CLUB_SERVICES.map((service) => (
+                            <button
+                              key={service.value}
+                              type="button"
+                              onClick={() => toggleFilterService(service.value)}
+                              data-testid={`clubs-service-option-${service.value}`}
+                              className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer shrink-0 ${
+                                filterServices.includes(service.value)
+                                  ? "bg-primary text-primary-foreground border-primary"
+                                  : "bg-background/80 hover:bg-secondary border-input hover:border-primary/50"
+                              }`}
+                            >
+                              {service.label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
 
@@ -523,7 +527,7 @@ export default function ClubsPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="w-full"
+                        className="w-full mt-4"
                         onClick={() => {
                           setFilterSurface("all");
                           setFilterPriceRange("all");
@@ -595,7 +599,12 @@ export default function ClubsPage() {
                     )}
                   </button>
                 </PopoverTrigger>
-                <PopoverContent align="end" className="w-72 p-3 space-y-3 max-h-[70vh] overflow-y-auto">
+                <PopoverContent
+                  align="end"
+                  sticky="always"
+                  collisionPadding={16}
+                  className="w-72 p-3 space-y-3 max-h-[75vh] overflow-y-auto"
+                >
                   <div className="flex flex-col gap-1">
                     {SERVICE_FILTER_TAGS.map(({ label: tag }) => (
                       <button
@@ -692,34 +701,29 @@ export default function ClubsPage() {
                       </Select>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                         Services
                       </Label>
-                      <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
-                        {SERVICE_GROUPS.map((group) => (
-                          <div key={group}>
-                            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70 mb-1.5">
-                              {group}
-                            </p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {CLUB_SERVICES.filter((s) => s.group === group).map((service) => (
-                                <button
-                                  key={service.value}
-                                  type="button"
-                                  onClick={() => toggleFilterService(service.value)}
-                                  data-testid={`clubs-service-option-mobile-${service.value}`}
-                                  className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer ${
-                                    filterServices.includes(service.value)
-                                      ? "bg-primary text-primary-foreground border-primary"
-                                      : "bg-background/80 hover:bg-secondary border-input hover:border-primary/50"
-                                  }`}
-                                >
-                                  {service.label}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
+                      <div
+                        className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto pr-1 border border-border/50 rounded-lg p-2"
+                        onWheel={(e) => e.stopPropagation()}
+                        data-testid="clubs-services-scroll-area-mobile"
+                      >
+                        {CLUB_SERVICES.map((service) => (
+                          <button
+                            key={service.value}
+                            type="button"
+                            onClick={() => toggleFilterService(service.value)}
+                            data-testid={`clubs-service-option-mobile-${service.value}`}
+                            className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer shrink-0 ${
+                              filterServices.includes(service.value)
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-background/80 hover:bg-secondary border-input hover:border-primary/50"
+                            }`}
+                          >
+                            {service.label}
+                          </button>
                         ))}
                       </div>
                     </div>
