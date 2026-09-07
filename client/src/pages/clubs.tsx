@@ -10,19 +10,124 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MapPin, Search, Filter, SlidersHorizontal, Phone, Globe, DollarSign, Trophy, ArrowRight, Building2, Star, CheckCircle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CLUBS_DATA } from "@/lib/dummy-data";
 import { motion } from "framer-motion";
 import SEO from "@/components/seo";
 import { PartnerCTA } from "@/components/partnerCTA";
+import { COURT_SURFACES } from "@shared/constants/clubs";
+import { getServiceLabel, getSurfaceLabel, formatLocation } from "@/lib/clubVariant";
+
+// Quick filter chips shown above/near the search bar. Each tag is matched
+// against a club's combined searchable text (see getClubSearchText) via
+// keywords, so it works whether the underlying data stores service labels
+// (dummy data, e.g. "Grass Courts") or slug values from CLUB_SERVICES /
+// COURT_SURFACES (real API data, e.g. "grass", "coaching").
+const SERVICE_FILTER_TAGS: { label: string; keywords: string[] }[] = [
+  { label: "Grass Courts", keywords: ["grass"] },
+  { label: "Hard Courts", keywords: ["hard court", "hard-court", "hardcourt", " hard "] },
+  { label: "Coaching", keywords: ["coach"] },
+  { label: "Pro Shop", keywords: ["pro-shop", "pro shop", "proshop"] },
+  { label: "Night Tennis", keywords: ["light", "night"] },
+];
+
+// Price buckets for the price filter, based on hourly court/session price.
+const PRICE_RANGE_OPTIONS = [
+  { value: "all", label: "Any price" },
+  { value: "under-20", label: "Under $20/hr" },
+  { value: "20-35", label: "$20 – $35/hr" },
+  { value: "35-plus", label: "$35+/hr" },
+];
+
+// Builds one lowercase blob of everything a club could reasonably be
+// searched/filtered by, so a single .includes() check covers name,
+// location (both the legacy `location` string and real suburb/state),
+// services and court surfaces/courts info - resolving slugs (e.g. "hard",
+// "pro-shop") to their human labels ("Hard Court", "Pro Shop") as well,
+// so search and filters work regardless of which data shape a club uses.
+function getClubSearchText(club: any): string {
+  const parts: (string | undefined | null)[] = [
+    club?.name,
+    club?.location,
+    club?.suburb,
+    club?.state,
+    club?.address,
+    club?.shortDescription,
+    club?.description,
+    club?.pricingNotes,
+    ...(Array.isArray(club?.services)
+      ? club.services.flatMap((s: string) => [s, getServiceLabel(s)])
+      : []),
+    ...(Array.isArray(club?.courtSurfaces)
+      ? club.courtSurfaces.flatMap((s: string) => [s, getSurfaceLabel(s)])
+      : []),
+  ];
+  return parts.filter(Boolean).join(" ").toLowerCase();
+}
+
+function getClubPrice(club: any): number | null {
+  const raw = club?.hourlyPrice ?? club?.price;
+  if (raw === null || raw === undefined || raw === "") return null;
+  const num = Number(raw);
+  return Number.isNaN(num) ? null : num;
+}
+
+function matchesPriceRange(club: any, range: string): boolean {
+  if (!range || range === "all") return true;
+  const price = getClubPrice(club);
+  if (price === null) return false;
+  if (range === "under-20") return price < 20;
+  if (range === "20-35") return price >= 20 && price <= 35;
+  if (range === "35-plus") return price > 35;
+  return true;
+}
+
+function getClubLocationLabel(club: any): string {
+  return formatLocation(club) || club?.location || "";
+}
 
 export default function ClubsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterService, setFilterService] = useState("");
+  const [filterSurface, setFilterSurface] = useState("all");
+  const [filterPriceRange, setFilterPriceRange] = useState("all");
+  const [filterLocation, setFilterLocation] = useState("all");
   const [servicePopoverOpen, setServicePopoverOpen] = useState(false);
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [clubs, setClubs] = useState<typeof CLUBS_DATA>([]);
   const [loading, setLoading] = useState(true);
   const itemsPerPage = 10;
+
+  const activeAdvancedFiltersCount =
+    (filterSurface !== "all" ? 1 : 0) +
+    (filterPriceRange !== "all" ? 1 : 0) +
+    (filterLocation !== "all" ? 1 : 0);
+
+  // Locations are derived from whatever clubs actually loaded (real API
+  // data or the dummy fallback), so the dropdown never shows an option
+  // with zero results.
+  const locationOptions = Array.from(
+    new Set(
+      clubs
+        .map((club: any) => getClubLocationLabel(club))
+        .filter((loc): loc is string => Boolean(loc))
+    )
+  ).sort((a, b) => a.localeCompare(b));
+
+  function clearAllFilters() {
+    setSearchTerm("");
+    setFilterService("");
+    setFilterSurface("all");
+    setFilterPriceRange("all");
+    setFilterLocation("all");
+  }
 
   useEffect(() => {
     async function fetchClubs() {
@@ -53,16 +158,32 @@ export default function ClubsPage() {
   }, []);
 
   // Filter Logic
-  const filteredClubs = clubs.filter(club => {
-    const matchesSearch = 
-      club.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      club.location.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesService = filterService 
-      ? club.services.some(s => s.toLowerCase().includes(filterService.toLowerCase()))
+  const filteredClubs = clubs.filter((club: any) => {
+    const searchText = getClubSearchText(club);
+    const term = searchTerm.trim().toLowerCase();
+
+    // Searches name, location (suburb/state or legacy location), services
+    // and court surfaces together - so searching "grass", "hard court",
+    // a suburb, or a service all work, not just the club name.
+    const matchesSearch = term ? searchText.includes(term) : true;
+
+    const activeTag = SERVICE_FILTER_TAGS.find((t) => t.label === filterService);
+    const matchesService = activeTag
+      ? activeTag.keywords.some((k) => searchText.includes(k))
       : true;
 
-    return matchesSearch && matchesService;
+    const matchesSurface =
+      filterSurface === "all"
+        ? true
+        : searchText.includes(filterSurface.toLowerCase()) ||
+          searchText.includes(getSurfaceLabel(filterSurface).toLowerCase());
+
+    const matchesPrice = matchesPriceRange(club, filterPriceRange);
+
+    const matchesLocation =
+      filterLocation === "all" ? true : getClubLocationLabel(club) === filterLocation;
+
+    return matchesSearch && matchesService && matchesSurface && matchesPrice && matchesLocation;
   });
 
   // Pagination Logic
@@ -155,42 +276,137 @@ export default function ClubsPage() {
               <div className="relative w-full md:w-80 lg:w-96 group">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
                 <Input 
-                  placeholder="Search by name or location..." 
+                  placeholder="Search by name, court, surface, location..." 
                   className="pl-10 h-11 bg-background/80 border-transparent focus:border-primary focus:bg-background transition-all rounded-xl"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
               
-              <div className="flex
-                  gap-2
-                  overflow-x-auto
-                  scrollbar-hide
-                  w-full
-                  md:w-auto
-                  pb-1">
-                {["Grass Courts", "Hard Courts", "Coaching", "Pro Shop", "Night Tennis"].map((tag) => (
-                  <button
-                    key={tag}
-                    onClick={() => setFilterService(filterService === tag ? "" : tag)}
-                    className={`px-4 md:px-4
-                        py-2
-                        rounded-full
-                        text-sm
-                        font-medium
-                        whitespace-nowrap
-                        transition-all
-                        border
-                        cursor-pointer
-                        shrink-0 ${
-                          filterService === tag 
-                        ? "bg-primary text-primary-foreground border-primary" 
-                        : "bg-background/80 hover:bg-secondary border-input hover:border-primary/50"
-                    }`}
-                  >
-                    {tag}
-                  </button>
-                ))}
+              <div className="flex items-center gap-2 w-full md:w-auto">
+                <div className="flex
+                    gap-2
+                    overflow-x-auto
+                    scrollbar-hide
+                    w-full
+                    md:w-auto
+                    pb-1">
+                  {SERVICE_FILTER_TAGS.map(({ label: tag }) => (
+                    <button
+                      key={tag}
+                      onClick={() => setFilterService(filterService === tag ? "" : tag)}
+                      className={`px-4 md:px-4
+                          py-2
+                          rounded-full
+                          text-sm
+                          font-medium
+                          whitespace-nowrap
+                          transition-all
+                          border
+                          cursor-pointer
+                          shrink-0 ${
+                            filterService === tag 
+                          ? "bg-primary text-primary-foreground border-primary" 
+                          : "bg-background/80 hover:bg-secondary border-input hover:border-primary/50"
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+
+                <Popover open={moreFiltersOpen} onOpenChange={setMoreFiltersOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      className={`shrink-0 h-11 px-4 flex items-center gap-2 rounded-xl border text-sm font-medium cursor-pointer transition-all ${
+                        activeAdvancedFiltersCount > 0
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background/80 border-input hover:border-primary/50"
+                      }`}
+                      data-testid="clubs-more-filters-trigger"
+                    >
+                      <SlidersHorizontal className="w-4 h-4" />
+                      Filters
+                      {activeAdvancedFiltersCount > 0 && (
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white/20 text-xs">
+                          {activeAdvancedFiltersCount}
+                        </span>
+                      )}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-72 p-4 space-y-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Court Surface
+                      </Label>
+                      <Select value={filterSurface} onValueChange={setFilterSurface}>
+                        <SelectTrigger data-testid="clubs-surface-filter">
+                          <SelectValue placeholder="Any surface" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Any surface</SelectItem>
+                          {COURT_SURFACES.map((surface) => (
+                            <SelectItem key={surface.value} value={surface.value}>
+                              {surface.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Price
+                      </Label>
+                      <Select value={filterPriceRange} onValueChange={setFilterPriceRange}>
+                        <SelectTrigger data-testid="clubs-price-filter">
+                          <SelectValue placeholder="Any price" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PRICE_RANGE_OPTIONS.map((range) => (
+                            <SelectItem key={range.value} value={range.value}>
+                              {range.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Location
+                      </Label>
+                      <Select value={filterLocation} onValueChange={setFilterLocation}>
+                        <SelectTrigger data-testid="clubs-location-filter">
+                          <SelectValue placeholder="Any location" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Any location</SelectItem>
+                          {locationOptions.map((loc) => (
+                            <SelectItem key={loc} value={loc}>
+                              {loc}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {activeAdvancedFiltersCount > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => {
+                          setFilterSurface("all");
+                          setFilterPriceRange("all");
+                          setFilterLocation("all");
+                        }}
+                      >
+                        Reset these filters
+                      </Button>
+                    )}
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
             </div>
@@ -224,7 +440,7 @@ export default function ClubsPage() {
               <div className="relative flex-1 group">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by name or location..."
+                  placeholder="Search by name, court, surface, location..."
                   className="pl-10 h-11 bg-secondary/50 border-transparent focus:border-primary rounded-xl"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -233,20 +449,25 @@ export default function ClubsPage() {
               <Popover open={servicePopoverOpen} onOpenChange={setServicePopoverOpen}>
                 <PopoverTrigger asChild>
                   <button
-                    className={`shrink-0 h-11 w-11 flex items-center justify-center rounded-xl border cursor-pointer transition-all ${
-                      filterService
+                    className={`shrink-0 h-11 w-11 flex items-center justify-center rounded-xl border cursor-pointer transition-all relative ${
+                      filterService || activeAdvancedFiltersCount > 0
                         ? "bg-primary text-primary-foreground border-primary"
                         : "bg-secondary/50 border-input"
                     }`}
-                    aria-label="Filter by service"
+                    aria-label="Filter clubs"
                     data-testid="clubs-service-filter-trigger"
                   >
                     <SlidersHorizontal className="w-4 h-4" />
+                    {activeAdvancedFiltersCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center border border-background">
+                        {activeAdvancedFiltersCount}
+                      </span>
+                    )}
                   </button>
                 </PopoverTrigger>
-                <PopoverContent align="end" className="w-48 p-2">
+                <PopoverContent align="end" className="w-64 p-3 space-y-3">
                   <div className="flex flex-col gap-1">
-                    {["Grass Courts", "Hard Courts", "Coaching", "Pro Shop", "Night Tennis"].map((tag) => (
+                    {SERVICE_FILTER_TAGS.map(({ label: tag }) => (
                       <button
                         key={tag}
                         onClick={() => {
@@ -263,6 +484,64 @@ export default function ClubsPage() {
                         {tag}
                       </button>
                     ))}
+                  </div>
+
+                  <div className="pt-2 border-t border-border/50 space-y-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Court Surface
+                      </Label>
+                      <Select value={filterSurface} onValueChange={setFilterSurface}>
+                        <SelectTrigger data-testid="clubs-surface-filter-mobile">
+                          <SelectValue placeholder="Any surface" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Any surface</SelectItem>
+                          {COURT_SURFACES.map((surface) => (
+                            <SelectItem key={surface.value} value={surface.value}>
+                              {surface.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Price
+                      </Label>
+                      <Select value={filterPriceRange} onValueChange={setFilterPriceRange}>
+                        <SelectTrigger data-testid="clubs-price-filter-mobile">
+                          <SelectValue placeholder="Any price" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PRICE_RANGE_OPTIONS.map((range) => (
+                            <SelectItem key={range.value} value={range.value}>
+                              {range.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Location
+                      </Label>
+                      <Select value={filterLocation} onValueChange={setFilterLocation}>
+                        <SelectTrigger data-testid="clubs-location-filter-mobile">
+                          <SelectValue placeholder="Any location" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Any location</SelectItem>
+                          {locationOptions.map((loc) => (
+                            <SelectItem key={loc} value={loc}>
+                              {loc}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </PopoverContent>
               </Popover>
@@ -291,10 +570,7 @@ export default function ClubsPage() {
 
             <Button
               variant="link"
-              onClick={() => {
-                setSearchTerm("");
-                setFilterService("");
-              }}
+              onClick={clearAllFilters}
               className="mt-4"
             >
               Clear all filters
