@@ -299,7 +299,7 @@ export default function CoachesPage() {
               
               <div className="flex flex-row md:flex-row w-full md:w-auto gap-2">
                 <Select value={locationFilter} onValueChange={setLocationFilter}>
-                  <SelectTrigger className="w-full flex-1 min-w-0 sm:w-full md:w-[180px] lg:w-[190px] h-11 md:h-12 bg-background cursor-pointer">
+                  <SelectTrigger aria-label="Filter by location" className="w-full flex-1 min-w-0 sm:w-full md:w-[180px] lg:w-[190px] h-11 md:h-12 bg-background cursor-pointer">
                     <div className="flex items-center gap-2 min-w-0">
                       <MapPin className="w-4 h-4 text-primary shrink-0" />
                       <SelectValue placeholder="Location" className="flex-1 min-w-0 truncate" />
@@ -328,7 +328,7 @@ export default function CoachesPage() {
                   <PopoverContent className="w-96 p-6 space-y-6" align="end">
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <h4 className="font-bold leading-none">Price Range</h4>
+                        <p className="font-bold leading-none">Price Range</p>
                         <span className="text-sm text-muted-foreground">Up to ${priceRange[0]}/hr</span>
                       </div>
                       <Slider
@@ -347,7 +347,7 @@ export default function CoachesPage() {
                     </div>
 
                     <div className="space-y-4">
-                      <h4 className="font-bold leading-none">Minimum Rating</h4>
+                      <p className="font-bold leading-none">Minimum Rating</p>
                       <div className="flex gap-2">
                         {[4, 4.5, 4.8, 5].map((rating) => (
                           <Button
@@ -461,7 +461,7 @@ export default function CoachesPage() {
                   <PopoverContent className="w-72 p-4 space-y-5" align="end">
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <h4 className="font-bold leading-none">Price Range</h4>
+                        <p className="font-bold leading-none">Price Range</p>
                         <span className="text-sm text-muted-foreground">Up to ${priceRange[0]}/hr</span>
                       </div>
                       <Slider
@@ -480,7 +480,7 @@ export default function CoachesPage() {
                     </div>
 
                     <div className="space-y-4">
-                      <h4 className="font-bold leading-none">Minimum Rating</h4>
+                      <p className="font-bold leading-none">Minimum Rating</p>
                       <div className="grid grid-cols-2 gap-2">
                         {[4, 4.5, 4.8, 5].map((rating) => (
                           <Button
@@ -574,7 +574,7 @@ export default function CoachesPage() {
                     <CardHeader className="px-3 pt-3 pb-1 md:px-6 md:pb-2">
                       <div className="flex justify-between items-start">
                         <div className="min-h-14 md:min-h-[85px] min-w-0 w-full">
-                          <h3 className="text-base md:text-lg lg:text-xl
+                          <h2 className="text-base md:text-lg lg:text-xl
                             font-bold
                             font-display
                             group-hover:text-primary
@@ -582,7 +582,7 @@ export default function CoachesPage() {
 
                             line-clamp-2
                             min-h-12
-                            md:min-h-14">{coach.name}</h3>
+                            md:min-h-14">{coach.name}</h2>
                           <p className="text-sm text-muted-foreground line-clamp-1">{coach.title}</p>
                         </div>
                       </div>
@@ -665,7 +665,7 @@ export default function CoachesPage() {
 
             {filteredCoaches.length === 0 && (
               <div className="text-center py-20">
-                <h3 className="text-2xl font-bold mb-2">No coaches found</h3>
+                <h2 className="text-2xl font-bold mb-2">No coaches found</h2>
                 <p className="text-muted-foreground">Try adjusting your search or filters to find more coaches.</p>
                 <Button 
                   variant="link" 
