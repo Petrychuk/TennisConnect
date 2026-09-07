@@ -98,9 +98,9 @@ export function HomeClubs() {
             viewport={{ once: true }}
             transition={{ delay: 0.3 }}
           >
-            <Link href="/clubs">
+            <Link href="/clubs" className="hidden md:block">
               <Button
-                className="hidden md:flex gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
+                className="flex gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
                 data-testid="clubs-view-all-button"
               >
                 Discover Clubs <ArrowRight className="w-4 h-4" />

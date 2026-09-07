@@ -80,9 +80,9 @@ export function HomeTravel() {
             viewport={{ once: true }}
             transition={{ delay: 0.3 }}
           >
-            <Link href="/travels">
+            <Link href="/travels" className="hidden md:block">
               <Button
-                className="hidden md:flex gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
+                className="flex gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
                 data-testid="travel-view-all-button"
               >
                 Discover Retreats <ArrowRight className="w-4 h-4" />
