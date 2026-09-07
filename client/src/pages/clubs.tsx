@@ -397,7 +397,7 @@ export default function ClubsPage() {
               <div className="flex flex-wrap items-center gap-2 flex-1 lg:flex-none">
                 <Select value={filterCategory} onValueChange={setFilterCategory}>
                   <SelectTrigger
-                    className={`h-11 w-[10.5rem] rounded-xl ${filterCategory !== "all" ? "bg-primary/15 border-primary text-primary font-medium" : "bg-background/80"}`}
+                    className={`h-11 w-[10.5rem] rounded-xl ${filterCategory !== "all" ? "bg-popover border-primary text-primary font-medium shadow-sm" : "bg-background/80"}`}
                     data-testid="clubs-category-filter"
                   >
                     <SelectValue placeholder="Any type" />
@@ -420,7 +420,7 @@ export default function ClubsPage() {
 
                 <Select value={filterSurface} onValueChange={setFilterSurface}>
                   <SelectTrigger
-                    className={`h-11 w-[9.5rem] rounded-xl ${filterSurface !== "all" ? "bg-primary/15 border-primary text-primary font-medium" : "bg-background/80"}`}
+                    className={`h-11 w-[9.5rem] rounded-xl ${filterSurface !== "all" ? "bg-popover border-primary text-primary font-medium shadow-sm" : "bg-background/80"}`}
                     data-testid="clubs-surface-filter"
                   >
                     <SelectValue placeholder="Any surface" />
@@ -437,7 +437,7 @@ export default function ClubsPage() {
 
                 <Select value={filterLocation} onValueChange={setFilterLocation}>
                   <SelectTrigger
-                    className={`h-11 w-[10.5rem] rounded-xl ${filterLocation !== "all" ? "bg-primary/15 border-primary text-primary font-medium" : "bg-background/80"}`}
+                    className={`h-11 w-[10.5rem] rounded-xl ${filterLocation !== "all" ? "bg-popover border-primary text-primary font-medium shadow-sm" : "bg-background/80"}`}
                     data-testid="clubs-location-filter"
                   >
                     <SelectValue placeholder="Any location" />
@@ -614,7 +614,7 @@ export default function ClubsPage() {
                       </Label>
                       <Select value={filterCategory} onValueChange={setFilterCategory}>
                         <SelectTrigger
-                          className={filterCategory !== "all" ? "bg-primary/15 border-primary text-primary font-medium" : undefined}
+                          className={filterCategory !== "all" ? "bg-popover border-primary text-primary font-medium shadow-sm" : undefined}
                           data-testid="clubs-category-filter-mobile"
                         >
                           <SelectValue placeholder="Any type" />
