@@ -547,7 +547,7 @@ export default function PartnersPage() {
                       }
                       className="hover:text-primary transition-colors max-w-full"
                     >
-                      <h3 className="text-sm md:text-lg font-bold mb-2 line-clamp-1 max-w-full">{partner.name}</h3>
+                      <h2 className="text-sm md:text-lg font-bold mb-2 line-clamp-1 max-w-full">{partner.name}</h2>
                     </Link>
 
                     <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground mb-1 md:mb-2 w-full min-w-0 px-1">
@@ -572,6 +572,7 @@ export default function PartnersPage() {
 
                   <CardFooter className="p-2 md:p-3 pt-0 grid grid-cols-2 gap-3">
                     <Link
+                      aria-label={`View ${partner.name}'s profile`}
                       href={
                         partner.isDemo
                           ? "/auth"
@@ -599,6 +600,7 @@ export default function PartnersPage() {
 
                     {!isMe && (
                       <Button
+                      aria-label={`Message ${partner.name}`}
                       className="
                         w-full
                         h-9
@@ -631,7 +633,7 @@ export default function PartnersPage() {
              <div className="inline-flex p-4 rounded-full bg-muted mb-4">
                <User className="w-8 h-8 text-muted-foreground" />
              </div>
-             <h3 className="text-xl font-bold mb-2">No partners found</h3>
+             <h2 className="text-xl font-bold mb-2">No partners found</h2>
              <p className="text-muted-foreground">Try adjusting your search filters.</p>
           </div>
         )}
