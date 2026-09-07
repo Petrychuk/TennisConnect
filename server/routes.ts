@@ -562,9 +562,24 @@ export async function registerRoutes(app: Express): Promise<void> {
             success: true,
           });
     
-        } catch (error) {
+        } catch (error: any) {
           console.error(error);
-    
+
+          // Same two known, expected "blocked" cases as /api/me/account
+          // below (owns an organization / has created sessions) - the
+          // admin route was missing this classification entirely, so
+          // deleting an organiser who owns a test organization (a common
+          // state for smoke-test fixtures) always fell through to a
+          // blank "Failed to delete user" 500 instead of the real,
+          // actionable reason.
+          const knownBlock =
+            typeof error?.message === "string" &&
+            (error.message.includes("You own an organization") ||
+              error.message.includes("You've created sessions"));
+          if (knownBlock) {
+            return res.status(400).json({ message: error.message });
+          }
+
           return res.status(500).json({
             message: "Failed to delete user",
           });
