@@ -50,6 +50,7 @@ export function TravelGallery({
               size="icon"
               variant="secondary"
               onClick={prev}
+              aria-label="Previous image"
               className="
                 absolute
                 left-4
@@ -67,6 +68,7 @@ export function TravelGallery({
               size="icon"
               variant="secondary"
               onClick={next}
+              aria-label="Next image"
               className="
                 absolute
                 right-4
@@ -86,6 +88,8 @@ export function TravelGallery({
               <button
                 key={index}
                 onClick={() => setActiveIndex(index)}
+                aria-label={`View image ${index + 1} of ${images.length}`}
+                aria-current={activeIndex === index ? "true" : undefined}
                 className={`
                   overflow-hidden
                   rounded-xl
@@ -129,6 +133,7 @@ export function TravelGallery({
               size="icon"
               variant="secondary"
               onClick={prev}
+              aria-label="Previous image"
               className="
                 absolute
                 left-3
@@ -147,6 +152,7 @@ export function TravelGallery({
               size="icon"
               variant="secondary"
               onClick={next}
+              aria-label="Next image"
               className="
                 absolute
                 right-3
@@ -178,23 +184,29 @@ export function TravelGallery({
             </div>
           </div>
 
-          <div className="flex justify-center gap-2 mt-4">
+          <div className="flex justify-center gap-1 mt-4">
             {images.map((_, index) => (
               <button
                 key={index}
                 onClick={() => setActiveIndex(index)}
-                className={`
-                  h-2
-                  w-2
-                  rounded-full
-                  transition-all
-                  ${
-                    activeIndex === index
-                      ? "bg-primary w-4"
-                      : "bg-primary/30"
-                  }
-                `}
-              />
+                aria-label={`View image ${index + 1} of ${images.length}`}
+                aria-current={activeIndex === index ? "true" : undefined}
+                className="p-2.5 -m-0.5 flex items-center justify-center"
+              >
+                <span
+                  className={`
+                    block
+                    h-2
+                    rounded-full
+                    transition-all
+                    ${
+                      activeIndex === index
+                        ? "bg-primary w-4"
+                        : "bg-primary/30 w-2"
+                    }
+                  `}
+                />
+              </button>
             ))}
           </div>
         </div>
