@@ -67,12 +67,23 @@ interface Message {
 // should always show the OTHER participant, whether the current
 // viewer sent the most recent message in it or received it - senderName/
 // senderAvatar alone would show the viewer's own identity for a
-// conversation they started that hasn't been replied to yet. Falls
-// back to sender fields for rows from before otherParty existed.
+// conversation they started that hasn't been replied to yet.
+//
+// otherPartyName/otherPartyAvatar are always computed fresh server-side
+// on every /api/messages/conversations call (see getUserConversations) -
+// there's no such thing as an "old row without otherParty" to fall back
+// for anymore. otherPartyAvatar being null just means the other
+// participant genuinely has no avatar on file (or isn't a real user
+// row), which <AvatarFallback>'s initial already covers - it must NOT
+// fall back to senderAvatar here, because when the viewer is the one
+// who sent the message, senderAvatar IS the viewer's own photo. That
+// fallback was exactly why an admin messaging an avatar-less profile
+// (e.g. the Hide/Restore Profile notices) saw their own face in the
+// conversation list instead of the other person's initial.
 function conversationPartner(message: Message) {
   return {
     name: message.otherPartyName ?? message.senderName,
-    avatar: message.otherPartyAvatar ?? message.senderAvatar,
+    avatar: message.otherPartyAvatar,
   };
 }
 
