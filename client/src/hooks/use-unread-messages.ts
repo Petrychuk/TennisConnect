@@ -8,11 +8,20 @@ import { useAuth } from "@/lib/auth-context";
  * reflects the exact same number, since it's the same query.
  */
 export function useUnreadMessagesCount() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, clearSession } = useAuth();
   const query = useQuery({
     queryKey: ["/api/messages/unread-count"],
     queryFn: async () => {
       const res = await fetch("/api/messages/unread-count", { credentials: "include" });
+      if (res.status === 401) {
+        // Session died server-side since this query last ran (e.g. a
+        // dev-server restart wiped an in-memory session store) - stop
+        // presenting as logged in instead of quietly 401ing on this
+        // same interval forever. Flipping isAuthenticated to false
+        // here is what actually stops the poll (enabled below).
+        clearSession();
+        return { count: 0 };
+      }
       if (!res.ok) return { count: 0 };
       return res.json() as Promise<{ count: number }>;
     },
