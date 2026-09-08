@@ -130,6 +130,7 @@ export function Footer() {
                 href="https://www.facebook.com/tennisconnect.au/"
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label="TennisConnect on Facebook"
                 className="text-[hsl(var(--tennis-ball))] hover:scale-110 transition-all"
               >
                 <Facebook className="w-8 h-8" />
@@ -139,6 +140,7 @@ export function Footer() {
                 href="https://www.instagram.com/tennisconnect.au/"
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label="TennisConnect on Instagram"
                 className="text-[hsl(var(--tennis-ball))] hover:scale-110 transition-all"
               >
                 <Instagram className="w-8 h-8" />

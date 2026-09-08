@@ -34,6 +34,17 @@ export async function setupVite(server: Server, app: Express) {
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
 
+    // Chrome (with DevTools open, "automatic workspace folders" feature)
+    // probes this exact path on every page load looking for a devtools
+    // config file - it's not a real page request. Left to fall through
+    // to vite.transformIndexHtml, Vite misreads the "?html-proxy&direct&
+    // index=0.css" query it comes tagged with in some Chrome versions and
+    // throws "Failed to parse JSON file" trying to treat it as an inline
+    // module. Skip it here so it just 404s normally instead.
+    if (url.startsWith("/.well-known/")) {
+      return next();
+    }
+
     try {
       const clientTemplate = path.resolve(
         import.meta.dirname,
@@ -51,6 +62,20 @@ export async function setupVite(server: Server, app: Express) {
       const page = await vite.transformIndexHtml(url, template);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
+      // Diagnostic-only: Vite's transform plugins throw an error carrying
+      // `.id` (the file that failed), `.loc` (line/column) and `.frame`
+      // (a code snippet) - none of which show up in the bare stack trace
+      // Node prints by default. Logging them here doesn't change what
+      // happens to the request (still ssrFixStacktrace + next(e) exactly
+      // as before); it just makes the next occurrence identifiable.
+      const err = e as Error & { id?: string; loc?: { line: number; column: number }; frame?: string };
+      if (err?.id) {
+        console.error(
+          `[vite] transform failed for file: ${err.id}` +
+            (err.loc ? ` (line ${err.loc.line}, col ${err.loc.column})` : ""),
+        );
+        if (err.frame) console.error(err.frame);
+      }
       vite.ssrFixStacktrace(e as Error);
       next(e);
     }

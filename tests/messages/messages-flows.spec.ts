@@ -5,6 +5,7 @@ import {
   sendContactMessage,
   getMyUserId,
   grantOrganizerAccess,
+  hideUserAsAdmin,
 } from '../helpers/messages';
 import { TEST_USERS } from '../fixtures/test-users';
 
@@ -26,13 +27,16 @@ import { TEST_USERS } from '../fixtures/test-users';
     "everything merged into one tab" / "delete brings it back" bugfix -
     each test targets one specific bug from that fix, not general
     messaging behaviour already covered by tests/messages/messages.spec.ts.
-  - Service messages (MSG-108 to MSG-112): the automatic "Welcome to
-    TennisConnect" message, the real-sender organiser-approval message,
-    and the actionable community-invite (accept/decline). Session
-    invites use the identical messageType/actionStatus code path as
-    community invites - the two aren't duplicated here, and
-    session-invite specifically isn't covered since it needs a full
-    session/tournament created first.
+  - Service messages (MSG-108 to MSG-112, MSG-116): the automatic
+    "Welcome to TennisConnect" message, the real-sender
+    organiser-approval message, the actionable community-invite
+    (accept/decline), and the admin Hide/Restore Profile notice
+    (another real-sender message, this time regression coverage for
+    the conversation-list avatar bug - see MSG-116). Session invites
+    use the identical messageType/actionStatus code path as community
+    invites - the two aren't duplicated here, and session-invite
+    specifically isn't covered since it needs a full session/tournament
+    created first.
 */
 
 test('MSG-101 Two Different Conversations Show As Two Separate Tabs', async ({ page }) => {
@@ -726,5 +730,47 @@ test('MSG-112 Community Invite - Decline', async ({ page }) => {
   await expect(
     page.locator('[data-testid^="invitation-status-"]')
   ).toContainText(/invitation declined/i);
+
+});
+
+test("MSG-116 Admin Inbox Row For An Avatar-Less Recipient Shows Their Initial, Not The Admin's Own Photo", async ({ page }) => {
+
+  // ---------- Test data ----------
+  // A fresh registration never gets a default avatar (see the
+  // /api/auth/register comment: "a fresh account has none"), so this
+  // player is guaranteed avatar-less without needing to touch their
+  // profile at all.
+
+  const player = await registerPlayer(page);
+  const playerId = await getMyUserId(page);
+  await logout(page);
+
+  // ---------- Actions ----------
+  // Hide/Restore Profile messages use the real acting admin as
+  // senderUserId (sendMessageBetween, not the senderUserId: null of a
+  // true system message) - that's what makes this conversation show
+  // up in the admin's OWN inbox, with the admin as sender and this
+  // avatar-less player as the recipient.
+
+  await hideUserAsAdmin(page, TEST_USERS.admin.email, TEST_USERS.admin.password, playerId);
+
+  await page.goto('/messages');
+
+  const conversationItem = page
+    .locator('[data-testid^="message-item-"]')
+    .filter({ hasText: player.name });
+
+  // ---------- Verify ----------
+
+  await expect(conversationItem).toBeVisible();
+
+  // otherPartyAvatar is null here (the player has no avatar) - it must
+  // never fall back to the admin's own senderAvatar. No <img> at all
+  // means AvatarFallback is doing its job instead of rendering someone's
+  // photo.
+  await expect(conversationItem.locator('img')).toHaveCount(0);
+
+  // ...and the fallback is the recipient's initial, not the admin's.
+  await expect(conversationItem.getByText(player.name[0], { exact: true })).toBeVisible();
 
 });

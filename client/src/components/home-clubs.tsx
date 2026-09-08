@@ -23,6 +23,18 @@ interface Club {
   listingType?: string;
 }
 
+// Picks `count` random, non-repeating items from the list (Fisher-Yates),
+// so the homepage shows a different trio of clubs on each page load
+// instead of always the same first 3 from the API response.
+function pickRandomClubs<T>(list: T[], count: number): T[] {
+  const pool = [...list];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, count);
+}
+
 export function HomeClubs() {
   const [items, setItems] = useState<Club[]>([]);
 
@@ -31,7 +43,7 @@ export function HomeClubs() {
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
-          setItems(data.slice(0, 3));
+          setItems(pickRandomClubs(data, 3));
         }
       })
       .catch(() => {
@@ -86,9 +98,9 @@ export function HomeClubs() {
             viewport={{ once: true }}
             transition={{ delay: 0.3 }}
           >
-            <Link href="/clubs">
+            <Link href="/clubs" className="hidden md:block">
               <Button
-                className="hidden md:flex gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
+                className="flex gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
                 data-testid="clubs-view-all-button"
               >
                 Discover Clubs <ArrowRight className="w-4 h-4" />
