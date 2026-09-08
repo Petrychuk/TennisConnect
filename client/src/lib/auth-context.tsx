@@ -32,7 +32,7 @@ async function fetchWithTimeout(
 
 type UserRole = "player" | "coach" | null;
 
-interface User {
+export interface User {
   id: string;
   name: string;
   email: string;
