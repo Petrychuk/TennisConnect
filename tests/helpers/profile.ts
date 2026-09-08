@@ -18,7 +18,19 @@ export async function completeCoachProfile(page: Page) {
       'Experienced tennis coach created by Playwright automation.'
     );
 
-  await page.getByTestId('button-save').click();
+  // onCoachSubmit does three sequential awaited fetches (PUT
+  // coach-profile, POST complete-profile, GET auth/me) before
+  // redirecting - individually each is fast, but under the smoke
+  // suite's parallel load that combined chain can take longer than a
+  // caller's default assertion timeout would allow, even though
+  // nothing is actually failing. Waiting for the redirect right here,
+  // with a generous timeout, means every caller gets a reliable
+  // "profile completion actually finished" signal instead of each one
+  // needing to know to extend its own toHaveURL timeout.
+  await Promise.all([
+    page.waitForURL(/\/coach\/.+/, { timeout: 30_000 }),
+    page.getByTestId('button-save').click(),
+  ]);
 }
 
 export async function completePlayerProfile(page: Page) {
@@ -43,5 +55,11 @@ export async function completePlayerProfile(page: Page) {
       'Player profile created by Playwright automation.'
     );
 
-  await page.getByTestId('button-save').click();
+  // Same reasoning as completeCoachProfile above - onPlayerSubmit's
+  // own three sequential fetches before its window.location.href
+  // redirect can outrun a short default timeout under parallel load.
+  await Promise.all([
+    page.waitForURL(/\/player\/.+/, { timeout: 30_000 }),
+    page.getByTestId('button-save').click(),
+  ]);
 }

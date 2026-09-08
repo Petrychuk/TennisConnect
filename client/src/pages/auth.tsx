@@ -75,6 +75,20 @@ export default function AuthPage() {
           });
           return;
         }
+
+      // Same gap onRegister already closes for a fresh signup: a
+      // player/coach who never finished /complete-profile (e.g. the
+      // client's own registration request timed out server-side -
+      // fetchWithTimeout gives up after 15s but doesn't cancel the
+      // request, so the account can still get created a few seconds
+      // later - and they signed in normally afterwards instead of
+      // registering again) would otherwise land straight on their own
+      // profile page with none of that filled in.
+      if (!loggedInUser.profileCompleted) {
+        setLocation("/complete-profile");
+        return;
+      }
+
       setLocation(`/${loggedInUser.role}/${loggedInUser.slug}`);
 
     } catch (error: any) {

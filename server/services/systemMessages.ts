@@ -3,7 +3,12 @@ import { storage } from "../storage";
 // Same two people always get the same thread, regardless of who sent
 // which message or what it was about - "conversation between admin
 // and this organiser about their sessions", not a new thread per event.
-function pairConversationId(idA: string, idB: string): string {
+// Exported: POST /api/messages (regular direct messages) uses this
+// too, so a pair's thread is always the same id no matter which kind
+// of message reaches them first - a session invite followed later by
+// a regular reply, or the other way round, land in one thread either
+// way instead of silently splitting into two tabs for the same person.
+export function pairConversationId(idA: string, idB: string): string {
   return `conv-${[idA, idB].sort().join("-")}`;
 }
 

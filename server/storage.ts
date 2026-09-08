@@ -20,6 +20,7 @@ import {
   registrations,
   sessionRounds,
   matches,
+  payments,
   type User, 
   type InsertUser,
   type PlayerProfile,
@@ -39,6 +40,8 @@ import {
   type InsertMessage,
   type SupportRequest,
   type InsertSupportRequest,
+  type Payment,
+  type InsertPayment,
   type OrganizerRequest,
   type InsertOrganizerRequest,
   type Organization,
@@ -58,8 +61,16 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, asc, sql, lte, ne, gte, ilike, inArray, isNull } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { planRound, computeLeaderboard, type PastMatch } from "./services/liveEngine";
+
+// Second reference to `users`, joined on messages.recipientId - lets a
+// conversation-list row resolve "the other participant"'s name/avatar
+// even when the current viewer is the recipient (senderUserId/
+// senderAvatar alone can't do that, they only ever describe whoever
+// sent the message).
+const recipientUsers = alias(users, "recipient_users");
 
 type DbQueryExecutor = Pick<typeof db, "select">;
 
@@ -207,11 +218,29 @@ export interface IStorage {
   findConversationBetweenUsers(userA: string, userB: string): Promise<MessageWithAvatar | undefined>;
   updateMessageConversation(messageId: string, conversationId: string): Promise<void>;
   deleteMessage(id: string): Promise<void>;
+  deleteConversation(conversationId: string): Promise<void>;
 
   //Support chat
   createSupportRequest(
     request: InsertSupportRequest
   ): Promise<SupportRequest>;
+
+  // Payments - "Back the Rally" support today; paymentType leaves room
+  // for subscriptions/premium pages later without a new table. Not to
+  // be confused with "Support chat" just above, an unrelated
+  // pre-existing help-desk/contact feature that happens to share the
+  // word "support".
+  createPayment(payment: InsertPayment): Promise<Payment>;
+  getPaymentByStripeSessionId(sessionId: string): Promise<Payment | undefined>;
+  markPaymentPaid(
+    sessionId: string,
+    details: { stripePaymentIntentId: string | null; receiptUrl: string | null; payerEmail: string | null }
+  ): Promise<Payment | undefined>;
+  // Sweeps pending rows old enough that Stripe's own checkout session
+  // (24h expiry by default) can no longer possibly complete - doesn't
+  // touch anything already 'paid'. Returns how many rows were
+  // updated, purely for logging.
+  expireOldPendingPayments(olderThanHours: number): Promise<number>;
 
   //Newsletter
   subscribeToNewsletter(
@@ -466,7 +495,23 @@ export class DatabaseStorage implements IStorage {
         .update(tennisSessions)
         .set({ reviewedBy: null })
         .where(eq(tennisSessions.reviewedBy, userId));
-  
+
+      // Payments (Back the Rally support, etc.) - userId is nulled, NOT
+      // the row deleted: payments.userId is a nullable "who paid, if
+      // logged in" attribution (payerEmail is always set independently),
+      // and this table is a permanent financial record with no delete
+      // path at all (5-year ATO retention - see schema comment on
+      // `payments`). Left unhandled, this FK was the actual cause of the
+      // admin "Failed to delete user" 500s: any user who'd made a
+      // support payment while logged in - which "marked as organiser"
+      // test/smoke-test accounts are exactly the kind of account likely
+      // to have exercised that flow - blocked the delete with an
+      // unhandled FK constraint violation.
+      await tx
+        .update(payments)
+        .set({ userId: null })
+        .where(eq(payments.userId, userId));
+
       // Password Reset Tokens
       await tx
         .delete(passwordResetTokens)
@@ -1544,7 +1589,12 @@ export class DatabaseStorage implements IStorage {
       })
       .from(messages)
       .leftJoin(users, eq(messages.senderUserId, users.id))
-      .where(eq(messages.recipientId, userId))
+      .where(
+        or(
+          eq(messages.recipientId, userId),
+          eq(messages.senderUserId, userId)
+        )
+      )
       .orderBy(desc(messages.createdAt));
   }
 
@@ -1577,20 +1627,77 @@ export class DatabaseStorage implements IStorage {
         actionStatus: messages.actionStatus,
   
         senderAvatar: users.avatar,
+
+        // recipientId isn't FK'd to users (demo profiles aren't real
+        // rows), so these come back null for those - handled with a
+        // fallback below rather than assumed present.
+        recipientName: recipientUsers.name,
+        recipientAvatar: recipientUsers.avatar,
+        recipientEmail: recipientUsers.email,
       })
       .from(messages)
       .leftJoin(users, eq(messages.senderUserId, users.id))
-      .where(eq(messages.recipientId, userId))
+      .leftJoin(recipientUsers, eq(messages.recipientId, recipientUsers.id))
+      .where(
+        // Previously recipientId-only, which meant a conversation you
+        // started never showed up in your own inbox until the other
+        // person replied - the exact "I only had one tab" symptom
+        // when several outgoing conversations hadn't gotten a reply
+        // yet. Including senderUserId gives every conversation you're
+        // part of, either direction, its own row here.
+        or(
+          eq(messages.recipientId, userId),
+          eq(messages.senderUserId, userId)
+        )
+      )
       .orderBy(desc(messages.createdAt));
   
-    const uniqueConversations = new Map();
+    const uniqueConversations = new Map<string, MessageWithAvatar>();
   
     for (const message of allMessages) {
       const key =
         message.conversationId || message.id;
   
       if (!uniqueConversations.has(key)) {
-        uniqueConversations.set(key, message);
+        // Whoever sent this particular row isn't necessarily "who
+        // this conversation is with" - if the current viewer sent
+        // the most recent message (e.g. they messaged someone who
+        // hasn't replied yet), senderName/senderAvatar would be the
+        // viewer's own identity. otherParty always resolves to the
+        // actual other participant instead.
+        const iAmSender = message.senderUserId === userId;
+        const { recipientName, recipientAvatar, recipientEmail, ...rest } = message;
+
+        uniqueConversations.set(key, {
+          ...rest,
+          otherPartyName: iAmSender
+            ? recipientName ?? (message.recipientType === "coach" ? "Coach" : "Player")
+            : message.senderName,
+          otherPartyAvatar: iAmSender ? recipientAvatar : message.senderAvatar,
+          // Resolved the same way regardless of reply history, unlike
+          // the client's old approach of scanning the loaded thread for
+          // a message the other side had sent - that left the "Reply
+          // via Email" button missing entirely for any conversation
+          // the viewer started that hasn't gotten a reply yet. Only
+          // trusts senderEmail as a real person's address when there's
+          // an actual senderUserId behind it - system messages
+          // (senderUserId null) don't get an otherPartyEmail at all,
+          // so there's no "email a real person" button for a thread
+          // that was never with a real person.
+          otherPartyEmail: iAmSender
+            ? recipientEmail ?? undefined
+            : message.senderUserId
+              ? message.senderEmail
+              : undefined,
+          // isRead means "has the recipient read this" - true for the
+          // sender's own copy is meaningless (you're not the one who's
+          // supposed to read your own message), but was still being
+          // read as "this conversation is unread" whenever the viewer
+          // happened to be the sender of the representative row. Only
+          // counts as unread here when the viewer is actually the one
+          // who received it.
+          isUnreadForViewer: !iAmSender && !message.isRead,
+        });
       }
     }
   
@@ -1657,6 +1764,19 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMessage(id: string): Promise<void> {
     await db.delete(messages).where(eq(messages.id, id));
+  }
+
+  // Deletes every message sharing a conversationId - "delete this
+  // conversation" needs to actually clear the whole thread, not just
+  // whichever single row the inbox list currently happens to
+  // represent it with. Previously the route called deleteMessage(id)
+  // directly on just the representative message: the thread's earlier
+  // messages stayed in the DB, so the next poll of
+  // getUserConversations() picked the next-most-recent one as the new
+  // representative and the "deleted" conversation reappeared - delete
+  // it again, same thing happens again.
+  async deleteConversation(conversationId: string): Promise<void> {
+    await db.delete(messages).where(eq(messages.conversationId, conversationId));
   }
   
   async findConversationBetweenUsers(
@@ -1775,6 +1895,72 @@ export class DatabaseStorage implements IStorage {
       .returning();
   
     return supportRequest;
+  }
+
+  async createPayment(payment: InsertPayment): Promise<Payment> {
+    const [row] = await db
+      .insert(payments)
+      .values(payment)
+      .returning();
+
+    return row;
+  }
+
+  async getPaymentByStripeSessionId(sessionId: string): Promise<Payment | undefined> {
+    const [row] = await db
+      .select()
+      .from(payments)
+      .where(eq(payments.stripeCheckoutSessionId, sessionId));
+
+    return row;
+  }
+
+  // Only ever called from the webhook handler after Stripe's signature
+  // is verified - the client-facing success-page redirect never gets
+  // to mark anything paid on its own (see server/routes/support.ts).
+  async markPaymentPaid(
+    sessionId: string,
+    details: { stripePaymentIntentId: string | null; receiptUrl: string | null; payerEmail: string | null }
+  ): Promise<Payment | undefined> {
+    const [row] = await db
+      .update(payments)
+      .set({
+        status: "paid",
+        paidAt: new Date(),
+        stripePaymentIntentId: details.stripePaymentIntentId,
+        receiptUrl: details.receiptUrl,
+        // COALESCE rather than a flat overwrite - a logged-in payer's
+        // email was already captured at session-creation time
+        // (server/routes/support.ts), so a null here (Stripe not
+        // returning customer_details for some edge-case reason)
+        // shouldn't clobber it. Stripe's value still wins when it
+        // has one, since it's the most accurate source (the guest
+        // case has no other source at all).
+        payerEmail: details.payerEmail
+          ? details.payerEmail
+          : sql`${payments.payerEmail}`,
+      })
+      .where(eq(payments.stripeCheckoutSessionId, sessionId))
+      .returning();
+
+    return row;
+  }
+
+  // Only ever WHERE status = 'pending' - a row that's already 'paid'
+  // (or already 'expired', from a previous sweep) is never touched by
+  // this, regardless of how old it is. That's what makes this safe to
+  // run repeatedly and safe to add without risk to the payment
+  // confirmation path above, which is entirely separate code.
+  async expireOldPendingPayments(olderThanHours: number): Promise<number> {
+    const cutoff = new Date(Date.now() - olderThanHours * 60 * 60 * 1000);
+
+    const rows = await db
+      .update(payments)
+      .set({ status: "expired" })
+      .where(and(eq(payments.status, "pending"), lte(payments.createdAt, cutoff)))
+      .returning({ id: payments.id });
+
+    return rows.length;
   }
 
   // Footer newsletter signup. Upsert on email: a previously-unsubscribed

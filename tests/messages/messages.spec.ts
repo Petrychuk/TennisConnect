@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { registerPlayer, login, logout } from '../helpers/auth';
 import { completePlayerProfile } from '../helpers/profile';
-import { sendContactMessage } from '../helpers/messages';
+import { sendContactMessage, getMyUserId, approveUser } from '../helpers/messages';
 import { TEST_USERS } from '../fixtures/test-users';
 
 /*
@@ -70,7 +70,7 @@ test('MSG-002 Reply Message', async ({ page }) => {
   await page.goto('/messages');
 
   const conversationItem = page.locator('[data-testid^="message-item-"]', {
-    hasText: content,
+    hasText: player.name,
   }).first();
 
   await conversationItem.click();
@@ -98,16 +98,16 @@ test('MSG-002 Reply Message', async ({ page }) => {
   await page.goto('/messages');
 
   await expect(
-    page.getByText(replyContent)
+    page.locator('[data-testid^="message-bubble-content-"]', { hasText: replyContent })
   ).toBeVisible();
 
 });
 
-test('MSG-003 Unread Counter', async ({ page }) => {
+test('MSG-003 Unread Indicator Clears After Opening', async ({ page }) => {
 
   // ---------- Test data ----------
 
-  const content = `Unread counter check ${Date.now()}`;
+  const content = `Unread indicator check ${Date.now()}`;
 
   // ---------- Actions (player sends a fresh message to coach) ----------
 
@@ -129,32 +129,71 @@ test('MSG-003 Unread Counter', async ({ page }) => {
 
   // ---------- Verify ----------
 
-  const badge = page.getByTestId('unread-badge');
-  await expect(badge).toBeVisible();
+  const conversationItem = page.locator('[data-testid^="message-item-"]', {
+    hasText: player.name,
+  }).first();
 
-  const countBefore = parseInt(
-    (await badge.textContent()) || '0',
-    10
-  );
-  expect(countBefore).toBeGreaterThan(0);
+  await expect(
+    conversationItem.locator('xpath=..').locator('[data-testid^="message-item-unread-"]')
+  ).toBeVisible();
 
   // ---------- Actions (open the new conversation) ----------
 
-  await page
-    .locator('[data-testid^="message-item-"]', { hasText: content })
-    .first()
-    .click();
+  await conversationItem.click();
 
-  // ---------- Final verification (counter drops) ----------
+  // ---------- Final verification (indicator clears) ----------
 
   await page.reload();
 
-  const badgeAfter = page.getByTestId('unread-badge');
-  const countAfter = (await badgeAfter.isVisible().catch(() => false))
-    ? parseInt((await badgeAfter.textContent()) || '0', 10)
-    : 0;
+  await expect(
+    page
+      .locator('[data-testid^="message-item-"]', { hasText: player.name })
+      .locator('xpath=..')
+      .locator('[data-testid^="message-item-unread-"]')
+  ).toHaveCount(0);
 
-  expect(countAfter).toBeLessThan(countBefore);
+});
+
+test('MSG-003b Sending To Several People Does Not Mark Them Unread In Your Own Inbox', async ({ page }) => {
+
+  // ---------- Test data ----------
+  // Regression: sending several people a message from the listing
+  // page used to light up an unread indicator for every one of those
+  // conversations in the sender's own inbox - isRead describes "has
+  // the recipient read this", which was never true for the sender's
+  // own outgoing copy and isn't a meaningful "unread" signal for the
+  // person who just wrote it.
+
+  const contentToCoach = `Broadcast check coach ${Date.now()}`;
+  const contentToPlayer = `Broadcast check player ${Date.now()}`;
+
+  // ---------- Login ----------
+
+  await registerPlayer(page);
+
+  // ---------- Actions (message two different people, nobody's replied) ----------
+
+  await sendContactMessage(
+    page,
+    `/coach/${TEST_USERS.coach.slug}`,
+    { subject: 'Broadcast', message: contentToCoach }
+  );
+
+  await sendContactMessage(
+    page,
+    `/player/${TEST_USERS.player.slug}`,
+    { subject: 'Broadcast', message: contentToPlayer }
+  );
+
+  await page.goto('/messages');
+
+  // ---------- Final verification ----------
+  // None of the three conversations (welcome message + the two just
+  // sent) should show an unread indicator - the viewer authored two
+  // of them and hasn't been sent anything new in the third.
+
+  await expect(page.locator('[data-testid^="message-item-"]')).toHaveCount(3);
+  await expect(page.locator('[data-testid^="message-item-unread-"]')).toHaveCount(0);
 
 });
 
@@ -179,7 +218,7 @@ test('MSG-004 Mark Conversation as Read', async ({ page }) => {
   await page.goto('/messages');
 
   const conversationItem = page.locator('[data-testid^="message-item-"]', {
-    hasText: content,
+    hasText: player.name,
   }).first();
 
   // ---------- Actions ----------
@@ -202,9 +241,15 @@ test('MSG-004 Mark Conversation as Read', async ({ page }) => {
   await page.reload();
 
   // ---------- Final verification ----------
+  // The read/unread background class lives on the row wrapper (the
+  // button's parent), not the button itself - the button only holds
+  // the click target now that the delete icon is a sibling within the
+  // same row.
 
   await expect(
-    page.locator('[data-testid^="message-item-"]', { hasText: content })
+    page
+      .locator('[data-testid^="message-item-"]', { hasText: player.name })
+      .locator('xpath=..')
   ).not.toHaveClass(/bg-muted hover:bg-muted\/80/);
 
 });
@@ -340,7 +385,7 @@ test('MSG-008 Conversation Ordering (Latest Message First)', async ({ browser })
 
   const contextB = await browser.newContext();
   const pageB = await contextB.newPage();
-  await registerPlayer(pageB);
+  const playerB = await registerPlayer(pageB);
   await sendContactMessage(
     pageB,
     `/coach/${TEST_USERS.coach.slug}`,
@@ -357,9 +402,12 @@ test('MSG-008 Conversation Ordering (Latest Message First)', async ({ browser })
   await pageC.goto('/messages');
 
   // ---------- Verify ----------
+  // The list row shows the other participant's name, not the message
+  // content - playerB's conversation should sort first since their
+  // message is the more recent of the two.
 
   const firstItem = pageC.locator('[data-testid^="message-item-"]').first();
-  await expect(firstItem).toContainText(newerContent);
+  await expect(firstItem).toContainText(playerB.name);
 
   await contextC.close();
 
@@ -385,7 +433,7 @@ test('MSG-009 Message Timestamp Display', async ({ page }) => {
   await page.goto('/messages');
 
   await page
-    .locator('[data-testid^="message-item-"]', { hasText: content })
+    .locator('[data-testid^="message-item-"]', { hasText: player.name })
     .first()
     .click();
 
@@ -399,13 +447,31 @@ test('MSG-009 Message Timestamp Display', async ({ page }) => {
 
 test('MSG-010 Empty Conversation State', async ({ page }) => {
 
-  // ---------- Login (brand-new player, no messages ever) ----------
+  // ---------- Login (brand-new player) ----------
+  // Registration itself sends an automatic "Welcome to TennisConnect"
+  // system message (see MSG-108) - a brand-new account is never
+  // actually empty, so the only way to reach the empty state is to
+  // delete that one conversation first.
 
   await registerPlayer(page);
 
-  // ---------- Open page ----------
-
   await page.goto('/messages');
+
+  const row = page
+    .locator('[data-testid^="message-item-"]')
+    .first()
+    .locator('xpath=..');
+
+  await row.locator('[data-testid^="message-item-delete-"]').click();
+
+  await Promise.all([
+    page.waitForResponse(
+      response =>
+        /\/api\/messages\/[^/]+$/.test(response.url()) &&
+        response.request().method() === 'DELETE'
+    ),
+    page.locator('[data-testid^="message-item-delete-confirm-"]').click(),
+  ]);
 
   // ---------- Verify ----------
 
@@ -499,7 +565,7 @@ test('MSG-014 Message Persists After Page Refresh', async ({ page }) => {
 
   // ---------- Actions (player sends to coach) ----------
 
-  await registerPlayer(page);
+  const player = await registerPlayer(page);
 
   await sendContactMessage(
     page,
@@ -515,7 +581,7 @@ test('MSG-014 Message Persists After Page Refresh', async ({ page }) => {
   await page.goto('/messages');
 
   await expect(
-    page.locator('[data-testid^="message-item-"]', { hasText: content })
+    page.locator('[data-testid^="message-item-"]', { hasText: player.name })
   ).toBeVisible();
 
   // ---------- Reload ----------
@@ -525,7 +591,7 @@ test('MSG-014 Message Persists After Page Refresh', async ({ page }) => {
   // ---------- Final verification ----------
 
   await expect(
-    page.locator('[data-testid^="message-item-"]', { hasText: content })
+    page.locator('[data-testid^="message-item-"]', { hasText: player.name })
   ).toBeVisible();
 
 });
@@ -562,6 +628,173 @@ test('MSG-015 Toast Notifications', async ({ page }) => {
 
   await expect(
     page.getByText(/validation error/i)
+  ).toBeVisible();
+
+});
+
+// ========================================================================
+// Players listing quick-message modal (/players -> "Message" on a card)
+// - a second, independent entry point into POST /api/messages, distinct
+//   from the profile Contact tab tested above (different component,
+//   different validation schema - quickMessageSchema vs messageSchema,
+//   no subject field). Not a duplicate of MSG-005 (player -> player):
+//   that test exercises the Contact tab; these exercise the listing
+//   modal specifically.
+// ========================================================================
+
+test('MSG-016 Send Message Via Players Listing (Player → Player)', async ({ page }) => {
+
+  // ---------- Test data ----------
+
+  const content = `Listing message check ${Date.now()}`;
+
+  // ---------- Login (sender) ----------
+
+  const sender = await registerPlayer(page);
+
+  // ---------- Test data (a target that's actually listing-visible) ----------
+  // The public listing needs isApproved on top of profileCompleted
+  // (see storage.getAllPlayers) - unlike a profile page reached
+  // directly by slug, which only needs profileCompleted. A fresh
+  // account isn't approved by default, so this test creates and
+  // approves its own target rather than assuming any particular
+  // fixture account already is.
+
+  await logout(page);
+  const target = await registerPlayer(page);
+  await completePlayerProfile(page);
+  const targetId = await getMyUserId(page);
+  await logout(page);
+
+  await approveUser(
+    page,
+    TEST_USERS.admin.email,
+    TEST_USERS.admin.password,
+    targetId
+  );
+
+  // ---------- Login (sender again) ----------
+
+  await login(page, sender.email, sender.password);
+
+  // ---------- Open page ----------
+
+  await page.goto('/players');
+
+  const card = page.getByTestId(`player-card-${targetId}`);
+  await expect(card).toBeVisible();
+
+  // ---------- Actions ----------
+
+  await card.getByTestId(`button-message-${targetId}`).click();
+
+  await expect(page.getByTestId('input-message')).toBeVisible();
+  await page.getByTestId('input-message').fill(content);
+
+  const [response] = await Promise.all([
+    page.waitForResponse(
+      r => r.url().includes('/api/messages') && r.request().method() === 'POST'
+    ),
+    page.getByTestId('button-send-message').click(),
+  ]);
+
+  // ---------- Verify request ----------
+
+  expect(response.ok()).toBeTruthy();
+  await expect(page.getByText(/message sent/i)).toBeVisible();
+
+  // ---------- Final verification (target receives it) ----------
+
+  await logout(page);
+  await login(page, target.email, target.password);
+  await page.goto('/messages');
+
+  await page
+    .locator('[data-testid^="message-item-"]', { hasText: sender.name })
+    .first()
+    .click();
+
+  await expect(
+    page.locator('[data-testid^="message-bubble-content-"]', { hasText: content })
+  ).toBeVisible();
+
+});
+
+test('MSG-017 Guest Cannot Send Message Via Players Listing', async ({ page }) => {
+
+  // ---------- Test data (a target that's actually listing-visible) ----------
+
+  const target = await registerPlayer(page);
+  await completePlayerProfile(page);
+  const targetId = await getMyUserId(page);
+  await logout(page);
+
+  await approveUser(
+    page,
+    TEST_USERS.admin.email,
+    TEST_USERS.admin.password,
+    targetId
+  );
+
+  // ---------- Open page (guest, logged out above and never logged back in) ----------
+
+  await page.goto('/players');
+
+  const card = page.getByTestId(`player-card-${targetId}`);
+  await expect(card).toBeVisible();
+
+  // ---------- Actions ----------
+
+  await card.getByTestId(`button-message-${targetId}`).click();
+
+  // ---------- Final verification ----------
+  // Blocked before the modal even opens - a toast, rather than the
+  // Contact tab's inline sign-in card, but a guest still can't reach
+  // the actual send action either way.
+
+  await expect(page.getByText(/registration required/i)).toBeVisible();
+  await expect(page.getByTestId('input-message')).toHaveCount(0);
+
+});
+
+test('MSG-018 Players Listing Message Validation', async ({ page }) => {
+
+  // ---------- Test data (a target that's actually listing-visible) ----------
+
+  const target = await registerPlayer(page);
+  await completePlayerProfile(page);
+  const targetId = await getMyUserId(page);
+  await logout(page);
+
+  await approveUser(
+    page,
+    TEST_USERS.admin.email,
+    TEST_USERS.admin.password,
+    targetId
+  );
+
+  // ---------- Login (sender) ----------
+
+  await registerPlayer(page);
+
+  // ---------- Open page ----------
+
+  await page.goto('/players');
+  await page.getByTestId(`button-message-${targetId}`).click();
+
+  // ---------- Actions (message too short) ----------
+  // Unlike the Contact tab (button-send-contact-message is disabled
+  // until the fields are valid), this Send button stays enabled and
+  // relies on quickMessageSchema's own validation, surfaced as a
+  // toast after clicking.
+
+  await page.getByTestId('input-message').fill('hi');
+  await page.getByTestId('button-send-message').click();
+
+  // ---------- Verify ----------
+
+  await expect(
+    page.getByText(/at least 5 characters|validation error/i)
   ).toBeVisible();
 
 });

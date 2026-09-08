@@ -1,0 +1,15 @@
+# TennisConnect
+
+> TennisConnect is a directory and community platform for tennis in Australia - find players, coaches, clubs, tennis travel packages, and tennis news and tips.
+
+## Main sections
+
+- [Players](https://tennisconnect.com.au/players): Find and connect with tennis players across Australia by location and skill level.
+- [Coaches](https://tennisconnect.com.au/coaches): Browse and contact tennis coaches, filterable by location, experience, and rate.
+- [Club Communities](https://tennisconnect.com.au/clubs): Discover tennis clubs, courts, and social groups, filterable by court surface, services, and location.
+- [Travels](https://tennisconnect.com.au/travels): Tennis-focused travel packages and camps.
+- [Tennis IQ](https://tennisconnect.com.au/articles): Articles, tips, and news about tennis.
+
+## About
+
+- [Back the Rally](https://tennisconnect.com.au/): Community fundraising initiative supporting TennisConnect, linked from the site header and footer.
