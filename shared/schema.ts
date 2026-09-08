@@ -1071,7 +1071,23 @@ export const insertUserSchema = createInsertSchema(users)
     cover: true,
   })
   .extend({
-    slug: z.string().optional(), 
+    slug: z.string().optional(),
+    // drizzle-zod's default mapping for these `text` columns is a bare
+    // z.string() - no format/length/allowed-values constraints at all,
+    // so the client's own rules (registerSchema in
+    // client/src/lib/validations/auth.ts: email format, 8-char password
+    // minimum, 2-char name minimum, and only ever sending "player"/
+    // "coach" for role) were the ONLY enforcement: a direct POST to
+    // /api/auth/register bypassing that form entirely skipped all four.
+    // Mirrored exactly (same minimums) here, so the real form - which
+    // already only ever sends values stricter than these - is
+    // unaffected either way.
+    email: z.string().email("Enter a valid email address"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    name: z.string().min(2, "Name must be at least 2 characters"),
+    role: z.enum(["player", "coach"], {
+      errorMap: () => ({ message: "Role must be 'player' or 'coach'" }),
+    }),
   });
 
 export const insertPlayerProfileSchema = createInsertSchema(playerProfiles).omit({

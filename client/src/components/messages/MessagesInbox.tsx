@@ -68,12 +68,23 @@ interface Message {
 // should always show the OTHER participant, whether the current
 // viewer sent the most recent message in it or received it - senderName/
 // senderAvatar alone would show the viewer's own identity for a
-// conversation they started that hasn't been replied to yet. Falls
-// back to sender fields for rows from before otherParty existed.
+// conversation they started that hasn't been replied to yet.
+//
+// otherPartyName/otherPartyAvatar are always computed fresh server-side
+// on every /api/messages/conversations call (see getUserConversations) -
+// there's no such thing as an "old row without otherParty" to fall back
+// for anymore. otherPartyAvatar being null just means the other
+// participant genuinely has no avatar on file (or isn't a real user
+// row), which <AvatarFallback>'s initial already covers - it must NOT
+// fall back to senderAvatar here, because when the viewer is the one
+// who sent the message, senderAvatar IS the viewer's own photo. That
+// fallback was exactly why an admin messaging an avatar-less profile
+// (e.g. the Hide/Restore Profile notices) saw their own face in the
+// conversation list instead of the other person's initial.
 function conversationPartner(message: Message) {
   return {
     name: message.otherPartyName ?? message.senderName,
-    avatar: message.otherPartyAvatar ?? message.senderAvatar,
+    avatar: message.otherPartyAvatar,
   };
 }
 
@@ -82,7 +93,7 @@ function conversationPartner(message: Message) {
 // upload flow's own note about this), so the browser can keep serving
 // whatever it cached for that URL from before the change. Other pages
 // (the players/coaches listing) already work around this with a fresh
-// cache-buster on every fetch; messaging polls every 3s though, so
+// cache-buster on every fetch; messaging polls every 10s though, so
 // busting on every render/poll would re-download every visible
 // avatar that often. One timestamp captured when the inbox mounts is
 // enough to guarantee a reload picks up a since-changed avatar,
@@ -115,6 +126,13 @@ export function MessagesInbox() {
 
   const selectedMessageRef = useRef<Message | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // Guards against overlapping fetchMessages() calls - if the backend
+  // takes longer to answer than the poll interval (a slow response
+  // easily outlives a 10s tick under load), the previous request is
+  // still in flight when the next tick fires. Without this, a slow
+  // backend causes MORE concurrent requests to pile up on top of it,
+  // not fewer - exactly the wrong direction under load.
+  const isFetchingRef = useRef(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({
@@ -130,14 +148,34 @@ export function MessagesInbox() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-  
+
     fetchMessages();
-  
-    const interval = setInterval(() => {
+
+    // Only polls while the tab is actually visible - a background tab
+    // was still hitting the server every 10s for nothing nobody was
+    // looking at, adding to load with zero benefit.
+    const poll = () => {
+      if (document.visibilityState !== "visible") return;
       fetchMessages();
-    }, 3000);
-  
-    return () => clearInterval(interval);
+    };
+
+    const interval = setInterval(poll, 10000);
+
+    // Catches up immediately on returning to the tab instead of
+    // waiting out the rest of the current 10s tick - the interval
+    // above only skips ticks while hidden, it doesn't reset the
+    // countdown when focus comes back.
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchMessages();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [isAuthenticated]);
 
   useEffect(() => {
@@ -253,11 +291,9 @@ export function MessagesInbox() {
   };
 
   const fetchMessages = async () => {
-    console.log(
-      "FETCH REF:",
-      selectedMessageRef.current?.senderName
-    );
-  
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+
     try {
       const res = await fetch(
         "/api/messages/conversations",
@@ -293,7 +329,8 @@ export function MessagesInbox() {
         return;
       }
   
-      // Обновляем только текущий открытый чат
+      // Обновляем только текущий открытый чат - только если он
+      // реально выбран, ничего не подгружаем вслепую
       const currentSelected =
         selectedMessageRef.current;
   
@@ -312,6 +349,7 @@ export function MessagesInbox() {
         error
       );
     } finally {
+      isFetchingRef.current = false;
       setMessagesLoading(false);
     }
   };
@@ -443,11 +481,6 @@ export function MessagesInbox() {
   const selectMessage = async (
     message: Message
   ) => {
-    console.log(
-      "CLICKED:",
-      message.senderName,
-      new Date().toISOString()
-    );
     setSelectedMessage(message);
     
     // мобильный режим

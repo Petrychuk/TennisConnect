@@ -498,7 +498,23 @@ export class DatabaseStorage implements IStorage {
         .update(tennisSessions)
         .set({ reviewedBy: null })
         .where(eq(tennisSessions.reviewedBy, userId));
-  
+
+      // Payments (Back the Rally support, etc.) - userId is nulled, NOT
+      // the row deleted: payments.userId is a nullable "who paid, if
+      // logged in" attribution (payerEmail is always set independently),
+      // and this table is a permanent financial record with no delete
+      // path at all (5-year ATO retention - see schema comment on
+      // `payments`). Left unhandled, this FK was the actual cause of the
+      // admin "Failed to delete user" 500s: any user who'd made a
+      // support payment while logged in - which "marked as organiser"
+      // test/smoke-test accounts are exactly the kind of account likely
+      // to have exercised that flow - blocked the delete with an
+      // unhandled FK constraint violation.
+      await tx
+        .update(payments)
+        .set({ userId: null })
+        .where(eq(payments.userId, userId));
+
       // Password Reset Tokens
       await tx
         .delete(passwordResetTokens)
