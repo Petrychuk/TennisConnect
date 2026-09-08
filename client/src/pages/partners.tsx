@@ -19,6 +19,7 @@ import { Link } from "wouter";
 import SEO from "@/components/seo";
 import { quickMessageSchema } from "@/lib/validations/messages";
 import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.webp";
+import { resolveAvatarUrl, DEFAULT_AVATAR_URL, DEFAULT_AVATAR_ALT } from "@/lib/defaultAvatar";
 
 interface PartnerData {
     id: string;
@@ -134,14 +135,12 @@ export default function PartnersPage() {
         name: p.name ?? "Demo Player",
         location: p.location ?? "Sydney",
         skillLevel: p.skillLevel ?? "Beginner",
-        avatar: p.avatar,
+        avatar: resolveAvatarUrl(p.avatar),
         available: p.available ?? true,
         bio: p.bio ?? "",
         isDemo: true,
         isOrganizer: false,
       }));
-  const DEFAULT_AVATAR ="";
-  
   const normalizeApiPlayers = (data: any[]): PartnerData[] =>
     data.map((item) => ({
       id: item.id,
@@ -150,10 +149,9 @@ export default function PartnersPage() {
       name: item.name,
       location: item.location ?? "Sydney",
       skillLevel: item.skillLevel ?? "Beginner",
-      avatar:
-        item.avatar 
-        ? `${item.avatar}?t=${item.updatedAt ?? Date.now()}`
-      : DEFAULT_AVATAR,
+      avatar: resolveAvatarUrl(
+        item.avatar ? `${item.avatar}?t=${item.updatedAt ?? Date.now()}` : null
+      ),
       available: true,
       bio: item.bio ?? "",
       isDemo: false,
@@ -502,10 +500,14 @@ export default function PartnersPage() {
                     <img
                       src={
                         isMe && user?.avatar
-                          ? user.avatar
+                          ? resolveAvatarUrl(user.avatar)
                           : partner.avatar
                       }
-                      alt={partner.name}
+                      alt={
+                        partner.avatar === DEFAULT_AVATAR_URL
+                          ? DEFAULT_AVATAR_ALT
+                          : partner.name
+                      }
                       loading="lazy"
                       className="
                         w-full
@@ -545,7 +547,7 @@ export default function PartnersPage() {
                       }
                       className="hover:text-primary transition-colors max-w-full"
                     >
-                      <h3 className="text-sm md:text-lg font-bold mb-2 line-clamp-1 max-w-full">{partner.name}</h3>
+                      <h2 className="text-sm md:text-lg font-bold mb-2 line-clamp-1 max-w-full">{partner.name}</h2>
                     </Link>
 
                     <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground mb-1 md:mb-2 w-full min-w-0 px-1">
@@ -570,6 +572,7 @@ export default function PartnersPage() {
 
                   <CardFooter className="p-2 md:p-3 pt-0 grid grid-cols-2 gap-3">
                     <Link
+                      aria-label={`View ${partner.name}'s profile`}
                       href={
                         partner.isDemo
                           ? "/auth"
@@ -597,6 +600,7 @@ export default function PartnersPage() {
 
                     {!isMe && (
                       <Button
+                      aria-label={`Message ${partner.name}`}
                       className="
                         w-full
                         h-9
@@ -606,6 +610,7 @@ export default function PartnersPage() {
                         cursor-pointer
                       "
                       onClick={() => openMessageModal(partner)}
+                      data-testid={`button-message-${partner.id}`}
                     >
                       <MessageCircle className="w-4 h-4" />
                     
@@ -628,7 +633,7 @@ export default function PartnersPage() {
              <div className="inline-flex p-4 rounded-full bg-muted mb-4">
                <User className="w-8 h-8 text-muted-foreground" />
              </div>
-             <h3 className="text-xl font-bold mb-2">No partners found</h3>
+             <h2 className="text-xl font-bold mb-2">No partners found</h2>
              <p className="text-muted-foreground">Try adjusting your search filters.</p>
           </div>
         )}

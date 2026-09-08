@@ -122,9 +122,9 @@ export function HomeTournaments({ variant }: Props) {
             viewport={{ once: true }}
             transition={{ delay: 0.3 }}
           >
-            <Link href="/tournaments">
+            <Link href="/tournaments" className="hidden md:block">
               <Button
-                className={`hidden md:flex gap-2 font-bold rounded-full px-6 cursor-pointer ${
+                className={`flex gap-2 font-bold rounded-full px-6 cursor-pointer ${
                   isRecent
                     ? "bg-primary text-primary-foreground hover:bg-primary/90"
                     : "bg-primary text-primary-foreground hover:bg-primary/90"
