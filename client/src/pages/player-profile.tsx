@@ -30,6 +30,7 @@ import { SetScoreBuilder, looksLikeSetScore, looksLikePoints } from "@/component
 import { MyOrganizedSessionsSection } from "@/components/profile/shared/MyOrganizedSessionsSection";
 import { useOrganizerStatus } from "@/hooks/use-organizer-status";
 import { TennisLoader } from "@/components/ui/tennisLoader";
+import { uploadMedia } from "@/lib/uploadImage";
 
 type MarketplaceDraft = {
   id: string;
@@ -623,43 +624,13 @@ export default function PlayerProfile() {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
-    // 🧠 DEBUG
-    console.log("UPLOAD:", {
-      field,
-      name: file.name,
-      sizeKB: Math.round(file.size / 1024),
-      type: file.type,
-    });
-
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const resUpload = await fetch(`/api/uploadMedia/${field}`, {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-
-      const contentType = resUpload.headers.get("content-type") || "";
-
-      if (!contentType.includes("application/json")) {
-        const text = await resUpload.text();
-        console.error("❌ NON-JSON RESPONSE:", text);
-        throw new Error("Server returned non-JSON response");
-      }
-
-      const data = await resUpload.json();
-
-      if (!resUpload.ok) {
-        throw new Error(data?.message || `Upload failed (${resUpload.status})`);
-      }
+      // Resized client-side (square crop for avatar, wide crop for
+      // cover) before upload - through the same helper coach-profile.tsx
+      // uses for the identical flow, see uploadImage.ts.
+      const data = await uploadMedia(field, file);
 
       const { url: imageUrl, user: updatedUserObject } = data;
-
-      if (!imageUrl || !updatedUserObject) {
-        throw new Error("Invalid server response");
-      }
 
       setProfile(prev => ({
         ...prev,

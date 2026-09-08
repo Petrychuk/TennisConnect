@@ -1,5 +1,7 @@
 // client/src/lib/uploadContentImage.ts
 
+import { resizeImage, type ImagePreset } from "@/lib/image";
+
 export type ContentFolder =
   | "clubs"
   | "travel"
@@ -26,15 +28,30 @@ interface UploadContentImageResponse {
 // Upload Content Image
 // ==========================================================
 
+// "logo" (club logos, always displayed in a square/circle slot) gets
+// the same center-crop-to-square treatment as an avatar. "cover" gets
+// the wide hero-banner treatment. Everything else ("image" - club,
+// travel, article, recreation, marketplace and tournament photos) gets
+// the general-purpose content preset - this single mapping is what
+// makes every one of those upload flows resized, since they all go
+// through this one function via ImageUploader/GalleryUploader.
+const PRESET_BY_TYPE: Record<ContentImageType, ImagePreset> = {
+  logo: "avatar",
+  cover: "cover",
+  image: "content",
+};
+
 export async function uploadContentImage(
   file: File,
   folder: ContentFolder,
   entityId: string,
   type: ContentImageType
 ): Promise<UploadContentImageResponse> {
+  const optimized = await resizeImage(file, PRESET_BY_TYPE[type]);
+
   const formData = new FormData();
 
-  formData.append("file", file);
+  formData.append("file", optimized);
   formData.append("folder", folder);
   formData.append("entityId", entityId);
   formData.append("type", type);
