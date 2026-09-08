@@ -12,13 +12,13 @@ interface UploadMediaResponse {
 // and skipping any resize. Centralising it here means the resize only
 // has to be added in one place, and both pages get it for free.
 //
-// Note: this used to point at `/api/upload/${type}`, a route that
-// doesn't actually exist anywhere in the server (the real one is
-// `/api/uploadMedia/:type` - see server/routes/uploadMedia.ts). Nothing
-// called this specific function before now (the only usage was the
-// orphaned AvatarUploader component, which isn't rendered anywhere), so
-// that mismatch never surfaced as a live bug - fixed here as part of
-// wiring it up for real.
+// This used to point at `/api/upload/${type}`, a route that doesn't
+// actually exist anywhere in the server (the real one is
+// `/api/uploadMedia/:type` - see server/routes/uploadMedia.ts). The only
+// caller pointed at that broken path was an AvatarUploader component
+// that wasn't rendered anywhere in the app either - removed rather than
+// fixed, since coach-profile.tsx/player-profile.tsx already cover the
+// same "click the avatar to change it" flow for real.
 export async function uploadMedia(
   type: "avatar" | "cover",
   file: File
