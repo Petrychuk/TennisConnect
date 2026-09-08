@@ -1,9 +1,10 @@
 import { resizeImage } from "@/lib/image";
+import type { User } from "@/lib/auth-context";
 
 interface UploadMediaResponse {
   url: string;
   type: "avatar" | "cover";
-  user: Record<string, unknown>;
+  user: User;
 }
 
 // Shared by both profile pages (coach-profile.tsx, player-profile.tsx)
