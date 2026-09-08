@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
+import { resizeImage } from "@/lib/image";
 import { SetScoreBuilder, looksLikeSetScore, looksLikePoints } from "./SetScoreBuilder";
 import { Calendar, Trophy, Edit2, Plus, Trash2, Camera, MapPin } from "lucide-react";
 
@@ -136,8 +137,10 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
 
     for (const file of filesToUpload) {
       try {
+        const optimized = await resizeImage(file, "gallery");
+
         const formData = new FormData();
-        formData.append("file", file);
+        formData.append("file", optimized);
 
         const res = await fetch(`/api/profile/tournament-history/${newTournament.id}/photos`, {
           method: "POST",

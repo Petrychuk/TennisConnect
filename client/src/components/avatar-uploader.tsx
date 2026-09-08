@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { uploadImage } from "@/lib/uploadImage";
+import { uploadMedia } from "@/lib/uploadImage";
 import { useAuth } from "@/lib/auth-context";
 
 export function AvatarUploader({ size = 40 }: { size?: number }) {
@@ -14,8 +14,10 @@ export function AvatarUploader({ size = 40 }: { size?: number }) {
     if (!file) return;
 
     try {
-      // 1️⃣ upload через backend → Supabase Storage
-      const { url } = await uploadImage("avatar", file);
+      // 1️⃣ upload через backend → Supabase Storage (resized client-side
+      // first, and this was actually pointed at a route that doesn't
+      // exist until now - see uploadImage.ts)
+      const { url } = await uploadMedia("avatar", file);
 
       // 2️⃣ cache-busting (КЛЮЧЕВО!)
       const avatarUrl = `${url}?v=${Date.now()}`;
