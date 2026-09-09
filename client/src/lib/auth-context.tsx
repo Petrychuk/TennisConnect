@@ -32,7 +32,7 @@ async function fetchWithTimeout(
 
 type UserRole = "player" | "coach" | null;
 
-interface User {
+export interface User {
   id: string;
   name: string;
   email: string;
@@ -70,7 +70,13 @@ interface AuthContextType {
     updateUserLocal: (user: User) => void;
 
   logout: () => Promise<void>;
-  
+
+  // 🔹 clears local auth state without calling /api/auth/logout - for
+  // when a background request (polling, etc.) discovers the session is
+  // already gone server-side (401), so the UI stops presenting as
+  // logged in and stops re-polling with a session that will never work.
+  clearSession: () => void;
+
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -250,6 +256,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(newUser);
   };
 
+  // Called by background polling (unread-count, messages) when a
+  // request comes back 401 - the session died server-side (dev-server
+  // restarts wipe an in-memory session store, for example) but nothing
+  // told the client. Unlike logout(), this doesn't hit the network -
+  // there's nothing valid left server-side to log out of, and calling
+  // /api/auth/logout here would just be one more request destined to
+  // 401. Flips isAuthenticated to false, which is what actually stops
+  // the polling (see its `enabled: isAuthenticated` / `if (!isAuthenticated) return`
+  // guards) instead of it retrying every few seconds forever.
+  const clearSession = () => {
+    setUser(null);
+    setProfileLoaded(false);
+  };
+
 // LOGOUT
   const logout = async () => {
     await fetch("/api/auth/logout", {
@@ -271,6 +291,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         register,
         logout,
+        clearSession,
         updateUserProfile,
         updateUserLocal,
         fetchCurrentUser,

@@ -56,7 +56,7 @@ import student3 from "/assets/images/portrait_of_an_older_male_tennis_student.we
 
 import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.webp";
 import { resizeImage } from "@/lib/image";
-import { uploadImage } from "@/lib/uploadImage";
+import { uploadMedia } from "@/lib/uploadImage";
 import { deleteImage } from "@/lib/deleteImage";
 import { useRoute } from "wouter";
 
@@ -292,8 +292,10 @@ export default function CoachProfile() {
 
       // 📸 ГАЛЕРЕЯ ТРЕНЕРА
       if (field === "gallery") {
+        const optimized = await resizeImage(file, "gallery");
+
         const formData = new FormData();
-        formData.append("file", file);
+        formData.append("file", optimized);
 
         const resUpload = await fetch("/api/upload/coach-gallery", {
           method: "POST",
@@ -319,35 +321,13 @@ export default function CoachProfile() {
         return;
       }
 
-      // 🧑‍🏫 AVATAR / COVER
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const resUpload = await fetch(`/api/uploadMedia/${field}`, {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-
-      const contentType = resUpload.headers.get("content-type") || "";
-
-      if (!contentType.includes("application/json")) {
-        const text = await resUpload.text();
-        console.error("❌ NON-JSON RESPONSE:", text);
-        throw new Error("Server returned non-JSON response");
-      }
-
-      const data = await resUpload.json();
-
-      if (!resUpload.ok) {
-        throw new Error(data?.message || `Upload failed (${resUpload.status})`);
-      }
+      // 🧑‍🏫 AVATAR / COVER - resized client-side (square crop for
+      // avatar, wide crop for cover - see resizeImage's presets) before
+      // it ever reaches the network, through the same helper
+      // player-profile.tsx uses for the identical flow.
+      const data = await uploadMedia(field, file);
 
       const { url: imageUrl, user: updatedUserObject } = data;
-
-      if (!imageUrl || !updatedUserObject) {
-        throw new Error("Invalid server response");
-      }
 
       setProfile(prev => ({
         ...prev,
