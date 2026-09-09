@@ -122,7 +122,9 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getAdminUsers(): Promise<User[]>;
   getUserByEmail(email: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  createUser(
+    user: InsertUser & Partial<Pick<User, "emailVerified" | "emailVerifiedAt">>
+  ): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User>;
   updateUserPassword(id: string, hashedPassword: string): Promise<void>;
   getUserBySlug(slug: string): Promise<User | undefined>;
@@ -356,7 +358,9 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
+  async createUser(
+    insertUser: InsertUser & Partial<Pick<User, "emailVerified" | "emailVerifiedAt">>
+  ): Promise<User> {
       const slug = insertUser.slug
         ? insertUser.slug
         : await generateUniqueSlug(insertUser.name);
