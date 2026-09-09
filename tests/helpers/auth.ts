@@ -127,7 +127,22 @@ export async function completeVerification(page: Page, email: string) {
   }
 
   const { token } = await response.json();
-  await page.goto(`/verify-email?token=${token}`);
+
+  // Waits for the actual GET /api/auth/verify-email response, not just
+  // for page.goto() to resolve - that only guarantees the initial HTML/
+  // JS loaded, not that verify-email.tsx's own fetch (which is what
+  // sets the session cookie) has completed yet. Callers that
+  // immediately make an authenticated request right after this
+  // (page.request.get('/api/auth/me'), for instance) would otherwise
+  // race it.
+  await Promise.all([
+    page.waitForResponse(
+      response =>
+        response.url().includes('/api/auth/verify-email') &&
+        response.request().method() === 'GET'
+    ),
+    page.goto(`/verify-email?token=${token}`),
+  ]);
 }
 
 export async function login(
