@@ -112,7 +112,7 @@ export function MessagesInbox() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(true);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
-  const { user, isAuthenticated, loading: authLoading, } = useAuth();
+  const { user, isAuthenticated, loading: authLoading, clearSession } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const withCacheBust = useAvatarCacheBust();
@@ -301,6 +301,19 @@ export function MessagesInbox() {
         }
       );
   
+      if (res.status === 401) {
+        // Session died server-side since the last successful poll
+        // (e.g. a dev-server restart wiped an in-memory session
+        // store) - stop presenting as logged in instead of quietly
+        // 401ing on this same 10s interval forever. Once isAuthenticated
+        // flips to false, both the `if (!isAuthenticated) return` guard
+        // above and this effect's `[isAuthenticated]` dependency stop
+        // the polling for real (see the useEffect that sets up
+        // `interval`), not just this one tick.
+        clearSession();
+        return;
+      }
+
       if (!res.ok) {
         throw new Error(
           `Failed to fetch messages: ${res.status}`
