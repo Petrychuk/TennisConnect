@@ -12,11 +12,12 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ArrowLeft, User, Trophy, Mail, CheckCircle, Eye, EyeOff } from "lucide-react";
 import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth, EmailNotVerifiedError } from "@/lib/auth-context";
 import heroImage from "/assets/images/tennis_main.jpg";
 import loginImage from "/assets/images/me_attack.jpg";
 import SEO from "@/components/seo";
 import { registerSchema, loginSchema } from "@/lib/validations/auth";
+import { savePostVerifyRedirect } from "@/lib/postVerifyRedirect";
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -28,10 +29,20 @@ export default function AuthPage() {
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
   const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
+  // Set once registration succeeds - swaps the register tab over to a
+  // "check your email" screen instead of navigating away, since there's
+  // no session yet to redirect an authenticated user with.
+  const [registrationPendingEmail, setRegistrationPendingEmail] = useState<string | null>(null);
+  // Set when login() rejects with EmailNotVerifiedError - swaps the
+  // login tab over to a "confirm your email" screen with a resend
+  // action, instead of the generic "Login failed" toast.
+  const [verificationRequiredEmail, setVerificationRequiredEmail] = useState<string | null>(null);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSent, setResendSent] = useState(false);
   const [, setLocation] = useLocation();
   const search = useSearch();
   const { toast } = useToast();
-  const { login, register } = useAuth();
+  const { login, register, resendVerificationEmail } = useAuth();
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -92,6 +103,11 @@ export default function AuthPage() {
       setLocation(`/${loggedInUser.role}/${loggedInUser.slug}`);
 
     } catch (error: any) {
+      if (error instanceof EmailNotVerifiedError) {
+        setResendSent(false);
+        setVerificationRequiredEmail(error.email);
+        return;
+      }
       toast({
         title: "Login failed",
         description: error.message || "Please check your credentials and try again.",
@@ -105,50 +121,23 @@ export default function AuthPage() {
 const onRegister = async (data: z.infer<typeof registerSchema>) => {
   setIsLoading(true);
   try {
-    
-    const user = await register(data.email, data.password, data.name, data.role, data.wantsToOrganize);
 
     const params = new URLSearchParams(search);
     const returnTo = params.get("returnTo");
     const joinSession = params.get("joinSession");
 
-    if (returnTo && joinSession) {
-      // Deliberately skips /complete-profile for this specific flow -
-      // they came here to join a session, not to fill out a profile,
-      // and role/name/email/password are already collected by this
-      // form. They can always fill the rest in later from their
-      // profile.
-      toast({
-        title: "Welcome to TennisConnect!",
-        description: "Thanks for registering — joining that session for you now.",
-      });
-      const target = new URL(returnTo, window.location.origin);
-      target.searchParams.set("joinSession", joinSession);
-      setLocation(target.pathname + target.search);
-      return;
-    }
-
+    // Registering no longer signs anyone in - there's no session left
+    // to redirect with returnTo/joinSession right away. Stash them so
+    // verify-email.tsx can pick the same flow back up once the email
+    // is actually confirmed.
     if (returnTo) {
-      // Same reasoning as above, generalised - if they came here from
-      // a specific page (following a club, favouriting a court) they
-      // should land back there and finish that action themselves,
-      // not be diverted into profile completion first.
-      toast({
-        title: "Welcome to TennisConnect!",
-        description: "Thanks for registering — picking up right where you left off.",
-      });
-      const target = new URL(returnTo, window.location.origin);
-      setLocation(target.pathname + target.search);
-      return;
+      savePostVerifyRedirect({ returnTo, joinSession: joinSession || undefined });
     }
 
-    toast({
-      title: "Account created",
-       description: "Please complete your profile to get started!",
-    });
+    const result = await register(data.email, data.password, data.name, data.role, data.wantsToOrganize);
 
-    setLocation("/complete-profile");
-   
+    setRegistrationPendingEmail(result.email);
+
   } catch (error: any) {
     toast({
       title: "Registration failed",
@@ -159,6 +148,22 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
     setIsLoading(false);
   }
 };
+
+  const handleResendVerification = async (email: string) => {
+    setResendLoading(true);
+    try {
+      await resendVerificationEmail(email);
+      setResendSent(true);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to resend verification email. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setResendLoading(false);
+    }
+  };
 
   /* const handleSocialLogin = (provider: string) => {
     toast({
@@ -248,7 +253,48 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
               </TabsList>
               
               <TabsContent value="login">
-                {showForgotPassword ? (
+                {verificationRequiredEmail ? (
+                  // Credentials were correct, email just isn't
+                  // confirmed yet (403 EMAIL_NOT_VERIFIED from
+                  // /api/auth/login) - offer a resend instead of a bare
+                  // "Login failed".
+                  <div className="text-center py-8" data-testid="verification-required-screen">
+                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Mail className="w-8 h-8 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-bold mb-2">Confirm your email</h3>
+                    <p className="text-muted-foreground mb-6">
+                      Your password is correct, but {verificationRequiredEmail} hasn't been confirmed yet.
+                      Please check your inbox for the verification link before signing in.
+                    </p>
+                    {resendSent ? (
+                      <p className="text-sm text-muted-foreground mb-6" data-testid="resend-verification-success">
+                        Verification email sent. Please check your inbox.
+                      </p>
+                    ) : (
+                      <Button
+                        onClick={() => handleResendVerification(verificationRequiredEmail)}
+                        disabled={resendLoading}
+                        className="w-2/3 mx-auto flex items-center justify-center font-bold bg-primary text-primary-foreground hover:bg-primary/90 rounded-full cursor-pointer mb-3"
+                        data-testid="resend-verification-button"
+                      >
+                        {resendLoading ? <TennisBallSpinner /> : "Resend verification email"}
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setVerificationRequiredEmail(null);
+                        setResendSent(false);
+                      }}
+                      className="w-2/3 mx-auto flex items-center justify-center rounded-full cursor-pointer"
+                      data-testid="back-to-sign-in-from-verification"
+                    >
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                      Back to Sign In
+                    </Button>
+                  </div>
+                ) : showForgotPassword ? (
                   // Forgot Password Form
                   <div className="space-y-6">
                     {forgotPasswordSent ? (
@@ -405,6 +451,35 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
               </TabsContent>
               
               <TabsContent value="register">
+                {registrationPendingEmail ? (
+                  // Account created, but there's no session until the
+                  // emailed link is confirmed - see /api/auth/register.
+                  <div className="text-center py-8" data-testid="registration-pending-screen">
+                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Mail className="w-8 h-8 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-bold mb-2">Check your email</h3>
+                    <p className="text-muted-foreground mb-6">
+                      We sent a verification link to {registrationPendingEmail}. Please verify your
+                      email to continue using TennisConnect - the link expires in 24 hours.
+                    </p>
+                    {resendSent ? (
+                      <p className="text-sm text-muted-foreground" data-testid="resend-verification-success">
+                        Verification email sent. Please check your inbox.
+                      </p>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        onClick={() => handleResendVerification(registrationPendingEmail)}
+                        disabled={resendLoading}
+                        className="w-2/3 mx-auto flex items-center justify-center rounded-full cursor-pointer"
+                        data-testid="resend-verification-button"
+                      >
+                        {resendLoading ? <TennisBallSpinner /> : "Resend verification email"}
+                      </Button>
+                    )}
+                  </div>
+                ) : (
                 <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
                   <div className="space-y-3">
                     <Label>I want to join as a...</Label>
@@ -604,6 +679,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                     </p>
                   )}
                 </form>
+                )}
               </TabsContent>
             </Tabs>
             
