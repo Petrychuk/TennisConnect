@@ -42,6 +42,13 @@ export const users = pgTable("users", {
   .default(false)
   .notNull(),
   isHidden: boolean("is_hidden").default(false),
+  // Defaults to true so every existing row (and any insert path other
+  // than /api/auth/register - there isn't one today, but this is the
+  // safe direction to fail in if that changes) is treated as verified
+  // without a migration backfill. /api/auth/register is the only place
+  // that explicitly overrides this to false for a brand new signup.
+  emailVerified: boolean("email_verified").default(true).notNull(),
+  emailVerifiedAt: timestamp("email_verified_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -924,6 +931,28 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   used: boolean("used").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// Email Verification Tokens
+//
+// Deliberately stores a hash of the token, not the token itself - same
+// reasoning as never storing a plaintext password. passwordResetTokens
+// (above) stores its token in plain text; that's pre-existing behaviour
+// this doesn't touch, but it isn't repeated here since this table is
+// new. tokenHash is a plain sha256 hex digest (see
+// server/services/emailVerification.ts) - fast, deterministic lookup by
+// exact match is all that's needed here, unlike password storage there's
+// no offline-guessing risk to defend against with a slow hash (the
+// token itself is 32 random bytes, not a human-chosen secret).
+export const emailVerificationTokens = pgTable("email_verification_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  tokenHash: varchar("token_hash", { length: 255 }).notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  used: boolean("used").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("email_verification_tokens_user_id_idx").on(table.userId),
+}));
 
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
