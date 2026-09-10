@@ -24,9 +24,18 @@ const RESEND_API_URL = "https://api.resend.com/emails";
 // --tennis-ball CSS var - converted to hex since HSL() function syntax
 // isn't reliably supported across email clients (Outlook desktop's
 // Word rendering engine in particular).
+//
+// 'Syne' (client/src/index.css --font-display) listed first for the
+// rare client that respects it - most strip <head>/<link> entirely from
+// received HTML email, so this falls back to the safe stack in
+// practice, but it's free to list and costs nothing when ignored.
+// The dot is inline-block with no vertical-align by default, which
+// aligns its BOTTOM edge to the text baseline - for a small circle that
+// reads as sitting noticeably low next to cap-height letters.
+// vertical-align: middle fixes that.
 const EMAIL_LOGO_HTML = `
-  <div style="font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 22px; font-weight: 800; margin: 0 0 24px;">
-    <span style="color:#111;">Tennis</span><span style="color:#C7F53D;">Connect</span><span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#C7F53D; margin-left:3px;"></span>
+  <div style="font-family: 'Syne', -apple-system, Helvetica, Arial, sans-serif; font-size: 25px; font-weight: 800; margin: 0 0 24px;">
+    <span style="color:#111;">Tennis</span><span style="color:#C7F53D;">Connect</span><span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:#C7F53D; margin-left:3px; vertical-align:middle;"></span>
   </div>
 `;
 
@@ -121,8 +130,9 @@ export async function sendVerificationEmail(
     html: `
       <div style="font-family: -apple-system, Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
         ${EMAIL_LOGO_HTML}
-        <p style="font-size: 32px; margin: 0 0 8px;">🎾</p>
-        <h2 style="color: #111; margin: 0 0 12px;">You're one click from the court</h2>
+        <h2 style="color: #111; margin: 0 0 12px;">
+          <span style="font-size: 22px; vertical-align: middle; margin-right: 8px;">🎾</span>You're one click from the court
+        </h2>
         <p style="color: #444; line-height: 1.6;">
           Welcome to TennisConnect! Confirm your email and you're in -
           ready to find hitting partners, coaches, and sessions around

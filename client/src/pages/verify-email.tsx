@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CheckCircle, XCircle, Clock, Mail, MailCheck } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, Clock, Mail } from "lucide-react";
 import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
@@ -9,16 +9,19 @@ import { consumePostVerifyRedirect } from "@/lib/postVerifyRedirect";
 import heroImage from "/assets/images/tennis_main.jpg";
 import SEO from "@/components/seo";
 
-// "confirming" - a token is present, but nothing has been sent to the
-// server yet; waits for the person to actually click the button below.
-// Deliberately not auto-fired on page load: some mail clients (and
-// occasionally browsers/extensions) pre-fetch links in an email to scan
-// them for safety before a human ever clicks, which would silently burn
-// this single-use token before the real click happens - the person
-// would land here to a confusing "invalid link" for a link they never
-// even clicked yet. Requiring an explicit click sidesteps that, since
-// scanners fetch pages, they essentially never simulate button presses.
-type VerifyState = "confirming" | "verifying" | "success" | "invalid" | "expired" | "missing";
+// Fires the verification request the moment the page loads - no extra
+// "Confirm Email Address" click required beyond the one that got them
+// here from the email. An earlier version required a second on-page
+// click specifically to guard against mail clients/scanners that
+// pre-fetch links to check them for safety before a human ever opens
+// the email, which can silently burn a single-use token before the
+// real click happens - but that's a real cost (an extra click on every
+// single confirmation) against a threat that was never confirmed as
+// the actual cause of anything seen in testing. Back to auto-firing;
+// if a genuine pre-fetch-burns-the-token case shows up on the real
+// domain, the fix is to require a click again, not to keep paying the
+// cost of one in the meantime "just in case".
+type VerifyState = "verifying" | "success" | "invalid" | "expired" | "missing";
 
 export default function VerifyEmailPage() {
   const [, setLocation] = useLocation();
@@ -28,7 +31,7 @@ export default function VerifyEmailPage() {
   const searchParams = new URLSearchParams(window.location.search);
   const token = searchParams.get("token");
 
-  const [state, setState] = useState<VerifyState>(token ? "confirming" : "missing");
+  const [state, setState] = useState<VerifyState>(token ? "verifying" : "missing");
   const [resendEmail, setResendEmail] = useState("");
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSent, setResendSent] = useState(false);
@@ -39,10 +42,15 @@ export default function VerifyEmailPage() {
   // it's known, rather than recomputed from stale state.
   const [redirectTarget, setRedirectTarget] = useState<string | null>(null);
 
-  const handleConfirm = () => {
-    if (!token) return;
+  // React 18 dev-mode StrictMode mounts effects twice - without this,
+  // the single-use token would get consumed by the first run and the
+  // second would always show "invalid" even on a genuinely fresh, valid
+  // link.
+  const hasRun = useRef(false);
 
-    setState("verifying");
+  useEffect(() => {
+    if (!token || hasRun.current) return;
+    hasRun.current = true;
 
     verifyEmail(token)
       .then((user) => {
@@ -70,7 +78,8 @@ export default function VerifyEmailPage() {
       .catch((error: any) => {
         setState(error?.status === "expired" ? "expired" : "invalid");
       });
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   const handleResend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,27 +142,6 @@ export default function VerifyEmailPage() {
           </div>
         </div>
       </>
-    );
-  }
-
-  if (state === "confirming") {
-    return (
-      <Shell>
-        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-6">
-          <MailCheck className="w-8 h-8 text-primary" />
-        </div>
-        <h1 className="text-2xl font-bold mb-2">Confirm your email</h1>
-        <p className="text-muted-foreground mb-8">
-          One click and your TennisConnect account is ready to go.
-        </p>
-        <Button
-          onClick={handleConfirm}
-          className="w-2/3 mx-auto flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full h-12"
-          data-testid="confirm-email-button"
-        >
-          Confirm Email Address
-        </Button>
-      </Shell>
     );
   }
 
