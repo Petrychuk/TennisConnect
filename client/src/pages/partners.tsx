@@ -469,6 +469,12 @@ export default function PartnersPage() {
           dissolves under the top of the first card row */}
       <div className="relative z-30 container mx-auto px-4 pt-2 pb-4 md:py-4 md:-mt-4 scroll-mt-24"
       ref={playersSectionRef}>
+        {/* Visually hidden - this grid has no visible section heading of
+            its own (the H1 above is the page title, not a section
+            label), but the card titles just below are a real H2 without
+            it - this gives them a genuine parent instead of skipping
+            straight from H1 to card level. */}
+        <h2 className="sr-only">Search Results</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           {filteredPartners.map((partner, index) => {
 
@@ -549,7 +555,7 @@ export default function PartnersPage() {
                       }
                       className="hover:text-primary transition-colors max-w-full"
                     >
-                      <h2 className="text-sm md:text-lg font-bold mb-2 line-clamp-1 max-w-full">{partner.name}</h2>
+                      <h3 className="text-sm md:text-lg font-bold mb-2 line-clamp-1 max-w-full">{partner.name}</h3>
                     </Link>
 
                     <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground mb-1 md:mb-2 w-full min-w-0 px-1">
@@ -635,7 +641,7 @@ export default function PartnersPage() {
              <div className="inline-flex p-4 rounded-full bg-muted mb-4">
                <User className="w-8 h-8 text-muted-foreground" />
              </div>
-             <h2 className="text-xl font-bold mb-2">No partners found</h2>
+             <h3 className="text-xl font-bold mb-2">No partners found</h3>
              <p className="text-muted-foreground">Try adjusting your search filters.</p>
           </div>
         )}

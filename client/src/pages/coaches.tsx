@@ -516,6 +516,11 @@ export default function CoachesPage() {
               the top of the first row, matching the Partners page */}
           <section className="relative z-30 container mx-auto px-4 md:-mt-4 pb-24 scroll-mt-24"
             ref={coachesSectionRef}>
+            {/* Visually hidden - same reasoning as partners.tsx's own
+                "Search Results" heading: gives the card titles below a
+                real H2 parent instead of skipping straight from the
+                page's H1. */}
+            <h2 className="sr-only">Search Results</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
               {filteredCoaches.map((coach, index) => (
                 <motion.div
@@ -574,7 +579,7 @@ export default function CoachesPage() {
                     <CardHeader className="px-3 pt-3 pb-1 md:px-6 md:pb-2">
                       <div className="flex justify-between items-start">
                         <div className="min-h-14 md:min-h-[85px] min-w-0 w-full">
-                          <h2 className="text-base md:text-lg lg:text-xl
+                          <h3 className="text-base md:text-lg lg:text-xl
                             font-bold
                             font-display
                             group-hover:text-primary
@@ -582,7 +587,7 @@ export default function CoachesPage() {
 
                             line-clamp-2
                             min-h-12
-                            md:min-h-14">{coach.name}</h2>
+                            md:min-h-14">{coach.name}</h3>
                           <p className="text-sm text-muted-foreground line-clamp-1">{coach.title}</p>
                         </div>
                       </div>
@@ -665,7 +670,7 @@ export default function CoachesPage() {
 
             {filteredCoaches.length === 0 && (
               <div className="text-center py-20">
-                <h2 className="text-2xl font-bold mb-2">No coaches found</h2>
+                <h3 className="text-2xl font-bold mb-2">No coaches found</h3>
                 <p className="text-muted-foreground">Try adjusting your search or filters to find more coaches.</p>
                 <Button 
                   variant="link" 
