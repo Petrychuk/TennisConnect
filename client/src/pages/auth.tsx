@@ -306,7 +306,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                       <Mail className="w-8 h-8 text-primary" />
                     </div>
                     <h3 className="text-xl font-bold mb-2">Confirm your email</h3>
-                    <p className="text-muted-foreground mb-6">
+                    <p className="text-muted-foreground mb-6 break-words">
                       Your password is correct, but {verificationRequiredEmail} hasn't been confirmed yet.
                       Please check your inbox for the verification link before signing in.
                     </p>
@@ -502,7 +502,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                       <Mail className="w-8 h-8 text-primary" />
                     </div>
                     <h3 className="text-xl font-bold mb-2">Check your email</h3>
-                    <p className="text-muted-foreground mb-6">
+                    <p className="text-muted-foreground mb-6 break-words">
                       We sent a verification link to {registrationPendingEmail}. Please verify your
                       email to continue using TennisConnect - the link expires in 24 hours.
                     </p>
