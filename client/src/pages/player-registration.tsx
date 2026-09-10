@@ -27,7 +27,7 @@ export default function PlayerRegistration() {
   const [isLoading, setIsLoading] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { login, register, updateUserProfile } = useAuth();
+  const { register } = useAuth();
 
 
   const registerForm = useForm<z.infer<typeof registerSchema>>({
@@ -39,21 +39,17 @@ export default function PlayerRegistration() {
   setIsLoading(true);
 
   try {
-    // Сначала регистрируем пользователя через контекст
+    // register() no longer creates a session (see auth-context.tsx) -
+    // the account exists but stays unverified until the emailed link is
+    // confirmed, so there's nothing to attach an avatar to yet.
     await register(data.email, data.password, data.name, "player");
 
-    // Обновляем аватар после регистрации (если нужен)
-    await updateUserProfile({
-      avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop"
-    });
-
     toast({
-      title: "Account created",
-      description: "Welcome! Let's set up your profile.",
+      title: "Check your email",
+      description: "We sent a verification link to confirm your account. Once verified, sign in to finish setting up your profile.",
     });
 
-    // Перенаправляем на страницу профиля игрока
-    setLocation("/player/profile");
+    setLocation("/auth");
   } catch (error: any) {
     toast({
       title: "Registration failed",

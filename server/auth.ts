@@ -134,6 +134,18 @@ export function setupAuth(app: Express) {
             return done(null, false);
           }
 
+          // Credentials are correct at this point - deliberately a
+          // separate check from the two above, so the route handler can
+          // tell "wrong email/password" apart from "right password,
+          // email just isn't confirmed yet" and respond with the
+          // correct one instead of a generic failure message for both.
+          if (!user.emailVerified) {
+            return done(null, false, {
+              message: "EMAIL_NOT_VERIFIED",
+              email: user.email,
+            } as any);
+          }
+
           return done(null, {
             id: user.id,
             email: user.email,
