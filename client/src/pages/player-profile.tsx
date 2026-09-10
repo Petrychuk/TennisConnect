@@ -679,6 +679,7 @@ export default function PlayerProfile() {
           />         
           <div className="relative z-10">
             <Navbar />
+            <main id="main-content">
             
             <input
               type="file"
@@ -1581,6 +1582,7 @@ export default function PlayerProfile() {
               </Tabs>
               )}
             </div>
+            </main>
           </div>
         </div>
         <Footer />
