@@ -9,6 +9,7 @@ import {
   EyeOff,
   Trophy,
   UserMinus,
+  Building2,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +28,7 @@ interface User {
   isTestUser?: boolean;
   isOrganizer?: boolean;
   organizerRequestStatus?: "pending" | "approved" | "rejected" | "revoked" | null;
+  ownedOrganization?: { id: string; name: string; slug: string } | null;
 }
 
 type OrganizerFilter = "all" | "organizers" | "not-organizers" | "awaiting";
@@ -47,6 +49,14 @@ export default function AdminUsersTab() {
     null
   >(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  // Deleting an organization is a distinct destructive action from
+  // deleting the user who owns it - kept as its own small piece of
+  // state and its own dialog, same reasoning as bulk delete below, so
+  // an admin explicitly chooses to remove the organization (and
+  // everything under it - other members, sessions) rather than that
+  // being an implicit side effect buried inside "Delete User".
+  const [orgDeleteTarget, setOrgDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [orgDeleting, setOrgDeleting] = useState(false);
   // Bulk delete is a separate flow from the single-user Dialog above -
   // it acts on a set of ids, not one selectedUser, so it gets its own
   // small piece of state and its own confirmation dialog rather than
@@ -178,6 +188,44 @@ export default function AdminUsersTab() {
       }
       return new Set(Array.from(prev).concat(selectableIds));
     });
+  }
+
+  async function confirmDeleteOrganization() {
+    if (!orgDeleteTarget) return;
+
+    setOrgDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/organizations/${orgDeleteTarget.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        toast({
+          title: "Could not delete organization",
+          description: error.message || "Something went wrong",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Organization deleted",
+        description: `${orgDeleteTarget.name} and everything under it has been removed. You can now delete the owner's account if needed.`,
+      });
+
+      setOrgDeleteTarget(null);
+      loadUsers();
+    } catch {
+      toast({
+        title: "Error",
+        description: "Something went wrong",
+        variant: "destructive",
+      });
+    } finally {
+      setOrgDeleting(false);
+    }
   }
 
   async function confirmBulkDelete() {
@@ -644,6 +692,16 @@ export default function AdminUsersTab() {
                     >
                       <Pencil className="w-5 h-5 text-blue-600" />
                     </button>
+
+                    {user.ownedOrganization && (
+                      <button
+                        onClick={() => setOrgDeleteTarget({ id: user.ownedOrganization!.id, name: user.ownedOrganization!.name })}
+                        title={`Delete Organization "${user.ownedOrganization.name}"`}
+                        data-testid={`delete-organization-${user.ownedOrganization.id}`}
+                      >
+                        <Building2 className="w-5 h-5 text-destructive" />
+                      </button>
+                    )}
                     
                     {user.id !== currentUser?.id && (
                       <Button
@@ -775,6 +833,38 @@ export default function AdminUsersTab() {
               data-testid="bulk-delete-confirm"
             >
               {bulkDeleting ? "Deleting..." : `Delete ${selectedIds.size} Users`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!orgDeleteTarget} onOpenChange={(open) => !open && setOrgDeleteTarget(null)}>
+        <DialogContent data-testid="delete-organization-dialog">
+          <DialogHeader>
+            <DialogTitle>Delete Organization</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to permanently delete "{orgDeleteTarget?.name}"? This removes
+              the organization along with all of its sessions, registrations, match results, and
+              member/community relationships. This action cannot be undone. The owner's account
+              itself is not affected - you can delete it separately afterward if needed.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setOrgDeleteTarget(null)}
+              disabled={orgDeleting}
+              data-testid="delete-organization-cancel"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeleteOrganization}
+              disabled={orgDeleting}
+              data-testid="delete-organization-confirm"
+            >
+              {orgDeleting ? "Deleting..." : "Delete Organization"}
             </Button>
           </DialogFooter>
         </DialogContent>

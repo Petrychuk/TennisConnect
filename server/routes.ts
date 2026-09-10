@@ -684,16 +684,49 @@ export async function registerRoutes(app: Express): Promise<void> {
           }
         }
 
+        // Which organization (if any) each user owns - lets the admin
+        // Users table offer a "Delete Organization" action right next
+        // to a blocked "Delete User" attempt, instead of the block
+        // message pointing at an action ("transfer ownership or delete
+        // it") that had no actual UI anywhere to do.
+        const organizerIds = users.filter((u) => u.isOrganizer).map((u) => u.id);
+        const organizations = await storage.getOrganizationsByOwnerIds(organizerIds);
+        const organizationByOwner = new Map(organizations.map((o) => [o.ownerId, o]));
+
         const usersWithOrganizerStatus = users.map((u: any) => ({
           ...omitPassword(u),
           organizerRequestStatus: u.isOrganizer
             ? null
             : latestRequestByUser.get(u.id) || null,
+          ownedOrganization: organizationByOwner.get(u.id) || null,
         }));
 
         res.json(usersWithOrganizerStatus);
        }
      );
+
+    // Admin-only - deletes an organization and everything under it
+    // (see storage.deleteOrganizationCascade for the full cascade).
+    // Exists specifically so deleteUserAccount()'s "You own an
+    // organization - transfer ownership or delete it before deleting
+    // your account" message has an actual action behind it: there is
+    // still no self-service way to do this (a real owner would need
+    // this to be a much more careful, guarded flow - warning about
+    // active sessions, members, etc.), but an admin cleaning up a test
+    // account, or a genuinely abandoned/spam organization, needs a real
+    // tool rather than being stuck.
+    app.delete("/api/admin/organizations/:id",
+      requireAdmin,
+      async (req, res) => {
+        try {
+          await storage.deleteOrganizationCascade(req.params.id);
+          res.json({ success: true });
+        } catch (error) {
+          console.error(error);
+          res.status(500).json({ message: "Failed to delete organization" });
+        }
+      }
+    );
 
     app.patch("/api/admin/users/:id/approve",
       requireAdmin,
