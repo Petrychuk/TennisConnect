@@ -97,26 +97,31 @@ export async function sendVerificationEmail(
 ): Promise<SendEmailResult> {
   return sendEmail({
     to,
-    subject: "Confirm your TennisConnect email address",
+    subject: "🎾 One click and you're on the court - confirm your email",
     text:
-      `Welcome to TennisConnect! Please confirm your email address to activate your account.\n\n` +
-      `Confirm it here (link expires in 24 hours):\n${verifyUrl}\n\n` +
+      `Welcome to TennisConnect! You're one click away from finding your next hitting partner (or your next student).\n\n` +
+      `Confirm your email here (link expires in 24 hours):\n${verifyUrl}\n\n` +
       `If you didn't create a TennisConnect account, you can safely ignore this email - no account will be activated without confirmation.`,
     html: `
       <div style="font-family: -apple-system, Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
-        <h2 style="color: #111;">Confirm your email</h2>
-        <p style="color: #444; line-height: 1.5;">
-          Welcome to TennisConnect! Please confirm your email address to
-          activate your account. This link expires in 24 hours.
+        <p style="font-size: 32px; margin: 0 0 8px;">🎾</p>
+        <h2 style="color: #111; margin: 0 0 12px;">You're one click from the court</h2>
+        <p style="color: #444; line-height: 1.6;">
+          Welcome to TennisConnect! Confirm your email and you're in -
+          ready to find hitting partners, coaches, and sessions around
+          Sydney. This link expires in 24 hours, so don't let it sit in
+          the deuce court too long.
         </p>
-        <p style="margin: 24px 0;">
+        <p style="margin: 28px 0;">
           <a href="${verifyUrl}"
-             style="background:#16a34a; color:#fff; padding:12px 20px; border-radius:8px; text-decoration:none; font-weight:bold;">
+             style="background:#16a34a; color:#fff; padding:14px 24px; border-radius:999px; text-decoration:none; font-weight:bold; display:inline-block;">
             Confirm Email Address
           </a>
         </p>
-        <p style="color: #888; font-size: 13px;">
-          If you didn't create a TennisConnect account, you can safely ignore this email - no account will be activated without confirmation.
+        <p style="color: #888; font-size: 13px; line-height: 1.5;">
+          If you didn't create a TennisConnect account, you can safely
+          ignore this email - no account will be activated without
+          confirmation.
         </p>
       </div>
     `,
