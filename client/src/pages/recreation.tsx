@@ -69,6 +69,7 @@ export default function RecreationPage() {
       <div className="min-h-screen bg-background font-sans">
         <Navbar />
 
+        <main id="main-content">
         <div className="relative min-h-[26vh] md:min-h-[32vh] lg:min-h-[36vh] flex items-center justify-start overflow-hidden bg-black">
           <div
             className="absolute inset-0 z-0"
@@ -183,6 +184,7 @@ export default function RecreationPage() {
           )}
         </div>
 
+        </main>
         <Footer />
       </div>
     </>

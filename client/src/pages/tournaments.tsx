@@ -221,6 +221,7 @@ export default function TournamentsPage() {
       <div className="min-h-screen bg-background font-sans">
         <Navbar />
 
+        <main id="main-content">
         <div className="relative min-h-[50vh] flex items-center justify-center overflow-hidden bg-black">
           <div
             className="absolute inset-0 z-0 opacity-40"
@@ -317,6 +318,7 @@ export default function TournamentsPage() {
           </Tabs>
         </div>
 
+        </main>
         <Dialog open={registerModalOpen} onOpenChange={setRegisterModalOpen}>
           <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
