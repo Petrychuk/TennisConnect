@@ -267,6 +267,7 @@ export default function PartnersPage() {
 
       <Navbar />
 
+      <main id="main-content">
       {/* Intro / Hero Section + Filter bar share one photo backdrop that
           fades gently all the way past the filter bar, so the image
           dissolves under the top of the card grid instead of stopping
@@ -645,6 +646,7 @@ export default function PartnersPage() {
           totalPages={pagination?.totalPages ?? 1}
           onPageChange={handlePageChange}
         />
+      </main>
 
       <Dialog open={messageModalOpen} onOpenChange={setMessageModalOpen}>
         <DialogContent className="sm:max-w-md">
