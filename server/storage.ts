@@ -276,6 +276,8 @@ export interface IStorage {
   getOrganizationBySlug(slug: string): Promise<Organization | undefined>;
   getOrganizationById(id: string): Promise<Organization | undefined>;
   getOrganizationOwnedByUser(userId: string): Promise<Organization | undefined>;
+  getOrganizationsByOwnerIds(ownerIds: string[]): Promise<Pick<Organization, "id" | "ownerId" | "name" | "slug">[]>;
+  deleteOrganizationCascade(orgId: string): Promise<void>;
   updateOrganization(id: string, updates: Partial<InsertOrganization>): Promise<Organization>;
 
   // ===== SESSIONS =====
@@ -413,14 +415,37 @@ export class DatabaseStorage implements IStorage {
   ): Promise<{ deleted: string[]; failed: { id: string; message: string }[] }> {
     if (userIds.length === 0) return { deleted: [], failed: [] };
 
-    // Same two blocking checks as before (owns an organization / has
-    // created sessions), just evaluated for the whole batch in 2
-    // queries total instead of 2 per user.
+    // Owning an organization is only actually a problem if that
+    // organization has sessions under it - a session someone might have
+    // registered for, a match with a result recorded, real activity
+    // other people are relying on. An organization with none is exactly
+    // as harmless to remove as any other empty row this account owns,
+    // so it's cascaded away along with the user (cascadeDeleteOrganizations,
+    // below, inside the same transaction) instead of blocking the whole
+    // delete purely on the organization existing at all.
     const ownedOrgRows = await db
-      .select({ ownerId: organizations.ownerId })
+      .select({ id: organizations.id, ownerId: organizations.ownerId })
       .from(organizations)
       .where(inArray(organizations.ownerId, userIds));
-    const ownedOrgIds = new Set(ownedOrgRows.map((r) => r.ownerId));
+
+    const ownedOrgIds = ownedOrgRows.map((r) => r.id);
+    const sessionOrgRows = ownedOrgIds.length > 0
+      ? await db
+          .select({ organizationId: tennisSessions.organizationId })
+          .from(tennisSessions)
+          .where(inArray(tennisSessions.organizationId, ownedOrgIds))
+      : [];
+    const orgIdsWithSessions = new Set(sessionOrgRows.map((r) => r.organizationId));
+
+    const blockedOwnerIds = new Set(
+      ownedOrgRows.filter((r) => orgIdsWithSessions.has(r.id)).map((r) => r.ownerId)
+    );
+    // Session-less organizations owned by someone about to be deleted -
+    // cascaded away in the same transaction below rather than left
+    // dangling (organizations.ownerId is NOT NULL).
+    const emptyOrgIdsToCascade = ownedOrgRows
+      .filter((r) => !orgIdsWithSessions.has(r.id))
+      .map((r) => r.id);
 
     const createdSessionRows = await db
       .select({ createdBy: tennisSessions.createdBy })
@@ -432,8 +457,8 @@ export class DatabaseStorage implements IStorage {
     const allowedIds: string[] = [];
 
     for (const id of userIds) {
-      if (ownedOrgIds.has(id)) {
-        failed.push({ id, message: "You own an organization - transfer ownership or delete it before deleting your account" });
+      if (blockedOwnerIds.has(id)) {
+        failed.push({ id, message: "You own an organization with active sessions - these need to be cancelled or reassigned, or ownership transferred, before deleting your account" });
       } else if (createdSessionIds.has(id)) {
         failed.push({ id, message: "You've created sessions - these need to be cancelled or reassigned before deleting your account" });
       } else {
@@ -447,6 +472,10 @@ export class DatabaseStorage implements IStorage {
 
     try {
       await db.transaction(async (tx) => {
+        if (emptyOrgIdsToCascade.length > 0) {
+          await this.cascadeDeleteOrganizations(tx, emptyOrgIdsToCascade);
+        }
+
         await tx
           .delete(messages)
           .where(or(inArray(messages.senderUserId, allowedIds), inArray(messages.recipientId, allowedIds)));
@@ -2186,6 +2215,93 @@ export class DatabaseStorage implements IStorage {
       .from(organizations)
       .where(eq(organizations.ownerId, userId));
     return organization;
+  }
+
+  // Batched version of getOrganizationOwnedByUser, for the admin users
+  // list (server/routes.ts GET /api/admin/users) - one query for every
+  // owner in the current page instead of one per row, same reasoning as
+  // the existing latestRequestByUser merge that route already does for
+  // organizer requests.
+  async getOrganizationsByOwnerIds(
+    ownerIds: string[]
+  ): Promise<Pick<Organization, "id" | "ownerId" | "name" | "slug">[]> {
+    if (ownerIds.length === 0) return [];
+    return await db
+      .select({
+        id: organizations.id,
+        ownerId: organizations.ownerId,
+        name: organizations.name,
+        slug: organizations.slug,
+      })
+      .from(organizations)
+      .where(inArray(organizations.ownerId, ownerIds));
+  }
+
+  // Admin-only hard delete of an organization and everything under it -
+  // there was previously no way to act on deleteUserAccount()'s own
+  // "You own an organization - transfer ownership or delete it..."
+  // message at all: no transfer-ownership feature, and no delete-
+  // organization endpoint anywhere, self-service or admin. An org owner
+  // blocked from deleting their account had no actual path forward.
+  //
+  // Cascades through every table that references this organization or
+  // one of its sessions - built the same way deleteUserAccounts' table
+  // list was, by tracing every `.references(() => organizations.id)`
+  // and `.references(() => tennisSessions.id)` in shared/schema.ts.
+  // Nulls attribution-only columns (tournamentHistory.sessionId,
+  // messages.relatedSessionId/relatedOrganizationId,
+  // tennisSessions.parentSessionId) rather than deleting the rows that
+  // hold them, same "attribution isn't ownership" reasoning as
+  // deleteUserAccounts' reportedBy/confirmedBy/reviewedBy handling -
+  // e.g. a player's own tournamentHistory entry isn't this
+  // organization's to remove just because it once linked to a session
+  // that lived here.
+  //
+  // Also used by deleteUserAccounts (above) to clean up a session-less
+  // organization automatically when its owner is being deleted - hence
+  // taking a query executor (qb) rather than assuming db directly: that
+  // call needs to run inside the SAME transaction as the user deletion,
+  // not a separate one, while this method's own public entry point
+  // below opens its own.
+  private async cascadeDeleteOrganizations(
+    qb: typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0],
+    orgIds: string[]
+  ): Promise<void> {
+    if (orgIds.length === 0) return;
+
+    const sessionRows = await qb
+      .select({ id: tennisSessions.id })
+      .from(tennisSessions)
+      .where(inArray(tennisSessions.organizationId, orgIds));
+    const sessionIds = sessionRows.map((r) => r.id);
+
+    if (sessionIds.length > 0) {
+      await qb.update(tournamentHistory).set({ sessionId: null }).where(inArray(tournamentHistory.sessionId, sessionIds));
+      await qb.update(messages).set({ relatedSessionId: null }).where(inArray(messages.relatedSessionId, sessionIds));
+      // A division session's parentSessionId could point at a session
+      // in this batch (the tournament "container") - nulled first so
+      // deleting the sessions themselves below never trips over a
+      // self-referencing FK, regardless of delete order.
+      await qb.update(tennisSessions).set({ parentSessionId: null }).where(inArray(tennisSessions.parentSessionId, sessionIds));
+
+      await qb.delete(matches).where(inArray(matches.sessionId, sessionIds));
+      await qb.delete(sessionRounds).where(inArray(sessionRounds.sessionId, sessionIds));
+      await qb.delete(registrations).where(inArray(registrations.sessionId, sessionIds));
+
+      await qb.delete(tennisSessions).where(inArray(tennisSessions.id, sessionIds));
+    }
+
+    await qb.update(messages).set({ relatedOrganizationId: null }).where(inArray(messages.relatedOrganizationId, orgIds));
+    await qb.delete(communityMemberships).where(inArray(communityMemberships.organizationId, orgIds));
+    await qb.delete(organizationMembers).where(inArray(organizationMembers.organizationId, orgIds));
+
+    await qb.delete(organizations).where(inArray(organizations.id, orgIds));
+  }
+
+  async deleteOrganizationCascade(orgId: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      await this.cascadeDeleteOrganizations(tx, [orgId]);
+    });
   }
 
   async updateOrganization(id: string, updates: Partial<InsertOrganization>): Promise<Organization> {
