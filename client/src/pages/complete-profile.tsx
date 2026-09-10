@@ -279,7 +279,7 @@ export default function CompleteProfilePage() {
         canonical="/complete-profile"
         noIndex
       />
-      <div className="min-h-screen bg-linear-to-b from-background to-muted/20 py-6 px-3 sm:py-12 sm:px-4">
+      <main id="main-content" className="min-h-screen bg-linear-to-b from-background to-muted/20 py-6 px-3 sm:py-12 sm:px-4">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-6 sm:mb-8">
             <h1 className="text-2xl sm:text-3xl font-bold mb-2">Complete Your Profile</h1>
@@ -628,7 +628,7 @@ export default function CompleteProfilePage() {
             </CardContent>
           </Card>
         </div>
-      </div>
+      </main>
     </>
   );
 }

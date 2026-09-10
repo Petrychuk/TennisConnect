@@ -118,7 +118,7 @@ export default function VerifyEmailPage() {
       <>
         {seo}
         <div className="min-h-screen flex">
-          <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 lg:px-16 py-12 bg-background">
+          <main id="main-content" className="w-full lg:w-1/2 flex flex-col justify-center px-8 lg:px-16 py-12 bg-background">
             <div className="max-w-md mx-auto w-full">
               <Link href="/auth" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors">
                 <ArrowLeft className="w-4 h-4" />
@@ -126,7 +126,7 @@ export default function VerifyEmailPage() {
               </Link>
               {children}
             </div>
-          </div>
+          </main>
 
           <div
             className="hidden lg:block lg:w-1/2 bg-cover bg-center relative"
@@ -161,7 +161,7 @@ export default function VerifyEmailPage() {
   if (state === "success") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <div className="max-w-md w-full text-center" data-testid="verify-email-success">
+        <main id="main-content" className="max-w-md w-full text-center" data-testid="verify-email-success">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="w-8 h-8 text-green-500" />
           </div>
@@ -178,7 +178,7 @@ export default function VerifyEmailPage() {
             </button>
           )}
           <TennisBallSpinner />
-        </div>
+        </main>
       </div>
     );
   }
