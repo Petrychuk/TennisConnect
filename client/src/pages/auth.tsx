@@ -72,6 +72,17 @@ export default function AuthPage() {
       const user = await fetchCurrentUser().catch(() => null);
       if (cancelled || !user) return;
 
+      // Guards against a stale session from someone else in the same
+      // browser: without this, if this browser already had a valid
+      // session for a different account (a previous person's login
+      // they didn't sign out of, or - in this app's own E2E suite -
+      // registering two test users back to back in one browser
+      // context), the mere presence of ANY authenticated user would be
+      // read as "verification succeeded" and redirect using THEIR
+      // profile, not the one actually shown on this "check your email"
+      // screen.
+      if (user.email?.toLowerCase() !== waitingEmail.toLowerCase()) return;
+
       const redirect = consumePostVerifyRedirect();
       const target = redirect
         ? (() => {
