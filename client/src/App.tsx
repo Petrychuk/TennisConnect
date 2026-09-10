@@ -19,6 +19,7 @@ import { ChunkErrorBoundary } from "@/components/chunk-error-boundary";
 // eager since they're the two places almost every visit touches first.
 const AuthPage = lazy(() => import("@/pages/auth"));
 const ResetPasswordPage = lazy(() => import("@/pages/reset-password"));
+const VerifyEmailPage = lazy(() => import("@/pages/verify-email"));
 const CoachProfile = lazy(() => import("@/pages/coach-profile"));
 const PlayerProfile = lazy(() => import("@/pages/player-profile"));
 const PlayerRegistration = lazy(() => import("@/pages/player-registration"));
@@ -74,6 +75,7 @@ function Router() {
         <Route path="/" component={Home} />
         <Route path="/auth" component={AuthPage} />
         <Route path="/reset-password" component={ResetPasswordPage} />
+        <Route path="/verify-email" component={VerifyEmailPage} />
         <Route path="/complete-profile" component={CompleteProfilePage} />
         <Route path="/player/register" component={PlayerRegistration} />
         <Route path="/player/profile" component={PlayerProfile} />

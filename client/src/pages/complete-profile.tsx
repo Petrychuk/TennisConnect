@@ -188,112 +188,80 @@ export default function CompleteProfilePage() {
   };
 
   const onCoachSubmit = async (data: z.infer<typeof coachProfileSchema>) => {
-  console.log("🚀 SUBMIT START", data);
+    setIsLoading(true);
 
-  setIsLoading(true);
+    try {
+      // 1. Save coach profile
+      const { trainingLocations, ...rest } = data;
+      const profileData = {
+        ...rest,
+        // Backend whitelist (coachProfileUpdateSchema) expects a real
+        // array here, same split-on-comma treatment as the player form's
+        // preferredCourts - the field maps to the same coachProfiles.
+        // locations column coach-profile.tsx's own suburb picker already
+        // writes to, just filled in during onboarding this time.
+        locations: trainingLocations
+          ? trainingLocations.split(",").map((c) => c.trim()).filter(Boolean)
+          : [],
+      };
 
-  try {
-    // 🔹 1. Save coach profile
-    console.log("➡️ Step 1: Saving coach profile");
+      const res = await fetch("/api/me/coach-profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(profileData),
+        credentials: "include",
+      });
 
-    const { trainingLocations, ...rest } = data;
-    const profileData = {
-      ...rest,
-      // Backend whitelist (coachProfileUpdateSchema) expects a real
-      // array here, same split-on-comma treatment as the player form's
-      // preferredCourts - the field maps to the same coachProfiles.
-      // locations column coach-profile.tsx's own suburb picker already
-      // writes to, just filled in during onboarding this time.
-      locations: trainingLocations
-        ? trainingLocations.split(",").map((c) => c.trim()).filter(Boolean)
-        : [],
-    };
+      if (!res.ok) throw new Error(await res.text());
 
-    const res = await fetch("/api/me/coach-profile", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(profileData),
-      credentials: "include",
-    });
+      // 2. Complete profile
+      const completeRes = await fetch("/api/me/complete-profile", {
+        method: "POST",
+        credentials: "include",
+      });
 
-    const text = await res.text();
-    console.log("✅ coach-profile response:", text);
+      if (!completeRes.ok) throw new Error(await completeRes.text());
 
-    if (!res.ok) {
-      console.error("❌ Step 1 FAILED");
-      throw new Error(text);
+      toast({
+        title: "Profile submitted",
+        description: "Your profile has been submitted for review and will appear in the directory once approved.",
+      });
+
+      // 3. Fetch fresh user
+      const userRes = await fetch("/api/auth/me", {
+        credentials: "include",
+      });
+
+      if (!userRes.ok) throw new Error(await userRes.text());
+
+      const freshUser = await userRes.json();
+
+      if (!freshUser?.slug) {
+        throw new Error("Slug missing");
+      }
+
+      // 4. Redirect - a hard navigation (window.location.href), same as
+      // onPlayerSubmit above, and deliberately NOT wouter's setLocation.
+      // The auth-context's `user` (still profileCompleted: false at this
+      // point - nothing here calls setUser()) is what coach-profile.tsx's
+      // own guard checks to decide whether to bounce back to
+      // /complete-profile. A soft client-side navigation keeps that
+      // stale context alive across the route change, so the guard fires
+      // and sends them right back to a blank complete-profile form. A
+      // full reload re-runs auth-context's init fetch and picks up the
+      // just-saved profileCompleted: true instead.
+      window.location.href = `/coach/${freshUser.slug}`;
+
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save profile",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
-
-    console.log("✅ Step 1 SUCCESS");
-
-    // 🔹 2. Complete profile
-    console.log("➡️ Step 2: Completing profile");
-
-    const completeRes = await fetch("/api/me/complete-profile", {
-      method: "POST",
-      credentials: "include",
-    });
-
-    console.log("complete-profile status:", completeRes.status);
-
-    if (!completeRes.ok) {
-      const err = await completeRes.text();
-      console.error("❌ Step 2 FAILED:", err);
-      throw new Error(err);
-    }
-
-    console.log("✅ Step 2 SUCCESS");
-
-    toast({
-      title: "Profile submitted",
-      description: "Your profile has been submitted for review and will appear in the directory once approved.",
-    });
-
-    // 🔹 4. Fetch fresh user
-    console.log("➡️ Step 4: Fetching fresh user");
-
-    const userRes = await fetch("/api/auth/me", {
-      credentials: "include",
-    });
-
-    console.log("auth/me status:", userRes.status);
-
-    if (!userRes.ok) {
-      const errText = await userRes.text();
-      console.error("❌ Step 4 FAILED:", errText);
-      return;
-    }
-
-    const freshUser = await userRes.json();
-    console.log("✅ freshUser:", freshUser);
-
-    if (!freshUser?.slug) {
-      console.error("❌ Step 4 FAILED: slug missing");
-      return;
-    }
-
-    console.log("✅ Step 4 SUCCESS");
-
-    // 🔹 5. Redirect
-    console.log("➡️ Step 5: Redirecting to", `/coach/${freshUser.slug}`);
-
-    setLocation(`/coach/${freshUser.slug}`);
-
-    console.log("❗ If you see this log — redirect DID NOT happen");
-
-  } catch (error: any) {
-    console.error("💥 SUBMIT ERROR:", error);
-
-    toast({
-      title: "Error",
-      description: error.message || "Failed to save profile",
-      variant: "destructive",
-    });
-  } finally {
-    console.log("🏁 SUBMIT END");
-    setIsLoading(false);
-  }
-};
+  };
 
   if (loading) {
     return (

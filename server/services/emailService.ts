@@ -14,6 +14,31 @@
 
 const RESEND_API_URL = "https://api.resend.com/emails";
 
+// Same wordmark as the navbar (client/src/components/navbar.tsx:
+// `Tennis<span className="text-[hsl(var(--tennis-ball))]">Connect</span>`
+// + a small dot in that same colour) - reproduced here as inline-styled
+// text, not an <img>, since most email clients block remote images by
+// default until the person clicks "show images", which would mean the
+// very first thing they see is a broken-image icon instead of the
+// logo. Text always renders. #C7F53D is hsl(75, 90%, 60%) - the
+// --tennis-ball CSS var - converted to hex since HSL() function syntax
+// isn't reliably supported across email clients (Outlook desktop's
+// Word rendering engine in particular).
+//
+// 'Syne' (client/src/index.css --font-display) listed first for the
+// rare client that respects it - most strip <head>/<link> entirely from
+// received HTML email, so this falls back to the safe stack in
+// practice, but it's free to list and costs nothing when ignored.
+// The dot is inline-block with no vertical-align by default, which
+// aligns its BOTTOM edge to the text baseline - for a small circle that
+// reads as sitting noticeably low next to cap-height letters.
+// vertical-align: middle fixes that.
+const EMAIL_LOGO_HTML = `
+  <div style="font-family: 'Syne', -apple-system, Helvetica, Arial, sans-serif; font-size: 25px; font-weight: 800; margin: 0 0 24px;">
+    <span style="color:#111;">Tennis</span><span style="color:#C7F53D;">Connect</span><span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:#C7F53D; margin-left:3px; vertical-align:middle;"></span>
+  </div>
+`;
+
 interface SendEmailResult {
   ok: boolean;
   error?: string;
@@ -91,6 +116,45 @@ async function sendEmail(params: {
   }
 }
 
+export async function sendVerificationEmail(
+  to: string,
+  verifyUrl: string
+): Promise<SendEmailResult> {
+  return sendEmail({
+    to,
+    subject: "🎾 One click and you're on the court - confirm your email",
+    text:
+      `Welcome to TennisConnect! You're one click away from finding your next hitting partner (or your next student).\n\n` +
+      `Confirm your email here (link expires in 24 hours):\n${verifyUrl}\n\n` +
+      `If you didn't create a TennisConnect account, you can safely ignore this email - no account will be activated without confirmation.`,
+    html: `
+      <div style="font-family: -apple-system, Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+        ${EMAIL_LOGO_HTML}
+        <h2 style="color: #111; margin: 0 0 12px;">
+          <span style="font-size: 22px; vertical-align: middle; margin-right: 8px;">🎾</span>You're one click from the court
+        </h2>
+        <p style="color: #444; line-height: 1.6;">
+          Welcome to TennisConnect! Confirm your email and you're in -
+          ready to find hitting partners, coaches, and sessions around
+          Sydney. This link expires in 24 hours, so don't let it sit in
+          the deuce court too long.
+        </p>
+        <p style="margin: 28px 0;">
+          <a href="${verifyUrl}"
+             style="background:#90C610; color:#fff; padding:14px 24px; border-radius:999px; text-decoration:none; font-weight:bold; display:inline-block;">
+            Confirm Email Address
+          </a>
+        </p>
+        <p style="color: #888; font-size: 13px; line-height: 1.5;">
+          If you didn't create a TennisConnect account, you can safely
+          ignore this email - no account will be activated without
+          confirmation.
+        </p>
+      </div>
+    `,
+  });
+}
+
 export async function sendPasswordResetEmail(
   to: string,
   resetUrl: string
@@ -104,6 +168,7 @@ export async function sendPasswordResetEmail(
       `If you didn't request this, you can safely ignore this email.`,
     html: `
       <div style="font-family: -apple-system, Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+        ${EMAIL_LOGO_HTML}
         <h2 style="color: #111;">Reset your password</h2>
         <p style="color: #444; line-height: 1.5;">
           We received a request to reset your TennisConnect password.
@@ -111,7 +176,7 @@ export async function sendPasswordResetEmail(
         </p>
         <p style="margin: 24px 0;">
           <a href="${resetUrl}"
-             style="background:#16a34a; color:#fff; padding:12px 20px; border-radius:8px; text-decoration:none; font-weight:bold;">
+             style="background:#90C610; color:#fff; padding:12px 20px; border-radius:8px; text-decoration:none; font-weight:bold;">
             Reset Password
           </a>
         </p>
