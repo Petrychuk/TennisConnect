@@ -1484,9 +1484,11 @@ export default function PlayerProfile() {
                     ) : (
                       <Card>
                         <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
-                            <MessageCircle className="w-5 h-5 text-primary" />
-                            Get in Touch
+                          <CardTitle asChild className="flex items-center gap-2">
+                            <h2>
+                              <MessageCircle className="w-5 h-5 text-primary" />
+                              Get in Touch
+                            </h2>
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-6">
