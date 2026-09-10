@@ -530,10 +530,20 @@ export class DatabaseStorage implements IStorage {
 
   // ===== ADMIN USERS =====
 
+  // Unverified accounts never appear here - the whole point of email
+  // verification is that an account isn't "real" until its owner has
+  // proven they control that address. Without this filter, anyone
+  // (or any bot) hitting /api/auth/register in a loop would flood this
+  // queue with pending-approval rows for addresses nobody has
+  // confirmed - exactly the spam this admin panel shouldn't have to
+  // wade through. getAllUsers() has exactly one caller (the admin
+  // users list), so this is safe to filter at the source rather than
+  // in the route.
   async getAllUsers() {
     return await db
       .select()
       .from(users)
+      .where(eq(users.emailVerified, true))
       .orderBy(desc(users.createdAt));
   }
 
