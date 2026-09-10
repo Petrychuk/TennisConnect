@@ -130,6 +130,7 @@ export interface IStorage {
   updateUserPassword(id: string, hashedPassword: string): Promise<void>;
   getUserBySlug(slug: string): Promise<User | undefined>;
   deleteUserAccount(userId: string): Promise<void>;
+  deleteUserAccounts(userIds: string[]): Promise<{ deleted: string[]; failed: { id: string; message: string }[] }>;
   getAllUsers(): Promise<typeof users.$inferSelect[]>;
   approveUser(id: string): Promise<typeof users.$inferSelect>;
   deleteUserByAdmin(userId: string): Promise<void>;
@@ -394,151 +395,118 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, id));
   }
 
+  // Batched version of deleteUserAccount() below - the same cleanup,
+  // but every step operates on ALL of userIds at once (inArray) instead
+  // of the single-user version's approach of running the same ~18
+  // queries once per user. That difference only matters at scale, but
+  // it matters a lot: deleting 190 accounts one at a time meant ~3,400
+  // sequential round trips through the pool - each one small, but end
+  // to end that's minutes with no feedback, indistinguishable from a
+  // hung request. Batched, it's the same ~18 queries regardless of
+  // whether 1 or 1,000 ids are in userIds.
+  //
+  // deleteUserAccount(userId) is now a thin wrapper around this with a
+  // single-element array - one implementation, not two copies of the
+  // same 18 queries to keep in sync by hand.
+  async deleteUserAccounts(
+    userIds: string[]
+  ): Promise<{ deleted: string[]; failed: { id: string; message: string }[] }> {
+    if (userIds.length === 0) return { deleted: [], failed: [] };
+
+    // Same two blocking checks as before (owns an organization / has
+    // created sessions), just evaluated for the whole batch in 2
+    // queries total instead of 2 per user.
+    const ownedOrgRows = await db
+      .select({ ownerId: organizations.ownerId })
+      .from(organizations)
+      .where(inArray(organizations.ownerId, userIds));
+    const ownedOrgIds = new Set(ownedOrgRows.map((r) => r.ownerId));
+
+    const createdSessionRows = await db
+      .select({ createdBy: tennisSessions.createdBy })
+      .from(tennisSessions)
+      .where(inArray(tennisSessions.createdBy, userIds));
+    const createdSessionIds = new Set(createdSessionRows.map((r) => r.createdBy));
+
+    const failed: { id: string; message: string }[] = [];
+    const allowedIds: string[] = [];
+
+    for (const id of userIds) {
+      if (ownedOrgIds.has(id)) {
+        failed.push({ id, message: "You own an organization - transfer ownership or delete it before deleting your account" });
+      } else if (createdSessionIds.has(id)) {
+        failed.push({ id, message: "You've created sessions - these need to be cancelled or reassigned before deleting your account" });
+      } else {
+        allowedIds.push(id);
+      }
+    }
+
+    if (allowedIds.length === 0) {
+      return { deleted: [], failed };
+    }
+
+    try {
+      await db.transaction(async (tx) => {
+        await tx
+          .delete(messages)
+          .where(or(inArray(messages.senderUserId, allowedIds), inArray(messages.recipientId, allowedIds)));
+
+        await tx.delete(tournamentHistory).where(inArray(tournamentHistory.userId, allowedIds));
+        await tx.delete(marketplaceItems).where(inArray(marketplaceItems.userId, allowedIds));
+        await tx.delete(playerProfiles).where(inArray(playerProfiles.userId, allowedIds));
+        await tx.delete(coachProfiles).where(inArray(coachProfiles.userId, allowedIds));
+
+        await tx.delete(organizerRequests).where(inArray(organizerRequests.userId, allowedIds));
+        await tx
+          .update(organizerRequests)
+          .set({ reviewedBy: null })
+          .where(inArray(organizerRequests.reviewedBy, allowedIds));
+
+        await tx.delete(organizationMembers).where(inArray(organizationMembers.userId, allowedIds));
+        await tx.delete(registrations).where(inArray(registrations.userId, allowedIds));
+        await tx.delete(clubFollows).where(inArray(clubFollows.userId, allowedIds));
+        await tx.delete(clubFavorites).where(inArray(clubFavorites.userId, allowedIds));
+        await tx.delete(communityMemberships).where(inArray(communityMemberships.userId, allowedIds));
+
+        await tx.update(matches).set({ reportedBy: null }).where(inArray(matches.reportedBy, allowedIds));
+        await tx.update(matches).set({ confirmedBy: null }).where(inArray(matches.confirmedBy, allowedIds));
+
+        await tx
+          .update(tennisSessions)
+          .set({ reviewedBy: null })
+          .where(inArray(tennisSessions.reviewedBy, allowedIds));
+
+        await tx.update(payments).set({ userId: null }).where(inArray(payments.userId, allowedIds));
+
+        await tx.delete(passwordResetTokens).where(inArray(passwordResetTokens.userId, allowedIds));
+        await tx.delete(emailVerificationTokens).where(inArray(emailVerificationTokens.userId, allowedIds));
+
+        await tx.delete(users).where(inArray(users.id, allowedIds));
+      });
+    } catch (error) {
+      // The whole batch transaction rolled back - none of allowedIds
+      // actually got deleted, so every one of them is reported failed
+      // rather than claiming success for a transaction that never
+      // committed. Logged here (not just left for the route to log)
+      // since this is the one path that can fail for a reason that
+      // ISN'T one of the two known, already-classified blocks above -
+      // e.g. exactly the kind of missed-FK gap emailVerificationTokens
+      // was until a few commits ago.
+      console.error("deleteUserAccounts: batch transaction failed for", allowedIds.length, "user(s)", error);
+      return {
+        deleted: [],
+        failed: [...failed, ...allowedIds.map((id) => ({ id, message: "Failed to delete user" }))],
+      };
+    }
+
+    return { deleted: allowedIds, failed };
+  }
+
   async deleteUserAccount(userId: string): Promise<void> {
-    // Owning an organization or having created sessions means real
-    // infrastructure other people are actively using (members,
-    // registrations, live matches) sits on this account - silently
-    // cascading that deletion would be far more destructive than a
-    // self-service "delete my account" click should ever cause, and
-    // both organizations.ownerId and tennisSessions.createdBy are
-    // NOT NULL, so there's no "just null it out" option either. Blocked
-    // with a clear, actionable message instead of either crashing on
-    // the FK constraint (the previous behavior) or cascading silently.
-    const [ownedOrg] = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.ownerId, userId)).limit(1);
-    if (ownedOrg) {
-      throw new Error("You own an organization - transfer ownership or delete it before deleting your account");
+    const { failed } = await this.deleteUserAccounts([userId]);
+    if (failed.length > 0) {
+      throw new Error(failed[0].message);
     }
-    const [createdSession] = await db.select({ id: tennisSessions.id }).from(tennisSessions).where(eq(tennisSessions.createdBy, userId)).limit(1);
-    if (createdSession) {
-      throw new Error("You've created sessions - these need to be cancelled or reassigned before deleting your account");
-    }
-
-    await db.transaction(async (tx) => {
-  
-      // Messages
-      await tx
-        .delete(messages)
-        .where(
-          or(
-            eq(messages.senderUserId, userId),
-            eq(messages.recipientId, userId)
-          )
-        );
-  
-      // Tournament History
-      await tx
-        .delete(tournamentHistory)
-        .where(eq(tournamentHistory.userId, userId));
-  
-      // Marketplace
-      await tx
-        .delete(marketplaceItems)
-        .where(eq(marketplaceItems.userId, userId));
-  
-      // Player Profile
-      await tx
-        .delete(playerProfiles)
-        .where(eq(playerProfiles.userId, userId));
-  
-      // Coach Profile
-      await tx
-        .delete(coachProfiles)
-        .where(eq(coachProfiles.userId, userId));
-
-      // Organizer Requests - their own requests to become an organizer
-      // (pending, approved, or rejected). reviewedBy is a separate,
-      // nullable "an admin reviewed someone ELSE's request" column -
-      // nulled rather than deleted, since it's not this user's own row.
-      await tx
-        .delete(organizerRequests)
-        .where(eq(organizerRequests.userId, userId));
-      await tx
-        .update(organizerRequests)
-        .set({ reviewedBy: null })
-        .where(eq(organizerRequests.reviewedBy, userId));
-
-      // Organization membership (staff/member role on someone else's
-      // org) - their own membership, not the org itself.
-      await tx
-        .delete(organizationMembers)
-        .where(eq(organizationMembers.userId, userId));
-
-      // Session registrations - their own signups.
-      await tx
-        .delete(registrations)
-        .where(eq(registrations.userId, userId));
-
-      // Club follows/favorites - their own.
-      await tx
-        .delete(clubFollows)
-        .where(eq(clubFollows.userId, userId));
-      await tx
-        .delete(clubFavorites)
-        .where(eq(clubFavorites.userId, userId));
-
-      // Community membership requests - their own.
-      await tx
-        .delete(communityMemberships)
-        .where(eq(communityMemberships.userId, userId));
-
-      // TC Live match attribution - nulled, not deleted: the match
-      // result itself (and the session it belongs to) isn't this
-      // user's to remove just because they reported or confirmed a
-      // score in it.
-      await tx
-        .update(matches)
-        .set({ reportedBy: null })
-        .where(eq(matches.reportedBy, userId));
-      await tx
-        .update(matches)
-        .set({ confirmedBy: null })
-        .where(eq(matches.confirmedBy, userId));
-
-      // Session review attribution (admin moderation) - same reasoning
-      // as organizerRequests.reviewedBy above.
-      await tx
-        .update(tennisSessions)
-        .set({ reviewedBy: null })
-        .where(eq(tennisSessions.reviewedBy, userId));
-
-      // Payments (Back the Rally support, etc.) - userId is nulled, NOT
-      // the row deleted: payments.userId is a nullable "who paid, if
-      // logged in" attribution (payerEmail is always set independently),
-      // and this table is a permanent financial record with no delete
-      // path at all (5-year ATO retention - see schema comment on
-      // `payments`). Left unhandled, this FK was the actual cause of the
-      // admin "Failed to delete user" 500s: any user who'd made a
-      // support payment while logged in - which "marked as organiser"
-      // test/smoke-test accounts are exactly the kind of account likely
-      // to have exercised that flow - blocked the delete with an
-      // unhandled FK constraint violation.
-      await tx
-        .update(payments)
-        .set({ userId: null })
-        .where(eq(payments.userId, userId));
-
-      // Password Reset Tokens
-      await tx
-        .delete(passwordResetTokens)
-        .where(eq(passwordResetTokens.userId, userId));
-
-      // Email Verification Tokens - missed when this feature shipped.
-      // emailVerificationTokens.userId is NOT NULL with no ON DELETE
-      // CASCADE, so leaving this out meant deleting ANY account that
-      // had ever gone through registration hit a raw FK constraint
-      // violation instead of a clean delete - the token row isn't
-      // removed just because it got used (see
-      // server/services/emailVerification.ts), so every verified
-      // account still has one sitting here.
-      await tx
-        .delete(emailVerificationTokens)
-        .where(eq(emailVerificationTokens.userId, userId));
-  
-      // User (всегда последним)
-      await tx
-        .delete(users)
-        .where(eq(users.id, userId));
-    });
   }
 
   // ===== ADMIN USERS =====
