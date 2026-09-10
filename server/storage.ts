@@ -9,6 +9,7 @@ import {
   clubFavorites,
   messages,
   passwordResetTokens,
+  emailVerificationTokens,
   supportRequests,
   newsletterSubscribers,
   tournaments,
@@ -520,6 +521,18 @@ export class DatabaseStorage implements IStorage {
       await tx
         .delete(passwordResetTokens)
         .where(eq(passwordResetTokens.userId, userId));
+
+      // Email Verification Tokens - missed when this feature shipped.
+      // emailVerificationTokens.userId is NOT NULL with no ON DELETE
+      // CASCADE, so leaving this out meant deleting ANY account that
+      // had ever gone through registration hit a raw FK constraint
+      // violation instead of a clean delete - the token row isn't
+      // removed just because it got used (see
+      // server/services/emailVerification.ts), so every verified
+      // account still has one sitting here.
+      await tx
+        .delete(emailVerificationTokens)
+        .where(eq(emailVerificationTokens.userId, userId));
   
       // User (всегда последним)
       await tx
