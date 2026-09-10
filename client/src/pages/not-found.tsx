@@ -10,7 +10,7 @@ export default function NotFound() {
         description="The page you are looking for could not be found."
         noIndex
       />
-      <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
+      <main id="main-content" className="min-h-screen w-full flex items-center justify-center bg-gray-50">
         <Card className="w-full max-w-md mx-4">
           <CardContent className="pt-6">
             <div className="flex mb-4 gap-2">
@@ -23,7 +23,7 @@ export default function NotFound() {
             </p>
           </CardContent>
         </Card>
-      </div>
+      </main>
     </>
   );
 }

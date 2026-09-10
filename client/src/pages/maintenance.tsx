@@ -21,7 +21,7 @@ export default function Maintenance() {
         canonical="/maintenance"
       />
 
-      <div className="relative min-h-screen w-full overflow-hidden bg-black text-white">
+      <main id="main-content" className="relative min-h-screen w-full overflow-hidden bg-black text-white">
         {/* Background photo */}
         <img
           src="/assets/images/maintenance-hero.jpg"
@@ -140,7 +140,7 @@ export default function Maintenance() {
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </>
   );
 }
