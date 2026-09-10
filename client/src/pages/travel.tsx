@@ -93,6 +93,7 @@ export default function TravelPage() {
     <div className="min-h-screen bg-background font-sans">
       <Navbar />
 
+      <main id="main-content">
       <div className="relative overflow-hidden">
         <img
           src={travelHero}
@@ -284,6 +285,7 @@ export default function TravelPage() {
         )}
       </div>
 
+      </main>
       <Footer />
     </div>
     </>

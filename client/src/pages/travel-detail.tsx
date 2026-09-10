@@ -50,14 +50,14 @@ export default function TravelDetailPage() {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Navbar />
-        <div className="flex-1 flex items-center justify-center">
+        <main id="main-content" className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-3xl font-bold mb-4">Package not found</h1>
             <Link href="/travels">
               <Button className="bg-primary text-primary-foreground">Back to packages</Button>
             </Link>
           </div>
-        </div>
+        </main>
         <Footer />
       </div>
     );
@@ -67,7 +67,7 @@ export default function TravelDetailPage() {
     return (
       <div className="min-h-screen bg-background font-sans">
         <Navbar />
-        <div className="container mx-auto px-4 pt-28 pb-16 max-w-4xl animate-pulse">
+        <main id="main-content" className="container mx-auto px-4 pt-28 pb-16 max-w-4xl animate-pulse">
           <div className="h-4 w-24 bg-muted rounded mb-6" />
           <div className="h-10 w-3/4 bg-muted rounded mb-4" />
           <div className="h-4 w-1/3 bg-muted rounded mb-8" />
@@ -77,7 +77,7 @@ export default function TravelDetailPage() {
             <div className="h-4 bg-muted rounded w-full" />
             <div className="h-4 bg-muted rounded w-5/6" />
           </div>
-        </div>
+        </main>
         <Footer />
       </div>
     );
@@ -106,7 +106,9 @@ export default function TravelDetailPage() {
       <div className="min-h-screen bg-background font-sans">
         <Navbar />
 
+        <main id="main-content">
         <TravelDetailContent pkg={pkg} />
+        </main>
 
         <Footer />
       </div>

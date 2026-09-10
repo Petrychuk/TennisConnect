@@ -63,12 +63,12 @@ export default function RecreationDetailPage() {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Navbar />
-        <div className="flex-1 flex items-center justify-center">
+        <main id="main-content" className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-3xl font-bold mb-4">Service not found</h1>
             <Link href="/recreation"><Button className="bg-primary text-primary-foreground">Back</Button></Link>
           </div>
-        </div>
+        </main>
         <Footer />
       </div>
     );
@@ -100,6 +100,7 @@ export default function RecreationDetailPage() {
       <div className="min-h-screen bg-background font-sans">
         <Navbar />
 
+        <main id="main-content">
         <div className="relative h-[55vh] mt-16 overflow-hidden">
           <img src={svc.coverImage} alt={svc.name} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-linear-to-t from-background via-background/40 to-transparent" />
@@ -185,6 +186,7 @@ export default function RecreationDetailPage() {
           </div>
         </div>
 
+        </main>
         <Footer />
       </div>
     </>

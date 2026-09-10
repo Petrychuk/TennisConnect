@@ -314,7 +314,8 @@ export default function ClubsPage() {
     />
       <div className="min-h-screen bg-background font-sans">
         <Navbar />
-        
+
+        <main id="main-content">
         {/* Intro / Hero Section — shares one photo backdrop with the
             filter bar below, same treatment as Partners/Coaches */}
         <div className="relative overflow-hidden">
@@ -816,6 +817,7 @@ export default function ClubsPage() {
         )}
         <PartnerCTA />
         </div>
+        </main>
         <Footer />
       </div>
    </>

@@ -74,6 +74,7 @@ export default function ArticlesPage() {
       <div className="min-h-screen bg-background font-sans">
         <Navbar />
 
+        <main id="main-content">
         {/* Hero — shares one photo backdrop with the filter bar below */}
         <div className="relative overflow-hidden">
           <img
@@ -295,6 +296,7 @@ export default function ArticlesPage() {
             </div>
           )}
         </div>
+        </main>
 
         <Footer />
       </div>
