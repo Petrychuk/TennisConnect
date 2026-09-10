@@ -370,30 +370,7 @@ export function Navbar() {
                   })}
                 </nav>
 
-                {isAuthenticated ? (
-                  <>
-                    <div className="border-t border-border mt-4 pt-4">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-[hsl(var(--tennis-ball))] mb-1 px-3">
-                        Account
-                      </p>
-                      <p className="text-xs text-muted-foreground px-3 pb-2">
-                        Messages, profile and sign out are in the menu bar below.
-                      </p>
-                      <button
-                        type="button"
-                        data-testid="drawer-delete-account"
-                        onClick={() => {
-                          setDeleteDialogOpen(true);
-                          setIsOpen(false);
-                        }}
-                        className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-destructive/80 hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        Delete Account
-                      </button>
-                    </div>
-                  </>
-                ) : (
+                {!isAuthenticated && (
                   <Link href="/auth" onClick={() => setIsOpen(false)}>
                     <Button className="w-full mt-4 bg-primary text-primary-foreground font-bold rounded-full cursor-pointer">
                       Sign In
@@ -598,7 +575,7 @@ export function Navbar() {
             Profile
           </Link>
 
-          {user?.isOrganizer ? (
+          {user?.isOrganizer && (
             <Link
               href="/organiser"
               data-testid="mobile-bottomnav-organiser-hub"
@@ -609,20 +586,6 @@ export function Navbar() {
               <Trophy className={`w-5 h-5 ${location === "/organiser" ? "fill-primary/15" : ""}`} />
               Organise Hub
             </Link>
-          ) : (
-          <Link
-            href="/messages"
-            data-testid="mobile-bottomnav-notifications"
-            className="flex flex-col items-center justify-center gap-1 text-[11px] font-medium text-muted-foreground transition-colors"
-          >
-            <span className="relative">
-              <Bell className="w-5 h-5" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500 border border-background" />
-              )}
-            </span>
-            Notifications
-          </Link>
           )}
 
           <button
@@ -704,6 +667,19 @@ export function Navbar() {
           >
             <LogOut className="w-4 h-4" />
             Sign Out
+          </button>
+
+          <button
+            type="button"
+            data-testid="mobile-more-delete-account"
+            onClick={() => {
+              setMoreOpen(false);
+              setDeleteDialogOpen(true);
+            }}
+            className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete Account
           </button>
         </div>
       </SheetContent>
