@@ -161,7 +161,7 @@ export default function OrganiserSessionLivePage() {
   const roundReadyForNext = !round || round.round.status === "completed";
 
   return (
-    <div className="min-h-screen bg-foreground text-primary-foreground" data-testid="organiser-session-live">
+    <main id="main-content" className="min-h-screen bg-foreground text-primary-foreground" data-testid="organiser-session-live">
       <SEO
         title={`Live — ${session.title} | TennisConnect`}
         description={`Live control centre for ${session.title}.`}
@@ -264,7 +264,7 @@ export default function OrganiserSessionLivePage() {
           </div>
         )}
       </div>
-    </div>
+    </main>
   );
 }
 

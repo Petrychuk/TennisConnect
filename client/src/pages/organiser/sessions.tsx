@@ -145,7 +145,13 @@ export default function OrganiserSessionsPage() {
         <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} className="w-full" />
       </aside>
 
-      <div className="flex-1 min-w-0 pb-16 md:pb-0">
+      {/* The public site's equivalent pages use <Navbar>/<Footer> with a
+          <main> in between; this sidebar-nav'd Organiser Hub layout has
+          no direct equivalent to swap in, so the same landmark is added
+          by hand here - <aside> (already correctly used above for the
+          sidebar nav) and <OrganiserMobileNav /> below both stay
+          siblings of, not children of, this <main>. */}
+      <main id="main-content" className="flex-1 min-w-0 pb-16 md:pb-0">
         {/* Compact bar — tablet & mobile */}
         <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
           <Sheet>
@@ -236,7 +242,7 @@ export default function OrganiserSessionsPage() {
             </>
           )}
         </div>
-      </div>
+      </main>
 
       <OrganiserMobileNav />
     </div>

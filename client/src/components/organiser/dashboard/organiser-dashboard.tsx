@@ -228,7 +228,11 @@ export function OrganiserDashboard() {
         <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} className="w-full" />
       </aside>
 
-      <div className="flex-1 min-w-0 pb-16 md:pb-0">
+      {/* Same landmark pattern as the Organiser Hub pages this dashboard
+          sits alongside (sessions.tsx, players.tsx, etc.) - <aside>
+          above and <OrganiserMobileNav /> below both stay siblings of
+          this <main>, not children of it. */}
+      <main id="main-content" className="flex-1 min-w-0 pb-16 md:pb-0">
         <DashboardHeader
           organiser={organiser}
           profileHref={profileHref}
@@ -277,7 +281,7 @@ export function OrganiserDashboard() {
             </div>
           </>
         )}
-      </div>
+      </main>
 
       <OrganiserMobileNav />
     </div>

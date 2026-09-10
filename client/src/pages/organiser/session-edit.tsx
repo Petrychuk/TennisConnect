@@ -151,7 +151,7 @@ export default function OrganiserSessionEditPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background px-4 py-8" data-testid="organiser-session-edit">
+    <main id="main-content" className="min-h-screen bg-background px-4 py-8" data-testid="organiser-session-edit">
       <SEO title={`Edit ${session.title} | Organiser Hub | TennisConnect`} description="Edit your session's details." noIndex />
       <div className="max-w-2xl mx-auto space-y-6">
         <Link href={`/organiser/sessions/${params?.id}`} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground" data-testid="organiser-session-edit-back">
@@ -270,6 +270,6 @@ export default function OrganiserSessionEditPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </main>
   );
 }
