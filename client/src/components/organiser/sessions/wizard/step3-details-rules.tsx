@@ -27,7 +27,7 @@ function ToggleRow({ label, checked, onCheckedChange, testId, hint }: { label: s
                 <HelpCircle className="w-3.5 h-3.5" />
               </button>
             </TooltipTrigger>
-            <TooltipContent className="max-w-[240px] text-xs">{hint}</TooltipContent>
+            <TooltipContent className="max-w-60 text-xs">{hint}</TooltipContent>
           </Tooltip>
         )}
       </div>
@@ -94,7 +94,7 @@ export function Step3DetailsRules({ draft, onChange }: Step3DetailsRulesProps) {
             )}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-sm">Games to</Label>
+                <Label className="text-sm">Games per Round</Label>
                 <NumberField
                   min={1}
                   value={draft.gamesTo}

@@ -1,6 +1,7 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { storage } from "../storage";
 import { requireAuth, requireAdmin } from "../requireAuth";
+import { env } from "../env";
 import { sendMessageBetween, ORGANIZER_APPROVED_SUBJECT, ORGANIZER_APPROVED_MESSAGE } from "../services/systemMessages";
 import {
   insertOrganizationSchema,
@@ -232,6 +233,35 @@ router.get("/players/mine", requireAuth, async (req, res, next) => {
     }
     const players = await storage.getPlayersForOrganization(organization.id);
     res.json(players);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Dashboard stat strip - Active Players / Attendance / Revenue.
+router.get("/dashboard/stats", requireAuth, async (req, res, next) => {
+  try {
+    const organization = await storage.getOrganizationOwnedByUser((req.user as any).id);
+    if (!organization) {
+      return res.json({ activePlayers: 0, attendancePercent: 0, revenueThisWeek: 0, revenueCurrency: "AUD" });
+    }
+    const stats = await storage.getOrganizerDashboardStats(organization.id);
+    res.json(stats);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Dashboard Activity Feed - real join/check-in events, most recent first.
+router.get("/dashboard/activity", requireAuth, async (req, res, next) => {
+  try {
+    const organization = await storage.getOrganizationOwnedByUser((req.user as any).id);
+    if (!organization) {
+      return res.json([]);
+    }
+    const limit = Math.min(Number(req.query.limit) || 8, 20);
+    const activity = await storage.getRecentActivityForOrganization(organization.id, limit);
+    res.json(activity);
   } catch (error) {
     next(error);
   }
@@ -664,7 +694,30 @@ function handleLiveEngineError(error: any, res: Response, next: NextFunction) {
   next(error);
 }
 
+// TC Live is staging-only until it's fully ready for real sessions -
+// production keeps a stub (client/src/pages/organiser/session-live.tsx
+// shows a "coming soon" screen instead of the real one). Gated on
+// env.DB_ENV rather than NODE_ENV because `npm start` sets
+// NODE_ENV=production on every deployed instance, staging included -
+// see server/env.ts. 404 (not 403) so the route looks like it simply
+// doesn't exist on production, and this runs before requireAuth so it
+// doesn't leak anything about auth state either.
+function requireStagingEnv(_req: Request, res: Response, next: NextFunction) {
+  if (env.DB_ENV !== "staging") {
+    return res.status(404).json({ message: "Not found" });
+  }
+  next();
+}
 
+
+// Check-in itself is a normal, everyday Players-tab action (an
+// organizer marking who's physically arrived) - not staging-only TC
+// Live tooling, even though it's also used by the live engine.
+// requireStagingEnv deliberately NOT applied here (unlike go-live and
+// the rest of the TC Live routes below) - it was gating this
+// unintentionally until the regular Players tab started calling it
+// too, which would have made a completely ordinary check-in button
+// 404 outside staging.
 router.post(
   "/sessions/:id/checkin/:registrationId",
   requireAuth,
@@ -680,10 +733,46 @@ router.post(
   }
 );
 
+// Players tab's "Remove" action - cancels this specific player's
+// registration. Same effect as the player cancelling their own spot
+// (DELETE /sessions/:id/join), just organizer-initiated.
+router.delete(
+  "/sessions/:id/registrations/:registrationId",
+  requireAuth,
+  requireOrganizer,
+  requireOwnSession,
+  async (req, res, next) => {
+    try {
+      const registration = await storage.cancelRegistrationById(req.params.registrationId);
+      res.json(registration);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Players tab's "Move to Waiting" action - an admin override moving an
+// already-registered player onto the waiting list.
+router.post(
+  "/sessions/:id/registrations/:registrationId/waitlist",
+  requireAuth,
+  requireOrganizer,
+  requireOwnSession,
+  async (req, res, next) => {
+    try {
+      const registration = await storage.moveRegistrationToWaitlist(req.params.registrationId);
+      res.json(registration);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 // body: { liveStatus: "unavailable" | "withdrawn" | null } - null clears it
 // (e.g. organizer marked someone unavailable by mistake).
 router.post(
   "/sessions/:id/registrations/:registrationId/live-status",
+  requireStagingEnv,
   requireAuth,
   requireOrganizer,
   requireOwnSession,
@@ -701,7 +790,7 @@ router.post(
   }
 );
 
-router.post("/sessions/:id/go-live", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+router.post("/sessions/:id/go-live", requireStagingEnv, requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
   try {
     const thisSession = (req as any).session_ as TennisSession;
     if (thisSession.status !== "published") {
@@ -723,7 +812,7 @@ router.post("/sessions/:id/go-live", requireAuth, requireOrganizer, requireOwnSe
   }
 });
 
-router.post("/sessions/:id/rounds/generate", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+router.post("/sessions/:id/rounds/generate", requireStagingEnv, requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
   try {
     const thisSession = (req as any).session_ as TennisSession;
     if (thisSession.status !== "live") {
@@ -737,7 +826,7 @@ router.post("/sessions/:id/rounds/generate", requireAuth, requireOrganizer, requ
   }
 });
 
-router.get("/sessions/:id/rounds/current", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+router.get("/sessions/:id/rounds/current", requireStagingEnv, requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
   try {
     const result = await storage.getCurrentRound(req.params.id);
     res.json(result ?? null);
@@ -748,6 +837,7 @@ router.get("/sessions/:id/rounds/current", requireAuth, requireOrganizer, requir
 
 router.post(
   "/sessions/:id/matches/:matchId/start",
+  requireStagingEnv,
   requireAuth,
   requireOrganizer,
   requireOwnSession,
@@ -766,6 +856,7 @@ router.post(
 // self-report/confirm step in v0.1).
 router.post(
   "/sessions/:id/matches/:matchId/score",
+  requireStagingEnv,
   requireAuth,
   requireOrganizer,
   requireOwnSession,
@@ -789,7 +880,7 @@ router.post(
   }
 );
 
-router.post("/sessions/:id/finish", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+router.post("/sessions/:id/finish", requireStagingEnv, requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
   try {
     const session = await storage.finishSession(req.params.id);
     console.log(`[TC LIVE] session ${req.params.id}: finished`);
@@ -799,7 +890,7 @@ router.post("/sessions/:id/finish", requireAuth, requireOrganizer, requireOwnSes
   }
 });
 
-router.get("/sessions/:id/leaderboard", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+router.get("/sessions/:id/leaderboard", requireStagingEnv, requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
   try {
     const leaderboard = await storage.getSessionLeaderboard(req.params.id);
     res.json(leaderboard);

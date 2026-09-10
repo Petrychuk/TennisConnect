@@ -68,7 +68,7 @@ export const articles = pgTable("articles", {
   author: text("author").notNull(),
   readTime: integer("read_time").default(5).notNull(),
   isPublished: boolean("is_published").default(true).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // Travel Packages - tennis tour packages
@@ -106,7 +106,7 @@ export const travelPackages = pgTable("travel_packages", {
   isActive: boolean("is_active")
     .default(true)
     .notNull(),
-  createdAt: timestamp("created_at")
+  createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
 });
@@ -129,7 +129,7 @@ export const recreationServices = pgTable("recreation_services", {
   phone: text("phone"),
   email: text("email"),
   isActive: boolean("is_active").default(true).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // Tournaments (events) - separate from tournamentHistory (which is per-user history)
@@ -157,7 +157,7 @@ export const tournaments = pgTable("tournaments", {
   ageGroups: json("age_groups").$type<string[]>().default([]),
   winner: text("winner"),
   finalist: text("finalist"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // Player profiles
@@ -171,7 +171,7 @@ export const playerProfiles = pgTable("player_profiles", {
   bio: text("bio"),
   preferredCourts: json("preferred_courts").$type<string[]>().default([]),
   isDraft: boolean("is_draft").default(true).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // Coach profiles
@@ -198,7 +198,7 @@ export const coachProfiles = pgTable("coach_profiles", {
   phone: text("phone"),
   email: text("email"),
   isDraft: boolean("is_draft").default(true).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // Tournaments History
@@ -227,7 +227,7 @@ export const tournamentHistory = pgTable("tournament_history", {
   result: text("result"),
   award: text("award"),
   photos: json("photos").$type<string[]>().default([]),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // Marketplace items
@@ -243,7 +243,7 @@ export const marketplaceItems = pgTable("marketplace_items", {
   type: text("type").notNull().default("second-hand"),
   sellerName: text("seller_name").notNull(),
   sellerEmail: text("seller_email"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   isActive: boolean("is_active").default(true),
 });
 
@@ -376,10 +376,10 @@ export const clubs = pgTable("clubs", {
   rating: text("rating"),
 
   // Dates
-  createdAt: timestamp("created_at")
+  createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
-  updatedAt: timestamp("updated_at")
+  updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
 });
@@ -404,8 +404,8 @@ export const organizerRequests = pgTable("organizer_requests", {
   status: text("status").default("pending").notNull(), // pending | approved | rejected
   note: text("note"), // optional message from the requester
   reviewedBy: varchar("reviewed_by").references(() => users.id),
-  reviewedAt: timestamp("reviewed_at"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // An organizing entity (a person or a group) that runs Sessions.
@@ -442,10 +442,10 @@ export const organizations = pgTable("organizations", {
   status: text("status")
     .default("draft")
     .notNull(),
-  createdAt: timestamp("created_at")
+  createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
-  updatedAt: timestamp("updated_at")
+  updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
 });
@@ -467,7 +467,7 @@ export const organizationMembers = pgTable(
       .default("owner")
       .notNull(),
 
-    createdAt: timestamp("created_at")
+    createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
   },
@@ -496,8 +496,32 @@ export const tennisSessions = pgTable("sessions", {
   type: text("type").default("social").notNull(),
   status: text("status").default("draft").notNull(), // draft | published | cancelled | live | completed
   location: text("location"),
-  startAt: timestamp("start_at").notNull(),
-  endAt: timestamp("end_at"),
+  // IANA zone the VENUE is in (e.g. "Australia/Sydney") - not the
+  // organizer's or any viewer's own timezone. A session's advertised
+  // time is a property of where it physically happens: "6:30pm" at a
+  // Sydney court means 6:30pm Sydney time no matter who's looking at it
+  // or from where. Defaults to Sydney since that's the platform's only
+  // real market today - see client/src/lib/timezone.ts for the
+  // write-time (wall clock -> UTC) and read-time (UTC -> wall clock)
+  // conversion this powers, and step2-date-registration.tsx for the
+  // wizard's city picker that sets it.
+  timeZone: text("time_zone").default("Australia/Sydney").notNull(),
+  // withTimezone: true (-> Postgres timestamptz) is load-bearing, not
+  // cosmetic. A plain `timestamp` column discards any offset on the way
+  // in - node-postgres's serializer always appends one (based on the
+  // WRITING process's local TZ, via Date.getTimezoneOffset), but Postgres
+  // ignores it for a timezone-less column and stores the raw wall-clock
+  // digits. Reading it back then reinterprets those digits using the
+  // READING process's local TZ. That round-trip only produces the time
+  // the organizer actually picked if the browser and every server
+  // process that ever touches the row happen to share one timezone -
+  // true by coincidence on a same-machine dev box, false the moment a
+  // Sydney-based organizer's session is written by a UTC-TZ deployed
+  // server (Railway containers default to UTC), which silently shifts
+  // the stored time by the full offset. timestamptz stores/round-trips
+  // the true absolute instant regardless of any process's local TZ.
+  startAt: timestamp("start_at", { withTimezone: true }).notNull(),
+  endAt: timestamp("end_at", { withTimezone: true }),
   // A Tournament/Club Championship can be a "container" for several
   // real, independently-registerable sessions - Men's Singles A,
   // Mixed Doubles, etc. - each with its own startAt/endAt (so a
@@ -506,8 +530,8 @@ export const tennisSessions = pgTable("sessions", {
   // thing. Null for every ordinary, single-format session - this is
   // purely additive and never required.
   parentSessionId: varchar("parent_session_id").references((): any => tennisSessions.id),
-  registrationOpensAt: timestamp("registration_opens_at"),
-  registrationClosesAt: timestamp("registration_closes_at"),
+  registrationOpensAt: timestamp("registration_opens_at", { withTimezone: true }),
+  registrationClosesAt: timestamp("registration_closes_at", { withTimezone: true }),
   price: numeric("price", { precision: 10, scale: 2, }),
   currency: varchar("currency", { length: 8 }).default("AUD").notNull(),
   maxParticipants: integer("max_participants"),
@@ -526,14 +550,39 @@ export const tennisSessions = pgTable("sessions", {
   // team size in round generation (see liveEngine.ts). Doubles is the
   // common case for Social Tennis, so it's the default rather than singles.
   matchMode: text("match_mode").default("doubles").notNull(),
+  // Wizard Step 3 fields the organizer actually picks, previously only
+  // folded into a free-text description summary (still is, for
+  // backwards compat with anywhere that reads description) and never
+  // stored anywhere queryable - meaning the Session Details card had
+  // nothing real to show and matchMode above never got set from the
+  // wizard at all (silently defaulting to "doubles" regardless of what
+  // was chosen). All nullable since sessions created before this column
+  // existed genuinely don't have a value.
+  category: text("category"), // "open" | "mens" | "womens"
+  gamesTo: integer("games_to"),
+  noAd: boolean("no_ad"),
+  tiebreak: boolean("tiebreak"),
+  // The organizer's planned round count from the wizard - distinct from
+  // TC Live's actual generated round count (session_rounds rows, which
+  // only exist once "Generate Round" has actually been pressed).
+  plannedRoundsCount: integer("planned_rounds_count"),
   waitingListEnabled: boolean("waiting_list_enabled").default(true).notNull(),
+  // null = unlimited. Only meaningful while waitingListEnabled is true -
+  // was previously always shown as a hardcoded "(10 spots)" in the UI
+  // regardless of what actually happened, since there was nowhere real
+  // to store this.
+  waitingListCapacity: integer("waiting_list_capacity"),
+  // Organizer's own private reference notes - shown only to them on the
+  // Session Workspace overview, nothing to do with reviewNote below
+  // (that's admin moderation feedback, this is the organizer's own).
+  notes: text("notes"),
   // Admin moderation — every organizer-submitted session is reviewed
  // before it goes live. Null until an admin approves or rejects it.
   reviewedBy: varchar("reviewed_by").references(() => users.id),
-  reviewedAt: timestamp("reviewed_at"),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
   reviewNote: text("review_note"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 
 });
 
@@ -556,7 +605,7 @@ export const registrations = pgTable(
       .default("registered")
       .notNull(),
 
-    checkedInAt: timestamp("checked_in_at"),
+    checkedInAt: timestamp("checked_in_at", { withTimezone: true }),
 
     // Null = present as normal. Organizer-set during a live session only
     // (see REGISTRATION_LIVE_STATUS) - distinct from `status` above,
@@ -564,7 +613,7 @@ export const registrations = pgTable(
     // generation skips anyone with this set.
     liveStatus: text("live_status"),
 
-    createdAt: timestamp("created_at")
+    createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
   },
@@ -591,8 +640,8 @@ export const sessionRounds = pgTable(
     roundNumber: integer("round_number").notNull(),
     status: text("status").default("active").notNull(), // active | completed
     restingPlayerIds: json("resting_player_ids").$type<string[]>().default([]),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    completedAt: timestamp("completed_at"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
   },
   (table) => ({
     sessionRoundUnique: unique().on(table.sessionId, table.roundNumber),
@@ -618,9 +667,9 @@ export const matches = pgTable("matches", {
   // additive change, not a migration.
   reportedBy: varchar("reported_by").references(() => users.id),
   confirmedBy: varchar("confirmed_by").references(() => users.id),
-  startedAt: timestamp("started_at"),
-  confirmedAt: timestamp("confirmed_at"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const sessionRoundsRelations = relations(sessionRounds, ({ one, many }) => ({
@@ -664,6 +713,22 @@ export type LeaderboardRow = {
   gamesLost: number;
   restRounds: number;
 };
+
+// Dashboard's Activity Feed - derived from real registration events
+// (there's no dedicated activity-log table), so only what's actually
+// timestamped and attributable is included: a player joining
+// (registrations.createdAt) or checking in (registrations.checkedInAt).
+// Cancellations aren't derivable this way - registrations has no
+// cancelledAt/updatedAt column to sort a "cancelled" event by, so that
+// event type from the old mock data is intentionally not reproduced.
+export type ActivityFeedItem = {
+  id: string; // registrationId - type suffix, so join+check-in on the same registration don't collide
+  type: "joined" | "checked_in";
+  userName: string;
+  sessionTitle: string;
+  at: string; // ISO
+};
+
 
 export const insertMatchScoreSchema = z.object({
   teamAGames: z.number().int().min(0),
@@ -791,7 +856,7 @@ export const clubFollows = pgTable("club_follows", {
   clubId: varchar("club_id")
     .references(() => clubs.id)
     .notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // A player favouriting a club as a court venue - "I like playing here",
@@ -809,7 +874,7 @@ export const clubFavorites = pgTable("club_favorites", {
   clubId: varchar("club_id")
     .references(() => clubs.id)
     .notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // Messages - for contact requests and messaging between users
@@ -826,7 +891,7 @@ export const messages = pgTable("messages", {
   subject: text("subject"),
   content: text("content").notNull(),
   isRead: boolean("is_read").default(false).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 
   // Distinguishes an actionable invitation from a regular message, and
   // which kind - a Community invite and a Session invite are two
@@ -870,7 +935,7 @@ export const communityMemberships = pgTable(
       .notNull()
       .references(() => users.id),
     status: text("status").default("pending").notNull(), // 'pending' | 'accepted' | 'declined'
-    createdAt: timestamp("created_at").defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => ({
     orgUserUnique: unique().on(table.organizationId, table.userId),
@@ -906,7 +971,7 @@ export const supportRequests = pgTable("support_requests", {
   status: text("status")
     .default("new")
     .notNull(),
-  createdAt: timestamp("created_at")
+  createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
 });
@@ -918,8 +983,8 @@ export const newsletterSubscribers = pgTable("newsletter_subscribers", {
   email: text("email").notNull().unique(),
   status: text("status").default("subscribed").notNull(), // subscribed | unsubscribed
   source: text("source").default("footer").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  unsubscribedAt: timestamp("unsubscribed_at"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
 });
 
 // Password Reset Tokens
@@ -1189,6 +1254,10 @@ export type RegistrationWithUser = Registration & {
   userAvatar: string | null;
   userIsTestUser: boolean;
   userRole: string;
+  // From player_profiles.skill_level (left join - null for a registrant
+  // with no player profile yet, e.g. a coach/organiser or someone who
+  // hasn't finished onboarding).
+  userSkillLevel: string | null;
 };
 
 // One row per distinct player across every session in an organization -
@@ -1198,6 +1267,13 @@ export type OrgPlayerRow = {
   userName: string;
   userSlug: string;
   userAvatar: string | null;
+  // From player_profiles.skill_level (Beginner/Intermediate/Advanced) -
+  // null if the player has no profile yet (e.g. draft, or a coach
+  // registered as a player for testing). Win-rate/numeric rating still
+  // aren't derivable from registration data alone (no match results at
+  // org scale) - this is the one real signal that was available and
+  // wasn't being read.
+  userSkillLevel: string | null;
   sessionsPlayed: number;
   lastPlayedAt: string;
 };

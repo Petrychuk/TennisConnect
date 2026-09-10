@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, MapPin, Users, LayoutGrid, Repeat, ClipboardCheck, Hourglass, QrCode } from "lucide-react";
 import { SESSION_TYPE_OPTIONS, type NewSessionDraft } from "@/lib/organiser-session-wizard-types";
+import { zonedTimeToUtc, formatInTimeZone } from "@/lib/timezone";
 import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.webp";
 
 interface Step4ReviewPublishProps {
@@ -10,7 +11,14 @@ interface Step4ReviewPublishProps {
 
 export function Step4ReviewPublish({ draft }: Step4ReviewPublishProps) {
   const typeLabel = SESSION_TYPE_OPTIONS.find((t) => t.key === draft.type)?.label ?? "Session";
-  const dateObj = draft.date ? new Date(`${draft.date}T${draft.startTime || "00:00"}`) : null;
+  // Weekday needs the venue's own timezone, not the organizer's browser -
+  // near a day boundary, a date built from the browser's ambient zone
+  // can land on the wrong calendar day for the venue. draft.startTime is
+  // shown as-is below since it's already exactly the wall-clock string
+  // the organizer typed for that city.
+  const dateObj = draft.date
+    ? zonedTimeToUtc(draft.date, draft.startTime || "00:00", draft.timeZone)
+    : null;
 
   const stats = [
     { icon: Users, label: "Players", value: `${draft.maxPlayers} Players` },
@@ -36,7 +44,7 @@ export function Step4ReviewPublish({ draft }: Step4ReviewPublishProps) {
               <>
                 <span className="flex items-center gap-1.5 font-medium">
                   <Calendar className="w-4 h-4 text-primary" />
-                  {dateObj.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}
+                  {formatInTimeZone(dateObj, draft.timeZone, { weekday: "short", day: "numeric", month: "short" })}
                 </span>
                 <span className="flex items-center gap-1.5 font-medium">
                   <Clock className="w-4 h-4 text-primary" />

@@ -7,6 +7,7 @@ import { PlayerActions } from "./PlayerActions";
 import { ProfileStats } from "../shared/ProfileStats";
 import { StatCard } from "../shared/StatCard";
 import { getMemberSince, getJoinedMonthLabel } from "@/lib/memberSince";
+import { formatSkillLevelUtr } from "@/lib/skillLevel";
 
 import {
   Users,
@@ -94,7 +95,7 @@ export function PlayerHero({
           <StatCard
             data-testid="player-stat-rating"
             icon={<Star className="w-5 h-5" />}
-            value="3.7"
+            value={formatSkillLevelUtr(profile.skillLevel)}
             label="UTR Rating"
             subtitle="View history"
             clickable

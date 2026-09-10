@@ -22,6 +22,8 @@ import {
   leaveSession as leaveSessionApi,
 } from "@/lib/api/organizer-sessions";
 import type { TennisSession, SessionWithDetails } from "@shared/schema";
+import { formatInTimeZone } from "@/lib/timezone";
+import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.webp";
 
 interface MyOrganizedSessionsSectionProps {
   isOwnProfile: boolean;
@@ -305,7 +307,15 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
           return (
             <Card key={session.id} data-testid={`my-organized-session-${session.id}`}>
               <CardHeader className="pb-0">
-                <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-start gap-3">
+                  <img
+                    src={session.coverImage || courtImage}
+                    alt=""
+                    aria-hidden="true"
+                    className="w-16 h-16 rounded-md object-cover shrink-0"
+                    data-testid={`my-organized-session-${session.id}-cover`}
+                  />
+                  <div className="flex flex-wrap items-center justify-between gap-3 flex-1 min-w-0">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold">{session.title}</span>
@@ -320,7 +330,7 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
                     <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5" />
-                        {new Date(session.startAt).toLocaleString(undefined, {
+                        {formatInTimeZone(session.startAt, session.timeZone, {
                           weekday: "short",
                           day: "numeric",
                           month: "short",
@@ -374,6 +384,7 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
                       </Button>
                     )}
                   </div>
+                </div>
                 </div>
               </CardHeader>
               <CardContent className="pt-3">

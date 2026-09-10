@@ -15,7 +15,7 @@
 // was dead - the real upload path there did a raw fetch that bypassed it
 // entirely). This rewrite is what every upload flow now actually calls.
 
-export type ImagePreset = "avatar" | "cover" | "content" | "gallery";
+export type ImagePreset = "avatar" | "cover" | "content" | "gallery" | "session-cover";
 
 interface PresetConfig {
   maxWidth: number;
@@ -42,6 +42,10 @@ interface PresetConfig {
 const PRESETS: Record<ImagePreset, PresetConfig> = {
   avatar: { maxWidth: 512, maxHeight: 512, quality: 0.8, square: true },
   cover: { maxWidth: 1600, maxHeight: 800, quality: 0.75 },
+  // Live-session cover photo (tc-live-v0.1) - same wide-banner shape as
+  // a profile cover, just a different upload type on the server side
+  // (/api/uploadMedia/session-cover vs /api/uploadMedia/cover).
+  "session-cover": { maxWidth: 1600, maxHeight: 800, quality: 0.75 },
   content: { maxWidth: 1600, maxHeight: 1600, quality: 0.75 },
   gallery: { maxWidth: 1600, maxHeight: 1600, quality: 0.75 },
 };

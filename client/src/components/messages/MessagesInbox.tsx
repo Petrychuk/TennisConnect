@@ -24,6 +24,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { replySchema } from "@/lib/validations/messages";
+import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 
 interface Message {
   id: string;
@@ -446,6 +447,15 @@ export function MessagesInbox() {
       const updated = await res.json();
       setConversation((prev) => prev.map((m) => (m.id === message.id ? { ...m, actionStatus: updated.actionStatus } : m)));
       setMessages((prev) => prev.map((m) => (m.id === message.id ? { ...m, actionStatus: updated.actionStatus } : m)));
+
+      // Accepting a session invite registers the player server-side, but
+      // that's a different query (MySessionsSection's "registered"
+      // list) than anything this component itself reads - without this,
+      // the newly-joined session doesn't show up anywhere until a full
+      // page reload happens to refetch it.
+      if (action === "accept" && message.messageType === "session_invite") {
+        queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine/registered"] });
+      }
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -519,7 +529,7 @@ export function MessagesInbox() {
   if (authLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
+        <TennisBallSpinner />
       </div>
     );
   }
@@ -531,7 +541,7 @@ export function MessagesInbox() {
 
           {messagesLoading ? (
               <div className="flex items-center justify-center py-20">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                <TennisBallSpinner />
               </div>
             ) : !selectedMessage ? (
               <Card className="max-w-md mx-auto" data-testid="messages-empty-state">

@@ -6,6 +6,7 @@ import type {
   Organization,
   RegistrationWithUser,
   OrgPlayerRow,
+  ActivityFeedItem,
   Registration,
   SessionRound,
   MatchWithPlayers,
@@ -48,6 +49,23 @@ export async function ensureMyOrganization(fallbackName: string): Promise<Organi
 
 export async function getMySessions(): Promise<TennisSession[]> {
   const res = await apiRequest("GET", `${BASE}/sessions/mine`);
+  return res.json();
+}
+
+export interface DashboardStats {
+  activePlayers: number;
+  attendancePercent: number;
+  revenueThisWeek: number;
+  revenueCurrency: string;
+}
+
+export async function getDashboardStats(): Promise<DashboardStats> {
+  const res = await apiRequest("GET", `${BASE}/dashboard/stats`);
+  return res.json();
+}
+
+export async function getDashboardActivity(limit = 8): Promise<ActivityFeedItem[]> {
+  const res = await apiRequest("GET", `${BASE}/dashboard/activity?limit=${limit}`);
   return res.json();
 }
 
@@ -153,6 +171,16 @@ export async function deleteSession(id: string): Promise<void> {
 
 export async function checkInRegistration(sessionId: string, registrationId: string): Promise<Registration> {
   const res = await apiRequest("POST", `${BASE}/sessions/${sessionId}/checkin/${registrationId}`);
+  return res.json();
+}
+
+export async function removeRegistration(sessionId: string, registrationId: string): Promise<Registration> {
+  const res = await apiRequest("DELETE", `${BASE}/sessions/${sessionId}/registrations/${registrationId}`);
+  return res.json();
+}
+
+export async function moveRegistrationToWaitlist(sessionId: string, registrationId: string): Promise<Registration> {
+  const res = await apiRequest("POST", `${BASE}/sessions/${sessionId}/registrations/${registrationId}/waitlist`);
   return res.json();
 }
 

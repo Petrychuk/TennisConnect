@@ -1,4 +1,4 @@
-import { Users, CheckCircle2, Hourglass, XCircle, UserPlus, Lock } from "lucide-react";
+import { Users, CheckCircle2, Hourglass, XCircle, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SessionListItem, SessionPlayer } from "@/lib/organiser-sessions-mock-data";
 
@@ -20,12 +20,10 @@ export function PlayersStatStrip({ session, players }: PlayersStatStripProps) {
     { key: "waiting", icon: Hourglass, value: String(waiting), label: "Waiting List" },
     { key: "cancelled", icon: XCircle, value: String(cancelled), label: "Cancelled" },
     ...(spotsLeft !== null ? [{ key: "spots", icon: UserPlus, value: String(spotsLeft), label: "Spots Left" }] : []),
-    {
-      key: "registration",
-      icon: Lock,
-      value: null,
-      label: session.registrationOpen ? "Registration Open" : "Registration Closed",
-    },
+    // No separate "Registration Open/Closed" tile here anymore - the
+    // session's status badge at the top of the page (next to the
+    // title) already says this; repeating it as a 6th stat card was
+    // redundant, not additional information.
   ];
 
   return (

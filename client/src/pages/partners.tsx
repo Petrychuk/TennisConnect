@@ -28,7 +28,7 @@ interface PartnerData {
     name: string;
     location: string;
     skillLevel: string;
-    avatar: string;
+    avatar: string | null;
     available: boolean;
     bio: string;
     isDemo: boolean;
@@ -497,11 +497,12 @@ export default function PartnersPage() {
                   
                   <CardContent className="p-2 md:p-3 grow flex flex-col items-center text-center">
                   <div className="relative w-full h-36 sm:h-44 md:h-56 mb-4 overflow-hidden rounded-xl">
+
                     <img
                       src={
                         isMe && user?.avatar
                           ? resolveAvatarUrl(user.avatar)
-                          : partner.avatar
+                          : partner.avatar ?? DEFAULT_AVATAR_URL
                       }
                       alt={
                         partner.avatar === DEFAULT_AVATAR_URL

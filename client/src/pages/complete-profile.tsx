@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Loader2, User, MapPin, Check, ChevronsUpDown } from "lucide-react";
+import { TennisLoader, TennisBallSpinner } from "@/components/ui/tennisLoader";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import SEO from "@/components/seo";
@@ -265,7 +266,7 @@ export default function CompleteProfilePage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" />
+        <TennisLoader />
       </div>
     );
   }

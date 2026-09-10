@@ -1,14 +1,19 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarDays, ClipboardList, DollarSign, Eye, ImagePlus, Info, X } from "lucide-react";
+import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 import { useToast } from "@/hooks/use-toast";
+import { uploadImage } from "@/lib/uploadImage";
+import { AU_CITY_TIMEZONES } from "@/lib/timezone";
 import type { NewSessionDraft } from "@/lib/organiser-session-wizard-types";
 import { NumberField } from "./number-field";
+import { SessionWeatherPreview } from "./session-weather-preview";
 
 interface Step2DateRegistrationProps {
   draft: NewSessionDraft;
@@ -39,8 +44,9 @@ function SectionCard({ icon: Icon, title, children }: { icon: typeof CalendarDay
 export function Step2DateRegistration({ draft, onChange }: Step2DateRegistrationProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
 
-  const handlePhotoSelect = (file: File | undefined) => {
+  const handlePhotoSelect = async (file: File | undefined) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       toast({ title: "Please choose an image file", variant: "destructive" });
@@ -50,9 +56,20 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
       toast({ title: "Image is too large", description: "Please choose a file under 8MB.", variant: "destructive" });
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => onChange("coverImage", reader.result as string);
-    reader.readAsDataURL(file);
+    // Uploaded to Supabase Storage right away and only the resulting URL
+    // is kept in the draft - previously this read the file as a base64
+    // data: URL and carried the whole image through session creation's
+    // JSON body, which blew past express.json()'s size limit (413) for
+    // any real photo.
+    setIsUploadingCover(true);
+    try {
+      const { url } = await uploadImage("session-cover", file);
+      onChange("coverImage", url);
+    } catch {
+      toast({ title: "Upload failed", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setIsUploadingCover(false);
+    }
   };
 
   return (
@@ -76,7 +93,11 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
             onChange={(e) => handlePhotoSelect(e.target.files?.[0])}
             data-testid="organiser-wizard-cover-photo-input"
           />
-          {draft.coverImage ? (
+          {isUploadingCover ? (
+            <div className="w-full h-32 rounded-xl border-2 border-dashed border-border flex items-center justify-center text-muted-foreground">
+              <TennisBallSpinner />
+            </div>
+          ) : draft.coverImage ? (
             <div className="relative rounded-xl overflow-hidden h-40">
               <img src={draft.coverImage} alt="Session cover" className="absolute inset-0 w-full h-full object-cover" />
               <Button
@@ -126,8 +147,23 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
           <Input
             value={draft.venue}
             onChange={(e) => onChange("venue", e.target.value)}
+            placeholder="e.g. Lyne Park Tennis Centre"
             data-testid="organiser-wizard-session-venue"
           />
+        </Field>
+        <Field label="City / Timezone">
+          <Select value={draft.timeZone} onValueChange={(v) => onChange("timeZone", v)}>
+            <SelectTrigger data-testid="organiser-wizard-session-timezone">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {AU_CITY_TIMEZONES.map((c) => (
+                <SelectItem key={c.timeZone} value={c.timeZone}>
+                  {c.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </Field>
         <Field label="Court Count">
           <NumberField
@@ -146,6 +182,10 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
             value={draft.date}
             onChange={(e) => onChange("date", e.target.value)}
             data-testid="organiser-wizard-date"
+          />
+          <SessionWeatherPreview
+            city={AU_CITY_TIMEZONES.find((c) => c.timeZone === draft.timeZone)?.label ?? ""}
+            date={draft.date}
           />
         </Field>
         <div />
@@ -169,21 +209,41 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
 
       <SectionCard icon={ClipboardList} title="Registration">
         <Field label="Opens">
-          <Input
-            type="date"
-            value={draft.registrationOpens}
-            onChange={(e) => onChange("registrationOpens", e.target.value)}
-            data-testid="organiser-wizard-registration-opens"
-          />
+          <div className="flex gap-2">
+            <Input
+              type="date"
+              value={draft.registrationOpens}
+              onChange={(e) => onChange("registrationOpens", e.target.value)}
+              className="flex-1"
+              data-testid="organiser-wizard-registration-opens"
+            />
+            <Input
+              type="time"
+              value={draft.registrationOpensTime}
+              onChange={(e) => onChange("registrationOpensTime", e.target.value)}
+              className="w-28 shrink-0"
+              data-testid="organiser-wizard-registration-opens-time"
+            />
+          </div>
         </Field>
         <Field label="Closes">
-          <Input
-            type="date"
-            value={draft.registrationCloses}
-            max={draft.date || undefined}
-            onChange={(e) => onChange("registrationCloses", e.target.value)}
-            data-testid="organiser-wizard-registration-closes"
-          />
+          <div className="flex gap-2">
+            <Input
+              type="date"
+              value={draft.registrationCloses}
+              max={draft.date || undefined}
+              onChange={(e) => onChange("registrationCloses", e.target.value)}
+              className="flex-1"
+              data-testid="organiser-wizard-registration-closes"
+            />
+            <Input
+              type="time"
+              value={draft.registrationClosesTime}
+              onChange={(e) => onChange("registrationClosesTime", e.target.value)}
+              className="w-28 shrink-0"
+              data-testid="organiser-wizard-registration-closes-time"
+            />
+          </div>
           {draft.date && draft.registrationCloses > draft.date && (
             <p className="text-xs text-destructive" data-testid="organiser-wizard-registration-closes-error">
               Registration can't close after the session date.
@@ -206,6 +266,28 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
             data-testid="organiser-wizard-waiting-list-toggle"
           />
         </div>
+        {draft.waitingListEnabled && (
+          <Field label="Waiting List Spots">
+            <div className="flex items-center gap-2">
+              <NumberField
+                min={1}
+                value={draft.waitingListCapacity ?? NaN}
+                onChange={(v) => onChange("waitingListCapacity", v)}
+                placeholder="Unlimited"
+                data-testid="organiser-wizard-waiting-list-capacity"
+              />
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={draft.waitingListCapacity == null}
+                  onChange={(e) => onChange("waitingListCapacity", e.target.checked ? null : 10)}
+                  data-testid="organiser-wizard-waiting-list-unlimited"
+                />
+                Unlimited
+              </label>
+            </div>
+          </Field>
+        )}
         <div className="flex items-center justify-between rounded-xl border border-border px-3 py-2.5 sm:col-span-2">
           <Label className="text-sm">Allow Late Registration</Label>
           <Switch

@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Play, CheckCircle2, Hourglass, Loader2, Trophy } from "lucide-react";
+import { ArrowLeft, Play, CheckCircle2, Hourglass, Trophy } from "lucide-react";
+import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import SEO from "@/components/seo";
@@ -41,10 +42,22 @@ export default function OrganiserSessionLivePage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // TC Live is staging-only for now (see server/routes/organizer.ts
+  // requireStagingEnv) - production shows the stub below instead of
+  // hitting APIs that would just 404 there. env.DB_ENV, not NODE_ENV,
+  // is what actually distinguishes staging from production (both run
+  // NODE_ENV=production) - see server/env.ts.
+  const healthQuery = useQuery({
+    queryKey: ["/api/health"],
+    queryFn: async () => (await fetch("/api/health")).json() as Promise<{ dbEnv: string }>,
+    staleTime: Infinity,
+  });
+  const isStaging = healthQuery.data?.dbEnv === "staging";
+
   const sessionQuery = useQuery({
     queryKey: ["/api/organizer/sessions", sessionId],
     queryFn: () => getSessionById(sessionId!),
-    enabled: !!sessionId,
+    enabled: !!sessionId && isStaging,
   });
 
   const session = sessionQuery.data;
@@ -111,10 +124,22 @@ export default function OrganiserSessionLivePage() {
     );
   }
 
+  if (healthQuery.isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-foreground">
+        <TennisBallSpinner />
+      </div>
+    );
+  }
+
+  if (!isStaging) {
+    return <TcLiveComingSoonStub sessionId={sessionId} />;
+  }
+
   if (sessionQuery.isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-foreground">
-        <Loader2 className="w-6 h-6 animate-spin text-primary-foreground/60" />
+        <TennisBallSpinner />
       </div>
     );
   }
@@ -283,7 +308,7 @@ function CheckInPanel({
         </Button>
       </CardHeader>
       <CardContent className="space-y-2">
-        {loading && <Loader2 className="w-5 h-5 animate-spin text-primary-foreground/60" />}
+        {loading && <TennisBallSpinner />}
         {!loading && registered.length === 0 && (
           <p className="text-primary-foreground/60 text-sm">No registered players yet.</p>
         )}
@@ -325,7 +350,7 @@ function LiveRoundPanel({
   onScore: (matchId: string, teamAGames: number, teamBGames: number) => void;
 }) {
   if (loading) {
-    return <Loader2 className="w-6 h-6 animate-spin text-primary-foreground/60" />;
+    return <TennisBallSpinner />;
   }
 
   if (!round || round.matches.length === 0) {
@@ -451,7 +476,7 @@ function LeaderboardPanel({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {loading && <Loader2 className="w-5 h-5 animate-spin text-primary-foreground/60" />}
+        {loading && <TennisBallSpinner />}
         {!loading && rows.length === 0 && (
           <p className="text-primary-foreground/60 text-sm">No confirmed matches yet.</p>
         )}
@@ -475,5 +500,32 @@ function LeaderboardPanel({
         ))}
       </CardContent>
     </Card>
+  );
+}
+
+// Shown on production while TC Live is staging-only (see the isStaging
+// check above and server/routes/organizer.ts requireStagingEnv). Not an
+// error state - the session and its registrations are perfectly real,
+// this specific screen just isn't turned on for real sessions yet.
+function TcLiveComingSoonStub({ sessionId }: { sessionId?: string }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4 bg-background">
+      <Card className="max-w-md w-full shadow-sm text-center">
+        <CardHeader>
+          <CardTitle>Live sessions are coming soon</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-muted-foreground">
+            We're still finishing the live check-in, court, and scoring experience. It'll show up
+            here as soon as it's ready.
+          </p>
+          {sessionId && (
+            <Button asChild variant="outline">
+              <Link href={`/organiser/sessions/${sessionId}`}>Back to Session Workspace</Link>
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

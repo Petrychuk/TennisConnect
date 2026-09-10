@@ -26,6 +26,11 @@ export interface MockSession {
   type: "social" | "round-robin" | "clinic" | "tournament";
   status: SessionStatus;
   location: string;
+  // IANA zone the venue is in - see client/src/lib/timezone.ts
+  // formatInTimeZone. startAt should always be shown in this zone, not
+  // the viewer's own browser timezone.
+  timeZone: string;
+  coverImage?: string | null;
   startAt: string; // ISO
   registeredCount: number;
   checkedInCount: number;
@@ -85,6 +90,7 @@ export const mockLiveSession: MockSession = {
   type: "social",
   status: "live",
   location: "Lyne Park Tennis Centre",
+  timeZone: "Australia/Sydney",
   startAt: new Date(new Date().setHours(18, 30, 0, 0)).toISOString(),
   registeredCount: 24,
   checkedInCount: 21,
@@ -106,6 +112,7 @@ export const mockUpcomingSessions: MockSession[] = [
     type: "social",
     status: "published",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysFromNowAt(2, 9, 30),
     registeredCount: 18,
     checkedInCount: 0,
@@ -118,6 +125,7 @@ export const mockUpcomingSessions: MockSession[] = [
     type: "round-robin",
     status: "published",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysFromNowAt(4, 16, 0),
     registeredCount: 24,
     checkedInCount: 0,
@@ -130,6 +138,7 @@ export const mockUpcomingSessions: MockSession[] = [
     type: "social",
     status: "pending_review",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysFromNowAt(6, 10, 0),
     registeredCount: 12,
     checkedInCount: 0,
