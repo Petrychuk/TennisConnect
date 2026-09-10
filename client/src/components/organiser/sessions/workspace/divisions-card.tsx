@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getSessionDivisions, createSessionDivision } from "@/lib/api/organizer-sessions";
 import { NumberField } from "@/components/organiser/sessions/wizard/number-field";
 import type { SessionWithDetails } from "@shared/schema";
+import { formatInTimeZone } from "@/lib/timezone";
 
 const STATUS_BADGE: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -127,7 +128,7 @@ export function DivisionsCard({ sessionId }: DivisionsCardProps) {
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {new Date(division.startAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
+                    {formatInTimeZone(division.startAt, division.timeZone, { day: "numeric", month: "short", year: "numeric" })}
                     {" · "}
                     {division.registeredCount}
                     {division.maxParticipants != null ? ` / ${division.maxParticipants}` : ""} registered

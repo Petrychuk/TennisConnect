@@ -1,18 +1,38 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shuffle, Repeat, Trophy, Ruler } from "lucide-react";
-import { getSessionDetail, type SessionListItem } from "@/lib/organiser-sessions-mock-data";
+import { type SessionListItem } from "@/lib/organiser-sessions-mock-data";
 
 interface FormatRulesTabProps {
   session: SessionListItem;
 }
 
 export function FormatRulesTab({ session }: FormatRulesTabProps) {
-  const detail = getSessionDetail(session);
+  // Real fields (sessions.match_mode/category/games_to/no_ad/tiebreak/
+  // planned_rounds_count) - this tab used to always show the same
+  // hardcoded "Fun doubles · Random partners · Balance skill" via
+  // getSessionDetail()'s mock fallback, regardless of what the
+  // organizer actually picked in the wizard. Same real data
+  // session-details-card.tsx's Overview cards already use.
+  const formatLabel =
+    session.matchMode == null
+      ? "Not set"
+      : session.category === "mens"
+      ? `Men's ${session.matchMode === "singles" ? "Singles" : "Doubles"}`
+      : session.category === "womens"
+      ? `Women's ${session.matchMode === "singles" ? "Singles" : "Doubles"}`
+      : session.matchMode === "singles"
+      ? "Singles"
+      : "Doubles";
+  const roundsCount = session.roundTotal ?? session.plannedRoundsCount ?? null;
+  const scoringLabel =
+    session.gamesTo != null
+      ? `First to ${session.gamesTo} games${session.noAd ? ", no-ad" : ""}${session.tiebreak ? ", tiebreak at deuce" : ""}.`
+      : "Not set.";
 
   const items = [
-    { icon: Shuffle, title: "Format", description: detail.format },
-    { icon: Repeat, title: "Rounds", description: detail.roundsDescription },
-    { icon: Trophy, title: "Scoring", description: "Games won across all rounds, then games-vs-opponent as tiebreak." },
+    { icon: Shuffle, title: "Format", description: formatLabel },
+    { icon: Repeat, title: "Rounds", description: roundsCount != null ? `${roundsCount} planned rounds.` : "Not set." },
+    { icon: Trophy, title: "Scoring", description: scoringLabel },
     { icon: Ruler, title: "Court Assignment", description: "Random each round — partners and courts reshuffle to keep things fair." },
   ];
 

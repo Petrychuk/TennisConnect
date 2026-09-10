@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Loader2, CheckCircle2, Clock, XCircle } from "lucide-react";
+import { Trophy, CheckCircle2, Clock, XCircle } from "lucide-react";
+import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import type { OrganizerStatusData } from "@/hooks/use-organizer-status";
@@ -88,7 +89,7 @@ export function BecomeOrganizerCard({ status, onChange }: BecomeOrganizerCardPro
               disabled={submitting}
               data-testid="become-organizer-button"
             >
-              {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {submitting && <TennisBallSpinner className="mr-2" />}
               Request Again
             </Button>
           </div>
@@ -105,7 +106,7 @@ export function BecomeOrganizerCard({ status, onChange }: BecomeOrganizerCardPro
               disabled={submitting}
               data-testid="become-organizer-button"
             >
-              {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {submitting && <TennisBallSpinner className="mr-2" />}
               Request Again
             </Button>
           </div>
@@ -119,7 +120,7 @@ export function BecomeOrganizerCard({ status, onChange }: BecomeOrganizerCardPro
               disabled={submitting}
               data-testid="become-organizer-button"
             >
-              {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {submitting && <TennisBallSpinner className="mr-2" />}
               Become an Organiser
             </Button>
           </div>

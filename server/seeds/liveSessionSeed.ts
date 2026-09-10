@@ -32,7 +32,7 @@ const SESSION_TITLE = "TC Live Test Session";
 const PLAYER_COUNT = 16;
 const COURTS_COUNT = 4;
 
-function assertDevEnvironment() {
+export function assertDevEnvironment() {
   if (process.env.NODE_ENV !== "development") {
     throw new Error(
       `TC Live seed refuses to run outside development (NODE_ENV=${process.env.NODE_ENV}). ` +

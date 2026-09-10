@@ -8,12 +8,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft } from "lucide-react";
+import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import SEO from "@/components/seo";
 import { getSessionById, updateSession } from "@/lib/api/organizer-sessions";
 import { NumberField } from "@/components/organiser/sessions/wizard/number-field";
+import { AU_CITY_TIMEZONES, zonedTimeToUtc, toZonedDateTimeInputs } from "@/lib/timezone";
 
 // A single-page edit form for the core, always-real fields (title,
 // venue, date/time, capacity, pricing, registration window, waiting
@@ -37,6 +40,8 @@ export default function OrganiserSessionEditPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [venue, setVenue] = useState("");
+  const [timeZone, setTimeZone] = useState("Australia/Sydney");
+  const [courtsCount, setCourtsCount] = useState("");
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
@@ -45,25 +50,35 @@ export default function OrganiserSessionEditPage() {
   const [price, setPrice] = useState("");
   const [waitingListEnabled, setWaitingListEnabled] = useState(true);
   const [registrationCloses, setRegistrationCloses] = useState("");
+  const [registrationClosesTime, setRegistrationClosesTime] = useState("23:59");
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     const session = sessionQuery.data;
     if (!session || loaded) return;
-    const start = new Date(session.startAt);
+    const zone = session.timeZone ?? "Australia/Sydney";
+    // Reads the venue's own wall-clock date/time (see
+    // toZonedDateTimeInputs) - was previously `new Date(session.startAt)`
+    // + `.toISOString()`/`.toTimeString()`, which read the UTC calendar
+    // date and the BROWSER's own local clock time respectively, neither
+    // of which is what the organizer actually set for the venue.
+    const { date: startDate, time: startTimeStr } = toZonedDateTimeInputs(session.startAt, zone);
     setTitle(session.title);
     setDescription(session.description ?? "");
     setVenue(session.location ?? "");
-    setDate(start.toISOString().split("T")[0]);
-    setStartTime(start.toTimeString().slice(0, 5));
-    setEndTime(session.endAt ? new Date(session.endAt).toTimeString().slice(0, 5) : "");
+    setTimeZone(zone);
+    setCourtsCount(session.courtsCount != null ? String(session.courtsCount) : "");
+    setDate(startDate);
+    setStartTime(startTimeStr);
+    setEndTime(session.endAt ? toZonedDateTimeInputs(session.endAt, zone).time : "");
     setMaxParticipants(session.maxParticipants != null ? String(session.maxParticipants) : "");
     const priceNum = session.price != null ? Number(session.price) : 0;
     setPricing(priceNum > 0 ? "paid" : "free");
     setPrice(priceNum > 0 ? String(priceNum) : "");
     setWaitingListEnabled(session.waitingListEnabled);
-    setRegistrationCloses(session.registrationClosesAt ? new Date(session.registrationClosesAt).toISOString().split("T")[0] : "");
+    setRegistrationCloses(session.registrationClosesAt ? toZonedDateTimeInputs(session.registrationClosesAt, zone).date : "");
+    setRegistrationClosesTime(session.registrationClosesAt ? toZonedDateTimeInputs(session.registrationClosesAt, zone).time : "23:59");
     setLoaded(true);
   }, [sessionQuery.data, loaded]);
 
@@ -94,7 +109,7 @@ export default function OrganiserSessionEditPage() {
   if (sessionQuery.isLoading || !session) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        <TennisBallSpinner />
       </div>
     );
   }
@@ -115,12 +130,14 @@ export default function OrganiserSessionEditPage() {
         title: title.trim(),
         description: description.trim() || undefined,
         location: venue.trim(),
-        startAt: new Date(`${date}T${startTime || "00:00"}`),
-        endAt: endTime ? new Date(`${date}T${endTime}`) : undefined,
+        timeZone,
+        courtsCount: courtsCount.trim() ? Number(courtsCount) : undefined,
+        startAt: zonedTimeToUtc(date, startTime || "00:00", timeZone),
+        endAt: endTime ? zonedTimeToUtc(date, endTime, timeZone) : undefined,
         maxParticipants: maxParticipants.trim() ? Number(maxParticipants) : undefined,
         price: pricing === "paid" ? Number(price || 0) : 0,
         waitingListEnabled,
-        registrationClosesAt: registrationCloses ? new Date(`${registrationCloses}T23:59`) : undefined,
+        registrationClosesAt: registrationCloses ? zonedTimeToUtc(registrationCloses, registrationClosesTime || "23:59", timeZone) : undefined,
       } as any);
       queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", params.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine"] });
@@ -157,6 +174,28 @@ export default function OrganiserSessionEditPage() {
               <Input value={venue} onChange={(e) => setVenue(e.target.value)} data-testid="organiser-session-edit-venue" />
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>City / Timezone</Label>
+                <Select value={timeZone} onValueChange={setTimeZone}>
+                  <SelectTrigger data-testid="organiser-session-edit-timezone">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AU_CITY_TIMEZONES.map((c) => (
+                      <SelectItem key={c.timeZone} value={c.timeZone}>
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Courts</Label>
+                <NumberField min={1} value={courtsCount === "" ? NaN : Number(courtsCount)} onChange={(v) => setCourtsCount(String(v))} placeholder="Not set" data-testid="organiser-session-edit-courts" />
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <Label>Date</Label>
@@ -174,7 +213,10 @@ export default function OrganiserSessionEditPage() {
 
             <div className="space-y-1.5">
               <Label>Registration Closes</Label>
-              <Input type="date" value={registrationCloses} max={date || undefined} onChange={(e) => setRegistrationCloses(e.target.value)} data-testid="organiser-session-edit-registration-closes" />
+              <div className="flex gap-2">
+                <Input type="date" value={registrationCloses} max={date || undefined} onChange={(e) => setRegistrationCloses(e.target.value)} className="flex-1" data-testid="organiser-session-edit-registration-closes" />
+                <Input type="time" value={registrationClosesTime} onChange={(e) => setRegistrationClosesTime(e.target.value)} className="w-28 shrink-0" data-testid="organiser-session-edit-registration-closes-time" />
+              </div>
               {date && registrationCloses > date && (
                 <p className="text-xs text-destructive">Registration can't close after the session date.</p>
               )}

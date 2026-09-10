@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -17,6 +17,9 @@ import type { SessionPlayer } from "@/lib/organiser-sessions-mock-data";
 interface PlayersTableProps {
   players: SessionPlayer[];
   onCheckIn?: (player: SessionPlayer) => void;
+  onRemove?: (player: SessionPlayer) => void;
+  onMoveToWaiting?: (player: SessionPlayer) => void;
+  onViewProfile?: (player: SessionPlayer) => void;
   showGroupColumn?: boolean;
   showJoinedColumn?: boolean;
 }
@@ -24,6 +27,7 @@ interface PlayersTableProps {
 const LEVEL_BADGE_STYLE: Record<SessionPlayer["levelLabel"], string> = {
   Advanced: "bg-primary/10 text-primary",
   Intermediate: "bg-secondary text-secondary-foreground",
+  Beginner: "bg-secondary text-secondary-foreground",
   Social: "bg-muted text-muted-foreground",
 };
 
@@ -35,7 +39,7 @@ const STATUS_BADGE_STYLE: Record<SessionPlayer["status"], string> = {
   "no-response": "bg-muted text-muted-foreground",
 };
 
-export function PlayersTable({ players, onCheckIn, showGroupColumn = true, showJoinedColumn = true }: PlayersTableProps) {
+export function PlayersTable({ players, onCheckIn, onRemove, onMoveToWaiting, onViewProfile, showGroupColumn = false, showJoinedColumn = true }: PlayersTableProps) {
   const { toast } = useToast();
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -84,6 +88,7 @@ export function PlayersTable({ players, onCheckIn, showGroupColumn = true, showJ
               <TableCell>
                 <div className="flex items-center gap-2.5">
                   <Avatar className="h-8 w-8 border border-border">
+                    <AvatarImage src={player.avatar ?? undefined} alt={player.name} />
                     <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
                       {player.name[0]}
                     </AvatarFallback>
@@ -98,7 +103,13 @@ export function PlayersTable({ players, onCheckIn, showGroupColumn = true, showJ
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-sm">{player.level.toFixed(1)}</span>
+                  {/* No real numeric rating exists for any player yet
+                      (no rating pipeline) - showing a decimal here for
+                      a real registration would be a fabricated number,
+                      not real data. Only ever shown for the mock
+                      "crowd" data, which does carry a fake-but-labelled
+                      demo rating. */}
+                  {!player.isReal && <span className="text-sm">{player.level.toFixed(1)}</span>}
                   <Badge className={LEVEL_BADGE_STYLE[player.levelLabel]}>{player.levelLabel}</Badge>
                 </div>
               </TableCell>
@@ -148,7 +159,7 @@ export function PlayersTable({ players, onCheckIn, showGroupColumn = true, showJ
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => notify("Move to Waiting", player)}>
+                    <DropdownMenuItem onClick={() => (onMoveToWaiting ? onMoveToWaiting(player) : notify("Move to Waiting", player))}>
                       <ArrowUpDown className="w-4 h-4 mr-2" />
                       Move to Waiting
                     </DropdownMenuItem>
@@ -156,11 +167,11 @@ export function PlayersTable({ players, onCheckIn, showGroupColumn = true, showJ
                       <MessageSquare className="w-4 h-4 mr-2" />
                       Message
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => notify("View Profile", player)}>
+                    <DropdownMenuItem onClick={() => (onViewProfile ? onViewProfile(player) : notify("View Profile", player))}>
                       <UserCircle className="w-4 h-4 mr-2" />
                       View Profile
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => notify("Remove", player)} className="text-destructive">
+                    <DropdownMenuItem onClick={() => (onRemove ? onRemove(player) : notify("Remove", player))} className="text-destructive">
                       <Trash2 className="w-4 h-4 mr-2" />
                       Remove
                     </DropdownMenuItem>

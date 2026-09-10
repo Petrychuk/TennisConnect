@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,15 +15,19 @@ import type { SessionPlayer } from "@/lib/organiser-sessions-mock-data";
 interface PlayersListProps {
   players: SessionPlayer[];
   onCheckIn?: (player: SessionPlayer) => void;
+  onRemove?: (player: SessionPlayer) => void;
+  onMoveToWaiting?: (player: SessionPlayer) => void;
+  onViewProfile?: (player: SessionPlayer) => void;
 }
 
 const LEVEL_BADGE_STYLE: Record<SessionPlayer["levelLabel"], string> = {
   Advanced: "bg-primary/10 text-primary",
   Intermediate: "bg-secondary text-secondary-foreground",
+  Beginner: "bg-secondary text-secondary-foreground",
   Social: "bg-muted text-muted-foreground",
 };
 
-export function PlayersList({ players, onCheckIn }: PlayersListProps) {
+export function PlayersList({ players, onCheckIn, onRemove, onMoveToWaiting, onViewProfile }: PlayersListProps) {
   const { toast } = useToast();
   const notify = (action: string, player: SessionPlayer) =>
     toast({ title: `${action} — coming soon`, description: `Would apply to ${player.name}.` });
@@ -34,6 +38,7 @@ export function PlayersList({ players, onCheckIn }: PlayersListProps) {
         <Card key={player.id} className="shadow-sm" data-testid={`organiser-players-list-item-${player.id}`}>
           <CardContent className="p-3 flex items-center gap-3">
             <Avatar className="h-9 w-9 border border-border">
+              <AvatarImage src={player.avatar ?? undefined} alt={player.name} />
               <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
                 {player.name[0]}
               </AvatarFallback>
@@ -72,7 +77,7 @@ export function PlayersList({ players, onCheckIn }: PlayersListProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => notify("Move to Waiting", player)}>
+                <DropdownMenuItem onClick={() => (onMoveToWaiting ? onMoveToWaiting(player) : notify("Move to Waiting", player))}>
                   <ArrowUpDown className="w-4 h-4 mr-2" />
                   Move to Waiting
                 </DropdownMenuItem>
@@ -80,11 +85,11 @@ export function PlayersList({ players, onCheckIn }: PlayersListProps) {
                   <MessageSquare className="w-4 h-4 mr-2" />
                   Message
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => notify("View Profile", player)}>
+                <DropdownMenuItem onClick={() => (onViewProfile ? onViewProfile(player) : notify("View Profile", player))}>
                   <UserCircle className="w-4 h-4 mr-2" />
                   View Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => notify("Remove", player)} className="text-destructive">
+                <DropdownMenuItem onClick={() => (onRemove ? onRemove(player) : notify("Remove", player))} className="text-destructive">
                   <Trash2 className="w-4 h-4 mr-2" />
                   Remove
                 </DropdownMenuItem>

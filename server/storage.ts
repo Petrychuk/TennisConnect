@@ -59,6 +59,7 @@ import {
   type Match,
   type MatchWithPlayers,
   type LeaderboardRow,
+  type ActivityFeedItem,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, asc, sql, lte, ne, gte, ilike, inArray, isNull } from "drizzle-orm";
@@ -303,6 +304,8 @@ export interface IStorage {
  deleteSession(id: string): Promise<void>;
  getRegistrationsForSession(sessionId: string): Promise<RegistrationWithUser[]>;
  getPlayersForOrganization(organizationId: string): Promise<OrgPlayerRow[]>;
+  getOrganizerDashboardStats(organizationId: string): Promise<{ activePlayers: number; attendancePercent: number; revenueThisWeek: number; revenueCurrency: string }>;
+  getRecentActivityForOrganization(organizationId: string, limit: number): Promise<ActivityFeedItem[]>;
  createInvitedRegistration(sessionId: string, userId: string): Promise<Registration>;
  acceptInvitedRegistration(sessionId: string, userId: string): Promise<Registration>;
  createOrganizationMembership(organizationId: string, userId: string): Promise<CommunityMembership>;
@@ -2567,7 +2570,13 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(tennisSessions.organizationId, organizationId),
           eq(tennisSessions.status, "published"),
-          gte(tennisSessions.startAt, new Date())
+          // A session currently in progress (started, hasn't ended)
+          // still belongs here - comparing against startAt alone
+          // dropped it the moment it started, well before it actually
+          // finished. endAt is nullable (older/manually-edited
+          // sessions), so this falls back to startAt only when there's
+          // no real end time to compare against.
+          sql`COALESCE(${tennisSessions.endAt}, ${tennisSessions.startAt}) >= ${new Date()}`
         )
       )
       .orderBy(asc(tennisSessions.startAt));
@@ -2854,9 +2863,14 @@ export class DatabaseStorage implements IStorage {
         userAvatar: users.avatar,
         userIsTestUser: users.isTestUser,
         userRole: users.role,
+        userSkillLevel: playerProfiles.skillLevel,
       })
       .from(registrations)
       .innerJoin(users, eq(registrations.userId, users.id))
+      // Left, not inner - a registrant with no player profile yet (e.g.
+      // signed up as a coach/organiser, or hasn't finished onboarding)
+      // still needs to show up here, just with userSkillLevel: null.
+      .leftJoin(playerProfiles, eq(playerProfiles.userId, registrations.userId))
       .where(eq(registrations.sessionId, sessionId))
       .orderBy(asc(registrations.createdAt));
 
@@ -2867,16 +2881,19 @@ export class DatabaseStorage implements IStorage {
       userAvatar: row.userAvatar,
       userIsTestUser: row.userIsTestUser,
       userRole: row.userRole,
+      userSkillLevel: row.userSkillLevel,
     }));
   }
 
   // Org-wide player roster ("Players" page) - one row per distinct
   // player who's ever registered (non-cancelled) for any of this
-  // organization's sessions, with a real sessionsPlayed count and the
-  // most recent session they registered for. Level/win-rate aren't
+  // organization's sessions, with a real sessionsPlayed count, the
+  // most recent session they registered for, and their skill level
+  // where they've set one. Win-rate/numeric rating still aren't
   // derivable from registration data alone (no ratings or match
-  // results exist yet) - those stay the caller's responsibility to
-  // default sensibly, this only returns what's actually knowable.
+  // results exist yet) - level now is, via a left join to
+  // player_profiles (left, not inner, so a player with no profile yet
+  // still shows up - just with userSkillLevel: null).
   async getPlayersForOrganization(organizationId: string): Promise<OrgPlayerRow[]> {
     const rows = await db
       .select({
@@ -2884,22 +2901,146 @@ export class DatabaseStorage implements IStorage {
         userName: users.name,
         userSlug: users.slug,
         userAvatar: users.avatar,
+        userSkillLevel: playerProfiles.skillLevel,
         sessionsPlayed: sql<number>`count(distinct ${registrations.id})`,
         lastPlayedAt: sql<string>`max(${tennisSessions.startAt})`,
       })
       .from(registrations)
       .innerJoin(tennisSessions, eq(registrations.sessionId, tennisSessions.id))
       .innerJoin(users, eq(registrations.userId, users.id))
+      .leftJoin(playerProfiles, eq(playerProfiles.userId, registrations.userId))
       .where(
         and(
           eq(tennisSessions.organizationId, organizationId),
           ne(registrations.status, "cancelled")
         )
       )
-      .groupBy(registrations.userId, users.name, users.slug, users.avatar)
+      .groupBy(registrations.userId, users.name, users.slug, users.avatar, playerProfiles.skillLevel)
       .orderBy(desc(sql`count(distinct ${registrations.id})`));
 
     return rows;
+  }
+
+  // Dashboard's stat strip (Active Players / Attendance / Revenue) -
+  // these previously stayed hardcoded mock numbers since nothing
+  // computed them. "Active players" reuses the same distinct-player
+  // count as the Players tab. "Attendance" is checked-in ratio across
+  // every non-draft session that's actually happened (live/completed/
+  // archived) - there's no real "season" concept yet (Season Overview
+  // is still mock), so this isn't season-scoped, just "to date".
+  // "Revenue" sums price * registered count for sessions that started
+  // in the last 7 days and actually went ahead (not cancelled) -
+  // rolling window, not calendar-week, to match the existing 7-day
+  // "upcoming" stat already on this page.
+  async getOrganizerDashboardStats(
+    organizationId: string
+  ): Promise<{ activePlayers: number; attendancePercent: number; revenueThisWeek: number; revenueCurrency: string }> {
+    const [players, attendanceRows, revenueRows] = await Promise.all([
+      this.getPlayersForOrganization(organizationId),
+      db
+        .select({
+          registered: sql<number>`count(*)`,
+          checkedIn: sql<number>`count(*) filter (where ${registrations.checkedInAt} is not null)`,
+        })
+        .from(registrations)
+        .innerJoin(tennisSessions, eq(registrations.sessionId, tennisSessions.id))
+        .where(
+          and(
+            eq(tennisSessions.organizationId, organizationId),
+            sql`${tennisSessions.status} IN ('live', 'completed', 'archived')`,
+            ne(registrations.status, "cancelled")
+          )
+        ),
+      db
+        .select({
+          price: tennisSessions.price,
+          currency: tennisSessions.currency,
+          registeredCount: sql<number>`count(${registrations.id})`,
+        })
+        .from(tennisSessions)
+        .leftJoin(
+          registrations,
+          and(eq(registrations.sessionId, tennisSessions.id), ne(registrations.status, "cancelled"))
+        )
+        .where(
+          and(
+            eq(tennisSessions.organizationId, organizationId),
+            sql`${tennisSessions.status} IN ('live', 'completed', 'archived')`,
+            sql`${tennisSessions.startAt} >= now() - interval '7 days'`,
+            sql`${tennisSessions.startAt} <= now()`
+          )
+        )
+        .groupBy(tennisSessions.id, tennisSessions.price, tennisSessions.currency),
+    ]);
+
+    const registered = Number(attendanceRows[0]?.registered ?? 0);
+    const checkedIn = Number(attendanceRows[0]?.checkedIn ?? 0);
+    const attendancePercent = registered > 0 ? Math.round((checkedIn / registered) * 100) : 0;
+
+    const revenueThisWeek = revenueRows.reduce(
+      (sum, r) => sum + Number(r.price ?? 0) * Number(r.registeredCount ?? 0),
+      0
+    );
+    const revenueCurrency = revenueRows[0]?.currency ?? "AUD";
+
+    return { activePlayers: players.length, attendancePercent, revenueThisWeek, revenueCurrency };
+  }
+
+  async getRecentActivityForOrganization(organizationId: string, limit: number): Promise<ActivityFeedItem[]> {
+    const [joinRows, checkinRows] = await Promise.all([
+      db
+        .select({
+          id: registrations.id,
+          userName: users.name,
+          sessionTitle: tennisSessions.title,
+          at: registrations.createdAt,
+        })
+        .from(registrations)
+        .innerJoin(tennisSessions, eq(registrations.sessionId, tennisSessions.id))
+        .innerJoin(users, eq(registrations.userId, users.id))
+        .where(and(eq(tennisSessions.organizationId, organizationId), ne(registrations.status, "cancelled")))
+        .orderBy(desc(registrations.createdAt))
+        .limit(limit),
+      db
+        .select({
+          id: registrations.id,
+          userName: users.name,
+          sessionTitle: tennisSessions.title,
+          at: registrations.checkedInAt,
+        })
+        .from(registrations)
+        .innerJoin(tennisSessions, eq(registrations.sessionId, tennisSessions.id))
+        .innerJoin(users, eq(registrations.userId, users.id))
+        .where(
+          and(
+            eq(tennisSessions.organizationId, organizationId),
+            sql`${registrations.checkedInAt} IS NOT NULL`
+          )
+        )
+        .orderBy(desc(registrations.checkedInAt))
+        .limit(limit),
+    ]);
+
+    const items: ActivityFeedItem[] = [
+      ...joinRows.map((r) => ({
+        id: `${r.id}-joined`,
+        type: "joined" as const,
+        userName: r.userName,
+        sessionTitle: r.sessionTitle,
+        at: new Date(r.at).toISOString(),
+      })),
+      ...checkinRows
+        .filter((r) => r.at != null)
+        .map((r) => ({
+          id: `${r.id}-checked_in`,
+          type: "checked_in" as const,
+          userName: r.userName,
+          sessionTitle: r.sessionTitle,
+          at: new Date(r.at as Date).toISOString(),
+        })),
+    ];
+
+    return items.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()).slice(0, limit);
   }
 
   async getViewerRegistrationStatus(sessionId: string, userId: string): Promise<string | null> {
@@ -3106,6 +3247,39 @@ export class DatabaseStorage implements IStorage {
     const [registration] = await db
       .update(registrations)
       .set({ checkedInAt: new Date() })
+      .where(eq(registrations.id, registrationId))
+      .returning();
+    if (!registration) throw new Error("Registration not found");
+    return registration;
+  }
+
+  // Organizer removing a specific player from their session - the
+  // Players tab's own "Remove" action (used to be a fake toast, no
+  // request ever sent). Same cancelled status a player's own
+  // self-service leaveSession sets, just organizer-initiated and
+  // looked up by registrationId directly rather than needing the
+  // player's own userId first.
+  async cancelRegistrationById(registrationId: string): Promise<Registration> {
+    const [registration] = await db
+      .update(registrations)
+      .set({ status: "cancelled" })
+      .where(eq(registrations.id, registrationId))
+      .returning();
+    if (!registration) throw new Error("Registration not found");
+    return registration;
+  }
+
+  // Organizer manually moving a registered player to the waiting list -
+  // an admin override (e.g. correcting a mistake, or freeing a spot for
+  // someone else) rather than the normal "session is full" path a new
+  // registration takes on its own. Deliberately simple: flips status
+  // only, no capacity/reordering logic - the existing waiting-list
+  // display already sorts by joinedAt, so this player just takes
+  // whatever position their (unchanged) original joinedAt puts them at.
+  async moveRegistrationToWaitlist(registrationId: string): Promise<Registration> {
+    const [registration] = await db
+      .update(registrations)
+      .set({ status: "waitlisted" })
       .where(eq(registrations.id, registrationId))
       .returning();
     if (!registration) throw new Error("Registration not found");

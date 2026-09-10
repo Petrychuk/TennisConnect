@@ -23,7 +23,6 @@ import {
   Archive,
   Calendar,
   MapPin,
-  Loader2,
   Send,
   UserPlus,
   Megaphone,
@@ -33,8 +32,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { publishSession, archiveSession, inviteToSession, broadcastToSession, getSessionRegistrations, createSessionDivision, createSession } from "@/lib/api/organizer-sessions";
-import { createEmptyDraft, draftToInsertSession } from "@/lib/organiser-session-wizard-types";
+import { publishSession, archiveSession, inviteToSession, broadcastToSession, getSessionRegistrations, createSessionDivision } from "@/lib/api/organizer-sessions";
 import { InvitePlayersDialog } from "@/components/organiser/shared/invite-players-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -45,7 +43,6 @@ import { NotificationBell } from "@/components/organiser/ui/notification-bell";
 import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
 import { OverviewTab } from "@/components/organiser/sessions/workspace/overview-tab";
 import { PlayersTab } from "@/components/organiser/sessions/workspace/players-tab";
-import { RegistrationTab } from "@/components/organiser/sessions/workspace/registration-tab";
 import { FormatRulesTab } from "@/components/organiser/sessions/workspace/format-rules-tab";
 import { RoundsTab } from "@/components/organiser/sessions/workspace/rounds-tab";
 import { MessagesTab } from "@/components/organiser/sessions/workspace/messages-tab";
@@ -58,11 +55,12 @@ import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
 import { useQuery } from "@tanstack/react-query";
 import { getSessionById } from "@/lib/api/organizer-sessions";
 import { toSessionListItem } from "@/lib/api/session-adapter";
+import { TennisBallSpinner } from "@/components/ui/tennisLoader";
+import { formatInTimeZone } from "@/lib/timezone";
 
 const WORKSPACE_TABS = [
   { key: "overview", label: "Overview" },
   { key: "players", label: "Players" },
-  { key: "registration", label: "Registration" },
   { key: "format", label: "Format & Rules" },
   { key: "rounds", label: "Rounds" },
   { key: "messages", label: "Messages" },
@@ -160,34 +158,33 @@ export default function OrganiserSessionWorkspacePage() {
     }
   };
 
-  const handleDuplicate = async () => {
-    if (!session || duplicating) return;
-    setDuplicating(true);
-    try {
-      if (isDivision && session.parentSessionId) {
-        const copy = await createSessionDivision(session.parentSessionId, {
-          title: `${session.title} (copy)`,
-          cloneFromDivisionId: session.id,
-        });
-        queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.parentSessionId, "divisions"] });
-        toast({ title: "Division duplicated", description: "Saved as a new draft division." });
-        setLocation(`/organiser/sessions/${copy.id}`);
-      } else {
-        // Same shape a "blank" wizard draft would build, seeded with
-        // this session's own details - same pattern the Sessions list's
-        // own Duplicate already uses, a real draft copy in the
-        // database, not just a client-side clone.
-        const draft = { ...createEmptyDraft(), name: `${session.title} (Copy)`, venue: session.location, maxPlayers: session.maxParticipants ?? 24 };
-        const copy = await createSession(draftToInsertSession(draft) as any);
-        queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine"] });
-        toast({ title: "Session duplicated", description: "Saved as a new draft." });
-        setLocation(`/organiser/sessions/${copy.id}`);
-      }
-    } catch (error: any) {
-      toast({ title: "Couldn't duplicate", description: error?.message ?? "Please try again.", variant: "destructive" });
-    } finally {
-      setDuplicating(false);
+  const handleDuplicate = () => {
+    if (!session) return;
+    if (isDivision && session.parentSessionId) {
+      setDuplicating(true);
+      createSessionDivision(session.parentSessionId, {
+        title: `${session.title} (copy)`,
+        cloneFromDivisionId: session.id,
+      })
+        .then((copy) => {
+          queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.parentSessionId, "divisions"] });
+          toast({ title: "Division duplicated", description: "Saved as a new draft division." });
+          setLocation(`/organiser/sessions/${copy.id}`);
+        })
+        .catch((error: any) => {
+          toast({ title: "Couldn't duplicate", description: error?.message ?? "Please try again.", variant: "destructive" });
+        })
+        .finally(() => setDuplicating(false));
+      return;
     }
+    // Goes through the real wizard (pre-filled) instead of silently
+    // POSTing a near-copy directly - see session-new.tsx's own comment
+    // on the duplicateFrom param for why: values actually carry over
+    // now, and it gets a real review + publish step instead of being
+    // left stuck in "draft" status forever (which is exactly what this
+    // page's old version did - createSession with no matching
+    // publishSession call).
+    setLocation(`/organiser/sessions/new?duplicateFrom=${session.id}`);
   };
 
   const handlePublish = async () => {
@@ -229,6 +226,20 @@ export default function OrganiserSessionWorkspacePage() {
     }
   }, [search]);
 
+  // Clicking a tab only ever updated the in-memory `tab` state - the
+  // URL's own ?tab= param never followed along, so it stayed stuck at
+  // whatever it was when the page first loaded (e.g. "settings" if
+  // Edit was how you got here) no matter which tab you actually
+  // switched to afterward. replaceState (not setLocation/pushState) so
+  // switching tabs doesn't pile up separate Back-button history entries
+  // for every tab visited.
+  const handleTabChange = (v: string) => {
+    setTab(v as WorkspaceTabKey);
+    if (params?.id) {
+      window.history.replaceState(null, "", `/organiser/sessions/${params.id}?tab=${v}`);
+    }
+  };
+
   if (authLoading) return null;
   if (!isAuthenticated) {
     setLocation("/auth");
@@ -254,7 +265,7 @@ export default function OrganiserSessionWorkspacePage() {
   if (sessionQuery.isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        <TennisBallSpinner />
       </div>
     );
   }
@@ -366,10 +377,10 @@ export default function OrganiserSessionWorkspacePage() {
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
                 <span className="flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5" />
-                  {new Date(session.startAt).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
+                  {formatInTimeZone(session.startAt, session.timeZone, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
                   {" · "}
-                  {new Date(session.startAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
-                  {session.endAt && ` - ${new Date(session.endAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`}
+                  {formatInTimeZone(session.startAt, session.timeZone, { hour: "numeric", minute: "2-digit" })}
+                  {session.endAt && ` - ${formatInTimeZone(session.endAt, session.timeZone, { hour: "numeric", minute: "2-digit" })}`}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5" />
@@ -422,7 +433,7 @@ export default function OrganiserSessionWorkspacePage() {
                     <Megaphone className="w-4 h-4 mr-2" />
                     Send Announcement
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setLocation(`/organiser/sessions/${session.id}?tab=registration`)}>
+                  <DropdownMenuItem onClick={() => setLocation(`/organiser/sessions/${session.id}?tab=players`)}>
                     <ListPlus className="w-4 h-4 mr-2" />
                     Manage Waitlist
                   </DropdownMenuItem>
@@ -448,7 +459,7 @@ export default function OrganiserSessionWorkspacePage() {
           </div>
 
           {/* Tabs */}
-          <Tabs value={tab} onValueChange={(v) => setTab(v as WorkspaceTabKey)}>
+          <Tabs value={tab} onValueChange={handleTabChange}>
             <TabsList className="justify-start overflow-x-auto max-w-full whitespace-nowrap h-auto p-1 scrollbar-hide" data-testid="organiser-session-workspace-tabs">
               {visibleTabs.map((t) => (
                 <TabsTrigger key={t.key} value={t.key} className="gap-1" data-testid={`organiser-session-workspace-tab-${t.key}`}>
@@ -465,9 +476,6 @@ export default function OrganiserSessionWorkspacePage() {
             </TabsContent>
             <TabsContent value="players" className="mt-4">
               <PlayersTab session={session} onEdit={goEdit} />
-            </TabsContent>
-            <TabsContent value="registration" className="mt-4">
-              <RegistrationTab session={session} onEnterLive={goLive} />
             </TabsContent>
             <TabsContent value="format" className="mt-4">
               <FormatRulesTab session={session} />

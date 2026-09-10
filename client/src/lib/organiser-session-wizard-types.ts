@@ -1,3 +1,6 @@
+import { zonedTimeToUtc, toZonedDateTimeInputs } from "@/lib/timezone";
+import type { SessionWithDetails } from "@shared/schema";
+
 export type SessionTypeKey =
   | "social"
   | "americano"
@@ -68,15 +71,25 @@ export interface NewSessionDraft {
   season: string;
   venue: string;
   courtCount: number;
+  // IANA zone the venue is in - see client/src/lib/timezone.ts. This is
+  // what "10:00" below actually means; without it the wizard has no way
+  // to know whether the organizer's "10:00" is Sydney time, Perth time,
+  // or (if their browser happens to be set to some other zone entirely)
+  // neither.
+  timeZone: string;
   // Date
   date: string; // yyyy-mm-dd
   startTime: string; // HH:mm
   endTime: string; // HH:mm
   // Registration
   registrationOpens: string; // yyyy-mm-dd
+  registrationOpensTime: string; // HH:mm
   registrationCloses: string; // yyyy-mm-dd
+  registrationClosesTime: string; // HH:mm
   maxPlayers: number;
   waitingListEnabled: boolean;
+  // null = unlimited. Only meaningful while waitingListEnabled is true.
+  waitingListCapacity: number | null;
   allowLateRegistration: boolean;
   // Pricing
   pricing: PricingMode;
@@ -115,22 +128,32 @@ export interface NewSessionDraft {
 
 export function createEmptyDraft(): NewSessionDraft {
   const today = new Date();
-  const in7Days = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
   const toDateInput = (d: Date) => d.toISOString().slice(0, 10);
 
   return {
     type: null,
     name: "",
     season: "",
-    venue: "Lyne Park Tennis Centre",
+    venue: "",
     courtCount: 6,
-    date: toDateInput(in7Days),
+    timeZone: "Australia/Sydney",
+    date: toDateInput(today),
     startTime: "18:30",
     endTime: "20:00",
     registrationOpens: toDateInput(today),
-    registrationCloses: toDateInput(in7Days),
+    registrationOpensTime: "00:00",
+    registrationCloses: toDateInput(today),
+    // Defaults to the session's own start time (registration closes
+    // right as it begins) rather than the old hardcoded end-of-day -
+    // that let registration nominally stay "open" for hours after a
+    // session had already started (even finished, for an evening
+    // session), which is exactly what made the sessions list progress
+    // bar's "Registration closes in Xh" look wrong for a session that
+    // was actually already underway. Still freely editable either way.
+    registrationClosesTime: "18:30",
     maxPlayers: 24,
     waitingListEnabled: true,
+    waitingListCapacity: 10,
     allowLateRegistration: true,
     pricing: "free",
     price: 15,
@@ -177,12 +200,73 @@ export function createEmptyDraft(): NewSessionDraft {
  * base64 data URL, since there's no separate object storage wired
  * for session covers yet) and is sent as-is.
  */
+/**
+ * The inverse of draftToInsertSession, for the "Duplicate" action - lets
+ * a past/archived session become the STARTING POINT of a real wizard
+ * pass (Step 1 through publish) instead of silently POSTing a
+ * near-empty session directly with no review step, which is what
+ * "Duplicate" used to do (only title/venue/maxPlayers actually carried
+ * over, everything else silently reset to createEmptyDraft()'s
+ * defaults, and the copy was left stuck in "draft" status forever since
+ * nothing ever called publishSession on it).
+ *
+ * Only fields with a real column can round-trip - see
+ * draftToInsertSession's own comment for which Step 3 fields
+ * (pairing/live-settings toggles, free-text policies) only ever get
+ * folded into the description as a read-only summary rather than
+ * stored as structured data. Those can't be recovered from a past
+ * session's description text without fragile parsing, so they reset to
+ * createEmptyDraft()'s own defaults here rather than guessing.
+ *
+ * date/registrationOpens/registrationCloses deliberately reset to
+ * TODAY rather than copying the source session's own (likely past, for
+ * an archived session) dates - the organizer is about to pick new ones
+ * for the next meeting anyway, and starting from today is a more
+ * useful default than a stale date they'd have to change regardless.
+ */
+export function sessionToDraft(session: SessionWithDetails): NewSessionDraft {
+  const empty = createEmptyDraft();
+  const startInputs = toZonedDateTimeInputs(session.startAt, session.timeZone);
+  const endInputs = session.endAt ? toZonedDateTimeInputs(session.endAt, session.timeZone) : null;
+
+  return {
+    ...empty,
+    type: (session.type as SessionTypeKey) ?? empty.type,
+    name: session.title ? `${session.title} (Copy)` : empty.name,
+    venue: session.location ?? empty.venue,
+    courtCount: session.courtsCount ?? empty.courtCount,
+    timeZone: session.timeZone ?? empty.timeZone,
+    // Time of day carries over (same session format, same usual start
+    // time) - only the DATE resets to today, per the reasoning above.
+    startTime: startInputs.time,
+    endTime: endInputs?.time ?? empty.endTime,
+    maxPlayers: session.maxParticipants ?? empty.maxPlayers,
+    waitingListEnabled: session.waitingListEnabled ?? empty.waitingListEnabled,
+    waitingListCapacity: session.waitingListCapacity ?? empty.waitingListCapacity,
+    pricing: session.price && Number(session.price) > 0 ? "paid" : "free",
+    price: session.price ? Number(session.price) : empty.price,
+    visibility: (session.visibility as Visibility) ?? empty.visibility,
+    coverImage: session.coverImage ?? empty.coverImage,
+    matchType: session.matchMode === "singles" ? "singles" : "doubles",
+    category: (session.category as NewSessionDraft["category"]) ?? empty.category,
+    gamesTo: session.gamesTo ?? empty.gamesTo,
+    roundsCount: session.plannedRoundsCount ?? empty.roundsCount,
+    noAd: session.noAd ?? empty.noAd,
+    tiebreak: session.tiebreak ?? empty.tiebreak,
+  };
+}
+
 export function draftToInsertSession(draft: NewSessionDraft) {
+  // See client/src/lib/timezone.ts - this is the fix for what used to be
+  // `new Date(\`${draft.date}T${draft.startTime}\`)`, which silently used
+  // the ORGANIZER'S BROWSER'S ambient local timezone instead of the
+  // venue's. A session's advertised time belongs to the venue
+  // (draft.timeZone), not to whoever happens to be creating it.
   const startAt = draft.date
-    ? new Date(`${draft.date}T${draft.startTime || "00:00"}`)
+    ? zonedTimeToUtc(draft.date, draft.startTime || "00:00", draft.timeZone)
     : new Date();
   const endAt = draft.date && draft.endTime
-    ? new Date(`${draft.date}T${draft.endTime}`)
+    ? zonedTimeToUtc(draft.date, draft.endTime, draft.timeZone)
     : undefined;
 
   const baseMatchTypeLabel = draft.matchType === "mixed" ? "Mixed Doubles" : draft.matchType === "doubles" ? "Doubles" : "Singles";
@@ -221,14 +305,27 @@ export function draftToInsertSession(draft: NewSessionDraft) {
     coverImage: draft.coverImage || undefined,
     type: draft.type ?? "custom",
     location: draft.venue || undefined,
+    timeZone: draft.timeZone,
     startAt,
     endAt,
-    registrationOpensAt: draft.registrationOpens ? new Date(`${draft.registrationOpens}T00:00`) : undefined,
-    registrationClosesAt: draft.registrationCloses ? new Date(`${draft.registrationCloses}T23:59`) : undefined,
+    registrationOpensAt: draft.registrationOpens ? zonedTimeToUtc(draft.registrationOpens, draft.registrationOpensTime || "00:00", draft.timeZone) : undefined,
+    registrationClosesAt: draft.registrationCloses ? zonedTimeToUtc(draft.registrationCloses, draft.registrationClosesTime || "23:59", draft.timeZone) : undefined,
     price: draft.pricing === "paid" ? draft.price : 0,
     maxParticipants: draft.maxPlayers || undefined,
     visibility: draft.visibility,
     courtsCount: draft.courtCount || undefined,
     waitingListEnabled: draft.waitingListEnabled,
+    waitingListCapacity: draft.waitingListEnabled ? draft.waitingListCapacity : undefined,
+    // Structured, queryable versions of what formatSummary above already
+    // folds into description as text - matchMode also drives TC Live's
+    // pairing engine (server/services/liveEngine.ts), which previously
+    // never learned what the organizer picked here and silently treated
+    // every session as doubles regardless.
+    matchMode: draft.matchType === "singles" ? "singles" : "doubles",
+    category: draft.category,
+    gamesTo: draft.gamesTo || undefined,
+    noAd: draft.noAd,
+    tiebreak: draft.tiebreak,
+    plannedRoundsCount: draft.roundsCount || undefined,
   };
 }

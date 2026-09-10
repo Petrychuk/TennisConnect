@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +14,7 @@ interface WaitingListCardProps {
 const LEVEL_BADGE_STYLE: Record<WaitingPlayer["levelLabel"], string> = {
   Advanced: "bg-primary/10 text-primary",
   Intermediate: "bg-secondary text-secondary-foreground",
+  Beginner: "bg-secondary text-secondary-foreground",
   Social: "bg-muted text-muted-foreground",
 };
 
@@ -44,6 +45,7 @@ export function WaitingListCard({ players, className }: WaitingListCardProps) {
               data-testid={`organiser-waiting-list-item-${player.id}`}
             >
               <Avatar className="h-8 w-8 border border-border">
+                <AvatarImage src={player.avatar ?? undefined} alt={player.name} />
                 <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
                   {player.name[0]}
                 </AvatarFallback>

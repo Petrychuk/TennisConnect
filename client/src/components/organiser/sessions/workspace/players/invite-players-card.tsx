@@ -10,7 +10,22 @@ interface InvitePlayersCardProps {
 
 export function InvitePlayersCard({ sessionId, className }: InvitePlayersCardProps) {
   const { toast } = useToast();
-  const link = `https://tennisconnect.com/sessions/${sessionId}`;
+  // window.location.origin instead of a hardcoded domain - this was
+  // pointing at "tennisconnect.com" (not even the real .com.au domain,
+  // and not local/staging either) regardless of where it was actually
+  // running. origin alone correctly becomes localhost:3000 locally,
+  // the Railway staging host on staging, and the real
+  // www.tennisconnect.com.au in production, with no environment-
+  // specific branching needed.
+  //
+  // The path itself is a separate, bigger gap worth flagging: there's
+  // no public "view/join this session" page yet (only the organiser's
+  // own private /organiser/sessions/:id workspace exists) - an invited
+  // player following this link has nowhere real to land on today. Left
+  // as /sessions/:id (matching what was there before, just on the
+  // right domain now) rather than silently redirecting it somewhere
+  // that isn't actually built either.
+  const link = `${window.location.origin}/sessions/${sessionId}`;
 
   const copyLink = async () => {
     try {

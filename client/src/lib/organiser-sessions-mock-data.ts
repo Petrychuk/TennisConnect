@@ -37,12 +37,30 @@ export interface SessionListItem {
   type: SessionTypeKey | "clinic";
   status: SessionStatus;
   location: string;
+  // IANA zone the venue is in (e.g. "Australia/Sydney") - startAt/endAt
+  // below should always be displayed in THIS zone, not the viewer's own
+  // browser timezone (a session's advertised time belongs to the venue -
+  // see client/src/lib/timezone.ts formatInTimeZone).
+  timeZone: string;
   startAt: string; // ISO
   endAt?: string; // ISO — for the "6:30 PM - 8:30 PM" range display
   registeredCount: number;
   checkedInCount: number;
   waitingCount: number;
   maxParticipants: number | null;
+  // Real value from sessions.courts_count - unlike `courts` below (only
+  // meaningful while status is "live"), this is set whenever the
+  // organizer configures it and never goes away once the session ends.
+  courtsCount: number | null;
+  // Real match-format fields (sessions.match_mode/category/games_to/
+  // no_ad/tiebreak/planned_rounds_count) - set by the wizard's Step 3,
+  // null for sessions created before these columns existed.
+  matchMode: "singles" | "doubles" | null;
+  category: "open" | "mens" | "womens" | null;
+  gamesTo: number | null;
+  noAd: boolean | null;
+  tiebreak: boolean | null;
+  plannedRoundsCount: number | null;
   progressPercent: number; // for the thin bar under each card
   progressLabel: string; // e.g. "Ends in 1h 13m", "Registration closes in 21h 45m", "Starts in 3 days"
   roundCurrent?: number;
@@ -62,6 +80,11 @@ export interface SessionListItem {
   format?: string; // "Fun doubles · Random partners · Balance skill"
   roundsDescription?: string; // "5 rounds · Best of 4 games (no-ad)"
   waitingListEnabled?: boolean;
+  // Real value (sessions.waiting_list_capacity) - null/undefined means
+  // unlimited, previously session-details-card.tsx always showed the
+  // same hardcoded "(10 spots)" regardless of what was actually set
+  // (there was nowhere real to store it).
+  waitingListCapacity?: number | null;
   parentSessionId?: string | null; // set when this session is a division of a container session
   costPerPlayer?: number | null;
   organizerName?: string;
@@ -89,12 +112,20 @@ export const mockSessionsList: SessionListItem[] = [
     type: "social",
     status: "live",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: hoursFromNow(-1.5),
     endAt: hoursFromNow(0.72),
     registeredCount: 24,
     checkedInCount: 21,
     waitingCount: 3,
     maxParticipants: 24,
+    courtsCount: 6,
+    matchMode: "doubles",
+    category: "open",
+    gamesTo: 4,
+    noAd: true,
+    tiebreak: true,
+    plannedRoundsCount: 5,
     progressPercent: 40,
     progressLabel: "Ends in 1h 13m",
     roundCurrent: 2,
@@ -127,11 +158,19 @@ export const mockSessionsList: SessionListItem[] = [
     type: "social",
     status: "published",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysFromNow(6),
     registeredCount: 18,
     checkedInCount: 0,
     waitingCount: 2,
     maxParticipants: 24,
+    courtsCount: 6,
+    matchMode: "doubles",
+    category: "open",
+    gamesTo: 4,
+    noAd: true,
+    tiebreak: true,
+    plannedRoundsCount: 5,
     progressPercent: 75,
     progressLabel: "Registration closes in 21h 45m",
     registrationOpen: true,
@@ -142,11 +181,19 @@ export const mockSessionsList: SessionListItem[] = [
     type: "clinic",
     status: "published",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysFromNow(5),
     registeredCount: 8,
     checkedInCount: 0,
     waitingCount: 0,
     maxParticipants: 12,
+    courtsCount: 3,
+    matchMode: "doubles",
+    category: "open",
+    gamesTo: 4,
+    noAd: true,
+    tiebreak: true,
+    plannedRoundsCount: 5,
     progressPercent: 55,
     progressLabel: "Registration closes in 2 days",
     registrationOpen: true,
@@ -159,11 +206,19 @@ export const mockSessionsList: SessionListItem[] = [
     type: "round-robin",
     status: "published",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysFromNow(8),
     registeredCount: 24,
     checkedInCount: 0,
     waitingCount: 6,
     maxParticipants: 32,
+    courtsCount: 8,
+    matchMode: "doubles",
+    category: "open",
+    gamesTo: 4,
+    noAd: true,
+    tiebreak: true,
+    plannedRoundsCount: 5,
     progressPercent: 20,
     progressLabel: "Starts in 3 days",
   },
@@ -173,11 +228,19 @@ export const mockSessionsList: SessionListItem[] = [
     type: "social",
     status: "pending_review",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysFromNow(10),
     registeredCount: 12,
     checkedInCount: 0,
     waitingCount: 0,
     maxParticipants: 16,
+    courtsCount: 4,
+    matchMode: "doubles",
+    category: "open",
+    gamesTo: 4,
+    noAd: true,
+    tiebreak: true,
+    plannedRoundsCount: 5,
     progressPercent: 10,
     progressLabel: "Awaiting admin approval",
   },
@@ -187,11 +250,19 @@ export const mockSessionsList: SessionListItem[] = [
     type: "clinic",
     status: "published",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysFromNow(12),
     registeredCount: 6,
     checkedInCount: 0,
     waitingCount: 0,
     maxParticipants: 10,
+    courtsCount: 2,
+    matchMode: "doubles",
+    category: "open",
+    gamesTo: 4,
+    noAd: true,
+    tiebreak: true,
+    plannedRoundsCount: 5,
     progressPercent: 10,
     progressLabel: "Starts in 12 days",
   },
@@ -201,11 +272,19 @@ export const mockSessionsList: SessionListItem[] = [
     type: "round-robin",
     status: "published",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysFromNow(15),
     registeredCount: 14,
     checkedInCount: 0,
     waitingCount: 0,
     maxParticipants: 24,
+    courtsCount: 6,
+    matchMode: "doubles",
+    category: "open",
+    gamesTo: 4,
+    noAd: true,
+    tiebreak: true,
+    plannedRoundsCount: 5,
     progressPercent: 5,
     progressLabel: "Starts in 15 days",
   },
@@ -217,11 +296,19 @@ export const mockSessionsList: SessionListItem[] = [
     type: "tournament",
     status: "draft",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysFromNow(20),
     registeredCount: 0,
     checkedInCount: 0,
     waitingCount: 0,
     maxParticipants: 64,
+    courtsCount: 16,
+    matchMode: "doubles",
+    category: "open",
+    gamesTo: 4,
+    noAd: true,
+    tiebreak: true,
+    plannedRoundsCount: 5,
     progressPercent: 0,
     progressLabel: "Not published",
   },
@@ -231,11 +318,19 @@ export const mockSessionsList: SessionListItem[] = [
     type: "round-robin",
     status: "draft",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysFromNow(25),
     registeredCount: 0,
     checkedInCount: 0,
     waitingCount: 0,
     maxParticipants: 24,
+    courtsCount: 6,
+    matchMode: "doubles",
+    category: "open",
+    gamesTo: 4,
+    noAd: true,
+    tiebreak: true,
+    plannedRoundsCount: 5,
     progressPercent: 0,
     progressLabel: "Not published",
   },
@@ -245,11 +340,19 @@ export const mockSessionsList: SessionListItem[] = [
     type: "clinic",
     status: "draft",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysFromNow(30),
     registeredCount: 0,
     checkedInCount: 0,
     waitingCount: 0,
     maxParticipants: 20,
+    courtsCount: 5,
+    matchMode: "doubles",
+    category: "open",
+    gamesTo: 4,
+    noAd: true,
+    tiebreak: true,
+    plannedRoundsCount: 5,
     progressPercent: 0,
     progressLabel: "Not published",
   },
@@ -261,11 +364,19 @@ export const mockSessionsList: SessionListItem[] = [
     type: "social",
     status: "completed",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysAgo(2),
     registeredCount: 26,
     checkedInCount: 25,
     waitingCount: 0,
     maxParticipants: 26,
+    courtsCount: 6,
+    matchMode: "doubles",
+    category: "open",
+    gamesTo: 4,
+    noAd: true,
+    tiebreak: true,
+    plannedRoundsCount: 5,
     progressPercent: 100,
     progressLabel: "Completed",
     resultsPublished: true,
@@ -276,11 +387,19 @@ export const mockSessionsList: SessionListItem[] = [
     type: "round-robin",
     status: "completed",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysAgo(6),
     registeredCount: 32,
     checkedInCount: 30,
     waitingCount: 0,
     maxParticipants: 32,
+    courtsCount: 8,
+    matchMode: "doubles",
+    category: "open",
+    gamesTo: 4,
+    noAd: true,
+    tiebreak: true,
+    plannedRoundsCount: 5,
     progressPercent: 100,
     progressLabel: "Completed",
     resultsPublished: true,
@@ -291,11 +410,19 @@ export const mockSessionsList: SessionListItem[] = [
     type: "clinic",
     status: "completed",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysAgo(9),
     registeredCount: 10,
     checkedInCount: 9,
     waitingCount: 0,
     maxParticipants: 10,
+    courtsCount: 2,
+    matchMode: "doubles",
+    category: "open",
+    gamesTo: 4,
+    noAd: true,
+    tiebreak: true,
+    plannedRoundsCount: 5,
     progressPercent: 100,
     progressLabel: "Completed",
     resultsPublished: false,
@@ -306,11 +433,19 @@ export const mockSessionsList: SessionListItem[] = [
     type: "social",
     status: "completed",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysAgo(13),
     registeredCount: 20,
     checkedInCount: 18,
     waitingCount: 0,
     maxParticipants: 24,
+    courtsCount: 6,
+    matchMode: "doubles",
+    category: "open",
+    gamesTo: 4,
+    noAd: true,
+    tiebreak: true,
+    plannedRoundsCount: 5,
     progressPercent: 100,
     progressLabel: "Completed",
     resultsPublished: true,
@@ -323,11 +458,19 @@ export const mockSessionsList: SessionListItem[] = [
     type: "tournament",
     status: "archived",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysAgo(120),
     registeredCount: 48,
     checkedInCount: 46,
     waitingCount: 0,
     maxParticipants: 48,
+    courtsCount: 12,
+    matchMode: "doubles",
+    category: "open",
+    gamesTo: 4,
+    noAd: true,
+    tiebreak: true,
+    plannedRoundsCount: 5,
     progressPercent: 100,
     progressLabel: "Archived",
     resultsPublished: true,
@@ -338,11 +481,19 @@ export const mockSessionsList: SessionListItem[] = [
     type: "social",
     status: "archived",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysAgo(150),
     registeredCount: 22,
     checkedInCount: 20,
     waitingCount: 0,
     maxParticipants: 24,
+    courtsCount: 6,
+    matchMode: "doubles",
+    category: "open",
+    gamesTo: 4,
+    noAd: true,
+    tiebreak: true,
+    plannedRoundsCount: 5,
     progressPercent: 100,
     progressLabel: "Archived",
     resultsPublished: true,
@@ -353,11 +504,19 @@ export const mockSessionsList: SessionListItem[] = [
     type: "round-robin",
     status: "archived",
     location: "Lyne Park Tennis Centre",
+    timeZone: "Australia/Sydney",
     startAt: daysAgo(210),
     registeredCount: 30,
     checkedInCount: 28,
     waitingCount: 0,
     maxParticipants: 32,
+    courtsCount: 8,
+    matchMode: "doubles",
+    category: "open",
+    gamesTo: 4,
+    noAd: true,
+    tiebreak: true,
+    plannedRoundsCount: 5,
     progressPercent: 100,
     progressLabel: "Archived",
     resultsPublished: true,
@@ -381,7 +540,7 @@ export function getSessionDetail(session: SessionListItem): Required<
     | "createdAt"
     | "notes"
   >
-> & { gameFormat: string; cancellationPolicy: string } {
+> & { gameFormat: string | null; cancellationPolicy: string } {
   const start = new Date(session.startAt);
   return {
     endAt: session.endAt ?? new Date(start.getTime() + 90 * 60 * 1000).toISOString(),
@@ -395,7 +554,12 @@ export function getSessionDetail(session: SessionListItem): Required<
     organizerName: session.organizerName ?? "Henry Coach",
     createdAt: session.createdAt ?? daysAgo(14),
     notes: session.notes ?? null,
-    gameFormat: "4 Games (No-Ad)",
+    // No real column for this yet (games-to-win / no-ad are wizard Step
+    // 3 fields folded into free-text description on creation, not
+    // stored structured) - was a bare hardcoded "4 Games (No-Ad)" for
+    // every session regardless of what was actually picked. Honest null
+    // until there's a real settings column to read from.
+    gameFormat: null,
     cancellationPolicy:
       session.cancellationPolicy ??
       "Free cancellation up to 24 hours before the session starts. After that, no refund — the spot may still be offered to the waiting list.",
@@ -452,7 +616,7 @@ export interface SessionPlayer {
   name: string;
   avatar: string | null;
   level: number;
-  levelLabel: "Advanced" | "Intermediate" | "Social";
+  levelLabel: "Advanced" | "Intermediate" | "Beginner" | "Social";
   group: "A" | "B" | "C" | null;
   status: "registered" | "waiting" | "cancelled" | "invited" | "no-response";
   checkedIn: boolean;
@@ -465,6 +629,7 @@ export interface SessionPlayer {
   // looks like without needing dozens of real test accounts to join.
   isReal?: boolean;
   slug?: string; // real player's profile slug, when isReal
+  role?: string; // real user's role ("player"/"coach"), when isReal - needed to build the right /player/ vs /coach/ profile link
 }
 
 function minutesAgo(minutes: number) {
