@@ -32,6 +32,30 @@ async function fetchWithTimeout(
 
 type UserRole = "player" | "coach" | null;
 
+// Thrown by login() specifically for the "credentials were correct but
+// the email isn't confirmed yet" case (HTTP 403, code
+// EMAIL_NOT_VERIFIED from server/routes.ts) - a distinct type so
+// callers like auth.tsx can show a "verify your email" screen with a
+// resend action instead of the generic "Login failed" toast every
+// other rejected login gets.
+export class EmailNotVerifiedError extends Error {
+  email: string;
+  constructor(email: string) {
+    super("Please confirm your email address before signing in.");
+    this.name = "EmailNotVerifiedError";
+    this.email = email;
+  }
+}
+
+// What register() resolves with now that a fresh signup no longer
+// creates a session (see server/routes.ts /api/auth/register) - there
+// is no User to hand back yet, just confirmation that a verification
+// email is on its way.
+export interface RegistrationPending {
+  email: string;
+  requiresVerification: true;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -51,15 +75,30 @@ interface AuthContextType {
   loading: boolean;
   profileLoaded: boolean;
 
+  // Throws EmailNotVerifiedError (not the generic Error every other
+  // rejected login throws) when the credentials are correct but the
+  // account isn't verified yet.
   login: (email: string, password: string, rememberMe?: boolean) => Promise<User>;
+  // Never resolves with a User anymore - registering no longer creates
+  // a session, it only ever kicks off the "check your email" step.
   register: (
     email: string,
     password: string,
     name: string,
     role: "player" | "coach",
     wantsToOrganize?: boolean
-  ) => Promise<User>;
-  
+  ) => Promise<RegistrationPending>;
+
+  // 🔹 Confirms a verification link's token; on success the server has
+  // already created a session, so this resolves with the now-logged-in
+  // user (same as login()/register() used to).
+  verifyEmail: (token: string) => Promise<User>;
+
+  // 🔹 Requests a fresh verification email. Always resolves with a
+  // generic message - enumeration-safe by design, matches
+  // forgot-password's own behaviour.
+  resendVerificationEmail: (email: string) => Promise<{ message: string }>;
+
     // 🔹 GET current user 
     fetchCurrentUser: () => Promise<User | null>;
 
@@ -100,15 +139,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             credentials: "include",
           });
 
-          if (res.status === 401) {
-            // 👤 Гость — это нормально
-            if (!cancelled) {
-              setUser(null);
-              setProfileLoaded(false);
-            }
-            return;
-          }
-
+          // /api/auth/me returns 200 for a logged-out guest too (see
+          // server/routes.ts) - "nobody is signed in" is an expected
+          // state here, not a failed request, so this isn't gated on
+          // res.status like a real error would be. Only an actual
+          // non-2xx (server error, network hiccup) falls through to the
+          // !res.ok branch below.
           if (!res.ok) {
             console.error("Auth init failed:", res.status);
             if (!cancelled) {
@@ -120,8 +156,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           const data = await res.json();
 
-          // 🔥 поддерживаем оба формата ответа
-          const resolvedUser: User | null = data?.user ?? data ?? null;
+          // Authenticated responses are still the flat user object at
+          // the top level (existing consumers like complete-profile.tsx
+          // read fields straight off it) - only the logged-out shape is
+          // `{ authenticated: false, user: null }`, so `data.user` is
+          // never a real user to fall back to here.
+          const resolvedUser: User | null = data?.authenticated ? data : null;
 
           if (!cancelled) {
             setUser(resolvedUser);
@@ -162,6 +202,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (!res.ok) {
         const error = await res.json();
+        if (res.status === 403 && error.code === "EMAIL_NOT_VERIFIED") {
+          throw new EmailNotVerifiedError(error.email || email);
+        }
         throw new Error(error.message || "Login failed");
       }
 
@@ -180,6 +223,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /**
    * REGISTER
+   *
+   * No session is created here anymore - the account exists but stays
+   * unverified until the emailed link is confirmed (see
+   * server/routes.ts). Resolves with { email, requiresVerification }
+   * instead of a User so callers show a "check your email" step rather
+   * than treating the person as signed in.
    */
   const register = async (
     email: string,
@@ -187,7 +236,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     name: string,
     role: "player" | "coach",
     wantsToOrganize?: boolean
-  ): Promise<User> => {
+  ): Promise<RegistrationPending> => {
     setLoading(true);
 
     try {
@@ -203,17 +252,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(error.message || "Registration failed");
       }
 
-      const userData = await res.json();
-      setUser(userData);
-      if (!userData.slug) {
-        console.warn("User logged in without slug");
-      }
-      setProfileLoaded(false);
-
-      return userData;
+      const data = await res.json();
+      return { email: data.email ?? email, requiresVerification: true };
     } finally {
       setLoading(false);
     }
+  };
+
+  /**
+   * VERIFY EMAIL
+   *
+   * Confirms a verification link's token. The server creates the
+   * session as part of a successful verification (there was none to
+   * create at register() time), so this is the point a freshly-signed-
+   * up user actually becomes "logged in".
+   */
+  const verifyEmail = async (token: string): Promise<User> => {
+    setLoading(true);
+
+    try {
+      const res = await fetchWithTimeout(
+        `/api/auth/verify-email?token=${encodeURIComponent(token)}`,
+        { credentials: "include" }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        const err = new Error(data.message || "Verification failed");
+        (err as any).status = data.status;
+        throw err;
+      }
+
+      setUser(data.user);
+      setProfileLoaded(false);
+
+      return data.user;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * RESEND VERIFICATION EMAIL
+   */
+  const resendVerificationEmail = async (email: string): Promise<{ message: string }> => {
+    const res = await fetchWithTimeout("/api/auth/resend-verification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.message || "Failed to resend verification email");
+    }
+
+    return data;
   };
   const fetchCurrentUser = async () => {
     const res = await fetch("/api/auth/me", {
@@ -225,8 +321,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   
     const data = await res.json();
+
+    // Every existing caller of fetchCurrentUser() only ever calls it
+    // when already authenticated (e.g. right after an avatar upload),
+    // so data.authenticated === false here means the session died
+    // underneath it - surface that as the same "no user" outcome the
+    // 401-based version used to produce, rather than setting a fake
+    // logged-in user out of the `{ authenticated: false, user: null }`
+    // shape.
+    if (!data?.authenticated) {
+      setUser(null);
+      return null;
+    }
+
     setUser(data);
-  
     return data;
   };
 
@@ -290,6 +398,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profileLoaded,
         login,
         register,
+        verifyEmail,
+        resendVerificationEmail,
         logout,
         clearSession,
         updateUserProfile,

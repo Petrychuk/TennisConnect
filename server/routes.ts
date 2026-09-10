@@ -19,6 +19,7 @@ import uploadContentRouter from "./routes/upload-content";
 import organizerRouter from "./routes/organizer";
 import weatherRouter from "./routes/weather";
 import supportRouter from "./routes/support";
+import testHooksRouter from "./routes/testHooks";
 
 import {
   insertUserSchema,
@@ -31,7 +32,8 @@ import {
   passwordResetTokens,
 } from "@shared/schema";
 import { z } from "zod";
-import { sendPasswordResetEmail } from "./services/emailService";
+import { sendPasswordResetEmail, sendVerificationEmail } from "./services/emailService";
+import { issueVerificationToken, verifyEmailToken } from "./services/emailVerification";
 import { db } from "./db";
 import { env } from "./env";
 import { eq, and, gt } from "drizzle-orm";
@@ -65,6 +67,18 @@ const loginLimiter = rateLimit({
 const authActionLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many requests. Please try again later." },
+});
+
+// Tighter than authActionLimiter on purpose - "resend" is the one auth
+// action a user (or a bot) can trigger repeatedly with zero other cost
+// (no password to guess, no new email to think up), so it gets its own,
+// stricter ceiling rather than sharing register/forgot-password's.
+const resendVerificationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 5,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many requests. Please try again later." },
@@ -160,6 +174,12 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/api/weather", weatherRouter);
   app.use("/api/support", supportRouter);
 
+  // Guarded internally per-request (see server/routes/testHooks.ts) -
+  // mounted unconditionally here so it's reachable on staging, which
+  // runs the same NODE_ENV=production build as prod and can't be told
+  // apart from it by that alone.
+  app.use("/api/test-hooks", testHooksRouter);
+
   // TC Live dev simulator backend - only exists in development, never
   // mounted (not even imported) in a production build.
   if (process.env.NODE_ENV === "development") {
@@ -210,6 +230,11 @@ export async function registerRoutes(app: Express): Promise<void> {
         // true for), this just keeps things clean going forward.
         email: parsed.data.email.toLowerCase(),
         password: hashedPassword,
+        // Every other insert path (there isn't one today) falls back to
+        // the column's own `true` default - only a brand new signup via
+        // this endpoint is explicitly unverified.
+        emailVerified: false,
+        emailVerifiedAt: null,
       });
 
       // 🔑 AUTO-CREATE PROFILE
@@ -243,9 +268,38 @@ export async function registerRoutes(app: Express): Promise<void> {
         `Welcome to TennisConnect! Thank you for joining our community.Your profile has been submitted and is currently awaiting moderation. Our team will review your profile shortly. Once approved, your profile will become visible to other members on the platform. Thank you for your patience and welcome aboard! - TennisConnect Team`
         );
 
-      req.login(user, (err) => {
-        if (err) return next(err);
-        res.json(omitPassword(user));
+      // No req.login() here on purpose - this account has no session
+      // until the email address is confirmed (see /api/auth/verify-email
+      // below, which is the only place a freshly-registered user's
+      // first session gets created). Registering no longer implies
+      // being signed in.
+      const { token } = await issueVerificationToken(user.id);
+      const verifyUrl = `${req.headers.origin || 'https://www.tennisconnect.com.au'}/verify-email?token=${token}`;
+
+      // Fired, not awaited - same reasoning as forgot-password below:
+      // a slow/stalled Resend call shouldn't hold this response open,
+      // and the account is already created either way. Unlike
+      // forgot-password there's no email-enumeration reason to hide
+      // delivery status, it's just not worth blocking on.
+      sendVerificationEmail(user.email, verifyUrl)
+        .then((emailResult) => {
+          if (!emailResult.ok) {
+            console.error(`❌ Verification email failed to send for ${user.email}: ${emailResult.error}`);
+          }
+        })
+        .catch((error) => {
+          console.error(`❌ Verification email threw for ${user.email}:`, error);
+        });
+
+      if (process.env.NODE_ENV === "development") {
+        console.log(`🔑 Verification requested for ${user.email}`);
+        console.log(`🔗 Verify URL: ${verifyUrl}`);
+      }
+
+      res.status(201).json({
+        message: "Check your email to confirm your account before signing in.",
+        email: user.email,
+        requiresVerification: true,
       });
 
     } catch (e) {
@@ -263,6 +317,20 @@ export async function registerRoutes(app: Express): Promise<void> {
         ) => {
       if (err) return next(err);
       if (!user) {
+        // Credentials were actually correct here, just gated on
+        // confirming the email address - a materially different case
+        // from "wrong email/password" below, and the one place this
+        // isn't kept generic: the person already proved they own the
+        // account by typing the right password, so there's no
+        // enumeration risk in telling them so.
+        if ((info as any)?.message === "EMAIL_NOT_VERIFIED") {
+          return res.status(403).json({
+            message: "Please confirm your email address before signing in.",
+            code: "EMAIL_NOT_VERIFIED",
+            email: (info as any).email,
+          });
+        }
+
         // Deliberately generic (doesn't say which of email/password was
         // wrong - that's a login-enumeration best practice, not an
         // oversight), but previously this literally read "Login failed"
@@ -299,6 +367,111 @@ export async function registerRoutes(app: Express): Promise<void> {
     req.logout(() => {
       res.json({ message: "Logged out" });
     });
+  });
+
+  // ==========================================
+  // EMAIL VERIFICATION ENDPOINTS
+  // ==========================================
+
+  // Confirms a verification link's token and, on success, signs the
+  // user in - this is the only place a freshly-registered account's
+  // first session gets created (register itself no longer calls
+  // req.login(), see /api/auth/register above).
+  app.get("/api/auth/verify-email", async (req, res, next) => {
+    try {
+      const { token } = req.query;
+
+      if (!token || typeof token !== "string") {
+        return res.status(400).json({ status: "invalid", message: "Token is required" });
+      }
+
+      const result = await verifyEmailToken(token);
+
+      if (result.status === "invalid") {
+        return res.status(400).json({ status: "invalid", message: "Invalid or already-used verification link" });
+      }
+
+      if (result.status === "expired") {
+        return res.status(400).json({ status: "expired", message: "This verification link has expired" });
+      }
+
+      const user = await storage.getUser(result.userId);
+      if (!user) {
+        // The token was valid a moment ago (verifyEmailToken already
+        // marked it used and flipped emailVerified) but the account
+        // itself is gone - not a real-world path today (nothing
+        // deletes users), just a defensive guard against ending up
+        // signed in as a user that doesn't exist.
+        return res.status(400).json({ status: "invalid", message: "Account no longer exists" });
+      }
+
+      // Same session-fixation precaution as /api/auth/login. Only the
+      // password-stripped shape ever reaches req.login()/req.user - the
+      // full DB row (password hash and all) from storage.getUser()
+      // never should, same as every other req.login() call site.
+      const safeUser = omitPassword(user);
+
+      req.session.regenerate((regenerateErr) => {
+        if (regenerateErr) return next(regenerateErr);
+
+        req.login(safeUser as Express.User, (loginErr) => {
+          if (loginErr) return next(loginErr);
+
+          req.session.save((saveErr) => {
+            if (saveErr) return next(saveErr);
+            res.json({ status: "ok", user: safeUser });
+          });
+        });
+      });
+    } catch (error) {
+      console.error("Verify email error:", error);
+      res.status(500).json({ status: "invalid", message: "Failed to verify email" });
+    }
+  });
+
+  // Requests a fresh verification email. Enumeration-safe in the same
+  // way /api/auth/forgot-password is below: the response never differs
+  // based on whether the address exists or is already verified.
+  app.post("/api/auth/resend-verification", resendVerificationLimiter, async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email || typeof email !== "string") {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      const genericResponse = {
+        message: "If that account needs verifying, a new email has been sent.",
+      };
+
+      const user = await storage.getUserByEmail(email);
+      if (!user || user.emailVerified) {
+        return res.json(genericResponse);
+      }
+
+      const { token } = await issueVerificationToken(user.id);
+      const verifyUrl = `${req.headers.origin || 'https://www.tennisconnect.com.au'}/verify-email?token=${token}`;
+
+      sendVerificationEmail(user.email, verifyUrl)
+        .then((emailResult) => {
+          if (!emailResult.ok) {
+            console.error(`❌ Verification email failed to send for ${user.email}: ${emailResult.error}`);
+          }
+        })
+        .catch((error) => {
+          console.error(`❌ Verification email threw for ${user.email}:`, error);
+        });
+
+      if (process.env.NODE_ENV === "development") {
+        console.log(`🔑 Verification resend requested for ${user.email}`);
+        console.log(`🔗 Verify URL: ${verifyUrl}`);
+      }
+
+      res.json(genericResponse);
+    } catch (error) {
+      console.error("Resend verification error:", error);
+      res.status(500).json({ message: "Failed to process request" });
+    }
   });
 
   // ==========================================
@@ -450,12 +623,23 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Deliberately 200 for the logged-out case, not 401. "Nobody is
+  // signed in" is an expected, common application state for this
+  // endpoint (it's polled on every page load to figure out whether
+  // there's a session) - not an error - but a 4xx/5xx here is logged by
+  // the browser itself as a failed request regardless of how the
+  // frontend's own try/catch handles the body, showing up as console
+  // noise on every single guest page view. Authenticated callers still
+  // get the flat user object at the top level for backwards
+  // compatibility with existing consumers (complete-profile.tsx reads
+  // `freshUser.slug` directly) - only the logged-out shape changed.
   app.get("/api/auth/me", (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Not authenticated" });
+      return res.status(200).json({ authenticated: false, user: null });
     }
     res.json({
       ...req.user,
+      authenticated: true,
       needsProfileCompletion: !req.user.profileCompleted,
     });
   });
@@ -500,16 +684,49 @@ export async function registerRoutes(app: Express): Promise<void> {
           }
         }
 
+        // Which organization (if any) each user owns - lets the admin
+        // Users table offer a "Delete Organization" action right next
+        // to a blocked "Delete User" attempt, instead of the block
+        // message pointing at an action ("transfer ownership or delete
+        // it") that had no actual UI anywhere to do.
+        const organizerIds = users.filter((u) => u.isOrganizer).map((u) => u.id);
+        const organizations = await storage.getOrganizationsByOwnerIds(organizerIds);
+        const organizationByOwner = new Map(organizations.map((o) => [o.ownerId, o]));
+
         const usersWithOrganizerStatus = users.map((u: any) => ({
           ...omitPassword(u),
           organizerRequestStatus: u.isOrganizer
             ? null
             : latestRequestByUser.get(u.id) || null,
+          ownedOrganization: organizationByOwner.get(u.id) || null,
         }));
 
         res.json(usersWithOrganizerStatus);
        }
      );
+
+    // Admin-only - deletes an organization and everything under it
+    // (see storage.deleteOrganizationCascade for the full cascade).
+    // Exists specifically so deleteUserAccount()'s "You own an
+    // organization - transfer ownership or delete it before deleting
+    // your account" message has an actual action behind it: there is
+    // still no self-service way to do this (a real owner would need
+    // this to be a much more careful, guarded flow - warning about
+    // active sessions, members, etc.), but an admin cleaning up a test
+    // account, or a genuinely abandoned/spam organization, needs a real
+    // tool rather than being stuck.
+    app.delete("/api/admin/organizations/:id",
+      requireAdmin,
+      async (req, res) => {
+        try {
+          await storage.deleteOrganizationCascade(req.params.id);
+          res.json({ success: true });
+        } catch (error) {
+          console.error(error);
+          res.status(500).json({ message: "Failed to delete organization" });
+        }
+      }
+    );
 
     app.patch("/api/admin/users/:id/approve",
       requireAdmin,
@@ -583,6 +800,41 @@ export async function registerRoutes(app: Express): Promise<void> {
           return res.status(500).json({
             message: "Failed to delete user",
           });
+        }
+      }
+    );
+
+    // Single query-shaped batch (see storage.deleteUserAccounts), not a
+    // loop over the single-user path - deleting 190 accounts one at a
+    // time meant ~3,400 sequential queries and took long enough to look
+    // exactly like a hung request. Still reports back exactly which ids
+    // succeeded and which didn't, and why - a blocked user (owns an
+    // organization / has created sessions) is reported, never force-
+    // deleted or silently dropped from the batch without saying why.
+    app.post("/api/admin/users/bulk-delete",
+      requireAdmin,
+      async (req, res) => {
+        try {
+          const { ids } = req.body;
+
+          if (!Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ message: "ids must be a non-empty array" });
+          }
+
+          const stringIds = ids.filter((id: unknown): id is string => typeof id === "string");
+          const selfId = req.user?.id;
+
+          const targetIds = stringIds.filter((id) => id !== selfId);
+          const selfFailed = selfId && stringIds.includes(selfId)
+            ? [{ id: selfId, message: "You cannot delete yourself" }]
+            : [];
+
+          const { deleted, failed } = await storage.deleteUserAccounts(targetIds);
+
+          res.json({ deleted, failed: [...selfFailed, ...failed] });
+        } catch (error) {
+          console.error(error);
+          res.status(500).json({ message: "Bulk delete failed" });
         }
       }
     );
