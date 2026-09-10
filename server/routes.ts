@@ -771,6 +771,67 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
     );
 
+    // Sequential, not Promise.all - each deleteUserByAdmin() call opens
+    // its own transaction, and the pool is intentionally small (see
+    // db.ts's `max: 8` and the reasoning attached to it) - firing 50 of
+    // these at once for a bulk cleanup would compete with real traffic
+    // for connections. One admin clicking a button isn't a place that
+    // needs to be fast; it needs to not fall over.
+    //
+    // Continues past a failed id rather than aborting the whole batch -
+    // the two blocking cases (owns an organization / has created
+    // sessions) are per-user facts, not a reason to stop everyone else
+    // in the selection from being deleted too. Reports back exactly
+    // which ids succeeded and which didn't, and why, so the admin isn't
+    // left guessing which rows in a 50-user selection actually went
+    // through.
+    app.post("/api/admin/users/bulk-delete",
+      requireAdmin,
+      async (req, res) => {
+        try {
+          const { ids } = req.body;
+
+          if (!Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ message: "ids must be a non-empty array" });
+          }
+
+          const deleted: string[] = [];
+          const failed: { id: string; message: string }[] = [];
+
+          for (const id of ids) {
+            if (typeof id !== "string") continue;
+
+            if (id === req.user?.id) {
+              failed.push({ id, message: "You cannot delete yourself" });
+              continue;
+            }
+
+            try {
+              await storage.deleteUserByAdmin(id);
+              deleted.push(id);
+            } catch (error: any) {
+              const knownBlock =
+                typeof error?.message === "string" &&
+                (error.message.includes("You own an organization") ||
+                  error.message.includes("You've created sessions"));
+
+              if (!knownBlock) console.error(error);
+
+              failed.push({
+                id,
+                message: knownBlock ? error.message : "Failed to delete user",
+              });
+            }
+          }
+
+          res.json({ deleted, failed });
+        } catch (error) {
+          console.error(error);
+          res.status(500).json({ message: "Bulk delete failed" });
+        }
+      }
+    );
+
     app.patch("/api/admin/users/:id/hide",
       requireAdmin,
       async (req, res) => {
