@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { dismissCookieBanner, logout } from '../helpers/auth';
+import { dismissCookieBanner, logout, completeVerification } from '../helpers/auth';
 
 // Alternates upper/lower on the local part only, domain left as-is -
 // deliberately not just .toUpperCase()/.toLowerCase() on the whole
@@ -39,12 +39,16 @@ test('AUTH-011 Register - a duplicate email is rejected regardless of casing', a
   await dismissCookieBanner(page);
 
   // First registration - the "real" account, address typed as-is.
+  // Registering no longer creates a session (server/routes.ts
+  // /api/auth/register) - it stays on /auth showing the "check your
+  // email" screen, which is exactly the state this test needs to
+  // reach the register form again for the second attempt below anyway.
   await registerWithEmail(page, `Case Test ${timestamp}`, email, password);
-  await expect(page).toHaveURL(/\/complete-profile/);
+  await expect(page.getByTestId('registration-pending-screen')).toBeVisible();
 
-  // Second attempt, same address but different casing - auth.tsx
-  // doesn't redirect an already-logged-in user away from /auth, so no
-  // logout needed here to reach the register form again.
+  // Second attempt, same address but different casing. A fresh
+  // navigation resets the "check your email" screen back to the
+  // regular form.
   await page.goto('/auth');
   const [response] = await registerWithEmail(
     page,
@@ -70,6 +74,11 @@ test('AUTH-012 Login succeeds with a different email casing than used at registr
   await dismissCookieBanner(page);
 
   await registerWithEmail(page, `Case Login Test ${timestamp}`, email, password);
+  await expect(page.getByTestId('registration-pending-screen')).toBeVisible();
+
+  // Registering only sends a verification email now - login below
+  // would 403 EMAIL_NOT_VERIFIED without this, regardless of casing.
+  await completeVerification(page, email);
   await expect(page).toHaveURL(/\/complete-profile/);
 
   await logout(page);
@@ -111,6 +120,13 @@ test('AUTH-013 Registered email is stored lowercase regardless of the casing typ
   await dismissCookieBanner(page);
 
   await registerWithEmail(page, `Case Storage Test ${timestamp}`, email, password);
+  await expect(page.getByTestId('registration-pending-screen')).toBeVisible();
+
+  // /api/auth/me only returns a real user for an authenticated request
+  // (see server/routes.ts - a guest now gets 200 { authenticated:
+  // false, user: null } rather than 401), and there's no session until
+  // the email is confirmed.
+  await completeVerification(page, email);
   await expect(page).toHaveURL(/\/complete-profile/);
 
   // /api/auth/me returns exactly what's stored/session-serialized (see
@@ -121,6 +137,7 @@ test('AUTH-013 Registered email is stored lowercase regardless of the casing typ
   expect(meResponse.ok()).toBeTruthy();
   const me = await meResponse.json();
 
+  expect(me.authenticated).toBe(true);
   expect(me.email).toBe(email.toLowerCase());
   // Guards against a no-op "fix" that only made lookups case-insensitive
   // without actually normalizing what gets stored - mixedCaseEmail()

@@ -40,11 +40,11 @@ export async function registerPlayer(page: Page) {
 
   await page.getByTestId('agree-to-terms').check();
 
-  // Wait for the actual register request/response and the resulting
-  // redirect - clicking the button alone doesn't guarantee the session
-  // cookie is set yet. Every caller that immediately navigates elsewhere
-  // (e.g. straight to another profile's Contact tab) was racing this and
-  // landing on that page still logged out.
+  // Registering no longer creates a session by itself - it only sends
+  // a verification email (see server/routes.ts /api/auth/register).
+  // The "check your email" screen confirms the request went through;
+  // completeVerification() below stands in for actually clicking the
+  // emailed link, since there's no real inbox to read it from here.
   await Promise.all([
     page.waitForResponse(
       response =>
@@ -53,6 +53,12 @@ export async function registerPlayer(page: Page) {
     ),
     page.getByTestId('register-button').click(),
   ]);
+
+  await expect(page.getByTestId('registration-pending-screen')).toBeVisible({
+    timeout: 15000,
+  });
+
+  await completeVerification(page, user.email);
 
   await expect(page).toHaveURL(/\/complete-profile/, {
     timeout: 15000,
@@ -86,11 +92,57 @@ export async function registerCoach(page: Page) {
     page.getByTestId('register-button').click(),
   ]);
 
+  await expect(page.getByTestId('registration-pending-screen')).toBeVisible({
+    timeout: 15000,
+  });
+
+  await completeVerification(page, user.email);
+
   await expect(page).toHaveURL(/\/complete-profile/, {
     timeout: 15000,
   });
 
   return user;
+}
+
+// Stands in for "open the verification email and click the link".
+// /api/test-hooks/issue-verification-token (server/routes/testHooks.ts)
+// is a 404 outside development/staging (checked against DB_ENV, not
+// NODE_ENV - see that file's own comment for why), so this only ever
+// works against the environments this suite is meant to run in at all
+// (tests/global-setup.ts already refuses a real-prod run outright).
+// Everything past this point - hitting /verify-email, the backend
+// verifying the token and creating the session, the redirect - is the
+// same real flow a person clicking the emailed link goes through.
+export async function completeVerification(page: Page, email: string) {
+  const response = await page.request.post('/api/test-hooks/issue-verification-token', {
+    data: { email },
+  });
+
+  if (!response.ok()) {
+    throw new Error(
+      `completeVerification(): test hook returned ${response.status()} for ${email} - ` +
+      `is the server running with NODE_ENV=development, or DB_ENV=staging?`
+    );
+  }
+
+  const { token } = await response.json();
+
+  // Waits for the actual GET /api/auth/verify-email response, not just
+  // for page.goto() to resolve - that only guarantees the initial HTML/
+  // JS loaded, not that verify-email.tsx's own fetch (which is what
+  // sets the session cookie) has completed yet. Callers that
+  // immediately make an authenticated request right after this
+  // (page.request.get('/api/auth/me'), for instance) would otherwise
+  // race it.
+  await Promise.all([
+    page.waitForResponse(
+      response =>
+        response.url().includes('/api/auth/verify-email') &&
+        response.request().method() === 'GET'
+    ),
+    page.goto(`/verify-email?token=${token}`),
+  ]);
 }
 
 export async function login(
