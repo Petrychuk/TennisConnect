@@ -67,9 +67,13 @@ test('ADMIN-005 Bulk delete - selected ordinary players are all removed', async 
    force-deleted (regression for the same rule ADMIN-003 covers for a
    single delete)
 
+The org owner's organization has a session under it here - an empty
+organization is cascaded away instead of blocking the delete (see
+ADMIN-008), so this needs one to stay a genuine blocked case.
+
 ✓ A plain player in the same batch is still deleted
-✓ The org-owning organiser is reported under `failed` with the real
-  reason, and its row still exists afterward */
+✓ The org-owning organiser is reported under the response's failed
+  array with the real reason, and its row still exists afterward */
 
 test('ADMIN-006 Bulk delete - an org owner in the batch is reported, not deleted', async ({ page }) => {
 
@@ -113,6 +117,14 @@ test('ADMIN-006 Bulk delete - an org owner in the batch is reported, not deleted
     data: { name: `Bulk Delete Test Org ${Date.now()}` },
   });
   expect(orgResponse.ok()).toBeTruthy();
+
+  // A session under it - an empty organization is cascaded away rather
+  // than blocking the delete (see ADMIN-008), so this needs a real
+  // session to stay a genuine "blocked" case.
+  const sessionResponse = await page.request.post('/api/organizer/sessions', {
+    data: { title: `Bulk Delete Test Session ${Date.now()}`, startAt: new Date(Date.now() + 86400000).toISOString() },
+  });
+  expect(sessionResponse.ok()).toBeTruthy();
 
   // ---------- Back to admin, select both, bulk delete ----------
 
