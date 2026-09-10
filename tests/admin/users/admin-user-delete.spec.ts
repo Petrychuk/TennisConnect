@@ -370,3 +370,73 @@ test('ADMIN-008 Delete User - an empty organization is cascaded away, not a bloc
   await expect(row).not.toBeVisible();
 
 });
+
+/* ADMIN-009 Admin cannot delete their own account, single or bulk
+   (regression - direct API, bypassing the UI's own button-hiding)
+
+The Users table already hides both the single delete button and the
+bulk-select checkbox for the admin's own row (user.id !== currentUser?.id),
+but that's a UI courtesy, not the actual guard - this hits both admin
+delete endpoints directly to confirm the server itself refuses,
+independent of anything the UI does or doesn't render.
+
+✓ DELETE /api/admin/users/:id on the admin's own id is rejected (400)
+✓ POST /api/admin/users/bulk-delete with the admin's own id mixed into
+  a batch reports it under failed, WITHOUT blocking the rest of the
+  batch from being deleted */
+
+test('ADMIN-009 Admin cannot delete their own account via the API, single or bulk', async ({ page }) => {
+
+  await login(
+    page,
+    TEST_USERS.admin.email,
+    TEST_USERS.admin.password
+  );
+
+  const meResponse = await page.request.get('/api/auth/me');
+  expect(meResponse.ok()).toBeTruthy();
+  const me = await meResponse.json();
+  expect(me.authenticated).toBe(true);
+
+  // ---------- Single delete: rejected outright ----------
+
+  const singleResponse = await page.request.delete(`/api/admin/users/${me.id}`);
+  expect(singleResponse.status()).toBe(400);
+  const singleBody = await singleResponse.json();
+  expect(singleBody.message).toContain('cannot delete yourself');
+
+  // ---------- Bulk delete: admin's own id reported failed, a genuine
+  // other user in the same batch still goes through ----------
+
+  const otherPlayer = await registerPlayer(page);
+
+  await login(
+    page,
+    TEST_USERS.admin.email,
+    TEST_USERS.admin.password
+  );
+
+  const otherPlayerId = await (async () => {
+    const usersRes = await page.request.get('/api/admin/users');
+    expect(usersRes.ok()).toBeTruthy();
+    const users = await usersRes.json();
+    const match = users.find((u: any) => u.email === otherPlayer.email);
+    expect(match).toBeTruthy();
+    return match.id;
+  })();
+
+  const bulkResponse = await page.request.post('/api/admin/users/bulk-delete', {
+    data: { ids: [me.id, otherPlayerId] },
+  });
+  expect(bulkResponse.ok()).toBeTruthy();
+
+  const bulkBody = await bulkResponse.json();
+  expect(bulkBody.deleted).toContain(otherPlayerId);
+  expect(bulkBody.deleted).not.toContain(me.id);
+
+  const selfFailure = bulkBody.failed.find((f: any) => f.id === me.id);
+  expect(selfFailure).toBeTruthy();
+  expect(selfFailure.message).toContain('cannot delete yourself');
+
+});
+
