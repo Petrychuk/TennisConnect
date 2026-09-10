@@ -77,7 +77,7 @@ export default function PlayerRegistration() {
     />
       <div className="min-h-screen w-full flex">
         {/* Left Side - Form */}
-        <div className="w-full lg:w-1/2 flex flex-col p-8 md:p-12 lg:p-16 justify-center bg-background relative z-10">
+        <main id="main-content" className="w-full lg:w-1/2 flex flex-col p-8 md:p-12 lg:p-16 justify-center bg-background relative z-10">
           <Link href="/">
             <a className="absolute top-8 left-8 md:left-12 flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors">
               <ArrowLeft className="w-4 h-4" />
@@ -155,7 +155,7 @@ export default function PlayerRegistration() {
               </p>
             </form>
           </div>
-        </div>
+        </main>
 
         {/* Right Side - Image */}
         <div className="hidden lg:block lg:w-1/2 relative">

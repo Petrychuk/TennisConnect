@@ -113,7 +113,7 @@ export default function ResetPasswordPage() {
   if (!token || !isValidToken) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <div className="max-w-md w-full text-center">
+        <main id="main-content" className="max-w-md w-full text-center">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <XCircle className="w-8 h-8 text-red-500" />
           </div>
@@ -126,7 +126,7 @@ export default function ResetPasswordPage() {
               Back to Sign In
             </Button>
           </Link>
-        </div>
+        </main>
       </div>
     );
   }
@@ -135,7 +135,7 @@ export default function ResetPasswordPage() {
   if (isSuccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <div className="max-w-md w-full text-center">
+        <main id="main-content" className="max-w-md w-full text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="w-8 h-8 text-green-500" />
           </div>
@@ -148,7 +148,7 @@ export default function ResetPasswordPage() {
               Sign In Now
             </Button>
           </Link>
-        </div>
+        </main>
       </div>
     );
   }
@@ -163,7 +163,7 @@ export default function ResetPasswordPage() {
       />
       <div className="min-h-screen flex">
         {/* Left Panel - Form */}
-        <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 lg:px-16 py-12 bg-background">
+        <main id="main-content" className="w-full lg:w-1/2 flex flex-col justify-center px-8 lg:px-16 py-12 bg-background">
           <div className="max-w-md mx-auto w-full">
             <Link href="/auth" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors">
               <ArrowLeft className="w-4 h-4" />
@@ -258,7 +258,7 @@ export default function ResetPasswordPage() {
               </Button>
             </form>
           </div>
-        </div>
+        </main>
 
         {/* Right Panel - Image */}
         <div
