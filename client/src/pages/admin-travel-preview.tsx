@@ -102,7 +102,7 @@ export default function AdminTravelPreviewPage() {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Navbar />
-        <div className="flex-1 flex items-center justify-center">
+        <main id="main-content" className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-3xl font-bold mb-4">Package not found</h1>
             <Button
@@ -112,7 +112,7 @@ export default function AdminTravelPreviewPage() {
               Back to Admin
             </Button>
           </div>
-        </div>
+        </main>
         <Footer />
       </div>
     );
@@ -138,6 +138,7 @@ export default function AdminTravelPreviewPage() {
         <Navbar />
 
         {/* Admin preview control bar */}
+        <main id="main-content">
         <div
           className="sticky top-16 z-40 bg-primary/10 border-b border-primary/20 backdrop-blur-lg"
           data-testid="travel-admin-preview-bar"
@@ -187,6 +188,7 @@ export default function AdminTravelPreviewPage() {
         </div>
 
         <TravelDetailContent pkg={pkg} />
+        </main>
 
         <Footer />
       </div>

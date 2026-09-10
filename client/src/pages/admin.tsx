@@ -712,7 +712,7 @@ export default function AdminPage() {
       <div className="min-h-screen bg-background font-sans">
         <Navbar />
 
-        <div className="container mx-auto px-4 py-12 mt-16">
+        <main id="main-content" className="container mx-auto px-4 py-12 mt-16">
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
             <div>
               <div className="flex items-center gap-3">
@@ -1391,7 +1391,7 @@ export default function AdminPage() {
             </TabsContent>
           </Tabs>
 
-        </div>
+        </main>
 
         <Dialog 
             open={dialogOpen}
