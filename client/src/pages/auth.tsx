@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -17,7 +17,7 @@ import heroImage from "/assets/images/tennis_main.jpg";
 import loginImage from "/assets/images/me_attack.jpg";
 import SEO from "@/components/seo";
 import { registerSchema, loginSchema } from "@/lib/validations/auth";
-import { savePostVerifyRedirect } from "@/lib/postVerifyRedirect";
+import { savePostVerifyRedirect, consumePostVerifyRedirect } from "@/lib/postVerifyRedirect";
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -42,7 +42,7 @@ export default function AuthPage() {
   const [, setLocation] = useLocation();
   const search = useSearch();
   const { toast } = useToast();
-  const { login, register, resendVerificationEmail } = useAuth();
+  const { login, register, resendVerificationEmail, fetchCurrentUser } = useAuth();
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -53,6 +53,49 @@ export default function AuthPage() {
     resolver: zodResolver(registerSchema),
     defaultValues: { role: "player", name: "", email: "", password: "", confirmPassword: "", agreeToTerms: false, wantsToOrganize: false },
   });
+
+  // While either "waiting on verification" screen is showing, the
+  // person may well confirm their email in a different tab (mail
+  // clients typically open links in a new one) - without this, the
+  // original tab has no way to know that happened and just sits on
+  // "check your email" until manually reloaded, even though the session
+  // cookie verify-email.tsx just set is already valid here too (cookies
+  // aren't per-tab). Polling /api/auth/me picks that up and moves this
+  // tab forward on its own once it does.
+  useEffect(() => {
+    const waitingEmail = registrationPendingEmail || verificationRequiredEmail;
+    if (!waitingEmail) return;
+
+    let cancelled = false;
+
+    const checkVerified = async () => {
+      const user = await fetchCurrentUser().catch(() => null);
+      if (cancelled || !user) return;
+
+      const redirect = consumePostVerifyRedirect();
+      const target = redirect
+        ? (() => {
+            const url = new URL(redirect.returnTo, window.location.origin);
+            if (redirect.joinSession) url.searchParams.set("joinSession", redirect.joinSession);
+            return url.pathname + url.search;
+          })()
+        : !user.profileCompleted
+          ? "/complete-profile"
+          : `/${user.role}/${user.slug}`;
+
+      toast({
+        title: "Email confirmed!",
+        description: "Welcome to TennisConnect.",
+      });
+      setLocation(target);
+    };
+
+    const interval = setInterval(checkVerified, 4000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [registrationPendingEmail, verificationRequiredEmail, fetchCurrentUser, setLocation, toast]);
 
   const onLogin = async (data: z.infer<typeof loginSchema>) => {
     setIsLoading(true);
@@ -674,7 +717,13 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                   </div>
 
                   {registerForm.formState.errors.agreeToTerms && (
-                    <p className="text-sm text-destructive">
+                    // text-xs, not the text-sm every other field error
+                    // here uses - this is the one error paired with a
+                    // text-xs label (the ToS checkbox text right above),
+                    // not a text-sm shadcn <Label>. Matching text-sm
+                    // made the error visually louder than the label it
+                    // was explaining.
+                    <p className="text-xs text-destructive">
                       {registerForm.formState.errors.agreeToTerms.message}
                     </p>
                   )}
