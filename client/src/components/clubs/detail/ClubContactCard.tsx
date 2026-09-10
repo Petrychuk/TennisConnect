@@ -39,7 +39,7 @@ export function ClubContactCard({
         className="rounded-2xl border bg-card p-5"
         data-testid="club-contact-card"
       >
-        <h3 className="font-display font-bold text-lg mb-1">Contacts</h3>
+        <h2 className="font-display font-bold text-lg mb-1">Contacts</h2>
         <p
           className="text-sm text-muted-foreground"
           data-testid="club-contact-empty"
@@ -55,6 +55,15 @@ export function ClubContactCard({
       className="rounded-2xl border bg-card overflow-hidden"
       data-testid="club-contact-card"
     >
+      {/* Sits alongside CourtsSection/CompanySection/CommunitySection
+          (siblings in club-detail.tsx, all of which have their own H2),
+          but this card has no single visible title of its own - "Contact"
+          and personLabel just below are sub-labels for the phone/email
+          block and the contact-person block respectively, not the
+          card's own heading. Visually hidden since a visible "Contact"
+          label would be redundant with the icon+"Contact" line right
+          under it. */}
+      <h2 className="sr-only">Contact</h2>
       {/* Provider header — logo / socials / name / description / website */}
       {(hasLogo || hasSocial || hasWebsite) && (
         <div className="p-6 text-center border-b border-border/60">
