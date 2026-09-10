@@ -120,7 +120,10 @@ export default function OrganiserPlayersPage() {
         <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} className="w-full" />
       </aside>
 
-      <div className="flex-1 min-w-0 pb-16 md:pb-0">
+      {/* See sessions.tsx's own comment on this same pattern - <aside>
+          above and <OrganiserMobileNav /> below both stay siblings of
+          this <main>, not children of it. */}
+      <main id="main-content" className="flex-1 min-w-0 pb-16 md:pb-0">
         {/* Compact bar — tablet & mobile */}
         <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
           <Sheet>
@@ -259,7 +262,7 @@ export default function OrganiserPlayersPage() {
             </p>
           </div>
         </div>
-      </div>
+      </main>
 
       <OrganiserMobileNav />
 
