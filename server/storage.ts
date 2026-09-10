@@ -440,12 +440,6 @@ export class DatabaseStorage implements IStorage {
     const blockedOwnerIds = new Set(
       ownedOrgRows.filter((r) => orgIdsWithSessions.has(r.id)).map((r) => r.ownerId)
     );
-    // Session-less organizations owned by someone about to be deleted -
-    // cascaded away in the same transaction below rather than left
-    // dangling (organizations.ownerId is NOT NULL).
-    const emptyOrgIdsToCascade = ownedOrgRows
-      .filter((r) => !orgIdsWithSessions.has(r.id))
-      .map((r) => r.id);
 
     const createdSessionRows = await db
       .select({ createdBy: tennisSessions.createdBy })
@@ -465,6 +459,27 @@ export class DatabaseStorage implements IStorage {
         allowedIds.push(id);
       }
     }
+
+    // Session-less organizations owned by someone who's ACTUALLY going
+    // through with the delete (allowedIds, not just "owns an empty
+    // org") - cascaded away in the same transaction below rather than
+    // left dangling (organizations.ownerId is NOT NULL). Filtered by
+    // allowedIds rather than computed straight off ownedOrgRows on
+    // purpose: today, every session's createdBy is necessarily that
+    // session's own organization's owner (POST /organizer/sessions only
+    // ever creates one for storage.getOrganizationOwnedByUser(self)), so
+    // an owner blocked by createdSessionIds could never simultaneously
+    // own a genuinely session-less organization - but that's an
+    // invariant of today's session-creation code, not of this function.
+    // Deriving the cascade list from the userIds actually being deleted
+    // means this stays correct even if that ever changes (e.g. staff
+    // gaining the ability to create sessions for someone else's org),
+    // instead of silently deleting an organization out from under an
+    // owner whose account deletion never actually happened.
+    const allowedIdSet = new Set(allowedIds);
+    const emptyOrgIdsToCascade = ownedOrgRows
+      .filter((r) => !orgIdsWithSessions.has(r.id) && allowedIdSet.has(r.ownerId))
+      .map((r) => r.id);
 
     if (allowedIds.length === 0) {
       return { deleted: [], failed };
