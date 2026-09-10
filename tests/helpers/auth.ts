@@ -105,15 +105,16 @@ export async function registerCoach(page: Page) {
   return user;
 }
 
-// Stands in for "open the verification email and click the link".
-// /api/test-hooks/issue-verification-token (server/routes/testHooks.ts)
-// is a 404 outside development/staging (checked against DB_ENV, not
-// NODE_ENV - see that file's own comment for why), so this only ever
-// works against the environments this suite is meant to run in at all
-// (tests/global-setup.ts already refuses a real-prod run outright).
-// Everything past this point - hitting /verify-email, the backend
-// verifying the token and creating the session, the redirect - is the
-// same real flow a person clicking the emailed link goes through.
+// Stands in for "open the verification email and click the link, then
+// click Confirm Email Address". /api/test-hooks/issue-verification-token
+// (server/routes/testHooks.ts) is a 404 outside development/staging
+// (checked against DB_ENV, not NODE_ENV - see that file's own comment
+// for why), so this only ever works against the environments this suite
+// is meant to run in at all (tests/global-setup.ts already refuses a
+// real-prod run outright). Everything past this point - landing on
+// /verify-email, clicking through, the backend verifying the token and
+// creating the session, the redirect - is the same real flow a person
+// clicking the emailed link goes through.
 export async function completeVerification(page: Page, email: string) {
   const response = await page.request.post('/api/test-hooks/issue-verification-token', {
     data: { email },
@@ -128,11 +129,17 @@ export async function completeVerification(page: Page, email: string) {
 
   const { token } = await response.json();
 
-  // Waits for the actual GET /api/auth/verify-email response, not just
-  // for page.goto() to resolve - that only guarantees the initial HTML/
-  // JS loaded, not that verify-email.tsx's own fetch (which is what
-  // sets the session cookie) has completed yet. Callers that
-  // immediately make an authenticated request right after this
+  await page.goto(`/verify-email?token=${token}`);
+
+  // verify-email.tsx no longer fires the verification request the
+  // moment the page loads - a real click on "Confirm Email Address" is
+  // required (defends against mail clients that pre-fetch links to scan
+  // them, which would otherwise burn this single-use token before a
+  // human ever sees the page). Waits for the actual GET
+  // /api/auth/verify-email response, not just the click resolving - that
+  // only guarantees the request was sent, not that the session cookie
+  // it sets has arrived yet. Callers that immediately make an
+  // authenticated request right after this
   // (page.request.get('/api/auth/me'), for instance) would otherwise
   // race it.
   await Promise.all([
@@ -141,7 +148,7 @@ export async function completeVerification(page: Page, email: string) {
         response.url().includes('/api/auth/verify-email') &&
         response.request().method() === 'GET'
     ),
-    page.goto(`/verify-email?token=${token}`),
+    page.getByTestId('confirm-email-button').click(),
   ]);
 }
 
