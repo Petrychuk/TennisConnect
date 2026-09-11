@@ -12,6 +12,7 @@
   --color-popover-foreground: hsl(var(--popover-foreground));
   --color-primary: hsl(var(--primary));
   --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary-text: hsl(var(--primary-text));
   --color-secondary: hsl(var(--secondary));
   --color-secondary-foreground: hsl(var(--secondary-foreground));
   --color-muted: hsl(var(--muted));
@@ -49,7 +50,22 @@
   /* The Star: Electric Lime - Slightly Darker for better text readability */
   --primary: 78 85% 42%; /* Darker Lime/Olive Green */
   --primary-foreground: 0 0% 100%; /* White text on darker green */
-  
+
+  /* Same hue as --primary, darkened enough to read as actual text (a
+     link, a small label) directly on a light background - #90C610
+     itself is only ~2:1 against white, badly failing WCAG's 4.5:1 for
+     normal text no matter which of the two is foreground/background.
+     --primary itself is deliberately NOT changed for this: it's also a
+     button/badge *background*, paired with dark text (see button.tsx's
+     "default" variant) or used decoratively, where the bright, on-
+     brand lime is exactly right and shouldn't get muddier. This is
+     only for the "green text on a light background" case specifically
+     - see also .dark's own --primary (75 90% 55%), which already
+     pairs with dark button text below for the same reason, just
+     inverted for a dark background. ~5.3:1 against white.
+  */
+  --primary-text: 78 85% 25%;
+
   --secondary: 240 5% 94%; /* Slightly darker gray */
   --secondary-foreground: 240 5% 10%;
   
@@ -84,6 +100,12 @@
   
   --primary: 75 90% 55%; /* Electric Lime pops on dark */
   --primary-foreground: 240 20% 10%;
+
+  /* Unlike light mode, --primary itself already reads fine as text
+     directly on this dark background (~14:1) - no darkening needed
+     here, just kept as its own token for the light/dark parity
+     described in :root's own comment on this variable. */
+  --primary-text: 75 90% 55%;
   
   --secondary: 240 4% 16%;
   --secondary-foreground: 0 0% 98%;
