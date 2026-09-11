@@ -202,7 +202,7 @@ export function OrganiserDashboard() {
       <div className="min-h-screen flex items-center justify-center px-4 bg-background">
         <Card className="max-w-md w-full shadow-sm">
           <CardHeader>
-            <CardTitle>Organiser access required</CardTitle>
+            <CardTitle asChild><h1>Organiser access required</h1></CardTitle>
           </CardHeader>
           <CardContent className="text-muted-foreground">
             You need to be an approved organiser to view this page. Head to your profile to
