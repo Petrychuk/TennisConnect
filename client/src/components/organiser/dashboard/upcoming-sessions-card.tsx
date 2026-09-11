@@ -23,7 +23,7 @@ export function UpcomingSessionsCard({ sessions, className, onCreateSession }: U
   return (
     <Card className={cn("shadow-sm hover:shadow-md transition-shadow", className)} data-testid="organiser-upcoming-sessions-card">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-base">Upcoming Sessions</CardTitle>
+        <CardTitle asChild className="text-base"><h2>Upcoming Sessions</h2></CardTitle>
         <Link
           href="/organiser/sessions"
           className="text-xs font-medium text-primary flex items-center gap-0.5 cursor-pointer hover:underline"

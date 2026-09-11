@@ -23,7 +23,7 @@ export function PlayersQuickActionsCard({ lastLabel = "Manage Waitlist", lastIco
   return (
     <Card data-testid="organiser-players-quick-actions-card">
       <CardHeader>
-        <CardTitle className="text-base">Quick Actions</CardTitle>
+        <CardTitle asChild className="text-base"><h2>Quick Actions</h2></CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-5 gap-2">

@@ -24,7 +24,7 @@ export function QuickActionsCard({ organizationSlug, onCreateSession, className 
   return (
     <Card className={cn("shadow-sm hover:shadow-md transition-shadow", className)} data-testid="organiser-quick-actions-card">
       <CardHeader>
-        <CardTitle className="text-base">Quick Actions</CardTitle>
+        <CardTitle asChild className="text-base"><h2>Quick Actions</h2></CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 gap-2.5">

@@ -24,7 +24,7 @@ export function SeasonProgressCard({
   return (
     <Card className={cn("shadow-sm hover:shadow-md transition-shadow", className)} data-testid="organiser-season-progress-card">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-base">Season Overview</CardTitle>
+        <CardTitle asChild className="text-base"><h2>Season Overview</h2></CardTitle>
         <span className="text-xs font-medium text-muted-foreground">{seasonLabel}</span>
       </CardHeader>
       <CardContent className="space-y-5">

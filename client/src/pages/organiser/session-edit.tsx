@@ -161,7 +161,7 @@ export default function OrganiserSessionEditPage() {
 
         <Card className="shadow-sm">
           <CardHeader>
-            <CardTitle>Edit Session</CardTitle>
+            <CardTitle asChild><h1>Edit Session</h1></CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="space-y-1.5">

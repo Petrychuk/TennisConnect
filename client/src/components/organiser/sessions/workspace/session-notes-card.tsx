@@ -37,7 +37,7 @@ export function SessionNotesCard({ sessionId, initialNote = null }: SessionNotes
   return (
     <Card className="shadow-sm" data-testid="organiser-session-notes-card">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-base">Session Notes</CardTitle>
+        <CardTitle asChild className="text-base"><h2>Session Notes</h2></CardTitle>
         {!isEditing && (
           <button
             type="button"
