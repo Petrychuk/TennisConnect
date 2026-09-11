@@ -135,6 +135,19 @@ export default function CoachesPage() {
 
   const activeFiltersCount = (locationFilter !== "all" ? 1 : 0) + (priceRange[0] < 150 ? 1 : 0) + (minRating > 0 ? 1 : 0);
 
+  // GA4 "search" - same debounced-on-settle approach as partners.tsx's
+  // own player search, so this doesn't fire once per keystroke either.
+  useEffect(() => {
+    if (!searchTerm.trim()) return;
+    const timer = setTimeout(() => {
+      (window as any).gtag?.("event", "search", {
+        search_term: searchTerm.trim(),
+        search_type: "coaches",
+      });
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   const clearFilters = () => {
     setSearchTerm("");
     setLocationFilter("all");

@@ -242,7 +242,11 @@ export function MessagesInbox() {
         description:
           "Your message has been sent successfully.",
       });
-    
+
+      // GA4 "send_message" - same event as the profile-page contact
+      // forms, distinguished by context.
+      (window as any).gtag?.("event", "send_message", { context: "inbox_reply" });
+
       setReplyContent("");
       setShowReplyForm(false);
     

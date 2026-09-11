@@ -98,6 +98,11 @@ export default function PartnersPage() {
       description: `Your message has been sent to ${selectedPartner?.name}. They will receive it in their inbox.`,
     });
 
+    // GA4 "send_message" - fired only after the request actually
+    // succeeds (below the toast, past the `if (!res.ok) throw`), not
+    // on button click - a failed send shouldn't count as one.
+    (window as any).gtag?.("event", "send_message", { context: "player_contact" });
+
     setMessageModalOpen(false);
     setMessageText("");
     setSelectedPartner(null);
@@ -212,6 +217,21 @@ export default function PartnersPage() {
 
     return matchesSearch && matchesLevel;
   });
+
+  // GA4 "search" - debounced (fires once ~600ms after typing stops, not
+  // per keystroke) so searching doesn't flood analytics with one event
+  // per character. Only fires for a real, settled query - clearing the
+  // box back to empty doesn't count as a search.
+  useEffect(() => {
+    if (!searchTerm.trim()) return;
+    const timer = setTimeout(() => {
+      (window as any).gtag?.("event", "search", {
+        search_term: searchTerm.trim(),
+        search_type: "players",
+      });
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
   
   const handlePageChange = (newPage: number) => {
     setPage(newPage);

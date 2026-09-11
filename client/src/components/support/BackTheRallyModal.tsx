@@ -1,4 +1,4 @@
-import { useState, type ComponentType } from "react";
+import { useState, useEffect, useRef, type ComponentType } from "react";
 import {
   Dialog,
   DialogContent,
@@ -342,6 +342,28 @@ export function BackTheRallyModal({
 }
 
 function SuccessView({ onClose }: { onClose: () => void }) {
+  // GA4 "back_the_rally_complete" - the actual conversion, as opposed
+  // to "support_checkout_started" above (fired on handoff to Stripe,
+  // which someone can still abandon) or "back_the_rally_opened" (fires
+  // for every modal open, not just a completed one). This view only
+  // ever renders when initialView === "success", which itself only
+  // happens via the ?support=success redirect Stripe's own
+  // success_url sends back after a real completed payment (see
+  // server/routes/support.ts) - not something reachable by just
+  // opening the modal normally.
+  //
+  // useRef guard: React 18 StrictMode (dev only, stripped from
+  // production builds) mounts effects twice - without this, every
+  // local dev load of this view would fire the event twice for no
+  // real reason, though it's harmless in production either way since
+  // this isn't consuming a single-use resource like a token.
+  const hasFired = useRef(false);
+  useEffect(() => {
+    if (hasFired.current) return;
+    hasFired.current = true;
+    (window as any).gtag?.("event", "back_the_rally_complete");
+  }, []);
+
   return (
     <div
       className="relative flex flex-col items-center text-center gap-3 py-8 px-6 overflow-hidden"

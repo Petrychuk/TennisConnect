@@ -470,6 +470,10 @@ export default function CoachProfile() {
         description: "The coach will receive your message shortly.",
       });
 
+      // GA4 "send_message" - same event as partners.tsx's player-contact
+      // modal, distinguished by context.
+      (window as any).gtag?.("event", "send_message", { context: "coach_contact" });
+
       setContactMessage("");
 
     } catch (error) {
