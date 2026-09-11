@@ -69,7 +69,7 @@ export function LiveTodayCard({ session, className, onEnterLive }: LiveTodayCard
         </Badge>
 
         <div>
-          <h3 className="text-xl sm:text-2xl font-display font-bold">{session.title}</h3>
+          <h2 className="text-xl sm:text-2xl font-display font-bold">{session.title}</h2>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-primary-foreground/85 mt-1">
             <span className="flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5" />

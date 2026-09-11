@@ -77,7 +77,7 @@ export function SessionDetailsCard({ session, isDivision }: SessionDetailsCardPr
   return (
     <Card className="shadow-sm" data-testid="organiser-session-details-card">
       <CardHeader>
-        <CardTitle className="text-base">{isDivision ? "Division Details" : "Session Details"}</CardTitle>
+        <CardTitle asChild className="text-base"><h2>{isDivision ? "Division Details" : "Session Details"}</h2></CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {rows.map((row) => {

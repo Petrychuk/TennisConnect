@@ -46,7 +46,7 @@ export function FormatRulesTab({ session }: FormatRulesTabProps) {
               <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
                 <Icon className="w-4 h-4" />
               </div>
-              <CardTitle className="text-base">{item.title}</CardTitle>
+              <CardTitle asChild className="text-base"><h2>{item.title}</h2></CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">{item.description}</p>

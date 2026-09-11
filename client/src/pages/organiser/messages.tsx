@@ -60,6 +60,12 @@ export default function OrganiserMessagesPage() {
           above and <OrganiserMobileNav /> below both stay siblings of
           this <main>, not children of it. */}
       <main id="main-content" className="flex-1 min-w-0 pb-16 md:pb-0">
+        {/* Visually hidden - the visible "Messages" label just below
+            (mobile-only compact bar) and the breadcrumb's last crumb
+            are both plain text, not headings; this is the one real H1
+            for the page, present regardless of viewport width so
+            desktop (which shows neither of those) still has one. */}
+        <h1 className="sr-only">Messages</h1>
         {/* Compact bar — tablet & mobile */}
         <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
           <Sheet>
