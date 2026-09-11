@@ -419,7 +419,7 @@ export default function CompleteProfilePage() {
                         href="/articles/what-is-your-tennis-level-guide"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-primary hover:underline"
+                        className="text-primary-text hover:underline"
                         data-testid="link-skill-guide"
                       >
                         Read our Tennis Level Guide →

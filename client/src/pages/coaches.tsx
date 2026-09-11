@@ -319,7 +319,7 @@ export default function CoachesPage() {
                       <Filter className="w-5 h-5 mr-2" />
                       Filters
                       {activeFiltersCount > 0 && (
-                        <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px]">
+                        <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center rounded-full bg-primary text-foreground text-[10px]">
                           {activeFiltersCount}
                         </Badge>
                       )}
@@ -452,7 +452,7 @@ export default function CoachesPage() {
                       <Filter className="w-4 h-4 mr-1.5" />
                       Filters
                       {activeFiltersCount > 0 && (
-                        <Badge variant="secondary" className="ml-1.5 h-5 w-5 p-0 flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px]">
+                        <Badge variant="secondary" className="ml-1.5 h-5 w-5 p-0 flex items-center justify-center rounded-full bg-primary text-foreground text-[10px]">
                           {activeFiltersCount}
                         </Badge>
                       )}
@@ -658,7 +658,7 @@ export default function CoachesPage() {
 
                     <CardFooter className="px-3 pb-3 pt-0 md:px-6 md:pb-6">
                       <Link href={`/coach/${coach.slug}`}>
-                        <Button className="w-full h-9 md:h-10 text-xs md:text-sm font-bold group-hover:bg-primary group-hover:text-primary-foreground transition-all cursor-pointer">
+                        <Button className="w-full h-9 md:h-10 text-xs md:text-sm font-bold group-hover:bg-primary group-hover:text-foreground transition-all cursor-pointer">
                           View Profile <ArrowRight className="w-4 h-4 ml-2" />
                         </Button>
                       </Link>

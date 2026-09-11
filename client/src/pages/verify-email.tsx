@@ -241,7 +241,7 @@ export default function VerifyEmailPage() {
             />
             <Button
               type="submit"
-              className="w-2/3 mx-auto flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full h-12"
+              className="w-2/3 mx-auto flex items-center justify-center bg-primary text-foreground hover:bg-primary/90 font-bold rounded-full h-12"
               disabled={resendLoading}
               data-testid="resend-verification-button"
             >

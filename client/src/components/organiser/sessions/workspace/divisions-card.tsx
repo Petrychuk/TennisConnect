@@ -25,7 +25,7 @@ const STATUS_BADGE: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
   pending_review: "bg-primary/10 text-primary",
   published: "bg-primary/10 text-primary",
-  live: "bg-primary text-primary-foreground",
+  live: "bg-primary text-foreground",
   completed: "bg-muted text-muted-foreground",
   cancelled: "bg-destructive/10 text-destructive",
   rejected: "bg-destructive/10 text-destructive",

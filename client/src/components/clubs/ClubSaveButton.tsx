@@ -105,7 +105,7 @@ export function ClubSaveButton({
             ? light
               ? "bg-white/15 text-white border border-white/30 hover:bg-white/25"
               : "bg-primary/10 text-primary border border-primary/20 hover:bg-primary/15"
-            : "bg-primary text-primary-foreground hover:bg-primary/90"
+            : "bg-primary text-foreground hover:bg-primary/90"
         } ${className ?? ""}`}
         data-testid="club-save-btn"
       >

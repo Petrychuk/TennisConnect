@@ -305,7 +305,7 @@ export function Navbar() {
             </div>
           ) : (
             <Link href="/auth" className="hidden xl:inline-flex">
-              <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer">
+              <Button className="bg-primary text-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer">
                 Sign In
               </Button>
             </Link>
@@ -357,7 +357,7 @@ export function Navbar() {
                         <span
                           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors ${
                             active
-                              ? "bg-primary text-primary-foreground"
+                              ? "bg-primary text-foreground"
                               : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
                           }`}
                         >
@@ -372,7 +372,7 @@ export function Navbar() {
 
                 {!isAuthenticated && (
                   <Link href="/auth" onClick={() => setIsOpen(false)}>
-                    <Button className="w-full mt-4 bg-primary text-primary-foreground font-bold rounded-full cursor-pointer">
+                    <Button className="w-full mt-4 bg-primary text-foreground font-bold rounded-full cursor-pointer">
                       Sign In
                     </Button>
                   </Link>

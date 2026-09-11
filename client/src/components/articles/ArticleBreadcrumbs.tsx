@@ -22,7 +22,7 @@ export function ArticleBreadcrumbs({ category, title, light }: ArticleBreadcrumb
     : "text-muted-foreground";
   const link = light
     ? "cursor-pointer hover:text-white hover:underline underline-offset-4"
-    : "cursor-pointer hover:text-primary hover:underline underline-offset-4";
+    : "cursor-pointer hover:text-primary-text hover:underline underline-offset-4";
   const current = light ? "text-white" : undefined;
 
   return (

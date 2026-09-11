@@ -54,7 +54,7 @@ export function Marketplace() {
           </div>
           <Link href="/marketplace">
             <Button
-              className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full cursor-pointer"
+              className="w-full gap-2 bg-primary text-foreground hover:bg-primary/90 font-bold rounded-full cursor-pointer"
             >
               Browse Gear <ArrowRight className="w-4 h-4" />
             </Button>

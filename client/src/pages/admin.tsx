@@ -717,7 +717,7 @@ export default function AdminPage() {
             <div>
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl md:text-3xl font-display font-bold">Content Manager</h1>
-                <Badge className="bg-primary text-primary-foreground">
+                <Badge className="bg-primary text-foreground">
                   <ShieldCheck className="w-3 h-3 mr-1" /> Admin
                 </Badge>
               </div>
@@ -725,7 +725,7 @@ export default function AdminPage() {
             {activeTab !== "users" && activeTab !== "organizer-requests" && (
             <Button
               onClick={openCreate}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
+              className="bg-primary text-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
               data-testid="admin-create-button"
             >
               <Plus className="w-4 h-4 mr-2" /> New {activeLabel}
@@ -1551,7 +1551,7 @@ export default function AdminPage() {
           {activeTab !== "clubs" && activeTab !== "travel" && activeTab !== "articles" && (
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)} className="cursor-pointer">Cancel</Button>
-              <Button onClick={submit} className="bg-primary text-primary-foreground cursor-pointer" data-testid="admin-save-button">
+              <Button onClick={submit} className="bg-primary text-foreground cursor-pointer" data-testid="admin-save-button">
                 {editing ? "Update" : "Create"}
               </Button>
             </DialogFooter>

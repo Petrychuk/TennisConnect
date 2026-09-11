@@ -51,7 +51,7 @@ import { Eye, EyeOff, Pencil, Trash2, Globe, Star, } from "lucide-react";
                 right-3
                 top-3
                 bg-primary
-                text-primary-foreground
+                text-foreground
               "
             >
               <Star className="mr-1 h-3 w-3 fill-current" />

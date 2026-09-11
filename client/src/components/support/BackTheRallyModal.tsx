@@ -247,7 +247,7 @@ export function BackTheRallyModal({
                     >
                       {isSelected && (
                         <Check
-                          className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-primary text-primary-foreground p-0.5"
+                          className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-primary text-foreground p-0.5"
                           aria-hidden="true"
                         />
                       )}

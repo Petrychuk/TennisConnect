@@ -171,7 +171,7 @@ export function CookieSettingsModal({
           </Button>
           <Button
             onClick={handleSave}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold cursor-pointer"
+            className="bg-primary text-foreground hover:bg-primary/90 font-bold cursor-pointer"
             data-testid="cookie-settings-save-button"
           >
             Save Preferences

@@ -145,7 +145,7 @@ export default function PlayerRegistration() {
                 )}
               </div>
 
-              <Button type="submit" className="w-full font-bold bg-primary text-primary-foreground hover:bg-primary/90" disabled={isLoading}>
+              <Button type="submit" className="w-full font-bold bg-primary text-foreground hover:bg-primary/90" disabled={isLoading}>
                 {isLoading && <TennisBallSpinner className="mr-2" />}
                 Create Player Account
               </Button>
@@ -174,7 +174,7 @@ export default function PlayerRegistration() {
                 "I found my perfect hitting partner on TennisConnect. Now we play every weekend!"
               </blockquote>
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg">
+                <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-foreground font-bold text-lg">
                   JS
                 </div>
                 <div>

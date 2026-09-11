@@ -593,7 +593,7 @@ export default function AdminUsersTab() {
                     }
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-medium hover:text-primary hover:underline"
+                    className="font-medium hover:text-primary-text hover:underline"
                     data-testid={`user-name-link-${user.id}`}
                   >
                     {user.name}

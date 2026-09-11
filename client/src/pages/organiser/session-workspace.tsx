@@ -349,7 +349,7 @@ export default function OrganiserSessionWorkspacePage() {
         <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 md:space-y-4 max-w-6xl mx-auto">
           {/* Breadcrumb */}
           <div className="flex items-center gap-1.5 text-sm flex-wrap" data-testid="organiser-session-breadcrumb">
-            <Link href="/organiser/sessions" className="text-primary hover:underline">
+            <Link href="/organiser/sessions" className="text-primary-text hover:underline">
               Sessions
             </Link>
             {parentSessionQuery.data && (
@@ -357,7 +357,7 @@ export default function OrganiserSessionWorkspacePage() {
                 <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
                 <Link
                   href={`/organiser/sessions/${parentSessionQuery.data.id}`}
-                  className="text-primary hover:underline truncate max-w-[200px]"
+                  className="text-primary-text hover:underline truncate max-w-[200px]"
                   data-testid="organiser-session-breadcrumb-parent"
                 >
                   {parentSessionQuery.data.title}
@@ -373,7 +373,7 @@ export default function OrganiserSessionWorkspacePage() {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="font-display text-2xl sm:text-3xl font-bold">{session.title}</h1>
-                <Badge className={bucket === "live" ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary"}>
+                <Badge className={bucket === "live" ? "bg-primary text-foreground" : "bg-primary/10 text-primary"}>
                   {BUCKET_BADGE_LABEL[bucket]}
                 </Badge>
               </div>

@@ -180,7 +180,7 @@ export default function OrganiserSessionLivePage() {
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <Badge className="bg-primary text-primary-foreground gap-1.5 mb-2" data-testid="organiser-session-live-badge">
+            <Badge className="bg-primary text-foreground gap-1.5 mb-2" data-testid="organiser-session-live-badge">
               {status === "live" && (
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-foreground opacity-75" />
