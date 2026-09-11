@@ -26,53 +26,80 @@
     </script>
    <!-- Google Analytics + Consent Mode -->
     <script>
-      window.dataLayer = window.dataLayer || [];
+      // Playwright (and Puppeteer/Selenium) automated browsers set
+      // navigator.webdriver = true - a standard W3C WebDriver property
+      // the browser itself sets before any page script runs, not
+      // something a test has to opt into or could forget to set. A
+      // real visitor manually testing locally in an ordinary browser
+      // has navigator.webdriver false/undefined and is unaffected.
+      //
+      // Skips gtag.js loading entirely for automated traffic, rather
+      // than loading it and relying on Consent Mode/GA4 filtering to
+      // exclude it afterwards - test runs against production (the
+      // smoke suite's own ALLOW_PROD path) were showing up as real
+      // GA4 users/sessions on pages like /coach/coach-playwright.
+      //
+      // tests/support/back-the-rally.spec.ts's own gtag spy tests
+      // (SUPPORT-015/016) are unaffected: they install their own
+      // window.gtag before clicking, regardless of whether this real
+      // one ever existed, and the app's own call site
+      // (BackTheRallyWidget.tsx) already calls it as
+      // `window.gtag?.(...)` - a no-op, not an error, if gtag was
+      // never defined.
+      if (navigator.webdriver !== true) {
+        window.dataLayer = window.dataLayer || [];
 
-      function gtag() {
-        dataLayer.push(arguments);
-      }
-
-      // Default: optional cookies are denied.
-      var analyticsConsent = "denied";
-      var marketingConsent = "denied";
-      var preferencesConsent = "denied";
-
-      // Restore the user's previously saved consent before GA4 starts.
-      try {
-        var storedConsent = localStorage.getItem("tennisconnect_cookie_consent");
-
-        if (storedConsent) {
-          var consent = JSON.parse(storedConsent);
-
-          if (consent.version === 1) {
-            analyticsConsent = consent.analytics ? "granted" : "denied";
-            marketingConsent = consent.marketing ? "granted" : "denied";
-            preferencesConsent = consent.preferences ? "granted" : "denied";
-          }
+        function gtag() {
+          dataLayer.push(arguments);
         }
-      } catch (e) {
-        // If consent cannot be read, keep optional cookies denied.
+
+        // Default: optional cookies are denied.
+        var analyticsConsent = "denied";
+        var marketingConsent = "denied";
+        var preferencesConsent = "denied";
+
+        // Restore the user's previously saved consent before GA4 starts.
+        try {
+          var storedConsent = localStorage.getItem("tennisconnect_cookie_consent");
+
+          if (storedConsent) {
+            var consent = JSON.parse(storedConsent);
+
+            if (consent.version === 1) {
+              analyticsConsent = consent.analytics ? "granted" : "denied";
+              marketingConsent = consent.marketing ? "granted" : "denied";
+              preferencesConsent = consent.preferences ? "granted" : "denied";
+            }
+          }
+        } catch (e) {
+          // If consent cannot be read, keep optional cookies denied.
+        }
+
+        gtag("consent", "default", {
+          analytics_storage: analyticsConsent,
+          ad_storage: marketingConsent,
+          ad_user_data: marketingConsent,
+          ad_personalization: marketingConsent,
+          functionality_storage: preferencesConsent,
+          personalization_storage: preferencesConsent,
+          security_storage: "granted"
+        });
+
+        gtag("js", new Date());
+        gtag("config", "G-PB33Q552C9");
+
+        // Was a static <script src="...gtag/js?id=..."> tag - injected
+        // dynamically instead so it's just as skippable by the same
+        // check above as everything else in this block, rather than
+        // always fetching regardless of what the check above decided.
+        var gaScript = document.createElement("script");
+        gaScript.async = true;
+        gaScript.src = "https://www.googletagmanager.com/gtag/js?id=G-PB33Q552C9";
+        document.head.appendChild(gaScript);
       }
-
-      gtag("consent", "default", {
-        analytics_storage: analyticsConsent,
-        ad_storage: marketingConsent,
-        ad_user_data: marketingConsent,
-        ad_personalization: marketingConsent,
-        functionality_storage: preferencesConsent,
-        personalization_storage: preferencesConsent,
-        security_storage: "granted"
-      });
-
-      gtag("js", new Date());
-      gtag("config", "G-PB33Q552C9");
     </script>
 
-    <script
-      async
-      src="https://www.googletagmanager.com/gtag/js?id=G-PB33Q552C9">
-    </script>
-    
+
     <!-- Additional SEO -->
     <meta name="theme-color" content="#DFFF00" />
     <meta name="mobile-web-app-capable" content="yes" />
