@@ -151,7 +151,7 @@ export default function ArticlesPage() {
                   onClick={() => setCategory(c)}
                   className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border cursor-pointer ${
                     category === c
-                      ? "bg-primary text-primary-foreground border-primary"
+                      ? "bg-primary text-foreground border-primary"
                       : "bg-background/80 hover:bg-secondary border-input"
                   }`}
                   data-testid={`articles-category-${c}`}
@@ -212,7 +212,7 @@ export default function ArticlesPage() {
                   <button
                     className={`shrink-0 h-11 w-11 flex items-center justify-center rounded-xl border cursor-pointer transition-all ${
                       category !== "All"
-                        ? "bg-primary text-primary-foreground border-primary"
+                        ? "bg-primary text-foreground border-primary"
                         : "bg-secondary/50 border-input"
                     }`}
                     aria-label="Filter by category"
@@ -232,7 +232,7 @@ export default function ArticlesPage() {
                         }}
                         className={`px-3 py-2 rounded-lg text-sm font-medium text-left transition-all cursor-pointer ${
                           category === c
-                            ? "bg-primary text-primary-foreground"
+                            ? "bg-primary text-foreground"
                             : "hover:bg-secondary"
                         }`}
                         data-testid={`articles-category-mobile-${c}`}

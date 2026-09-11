@@ -460,7 +460,7 @@ export default function ClubsPage() {
                     <button
                       className={`shrink-0 h-11 px-4 flex items-center gap-2 rounded-xl border text-sm font-medium cursor-pointer transition-all ${
                         desktopPopoverFiltersCount > 0
-                          ? "bg-primary text-primary-foreground border-primary"
+                          ? "bg-primary text-foreground border-primary"
                           : "bg-background/80 border-input hover:border-primary/50"
                       }`}
                       data-testid="clubs-more-filters-trigger"
@@ -521,7 +521,7 @@ export default function ClubsPage() {
                             data-testid={`clubs-service-option-${service.value}`}
                             className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer shrink-0 ${
                               filterServices.includes(service.value)
-                                ? "bg-primary text-primary-foreground border-primary"
+                                ? "bg-primary text-foreground border-primary"
                                 : "bg-background/80 hover:bg-secondary border-input hover:border-primary/50"
                             }`}
                           >
@@ -601,7 +601,7 @@ export default function ClubsPage() {
                   <button
                     className={`shrink-0 h-11 w-11 flex items-center justify-center rounded-xl border cursor-pointer transition-all relative ${
                       activeAdvancedFiltersCount > 0
-                        ? "bg-primary text-primary-foreground border-primary"
+                        ? "bg-primary text-foreground border-primary"
                         : "bg-secondary/50 border-input"
                     }`}
                     aria-label="Filter clubs"
@@ -609,7 +609,7 @@ export default function ClubsPage() {
                   >
                     <SlidersHorizontal className="w-4 h-4" />
                     {activeAdvancedFiltersCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center border border-background">
+                      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-primary text-foreground text-[10px] flex items-center justify-center border border-background">
                         {activeAdvancedFiltersCount}
                       </span>
                     )}
@@ -723,7 +723,7 @@ export default function ClubsPage() {
                             data-testid={`clubs-service-option-mobile-${service.value}`}
                             className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer shrink-0 ${
                               filterServices.includes(service.value)
-                                ? "bg-primary text-primary-foreground border-primary"
+                                ? "bg-primary text-foreground border-primary"
                                 : "bg-background/80 hover:bg-secondary border-input hover:border-primary/50"
                             }`}
                           >

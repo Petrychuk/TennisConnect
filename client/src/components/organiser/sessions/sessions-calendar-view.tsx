@@ -122,7 +122,7 @@ export function SessionsCalendarView({ sessions }: SessionsCalendarViewProps) {
               >
                 <span
                   className={`text-xs inline-flex items-center justify-center w-5 h-5 rounded-full ${
-                    isToday ? "bg-primary text-primary-foreground font-semibold" : inMonth ? "text-foreground" : "text-muted-foreground/50"
+                    isToday ? "bg-primary text-foreground font-semibold" : inMonth ? "text-foreground" : "text-muted-foreground/50"
                   }`}
                 >
                   {day.getDate()}

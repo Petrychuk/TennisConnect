@@ -109,7 +109,7 @@ export default function TournamentsPage() {
 
           {isPast && tournament.winner && (
             <div className="absolute top-4 right-4">
-              <Badge className="bg-primary text-primary-foreground font-bold">
+              <Badge className="bg-primary text-foreground font-bold">
                 <Trophy className="w-3 h-3 mr-1" /> Completed
               </Badge>
             </div>
@@ -179,7 +179,7 @@ export default function TournamentsPage() {
           <div className="flex flex-col sm:flex-row gap-3">
             {!isPast && (
               <Button
-                className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 font-bold cursor-pointer"
+                className="flex-1 bg-primary text-foreground hover:bg-primary/90 font-bold cursor-pointer"
                 onClick={() => {
                   setSelectedTournament(tournament);
                   setRegisterModalOpen(true);
@@ -234,7 +234,7 @@ export default function TournamentsPage() {
           <div className="absolute inset-0 bg-linear-to-b from-black/60 via-black/40 to-background z-10" />
           <div className="relative z-20 container mx-auto px-4 text-center mt-20">
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
-              <Badge className="mb-6 bg-primary text-primary-foreground px-4 py-1.5 text-sm font-bold">
+              <Badge className="mb-6 bg-primary text-foreground px-4 py-1.5 text-sm font-bold">
                 <Trophy className="w-4 h-4 mr-2" /> Official Tournaments
               </Badge>
               <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold mb-6 tracking-tight text-white">
@@ -271,7 +271,7 @@ export default function TournamentsPage() {
                     onClick={() => setFilterLevel(filterLevel === level.value ? "" : level.value)}
                     className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border cursor-pointer ${
                       filterLevel === level.value
-                        ? "bg-primary text-primary-foreground border-primary"
+                        ? "bg-primary text-foreground border-primary"
                         : "bg-background hover:bg-secondary border-input"
                     }`}
                   >
@@ -350,7 +350,7 @@ export default function TournamentsPage() {
 
             <DialogFooter className="flex-col sm:flex-row gap-2">
               <Button variant="outline" onClick={() => setRegisterModalOpen(false)} className="cursor-pointer">Cancel</Button>
-              <Button onClick={handleRegister} className="bg-primary text-primary-foreground cursor-pointer">Confirm Registration</Button>
+              <Button onClick={handleRegister} className="bg-primary text-foreground cursor-pointer">Confirm Registration</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -401,7 +401,7 @@ export default function TournamentsPage() {
                 </div>
 
                 {selectedTournament.status === "upcoming" && (
-                  <Button className="w-full bg-primary text-primary-foreground font-bold cursor-pointer" onClick={() => setRegisterModalOpen(true)}>
+                  <Button className="w-full bg-primary text-foreground font-bold cursor-pointer" onClick={() => setRegisterModalOpen(true)}>
                     Register for Tournament
                   </Button>
                 )}

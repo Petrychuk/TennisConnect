@@ -52,7 +52,7 @@ const OWNER_STATUS_BADGE: Record<string, string> = {
   published: "bg-primary/10 text-primary",
   rejected: "bg-destructive/10 text-destructive",
   cancelled: "bg-destructive/10 text-destructive",
-  live: "bg-primary text-primary-foreground",
+  live: "bg-primary text-foreground",
   completed: "bg-accent text-accent-foreground",
 };
 

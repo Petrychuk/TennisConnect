@@ -86,7 +86,7 @@ export function HomeRecreation() {
           >
             <Link href="/recreation" className="hidden md:block">
               <Button
-                className="flex gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
+                className="flex gap-2 bg-primary text-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
                 data-testid="recreation-view-all-button"
               >
                 Start Recovery <ArrowRight className="w-4 h-4" />
@@ -146,7 +146,7 @@ export function HomeRecreation() {
                         ${svc.price}
                         <span className="text-xs text-muted-foreground font-normal ml-1">{svc.currency}</span>
                       </p>
-                      <span className="text-xs font-bold text-primary group-hover:underline">Book →</span>
+                      <span className="text-xs font-bold text-primary-text group-hover:underline">Book →</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -162,7 +162,7 @@ export function HomeRecreation() {
           className="mt-8 md:hidden"
         >
           <Link href="/recreation">
-            <Button className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full cursor-pointer">
+            <Button className="w-full gap-2 bg-primary text-foreground hover:bg-primary/90 font-bold rounded-full cursor-pointer">
               All Services <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>

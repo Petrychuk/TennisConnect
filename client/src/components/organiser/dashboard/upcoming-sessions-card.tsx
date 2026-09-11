@@ -26,7 +26,7 @@ export function UpcomingSessionsCard({ sessions, className, onCreateSession }: U
         <CardTitle asChild className="text-base"><h2>Upcoming Sessions</h2></CardTitle>
         <Link
           href="/organiser/sessions"
-          className="text-xs font-medium text-primary flex items-center gap-0.5 cursor-pointer hover:underline"
+          className="text-xs font-medium text-primary-text flex items-center gap-0.5 cursor-pointer hover:underline"
           data-testid="organiser-upcoming-view-all"
         >
           View all

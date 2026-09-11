@@ -55,7 +55,7 @@ export function Step1SessionType({ value, onChange }: Step1SessionTypeProps) {
               data-testid={`organiser-wizard-type-${option.key}`}
             >
               {selected && (
-                <span className="absolute top-3 right-3 w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                <span className="absolute top-3 right-3 w-5 h-5 rounded-full bg-primary text-foreground flex items-center justify-center">
                   <Check className="w-3 h-3" />
                 </span>
               )}

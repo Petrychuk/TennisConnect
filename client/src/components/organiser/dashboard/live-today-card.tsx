@@ -60,7 +60,7 @@ export function LiveTodayCard({ session, className, onEnterLive }: LiveTodayCard
       <div className="absolute inset-0 bg-linear-to-t from-foreground/85 via-foreground/40 to-foreground/10" />
 
       <div className="relative p-5 sm:p-6 space-y-4">
-        <Badge className="bg-primary text-primary-foreground w-fit gap-1.5" data-testid="organiser-live-today-badge">
+        <Badge className="bg-primary text-foreground w-fit gap-1.5" data-testid="organiser-live-today-badge">
           <span className="relative flex h-1.5 w-1.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-foreground opacity-75" />
             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary-foreground" />

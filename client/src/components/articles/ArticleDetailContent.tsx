@@ -136,7 +136,7 @@ export function ArticleDetailContent({
                 transition={{ duration: 0.4 }}
                 className="md:col-span-3"
               >
-                <Badge className="mb-4 bg-primary text-primary-foreground">
+                <Badge className="mb-4 bg-primary text-foreground">
                   {article.category}
                 </Badge>
                 <h1
@@ -188,7 +188,7 @@ export function ArticleDetailContent({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4 }}
                 >
-                  <Badge className="mb-3 bg-primary text-primary-foreground">
+                  <Badge className="mb-3 bg-primary text-foreground">
                     {article.category}
                   </Badge>
                   <h1
@@ -214,7 +214,7 @@ export function ArticleDetailContent({
               <ArticleBreadcrumbs category={article.category} title={article.title} />
 
               <div className="mt-4">
-                <Badge className="mb-3 bg-primary text-primary-foreground">
+                <Badge className="mb-3 bg-primary text-foreground">
                   {article.category}
                 </Badge>
                 <h1
@@ -245,7 +245,7 @@ export function ArticleDetailContent({
               transition={{ duration: 0.4 }}
               className="mt-6"
             >
-              <Badge className="mb-3 bg-primary text-primary-foreground">
+              <Badge className="mb-3 bg-primary text-foreground">
                 {article.category}
               </Badge>
               <h1
@@ -290,7 +290,7 @@ export function ArticleDetailContent({
             Explore our full library of articles.
           </p>
           <Link href="/articles">
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full font-bold px-6 cursor-pointer">
+            <Button className="bg-primary text-foreground hover:bg-primary/90 rounded-full font-bold px-6 cursor-pointer">
               Browse All Articles
             </Button>
           </Link>
@@ -307,7 +307,7 @@ export function ArticleDetailContent({
               </h2>
               <Link
                 href="/articles"
-                className="text-sm font-semibold text-primary hover:underline inline-flex items-center gap-1"
+                className="text-sm font-semibold text-primary-text hover:underline inline-flex items-center gap-1"
               >
                 View all <ArrowRight className="w-3.5 h-3.5" />
               </Link>

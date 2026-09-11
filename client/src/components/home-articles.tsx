@@ -75,7 +75,7 @@ export function HomeArticles() {
           >
             <Link href="/articles" className="hidden md:block">
               <Button
-                className="flex gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
+                className="flex gap-2 bg-primary text-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
                 data-testid="articles-view-all-button"
               >
                 Explore Articles <ArrowRight className="w-4 h-4" />
@@ -137,7 +137,7 @@ export function HomeArticles() {
           className="mt-8 md:hidden flex justify-center"
         >
           <Link href="/articles" className="w-2/3">
-            <Button className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full cursor-pointer">
+            <Button className="w-full gap-2 bg-primary text-foreground hover:bg-primary/90 font-bold rounded-full cursor-pointer">
               All Articles <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>

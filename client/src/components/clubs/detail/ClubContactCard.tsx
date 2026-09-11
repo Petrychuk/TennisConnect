@@ -120,7 +120,7 @@ export function ClubContactCard({
               href={club.website}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
+              className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-primary-text hover:underline"
               data-testid="club-provider-website"
             >
               Visit Website

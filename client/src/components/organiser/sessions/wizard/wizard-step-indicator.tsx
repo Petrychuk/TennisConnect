@@ -26,7 +26,7 @@ export function WizardStepIndicator({ currentStep, maxReachedStep = currentStep,
                 className={cn(
                   "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
                   isClickable ? "cursor-pointer" : "cursor-default",
-                  isDone || isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                  isDone || isActive ? "bg-primary text-foreground" : "bg-muted text-muted-foreground"
                 )}
                 data-testid={`organiser-wizard-step-indicator-${step.number}`}
               >

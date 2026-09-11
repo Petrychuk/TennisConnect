@@ -88,7 +88,7 @@ export function ClubGallery({ images: rawImages, clubName, location }: ClubGalle
           <button
             type="button"
             onClick={() => openAt(0)}
-            className="flex items-center gap-1 text-sm font-medium text-primary hover:underline cursor-pointer shrink-0"
+            className="flex items-center gap-1 text-sm font-medium text-primary-text hover:underline cursor-pointer shrink-0"
             data-testid="club-gallery-view-all"
           >
             View all photos

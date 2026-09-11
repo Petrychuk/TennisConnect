@@ -517,7 +517,7 @@ export function MessagesInbox() {
             You need to be signed in to access your inbox.
           </p>
           <Link href="/auth">
-            <Button className="bg-primary text-primary-foreground">
+            <Button className="bg-primary text-foreground">
               Sign In
             </Button>
           </Link>
@@ -616,7 +616,7 @@ export function MessagesInbox() {
                                   <AvatarFallback
                                     className={
                                       isUnread
-                                        ? "bg-primary text-primary-foreground"
+                                        ? "bg-primary text-foreground"
                                         : "bg-primary/10 text-primary"
                                     }
                                   >

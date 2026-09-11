@@ -377,7 +377,7 @@ export function Footer() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-primary text-primary-foreground font-bold px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                className="bg-primary text-foreground font-bold px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? "..." : "OK"}
               </button>

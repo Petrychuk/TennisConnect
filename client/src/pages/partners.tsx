@@ -376,7 +376,7 @@ export default function PartnersPage() {
                         cursor-pointer
                         ${
                           filterLevel === level
-                            ? "bg-primary text-primary-foreground border-primary"
+                            ? "bg-primary text-foreground border-primary"
                             : "bg-background border-input hover:border-primary/50"
                         }
                       `}
@@ -430,7 +430,7 @@ export default function PartnersPage() {
                 <button
                   className={`shrink-0 h-11 w-11 flex items-center justify-center rounded-xl border cursor-pointer transition-all ${
                     filterLevel
-                      ? "bg-primary text-primary-foreground border-primary"
+                      ? "bg-primary text-foreground border-primary"
                       : "bg-secondary/50 border-input"
                   }`}
                   aria-label="Filter by level"
@@ -450,7 +450,7 @@ export default function PartnersPage() {
                       }}
                       className={`px-3 py-2 rounded-lg text-sm font-medium text-left transition-all cursor-pointer ${
                         filterLevel === level
-                          ? "bg-primary text-primary-foreground"
+                          ? "bg-primary text-foreground"
                           : "hover:bg-secondary"
                       }`}
                       data-testid={`players-level-mobile-${level}`}
@@ -529,7 +529,7 @@ export default function PartnersPage() {
                     />
 
                     {isMe && (
-                      <Badge className="absolute top-2 right-2 bg-primary text-primary-foreground z-10">
+                      <Badge className="absolute top-2 right-2 bg-primary text-foreground z-10">
                         You
                       </Badge>
                     )}
@@ -613,7 +613,7 @@ export default function PartnersPage() {
                         w-full
                         h-9
                         bg-primary
-                        text-primary-foreground
+                        text-foreground
                         hover:bg-primary/90
                         cursor-pointer
                       "
@@ -722,7 +722,7 @@ export default function PartnersPage() {
             </Button>
             <Button 
               onClick={handleSendMessage} 
-              className="bg-primary text-primary-foreground"
+              className="bg-primary text-foreground"
               disabled={sending}
               data-testid="button-send-message"
             >

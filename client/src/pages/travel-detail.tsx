@@ -54,7 +54,7 @@ export default function TravelDetailPage() {
           <div className="text-center">
             <h1 className="text-3xl font-bold mb-4">Package not found</h1>
             <Link href="/travels">
-              <Button className="bg-primary text-primary-foreground">Back to packages</Button>
+              <Button className="bg-primary text-foreground">Back to packages</Button>
             </Link>
           </div>
         </main>

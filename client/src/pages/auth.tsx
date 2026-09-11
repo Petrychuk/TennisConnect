@@ -329,7 +329,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                       <Button
                         onClick={() => handleResendVerification(verificationRequiredEmail)}
                         disabled={resendLoading}
-                        className="w-2/3 mx-auto flex items-center justify-center font-bold bg-primary text-primary-foreground hover:bg-primary/90 rounded-full cursor-pointer mb-3"
+                        className="w-2/3 mx-auto flex items-center justify-center font-bold bg-primary text-foreground hover:bg-primary/90 rounded-full cursor-pointer mb-3"
                         data-testid="resend-verification-button"
                       >
                         {resendLoading ? <TennisBallSpinner /> : "Resend verification email"}
@@ -401,7 +401,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                           </div>
                           <Button
                             type="submit"
-                            className="w-2/3 mx-auto flex items-center justify-center font-bold bg-primary text-primary-foreground hover:bg-primary/90 rounded-full cursor-pointer"
+                            className="w-2/3 mx-auto flex items-center justify-center font-bold bg-primary text-foreground hover:bg-primary/90 rounded-full cursor-pointer"
                             disabled={forgotPasswordLoading}
                             data-testid="send-reset-link-button"
                           >
@@ -443,7 +443,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                       <button 
                         type="button"
                         onClick={() => setShowForgotPassword(true)}
-                        className="text-sm font-medium text-primary hover:underline cursor-pointer"
+                        className="text-sm font-medium text-primary-text hover:underline cursor-pointer"
                         data-testid="forgot-password-link"
                       >
                         Forgot password?
@@ -497,7 +497,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                     </label>
                   </div>
 
-                  <Button type="submit"  data-testid="login-button" className="w-2/3 mx-auto flex items-center justify-center whitespace-nowrap font-bold bg-primary text-primary-foreground hover:bg-primary/90 rounded-full cursor-pointer" disabled={isLoading}>
+                  <Button type="submit"  data-testid="login-button" className="w-2/3 mx-auto flex items-center justify-center whitespace-nowrap font-bold bg-primary text-foreground hover:bg-primary/90 rounded-full cursor-pointer" disabled={isLoading}>
                     {isLoading ? <TennisBallSpinner /> : "Sign In"}
                   </Button>
                 </form>
@@ -686,7 +686,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                     )}
                   </div>
 
-                  <Button type="submit" data-testid="register-button" className="w-2/3 mx-auto flex items-center justify-center whitespace-nowrap font-bold bg-primary text-primary-foreground hover:bg-primary/90 rounded-full cursor-pointer" disabled={isLoading}>
+                  <Button type="submit" data-testid="register-button" className="w-2/3 mx-auto flex items-center justify-center whitespace-nowrap font-bold bg-primary text-foreground hover:bg-primary/90 rounded-full cursor-pointer" disabled={isLoading}>
                     {isLoading ? <TennisBallSpinner /> : "Create Account"}
                   </Button>
                   
@@ -803,7 +803,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                 "Tennis is more than a game. It's friendship, community and a sense of belonging. I created TennisConnect to help players across Sydney find their people through tennis."
               </blockquote>
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg">
+                <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-foreground font-bold text-lg">
                   TC
                 </div>
                 <div>

@@ -238,7 +238,7 @@ export default function TravelPage() {
                       />
                       {p.isFeatured && !isPastStartDate(p.startDate, p.duration) && (
                         <div className="absolute top-3 left-3">
-                          <Badge className="bg-primary text-primary-foreground font-bold border-none">Featured</Badge>
+                          <Badge className="bg-primary text-foreground font-bold border-none">Featured</Badge>
                         </div>
                       )}
                       {isPastStartDate(p.startDate, p.duration) && (
@@ -274,7 +274,7 @@ export default function TravelPage() {
                           ${p.price}
                           <span className="text-xs text-muted-foreground font-normal ml-1">{p.currency}</span>
                         </p>
-                        <span className="text-sm font-bold text-primary group-hover:underline">View →</span>
+                        <span className="text-sm font-bold text-primary-text group-hover:underline">View →</span>
                       </div>
                     </CardContent>
                   </Card>

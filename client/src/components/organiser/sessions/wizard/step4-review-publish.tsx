@@ -33,7 +33,7 @@ export function Step4ReviewPublish({ draft }: Step4ReviewPublishProps) {
           <img src={draft.coverImage || courtImage} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" />
           <div className="absolute inset-0 bg-foreground/40" />
           <div className="absolute inset-0 p-5 flex flex-col justify-end text-primary-foreground">
-            <Badge className="bg-primary text-primary-foreground w-fit mb-2">{typeLabel}</Badge>
+            <Badge className="bg-primary text-foreground w-fit mb-2">{typeLabel}</Badge>
             <h2 className="text-2xl font-display font-bold">{draft.name || "Untitled Session"}</h2>
           </div>
         </div>

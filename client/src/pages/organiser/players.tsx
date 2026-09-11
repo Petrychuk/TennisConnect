@@ -156,7 +156,7 @@ export default function OrganiserPlayersPage() {
 
         <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
           <div className="flex items-center gap-1.5 text-sm" data-testid="organiser-players-page-breadcrumb">
-            <Link href="/organiser" className="text-primary hover:underline">
+            <Link href="/organiser" className="text-primary-text hover:underline">
               Home
             </Link>
             <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
@@ -247,7 +247,7 @@ export default function OrganiserPlayersPage() {
                   onClick={() => setMobileFilter(key)}
                   className={
                     mobileFilter === key
-                      ? "px-4 py-1.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium"
+                      ? "px-4 py-1.5 rounded-xl bg-primary text-foreground text-sm font-medium"
                       : "px-4 py-1.5 rounded-xl border border-border text-sm font-medium text-muted-foreground"
                   }
                   data-testid={`organiser-players-page-mobile-filter-${key}`}
