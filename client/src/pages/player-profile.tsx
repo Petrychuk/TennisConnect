@@ -321,6 +321,11 @@ export default function PlayerProfile() {
         title: "Message sent",
         description: "The player will receive your message shortly.",
       });
+
+      // GA4 "send_message" - same event as the coach/player contact
+      // forms elsewhere, distinguished by context.
+      (window as any).gtag?.("event", "send_message", { context: "player_contact" });
+
       setContactSubject("");
       setContactMessage("");
       setContactPhone("");
