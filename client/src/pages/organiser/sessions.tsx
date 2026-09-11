@@ -194,6 +194,12 @@ export default function OrganiserSessionsPage() {
             </div>
           </div>
 
+          {/* Visually hidden - the H1 above is the page title, not a
+              section label; the session cards a few tabs/filters down
+              are a real H3 without a proper H2 parent otherwise, same
+              fix as partners.tsx/coaches.tsx's own "Search Results". */}
+          <h2 className="sr-only">Sessions List</h2>
+
           {sessionsQuery.isLoading ? (
             <div className="space-y-3" data-testid="organiser-sessions-loading">
               <Skeleton className="h-24 w-full rounded-2xl" />
