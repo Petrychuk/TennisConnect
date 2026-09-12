@@ -79,6 +79,11 @@ export interface NewSessionDraft {
   timeZone: string;
   // Date
   date: string; // yyyy-mm-dd
+  // Optional - only set once the organizer actually picks a later date
+  // than `date`, for a multi-day event (a 3-day tournament etc). Empty
+  // string means "same day as `date`", not a genuinely separate value -
+  // draftToInsertSession falls back to `date` when this is empty.
+  endDate: string; // yyyy-mm-dd
   startTime: string; // HH:mm
   endTime: string; // HH:mm
   // Registration
@@ -138,6 +143,7 @@ export function createEmptyDraft(): NewSessionDraft {
     courtCount: 6,
     timeZone: "Australia/Sydney",
     date: toDateInput(today),
+    endDate: "",
     startTime: "18:30",
     endTime: "20:00",
     registrationOpens: toDateInput(today),
@@ -265,8 +271,11 @@ export function draftToInsertSession(draft: NewSessionDraft) {
   const startAt = draft.date
     ? zonedTimeToUtc(draft.date, draft.startTime || "00:00", draft.timeZone)
     : new Date();
+  // endDate defaults to the same day as the start (most sessions are
+  // single-day) - only diverges for a multi-day event (a 2-3 day
+  // tournament), where the organizer explicitly picks a later end date.
   const endAt = draft.date && draft.endTime
-    ? zonedTimeToUtc(draft.date, draft.endTime, draft.timeZone)
+    ? zonedTimeToUtc(draft.endDate || draft.date, draft.endTime, draft.timeZone)
     : undefined;
 
   const baseMatchTypeLabel = draft.matchType === "mixed" ? "Mixed Doubles" : draft.matchType === "doubles" ? "Doubles" : "Singles";

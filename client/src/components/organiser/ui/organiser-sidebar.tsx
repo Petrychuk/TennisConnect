@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import {
   Home,
   CalendarDays,
@@ -13,6 +14,8 @@ import {
   FileBarChart,
   Settings,
   ChevronRight,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { OrganiserUser } from "@/lib/organiser-hub-mock-data";
@@ -39,6 +42,14 @@ interface OrganiserSidebarProps {
   organiser: OrganiserUser;
   profileHref: string;
   className?: string;
+  // Icons-only rail instead of the full labelled nav - for a tablet
+  // organiser who wants the width back while running a live session,
+  // without losing navigation entirely (unlike the mobile Sheet, which
+  // hides the whole thing until opened). Omit both props entirely for
+  // a plain, always-expanded sidebar (e.g. inside the mobile Sheet
+  // itself, which has no reason to collapse - it already closes).
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
 }
 
 // "Home" and "Sessions" are wired up to real pages now — the rest is
@@ -49,7 +60,7 @@ interface OrganiserSidebarProps {
 // @custom-variant dark rule) rather than hardcoded colours, so the
 // permanently-dark sidebar still only ever uses the existing palette
 // tokens — just their dark-theme values, scoped to this subtree.
-export function OrganiserSidebarNav({ organiser, profileHref, className }: OrganiserSidebarProps) {
+export function OrganiserSidebarNav({ organiser, profileHref, className, collapsed = false, onToggleCollapsed }: OrganiserSidebarProps) {
   const [location] = useLocation();
 
   // Same endpoint the navbar's own unread badge already uses - one
@@ -67,14 +78,32 @@ export function OrganiserSidebarNav({ organiser, profileHref, className }: Organ
 
   return (
     <div className={cn("dark flex flex-col h-full bg-background text-foreground", className)} data-testid="organiser-sidebar">
-      <div className="px-5 pt-6">
-        <Link href="/" className="text-xl font-display font-bold flex items-center gap-1" data-testid="organiser-sidebar-logo">
-          Tennis<span className="text-primary">Connect</span>
-          <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1" />
-        </Link>
-        <p className="text-[11px] font-semibold tracking-widest text-muted-foreground mt-3 px-1">
-          ORGANISER HUB
-        </p>
+      <div className={cn("pt-6", collapsed ? "px-3" : "px-5")}>
+        <div className="flex items-center justify-between gap-2">
+          {!collapsed && (
+            <Link href="/" className="text-xl font-display font-bold flex items-center gap-1" data-testid="organiser-sidebar-logo">
+              Tennis<span className="text-primary">Connect</span>
+              <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1" />
+            </Link>
+          )}
+          {onToggleCollapsed && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn("h-8 w-8 text-muted-foreground shrink-0", collapsed && "mx-auto")}
+              onClick={onToggleCollapsed}
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              data-testid="organiser-sidebar-collapse-toggle"
+            >
+              {collapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+            </Button>
+          )}
+        </div>
+        {!collapsed && (
+          <p className="text-[11px] font-semibold tracking-widest text-muted-foreground mt-3 px-1">
+            ORGANISER HUB
+          </p>
+        )}
       </div>
 
       <nav className="px-3 pt-4 space-y-1" data-testid="organiser-sidebar-nav">
@@ -88,7 +117,9 @@ export function OrganiserSidebarNav({ organiser, profileHref, className }: Organ
               : location.startsWith(item.href)
             : false;
 
-          const content = (
+          const content = collapsed ? (
+            <Icon className="w-4 h-4 shrink-0" />
+          ) : (
             <>
               <Icon className="w-4 h-4 shrink-0" />
               <span className="flex-1">{item.label}</span>
@@ -102,6 +133,7 @@ export function OrganiserSidebarNav({ organiser, profileHref, className }: Organ
 
           const sharedClasses = cn(
             "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+            collapsed && "justify-center relative",
             isActive
               ? "bg-primary/10 text-primary"
               : item.href
@@ -109,16 +141,21 @@ export function OrganiserSidebarNav({ organiser, profileHref, className }: Organ
               : "text-muted-foreground opacity-60 cursor-not-allowed"
           );
 
+          const collapsedBadgeDot = collapsed && item.key === "messages" && unreadCount > 0 && (
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary" data-testid={`organiser-sidebar-nav-${item.key}-badge-dot`} />
+          );
+
           if (item.href) {
             return (
-              <Link key={item.key} href={item.href} className={sharedClasses} data-testid={`organiser-sidebar-nav-${item.key}`}>
+              <Link key={item.key} href={item.href} className={sharedClasses} data-testid={`organiser-sidebar-nav-${item.key}`} title={collapsed ? item.label : undefined}>
                 {content}
+                {collapsedBadgeDot}
               </Link>
             );
           }
 
           return (
-            <div key={item.key} className={sharedClasses} data-testid={`organiser-sidebar-nav-${item.key}`} title="Coming soon">
+            <div key={item.key} className={sharedClasses} data-testid={`organiser-sidebar-nav-${item.key}`} title={collapsed ? item.label : "Coming soon"}>
               {content}
             </div>
           );
@@ -128,20 +165,28 @@ export function OrganiserSidebarNav({ organiser, profileHref, className }: Organ
 
         <Link
           href={profileHref}
-          className="flex items-center gap-3 rounded-xl border border-border p-3 hover:bg-accent/40 transition-colors"
+          className={cn(
+            "flex items-center gap-3 rounded-xl border border-border hover:bg-accent/40 transition-colors",
+            collapsed ? "justify-center p-2" : "p-3"
+          )}
           data-testid="organiser-sidebar-user"
+          title={collapsed ? organiser.name : undefined}
         >
-          <Avatar className="h-9 w-9 border border-border">
+          <Avatar className="h-9 w-9 border border-border shrink-0">
             <AvatarImage src={organiser.avatar || undefined} />
             <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
               {organiser.name[0]}
             </AvatarFallback>
           </Avatar>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold truncate">{organiser.name} Coach</p>
-            <p className="text-xs text-muted-foreground">{organiser.role}</p>
-          </div>
-          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+          {!collapsed && (
+            <>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold truncate">{organiser.name} Coach</p>
+                <p className="text-xs text-muted-foreground">{organiser.role}</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+            </>
+          )}
         </Link>
       </nav>
     </div>
