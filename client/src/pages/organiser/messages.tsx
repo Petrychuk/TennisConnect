@@ -8,6 +8,8 @@ import { useAuth } from "@/lib/auth-context";
 import SEO from "@/components/seo";
 
 import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar";
+import { useSidebarCollapsed } from "@/lib/use-sidebar-collapsed";
+import { cn } from "@/lib/utils";
 import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
 import { MessagesInbox } from "@/components/messages/MessagesInbox";
 import { NotificationBell } from "@/components/organiser/ui/notification-bell";
@@ -17,6 +19,7 @@ import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
 export default function OrganiserMessagesPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed();
   const profileHref = user ? `/${user.role}/${user.slug}` : "/";
   // Real name/avatar from the authenticated user - role/organization
   // fields stay mock for now since there's no backend for those yet.
@@ -52,8 +55,14 @@ export default function OrganiserMessagesPage() {
         noIndex
       />
 
-      <aside className="hidden xl:flex xl:w-64 shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto">
-        <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} className="w-full" />
+      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-64")}>
+        <OrganiserSidebarNav
+          organiser={organiser}
+          profileHref={profileHref}
+          className="w-full"
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={() => setSidebarCollapsed((v) => !v)}
+        />
       </aside>
 
       {/* See sessions.tsx's own comment on this same pattern - <aside>

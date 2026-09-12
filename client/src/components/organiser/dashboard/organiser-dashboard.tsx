@@ -7,6 +7,8 @@ import SEO from "@/components/seo";
 import { useAuth } from "@/lib/auth-context";
 
 import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar";
+import { useSidebarCollapsed } from "@/lib/use-sidebar-collapsed";
+import { cn } from "@/lib/utils";
 import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
 import { DashboardHeader } from "./dashboard-header";
 import { DashboardHero } from "./dashboard-hero";
@@ -89,6 +91,7 @@ function DashboardSkeleton() {
 export function OrganiserDashboard() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed();
   const [loading, setLoading] = useState(true);
   const profileHref = user ? `/${user.role}/${user.slug}` : "/";
   // Real name/avatar from the authenticated user - role/organization
@@ -224,8 +227,14 @@ export function OrganiserDashboard() {
       {/* Persistent sidebar — true desktop only (xl+). Tablet, in either
           orientation, gets the collapsible hamburger version instead
           (see DashboardHeader) so it doesn't cramp the content grid. */}
-      <aside className="hidden xl:flex xl:w-64 shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto">
-        <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} className="w-full" />
+      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-64")}>
+        <OrganiserSidebarNav
+          organiser={organiser}
+          profileHref={profileHref}
+          className="w-full"
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={() => setSidebarCollapsed((v) => !v)}
+        />
       </aside>
 
       {/* Same landmark pattern as the Organiser Hub pages this dashboard

@@ -39,6 +39,8 @@ import { Textarea } from "@/components/ui/textarea";
 import SEO from "@/components/seo";
 
 import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar";
+import { useSidebarCollapsed } from "@/lib/use-sidebar-collapsed";
+import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/organiser/ui/notification-bell";
 import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
 import { OverviewTab } from "@/components/organiser/sessions/workspace/overview-tab";
@@ -83,6 +85,7 @@ const BUCKET_BADGE_LABEL: Record<string, string> = {
 export default function OrganiserSessionWorkspacePage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed();
   const [, params] = useRoute("/organiser/sessions/:id");
   const sessionQuery = useQuery({
     queryKey: ["/api/organizer/sessions", params?.id],
@@ -308,8 +311,14 @@ export default function OrganiserSessionWorkspacePage() {
         noIndex
       />
 
-      <aside className="hidden xl:flex xl:w-64 shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto">
-        <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} className="w-full" />
+      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-64")}>
+        <OrganiserSidebarNav
+          organiser={organiser}
+          profileHref={profileHref}
+          className="w-full"
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={() => setSidebarCollapsed((v) => !v)}
+        />
       </aside>
 
       {/* See sessions.tsx's own comment on this same pattern - <aside>

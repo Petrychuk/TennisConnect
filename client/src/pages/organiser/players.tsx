@@ -11,6 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import SEO from "@/components/seo";
 
 import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar";
+import { useSidebarCollapsed } from "@/lib/use-sidebar-collapsed";
+import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/organiser/ui/notification-bell";
 import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
 import { PlayersStatStrip } from "@/components/organiser/players/players-stat-strip";
@@ -38,6 +40,7 @@ type MobileFilter = "all" | "active" | "new";
 export default function OrganiserPlayersPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed();
   const { toast } = useToast();
   const profileHref = user ? `/${user.role}/${user.slug}` : "/";
   // Real name/avatar from the authenticated user - role/organization
@@ -50,24 +53,27 @@ export default function OrganiserPlayersPage() {
     enabled: isAuthenticated,
   });
 
-  // Real players first, then the mock roster padding out the rest -
-  // same "real leads, mock stays for testing volume" pattern used for
-  // the session-level Players/Registration tabs and the dashboard.
-  const allPlayers: OrgPlayer[] = useMemo(() => {
-    const real = toOrgPlayers(myPlayersQuery.data ?? []);
-    return [...real, ...mockOrgPlayers];
-  }, [myPlayersQuery.data]);
+  // Real players only now - was padding the list with the mock
+  // "crowd" (same pattern already removed from the session-level
+  // Players/Registration tabs earlier), which is exactly why test
+  // players kept reappearing here even after being cleaned up
+  // elsewhere: this page's own list was never touched.
+  const allPlayers: OrgPlayer[] = useMemo(
+    () => toOrgPlayers(myPlayersQuery.data ?? []),
+    [myPlayersQuery.data]
+  );
 
   const realCount = myPlayersQuery.data?.length ?? 0;
-  // The headline "128 total" etc. describe a bigger mock org than the
-  // 10 sample rows represent (see organiser-players-mock-data.ts) -
-  // once there are real players, their count is added on top of that
-  // baseline rather than replacing it, so the summary strip and the
-  // "Showing 1 to N of totalPlayers" line stay consistent with what's
-  // actually rendered below.
+  // Real total only - was previously baselined on top of the mock
+  // org's own fake "128 total" figure, which would have kept
+  // disagreeing with the now-real-only list below it.
   const playersSummary = {
     ...mockOrgPlayersSummary,
-    totalPlayers: mockOrgPlayersSummary.totalPlayers + realCount,
+    totalPlayers: realCount,
+    activeThisSeason: allPlayers.filter((p) => p.status === "active").length,
+    // No real "joined this month" tracking exists yet - 0 is honest,
+    // a fabricated count isn't.
+    newThisMonth: 0,
   };
 
   const [search, setSearch] = useState("");
@@ -82,7 +88,7 @@ export default function OrganiserPlayersPage() {
 
   const mobileFiltered = useMemo(() => {
     if (mobileFilter === "active") return filtered.filter((p) => p.status === "active");
-    if (mobileFilter === "new") return allPlayers.slice(0, mockOrgPlayersSummary.newThisMonth > filtered.length ? filtered.length : mockOrgPlayersSummary.newThisMonth).filter((p) => filtered.includes(p));
+    if (mobileFilter === "new") return allPlayers.slice(0, playersSummary.newThisMonth > filtered.length ? filtered.length : playersSummary.newThisMonth).filter((p) => filtered.includes(p));
     return filtered;
   }, [filtered, mobileFilter, allPlayers]);
 
@@ -116,8 +122,14 @@ export default function OrganiserPlayersPage() {
         noIndex
       />
 
-      <aside className="hidden xl:flex xl:w-64 shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto">
-        <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} className="w-full" />
+      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-64")}>
+        <OrganiserSidebarNav
+          organiser={organiser}
+          profileHref={profileHref}
+          className="w-full"
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={() => setSidebarCollapsed((v) => !v)}
+        />
       </aside>
 
       {/* See sessions.tsx's own comment on this same pattern - <aside>
@@ -238,8 +250,8 @@ export default function OrganiserPlayersPage() {
             <div className="flex items-center gap-2" data-testid="organiser-players-page-mobile-filters">
               {([
                 ["all", `All (${playersSummary.totalPlayers})`],
-                ["active", `Active (${mockOrgPlayersSummary.activeThisSeason})`],
-                ["new", `New (${mockOrgPlayersSummary.newThisMonth})`],
+                ["active", `Active (${playersSummary.activeThisSeason})`],
+                ["new", `New (${playersSummary.newThisMonth})`],
               ] as [MobileFilter, string][]).map(([key, label]) => (
                 <button
                   key={key}
