@@ -238,26 +238,9 @@ export default function OrganiserSessionNewPage() {
 
         <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 max-w-6xl mx-auto">
           {/* Desktop header row */}
-          <div className="hidden xl:flex items-start justify-between gap-4">
-            <div>
-              <h1 className="font-display text-2xl sm:text-3xl font-bold">Create New Session</h1>
-              <p className="text-muted-foreground mt-1">Create a new tennis session in just a few steps.</p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Button variant="outline" onClick={handleSaveDraft} disabled={submitting} data-testid="organiser-wizard-save-draft-top">
-                Save as Draft
-              </Button>
-              {step < 4 ? (
-                <Button onClick={handleNext} data-testid="organiser-wizard-next-top">
-                  Next Step
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              ) : (
-                <Button onClick={handlePublish} disabled={submitting} data-testid="organiser-wizard-publish-top">
-                  Publish Session
-                </Button>
-              )}
-            </div>
+          <div className="hidden xl:block">
+            <h1 className="font-display text-2xl sm:text-3xl font-bold">Create New Session</h1>
+            <p className="text-muted-foreground mt-1">Create a new tennis session in just a few steps.</p>
           </div>
 
           {/* Tablet/mobile header */}
