@@ -8,6 +8,12 @@ export interface OrganiserUser {
   avatar: string | null;
   organizationName: string;
   organizationSlug: string;
+  // Whether this person is also a site admin (server-side `user.isAdmin`)
+  // - a real organiser can be both at once (the seeded "Site Admin
+  // Coach" test account is exactly this). Gates the sidebar's own
+  // ADMIN section below; an organiser who isn't also an admin never
+  // sees it at all.
+  isAdmin?: boolean;
 }
 
 export type SessionStatus =

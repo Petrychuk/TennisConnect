@@ -65,7 +65,7 @@ export async function grantOrganizerAccess(
 ) {
   await login(page, adminEmail, adminPassword);
   await page.goto('/admin');
-  await page.getByTestId('admin-tab-users').click();
+  await page.getByTestId('organiser-sidebar-nav-admin-users').click();
 
   const row = page.locator('tr', {
     has: page.getByText(organiserEmail, { exact: true }),
@@ -99,7 +99,7 @@ export async function hideUserAsAdmin(
 ) {
   await login(page, adminEmail, adminPassword);
   await page.goto('/admin');
-  await page.getByTestId('admin-tab-users').click();
+  await page.getByTestId('organiser-sidebar-nav-admin-users').click();
 
   await page.getByTestId(`hide-user-${userId}`).click();
 
@@ -127,7 +127,7 @@ export async function approveUser(
 ) {
   await login(page, adminEmail, adminPassword);
   await page.goto('/admin');
-  await page.getByTestId('admin-tab-users').click();
+  await page.getByTestId('organiser-sidebar-nav-admin-users').click();
 
   await page.getByTestId(`approve-user-${userId}`).click();
 

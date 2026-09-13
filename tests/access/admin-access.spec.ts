@@ -19,7 +19,7 @@ test('ACCESS-005 Admin → /admin', async ({ page }) => {
   // ---------- Verify ----------
 
   await expect(
-    page.getByTestId('admin-tab-users')
+    page.getByTestId('organiser-sidebar-nav-admin-users')
   ).toBeVisible();
 
   await expect(
@@ -44,7 +44,7 @@ test('ACCESS-006 Admin → Users tab shows pending approvals', async ({ page }) 
 
   // ---------- Actions ----------
 
-  const usersTab = page.getByTestId('admin-tab-users');
+  const usersTab = page.getByTestId('organiser-sidebar-nav-admin-users');
   await usersTab.click();
 
   // ---------- Verify ----------

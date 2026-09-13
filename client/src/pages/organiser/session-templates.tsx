@@ -148,7 +148,7 @@ export default function OrganiserSessionTemplatesPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const profileHref = user ? `/${user.role}/${user.slug}` : "/";
-  const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null } : mockOrganiser;
+  const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null, isAdmin: user.isAdmin ?? false } : mockOrganiser;
   const [deleteTarget, setDeleteTarget] = useState<SessionTemplate | null>(null);
 
   const templatesQuery = useQuery({

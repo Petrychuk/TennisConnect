@@ -326,7 +326,7 @@ test('MSG-007 Organizer → Player Message', async ({ page }) => {
 
   await login(page, TEST_USERS.admin.email, TEST_USERS.admin.password);
   await page.goto('/admin');
-  await page.getByTestId('admin-tab-users').click();
+  await page.getByTestId('organiser-sidebar-nav-admin-users').click();
 
   const row = page.locator('tr', {
     has: page.getByText(organiser.email, { exact: true }),

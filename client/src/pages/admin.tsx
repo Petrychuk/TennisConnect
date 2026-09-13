@@ -1,13 +1,19 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
-import { Navbar } from "@/components/navbar";
-import { Footer } from "@/components/footer";
+import { useLocation, useSearch } from "wouter";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { Menu } from "lucide-react";
+import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar";
+import { useSidebarCollapsed } from "@/lib/use-sidebar-collapsed";
+import { NotificationBell } from "@/components/organiser/ui/notification-bell";
+import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
+import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -78,17 +84,29 @@ export default function AdminPage() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<AdminTab>(getInitialTab);
-  // Shares its cache with OrganizerRequestsTab's own query (same
-  // queryKey) - just here to badge the outer tab with how many
-  // sessions are waiting on a review, visible without opening it.
-  const pendingSessionsCountQuery = useQuery({
-    queryKey: ["/api/organizer/admin/sessions"],
-    queryFn: () => getAdminSessions(),
-    enabled: !!user?.isAdmin,
-  });
-  const pendingSessionsCount = (pendingSessionsCountQuery.data ?? []).filter(
-    (s: any) => s.status === "pending_review"
-  ).length;
+  const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed();
+  const urlSearch = useSearch();
+  const profileHref = user ? `/${user.role}/${user.slug}` : "/";
+  const organiser = user
+    ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null, isAdmin: user.isAdmin ?? false }
+    : mockOrganiser;
+
+  // Admin is now reached from the Organiser Hub sidebar (each item
+  // links to /admin?tab=X) rather than a set of horizontal Tabs on
+  // this page itself - since /admin always matches the same route
+  // regardless of the query string, wouter doesn't remount this
+  // component on a sidebar click, so activeTab's own useState(
+  // getInitialTab) initializer never re-runs. This keeps it in sync
+  // with the URL on every subsequent navigation, the same pattern
+  // already used for session-workspace.tsx's own ?tab= and
+  // sessions.tsx's own ?bucket=.
+  useEffect(() => {
+    const requested = new URLSearchParams(urlSearch).get("tab");
+    if (requested && (VALID_TABS as string[]).includes(requested)) {
+      setActiveTab(requested as AdminTab);
+    }
+  }, [urlSearch]);
+
   const [pendingEditTravelId, setPendingEditTravelId] = useState<
     string | null
   >(() => getInitialEditId("editTravel"));
@@ -259,28 +277,22 @@ export default function AdminPage() {
 
   if (!isAuthenticated || !isAdmin) {
     return (
-      <div className="min-h-screen bg-background font-sans flex flex-col">
-        <Navbar />
+      <div className="min-h-screen bg-background font-sans flex flex-col items-center justify-center px-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6 md:p-8 text-center">
+            <ShieldCheck className="w-12 h-12 md:w-14 md:h-14 mx-auto text-muted-foreground mb-4" />
 
-        <main className="flex-1 flex items-center justify-center px-4 pt-24 md:pt-28 pb-8">
-          <Card className="w-full max-w-md">
-            <CardContent className="p-6 md:p-8 text-center">
-              <ShieldCheck className="w-12 h-12 md:w-14 md:h-14 mx-auto text-muted-foreground mb-4" />
+            <h2 className="text-xl md:text-2xl font-bold mb-2">
+              Admin Access Required
+            </h2>
 
-              <h2 className="text-xl md:text-2xl font-bold mb-2">
-                Admin Access Required
-              </h2>
-
-              <p className="text-sm md:text-base text-muted-foreground">
-                {isAuthenticated
-                  ? "You don't have admin privileges."
-                  : "Please sign in with an admin account."}
-              </p>
-            </CardContent>
-          </Card>
-        </main>
-
-        <Footer />
+            <p className="text-sm md:text-base text-muted-foreground">
+              {isAuthenticated
+                ? "You don't have admin privileges."
+                : "Please sign in with an admin account."}
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -709,10 +721,40 @@ export default function AdminPage() {
         canonical="/admin"
         noIndex
       />
-      <div className="min-h-screen bg-background font-sans">
-        <Navbar />
+      <div className="min-h-screen flex bg-background" data-testid="admin-page">
+        <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-64")}>
+          <OrganiserSidebarNav
+            organiser={organiser}
+            profileHref={profileHref}
+            className="w-full"
+            collapsed={sidebarCollapsed}
+            onToggleCollapsed={() => setSidebarCollapsed((v) => !v)}
+          />
+        </aside>
 
-        <main id="main-content" className="container mx-auto px-4 py-12 mt-16">
+        <main id="main-content" className="flex-1 min-w-0 pb-16 md:pb-0">
+          {/* Compact bar — tablet & mobile, same pattern as the rest of
+              the Organiser Hub */}
+          <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="hidden md:inline-flex" data-testid="organiser-sidebar-trigger">
+                  <Menu className="w-5 h-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="p-0 w-72">
+                <SheetTitle className="sr-only">Organiser Hub navigation</SheetTitle>
+                <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} />
+              </SheetContent>
+            </Sheet>
+            <div className="w-9 h-9 md:hidden" aria-hidden="true" />
+            <div className="flex items-center gap-1.5 font-display font-bold">Admin</div>
+            <div className="flex items-center gap-1">
+              <NotificationBell testId="organiser-header-bell-mobile" />
+            </div>
+          </div>
+
+        <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-[1500px] mx-auto">
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
             <div>
               <div className="flex items-center gap-3">
@@ -737,48 +779,6 @@ export default function AdminPage() {
             value={activeTab}
             onValueChange={(v) => setActiveTab(v as AdminTab)}
           >
-            <TabsList className="grid grid-cols-2 md:grid-cols-6 mb-8 w-full max-w-5xl">
-
-              <TabsTrigger
-                value="users"
-                className="cursor-pointer"
-                data-testid="admin-tab-users"
-              >
-                <Users className="w-4 h-4 mr-2" />
-                Users
-              </TabsTrigger>
-
-              <TabsTrigger
-                value="organizer-requests"
-                className="cursor-pointer gap-1.5"
-                data-testid="admin-tab-organizer-requests"
-              >
-                <Trophy className="w-4 h-4 mr-2" />
-                Organiser &amp; Sessions
-                {pendingSessionsCount > 0 && (
-                  <Badge className="bg-destructive text-destructive-foreground" data-testid="admin-tab-organizer-requests-pending-count">
-                    {pendingSessionsCount}
-                  </Badge>
-                )}
-              </TabsTrigger>
-
-              {(Object.keys(RESOURCE_LABELS) as Resource[]).map((r) => {
-                const Icon = ICONS[r];
-
-                return (
-                  <TabsTrigger
-                    key={r}
-                    value={r}
-                    className="cursor-pointer"
-                    data-testid={`admin-tab-${r}`}
-                  >
-                    <Icon className="w-4 h-4 mr-2" />
-                    {RESOURCE_LABELS[r]}
-                  </TabsTrigger>
-                );
-              })}
-
-            </TabsList>
 
             {(Object.keys(RESOURCE_LABELS) as Resource[]).map((r) => (
               <TabsContent key={r} value={r}>
@@ -1391,6 +1391,7 @@ export default function AdminPage() {
             </TabsContent>
           </Tabs>
 
+        </div>
         </main>
 
         <Dialog 
@@ -1614,7 +1615,7 @@ export default function AdminPage() {
             }}
             onToggleStatus={() => toggleClubStatus(previewClub)}
         />
-        <Footer />
+        <OrganiserMobileNav />
       </div>
     </>
   );

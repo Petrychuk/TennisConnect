@@ -33,7 +33,7 @@ test('ADMIN-004 Unverified accounts are hidden until the email is confirmed', as
   await login(page, TEST_USERS.admin.email, TEST_USERS.admin.password);
   await page.goto('/admin');
   await dismissCookieBanner(page);
-  await page.getByTestId('admin-tab-users').click();
+  await page.getByTestId('organiser-sidebar-nav-admin-users').click();
 
   await expect(page.getByText(user.email, { exact: true })).not.toBeVisible();
 
@@ -46,7 +46,7 @@ test('ADMIN-004 Unverified accounts are hidden until the email is confirmed', as
 
   await login(page, TEST_USERS.admin.email, TEST_USERS.admin.password);
   await page.goto('/admin');
-  await page.getByTestId('admin-tab-users').click();
+  await page.getByTestId('organiser-sidebar-nav-admin-users').click();
 
   await expect(page.getByText(user.email, { exact: true })).toBeVisible();
 

@@ -7,7 +7,6 @@ import {
   Bell,
   Mail,
   UserCircle,
-  ShieldCheck,
   Settings,
   Trash2,
   AlertTriangle,
@@ -245,15 +244,15 @@ export function Navbar() {
                       )}
                     </Link>
                   </DropdownMenuItem>
-                  {user?.isAdmin && (
-                    <DropdownMenuItem asChild className="cursor-pointer">
-                      <Link href="/admin" className="flex items-center gap-2" data-testid="navbar-admin-link">
-                        <ShieldCheck className="w-4 h-4" />
-                        Admin Panel
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
-                  {user?.isOrganizer && (
+                  {/* Admin Panel used to be its own separate link here -
+                      removed now that admin functionality lives inside
+                      the Organiser Hub itself (see OrganiserSidebarNav's
+                      own ADMIN section, shown there for isAdmin). The
+                      Organiser Hub link below now also covers a pure
+                      admin account (isAdmin but not isOrganizer) so
+                      there's still a way in - organiser-dashboard.tsx's
+                      own access gate was relaxed to match. */}
+                  {(user?.isOrganizer || user?.isAdmin) && (
                     <DropdownMenuItem asChild className="cursor-pointer">
                       <Link href="/organiser" className="flex items-center gap-2" data-testid="navbar-organiser-hub-link">
                         <Trophy className="w-4 h-4" />
@@ -620,19 +619,9 @@ export function Navbar() {
         </div>
 
         <div className="flex flex-col gap-1 border-t border-border pt-3">
-          {user?.isAdmin && (
-            <Link
-              href="/admin"
-              data-testid="mobile-more-admin-link"
-              className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-muted transition-colors cursor-pointer"
-              onClick={() => setMoreOpen(false)}
-            >
-              <ShieldCheck className="w-4 h-4" />
-              Admin Panel
-            </Link>
-          )}
-
-          {user?.isOrganizer && (
+          {/* Admin Panel used to be its own separate link here - see the
+              same removal reasoning in the desktop dropdown above. */}
+          {(user?.isOrganizer || user?.isAdmin) && (
             <Link
               href="/organiser"
               data-testid="mobile-more-organiser-hub-link"
