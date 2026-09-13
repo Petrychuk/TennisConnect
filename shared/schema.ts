@@ -586,6 +586,69 @@ export const tennisSessions = pgTable("sessions", {
 
 });
 
+// A reusable, saved session setup ("Thursday Social Tennis" - always
+// doubles, 6 courts, 24 players, waiting list on, the same rules text)
+// so a recurring session doesn't need every field re-entered each
+// week. Deliberately only the FORMAT/SETTINGS half of a session - never
+// a specific date, registrations, check-ins, waiting-list players,
+// scores, generated rounds, or leaderboard/results, none of which mean
+// anything outside the one session they happened in. Venue IS included
+// (unlike date/time) - a recurring club session usually happens at the
+// same court every time, and it's just as easy to change at
+// create-from-template time if this particular week is different.
+export const sessionTemplates = pgTable("session_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  name: text("name").notNull(),
+
+  type: text("type").default("social").notNull(),
+  description: text("description"),
+  location: text("location"),
+  timeZone: text("time_zone").default("Australia/Sydney").notNull(),
+  // "HH:mm" (24h), the regular start time-of-day this session usually
+  // runs at - a template has no date of its own, but a recurring
+  // Thursday session usually DOES have a consistent start time worth
+  // pre-filling (unlike the date, which must always be picked fresh).
+  // Nullable - older templates or ones created without a clear regular
+  // time simply leave this to the organizer to pick each time.
+  preferredStartTime: text("preferred_start_time"),
+  // Relative, not absolute - a template has no date of its own. Minutes
+  // rather than separate start/end times, since only the session's
+  // LENGTH is reusable; the actual start time is picked fresh each
+  // time a session gets created from this template.
+  durationMinutes: integer("duration_minutes"),
+
+  price: numeric("price", { precision: 10, scale: 2 }),
+  currency: varchar("currency", { length: 8 }).default("AUD").notNull(),
+  maxParticipants: integer("max_participants"),
+  skillLevel: text("skill_level"),
+  visibility: text("visibility").default("public").notNull(),
+  courtsCount: integer("courts_count"),
+  scoringFormat: text("scoring_format").default("games").notNull(),
+  matchMode: text("match_mode").default("doubles").notNull(),
+  category: text("category"),
+  gamesTo: integer("games_to"),
+  noAd: boolean("no_ad"),
+  tiebreak: boolean("tiebreak"),
+  plannedRoundsCount: integer("planned_rounds_count"),
+  waitingListEnabled: boolean("waiting_list_enabled").default(true).notNull(),
+  waitingListCapacity: integer("waiting_list_capacity"),
+
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  organizationIdIdx: index("session_templates_organization_id_idx").on(table.organizationId),
+}));
+
+export const insertSessionTemplateSchema = createInsertSchema(sessionTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type SessionTemplate = typeof sessionTemplates.$inferSelect;
+export type InsertSessionTemplate = z.infer<typeof insertSessionTemplateSchema>;
+
 // A player joining a Session. `checkedInAt` is unused today but reserved
 // so QR Check-In (v2) can land without a schema change.
 export const registrations = pgTable(

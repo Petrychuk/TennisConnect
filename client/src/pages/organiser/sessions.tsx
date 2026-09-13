@@ -26,7 +26,7 @@ import { groupSessionsByBucket, BUCKET_ORDER, type SessionBucket } from "@/compo
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
-import { getMySessions, deleteSession } from "@/lib/api/organizer-sessions";
+import { getMySessions, deleteSession, archiveSession } from "@/lib/api/organizer-sessions";
 import { toSessionListItems } from "@/lib/api/session-adapter";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 
@@ -135,6 +135,16 @@ export default function OrganiserSessionsPage() {
     }
   };
 
+  const handleArchive = async (session: SessionListItem) => {
+    try {
+      await archiveSession(session.id);
+      invalidateSessions();
+      toast({ title: "Session archived", description: `"${session.title}" moved to Archived.` });
+    } catch (error: any) {
+      toast({ title: "Couldn't archive session", description: error?.message ?? "Please try again.", variant: "destructive" });
+    }
+  };
+
   if (authLoading) return null;
 
   if (!isAuthenticated) {
@@ -217,9 +227,11 @@ export default function OrganiserSessionsPage() {
               <p className="text-muted-foreground mt-1">Manage all your tennis sessions in one place.</p>
             </div>
             <div className="hidden sm:flex items-center gap-2 shrink-0">
-              <Button variant="outline" className="gap-2" data-testid="organiser-sessions-templates-button" onClick={() => toast({ title: "Templates isn't wired up yet" })}>
-                <LayoutTemplate className="w-4 h-4" />
-                Templates
+              <Button variant="outline" className="gap-2" asChild data-testid="organiser-sessions-templates-button">
+                <Link href="/organiser/sessions/templates">
+                  <LayoutTemplate className="w-4 h-4" />
+                  Templates
+                </Link>
               </Button>
               <NewSessionMenu className="gap-2" />
             </div>
@@ -272,6 +284,7 @@ export default function OrganiserSessionsPage() {
                       session={session}
                       onDuplicate={handleDuplicate}
                       onDelete={handleDelete}
+                      onArchive={handleArchive}
                     />
                   ))}
                 </div>

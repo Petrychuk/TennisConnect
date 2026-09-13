@@ -16,21 +16,34 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Calendar,
   MapPin,
   Play,
+  MoreHorizontal,
+  Copy,
+  Pencil,
+  LayoutTemplate,
+  Archive,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
 import { bucketFor } from "./session-utils";
+import { SaveAsTemplateDialog } from "./save-as-template-dialog";
 import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.webp";
 
 interface SessionCardProps {
   session: SessionListItem;
   onDuplicate?: (session: SessionListItem) => void;
   onDelete?: (session: SessionListItem) => void;
+  onArchive?: (session: SessionListItem) => void;
 }
 
 const STATUS_BADGE_LABEL: Record<string, string> = {
@@ -54,9 +67,10 @@ const STATUS_BADGE_STYLE: Record<string, string> = {
   archived: "bg-muted text-muted-foreground",
 };
 
-export function SessionCard({ session, onDuplicate, onDelete }: SessionCardProps) {
+export function SessionCard({ session, onDuplicate, onDelete, onArchive }: SessionCardProps) {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   const bucket = bucketFor(session);
   const spots = session.maxParticipants !== null ? session.maxParticipants - session.registeredCount : null;
   const typeLabel = SESSION_TYPE_OPTIONS.find((t) => t.key === session.type)?.label ?? "Session";
@@ -72,8 +86,13 @@ export function SessionCard({ session, onDuplicate, onDelete }: SessionCardProps
     toast({ title: "Session duplicated", description: `"${session.title}" was copied as a new draft.` });
   };
 
-  // The whole point: the card decides which two buttons make sense, the
-  // organiser never has to figure out which one applies.
+  // One primary action per status - everything else (Duplicate, Edit,
+  // Save as Template, Archive) lives behind the overflow menu instead
+  // of sitting on the row as its own full-size button. This was
+  // explicit, repeated feedback: a full secondary button on every row
+  // ("Duplicate" specifically) turns into "18 huge buttons" the moment
+  // there's more than a handful of sessions - only one action per
+  // session should compete for attention at that size.
   const primaryAction =
     bucket === "draft"
       ? { label: "Continue Setup", onClick: openWorkspace }
@@ -84,15 +103,6 @@ export function SessionCard({ session, onDuplicate, onDelete }: SessionCardProps
       : bucket === "archived"
       ? { label: "View History", onClick: openHistory }
       : { label: "Manage Session", onClick: openWorkspace }; // registration-open, upcoming
-
-  const secondaryAction =
-    bucket === "draft"
-      ? null // Delete is rendered separately below (needs the confirm dialog)
-      : bucket === "live"
-      ? { label: "Manage Session", onClick: openWorkspace }
-      : bucket === "completed" || bucket === "archived"
-      ? { label: "Duplicate", onClick: handleDuplicate }
-      : { label: "Edit", onClick: openEdit }; // registration-open, upcoming
 
   return (
     <Card className="shadow-sm hover:shadow-md transition-shadow overflow-hidden" data-testid={`organiser-session-card-${session.id}`}>
@@ -233,22 +243,66 @@ export function SessionCard({ session, onDuplicate, onDelete }: SessionCardProps
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
+              ) : bucket === "live" ? (
+                // Live deliberately gets no overflow menu at all - the
+                // only thing that matters while it's running is getting
+                // back into it, nothing secondary is worth surfacing.
+                <Button
+                  variant="outline"
+                  onClick={openWorkspace}
+                  className="flex-1 sm:flex-none"
+                  data-testid={`organiser-session-card-${session.id}-secondary`}
+                >
+                  Manage Session
+                </Button>
               ) : (
-                secondaryAction && (
-                  <Button
-                    variant="outline"
-                    onClick={secondaryAction.onClick}
-                    className="flex-1 sm:flex-none"
-                    data-testid={`organiser-session-card-${session.id}-secondary`}
-                  >
-                    {secondaryAction.label}
-                  </Button>
-                )
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="shrink-0"
+                      data-testid={`organiser-session-card-${session.id}-menu`}
+                    >
+                      <MoreHorizontal className="w-4 h-4" />
+                      <span className="sr-only">More actions</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleDuplicate} data-testid={`organiser-session-card-${session.id}-duplicate`}>
+                      <Copy className="w-4 h-4 mr-2" />
+                      Duplicate
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSaveTemplateOpen(true)} data-testid={`organiser-session-card-${session.id}-save-template`}>
+                      <LayoutTemplate className="w-4 h-4 mr-2" />
+                      Save as Template
+                    </DropdownMenuItem>
+                    {(bucket === "registration-open" || bucket === "upcoming") && (
+                      <DropdownMenuItem onClick={openEdit} data-testid={`organiser-session-card-${session.id}-edit`}>
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                    )}
+                    {bucket === "completed" && onArchive && (
+                      <DropdownMenuItem onClick={() => onArchive(session)} data-testid={`organiser-session-card-${session.id}-archive`}>
+                        <Archive className="w-4 h-4 mr-2" />
+                        Archive
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
             </div>
           </div>
         </div>
       </CardContent>
+
+      <SaveAsTemplateDialog
+        sessionId={session.id}
+        sessionTitle={session.title}
+        open={saveTemplateOpen}
+        onOpenChange={setSaveTemplateOpen}
+      />
     </Card>
   );
 }

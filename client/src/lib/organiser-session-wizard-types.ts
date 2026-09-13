@@ -1,5 +1,5 @@
 import { zonedTimeToUtc, toZonedDateTimeInputs } from "@/lib/timezone";
-import type { SessionWithDetails } from "@shared/schema";
+import type { SessionWithDetails, SessionTemplate } from "@shared/schema";
 
 export type SessionTypeKey =
   | "social"
@@ -259,6 +259,95 @@ export function sessionToDraft(session: SessionWithDetails): NewSessionDraft {
     roundsCount: session.plannedRoundsCount ?? empty.roundsCount,
     noAd: session.noAd ?? empty.noAd,
     tiebreak: session.tiebreak ?? empty.tiebreak,
+  };
+}
+
+/*
+ * Applying a saved SessionTemplate to a fresh draft - mirrors
+ * sessionToDraft's own reasoning exactly (see its comment just above):
+ * date/registrationOpens/registrationCloses always reset to today,
+ * never carried over, since a template has no date of its own at all
+ * to copy from in the first place. preferredStartTime carries over
+ * (the recurring session's usual time-of-day) same as sessionToDraft's
+ * own startTime does; endTime is derived from
+ * preferredStartTime + durationMinutes rather than stored directly,
+ * matching how SessionTemplate itself stores duration as a relative
+ * length, not an absolute end time.
+ */
+export function templateToDraft(template: SessionTemplate): NewSessionDraft {
+  const empty = createEmptyDraft();
+
+  let startTime = empty.startTime;
+  let endTime = empty.endTime;
+  if (template.preferredStartTime) {
+    startTime = template.preferredStartTime;
+    if (template.durationMinutes) {
+      const [h, m] = template.preferredStartTime.split(":").map(Number);
+      const endMinutes = h * 60 + m + template.durationMinutes;
+      const endH = Math.floor(endMinutes / 60) % 24;
+      const endM = endMinutes % 60;
+      endTime = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+    }
+  }
+
+  return {
+    ...empty,
+    type: (template.type as SessionTypeKey) ?? empty.type,
+    name: template.name || empty.name,
+    venue: template.location ?? empty.venue,
+    courtCount: template.courtsCount ?? empty.courtCount,
+    timeZone: template.timeZone ?? empty.timeZone,
+    startTime,
+    endTime,
+    maxPlayers: template.maxParticipants ?? empty.maxPlayers,
+    waitingListEnabled: template.waitingListEnabled ?? empty.waitingListEnabled,
+    waitingListCapacity: template.waitingListCapacity ?? empty.waitingListCapacity,
+    pricing: template.price && Number(template.price) > 0 ? "paid" : "free",
+    price: template.price ? Number(template.price) : empty.price,
+    visibility: (template.visibility as Visibility) ?? empty.visibility,
+    matchType: template.matchMode === "singles" ? "singles" : "doubles",
+    category: (template.category as NewSessionDraft["category"]) ?? empty.category,
+    gamesTo: template.gamesTo ?? empty.gamesTo,
+    roundsCount: template.plannedRoundsCount ?? empty.roundsCount,
+    noAd: template.noAd ?? empty.noAd,
+    tiebreak: template.tiebreak ?? empty.tiebreak,
+  };
+}
+
+/*
+ * The reverse direction - "Save as Template" from the current wizard
+ * draft. Only ever the fields SessionTemplate actually has columns
+ * for (see its own comment in shared/schema.ts on what a template
+ * does and doesn't capture) - pairing settings, rules/policy text, and
+ * the live-settings toggles aren't part of a template today. Returns
+ * the request BODY shape (organizationId/createdBy are filled in
+ * server-side from the authenticated session, not sent by the
+ * client).
+ */
+export function draftToTemplateConfig(draft: NewSessionDraft, name: string) {
+  const [sh, sm] = draft.startTime.split(":").map(Number);
+  const [eh, em] = draft.endTime.split(":").map(Number);
+  const durationMinutes = draft.startTime && draft.endTime ? (eh * 60 + em) - (sh * 60 + sm) : null;
+
+  return {
+    name,
+    type: draft.type ?? "social",
+    location: draft.venue || null,
+    timeZone: draft.timeZone,
+    preferredStartTime: draft.startTime || null,
+    durationMinutes: durationMinutes && durationMinutes > 0 ? durationMinutes : null,
+    price: draft.pricing === "paid" && draft.price > 0 ? String(draft.price) : null,
+    maxParticipants: draft.maxPlayers || null,
+    visibility: draft.visibility,
+    courtsCount: draft.courtCount || null,
+    matchMode: draft.matchType === "singles" ? "singles" : "doubles",
+    category: draft.category,
+    gamesTo: draft.gamesTo || null,
+    noAd: draft.noAd,
+    tiebreak: draft.tiebreak,
+    plannedRoundsCount: draft.roundsCount || null,
+    waitingListEnabled: draft.waitingListEnabled,
+    waitingListCapacity: draft.waitingListCapacity,
   };
 }
 

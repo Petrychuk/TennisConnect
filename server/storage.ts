@@ -11,6 +11,9 @@ import {
   sessionUpdates,
   type SessionUpdate,
   type InsertSessionUpdate,
+  sessionTemplates,
+  type SessionTemplate,
+  type InsertSessionTemplate,
   passwordResetTokens,
   emailVerificationTokens,
   supportRequests,
@@ -224,6 +227,11 @@ export interface IStorage {
   getConversationMessages(conversationId: string): Promise<MessageWithAvatar[]>;
   createSessionUpdate(update: InsertSessionUpdate): Promise<SessionUpdate>;
   getSessionUpdates(sessionId: string): Promise<SessionUpdate[]>;
+  createSessionTemplate(template: InsertSessionTemplate): Promise<SessionTemplate>;
+  getSessionTemplatesForOrganization(organizationId: string): Promise<SessionTemplate[]>;
+  getSessionTemplateById(id: string): Promise<SessionTemplate | undefined>;
+  updateSessionTemplate(id: string, updates: Partial<InsertSessionTemplate>): Promise<SessionTemplate>;
+  deleteSessionTemplate(id: string): Promise<void>;
   getUserConversations(userId: string): Promise<MessageWithAvatar[]>;
   findConversationBetweenUsers(userA: string, userB: string): Promise<MessageWithAvatar | undefined>;
   updateMessageConversation(messageId: string, conversationId: string): Promise<void>;
@@ -292,7 +300,7 @@ export interface IStorage {
  getSessionByIdWithDetails(id: string, viewerId?: string): Promise<SessionWithDetails | undefined>;
  getSessionDivisions(parentSessionId: string): Promise<SessionWithDetails[]>;
  createSessionDivision(baseSession: TennisSession, createdBy: string, overrides: Partial<InsertSession> & { title: string }): Promise<TennisSession>;
-  getSessionsByOrganization(organizationId: string): Promise<TennisSession[]>;
+  getSessionsByOrganization(organizationId: string): Promise<SessionWithDetails[]>;
   getUpcomingPublishedSessionsByOrganization(organizationId: string): Promise<SessionWithDetails[]>;
   getSessionsThisWeek(): Promise<SessionWithDetails[]>;
   getSessionsUserRegisteredFor(userId: string): Promise<SessionWithDetails[]>;
@@ -1939,6 +1947,45 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(sessionUpdates.createdAt));
   }
 
+  async createSessionTemplate(template: InsertSessionTemplate): Promise<SessionTemplate> {
+    const [row] = await db.insert(sessionTemplates).values(template).returning();
+    return row;
+  }
+
+  async getSessionTemplatesForOrganization(organizationId: string): Promise<SessionTemplate[]> {
+    return db
+      .select()
+      .from(sessionTemplates)
+      .where(eq(sessionTemplates.organizationId, organizationId))
+      .orderBy(desc(sessionTemplates.createdAt));
+  }
+
+  async getSessionTemplateById(id: string): Promise<SessionTemplate | undefined> {
+    const [row] = await db.select().from(sessionTemplates).where(eq(sessionTemplates.id, id));
+    return row;
+  }
+
+  // Deliberately no sessionId/templateId link stored anywhere (see the
+  // table's own comment) - editing a template can never reach back and
+  // change a session already created from it, because nothing connects
+  // them once that session exists.
+  async updateSessionTemplate(id: string, updates: Partial<InsertSessionTemplate>): Promise<SessionTemplate> {
+    const [row] = await db
+      .update(sessionTemplates)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(sessionTemplates.id, id))
+      .returning();
+    return row;
+  }
+
+  // Deleting a template only ever removes the row here - there is no
+  // foreign key anywhere pointing FROM a real session back TO a
+  // template, so this can never cascade into deleting or orphaning any
+  // session that was created from it.
+  async deleteSessionTemplate(id: string): Promise<void> {
+    await db.delete(sessionTemplates).where(eq(sessionTemplates.id, id));
+  }
+
   async updateMessageConversation(
     messageId: string,
     conversationId: string
@@ -2576,7 +2623,7 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async getSessionsByOrganization(organizationId: string): Promise<TennisSession[]> {
+  async getSessionsByOrganization(organizationId: string): Promise<SessionWithDetails[]> {
     // A session that's genuinely wrapped up (past its end time, or its
     // start time if it has no explicit end) moves to archived - either
     // the organiser closed it out via TC Live, or nobody did and it's
@@ -2594,11 +2641,13 @@ export class DatabaseStorage implements IStorage {
         )
       );
 
-    return db
+    const rows = await db
       .select()
       .from(tennisSessions)
       .where(eq(tennisSessions.organizationId, organizationId))
       .orderBy(desc(tennisSessions.startAt));
+
+    return this.attachSessionDetails(rows);
   }
 
   async getUpcomingPublishedSessionsByOrganization(

@@ -12,9 +12,38 @@ import type {
   MatchWithPlayers,
   Match,
   LeaderboardRow,
+  SessionTemplate,
+  InsertSessionTemplate,
 } from "@shared/schema";
 
 const BASE = "/api/organizer";
+
+export async function getSessionTemplates(): Promise<SessionTemplate[]> {
+  const res = await apiRequest("GET", `${BASE}/session-templates`);
+  return res.json();
+}
+
+// organizationId/createdBy are filled in server-side from the
+// authenticated session (see POST /session-templates) - never sent by
+// the client.
+export async function createSessionTemplate(data: Omit<InsertSessionTemplate, "organizationId" | "createdBy">): Promise<SessionTemplate> {
+  const res = await apiRequest("POST", `${BASE}/session-templates`, data);
+  return res.json();
+}
+
+export async function updateSessionTemplate(id: string, data: Partial<InsertSessionTemplate>): Promise<SessionTemplate> {
+  const res = await apiRequest("PUT", `${BASE}/session-templates/${id}`, data);
+  return res.json();
+}
+
+export async function duplicateSessionTemplate(id: string): Promise<SessionTemplate> {
+  const res = await apiRequest("POST", `${BASE}/session-templates/${id}/duplicate`);
+  return res.json();
+}
+
+export async function deleteSessionTemplate(id: string): Promise<void> {
+  await apiRequest("DELETE", `${BASE}/session-templates/${id}`);
+}
 
 // ===== Organizations =====
 // A session belongs to an Organization; every organiser needs one before
