@@ -976,13 +976,39 @@ router.post("/sessions/:id/invite", requireAuth, requireOrganizer, requireOwnSes
         day: "numeric",
         month: "short",
         year: "numeric",
+        timeZone: session.timeZone,
       });
+      const timeOptions: Intl.DateTimeFormatOptions = {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: session.timeZone,
+      };
+      const startTime = new Date(session.startAt).toLocaleTimeString("en-US", timeOptions);
+      const endTime = session.endAt ? new Date(session.endAt).toLocaleTimeString("en-US", timeOptions) : null;
+      const timeRange = endTime ? `${startTime}–${endTime}` : startTime;
+
+      const formatLabel = session.matchMode === "singles" ? "Singles" : "Doubles";
+      const priceValue = session.price ? Number(session.price) : 0;
+      const costLabel = priceValue > 0 ? `$${priceValue} ${session.currency}` : "Free";
+
+      // Enough to actually decide Join vs Decline without opening the
+      // session first - just the date used to say "on 13 Sept 2026"
+      // with none of the details (time, venue, format, cost) that
+      // actually matter for that decision.
+      const detailParts = [
+        session.location,
+        formatLabel,
+        costLabel,
+      ].filter(Boolean);
+
       await sendMessageBetween(
         organizer,
         invitee.id,
         invitee.role,
         `You're invited: ${session.title}`,
-        `${organizer.name} invited you to "${session.title}" on ${sessionDate}.`,
+        `${organizer.name} invited you to "${session.title}" on ${sessionDate}, ${timeRange}` +
+          (detailParts.length ? ` — ${detailParts.join(" · ")}.` : "."),
         { messageType: "session_invite", relatedSessionId: session.id }
       );
     }
