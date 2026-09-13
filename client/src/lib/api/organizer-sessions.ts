@@ -150,6 +150,11 @@ export async function getSessionUpdates(id: string): Promise<SessionUpdateItem[]
   return res.json();
 }
 
+export async function sendSessionResults(id: string): Promise<{ sentTo: number }> {
+  const res = await apiRequest("POST", `${BASE}/sessions/${id}/send-results`);
+  return res.json();
+}
+
 export async function createSession(data: InsertSession): Promise<TennisSession> {
   const res = await apiRequest("POST", `${BASE}/sessions`, data);
   return res.json();
