@@ -62,6 +62,20 @@ interface Message {
   relatedSessionId?: string | null;
   relatedOrganizationId?: string | null;
   actionStatus?: "pending" | "accepted" | "declined" | null;
+  // Only set for session_invite messages - lets the UI hide Join/Decline
+  // once the session has already started, rather than offering an
+  // action that no longer makes sense for something already underway.
+  relatedSessionStartAt?: string | null;
+}
+
+// A community_invite has no related session at all (relatedSessionStartAt
+// is always undefined for those) - only session_invite ever needs this
+// check, and it's a plain instant comparison (new Date(...) is always
+// ambient-timezone-safe for this - both sides resolve to the same
+// absolute UTC instant regardless of the viewer's own clock).
+function isSessionInvitePast(msg: Message): boolean {
+  if (!msg.relatedSessionStartAt) return false;
+  return new Date(msg.relatedSessionStartAt).getTime() <= Date.now();
 }
 
 // A conversation-list row (or the detail header above an open thread)
@@ -810,7 +824,7 @@ export function MessagesInbox() {
                                     </p>
                                   </div>
 
-                                  {msg.messageType && msg.actionStatus === "pending" && !isMe && (
+                                  {msg.messageType && msg.actionStatus === "pending" && !isMe && !isSessionInvitePast(msg) && (
                                     <div className="flex gap-2 mt-2" data-testid={`invitation-actions-${msg.id}`}>
                                       <Button
                                         size="sm"
@@ -830,6 +844,12 @@ export function MessagesInbox() {
                                         Decline
                                       </Button>
                                     </div>
+                                  )}
+
+                                  {msg.messageType === "session_invite" && msg.actionStatus === "pending" && !isMe && isSessionInvitePast(msg) && (
+                                    <p className="text-xs text-muted-foreground mt-2 px-1" data-testid={`invitation-expired-${msg.id}`}>
+                                      This session has already started.
+                                    </p>
                                   )}
 
                                   {msg.messageType && msg.actionStatus === "accepted" && (
