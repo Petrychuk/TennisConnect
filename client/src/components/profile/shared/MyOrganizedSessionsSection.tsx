@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -305,25 +306,38 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
           const showPolicy = policyOpenId === session.id;
 
           return (
-            <Card key={session.id} data-testid={`my-organized-session-${session.id}`}>
-              <CardHeader className="pb-0">
-                <div className="flex flex-wrap items-start gap-3">
+            <Card key={session.id} className="overflow-hidden" data-testid={`my-organized-session-${session.id}`}>
+              <div className="flex flex-col sm:flex-row">
+                {/* Cover — bigger, matching the same photo-forward layout
+                    as the Organiser Hub's own session cards, with the
+                    primary status badge overlaid on it instead of
+                    crowding the text below. */}
+                <div className="relative w-full sm:w-40 h-32 sm:h-auto shrink-0 overflow-hidden">
                   <img
                     src={session.coverImage || courtImage}
                     alt=""
                     aria-hidden="true"
-                    className="w-16 h-16 rounded-md object-cover shrink-0"
+                    className="absolute inset-0 w-full h-full object-cover"
                     data-testid={`my-organized-session-${session.id}-cover`}
                   />
-                  <div className="flex flex-wrap items-center justify-between gap-3 flex-1 min-w-0">
+                  {(isOwnProfile || guestBucket) && (
+                    <Badge
+                      className={cn(
+                        "absolute top-2 left-2",
+                        isOwnProfile ? OWNER_STATUS_BADGE[session.status] : GUEST_STATUS_BADGE[guestBucket!]
+                      )}
+                    >
+                      {isOwnProfile ? (OWNER_STATUS_LABEL[session.status] ?? session.status) : GUEST_STATUS_LABEL[guestBucket!]}
+                    </Badge>
+                  )}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                <CardHeader className="pb-0">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold">{session.title}</span>
-                      {isOwnProfile ? (
-                        <Badge className={OWNER_STATUS_BADGE[session.status]}>{OWNER_STATUS_LABEL[session.status] ?? session.status}</Badge>
-                      ) : (
-                        guestBucket && <Badge className={GUEST_STATUS_BADGE[guestBucket]}>{GUEST_STATUS_LABEL[guestBucket]}</Badge>
-                      )}
                       {myStatus === "waitlisted" && <Badge variant="secondary">Waitlisted</Badge>}
                       {myStatus === "registered" && <Badge className="bg-primary/10 text-primary">Joined</Badge>}
                     </div>
@@ -385,8 +399,9 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
                     )}
                   </div>
                 </div>
-                </div>
               </CardHeader>
+                </div>
+              </div>
               <CardContent className="pt-3">
                 {session.status === "rejected" && isOwnProfile && session.reviewNote && (
                   <p className="text-sm text-destructive">Note: {session.reviewNote}</p>
