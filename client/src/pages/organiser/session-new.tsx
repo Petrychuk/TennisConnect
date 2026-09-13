@@ -23,11 +23,12 @@ import { Step4ReviewPublish } from "@/components/organiser/sessions/wizard/step4
 import { PendingApprovalDialog } from "@/components/organiser/sessions/wizard/pending-approval-dialog";
 
 import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
-import { ensureMyOrganization, createSession, publishSession, getSessionById } from "@/lib/api/organizer-sessions";
+import { ensureMyOrganization, createSession, publishSession, getSessionById, getSessionTemplates } from "@/lib/api/organizer-sessions";
 import {
   createEmptyDraft,
   draftToInsertSession,
   sessionToDraft,
+  templateToDraft,
   SESSION_TYPE_OPTIONS,
   type NewSessionDraft,
 } from "@/lib/organiser-session-wizard-types";
@@ -76,6 +77,40 @@ export default function OrganiserSessionNewPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [duplicateFromId]);
+
+  // "Use Template" (from the Templates page) lands here with
+  // ?templateId=<id> - pre-fills the same way duplicateFrom does, via
+  // templateToDraft instead of sessionToDraft. templateToDraft already
+  // starts from createEmptyDraft() (today's date) and only ever
+  // overrides the reusable fields a template actually stores, so the
+  // date/registration-window fields are already fresh without any
+  // extra reset logic needed here - the organiser still reviews and
+  // picks a real date on Step 2 like any other new session, exactly
+  // per the "template does not create a session immediately" rule.
+  //
+  // No single-template GET route exists - list + find is the simplest
+  // correct option (an organiser typically has few templates) rather
+  // than adding a route just for this one pre-fill.
+  const templateId = new URLSearchParams(search).get("templateId");
+  useEffect(() => {
+    if (!templateId) return;
+    let cancelled = false;
+    getSessionTemplates()
+      .then((templates) => {
+        const template = templates.find((t) => t.id === templateId);
+        if (!cancelled && template) setDraft(templateToDraft(template));
+        else if (!cancelled) toast({ title: "That template couldn't be found", variant: "destructive" });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          toast({ title: "Couldn't load that template", variant: "destructive" });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templateId]);
 
   const updateDraft = <K extends keyof NewSessionDraft>(key: K, value: NewSessionDraft[K]) => {
     setDraft((prev) => ({ ...prev, [key]: value }));

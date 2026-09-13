@@ -7,6 +7,8 @@ import {
   insertOrganizationSchema,
   insertSessionSchema,
   insertMatchScoreSchema,
+  insertSessionTemplateSchema,
+  type SessionTemplate,
   type TennisSession,
 } from "@shared/schema";
 
@@ -218,6 +220,103 @@ router.get("/sessions/mine", requireAuth, async (req, res, next) => {
     }
     const sessions = await storage.getSessionsByOrganization(organization.id);
     res.json(sessions);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* =========================
+   SESSION TEMPLATES
+   ========================= */
+
+router.get("/session-templates", requireAuth, requireOrganizer, async (req, res, next) => {
+  try {
+    const organization = await storage.getOrganizationOwnedByUser((req.user as any).id);
+    if (!organization) {
+      return res.json([]);
+    }
+    const templates = await storage.getSessionTemplatesForOrganization(organization.id);
+    res.json(templates);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/session-templates", requireAuth, requireOrganizer, async (req, res, next) => {
+  try {
+    const organization = await storage.getOrganizationOwnedByUser((req.user as any).id);
+    if (!organization) {
+      return res.status(404).json({ message: "Organisation not found" });
+    }
+    const parsed = insertSessionTemplateSchema.safeParse({
+      ...req.body,
+      organizationId: organization.id,
+      createdBy: (req.user as any).id,
+    });
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid input", errors: parsed.error });
+    }
+    const template = await storage.createSessionTemplate(parsed.data);
+    res.status(201).json(template);
+  } catch (error) {
+    next(error);
+  }
+});
+
+async function requireOwnTemplate(req: Request, res: Response, next: NextFunction) {
+  try {
+    const template = await storage.getSessionTemplateById(req.params.id);
+    if (!template) {
+      return res.status(404).json({ message: "Template not found" });
+    }
+    const organization = await storage.getOrganizationById(template.organizationId);
+    if (!organization || organization.ownerId !== (req.user as any).id) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    (req as any).template = template;
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+router.put("/session-templates/:id", requireAuth, requireOrganizer, requireOwnTemplate, async (req, res, next) => {
+  try {
+    // .partial() - editing a template is a partial update (e.g. just
+    // renaming it), not required to resend every field every time.
+    const parsed = insertSessionTemplateSchema.partial().safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid input", errors: parsed.error });
+    }
+    const updated = await storage.updateSessionTemplate(req.params.id, parsed.data);
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/session-templates/:id/duplicate", requireAuth, requireOrganizer, requireOwnTemplate, async (req, res, next) => {
+  try {
+    const source = (req as any).template as SessionTemplate;
+    const { id, createdAt, updatedAt, ...rest } = source;
+    const copy = await storage.createSessionTemplate({
+      ...rest,
+      name: `${source.name} — Copy`,
+    });
+    res.status(201).json(copy);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/session-templates/:id", requireAuth, requireOrganizer, requireOwnTemplate, async (req, res, next) => {
+  try {
+    // Deliberately does not touch the sessions table at all - see
+    // deleteSessionTemplate's own comment. Nothing references this
+    // template's id anywhere else, so there's nothing to cascade or
+    // orphan.
+    await storage.deleteSessionTemplate(req.params.id);
+    res.status(204).end();
   } catch (error) {
     next(error);
   }
