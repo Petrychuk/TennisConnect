@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Megaphone, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { broadcastToSession, getSessionUpdates } from "@/lib/api/organizer-sessions";
+import { formatInTimeZone } from "@/lib/timezone";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 
 interface MessagesTabProps {
@@ -85,7 +86,7 @@ export function MessagesTab({ session }: MessagesTabProps) {
                 <div className="min-w-0">
                   <p className="text-sm">{update.message}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {new Date(update.createdAt).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                    {formatInTimeZone(update.createdAt, session.timeZone, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                     {" · "}Sent to {update.sentTo} player{update.sentTo === 1 ? "" : "s"}
                   </p>
                 </div>
