@@ -3015,6 +3015,7 @@ export class DatabaseStorage implements IStorage {
         .select({
           id: registrations.id,
           userName: users.name,
+          sessionId: tennisSessions.id,
           sessionTitle: tennisSessions.title,
           at: registrations.createdAt,
         })
@@ -3028,6 +3029,7 @@ export class DatabaseStorage implements IStorage {
         .select({
           id: registrations.id,
           userName: users.name,
+          sessionId: tennisSessions.id,
           sessionTitle: tennisSessions.title,
           at: registrations.checkedInAt,
         })
@@ -3049,6 +3051,7 @@ export class DatabaseStorage implements IStorage {
         id: `${r.id}-joined`,
         type: "joined" as const,
         userName: r.userName,
+        sessionId: r.sessionId,
         sessionTitle: r.sessionTitle,
         at: new Date(r.at).toISOString(),
       })),
@@ -3058,6 +3061,7 @@ export class DatabaseStorage implements IStorage {
           id: `${r.id}-checked_in`,
           type: "checked_in" as const,
           userName: r.userName,
+          sessionId: r.sessionId,
           sessionTitle: r.sessionTitle,
           at: new Date(r.at as Date).toISOString(),
         })),

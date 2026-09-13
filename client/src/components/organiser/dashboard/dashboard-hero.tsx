@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { Users, CalendarDays, UsersRound, Percent, DollarSign } from "lucide-react";
@@ -26,18 +27,35 @@ function greeting() {
 
 function StatCard({ stat }: { stat: StatStripItem }) {
   const Icon = STAT_ICON[stat.key] ?? Users;
+  const body = (
+    <CardContent className="p-4 flex items-center gap-3">
+      <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+        <Icon className="w-4 h-4" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-lg font-bold leading-tight truncate">{stat.value}</p>
+        <p className="text-xs text-muted-foreground truncate">{stat.label}</p>
+        <p className="text-[11px] text-muted-foreground/70 truncate">{stat.sublabel}</p>
+      </div>
+    </CardContent>
+  );
+
+  // Only clickable when there's somewhere real to send the organiser -
+  // Attendance has no href yet (no Reports page exists) and stays a
+  // plain, non-interactive card rather than a link to nowhere.
+  if (stat.href) {
+    return (
+      <Link href={stat.href} data-testid={`organiser-stat-strip-${stat.key}`}>
+        <Card className="shadow-sm hover:shadow-md hover:border-primary/40 transition-all cursor-pointer">
+          {body}
+        </Card>
+      </Link>
+    );
+  }
+
   return (
     <Card className="shadow-sm hover:shadow-md transition-shadow" data-testid={`organiser-stat-strip-${stat.key}`}>
-      <CardContent className="p-4 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-          <Icon className="w-4 h-4" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-lg font-bold leading-tight truncate">{stat.value}</p>
-          <p className="text-xs text-muted-foreground truncate">{stat.label}</p>
-          <p className="text-[11px] text-muted-foreground/70 truncate">{stat.sublabel}</p>
-        </div>
-      </CardContent>
+      {body}
     </Card>
   );
 }

@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +22,7 @@ import { SessionCard } from "@/components/organiser/sessions/session-card";
 import { SessionsCalendarView } from "@/components/organiser/sessions/sessions-calendar-view";
 import { SessionsEmptyState } from "@/components/organiser/sessions/sessions-empty-state";
 import { NewSessionMenu } from "@/components/organiser/sessions/wizard/new-session-menu";
-import { groupSessionsByBucket, type SessionBucket } from "@/components/organiser/sessions/session-utils";
+import { groupSessionsByBucket, BUCKET_ORDER, type SessionBucket } from "@/components/organiser/sessions/session-utils";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
@@ -48,6 +48,17 @@ export default function OrganiserSessionsPage() {
   });
   const sessions = useMemo(() => toSessionListItems(sessionsQuery.data ?? []), [sessionsQuery.data]);
   const [activeBucket, setActiveBucket] = useState<SessionBucket>("all");
+  const urlSearch = useSearch();
+
+  // Lets the dashboard's own KPI cards ("3 Upcoming Sessions", "1 Live
+  // Session") deep-link straight into the matching tab here, instead of
+  // landing on "All" and making the organiser reselect it themselves.
+  useEffect(() => {
+    const requested = new URLSearchParams(urlSearch).get("bucket");
+    if (requested && BUCKET_ORDER.includes(requested as SessionBucket)) {
+      setActiveBucket(requested as SessionBucket);
+    }
+  }, [urlSearch]);
   const [search, setSearch] = useState("");
   const [venue, setVenue] = useState("all");
   const [format, setFormat] = useState("all");
