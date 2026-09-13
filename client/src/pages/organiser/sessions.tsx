@@ -80,17 +80,28 @@ export default function OrganiserSessionsPage() {
   }, [sessions, search, venue, format, dateFrom, dateTo]);
 
   const grouped = useMemo(() => groupSessionsByBucket(filtered), [filtered]);
+  // Upcoming is deliberately a superset of registration-open here (not
+  // a separate, mutually-exclusive bucket the way bucketFor's own
+  // one-bucket-per-session assignment treats them internally) - a
+  // session with registration still open hasn't happened yet either,
+  // so it belongs in "what's coming up" too, not just in the narrower
+  // "registration open" tab. Registration Open itself stays exactly as
+  // specific as before - this only widens what Upcoming shows/counts.
+  const upcomingInclusive = useMemo(
+    () => [...grouped.upcoming, ...grouped["registration-open"]],
+    [grouped]
+  );
   const counts: Record<SessionBucket, number> = {
     all: filtered.length,
     live: grouped.live.length,
     "registration-open": grouped["registration-open"].length,
-    upcoming: grouped.upcoming.length,
+    upcoming: upcomingInclusive.length,
     draft: grouped.draft.length,
     completed: grouped.completed.length,
     archived: grouped.archived.length,
   };
 
-  const visible = activeBucket === "all" ? filtered : grouped[activeBucket];
+  const visible = activeBucket === "all" ? filtered : activeBucket === "upcoming" ? upcomingInclusive : grouped[activeBucket];
 
   const invalidateSessions = () => queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine"] });
 
