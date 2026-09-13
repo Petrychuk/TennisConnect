@@ -709,6 +709,7 @@ export type LeaderboardRow = {
   matchesPlayed: number;
   wins: number;
   losses: number;
+  draws: number;
   gamesWon: number;
   gamesLost: number;
   restRounds: number;
@@ -733,8 +734,6 @@ export type ActivityFeedItem = {
 export const insertMatchScoreSchema = z.object({
   teamAGames: z.number().int().min(0),
   teamBGames: z.number().int().min(0),
-}).refine((v) => v.teamAGames !== v.teamBGames, {
-  message: "Games can't be tied - every match needs a winner",
 });
 
 export const organizerRequestsRelations = relations(organizerRequests, ({ one }) => ({

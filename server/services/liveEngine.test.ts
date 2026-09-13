@@ -174,5 +174,23 @@ test("computeLeaderboard: only confirmed matches count, wins/games aggregate cor
   assert.ok(result.findIndex((r) => r.userId === "p2") > result.findIndex((r) => r.userId === "p1"));
 });
 
+test("computeLeaderboard: a tied score counts as a draw for both sides, not a win for one and a loss for the other", () => {
+  const result = computeLeaderboard({
+    players: players(2),
+    restCounts: {},
+    matches: [
+      { teamAIds: ["p1"], teamBIds: ["p2"], teamAGames: 2, teamBGames: 2, status: "confirmed" },
+    ],
+  });
+
+  const byId = Object.fromEntries(result.map((r) => [r.userId, r]));
+  assert.equal(byId.p1.wins, 0);
+  assert.equal(byId.p1.losses, 0);
+  assert.equal(byId.p1.draws, 1);
+  assert.equal(byId.p2.wins, 0);
+  assert.equal(byId.p2.losses, 0);
+  assert.equal(byId.p2.draws, 1);
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
