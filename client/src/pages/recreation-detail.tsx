@@ -63,12 +63,12 @@ export default function RecreationDetailPage() {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Navbar />
-        <div className="flex-1 flex items-center justify-center">
+        <main id="main-content" className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-3xl font-bold mb-4">Service not found</h1>
-            <Link href="/recreation"><Button className="bg-primary text-primary-foreground">Back</Button></Link>
+            <Link href="/recreation"><Button className="bg-primary text-foreground">Back</Button></Link>
           </div>
-        </div>
+        </main>
         <Footer />
       </div>
     );
@@ -100,12 +100,13 @@ export default function RecreationDetailPage() {
       <div className="min-h-screen bg-background font-sans">
         <Navbar />
 
+        <main id="main-content">
         <div className="relative h-[55vh] mt-16 overflow-hidden">
           <img src={svc.coverImage} alt={svc.name} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-linear-to-t from-background via-background/40 to-transparent" />
           <div className="absolute bottom-8 left-0 right-0 container mx-auto px-4">
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
-              <Badge className="mb-3 bg-primary text-primary-foreground font-bold">{svc.type}</Badge>
+              <Badge className="mb-3 bg-primary text-foreground font-bold">{svc.type}</Badge>
               <h1 className="text-4xl md:text-6xl font-display font-bold text-white mb-2" data-testid="recreation-title">
                 {svc.name}
               </h1>
@@ -175,7 +176,7 @@ export default function RecreationDetailPage() {
 
                 <Button
                   onClick={handleBook}
-                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full cursor-pointer"
+                  className="w-full bg-primary text-foreground hover:bg-primary/90 font-bold rounded-full cursor-pointer"
                   data-testid="recreation-book-button"
                 >
                   Book Session
@@ -185,6 +186,7 @@ export default function RecreationDetailPage() {
           </div>
         </div>
 
+        </main>
         <Footer />
       </div>
     </>

@@ -12,7 +12,19 @@ const buttonVariants = cva(
       variant: {
         default:
            // @replit: no hover, and add primary border
-           "bg-primary text-primary-foreground border border-primary-border",
+           // text-foreground, not text-primary-foreground: --primary
+           // (#90C610) only gives ~2:1 contrast against white text -
+           // badly failing WCAG's 4.5:1 even before accounting for
+           // hover/pressed states, since text-primary-foreground is
+           // reused elsewhere in this app as "light text on a dark
+           // photo/section background" (hero banners, TC Live's dark
+           // theme, etc.) and can't be safely darkened globally without
+           // breaking those. --foreground (near-black, already the
+           // app's standard text colour) gives ~9.7:1 against this
+           // green - comfortably AA, and is exactly what .dark's own
+           // --primary-foreground already does correctly for this same
+           // button in dark mode.
+           "bg-primary text-foreground border border-primary-border",
         destructive:
           "bg-destructive text-destructive-foreground shadow-sm border-destructive-border",
         outline:
@@ -25,7 +37,11 @@ const buttonVariants = cva(
           "border bg-secondary text-secondary-foreground border border-secondary-border ",
         // @replit no hover, transparent border
         ghost: "border border-transparent",
-        link: "text-primary underline-offset-4 hover:underline",
+        // text-primary-text, not text-primary: same ~2:1-contrast
+        // problem as the default variant above, just for green text on
+        // a light background instead of white text on a green
+        // background - see index.css's own comment on --primary-text.
+        link: "text-primary-text underline-offset-4 hover:underline",
       },
       size: {
         // @replit changed sizes

@@ -45,7 +45,7 @@ export function RoundsTab({ session }: RoundsTabProps) {
                   )}
                 </div>
               </div>
-              <Badge className={isCurrent ? "bg-primary text-primary-foreground" : isDone ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground"}>
+              <Badge className={isCurrent ? "bg-primary text-foreground" : isDone ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground"}>
                 {isCurrent ? "In Progress" : isDone ? "Completed" : "Upcoming"}
               </Badge>
             </CardContent>

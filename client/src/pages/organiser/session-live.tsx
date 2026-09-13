@@ -113,7 +113,7 @@ export default function OrganiserSessionLivePage() {
       <div className="min-h-screen flex items-center justify-center px-4 bg-background">
         <Card className="max-w-md w-full shadow-sm">
           <CardHeader>
-            <CardTitle>Organiser access required</CardTitle>
+            <CardTitle asChild><h1>Organiser access required</h1></CardTitle>
           </CardHeader>
           <CardContent className="text-muted-foreground">
             You need to be an approved organiser to view this page. Head to your profile to
@@ -161,7 +161,7 @@ export default function OrganiserSessionLivePage() {
   const roundReadyForNext = !round || round.round.status === "completed";
 
   return (
-    <div className="min-h-screen bg-foreground text-primary-foreground" data-testid="organiser-session-live">
+    <main id="main-content" className="min-h-screen bg-foreground text-primary-foreground" data-testid="organiser-session-live">
       <SEO
         title={`Live — ${session.title} | TennisConnect`}
         description={`Live control centre for ${session.title}.`}
@@ -180,7 +180,7 @@ export default function OrganiserSessionLivePage() {
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <Badge className="bg-primary text-primary-foreground gap-1.5 mb-2" data-testid="organiser-session-live-badge">
+            <Badge className="bg-primary text-foreground gap-1.5 mb-2" data-testid="organiser-session-live-badge">
               {status === "live" && (
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-foreground opacity-75" />
@@ -264,7 +264,7 @@ export default function OrganiserSessionLivePage() {
           </div>
         )}
       </div>
-    </div>
+    </main>
   );
 }
 
@@ -290,7 +290,7 @@ function CheckInPanel({
   return (
     <Card className="bg-primary-foreground/5 border-primary-foreground/10">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-primary-foreground">Check-In</CardTitle>
+        <CardTitle asChild className="text-primary-foreground"><h2>Check-In</h2></CardTitle>
         <Button
           disabled={!canGoLive || busy}
           onClick={onGoLive}
@@ -471,8 +471,8 @@ function LeaderboardPanel({
   return (
     <Card className="bg-primary-foreground/5 border-primary-foreground/10">
       <CardHeader>
-        <CardTitle className="text-primary-foreground flex items-center gap-2">
-          <Trophy className="w-5 h-5" /> Leaderboard
+        <CardTitle asChild className="text-primary-foreground flex items-center gap-2">
+          <h2><Trophy className="w-5 h-5" /> Leaderboard</h2>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -512,7 +512,7 @@ function TcLiveComingSoonStub({ sessionId }: { sessionId?: string }) {
     <div className="min-h-screen flex items-center justify-center px-4 bg-background">
       <Card className="max-w-md w-full shadow-sm text-center">
         <CardHeader>
-          <CardTitle>Live sessions are coming soon</CardTitle>
+          <CardTitle asChild><h1>Live sessions are coming soon</h1></CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground">

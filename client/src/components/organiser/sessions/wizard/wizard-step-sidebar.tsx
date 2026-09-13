@@ -25,7 +25,7 @@ export function WizardStepSidebar({ currentStep, onStepClick, maxReachedStep }: 
                 onClick={() => onStepClick?.(step.number)}
                 className={cn(
                   "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors",
-                  isDone || isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+                  isDone || isActive ? "bg-primary text-foreground" : "bg-muted text-muted-foreground",
                   isReachable && !isActive && "cursor-pointer"
                 )}
                 data-testid={`organiser-wizard-step-${step.number}`}

@@ -34,7 +34,7 @@ export function SessionReadinessCard({ readiness, onViewDetails }: SessionReadin
   return (
     <Card className="shadow-sm" data-testid="organiser-session-readiness-card">
       <CardHeader>
-        <CardTitle className="text-base">Live Readiness</CardTitle>
+        <CardTitle asChild className="text-base"><h2>Live Readiness</h2></CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex justify-center">

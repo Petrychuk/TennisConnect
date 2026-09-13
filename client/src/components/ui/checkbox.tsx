@@ -11,7 +11,13 @@ const Checkbox = React.forwardRef<
   <CheckboxPrimitive.Root
     ref={ref}
     className={cn(
-      "grid place-content-center peer h-4 w-4 shrink-0 rounded-sm border border-primary shadow focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
+      // text-foreground, not text-primary-foreground: the checkmark icon
+      // is a "graphical object" under WCAG 1.4.11 (non-text contrast),
+      // needing 3:1 - text-primary-foreground (white) against this
+      // bg-primary green only gives ~2:1, failing even that more
+      // lenient threshold. Same fix/reasoning as button.tsx's own
+      // "default" variant.
+      "grid place-content-center peer h-4 w-4 shrink-0 rounded-sm border border-primary shadow focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=checked]:text-foreground",
       className
     )}
     {...props}

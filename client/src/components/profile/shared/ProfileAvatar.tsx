@@ -82,7 +82,7 @@ export function ProfileAvatar({
         <div
           className={cn(
             BADGE_SIZE_CLASSES,
-            "absolute bottom-1 left-1 flex items-center justify-center rounded-full border-2 border-background shadow-md bg-primary text-primary-foreground"
+            "absolute bottom-1 left-1 flex items-center justify-center rounded-full border-2 border-background shadow-md bg-primary text-foreground"
           )}
           data-testid="profile-avatar-badge"
         >

@@ -20,7 +20,7 @@ export default function Error500() {
         noIndex
       />
 
-      <div className="relative min-h-screen w-full overflow-hidden bg-black text-white">
+      <main id="main-content" className="relative min-h-screen w-full overflow-hidden bg-black text-white">
         {/* Background photo */}
         <img
           src="/assets/images/error-500-hero.jpg"
@@ -159,7 +159,7 @@ export default function Error500() {
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </>
   );
 }

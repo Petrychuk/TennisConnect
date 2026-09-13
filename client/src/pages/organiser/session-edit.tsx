@@ -93,7 +93,7 @@ export default function OrganiserSessionEditPage() {
       <div className="min-h-screen flex items-center justify-center px-4 bg-background">
         <Card className="max-w-md w-full shadow-sm">
           <CardHeader>
-            <CardTitle>Organiser access required</CardTitle>
+            <CardTitle asChild><h1>Organiser access required</h1></CardTitle>
           </CardHeader>
           <CardContent className="text-muted-foreground">
             You need to be an approved organiser to view this page. Head to your profile to
@@ -151,7 +151,7 @@ export default function OrganiserSessionEditPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background px-4 py-8" data-testid="organiser-session-edit">
+    <main id="main-content" className="min-h-screen bg-background px-4 py-8" data-testid="organiser-session-edit">
       <SEO title={`Edit ${session.title} | Organiser Hub | TennisConnect`} description="Edit your session's details." noIndex />
       <div className="max-w-2xl mx-auto space-y-6">
         <Link href={`/organiser/sessions/${params?.id}`} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground" data-testid="organiser-session-edit-back">
@@ -161,7 +161,7 @@ export default function OrganiserSessionEditPage() {
 
         <Card className="shadow-sm">
           <CardHeader>
-            <CardTitle>Edit Session</CardTitle>
+            <CardTitle asChild><h1>Edit Session</h1></CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="space-y-1.5">
@@ -270,6 +270,6 @@ export default function OrganiserSessionEditPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </main>
   );
 }

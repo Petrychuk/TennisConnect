@@ -20,7 +20,7 @@ export function SessionStatusCard({ session, onEdit, showEditButton = true }: Se
   return (
     <Card className="shadow-sm" data-testid="organiser-session-status-card">
       <CardHeader>
-        <CardTitle className="text-base">Session Status</CardTitle>
+        <CardTitle asChild className="text-base"><h2>Session Status</h2></CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-start gap-3 text-sm" data-testid="organiser-session-status-registration">

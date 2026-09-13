@@ -22,7 +22,7 @@ export function CheckInSummaryCard({ players, className }: CheckInSummaryCardPro
   return (
     <Card className={className} data-testid="organiser-checkin-summary-card">
       <CardHeader>
-        <CardTitle className="text-base">Check-in Summary</CardTitle>
+        <CardTitle asChild className="text-base"><h2>Check-in Summary</h2></CardTitle>
       </CardHeader>
       <CardContent className="flex items-center gap-5">
         <div className="relative shrink-0" style={{ width: size, height: size }}>

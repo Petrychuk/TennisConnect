@@ -33,7 +33,7 @@ export default function OrganiserMessagesPage() {
       <div className="min-h-screen flex items-center justify-center px-4 bg-background">
         <Card className="max-w-md w-full shadow-sm">
           <CardHeader>
-            <CardTitle>Organiser access required</CardTitle>
+            <CardTitle asChild><h1>Organiser access required</h1></CardTitle>
           </CardHeader>
           <CardContent className="text-muted-foreground">
             You need to be an approved organiser to view this page. Head to your profile to
@@ -56,7 +56,16 @@ export default function OrganiserMessagesPage() {
         <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} className="w-full" />
       </aside>
 
-      <div className="flex-1 min-w-0 pb-16 md:pb-0">
+      {/* See sessions.tsx's own comment on this same pattern - <aside>
+          above and <OrganiserMobileNav /> below both stay siblings of
+          this <main>, not children of it. */}
+      <main id="main-content" className="flex-1 min-w-0 pb-16 md:pb-0">
+        {/* Visually hidden - the visible "Messages" label just below
+            (mobile-only compact bar) and the breadcrumb's last crumb
+            are both plain text, not headings; this is the one real H1
+            for the page, present regardless of viewport width so
+            desktop (which shows neither of those) still has one. */}
+        <h1 className="sr-only">Messages</h1>
         {/* Compact bar — tablet & mobile */}
         <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
           <Sheet>
@@ -89,7 +98,7 @@ export default function OrganiserMessagesPage() {
 
         <div className="px-2 sm:px-6 lg:px-8 py-6 space-y-6">
           <div className="flex items-center gap-1.5 text-sm" data-testid="organiser-messages-page-breadcrumb">
-            <Link href="/organiser" className="text-primary hover:underline">
+            <Link href="/organiser" className="text-primary-text hover:underline">
               Home
             </Link>
             <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
@@ -98,7 +107,7 @@ export default function OrganiserMessagesPage() {
 
           <MessagesInbox />
         </div>
-      </div>
+      </main>
 
       <OrganiserMobileNav />
     </div>

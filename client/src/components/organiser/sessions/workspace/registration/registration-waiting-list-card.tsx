@@ -18,7 +18,7 @@ export function RegistrationWaitingListCard({ players, defaultOpen = true }: Reg
       <Collapsible open={open} onOpenChange={setOpen}>
         <CollapsibleTrigger asChild>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 cursor-pointer" data-testid="organiser-registration-waiting-list-toggle">
-            <CardTitle className="text-base">Waiting List ({players.length})</CardTitle>
+            <CardTitle asChild className="text-base"><h2>Waiting List ({players.length})</h2></CardTitle>
             <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", open && "rotate-180")} />
           </CardHeader>
         </CollapsibleTrigger>

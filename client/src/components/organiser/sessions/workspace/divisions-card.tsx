@@ -25,7 +25,7 @@ const STATUS_BADGE: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
   pending_review: "bg-primary/10 text-primary",
   published: "bg-primary/10 text-primary",
-  live: "bg-primary text-primary-foreground",
+  live: "bg-primary text-foreground",
   completed: "bg-muted text-muted-foreground",
   cancelled: "bg-destructive/10 text-destructive",
   rejected: "bg-destructive/10 text-destructive",
@@ -96,7 +96,7 @@ export function DivisionsCard({ sessionId }: DivisionsCardProps) {
         <div className="flex items-center gap-2">
           <Layers className="w-4 h-4 text-primary" />
           <div>
-            <CardTitle className="text-base">Divisions</CardTitle>
+            <CardTitle asChild className="text-base"><h2>Divisions</h2></CardTitle>
             <p className="text-xs text-muted-foreground mt-0.5 font-normal">
               Men's Singles A, Mixed Doubles, day two — each is its own real session, players register per division.
             </p>

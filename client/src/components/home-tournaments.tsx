@@ -76,7 +76,7 @@ export function HomeTournaments({ variant }: Props) {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               className={`inline-flex items-center gap-2 px-4 py-2 rounded-full mb-4 ${
-                isRecent ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary border border-primary/20"
+                isRecent ? "bg-primary text-foreground" : "bg-primary/10 text-primary border border-primary/20"
               }`}
             >
               <Trophy className="w-4 h-4" />
@@ -126,8 +126,8 @@ export function HomeTournaments({ variant }: Props) {
               <Button
                 className={`flex gap-2 font-bold rounded-full px-6 cursor-pointer ${
                   isRecent
-                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                    : "bg-primary text-primary-foreground hover:bg-primary/90"
+                    ? "bg-primary text-foreground hover:bg-primary/90"
+                    : "bg-primary text-foreground hover:bg-primary/90"
                 }`}
                 data-testid={`${sectionId}-view-all-button`}
               >
@@ -220,7 +220,7 @@ export function HomeTournaments({ variant }: Props) {
           className="mt-8 md:hidden"
         >
           <Link href="/tournaments">
-            <Button className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full cursor-pointer">
+            <Button className="w-full gap-2 bg-primary text-foreground hover:bg-primary/90 font-bold rounded-full cursor-pointer">
               View All <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>

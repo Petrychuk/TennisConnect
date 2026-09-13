@@ -470,6 +470,10 @@ export default function CoachProfile() {
         description: "The coach will receive your message shortly.",
       });
 
+      // GA4 "send_message" - same event as partners.tsx's player-contact
+      // modal, distinguished by context.
+      (window as any).gtag?.("event", "send_message", { context: "coach_contact" });
+
       setContactMessage("");
 
     } catch (error) {
@@ -1192,7 +1196,7 @@ export default function CoachProfile() {
                                   <span className="text-sm text-muted-foreground italic flex items-center h-8">No locations selected</span>
                                 )}
                                 {profile.locations.map((loc) => (
-                                  <Badge key={loc} variant="secondary" className="px-3 py-1.5 text-sm flex gap-2 bg-primary text-primary-foreground border-primary/20 hover:bg-primary/90">
+                                  <Badge key={loc} variant="secondary" className="px-3 py-1.5 text-sm flex gap-2 bg-primary text-foreground border-primary/20 hover:bg-primary/90">
                                     <MapPin className="w-3 h-3" />
                                     {loc}
                                     {isEditing && (
@@ -1223,7 +1227,7 @@ export default function CoachProfile() {
                                           className={cn(
                                             "cursor-pointer px-3 py-1.5 transition-all border-2", 
                                             isSelected 
-                                              ? "bg-primary text-primary-foreground border-primary hover:bg-primary/90" 
+                                              ? "bg-primary text-foreground border-primary hover:bg-primary/90" 
                                               : "bg-muted/30 border-muted-foreground/10 text-muted-foreground hover:border-primary/50 hover:text-primary hover:bg-primary/5"
                                           )}
                                           onClick={() => {
@@ -1633,7 +1637,7 @@ export default function CoachProfile() {
                                   <Button onClick={() =>
                                         selectedBuyItem && handleBuyRequest(selectedBuyItem.id)
                                       }
-                                    className="font-bold bg-primary text-primary-foreground"
+                                    className="font-bold bg-primary text-foreground"
                                   >
                                     Send Request
                                   </Button>
@@ -1661,9 +1665,11 @@ export default function CoachProfile() {
                       {!isOwnProfile && isAuthenticated && (
                       <Card>
                         <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
-                            <MessageCircle className="w-5 h-5 text-primary" />
-                            Get in Touch
+                          <CardTitle asChild className="flex items-center gap-2">
+                            <h2>
+                              <MessageCircle className="w-5 h-5 text-primary" />
+                              Get in Touch
+                            </h2>
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-6">
