@@ -91,7 +91,7 @@ export function OrganiserDashboard() {
   const profileHref = user ? `/${user.role}/${user.slug}` : "/";
   // Real name/avatar from the authenticated user - role/organization
   // fields stay mock for now since there's no backend for those yet.
-  const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null } : mockOrganiser;
+  const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null, isAdmin: user.isAdmin ?? false } : mockOrganiser;
 
   const mySessionsQuery = useQuery({
     queryKey: ["/api/organizer/sessions/mine"],
@@ -233,7 +233,13 @@ export function OrganiserDashboard() {
     return null;
   }
 
-  if (!user?.isOrganizer) {
+  // Admin's own sidebar section (see OrganiserSidebarNav) needs this
+  // page to actually be reachable for a pure admin account (isAdmin
+  // but not isOrganizer) too - the navbar's own "Admin Panel" link
+  // was the only other way in, and that's been removed now that admin
+  // functionality lives inside this same Hub instead of a separate
+  // page.
+  if (!user?.isOrganizer && !user?.isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4 bg-background">
         <Card className="max-w-md w-full shadow-sm">

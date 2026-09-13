@@ -24,7 +24,7 @@ test('ADMIN-002 Delete User - ordinary player succeeds', async ({ page }) => {
   // ---------- Open page ----------
 
   await page.goto('/admin');
-  await page.getByTestId('admin-tab-users').click();
+  await page.getByTestId('organiser-sidebar-nav-admin-users').click();
 
   const row = page.locator('tr', {
     has: page.getByText(player.email, { exact: true }),
@@ -85,7 +85,7 @@ test('ADMIN-007 Delete Organization unblocks deleting its owner', async ({ page 
   );
 
   await page.goto('/admin');
-  await page.getByTestId('admin-tab-users').click();
+  await page.getByTestId('organiser-sidebar-nav-admin-users').click();
 
   const row = page.locator('tr', { has: page.getByText(orgOwner.email, { exact: true }) });
   await expect(row).toBeVisible();
@@ -130,7 +130,7 @@ test('ADMIN-007 Delete Organization unblocks deleting its owner', async ({ page 
   );
 
   await page.goto('/admin');
-  await page.getByTestId('admin-tab-users').click();
+  await page.getByTestId('organiser-sidebar-nav-admin-users').click();
   await expect(row).toBeVisible();
 
   const deleteOrgButton = page.getByTestId(`delete-organization-${org.id}`);
@@ -210,7 +210,7 @@ test('ADMIN-003 Delete User - blocked with real reason when the organization has
   );
 
   await page.goto('/admin');
-  await page.getByTestId('admin-tab-users').click();
+  await page.getByTestId('organiser-sidebar-nav-admin-users').click();
 
   const row = page.locator('tr', {
     has: page.getByText(player.email, { exact: true }),
@@ -259,7 +259,7 @@ test('ADMIN-003 Delete User - blocked with real reason when the organization has
   );
 
   await page.goto('/admin');
-  await page.getByTestId('admin-tab-users').click();
+  await page.getByTestId('organiser-sidebar-nav-admin-users').click();
 
   await expect(row).toBeVisible();
 
@@ -313,7 +313,7 @@ test('ADMIN-008 Delete User - an empty organization is cascaded away, not a bloc
   );
 
   await page.goto('/admin');
-  await page.getByTestId('admin-tab-users').click();
+  await page.getByTestId('organiser-sidebar-nav-admin-users').click();
 
   const row = page.locator('tr', {
     has: page.getByText(player.email, { exact: true }),
@@ -349,7 +349,7 @@ test('ADMIN-008 Delete User - an empty organization is cascaded away, not a bloc
   );
 
   await page.goto('/admin');
-  await page.getByTestId('admin-tab-users').click();
+  await page.getByTestId('organiser-sidebar-nav-admin-users').click();
   await expect(row).toBeVisible();
 
   // ---------- No "Delete Organization" action needed for an org with no
