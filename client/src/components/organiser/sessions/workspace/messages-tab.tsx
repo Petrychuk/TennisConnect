@@ -1,17 +1,12 @@
 import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Megaphone, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { broadcastToSession } from "@/lib/api/organizer-sessions";
+import { broadcastToSession, getSessionUpdates } from "@/lib/api/organizer-sessions";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
-
-interface SessionUpdate {
-  id: string;
-  message: string;
-  timestamp: string;
-}
 
 interface MessagesTabProps {
   session: SessionListItem;
@@ -20,26 +15,28 @@ interface MessagesTabProps {
 // This is the session's own update feed - posting here sends a real
 // message (via the same messaging system every other real
 // notification in this app already uses) to everyone currently
-// registered for the session, not just a local-state mock. The list
-// below is a locally-kept record of what's been sent this session
-// (there's no dedicated "session updates" table to read back from -
-// the messages themselves live in each recipient's own inbox), reset
-// on page refresh.
+// registered for the session. The history below reads from a real
+// session_updates table (one row per broadcast, written alongside the
+// per-recipient messages themselves) - it survives a page refresh or
+// a fresh deploy now, unlike the local-only list this used to keep.
 export function MessagesTab({ session }: MessagesTabProps) {
   const { toast } = useToast();
-  const [updates, setUpdates] = useState<SessionUpdate[]>([]);
+  const queryClient = useQueryClient();
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+
+  const updatesQuery = useQuery({
+    queryKey: ["/api/organizer/sessions", session.id, "updates"],
+    queryFn: () => getSessionUpdates(session.id),
+  });
+  const updates = updatesQuery.data ?? [];
 
   const handlePost = async () => {
     if (!draft.trim() || sending) return;
     setSending(true);
     try {
       const { sentTo } = await broadcastToSession(session.id, draft.trim());
-      setUpdates((prev) => [
-        { id: `u-${Date.now()}`, message: draft.trim(), timestamp: new Date().toISOString() },
-        ...prev,
-      ]);
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.id, "updates"] });
       toast({
         title: sentTo > 0 ? "Update sent" : "Nothing to send yet",
         description:
@@ -73,7 +70,7 @@ export function MessagesTab({ session }: MessagesTabProps) {
         </CardContent>
       </Card>
 
-      {updates.length === 0 ? (
+      {!updatesQuery.isLoading && updates.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-8" data-testid="organiser-session-messages-empty">
           Updates you post here go straight to every registered player's inbox.
         </p>
@@ -88,7 +85,8 @@ export function MessagesTab({ session }: MessagesTabProps) {
                 <div className="min-w-0">
                   <p className="text-sm">{update.message}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {new Date(update.timestamp).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                    {new Date(update.createdAt).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                    {" · "}Sent to {update.sentTo} player{update.sentTo === 1 ? "" : "s"}
                   </p>
                 </div>
               </CardContent>

@@ -136,6 +136,20 @@ export async function broadcastToSession(id: string, message: string): Promise<{
   return res.json();
 }
 
+export interface SessionUpdateItem {
+  id: string;
+  sessionId: string;
+  organizerId: string;
+  message: string;
+  sentTo: number;
+  createdAt: string;
+}
+
+export async function getSessionUpdates(id: string): Promise<SessionUpdateItem[]> {
+  const res = await apiRequest("GET", `${BASE}/sessions/${id}/updates`);
+  return res.json();
+}
+
 export async function createSession(data: InsertSession): Promise<TennisSession> {
   const res = await apiRequest("POST", `${BASE}/sessions`, data);
   return res.json();

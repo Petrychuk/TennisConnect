@@ -8,6 +8,9 @@ import {
   clubFollows,
   clubFavorites,
   messages,
+  sessionUpdates,
+  type SessionUpdate,
+  type InsertSessionUpdate,
   passwordResetTokens,
   emailVerificationTokens,
   supportRequests,
@@ -219,6 +222,8 @@ export interface IStorage {
   markMessageAsRead(id: string): Promise<Message>;
   markConversationAsRead(conversationId: string, recipientId: string): Promise<void>;
   getConversationMessages(conversationId: string): Promise<MessageWithAvatar[]>;
+  createSessionUpdate(update: InsertSessionUpdate): Promise<SessionUpdate>;
+  getSessionUpdates(sessionId: string): Promise<SessionUpdate[]>;
   getUserConversations(userId: string): Promise<MessageWithAvatar[]>;
   findConversationBetweenUsers(userA: string, userB: string): Promise<MessageWithAvatar | undefined>;
   updateMessageConversation(messageId: string, conversationId: string): Promise<void>;
@@ -1919,6 +1924,19 @@ export class DatabaseStorage implements IStorage {
         eq(messages.conversationId, conversationId)
       )
       .orderBy(asc(messages.createdAt));
+  }
+
+  async createSessionUpdate(update: InsertSessionUpdate): Promise<SessionUpdate> {
+    const [row] = await db.insert(sessionUpdates).values(update).returning();
+    return row;
+  }
+
+  async getSessionUpdates(sessionId: string): Promise<SessionUpdate[]> {
+    return db
+      .select()
+      .from(sessionUpdates)
+      .where(eq(sessionUpdates.sessionId, sessionId))
+      .orderBy(desc(sessionUpdates.createdAt));
   }
 
   async updateMessageConversation(

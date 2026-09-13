@@ -919,6 +919,35 @@ export const messages = pgTable("messages", {
   conversationIdIdx: index("messages_conversation_id_idx").on(table.conversationId),
 }));
 
+// The session workspace's own "Messages" tab needs a real record of
+// what's been broadcast to a session's registered players, separate
+// from the messages table itself - sendMessageBetween() writes one row
+// PER RECIPIENT there (by design, so it lands in each person's own
+// inbox/conversation thread), which makes it awkward to read back as
+// "the history of updates posted to this session" without
+// deduplicating across recipients. One row per broadcast here instead
+// - the tab reads from this table directly, and it survives a page
+// refresh or a fresh deploy instead of resetting to empty (the gap
+// that prompted this: the previous version kept "what's been posted"
+// in local component state only).
+export const sessionUpdates = pgTable("session_updates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => tennisSessions.id),
+  organizerId: varchar("organizer_id").notNull().references(() => users.id),
+  message: text("message").notNull(),
+  sentTo: integer("sent_to").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  sessionIdIdx: index("session_updates_session_id_idx").on(table.sessionId),
+}));
+
+export const insertSessionUpdateSchema = createInsertSchema(sessionUpdates).omit({
+  id: true,
+  createdAt: true,
+});
+export type SessionUpdate = typeof sessionUpdates.$inferSelect;
+export type InsertSessionUpdate = z.infer<typeof insertSessionUpdateSchema>;
+
 // A player's relationship to an organiser's community - separate from
 // any specific session's registrations, and separate from
 // organizationMembers (which is about staff/ownership roles, not
