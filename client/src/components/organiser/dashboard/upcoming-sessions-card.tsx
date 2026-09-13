@@ -10,6 +10,7 @@ interface UpcomingSessionsCardProps {
   sessions: MockSession[];
   className?: string;
   onCreateSession?: () => void;
+  onManage?: (sessionId: string) => void;
 }
 
 function sessionStatusLabel(session: MockSession) {
@@ -19,13 +20,20 @@ function sessionStatusLabel(session: MockSession) {
   return "Registration Open";
 }
 
-export function UpcomingSessionsCard({ sessions, className, onCreateSession }: UpcomingSessionsCardProps) {
+function spotsLeftLabel(session: MockSession): string | null {
+  if (!session.maxParticipants) return null;
+  const left = session.maxParticipants - session.registeredCount;
+  if (left <= 0) return null;
+  return `${left} spot${left === 1 ? "" : "s"} left`;
+}
+
+export function UpcomingSessionsCard({ sessions, className, onCreateSession, onManage }: UpcomingSessionsCardProps) {
   return (
     <Card className={cn("shadow-sm hover:shadow-md transition-shadow", className)} data-testid="organiser-upcoming-sessions-card">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle asChild className="text-base"><h2>Upcoming Sessions</h2></CardTitle>
         <Link
-          href="/organiser/sessions"
+          href="/organiser/sessions?bucket=upcoming"
           className="text-xs font-medium text-primary-text flex items-center gap-0.5 cursor-pointer hover:underline"
           data-testid="organiser-upcoming-view-all"
         >
@@ -45,40 +53,54 @@ export function UpcomingSessionsCard({ sessions, className, onCreateSession }: U
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {sessions.map((session) => {
               const isFullOrWaiting = session.waitingCount > 0;
+              const spotsLeft = spotsLeftLabel(session);
               return (
-                <Link
+                <div
                   key={session.id}
-                  href={`/organiser/sessions/${session.id}`}
                   className="rounded-xl border border-border p-3 hover:border-primary/40 hover:bg-accent/40 transition-colors"
                   data-testid={`organiser-upcoming-session-${session.id}`}
                 >
-                  <p className="font-semibold text-sm truncate">{session.title}</p>
-                  <div className="text-xs text-muted-foreground mt-1.5 space-y-1">
-                    <span className="flex items-center gap-1.5">
-                      <Calendar className="w-3 h-3" />
-                      {formatInTimeZone(session.startAt, session.timeZone, {
-                        day: "numeric",
-                        month: "short",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <MapPin className="w-3 h-3" />
-                      {session.location}
-                    </span>
-                  </div>
-                  <p className="text-xs font-medium mt-2">
-                    {session.registeredCount}
-                    {session.maxParticipants ? ` / ${session.maxParticipants} players` : " players"}
-                  </p>
-                  <p className={cn("text-xs font-medium", isFullOrWaiting ? "text-destructive" : "text-primary")}>
-                    {sessionStatusLabel(session)}
-                  </p>
-                </Link>
+                  <Link href={`/organiser/sessions/${session.id}`} data-testid={`organiser-upcoming-session-${session.id}-link`}>
+                    <p className="font-semibold text-sm truncate">{session.title}</p>
+                    <div className="text-xs text-muted-foreground mt-1.5 space-y-1">
+                      <span className="flex items-center gap-1.5">
+                        <Calendar className="w-3 h-3" />
+                        {formatInTimeZone(session.startAt, session.timeZone, {
+                          day: "numeric",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <MapPin className="w-3 h-3" />
+                        {session.location}
+                      </span>
+                    </div>
+                    <p className="text-xs font-medium mt-2">
+                      {session.registeredCount}
+                      {session.maxParticipants ? ` / ${session.maxParticipants} players` : " players"}
+                      {spotsLeft ? ` · ${spotsLeft}` : ""}
+                    </p>
+                    <p className={cn("text-xs font-medium", isFullOrWaiting ? "text-destructive" : "text-primary")}>
+                      {sessionStatusLabel(session)}
+                    </p>
+                  </Link>
+                  {onManage && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full mt-2.5"
+                      onClick={() => onManage(session.id)}
+                      data-testid={`organiser-upcoming-session-${session.id}-manage`}
+                    >
+                      Manage
+                    </Button>
+                  )}
+                </div>
               );
             })}
           </div>

@@ -14,7 +14,6 @@ import { DashboardHeader } from "./dashboard-header";
 import { DashboardHero } from "./dashboard-hero";
 import { LiveTodayCard } from "./live-today-card";
 import { UpcomingSessionsCard } from "./upcoming-sessions-card";
-import { SeasonProgressCard } from "./season-progress-card";
 import { QuickActionsCard } from "./quick-actions-card";
 import { RecentActivityCard } from "./recent-activity-card";
 import { StatisticsCard } from "./statistics-card";
@@ -31,13 +30,9 @@ import type { TennisSession, SessionWithDetails } from "@shared/schema";
 import {
   mockOrganiser,
   mockStatStrip,
-  mockLiveSession,
-  mockSeason,
-  mockLeaderboard,
-  mockQuickAnalytics,
-  mockHighlight,
   type MockSession,
   type StatStripItem,
+  type QuickStat,
 } from "@/lib/organiser-hub-mock-data";
 
 // Real sessions take priority everywhere they're available. Live
@@ -143,12 +138,14 @@ export function OrganiserDashboard() {
       )
     : null;
 
-  // Real only, capped at 6 - a full "everything upcoming" list already
-  // exists at /organiser/sessions (the "View all" link). Backend already
-  // excludes anything not "published" (draft/archived/completed/live
-  // never show up here - see getUpcomingPublishedSessionsByOrganization).
+  // Real only, capped at 4 - enough to feel useful without overflowing
+  // or unbalancing the grid next to Quick Actions in the same row. A
+  // full "everything upcoming" list already exists at /organiser/sessions
+  // (the "View all" link). Backend already excludes anything not
+  // "published" (draft/archived/completed/live never show up here -
+  // see getUpcomingPublishedSessionsByOrganization).
   const upcomingSessions: MockSession[] = useMemo(
-    () => (orgQuery.data?.upcomingSessions ?? []).slice(0, 6).map((s) => toMockSession(s)),
+    () => (orgQuery.data?.upcomingSessions ?? []).slice(0, 4).map((s) => toMockSession(s)),
     [orgQuery.data]
   );
 
@@ -162,25 +159,61 @@ export function OrganiserDashboard() {
     }).length;
   }, [mySessionsQuery.data]);
 
+  // Real, computed directly from mySessionsQuery (which already carries
+  // registeredCount/maxParticipants per session) rather than a mock -
+  // deliberately no week-over-week delta (see QuickStat's own comment):
+  // that needs two periods of history, and a plain honest number beats
+  // a fabricated trend arrow. Only sessions that actually happened
+  // (live/completed/archived) count - draft/pending_review haven't
+  // happened, and a cancelled/rejected session was never a real outcome.
+  const quickAnalytics: QuickStat[] = useMemo(() => {
+    if (!mySessionsQuery.data) return [];
+    const now = Date.now();
+    const in7Days = now - 7 * 24 * 60 * 60 * 1000;
+    const recent = mySessionsQuery.data.filter((s) => {
+      const start = new Date(s.startAt).getTime();
+      return ["live", "completed", "archived"].includes(s.status) && start >= in7Days && start <= now;
+    });
+    if (recent.length === 0) return [];
+
+    const avgPlayers = recent.reduce((sum, s) => sum + s.registeredCount, 0) / recent.length;
+    const capacityRates = recent
+      .filter((s) => !!s.maxParticipants)
+      .map((s) => s.registeredCount / s.maxParticipants!);
+    const avgCapacity = capacityRates.length > 0 ? (capacityRates.reduce((a, b) => a + b, 0) / capacityRates.length) * 100 : null;
+
+    const stats: QuickStat[] = [
+      { key: "avg-players", label: "Avg. Players", value: avgPlayers.toFixed(1) },
+    ];
+    if (avgCapacity !== null) {
+      stats.push({ key: "avg-capacity", label: "Avg. Capacity", value: `${Math.round(avgCapacity)}%` });
+    }
+    return stats;
+  }, [mySessionsQuery.data]);
+
   // Every stat is real now once its query has loaded - dashboardStatsQuery
-  // covers players/attendance/revenue in one round trip (see
+  // covers players/attendance in one round trip (see
   // getOrganizerDashboardStats), live/upcoming come from mySessionsQuery.
+  // href is only set where there's a real page to land on - Attendance
+  // has none yet (no Reports page exists), so it stays non-clickable
+  // rather than linking to somewhere that doesn't exist.
   const statStrip: StatStripItem[] = mockStatStrip.map((stat) => {
     if (stat.key === "live" && mySessionsQuery.data) {
-      const liveCount = mySessionsQuery.data.filter((s) => s.status === "live").length;
-      return { ...stat, value: String(liveCount) };
+      const liveSessions = mySessionsQuery.data.filter((s) => s.status === "live");
+      return {
+        ...stat,
+        value: String(liveSessions.length),
+        href: liveSessions.length === 1 ? `/organiser/sessions/${liveSessions[0].id}/live` : "/organiser/sessions?bucket=live",
+      };
     }
     if (stat.key === "upcoming" && upcomingCount7Days !== null) {
-      return { ...stat, value: String(upcomingCount7Days) };
+      return { ...stat, value: String(upcomingCount7Days), href: "/organiser/sessions?bucket=upcoming" };
     }
     if (stat.key === "players" && dashboardStatsQuery.data) {
-      return { ...stat, value: String(dashboardStatsQuery.data.activePlayers) };
+      return { ...stat, value: String(dashboardStatsQuery.data.activePlayers), href: "/organiser/players" };
     }
     if (stat.key === "attendance" && dashboardStatsQuery.data) {
       return { ...stat, value: `${dashboardStatsQuery.data.attendancePercent}%` };
-    }
-    if (stat.key === "revenue" && dashboardStatsQuery.data) {
-      return { ...stat, value: `$${dashboardStatsQuery.data.revenueThisWeek.toFixed(0)}` };
     }
     return stat;
   });
@@ -258,34 +291,29 @@ export function OrganiserDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-6 xl:grid-cols-12 gap-6">
                 <LiveTodayCard
                   session={liveSession}
+                  nextUpcoming={upcomingSessions[0] ?? null}
                   className="md:col-span-6 xl:col-span-8"
                   onEnterLive={() => liveSession && setLocation(`/organiser/sessions/${liveSession.id}/live`)}
+                  onManageCheckIn={(id) => setLocation(`/organiser/sessions/${id}/live`)}
+                  onOpenSession={(id) => setLocation(`/organiser/sessions/${id}`)}
                 />
                 <RecentActivityCard items={dashboardActivityQuery.data ?? []} className="md:col-span-6 xl:col-span-4" />
 
                 <UpcomingSessionsCard
                   sessions={upcomingSessions}
                   onCreateSession={() => setLocation("/organiser/sessions/new")}
+                  onManage={(id) => setLocation(`/organiser/sessions/${id}`)}
                   className="md:col-span-6 xl:col-span-8"
                 />
-                <SeasonProgressCard
-                  seasonLabel={mockSeason.label}
-                  weekLabel={mockSeason.weekLabel}
-                  progressPercent={mockSeason.progressPercent}
-                  leaderboard={mockLeaderboard}
+                <QuickActionsCard
+                  organizationSlug={orgQuery.data?.slug || organiser.organizationSlug}
+                  upcomingSessions={upcomingSessions}
+                  onCreateSession={() => setLocation("/organiser/sessions/new")}
+                  onCheckIn={(id) => setLocation(`/organiser/sessions/${id}/live`)}
                   className="md:col-span-6 xl:col-span-4"
                 />
 
-                <QuickActionsCard
-                  organizationSlug={orgQuery.data?.slug || organiser.organizationSlug}
-                  onCreateSession={() => setLocation("/organiser/sessions/new")}
-                  className="md:col-span-3 xl:col-span-4"
-                />
-                <StatisticsCard
-                  stats={mockQuickAnalytics}
-                  highlight={mockHighlight.message}
-                  className="md:col-span-3 xl:col-span-8"
-                />
+                <StatisticsCard stats={quickAnalytics} className="md:col-span-6 xl:col-span-12" />
               </div>
             </div>
           </>

@@ -1,3 +1,4 @@
+import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UserPlus, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -30,6 +31,12 @@ function timeAgo(iso: string) {
 // "View all" was previously a disabled/"coming soon" link - removed
 // entirely rather than shown-but-unclickable, since there's not enough
 // activity yet for a fuller view to be worth linking to.
+//
+// Each row links to the session it happened in (Players tab, where the
+// organizer would actually act on it) - a full per-player profile link
+// would need slug/role joined in too, which the backend doesn't fetch
+// for this feed yet; scoped to the session for now rather than half-
+// building player-profile linking without that data.
 export function RecentActivityCard({ items, className }: RecentActivityCardProps) {
   return (
     <Card className={cn("shadow-sm hover:shadow-md transition-shadow", className)} data-testid="organiser-recent-activity-card">
@@ -46,14 +53,19 @@ export function RecentActivityCard({ items, className }: RecentActivityCardProps
             {items.map((item) => {
               const Icon = TYPE_ICON[item.type];
               return (
-                <li key={item.id} className="flex items-start gap-3" data-testid={`organiser-activity-${item.id}`}>
-                  <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
-                    <Icon className="w-3.5 h-3.5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm leading-snug">{activityMessage(item)}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{timeAgo(item.at)}</p>
-                  </div>
+                <li key={item.id} data-testid={`organiser-activity-${item.id}`}>
+                  <Link
+                    href={`/organiser/sessions/${item.sessionId}?tab=players`}
+                    className="flex items-start gap-3 -m-1.5 p-1.5 rounded-lg hover:bg-accent/40 transition-colors"
+                  >
+                    <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                      <Icon className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm leading-snug">{activityMessage(item)}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{timeAgo(item.at)}</p>
+                    </div>
+                  </Link>
                 </li>
               );
             })}

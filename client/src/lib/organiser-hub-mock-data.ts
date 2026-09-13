@@ -44,6 +44,11 @@ export interface StatStripItem {
   label: string;
   sublabel: string;
   value: string;
+  // Where this card navigates on click - omitted when there's genuinely
+  // nowhere real to send the organiser yet (e.g. Attendance, until a
+  // Reports page exists) rather than linking to a page that doesn't
+  // exist.
+  href?: string;
 }
 
 export interface LeaderboardEntry {
@@ -64,8 +69,12 @@ export interface QuickStat {
   key: string;
   label: string;
   value: string;
-  deltaLabel: string;
-  deltaDirection: "up" | "down";
+  // Both optional - a real week-over-week comparison needs two periods
+  // of data, and it's better to show a plain, honest current-period
+  // number with no trend than to fabricate a delta that isn't backed
+  // by anything.
+  deltaLabel?: string;
+  deltaDirection?: "up" | "down";
 }
 
 export const mockOrganiser: OrganiserUser = {
@@ -79,9 +88,8 @@ export const mockOrganiser: OrganiserUser = {
 export const mockStatStrip: StatStripItem[] = [
   { key: "live", label: "Live Session", sublabel: "Today", value: "1" },
   { key: "upcoming", label: "Upcoming Sessions", sublabel: "Next 7 days", value: "3" },
-  { key: "players", label: "Active Players", sublabel: "In your sessions", value: "87" },
+  { key: "players", label: "Active Players", sublabel: "This season", value: "87" },
   { key: "attendance", label: "Attendance", sublabel: "This season", value: "91%" },
-  { key: "revenue", label: "Revenue", sublabel: "This week", value: "$540" },
 ];
 
 export const mockLiveSession: MockSession = {

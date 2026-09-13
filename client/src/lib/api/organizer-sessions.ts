@@ -47,7 +47,7 @@ export async function ensureMyOrganization(fallbackName: string): Promise<Organi
 
 // ===== Sessions (organiser's own) =====
 
-export async function getMySessions(): Promise<TennisSession[]> {
+export async function getMySessions(): Promise<SessionWithDetails[]> {
   const res = await apiRequest("GET", `${BASE}/sessions/mine`);
   return res.json();
 }

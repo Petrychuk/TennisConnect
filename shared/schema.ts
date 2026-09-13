@@ -726,6 +726,7 @@ export type ActivityFeedItem = {
   id: string; // registrationId - type suffix, so join+check-in on the same registration don't collide
   type: "joined" | "checked_in";
   userName: string;
+  sessionId: string;
   sessionTitle: string;
   at: string; // ISO
 };
