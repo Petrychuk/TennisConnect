@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS "session_updates" (
 );
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "session_updates" ADD CONSTRAINT "session_updates_session_id_tennis_sessions_id_fk" FOREIGN KEY ("session_id") REFERENCES "tennis_sessions"("id") ON DELETE no action ON UPDATE no action;
+ ALTER TABLE "session_updates" ADD CONSTRAINT "session_updates_session_id_sessions_id_fk" FOREIGN KEY ("session_id") REFERENCES "sessions"("id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;

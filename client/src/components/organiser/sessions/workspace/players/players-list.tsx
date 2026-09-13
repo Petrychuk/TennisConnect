@@ -49,14 +49,14 @@ export function PlayersList({ players, onCheckIn, onRemove, onMoveToWaiting, onV
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <p className="font-medium text-sm truncate flex items-center gap-1.5">
+              <div className="font-medium text-sm truncate flex items-center gap-1.5">
                 {player.name}
                 {player.isReal && (
                   <Badge className="bg-primary/10 text-primary" data-testid={`organiser-players-list-item-${player.id}-real`}>
                     Real
                   </Badge>
                 )}
-              </p>
+              </div>
               <div className="flex items-center gap-1.5">
                 <span className="text-xs text-muted-foreground">{player.level.toFixed(1)}</span>
                 <Badge className={LEVEL_BADGE_STYLE[player.levelLabel]}>{player.levelLabel}</Badge>
