@@ -1000,7 +1000,28 @@ router.post("/sessions/:id/broadcast", requireAuth, requireOrganizer, requireOwn
       )
     );
 
+    // A real, queryable record of this specific broadcast - separate
+    // from the per-recipient rows sendMessageBetween just wrote to the
+    // messages table - so the Messages tab's own history survives a
+    // page refresh instead of resetting to whatever's still in local
+    // component state.
+    await storage.createSessionUpdate({
+      sessionId: session.id,
+      organizerId: organizer.id,
+      message,
+      sentTo: activeRecipients.length,
+    });
+
     res.status(201).json({ sentTo: activeRecipients.length });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/sessions/:id/updates", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+  try {
+    const updates = await storage.getSessionUpdates(req.params.id);
+    res.json(updates);
   } catch (error) {
     next(error);
   }
