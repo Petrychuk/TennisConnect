@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from "react";
 import Error500 from "@/pages/error-500";
+import { TennisLoader } from "@/components/ui/tennisLoader";
 
 interface Props {
   children: ReactNode;
@@ -7,6 +8,7 @@ interface Props {
 
 interface State {
   hasError: boolean;
+  reloading: boolean;
 }
 
 const RELOAD_FLAG_KEY = "tc_chunk_reload_attempted";
@@ -26,10 +28,10 @@ function isChunkLoadError(error: unknown): boolean {
 }
 
 export class ChunkErrorBoundary extends Component<Props, State> {
-  state: State = { hasError: false };
+  state: State = { hasError: false, reloading: false };
 
   static getDerivedStateFromError(): State {
-    return { hasError: true };
+    return { hasError: true, reloading: false };
   }
 
   componentDidCatch(error: unknown) {
@@ -48,10 +50,27 @@ export class ChunkErrorBoundary extends Component<Props, State> {
       // fall through to the manual-reload fallback UI instead.
       return;
     }
+    // The reload itself takes a real moment (a network round trip for
+    // the fresh index.html) - render() below still runs in that gap, so
+    // without this flag the person briefly sees the full 500 page for a
+    // situation that's actually already fixing itself, which reads as
+    // "the site is broken" rather than the harmless, self-healing stale-
+    // deploy hiccup it actually is.
+    this.setState({ reloading: true });
     window.location.reload();
   }
 
   render() {
+    if (this.state.reloading) {
+      // Same branded bouncing-ball loader used across the rest of the
+      // site (profile pages, auth, session pages) instead of a generic
+      // spinner - statically imported here (not React.lazy), and its
+      // own CSS is loaded globally from main.tsx, so it's guaranteed
+      // available even though what got us here was a chunk fetch
+      // failing - a fallback that itself needed a fresh chunk could hit
+      // the exact same problem it's meant to recover from.
+      return <TennisLoader text="Serving up the latest update…" />;
+    }
     if (this.state.hasError) {
       // Statically imported (not lazy) on purpose: if what got us here was
       // a failed chunk fetch, a fallback that itself needs to fetch
