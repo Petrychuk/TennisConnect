@@ -385,7 +385,39 @@ router.put("/sessions/:id", requireAuth, requireOrganizer, requireOwnSession, as
     if (!parsed.success) {
       return res.status(400).json({ message: "Invalid input", errors: parsed.error });
     }
+    const before = (req as any).session_ as TennisSession;
     const updated = await storage.updateSession(req.params.id, parsed.data);
+
+    // Only startAt actually changing means a real reschedule - a
+    // no-op PUT (saving the form without touching the date/time) or a
+    // change to some other field shouldn't spam everyone who joined.
+    // endAt moving on its own (session got longer/shorter, same start)
+    // isn't included - that doesn't change when to show up, which is
+    // the actual decision a "when's it now" notice needs to inform.
+    const oldStart = new Date(before.startAt).getTime();
+    const newStart = new Date(updated.startAt).getTime();
+    if (oldStart !== newStart) {
+      const organizer = await storage.getUser((req.user as any).id);
+      if (organizer) {
+        const newWhen = new Date(updated.startAt).toLocaleString("en-US", {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+          timeZone: updated.timeZone,
+        });
+        await notifyActiveRegistrants(
+          before,
+          organizer,
+          `Rescheduled: ${updated.title}`,
+          `${organizer.name} has rescheduled "${updated.title}" to ${newWhen}.`
+        );
+      }
+    }
+
     res.json(updated);
   } catch (error) {
     next(error);
@@ -442,9 +474,45 @@ router.post("/sessions/:id/publish", requireAuth, requireOrganizer, requireOwnSe
   }
 });
 
+// Shared by the cancel route and the reschedule-detection below - both
+// need "tell everyone actually registered", just with a different
+// message. Same fetch-registrations-filter-active-send-to-each shape
+// the existing manual /broadcast route already used (extracted here
+// rather than duplicated a third time).
+async function notifyActiveRegistrants(
+  session: TennisSession,
+  organizer: { id: string; name: string; role: string; slug: string },
+  subject: string,
+  message: string
+) {
+  const registrationsList = await storage.getRegistrationsForSession(session.id);
+  const activeRecipients = registrationsList.filter((r) => r.status !== "cancelled");
+  await Promise.all(
+    activeRecipients.map((r) =>
+      sendMessageBetween(organizer as any, r.userId, r.userRole, subject, message)
+    )
+  );
+}
+
 router.post("/sessions/:id/cancel", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
   try {
-    const session = await storage.cancelSession(req.params.id);
+    const thisSession = (req as any).session_ as TennisSession;
+    const [session, organizer] = await Promise.all([
+      storage.cancelSession(req.params.id),
+      storage.getUser((req.user as any).id),
+    ]);
+    // Whoever had already joined needs to hear this directly, not
+    // discover it by the session quietly vanishing from their Upcoming
+    // Sessions - a cancellation notice is exactly what a real organizer
+    // would send by hand if this route didn't do it for them.
+    if (organizer) {
+      await notifyActiveRegistrants(
+        thisSession,
+        organizer,
+        `Cancelled: ${thisSession.title}`,
+        `${organizer.name} has cancelled "${thisSession.title}". We're sorry for the inconvenience.`
+      );
+    }
     res.json(session);
   } catch (error) {
     next(error);
