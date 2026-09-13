@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Tag, Shuffle, Layers, Repeat, MapPinned, Users, ListPlus, DollarSign, UserCog, CalendarPlus } from "lucide-react";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 import { getSessionDetail } from "@/lib/organiser-sessions-mock-data";
+import { formatInTimeZone } from "@/lib/timezone";
 
 interface SessionDetailsCardProps {
   session: SessionListItem;
@@ -63,7 +64,7 @@ export function SessionDetailsCard({ session, isDivision }: SessionDetailsCardPr
     {
       icon: CalendarPlus,
       label: "Created",
-      value: new Date(detail.createdAt).toLocaleString(undefined, {
+      value: formatInTimeZone(detail.createdAt, session.timeZone, {
         day: "numeric",
         month: "short",
         year: "numeric",

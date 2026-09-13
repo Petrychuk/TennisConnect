@@ -11,6 +11,7 @@ import {
 import { MoreHorizontal, ArrowUpDown, Trash2, MessageSquare, UserCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { SessionPlayer } from "@/lib/organiser-sessions-mock-data";
+import { formatInTimeZone } from "@/lib/timezone";
 
 interface PlayersListProps {
   players: SessionPlayer[];
@@ -18,6 +19,10 @@ interface PlayersListProps {
   onRemove?: (player: SessionPlayer) => void;
   onMoveToWaiting?: (player: SessionPlayer) => void;
   onViewProfile?: (player: SessionPlayer) => void;
+  // See players-table.tsx's own comment - without this, Check-in time
+  // showed the organizer's own browser's local time instead of the
+  // venue's.
+  timeZone: string;
 }
 
 const LEVEL_BADGE_STYLE: Record<SessionPlayer["levelLabel"], string> = {
@@ -27,7 +32,7 @@ const LEVEL_BADGE_STYLE: Record<SessionPlayer["levelLabel"], string> = {
   Social: "bg-muted text-muted-foreground",
 };
 
-export function PlayersList({ players, onCheckIn, onRemove, onMoveToWaiting, onViewProfile }: PlayersListProps) {
+export function PlayersList({ players, onCheckIn, onRemove, onMoveToWaiting, onViewProfile, timeZone }: PlayersListProps) {
   const { toast } = useToast();
   const notify = (action: string, player: SessionPlayer) =>
     toast({ title: `${action} — coming soon`, description: `Would apply to ${player.name}.` });
@@ -62,7 +67,7 @@ export function PlayersList({ players, onCheckIn, onRemove, onMoveToWaiting, onV
               (player.checkedIn && player.checkInTime ? (
                 <span className="flex items-center gap-1 text-primary text-xs font-medium shrink-0">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                  {new Date(player.checkInTime).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+                  {formatInTimeZone(player.checkInTime, timeZone, { hour: "numeric", minute: "2-digit" })}
                 </span>
               ) : (
                 <Button size="sm" variant="outline" className="shrink-0" onClick={() => onCheckIn?.(player)} data-testid={`organiser-players-list-item-${player.id}-checkin`}>

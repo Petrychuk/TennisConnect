@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, ArrowUpDown, Trash2, MessageSquare, UserCircle } from "lucide-react";
+import { formatInTimeZone } from "@/lib/timezone";
 import { useToast } from "@/hooks/use-toast";
 import type { SessionPlayer } from "@/lib/organiser-sessions-mock-data";
 
@@ -22,6 +23,12 @@ interface PlayersTableProps {
   onViewProfile?: (player: SessionPlayer) => void;
   showGroupColumn?: boolean;
   showJoinedColumn?: boolean;
+  // The venue's own zone (session.timeZone) - Joined/Check-in times are
+  // stored as absolute instants, and displaying them without this
+  // showed the ORGANIZER'S OWN BROWSER's local time instead of the
+  // venue's, silently disagreeing with every other real player who
+  // might be checking this from a different timezone.
+  timeZone: string;
 }
 
 const LEVEL_BADGE_STYLE: Record<SessionPlayer["levelLabel"], string> = {
@@ -39,7 +46,7 @@ const STATUS_BADGE_STYLE: Record<SessionPlayer["status"], string> = {
   "no-response": "bg-muted text-muted-foreground",
 };
 
-export function PlayersTable({ players, onCheckIn, onRemove, onMoveToWaiting, onViewProfile, showGroupColumn = false, showJoinedColumn = true }: PlayersTableProps) {
+export function PlayersTable({ players, onCheckIn, onRemove, onMoveToWaiting, onViewProfile, showGroupColumn = false, showJoinedColumn = true, timeZone }: PlayersTableProps) {
   const { toast } = useToast();
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -133,7 +140,7 @@ export function PlayersTable({ players, onCheckIn, onRemove, onMoveToWaiting, on
                 ) : player.checkedIn && player.checkInTime ? (
                   <span className="flex items-center gap-1 text-primary font-medium">
                     <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                    {new Date(player.checkInTime).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+                    {formatInTimeZone(player.checkInTime, timeZone, { hour: "numeric", minute: "2-digit" })}
                   </span>
                 ) : (
                   <Button
@@ -148,7 +155,7 @@ export function PlayersTable({ players, onCheckIn, onRemove, onMoveToWaiting, on
               </TableCell>
               {showJoinedColumn && (
                 <TableCell className="text-muted-foreground text-sm">
-                  {new Date(player.joinedAt).toLocaleString(undefined, { hour: "numeric", minute: "2-digit" })}
+                  {formatInTimeZone(player.joinedAt, timeZone, { hour: "numeric", minute: "2-digit" })}
                 </TableCell>
               )}
               <TableCell className="text-right">

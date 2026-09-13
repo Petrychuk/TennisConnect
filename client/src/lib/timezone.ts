@@ -91,7 +91,12 @@ export function zonedTimeToUtc(dateStr: string, timeStr: string, timeZone: strin
  */
 export function formatInTimeZone(
   date: Date | string,
-  timeZone: string,
+  // Optional so a caller with no single relevant venue (e.g. a list
+  // spanning many sessions/timezones at once) can omit it - `{
+  // ...options, timeZone: undefined }` is equivalent to timeZone never
+  // being in the options object at all, so toLocaleString correctly
+  // falls back to the browser's own local time rather than throwing.
+  timeZone: string | undefined,
   options: Intl.DateTimeFormatOptions
 ): string {
   const d = typeof date === "string" ? new Date(date) : date;

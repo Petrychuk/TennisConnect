@@ -9,6 +9,20 @@ interface Step4ReviewPublishProps {
   draft: NewSessionDraft;
 }
 
+// A bare "yyyy-mm-dd" string has no time-of-day, so there's no
+// meaningful venue timezone to format it "in" - the actual bug this
+// replaces was routing it through `new Date(str).toLocaleDateString()`
+// anyway, which parses a date-only ISO string as UTC midnight and then
+// renders using the ORGANIZER'S OWN BROWSER's local timezone; anyone
+// west of UTC could see the day before what was actually picked.
+// Parsing the string's own digits directly sidesteps both timezones
+// entirely - this is just "what date did the field say", nothing more.
+function formatDateOnly(yyyyMmDd: string): string {
+  const [, month, day] = yyyyMmDd.split("-").map(Number);
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${day} ${MONTHS[month - 1]}`;
+}
+
 export function Step4ReviewPublish({ draft }: Step4ReviewPublishProps) {
   const typeLabel = SESSION_TYPE_OPTIONS.find((t) => t.key === draft.type)?.label ?? "Session";
   // Weekday needs the venue's own timezone, not the organizer's browser -
@@ -78,7 +92,7 @@ export function Step4ReviewPublish({ draft }: Step4ReviewPublishProps) {
               <div>
                 <p className="text-muted-foreground text-xs">Registration</p>
                 <p className="font-medium">
-                  {draft.registrationOpens === new Date().toISOString().slice(0, 10) ? "Open Now" : `Opens ${new Date(draft.registrationOpens).toLocaleDateString(undefined, { day: "numeric", month: "short" })}`}
+                  {draft.registrationOpens === new Date().toISOString().slice(0, 10) ? "Open Now" : `Opens ${formatDateOnly(draft.registrationOpens)}`}
                 </p>
               </div>
             </div>

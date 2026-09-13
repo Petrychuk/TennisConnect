@@ -161,10 +161,10 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
           onInvitePlayers={handleInvitePlayers}
           showAdvancedFilters
         />
-        <PlayersTable players={visible} onCheckIn={handleCheckIn} onRemove={handleRemove} onMoveToWaiting={handleMoveToWaiting} onViewProfile={handleViewProfile} />
+        <PlayersTable players={visible} onCheckIn={handleCheckIn} onRemove={handleRemove} onMoveToWaiting={handleMoveToWaiting} onViewProfile={handleViewProfile} timeZone={session.timeZone} />
         {paginationText}
         <div className="grid grid-cols-2 gap-6">
-          <WaitingListCard players={buckets.waiting} />
+          <WaitingListCard players={buckets.waiting} timeZone={session.timeZone} />
           <InvitePlayersCard sessionId={session.id} />
         </div>
       </div>
@@ -174,9 +174,9 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
         <PlayersStatStrip session={session} players={allPlayers} />
         {bucketTabsList}
         <PlayersToolbar search={search} onSearchChange={setSearch} onCheckInAll={handleCheckInAll} checkInAllLoading={checkingInAll} onInvitePlayers={handleInvitePlayers} />
-        <PlayersList players={visible} onCheckIn={handleCheckIn} onRemove={handleRemove} onMoveToWaiting={handleMoveToWaiting} onViewProfile={handleViewProfile} />
+        <PlayersList players={visible} onCheckIn={handleCheckIn} onRemove={handleRemove} onMoveToWaiting={handleMoveToWaiting} onViewProfile={handleViewProfile} timeZone={session.timeZone} />
         {paginationText}
-        <WaitingListCard players={buckets.waiting} />
+        <WaitingListCard players={buckets.waiting} timeZone={session.timeZone} />
         <CheckInSummaryCard players={allPlayers} />
         <PlayersQuickActionsCard lastLabel="Manage Groups" lastIcon={Users2} onMore={() => setActionsSheetOpen(true)} />
       </div>
@@ -186,9 +186,9 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
         <PlayersStatStrip session={session} players={allPlayers} />
         {bucketTabsList}
         <PlayersToolbar search={search} onSearchChange={setSearch} onCheckInAll={handleCheckInAll} checkInAllLoading={checkingInAll} onInvitePlayers={handleInvitePlayers} />
-        <PlayersList players={visible} onCheckIn={handleCheckIn} onRemove={handleRemove} onMoveToWaiting={handleMoveToWaiting} onViewProfile={handleViewProfile} />
+        <PlayersList players={visible} onCheckIn={handleCheckIn} onRemove={handleRemove} onMoveToWaiting={handleMoveToWaiting} onViewProfile={handleViewProfile} timeZone={session.timeZone} />
         {paginationText}
-        <WaitingListCard players={buckets.waiting} />
+        <WaitingListCard players={buckets.waiting} timeZone={session.timeZone} />
         <PlayersQuickActionsCard onMore={() => setActionsSheetOpen(true)} />
       </div>
 
