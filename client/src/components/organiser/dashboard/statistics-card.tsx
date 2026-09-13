@@ -22,7 +22,7 @@ export function StatisticsCard({ stats, highlight, onViewLeaderboard, className 
   return (
     <Card className={cn("shadow-sm hover:shadow-md transition-shadow", className)} data-testid="organiser-statistics-card">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-base">Quick Analytics</CardTitle>
+        <CardTitle asChild className="text-base"><h2>Quick Analytics</h2></CardTitle>
         <span className="text-xs text-muted-foreground">This Week</span>
       </CardHeader>
       <CardContent className="space-y-5">

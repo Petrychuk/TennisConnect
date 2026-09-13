@@ -116,17 +116,17 @@ export default function AdminArticlePreviewPage() {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Navbar />
-        <div className="flex-1 flex items-center justify-center">
+        <main id="main-content" className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-3xl font-bold mb-4">Article not found</h1>
             <Button
-              className="bg-primary text-primary-foreground"
+              className="bg-primary text-foreground"
               onClick={() => setLocation("/admin?tab=articles")}
             >
               Back to Admin
             </Button>
           </div>
-        </div>
+        </main>
         <Footer />
       </div>
     );
@@ -152,6 +152,7 @@ export default function AdminArticlePreviewPage() {
         <Navbar />
 
         {/* Admin preview control bar */}
+        <main id="main-content">
         <div
           className="sticky top-16 z-40 bg-background/95 border-b shadow-xs backdrop-blur-lg"
           data-testid="article-admin-preview-bar"
@@ -201,6 +202,7 @@ export default function AdminArticlePreviewPage() {
         </div>
 
         <ArticleDetailContent article={article} relatedArticles={relatedArticles} />
+        </main>
 
         <Footer />
       </div>

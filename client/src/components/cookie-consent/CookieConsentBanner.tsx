@@ -73,7 +73,7 @@ export function CookieConsentBanner({
 
             <Button
               onClick={onAcceptAll}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold cursor-pointer whitespace-nowrap"
+              className="bg-primary text-foreground hover:bg-primary/90 font-bold cursor-pointer whitespace-nowrap"
               data-testid="cookie-banner-accept-button"
             >
               Accept All

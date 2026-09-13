@@ -103,7 +103,7 @@ export function SettingsTab({ session }: SettingsTabProps) {
   return (
     <Card className="shadow-sm" data-testid="organiser-session-settings-tab">
       <CardHeader>
-        <CardTitle className="text-base">Session Settings</CardTitle>
+        <CardTitle asChild className="text-base"><h2>Session Settings</h2></CardTitle>
       </CardHeader>
       <CardContent className="space-y-1">
         {rows.map((row, i) => (

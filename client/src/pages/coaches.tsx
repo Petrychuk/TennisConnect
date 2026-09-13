@@ -135,6 +135,19 @@ export default function CoachesPage() {
 
   const activeFiltersCount = (locationFilter !== "all" ? 1 : 0) + (priceRange[0] < 150 ? 1 : 0) + (minRating > 0 ? 1 : 0);
 
+  // GA4 "search" - same debounced-on-settle approach as partners.tsx's
+  // own player search, so this doesn't fire once per keystroke either.
+  useEffect(() => {
+    if (!searchTerm.trim()) return;
+    const timer = setTimeout(() => {
+      (window as any).gtag?.("event", "search", {
+        search_term: searchTerm.trim(),
+        search_type: "coaches",
+      });
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   const clearFilters = () => {
     setSearchTerm("");
     setLocationFilter("all");
@@ -319,7 +332,7 @@ export default function CoachesPage() {
                       <Filter className="w-5 h-5 mr-2" />
                       Filters
                       {activeFiltersCount > 0 && (
-                        <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px]">
+                        <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center rounded-full bg-primary text-foreground text-[10px]">
                           {activeFiltersCount}
                         </Badge>
                       )}
@@ -452,7 +465,7 @@ export default function CoachesPage() {
                       <Filter className="w-4 h-4 mr-1.5" />
                       Filters
                       {activeFiltersCount > 0 && (
-                        <Badge variant="secondary" className="ml-1.5 h-5 w-5 p-0 flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px]">
+                        <Badge variant="secondary" className="ml-1.5 h-5 w-5 p-0 flex items-center justify-center rounded-full bg-primary text-foreground text-[10px]">
                           {activeFiltersCount}
                         </Badge>
                       )}
@@ -516,6 +529,11 @@ export default function CoachesPage() {
               the top of the first row, matching the Partners page */}
           <section className="relative z-30 container mx-auto px-4 md:-mt-4 pb-24 scroll-mt-24"
             ref={coachesSectionRef}>
+            {/* Visually hidden - same reasoning as partners.tsx's own
+                "Search Results" heading: gives the card titles below a
+                real H2 parent instead of skipping straight from the
+                page's H1. */}
+            <h2 className="sr-only">Search Results</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
               {filteredCoaches.map((coach, index) => (
                 <motion.div
@@ -574,7 +592,7 @@ export default function CoachesPage() {
                     <CardHeader className="px-3 pt-3 pb-1 md:px-6 md:pb-2">
                       <div className="flex justify-between items-start">
                         <div className="min-h-14 md:min-h-[85px] min-w-0 w-full">
-                          <h2 className="text-base md:text-lg lg:text-xl
+                          <h3 className="text-base md:text-lg lg:text-xl
                             font-bold
                             font-display
                             group-hover:text-primary
@@ -582,7 +600,7 @@ export default function CoachesPage() {
 
                             line-clamp-2
                             min-h-12
-                            md:min-h-14">{coach.name}</h2>
+                            md:min-h-14">{coach.name}</h3>
                           <p className="text-sm text-muted-foreground line-clamp-1">{coach.title}</p>
                         </div>
                       </div>
@@ -653,7 +671,7 @@ export default function CoachesPage() {
 
                     <CardFooter className="px-3 pb-3 pt-0 md:px-6 md:pb-6">
                       <Link href={`/coach/${coach.slug}`}>
-                        <Button className="w-full h-9 md:h-10 text-xs md:text-sm font-bold group-hover:bg-primary group-hover:text-primary-foreground transition-all cursor-pointer">
+                        <Button className="w-full h-9 md:h-10 text-xs md:text-sm font-bold group-hover:bg-primary group-hover:text-foreground transition-all cursor-pointer">
                           View Profile <ArrowRight className="w-4 h-4 ml-2" />
                         </Button>
                       </Link>
@@ -665,7 +683,7 @@ export default function CoachesPage() {
 
             {filteredCoaches.length === 0 && (
               <div className="text-center py-20">
-                <h2 className="text-2xl font-bold mb-2">No coaches found</h2>
+                <h3 className="text-2xl font-bold mb-2">No coaches found</h3>
                 <p className="text-muted-foreground">Try adjusting your search or filters to find more coaches.</p>
                 <Button 
                   variant="link" 

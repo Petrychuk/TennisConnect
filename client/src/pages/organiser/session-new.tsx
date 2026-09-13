@@ -168,7 +168,7 @@ export default function OrganiserSessionNewPage() {
       <div className="min-h-screen flex items-center justify-center px-4 bg-background">
         <Card className="max-w-md w-full shadow-sm">
           <CardHeader>
-            <CardTitle>Organiser access required</CardTitle>
+            <CardTitle asChild><h1>Organiser access required</h1></CardTitle>
           </CardHeader>
           <CardContent className="text-muted-foreground">
             You need to be an approved organiser to view this page. Head to your profile to
@@ -193,7 +193,10 @@ export default function OrganiserSessionNewPage() {
         <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} className="w-full" />
       </aside>
 
-      <div className="flex-1 min-w-0 pb-16 md:pb-0">
+      {/* See sessions.tsx's own comment on this same pattern - <aside>
+          above and <OrganiserMobileNav /> below both stay siblings of
+          this <main>, not children of it. */}
+      <main id="main-content" className="flex-1 min-w-0 pb-16 md:pb-0">
         {/* Compact bar — tablet & mobile */}
         <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
           <Sheet>
@@ -341,7 +344,7 @@ export default function OrganiserSessionNewPage() {
             </div>
           </div>
         </div>
-      </div>
+      </main>
 
       <OrganiserMobileNav />
 

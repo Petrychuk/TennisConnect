@@ -126,9 +126,9 @@ export default function OrganisationDetailPage() {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
-        <div className="flex-1 flex items-center justify-center text-muted-foreground">
+        <main id="main-content" className="flex-1 flex items-center justify-center text-muted-foreground">
           Organization not found.
-        </div>
+        </main>
         <Footer />
       </div>
     );
@@ -142,7 +142,7 @@ export default function OrganisationDetailPage() {
       />
       <Navbar />
 
-      <div className="flex-1 max-w-4xl mx-auto w-full px-4 py-10 space-y-8">
+      <main id="main-content" className="flex-1 max-w-4xl mx-auto w-full px-4 py-10 space-y-8">
         <div>
           <h1 className="font-display text-3xl font-bold" data-testid="organization-name">
             {organization.name}
@@ -246,7 +246,7 @@ export default function OrganisationDetailPage() {
             </div>
           )}
         </div>
-      </div>
+      </main>
 
       <Footer />
     </div>

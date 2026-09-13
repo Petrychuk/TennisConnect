@@ -17,7 +17,7 @@ export function RegistrationQuickActionsCard() {
   return (
     <Card className="shadow-sm" data-testid="organiser-registration-quick-actions-card">
       <CardHeader>
-        <CardTitle className="text-base">Quick Actions</CardTitle>
+        <CardTitle asChild className="text-base"><h2>Quick Actions</h2></CardTitle>
       </CardHeader>
       <CardContent className="space-y-1">
         {actions.map((action) => {

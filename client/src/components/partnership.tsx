@@ -73,7 +73,7 @@ export function Partnership() {
             <div className="flex flex-col items-start gap-3">
             <Button
                 size="lg"
-                className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-8 cursor-pointer"
+                className="bg-primary text-foreground hover:bg-primary/90 font-bold rounded-full px-8 cursor-pointer"
                 onClick={() =>
                   window.dispatchEvent(
                     new CustomEvent("open-support-chat", {
@@ -91,7 +91,7 @@ export function Partnership() {
                 Or email us directly at{" "}
                 <a
                   href="mailto:tennisconnect.au@gmail.com"
-                  className="text-primary hover:underline"
+                  className="text-primary-text hover:underline"
                 >
                   tennisconnect.au@gmail.com
                 </a>

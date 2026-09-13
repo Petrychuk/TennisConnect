@@ -34,7 +34,7 @@ export function RecentActivityCard({ items, className }: RecentActivityCardProps
   return (
     <Card className={cn("shadow-sm hover:shadow-md transition-shadow", className)} data-testid="organiser-recent-activity-card">
       <CardHeader>
-        <CardTitle className="text-base">Activity Feed</CardTitle>
+        <CardTitle asChild className="text-base"><h2>Activity Feed</h2></CardTitle>
       </CardHeader>
       <CardContent>
         {items.length === 0 ? (

@@ -136,7 +136,7 @@ export function ArticleDetailContent({
                 transition={{ duration: 0.4 }}
                 className="md:col-span-3"
               >
-                <Badge className="mb-4 bg-primary text-primary-foreground">
+                <Badge className="mb-4 bg-primary text-foreground">
                   {article.category}
                 </Badge>
                 <h1
@@ -188,7 +188,7 @@ export function ArticleDetailContent({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4 }}
                 >
-                  <Badge className="mb-3 bg-primary text-primary-foreground">
+                  <Badge className="mb-3 bg-primary text-foreground">
                     {article.category}
                   </Badge>
                   <h1
@@ -214,7 +214,7 @@ export function ArticleDetailContent({
               <ArticleBreadcrumbs category={article.category} title={article.title} />
 
               <div className="mt-4">
-                <Badge className="mb-3 bg-primary text-primary-foreground">
+                <Badge className="mb-3 bg-primary text-foreground">
                   {article.category}
                 </Badge>
                 <h1
@@ -245,7 +245,7 @@ export function ArticleDetailContent({
               transition={{ duration: 0.4 }}
               className="mt-6"
             >
-              <Badge className="mb-3 bg-primary text-primary-foreground">
+              <Badge className="mb-3 bg-primary text-foreground">
                 {article.category}
               </Badge>
               <h1
@@ -283,14 +283,14 @@ export function ArticleDetailContent({
         {/* CTA */}
         <div className="my-14 p-8 md:p-10 bg-linear-to-br from-primary/10 to-primary/5 rounded-3xl text-center">
           <BookOpen className="w-10 h-10 mx-auto text-primary mb-3" />
-          <h3 className="text-2xl font-display font-bold mb-2">
+          <h2 className="text-2xl font-display font-bold mb-2">
             More tennis wisdom
-          </h3>
+          </h2>
           <p className="text-muted-foreground mb-6">
             Explore our full library of articles.
           </p>
           <Link href="/articles">
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full font-bold px-6 cursor-pointer">
+            <Button className="bg-primary text-foreground hover:bg-primary/90 rounded-full font-bold px-6 cursor-pointer">
               Browse All Articles
             </Button>
           </Link>
@@ -307,7 +307,7 @@ export function ArticleDetailContent({
               </h2>
               <Link
                 href="/articles"
-                className="text-sm font-semibold text-primary hover:underline inline-flex items-center gap-1"
+                className="text-sm font-semibold text-primary-text hover:underline inline-flex items-center gap-1"
               >
                 View all <ArrowRight className="w-3.5 h-3.5" />
               </Link>

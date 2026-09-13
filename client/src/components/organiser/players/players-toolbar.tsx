@@ -85,7 +85,7 @@ export function PlayersToolbar({
           <button
             type="button"
             onClick={() => onViewChange("grid")}
-            className={cn("p-1.5 rounded-xl", view === "grid" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}
+            className={cn("p-1.5 rounded-xl", view === "grid" ? "bg-primary text-foreground" : "text-muted-foreground")}
             data-testid="organiser-players-page-view-grid"
           >
             <LayoutGrid className="w-4 h-4" />
@@ -93,7 +93,7 @@ export function PlayersToolbar({
           <button
             type="button"
             onClick={() => onViewChange("table")}
-            className={cn("p-1.5 rounded-xl", view === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}
+            className={cn("p-1.5 rounded-xl", view === "table" ? "bg-primary text-foreground" : "text-muted-foreground")}
             data-testid="organiser-players-page-view-table"
           >
             <List className="w-4 h-4" />

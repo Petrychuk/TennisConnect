@@ -13,7 +13,12 @@ const badgeVariants = cva(
       variant: {
         default:
           // @replit shadow-xs instead of shadow, no hover because we use hover-elevate
-          "border-transparent bg-primary text-primary-foreground shadow-xs",
+          // text-foreground, not text-primary-foreground - text-xs
+          // badge text is nowhere near WCAG's "large text" threshold,
+          // so it needs the full 4.5:1 this bg-primary green can't give
+          // white text. Same fix/reasoning as button.tsx's own
+          // "default" variant.
+          "border-transparent bg-primary text-foreground shadow-xs",
         secondary:
           // @replit no hover because we use hover-elevate
           "border-transparent bg-secondary text-secondary-foreground",

@@ -39,7 +39,7 @@ export function InvitePlayersCard({ sessionId, className }: InvitePlayersCardPro
   return (
     <Card className={className} data-testid="organiser-invite-players-card">
       <CardHeader>
-        <CardTitle className="text-base">Invite Players</CardTitle>
+        <CardTitle asChild className="text-base"><h2>Invite Players</h2></CardTitle>
         <p className="text-sm text-muted-foreground">Share the session with players to invite them.</p>
       </CardHeader>
       <CardContent className="space-y-3">

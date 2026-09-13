@@ -96,7 +96,7 @@ export function ProShop() {
           >
             <Button 
               onClick={handleShopClick}
-              className="hidden md:flex gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
+              className="hidden md:flex gap-2 bg-primary text-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
               data-testid="shop-visit-button"
             >
               Visit Shop <ExternalLink className="w-4 h-4" />
@@ -131,7 +131,7 @@ export function ProShop() {
                     product.badge === "Sale" 
                       ? "bg-red-500 text-white" 
                       : product.badge === "New"
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-primary text-foreground"
                       : "bg-black/80 text-white"
                   }`}>
                     {product.badge}
@@ -175,7 +175,7 @@ export function ProShop() {
         >
           <Button 
             onClick={handleShopClick}
-            className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full cursor-pointer"
+            className="w-full gap-2 bg-primary text-foreground hover:bg-primary/90 font-bold rounded-full cursor-pointer"
           >
             Visit Shop <ExternalLink className="w-4 h-4" />
           </Button>

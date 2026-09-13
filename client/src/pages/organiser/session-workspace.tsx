@@ -251,7 +251,7 @@ export default function OrganiserSessionWorkspacePage() {
       <div className="min-h-screen flex items-center justify-center px-4 bg-background">
         <Card className="max-w-md w-full shadow-sm">
           <CardHeader>
-            <CardTitle>Organiser access required</CardTitle>
+            <CardTitle asChild><h1>Organiser access required</h1></CardTitle>
           </CardHeader>
           <CardContent className="text-muted-foreground">
             You need to be an approved organiser to view this page. Head to your profile to
@@ -312,7 +312,10 @@ export default function OrganiserSessionWorkspacePage() {
         <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} className="w-full" />
       </aside>
 
-      <div className="flex-1 min-w-0 pb-16 md:pb-0">
+      {/* See sessions.tsx's own comment on this same pattern - <aside>
+          above and <OrganiserMobileNav /> below both stay siblings of
+          this <main>, not children of it. */}
+      <main id="main-content" className="flex-1 min-w-0 pb-16 md:pb-0">
         {/* Compact bar — tablet & mobile */}
         <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
           <Sheet>
@@ -346,7 +349,7 @@ export default function OrganiserSessionWorkspacePage() {
         <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 md:space-y-4 max-w-6xl mx-auto">
           {/* Breadcrumb */}
           <div className="flex items-center gap-1.5 text-sm flex-wrap" data-testid="organiser-session-breadcrumb">
-            <Link href="/organiser/sessions" className="text-primary hover:underline">
+            <Link href="/organiser/sessions" className="text-primary-text hover:underline">
               Sessions
             </Link>
             {parentSessionQuery.data && (
@@ -354,7 +357,7 @@ export default function OrganiserSessionWorkspacePage() {
                 <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
                 <Link
                   href={`/organiser/sessions/${parentSessionQuery.data.id}`}
-                  className="text-primary hover:underline truncate max-w-[200px]"
+                  className="text-primary-text hover:underline truncate max-w-[200px]"
                   data-testid="organiser-session-breadcrumb-parent"
                 >
                   {parentSessionQuery.data.title}
@@ -370,7 +373,7 @@ export default function OrganiserSessionWorkspacePage() {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="font-display text-2xl sm:text-3xl font-bold">{session.title}</h1>
-                <Badge className={bucket === "live" ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary"}>
+                <Badge className={bucket === "live" ? "bg-primary text-foreground" : "bg-primary/10 text-primary"}>
                   {BUCKET_BADGE_LABEL[bucket]}
                 </Badge>
               </div>
@@ -506,7 +509,7 @@ export default function OrganiserSessionWorkspacePage() {
             </Button>
           </div>
         </div>
-      </div>
+      </main>
 
       <OrganiserMobileNav />
 

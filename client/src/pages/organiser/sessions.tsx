@@ -122,7 +122,7 @@ export default function OrganiserSessionsPage() {
       <div className="min-h-screen flex items-center justify-center px-4 bg-background">
         <Card className="max-w-md w-full shadow-sm">
           <CardHeader>
-            <CardTitle>Organiser access required</CardTitle>
+            <CardTitle asChild><h1>Organiser access required</h1></CardTitle>
           </CardHeader>
           <CardContent className="text-muted-foreground">
             You need to be an approved organiser to view this page. Head to your profile to
@@ -145,7 +145,13 @@ export default function OrganiserSessionsPage() {
         <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} className="w-full" />
       </aside>
 
-      <div className="flex-1 min-w-0 pb-16 md:pb-0">
+      {/* The public site's equivalent pages use <Navbar>/<Footer> with a
+          <main> in between; this sidebar-nav'd Organiser Hub layout has
+          no direct equivalent to swap in, so the same landmark is added
+          by hand here - <aside> (already correctly used above for the
+          sidebar nav) and <OrganiserMobileNav /> below both stay
+          siblings of, not children of, this <main>. */}
+      <main id="main-content" className="flex-1 min-w-0 pb-16 md:pb-0">
         {/* Compact bar — tablet & mobile */}
         <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
           <Sheet>
@@ -187,6 +193,12 @@ export default function OrganiserSessionsPage() {
               <NewSessionMenu className="gap-2" />
             </div>
           </div>
+
+          {/* Visually hidden - the H1 above is the page title, not a
+              section label; the session cards a few tabs/filters down
+              are a real H3 without a proper H2 parent otherwise, same
+              fix as partners.tsx/coaches.tsx's own "Search Results". */}
+          <h2 className="sr-only">Sessions List</h2>
 
           {sessionsQuery.isLoading ? (
             <div className="space-y-3" data-testid="organiser-sessions-loading">
@@ -236,7 +248,7 @@ export default function OrganiserSessionsPage() {
             </>
           )}
         </div>
-      </div>
+      </main>
 
       <OrganiserMobileNav />
     </div>

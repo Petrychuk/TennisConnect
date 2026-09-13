@@ -211,7 +211,7 @@ export default function MarketplacePage() {
                                         </div>
                                         {item.isLocal && (
                                             <div className="absolute top-3 left-3">
-                                                <Badge className="bg-primary text-primary-foreground font-bold shadow-sm">
+                                                <Badge className="bg-primary text-foreground font-bold shadow-sm">
                                                     New Listing
                                                 </Badge>
                                             </div>
@@ -256,7 +256,7 @@ export default function MarketplacePage() {
                                     </CardContent>
                                     <CardFooter className="p-4 pt-0">
                                         <Button 
-                                            className="w-full font-bold gap-2 group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
+                                            className="w-full font-bold gap-2 group-hover:bg-primary group-hover:text-foreground transition-colors"
                                             onClick={() => {
                                                 setSelectedItem(item);
                                                 setIsBuyModalOpen(true);
@@ -343,7 +343,7 @@ export default function MarketplacePage() {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsBuyModalOpen(false)}>Cancel</Button>
-                        <Button onClick={handleBuyRequest} className="font-bold bg-primary text-primary-foreground">Send Request</Button>
+                        <Button onClick={handleBuyRequest} className="font-bold bg-primary text-foreground">Send Request</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

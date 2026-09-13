@@ -287,6 +287,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.user);
       setProfileLoaded(false);
 
+      // GA4 "sign_up" - fired here (confirmed email), not at
+      // register() below, since that's the point a signup is real
+      // rather than a bot/abandoned registration nobody ever
+      // confirmed - the whole reason this flow gates on verification
+      // at all. window.gtag may not exist yet (page just loaded) or at
+      // all (skipped for automated browsers - see index.html), hence
+      // the optional call rather than an assumed-present global.
+      (window as any).gtag?.("event", "sign_up", { method: data.user.role });
+
       return data.user;
     } finally {
       setLoading(false);

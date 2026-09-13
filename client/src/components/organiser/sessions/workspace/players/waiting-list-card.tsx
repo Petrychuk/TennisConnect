@@ -24,7 +24,7 @@ export function WaitingListCard({ players, className }: WaitingListCardProps) {
   return (
     <Card className={className} data-testid="organiser-waiting-list-card">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-base">Waiting List ({players.length})</CardTitle>
+        <CardTitle asChild className="text-base"><h2>Waiting List ({players.length})</h2></CardTitle>
         {players.length > 0 && (
           <span className="text-xs font-medium text-primary flex items-center gap-0.5 cursor-pointer" data-testid="organiser-waiting-list-view-all">
             View all waiting list

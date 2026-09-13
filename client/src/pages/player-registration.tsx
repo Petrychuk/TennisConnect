@@ -77,7 +77,7 @@ export default function PlayerRegistration() {
     />
       <div className="min-h-screen w-full flex">
         {/* Left Side - Form */}
-        <div className="w-full lg:w-1/2 flex flex-col p-8 md:p-12 lg:p-16 justify-center bg-background relative z-10">
+        <main id="main-content" className="w-full lg:w-1/2 flex flex-col p-8 md:p-12 lg:p-16 justify-center bg-background relative z-10">
           <Link href="/">
             <a className="absolute top-8 left-8 md:left-12 flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors">
               <ArrowLeft className="w-4 h-4" />
@@ -145,7 +145,7 @@ export default function PlayerRegistration() {
                 )}
               </div>
 
-              <Button type="submit" className="w-full font-bold bg-primary text-primary-foreground hover:bg-primary/90" disabled={isLoading}>
+              <Button type="submit" className="w-full font-bold bg-primary text-foreground hover:bg-primary/90" disabled={isLoading}>
                 {isLoading && <TennisBallSpinner className="mr-2" />}
                 Create Player Account
               </Button>
@@ -155,7 +155,7 @@ export default function PlayerRegistration() {
               </p>
             </form>
           </div>
-        </div>
+        </main>
 
         {/* Right Side - Image */}
         <div className="hidden lg:block lg:w-1/2 relative">
@@ -174,7 +174,7 @@ export default function PlayerRegistration() {
                 "I found my perfect hitting partner on TennisConnect. Now we play every weekend!"
               </blockquote>
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg">
+                <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-foreground font-bold text-lg">
                   JS
                 </div>
                 <div>

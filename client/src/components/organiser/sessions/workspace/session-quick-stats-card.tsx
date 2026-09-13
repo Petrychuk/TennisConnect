@@ -21,7 +21,7 @@ export function SessionQuickStatsCard({ stats, topPlayers, extraCount = 0 }: Ses
   return (
     <Card className="shadow-sm" data-testid="organiser-session-quick-stats-card">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-base">Quick Stats</CardTitle>
+        <CardTitle asChild className="text-base"><h2>Quick Stats</h2></CardTitle>
         <span className="text-xs text-muted-foreground">This Week</span>
       </CardHeader>
       <CardContent className="space-y-5">

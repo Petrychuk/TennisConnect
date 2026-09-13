@@ -52,7 +52,7 @@ const STATUS_BADGE_LABEL: Record<string, string> = {
 // per-status hue palette (green/orange/blue/purple like the mockup),
 // keeping to the project's existing tokens.
 const STATUS_BADGE_STYLE: Record<string, string> = {
-  live: "bg-primary text-primary-foreground",
+  live: "bg-primary text-foreground",
   "registration-open": "bg-primary/10 text-primary",
   upcoming: "bg-secondary text-secondary-foreground",
   draft: "bg-muted text-muted-foreground",

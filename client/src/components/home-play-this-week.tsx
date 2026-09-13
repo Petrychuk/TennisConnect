@@ -43,7 +43,7 @@ export function PlayThisWeek() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground mb-4"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-foreground mb-4"
             >
               <CalendarDays className="w-4 h-4" />
               <span className="text-xs font-bold uppercase tracking-wider">THIS WEEK</span>

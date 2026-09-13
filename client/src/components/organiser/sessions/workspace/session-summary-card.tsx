@@ -22,7 +22,7 @@ export function SessionSummaryCard({ session, className }: SessionSummaryCardPro
   return (
     <Card className={cn("shadow-sm", className)} data-testid="organiser-session-summary-card">
       <CardHeader>
-        <CardTitle className="text-base">Session Summary</CardTitle>
+        <CardTitle asChild className="text-base"><h2>Session Summary</h2></CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="relative rounded-xl overflow-hidden h-48">
