@@ -10,7 +10,10 @@ import { formatInTimeZone } from "@/lib/timezone";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 
 interface MessagesTabProps {
-  session: SessionListItem;
+  // Only id/timeZone are actually used below - narrowed from the full
+  // SessionListItem so callers with a plainer session shape (e.g. the
+  // live-session page's own TennisSession) don't need an unsafe cast.
+  session: Pick<SessionListItem, "id" | "timeZone">;
 }
 
 // This is the session's own update feed - posting here sends a real
