@@ -1191,6 +1191,12 @@ export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
 export type MessageWithAvatar = Message & {
   senderAvatar?: string | null;
+  // The related session's own startAt, when this message is a
+  // session_invite - lets the client hide stale Join/Decline buttons
+  // once the session has already started and the player never
+  // responded, rather than showing an action that no longer makes
+  // sense. undefined for every other message type.
+  relatedSessionStartAt?: Date | null;
   // Who a conversation-list row should say it's "with" - the other
   // participant, regardless of whether they or the current viewer
   // sent the most recent message in the thread. Only populated by

@@ -1904,11 +1904,16 @@ export class DatabaseStorage implements IStorage {
         actionStatus: messages.actionStatus,
   
         senderAvatar: users.avatar,
+        relatedSessionStartAt: tennisSessions.startAt,
       })
       .from(messages)
       .leftJoin(
         users,
         eq(messages.senderUserId, users.id)
+      )
+      .leftJoin(
+        tennisSessions,
+        eq(messages.relatedSessionId, tennisSessions.id)
       )
       .where(
         eq(messages.conversationId, conversationId)
