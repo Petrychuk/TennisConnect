@@ -30,6 +30,12 @@ import {
   Pencil,
   LayoutTemplate,
   Archive,
+  Users,
+  CheckCircle2,
+  Hourglass,
+  Square,
+  AlertTriangle,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -67,6 +73,19 @@ const STATUS_BADGE_STYLE: Record<string, string> = {
   archived: "bg-muted text-muted-foreground",
 };
 
+// Small icon+value+label chip, reused for every status's own metric
+// row - each status shows a genuinely different set (see the metric
+// blocks below), but always in this same compact shape.
+function Metric({ icon: Icon, value, label, testId }: { icon: typeof Users; value: string | number; label: string; testId?: string }) {
+  return (
+    <span className="flex items-center gap-1.5" data-testid={testId}>
+      <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+      <span className="font-bold">{value}</span>
+      <span className="text-muted-foreground">{label}</span>
+    </span>
+  );
+}
+
 export function SessionCard({ session, onDuplicate, onDelete, onArchive }: SessionCardProps) {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -74,6 +93,10 @@ export function SessionCard({ session, onDuplicate, onDelete, onArchive }: Sessi
   const bucket = bucketFor(session);
   const spots = session.maxParticipants !== null ? session.maxParticipants - session.registeredCount : null;
   const typeLabel = SESSION_TYPE_OPTIONS.find((t) => t.key === session.type)?.label ?? "Session";
+  const attendancePercent =
+    (bucket === "completed" || bucket === "archived") && session.registeredCount > 0
+      ? Math.round((session.checkedInCount / session.registeredCount) * 100)
+      : null;
 
   const openWorkspace = () => setLocation(`/organiser/sessions/${session.id}`);
   const openLive = () => setLocation(`/organiser/sessions/${session.id}/live`);
@@ -88,56 +111,60 @@ export function SessionCard({ session, onDuplicate, onDelete, onArchive }: Sessi
 
   // One primary action per status - everything else (Duplicate, Edit,
   // Save as Template, Archive) lives behind the overflow menu instead
-  // of sitting on the row as its own full-size button. This was
-  // explicit, repeated feedback: a full secondary button on every row
-  // ("Duplicate" specifically) turns into "18 huge buttons" the moment
-  // there's more than a handful of sessions - only one action per
-  // session should compete for attention at that size.
+  // of sitting on the row as its own full-size button.
+  //
+  // Green (the site's actual "act now" colour) is reserved for actions
+  // that genuinely need attention right now - Continue Setup, Enter
+  // Live, Manage Session. View Results/View History are the least
+  // urgent thing on the page (the session already happened), so they
+  // stay a plain outline button instead of visually shouting louder
+  // than an unfinished draft or a live session - explicit feedback:
+  // "зелёное = сейчас нужно действовать".
   const primaryAction =
     bucket === "draft"
-      ? { label: "Continue Setup", onClick: openWorkspace }
+      ? { label: "Continue Setup", onClick: openWorkspace, urgent: true }
       : bucket === "live"
-      ? { label: "Enter Live", onClick: openLive, icon: Play }
+      ? { label: "Enter Live", onClick: openLive, icon: Play, urgent: true }
       : bucket === "completed"
-      ? { label: "View Results", onClick: openResults }
+      ? { label: "View Results", onClick: openResults, urgent: false }
       : bucket === "archived"
-      ? { label: "View History", onClick: openHistory }
-      : { label: "Manage Session", onClick: openWorkspace }; // registration-open, upcoming
+      ? { label: "View History", onClick: openHistory, urgent: false }
+      : { label: "Manage Session", onClick: openWorkspace, urgent: true }; // registration-open, upcoming
 
   return (
     <Card className="shadow-sm hover:shadow-md transition-shadow overflow-hidden" data-testid={`organiser-session-card-${session.id}`}>
       <CardContent className="p-0">
         <div className="flex flex-col sm:flex-row">
-          {/* Cover — the real uploaded photo whenever one exists,
-              regardless of status (used to be photo-only for "live",
-              a quiet icon tile for everything else) - falls back to
-              the same default stock court photo as before when no
-              real cover was ever uploaded for this session. */}
-          <div className="relative w-full sm:w-40 h-32 sm:h-auto shrink-0 overflow-hidden">
+          {/* Cover — no status badge overlaid on it anymore (moved next
+              to the title below - a badge sitting on a photo read like
+              a stock-photo watermark, not session status). Still the
+              real uploaded photo whenever one exists, falling back to
+              the same default stock court photo when it doesn't.
+              Shorter than before (h-24 vs h-32) to match the overall
+              more compact row height. */}
+          <div className="relative w-full sm:w-32 h-24 sm:h-auto shrink-0 overflow-hidden">
             <img src={session.coverImage || courtImage} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" />
-            {bucket === "live" && (
-              <div className="absolute inset-0 bg-foreground/40" />
-            )}
-            <Badge
-              className={cn("absolute top-2 left-2 gap-1", STATUS_BADGE_STYLE[bucket])}
-              data-testid={`organiser-session-card-${session.id}-badge`}
-            >
-              {bucket === "live" && (
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-foreground opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary-foreground" />
-                </span>
-              )}
-              {STATUS_BADGE_LABEL[bucket]}
-            </Badge>
+            {bucket === "live" && <div className="absolute inset-0 bg-foreground/40" />}
           </div>
 
-          <div className="flex-1 min-w-0 p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex-1 min-w-0 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <h3 className="font-display font-bold truncate">{session.title}</h3>
                 <Badge variant="outline" className="text-[11px] font-medium shrink-0" data-testid={`organiser-session-card-${session.id}-type`}>
                   {typeLabel}
+                </Badge>
+                <Badge
+                  className={cn("gap-1 shrink-0", STATUS_BADGE_STYLE[bucket])}
+                  data-testid={`organiser-session-card-${session.id}-badge`}
+                >
+                  {bucket === "live" && (
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-foreground opacity-75" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary-foreground" />
+                    </span>
+                  )}
+                  {STATUS_BADGE_LABEL[bucket]}
                 </Badge>
               </div>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground mt-1">
@@ -156,54 +183,64 @@ export function SessionCard({ session, onDuplicate, onDelete, onArchive }: Sessi
                 </span>
               </div>
 
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs mt-2">
-                <span data-testid={`organiser-session-card-${session.id}-registered`}>
-                  <span className="font-bold">{session.registeredCount}</span>{" "}
-                  <span className="text-muted-foreground">Registered</span>
-                </span>
-                {bucket === "live" || bucket === "completed" || bucket === "archived" ? (
-                  <span data-testid={`organiser-session-card-${session.id}-checkedin`}>
-                    <span className="font-bold">{session.checkedInCount}</span>{" "}
-                    <span className="text-muted-foreground">Checked In</span>
-                  </span>
-                ) : (
-                  <>
-                    <span data-testid={`organiser-session-card-${session.id}-waiting`}>
-                      <span className="font-bold">{session.waitingCount}</span>{" "}
-                      <span className="text-muted-foreground">Waiting</span>
-                    </span>
-                    {spots !== null && (
-                      <span data-testid={`organiser-session-card-${session.id}-spots`}>
-                        <span className="font-bold">{spots}</span>{" "}
-                        <span className="text-muted-foreground">Spots</span>
-                      </span>
-                    )}
-                  </>
-                )}
-              </div>
-
-              {bucket === "live" && session.roundCurrent && session.roundTotal && (
-                <p className="text-xs font-medium text-primary mt-1" data-testid={`organiser-session-card-${session.id}-round`}>
-                  Round {session.roundCurrent} / {session.roundTotal}
+              {/* What this row shows genuinely changes by status - the
+                  spec's own table: Live gets round/players/courts,
+                  Registration Open/Upcoming get registered/waiting/
+                  courts, Completed/Archived get a plain outcome
+                  summary (players/attended/attendance%), Draft gets a
+                  single "not published yet" line instead of metrics
+                  that don't exist yet for a session with no
+                  registrations. */}
+              {bucket === "draft" ? (
+                <p className="flex items-center gap-1.5 text-xs font-medium text-amber-700 mt-2" data-testid={`organiser-session-card-${session.id}-draft-warning`}>
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  Complete session setup
                 </p>
+              ) : bucket === "completed" || bucket === "archived" ? (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs mt-2">
+                  <Metric icon={Users} value={session.registeredCount} label="Players" testId={`organiser-session-card-${session.id}-registered`} />
+                  <Metric icon={CheckCircle2} value={session.checkedInCount} label="Attended" testId={`organiser-session-card-${session.id}-checkedin`} />
+                  {attendancePercent !== null && (
+                    <span className="font-semibold text-primary" data-testid={`organiser-session-card-${session.id}-attendance`}>
+                      {attendancePercent}% Attendance
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs mt-2">
+                  {bucket === "live" && session.roundCurrent && session.roundTotal && (
+                    <span className="font-semibold text-primary" data-testid={`organiser-session-card-${session.id}-round`}>
+                      Round {session.roundCurrent} / {session.roundTotal}
+                    </span>
+                  )}
+                  <Metric
+                    icon={Users}
+                    value={`${session.registeredCount}${session.maxParticipants !== null ? `/${session.maxParticipants}` : ""}`}
+                    label={bucket === "live" ? "Players" : "Registered"}
+                    testId={`organiser-session-card-${session.id}-registered`}
+                  />
+                  {bucket === "live" ? (
+                    <Metric icon={CheckCircle2} value={session.checkedInCount} label="Checked In" testId={`organiser-session-card-${session.id}-checkedin`} />
+                  ) : (
+                    session.waitingCount > 0 && (
+                      <Metric icon={Hourglass} value={session.waitingCount} label="Waiting" testId={`organiser-session-card-${session.id}-waiting`} />
+                    )
+                  )}
+                  {session.courtsCount !== null && (
+                    <Metric icon={Square} value={session.courtsCount} label="Courts" testId={`organiser-session-card-${session.id}-courts`} />
+                  )}
+                </div>
               )}
-
-              <div className="mt-2 space-y-1">
-                <p className="text-xs text-muted-foreground">{session.progressLabel}</p>
-                {session.progressPercent > 0 && (
-                  <div className="h-1.5 w-full max-w-xs rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="h-full bg-primary rounded-full"
-                      style={{ width: `${session.progressPercent}%` }}
-                      data-testid={`organiser-session-card-${session.id}-progress`}
-                    />
-                  </div>
-                )}
-              </div>
             </div>
 
-            <div className="flex sm:flex-col gap-2 shrink-0 w-full sm:w-40">
+            {/* Action + overflow menu sit side by side, not stacked -
+                and this group no longer stretches to fill the row's
+                remaining width, so it sits right next to the content
+                instead of pinned to the far edge of a very wide
+                screen with a wall of empty space in between. */}
+            <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
               <Button
+                variant={primaryAction.urgent ? "default" : "outline"}
                 onClick={primaryAction.onClick}
                 className="flex-1 sm:flex-none"
                 data-testid={`organiser-session-card-${session.id}-primary`}
@@ -217,10 +254,12 @@ export function SessionCard({ session, onDuplicate, onDelete, onArchive }: Sessi
                   <AlertDialogTrigger asChild>
                     <Button
                       variant="outline"
-                      className="flex-1 sm:flex-none"
+                      size="icon"
+                      className="shrink-0"
                       data-testid={`organiser-session-card-${session.id}-delete`}
                     >
-                      Delete
+                      <Trash2 className="w-4 h-4" />
+                      <span className="sr-only">Delete</span>
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
