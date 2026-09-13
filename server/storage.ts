@@ -2416,6 +2416,23 @@ export class DatabaseStorage implements IStorage {
       .groupBy(registrations.sessionId);
     const checkedInBySession = new Map(checkInRows.map((r) => [r.sessionId, Number(r.count)]));
 
+    // Only worth asking for on sessions actually live right now - a
+    // session-card "Round X of Y" line was previously only ever
+    // populated by mock data, never by anything real, because this
+    // query never fetched it. Scoped to live sessionIds specifically
+    // (usually a small set, often just one) rather than every session
+    // in the list.
+    const liveSessionIds = rows.filter((r) => r.status === "live").map((r) => r.id);
+    let roundCurrentBySession = new Map<string, number>();
+    if (liveSessionIds.length > 0) {
+      const roundRows = await db
+        .select({ sessionId: sessionRounds.sessionId, roundNumber: sql<number>`max(${sessionRounds.roundNumber})` })
+        .from(sessionRounds)
+        .where(sql`${sessionRounds.sessionId} IN ${liveSessionIds}`)
+        .groupBy(sessionRounds.sessionId);
+      roundCurrentBySession = new Map(roundRows.map((r) => [r.sessionId, Number(r.roundNumber)]));
+    }
+
       let creatorById = new Map<string, string>();
       let creatorAvatarById = new Map<string, string | null>();
     if (includeCreatorNames) {
@@ -2457,6 +2474,7 @@ export class DatabaseStorage implements IStorage {
         creatorAvatar: includeCreatorNames ? creatorAvatarById.get(session.createdBy) ?? null : undefined,
         hasDivisions: sessionIdsWithDivisions.has(session.id),
         parentSessionTitle: session.parentSessionId ? parentTitleById.get(session.parentSessionId) : undefined,
+        roundCurrent: roundCurrentBySession.get(session.id),
       };
     });
   }

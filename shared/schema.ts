@@ -1278,6 +1278,12 @@ export type SessionWithDetails = TennisSession & {
   creatorAvatar?: string | null; // populated only when creatorName is (same includeCreatorNames flag)
   hasDivisions: boolean; // true if any session (any status) has this one as its parentSessionId
   parentSessionTitle?: string; // the container's own title, when this session is a division
+  // The session's current round number - only ever populated for a
+  // "live" session (a draft/completed one has no meaningful "current"
+  // round); undefined for everything else. plannedRoundsCount (a real
+  // column on TennisSession, already inherited above) is the "of Y"
+  // half of the same "Round X of Y" display.
+  roundCurrent?: number;
 };
 
 // One row per player registered for a session, with just enough user
