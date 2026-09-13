@@ -958,10 +958,53 @@ router.post("/sessions/:id/finish", requireStagingEnv, requireAuth, requireOrgan
   }
 });
 
-router.get("/sessions/:id/leaderboard", requireStagingEnv, requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+// Viewing final standings for a completed session is basic, always-
+// needed functionality (like check-in - see its own route above for
+// the same reasoning), not an experimental live-scoring feature - only
+// go-live/rounds/pairing/QR check-in stay staging-gated.
+router.get("/sessions/:id/leaderboard", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
   try {
     const leaderboard = await storage.getSessionLeaderboard(req.params.id);
     res.json(leaderboard);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Final standings, sent to every active registrant as a real message -
+// same notifyActiveRegistrants() helper the cancel/reschedule notices
+// already use. One shared summary (not a per-player personalized
+// message) - everyone sees the same full standings, matching what a
+// results page itself shows.
+router.post("/sessions/:id/send-results", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+  try {
+    const session = (req as any).session_ as TennisSession;
+    if (session.status !== "completed") {
+      return res.status(400).json({ message: "Results are only available once the session has finished" });
+    }
+    const [leaderboard, organizer] = await Promise.all([
+      storage.getSessionLeaderboard(session.id),
+      storage.getUser((req.user as any).id),
+    ]);
+    if (!organizer) {
+      return res.status(404).json({ message: "Organiser not found" });
+    }
+    if (leaderboard.length === 0) {
+      return res.status(400).json({ message: "No results to send yet" });
+    }
+
+    const standingsText = leaderboard
+      .map((row, i) => `${i + 1}. ${row.userName} - ${row.wins}W${row.draws > 0 ? `-${row.draws}D` : ""}-${row.losses}L`)
+      .join("\n");
+
+    await notifyActiveRegistrants(
+      session,
+      organizer,
+      `Results: ${session.title}`,
+      `Final standings for "${session.title}":\n${standingsText}`
+    );
+
+    res.status(201).json({ sentTo: leaderboard.length });
   } catch (error) {
     next(error);
   }

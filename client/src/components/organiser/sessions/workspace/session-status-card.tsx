@@ -71,14 +71,14 @@ export function SessionStatusCard({ session, onEdit, showEditButton = true }: Se
         </div>
 
         <div className="flex items-center gap-3 text-sm" data-testid="organiser-session-status-results">
-          <div className={cn("w-7 h-7 rounded-xl flex items-center justify-center shrink-0", session.resultsPublished ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+          <div className={cn("w-7 h-7 rounded-xl flex items-center justify-center shrink-0", session.status === "completed" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
             <Trophy className="w-3.5 h-3.5" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-muted-foreground text-xs">Results</p>
-            <p className={cn("font-medium", session.resultsPublished && "text-primary")}>{session.resultsPublished ? "Published" : "Pending"}</p>
+            <p className={cn("font-medium", session.status === "completed" && "text-primary")}>{session.status === "completed" ? "Available" : "Pending"}</p>
           </div>
-          {session.resultsPublished ? <CheckCircle2 className="w-4 h-4 text-primary shrink-0" /> : <Circle className="w-4 h-4 text-muted-foreground shrink-0" />}
+          {session.status === "completed" ? <CheckCircle2 className="w-4 h-4 text-primary shrink-0" /> : <Circle className="w-4 h-4 text-muted-foreground shrink-0" />}
         </div>
 
         {showEditButton && (
