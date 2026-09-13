@@ -465,7 +465,7 @@ function LeaderboardPanel({
   rows,
   loading,
 }: {
-  rows: { userId: string; userName: string; userAvatar: string | null; matchesPlayed: number; wins: number; losses: number; gamesWon: number; gamesLost: number; restRounds: number }[];
+  rows: { userId: string; userName: string; userAvatar: string | null; matchesPlayed: number; wins: number; losses: number; draws: number; gamesWon: number; gamesLost: number; restRounds: number }[];
   loading: boolean;
 }) {
   return (
@@ -492,7 +492,9 @@ function LeaderboardPanel({
               <AvatarFallback>{row.userName?.[0] ?? "?"}</AvatarFallback>
             </Avatar>
             <span className="text-sm flex-1">{row.userName}</span>
-            <span className="text-xs text-primary-foreground/60">{row.wins}W–{row.losses}L</span>
+            <span className="text-xs text-primary-foreground/60">
+              {row.wins}W{row.draws > 0 ? `–${row.draws}D` : ""}–{row.losses}L
+            </span>
             <span className="text-xs text-primary-foreground/60 w-14 text-right">
               {row.gamesWon}–{row.gamesLost}
             </span>
