@@ -79,18 +79,23 @@ export function OrganiserSidebarNav({ organiser, profileHref, className, collaps
   return (
     <div className={cn("dark flex flex-col h-full bg-background text-foreground", className)} data-testid="organiser-sidebar">
       <div className={cn("pt-6", collapsed ? "px-3" : "px-5")}>
-        <div className="flex items-center justify-between gap-2">
+        {!collapsed && (
+          <Link href="/" className="text-xl font-display font-bold flex items-center gap-1" data-testid="organiser-sidebar-logo">
+            Tennis<span className="text-primary">Connect</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1" />
+          </Link>
+        )}
+        <div className={cn("flex items-center gap-2", collapsed ? "justify-center" : "justify-between mt-3")}>
           {!collapsed && (
-            <Link href="/" className="text-xl font-display font-bold flex items-center gap-1" data-testid="organiser-sidebar-logo">
-              Tennis<span className="text-primary">Connect</span>
-              <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1" />
-            </Link>
+            <p className="text-[11px] font-semibold tracking-widest text-muted-foreground px-1">
+              ORGANISER HUB
+            </p>
           )}
           {onToggleCollapsed && (
             <Button
               variant="ghost"
               size="icon"
-              className={cn("h-8 w-8 text-muted-foreground shrink-0", collapsed && "mx-auto")}
+              className="h-8 w-8 text-muted-foreground shrink-0"
               onClick={onToggleCollapsed}
               title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
               data-testid="organiser-sidebar-collapse-toggle"
@@ -99,11 +104,6 @@ export function OrganiserSidebarNav({ organiser, profileHref, className, collaps
             </Button>
           )}
         </div>
-        {!collapsed && (
-          <p className="text-[11px] font-semibold tracking-widest text-muted-foreground mt-3 px-1">
-            ORGANISER HUB
-          </p>
-        )}
       </div>
 
       <nav className="px-3 pt-4 space-y-1" data-testid="organiser-sidebar-nav">

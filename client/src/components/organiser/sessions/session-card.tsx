@@ -18,13 +18,7 @@ import {
 import {
   Calendar,
   MapPin,
-  Users,
   Play,
-  FileText,
-  Trophy,
-  Archive,
-  Radio,
-  UsersRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -60,20 +54,10 @@ const STATUS_BADGE_STYLE: Record<string, string> = {
   archived: "bg-muted text-muted-foreground",
 };
 
-const BUCKET_ICON: Record<string, typeof Users> = {
-  live: Radio,
-  "registration-open": Calendar,
-  upcoming: UsersRound,
-  draft: FileText,
-  completed: Trophy,
-  archived: Archive,
-};
-
 export function SessionCard({ session, onDuplicate, onDelete }: SessionCardProps) {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const bucket = bucketFor(session);
-  const Icon = BUCKET_ICON[bucket];
   const spots = session.maxParticipants !== null ? session.maxParticipants - session.registeredCount : null;
   const typeLabel = SESSION_TYPE_OPTIONS.find((t) => t.key === session.type)?.label ?? "Session";
 
@@ -114,18 +98,15 @@ export function SessionCard({ session, onDuplicate, onDelete }: SessionCardProps
     <Card className="shadow-sm hover:shadow-md transition-shadow overflow-hidden" data-testid={`organiser-session-card-${session.id}`}>
       <CardContent className="p-0">
         <div className="flex flex-col sm:flex-row">
-          {/* Cover — live gets the photographic treatment, everything else
-              is a quiet icon tile differentiated by icon, not colour. */}
+          {/* Cover — the real uploaded photo whenever one exists,
+              regardless of status (used to be photo-only for "live",
+              a quiet icon tile for everything else) - falls back to
+              the same default stock court photo as before when no
+              real cover was ever uploaded for this session. */}
           <div className="relative w-full sm:w-40 h-32 sm:h-auto shrink-0 overflow-hidden">
-            {bucket === "live" ? (
-              <>
-                <img src={session.coverImage || courtImage} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-foreground/40" />
-              </>
-            ) : (
-              <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
-                <Icon className="w-10 h-10 text-primary/40" />
-              </div>
+            <img src={session.coverImage || courtImage} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" />
+            {bucket === "live" && (
+              <div className="absolute inset-0 bg-foreground/40" />
             )}
             <Badge
               className={cn("absolute top-2 left-2 gap-1", STATUS_BADGE_STYLE[bucket])}
