@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from "react";
 import Error500 from "@/pages/error-500";
+import { TennisLoader } from "@/components/ui/tennisLoader";
 
 interface Props {
   children: ReactNode;
@@ -61,12 +62,14 @@ export class ChunkErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.reloading) {
-      return (
-        <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-muted-foreground">
-          <div className="h-8 w-8 rounded-full border-2 border-current border-t-transparent animate-spin" />
-          <p className="text-sm">Updating to the latest version…</p>
-        </div>
-      );
+      // Same branded bouncing-ball loader used across the rest of the
+      // site (profile pages, auth, session pages) instead of a generic
+      // spinner - statically imported here (not React.lazy), and its
+      // own CSS is loaded globally from main.tsx, so it's guaranteed
+      // available even though what got us here was a chunk fetch
+      // failing - a fallback that itself needed a fresh chunk could hit
+      // the exact same problem it's meant to recover from.
+      return <TennisLoader text="Serving up the latest update…" />;
     }
     if (this.state.hasError) {
       // Statically imported (not lazy) on purpose: if what got us here was
