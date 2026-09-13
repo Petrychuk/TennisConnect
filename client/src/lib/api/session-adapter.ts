@@ -88,6 +88,8 @@ export function toSessionListItem(session: TennisSession | SessionWithDetails): 
     endAt: session.endAt ? new Date(session.endAt).toISOString() : undefined,
     registeredCount,
     checkedInCount: details?.checkedInCount ?? 0,
+    roundCurrent: details?.roundCurrent,
+    roundTotal: session.plannedRoundsCount ?? undefined,
     waitingCount,
     maxParticipants: session.maxParticipants ?? null,
     courtsCount: session.courtsCount ?? null,

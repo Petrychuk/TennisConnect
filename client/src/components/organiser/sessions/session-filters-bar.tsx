@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Search, CalendarDays, SlidersHorizontal } from "lucide-react";
+import { Search, CalendarDays, SlidersHorizontal, List } from "lucide-react";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
 
 interface SessionFiltersBarProps {
@@ -95,15 +95,34 @@ export function SessionFiltersBar({
       </div>
 
       <div className="flex gap-2">
-        <Button
-          variant={calendarOpen ? "default" : "outline"}
-          className="hidden md:inline-flex gap-2"
-          onClick={() => onCalendarOpenChange(!calendarOpen)}
-          data-testid="organiser-sessions-calendar-button"
-        >
-          <CalendarDays className="w-4 h-4" />
-          {calendarOpen ? "List" : "Calendar"}
-        </Button>
+        {/* A real two-state segmented toggle (both options always
+            visible, the active one highlighted) rather than a single
+            button whose own label used to flip between "Calendar" and
+            "List" depending on state - the toggle shape itself makes it
+            obvious this switches how the same Sessions are shown, not
+            a separate feature living next to the list. */}
+        <div className="hidden md:inline-flex rounded-lg border border-border p-0.5" data-testid="organiser-sessions-view-toggle">
+          <Button
+            variant={calendarOpen ? "ghost" : "secondary"}
+            size="sm"
+            className="gap-1.5 shadow-none"
+            onClick={() => onCalendarOpenChange(false)}
+            data-testid="organiser-sessions-view-list"
+          >
+            <List className="w-4 h-4" />
+            List
+          </Button>
+          <Button
+            variant={calendarOpen ? "secondary" : "ghost"}
+            size="sm"
+            className="gap-1.5 shadow-none"
+            onClick={() => onCalendarOpenChange(true)}
+            data-testid="organiser-sessions-view-calendar"
+          >
+            <CalendarDays className="w-4 h-4" />
+            Calendar
+          </Button>
+        </div>
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="outline" size="icon" className="relative" data-testid="organiser-sessions-filters-button">
