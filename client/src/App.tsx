@@ -43,6 +43,10 @@ const AdminArticlePreviewPage = lazy(() => import("@/pages/admin-article-preview
 const OrganiserDashboardPage = lazy(() => import("@/pages/organiser/organiser-dashboard"));
 const OrganiserSessionsPage = lazy(() => import("@/pages/organiser/sessions"));
 const OrganiserSessionTemplatesPage = lazy(() => import("@/pages/organiser/session-templates"));
+const OrganiserSeasonsPage = lazy(() => import("@/pages/organiser/seasons"));
+const OrganiserSeasonNewPage = lazy(() => import("@/pages/organiser/season-new"));
+const OrganiserSeasonDetailsPage = lazy(() => import("@/pages/organiser/season-details"));
+const OrganiserSeasonEditPage = lazy(() => import("@/pages/organiser/season-edit"));
 const OrganiserSessionTemplateEditPage = lazy(() => import("@/pages/organiser/session-template-edit"));
 const OrganiserPlayersPage = lazy(() => import("@/pages/organiser/players"));
 const OrganiserPlayerDetailsPage = lazy(() => import("@/pages/organiser/player-details"));
@@ -119,6 +123,10 @@ function Router() {
         <Route path="/organiser/sessions" component={OrganiserSessionsPage} />
         <Route path="/organiser/sessions/new" component={OrganiserSessionNewPage} />
         <Route path="/organiser/sessions/templates" component={OrganiserSessionTemplatesPage} />
+        <Route path="/organiser/seasons" component={OrganiserSeasonsPage} />
+        <Route path="/organiser/seasons/new" component={OrganiserSeasonNewPage} />
+        <Route path="/organiser/seasons/:id/edit" component={OrganiserSeasonEditPage} />
+        <Route path="/organiser/seasons/:id" component={OrganiserSeasonDetailsPage} />
         <Route path="/organiser/sessions/templates/:id/edit" component={OrganiserSessionTemplateEditPage} />
         <Route path="/organiser/players" component={OrganiserPlayersPage} />
         <Route path="/organiser/players/:slug" component={OrganiserPlayerDetailsPage} />

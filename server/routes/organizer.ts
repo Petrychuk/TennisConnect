@@ -9,6 +9,9 @@ import {
   insertMatchScoreSchema,
   insertSessionTemplateSchema,
   type SessionTemplate,
+  insertSeasonSchema,
+  updateSeasonSchema,
+  type Season,
   type TennisSession,
 } from "@shared/schema";
 
@@ -316,6 +319,161 @@ router.delete("/session-templates/:id", requireAuth, requireOrganizer, requireOw
     // template's id anywhere else, so there's nothing to cascade or
     // orphan.
     await storage.deleteSessionTemplate(req.params.id);
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* =========================
+   SEASONS
+   ========================= */
+
+router.get("/seasons", requireAuth, requireOrganizer, async (req, res, next) => {
+  try {
+    const organization = await storage.getOrganizationOwnedByUser((req.user as any).id);
+    if (!organization) {
+      return res.json([]);
+    }
+    const rows = await storage.getSeasonsForOrganization(organization.id);
+    res.json(rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/seasons", requireAuth, requireOrganizer, async (req, res, next) => {
+  try {
+    const organization = await storage.getOrganizationOwnedByUser((req.user as any).id);
+    if (!organization) {
+      return res.status(404).json({ message: "Organisation not found" });
+    }
+    const parsed = insertSeasonSchema.safeParse({
+      ...req.body,
+      organizationId: organization.id,
+      createdBy: (req.user as any).id,
+    });
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid input", errors: parsed.error });
+    }
+    const season = await storage.createSeason(parsed.data);
+    res.status(201).json(season);
+  } catch (error) {
+    next(error);
+  }
+});
+
+async function requireOwnSeason(req: Request, res: Response, next: NextFunction) {
+  try {
+    const season = await storage.getSeasonById(req.params.id);
+    if (!season) {
+      return res.status(404).json({ message: "Season not found" });
+    }
+    const organization = await storage.getOrganizationById(season.organizationId);
+    if (!organization || organization.ownerId !== (req.user as any).id) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    (req as any).season = season;
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+router.get("/seasons/:id", requireAuth, requireOrganizer, requireOwnSeason, async (req, res, next) => {
+  try {
+    const withCounts = await storage.getSeasonWithCounts(req.params.id);
+    res.json(withCounts);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/seasons/:id/sessions", requireAuth, requireOrganizer, requireOwnSeason, async (req, res, next) => {
+  try {
+    const season = (req as any).season as Season;
+    const sessions = await storage.getSessionsByOrganization(season.organizationId);
+    res.json(sessions.filter((s) => s.seasonId === season.id));
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.put("/seasons/:id", requireAuth, requireOrganizer, requireOwnSeason, async (req, res, next) => {
+  try {
+    // A partial edit (e.g. just renaming the season) never has both
+    // dates present at once, which insertSeasonSchema's own refine
+    // requires - updateSeasonSchema is the same shape without that
+    // refine; the ordering check below covers it instead, merged
+    // against the season's current stored values.
+    const parsed = updateSeasonSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid input", errors: parsed.error });
+    }
+    const season = (req as any).season as Season;
+    const nextStart = parsed.data.startDate ?? season.startDate;
+    const nextEnd = parsed.data.endDate ?? season.endDate;
+    if (nextEnd < nextStart) {
+      return res.status(400).json({ message: "End date must be after the start date" });
+    }
+    const updated = await storage.updateSeason(req.params.id, parsed.data);
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/seasons/:id/archive", requireAuth, requireOrganizer, requireOwnSeason, async (req, res, next) => {
+  try {
+    const updated = await storage.archiveSeason(req.params.id);
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/seasons/:id", requireAuth, requireOrganizer, requireOwnSeason, async (req, res, next) => {
+  try {
+    const season = (req as any).season as Season;
+    const sessions = await storage.getSessionsByOrganization(season.organizationId);
+    const hasSessions = sessions.some((s) => s.seasonId === season.id);
+    if (hasSessions) {
+      return res.status(409).json({
+        message: "This season has sessions attached - archive it instead of deleting, so those sessions and their results are preserved.",
+      });
+    }
+    await storage.deleteSeason(req.params.id);
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/seasons/:id/sessions", requireAuth, requireOrganizer, requireOwnSeason, async (req, res, next) => {
+  try {
+    const season = (req as any).season as Season;
+    const sessionIds: string[] = Array.isArray(req.body?.sessionIds) ? req.body.sessionIds : [];
+    if (sessionIds.length === 0) {
+      return res.status(400).json({ message: "No sessions selected" });
+    }
+    // Only ever attaches sessions this same organiser actually owns -
+    // an id for someone else's session (or one that doesn't exist)
+    // is silently dropped rather than attached.
+    const ownSessions = await storage.getSessionsByOrganization(season.organizationId);
+    const ownIds = new Set(ownSessions.map((s) => s.id));
+    const validIds = sessionIds.filter((id) => ownIds.has(id));
+    await storage.addSessionsToSeason(season.id, validIds);
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/seasons/:id/sessions/:sessionId", requireAuth, requireOrganizer, requireOwnSeason, async (req, res, next) => {
+  try {
+    // Only ever nulls sessions.season_id for this one session - never
+    // deletes the session, its registrations, or any scores/results.
+    await storage.removeSessionFromSeason(req.params.sessionId);
     res.status(204).end();
   } catch (error) {
     next(error);

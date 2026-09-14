@@ -581,6 +581,12 @@ export const tennisSessions = pgTable("sessions", {
   reviewedBy: varchar("reviewed_by").references(() => users.id),
   reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
   reviewNote: text("review_note"),
+  // Optional - most sessions (a one-off tournament, a single coaching
+  // clinic) never need this at all (see the seasons table's own
+  // comment on why Season is deliberately opt-in). Nulling this out
+  // when a session is removed from a season is the only effect that
+  // removal ever has - the session itself is never touched otherwise.
+  seasonId: varchar("season_id").references(() => seasons.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 
@@ -596,8 +602,66 @@ export const tennisSessions = pgTable("sessions", {
 // (unlike date/time) - a recurring club session usually happens at the
 // same court every time, and it's just as easy to change at
 // create-from-template time if this particular week is different.
-export const sessionTemplates = pgTable("session_templates", {
+// A Season groups a set of related Sessions over a defined period so
+// an organiser can track participation and results across the whole
+// series, not just one event at a time - "Season groups multiple
+// related sessions over a defined period", deliberately not
+// "Season = Social Tennis". Entirely optional: most sessions (a
+// one-off tournament, a single coaching clinic, a casual social
+// night) never belong to one at all, and a session works exactly the
+// same with or without a seasonId set.
+//
+// type scopes which session formats can be attached (see
+// SESSION_TYPE_OPTIONS on the client) - keeps a Social Tennis series
+// and a League Match series from ever being mixed into the same
+// ranking pool. Status (Upcoming/Active/Completed) is deliberately
+// NOT a stored column - it's derived purely from comparing today's
+// date against startDate/endDate, so there's nothing for the
+// organiser to keep in sync manually and nothing that can drift out
+// of truth with the dates themselves.
+export const seasons = pgTable("seasons", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id),
+  name: text("name").notNull(),
+  type: text("type").notNull(),
+  startDate: text("start_date").notNull(), // YYYY-MM-DD, same date-only convention as tennisSessions' own date-only fields
+  endDate: text("end_date").notNull(),
+  description: text("description"),
+  // Hides from the normal Seasons list without ever touching the
+  // sessions that belong to it, or their scores/results - see the
+  // spec's own "Archive, never delete, once a season has real
+  // history" requirement.
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  organizationIdIdx: index("seasons_organization_id_idx").on(table.organizationId),
+}));
+
+const baseSeasonSchema = createInsertSchema(seasons).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  archivedAt: true,
+}).extend({
+  name: z.string().min(1, "Season name is required"),
+  startDate: z.string().min(1, "Start date is required"),
+  endDate: z.string().min(1, "End date is required"),
+});
+export const insertSeasonSchema = baseSeasonSchema.refine((data) => data.endDate >= data.startDate, {
+  message: "End date must be after the start date",
+  path: ["endDate"],
+});
+// Used for PUT (partial edits) - a partial update like a rename-only
+// edit never has both dates present at once, which the refine above
+// requires; PUT's own route checks endDate>=startDate itself instead,
+// merged against the season's current stored values.
+export const updateSeasonSchema = baseSeasonSchema.partial();
+export type Season = typeof seasons.$inferSelect;
+export type InsertSeason = z.infer<typeof insertSeasonSchema>;
+
+export const sessionTemplates = pgTable("session_templates", {  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   organizationId: varchar("organization_id").notNull().references(() => organizations.id),
   createdBy: varchar("created_by").notNull().references(() => users.id),
   name: text("name").notNull(),

@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +12,7 @@ import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 import { useToast } from "@/hooks/use-toast";
 import { uploadImage } from "@/lib/uploadImage";
 import { AU_CITY_TIMEZONES } from "@/lib/timezone";
+import { getSeasons } from "@/lib/api/organizer-sessions";
 import type { NewSessionDraft } from "@/lib/organiser-session-wizard-types";
 import { NumberField } from "./number-field";
 import { SessionWeatherPreview } from "./session-weather-preview";
@@ -51,6 +53,16 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [isUploadingCover, setIsUploadingCover] = useState(false);
+
+  // Only same-format seasons are offered - attaching a Social Tennis
+  // session to an Americano season (or vice versa) would mix formats
+  // into the same ranking pool, which the whole point of scoping a
+  // season to one type is meant to prevent.
+  const seasonsQuery = useQuery({
+    queryKey: ["/api/organizer/seasons"],
+    queryFn: getSeasons,
+  });
+  const matchingSeasons = (seasonsQuery.data ?? []).filter((s) => s.type === draft.type);
 
   const handlePhotoSelect = async (file: File | undefined) => {
     if (!file) return;
@@ -142,12 +154,20 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
           />
         </Field>
         <Field label="Season (Optional)">
-          <Input
-            value={draft.season}
-            onChange={(e) => onChange("season", e.target.value)}
-            placeholder="e.g. Winter 2027"
-            data-testid="organiser-wizard-session-season"
-          />
+          <Select
+            value={draft.seasonId ?? "none"}
+            onValueChange={(v) => onChange("seasonId", v === "none" ? null : v)}
+          >
+            <SelectTrigger data-testid="organiser-wizard-session-season">
+              <SelectValue placeholder="No Season" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">No Season</SelectItem>
+              {matchingSeasons.map((s) => (
+                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </Field>
         <Field label="Venue">
           <Input

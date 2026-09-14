@@ -14,6 +14,9 @@ import {
   sessionTemplates,
   type SessionTemplate,
   type InsertSessionTemplate,
+  seasons,
+  type Season,
+  type InsertSeason,
   passwordResetTokens,
   emailVerificationTokens,
   supportRequests,
@@ -232,6 +235,15 @@ export interface IStorage {
   getSessionTemplateById(id: string): Promise<SessionTemplate | undefined>;
   updateSessionTemplate(id: string, updates: Partial<InsertSessionTemplate>): Promise<SessionTemplate>;
   deleteSessionTemplate(id: string): Promise<void>;
+  createSeason(season: InsertSeason): Promise<Season>;
+  getSeasonsForOrganization(organizationId: string): Promise<Array<Season & { sessionsCount: number; playersCount: number }>>;
+  getSeasonById(id: string): Promise<Season | undefined>;
+  getSeasonWithCounts(id: string): Promise<(Season & { sessionsCount: number; playersCount: number }) | undefined>;
+  updateSeason(id: string, updates: Partial<InsertSeason>): Promise<Season>;
+  archiveSeason(id: string): Promise<Season>;
+  deleteSeason(id: string): Promise<void>;
+  addSessionsToSeason(seasonId: string, sessionIds: string[]): Promise<void>;
+  removeSessionFromSeason(sessionId: string): Promise<void>;
   getUserConversations(userId: string): Promise<MessageWithAvatar[]>;
   findConversationBetweenUsers(userA: string, userB: string): Promise<MessageWithAvatar | undefined>;
   updateMessageConversation(messageId: string, conversationId: string): Promise<void>;
@@ -1984,6 +1996,128 @@ export class DatabaseStorage implements IStorage {
   // session that was created from it.
   async deleteSessionTemplate(id: string): Promise<void> {
     await db.delete(sessionTemplates).where(eq(sessionTemplates.id, id));
+  }
+
+  async createSeason(season: InsertSeason): Promise<Season> {
+    const [row] = await db.insert(seasons).values(season).returning();
+    return row;
+  }
+
+  // sessionsCount/playersCount are computed here rather than stored -
+  // both change every time a session is added/removed or someone
+  // registers, so a stored count would need updating from several
+  // unrelated code paths and could drift. playersCount is unique
+  // players across every session in the season (a player who played
+  // all 10 weeks still counts once), matching the spec's own explicit
+  // definition.
+  async getSeasonsForOrganization(organizationId: string): Promise<Array<Season & { sessionsCount: number; playersCount: number }>> {
+    const rows = await db
+      .select()
+      .from(seasons)
+      .where(and(eq(seasons.organizationId, organizationId), isNull(seasons.archivedAt)))
+      .orderBy(desc(seasons.startDate));
+
+    if (rows.length === 0) return [];
+    const seasonIds = rows.map((r) => r.id);
+
+    const sessionCountRows = await db
+      .select({ seasonId: tennisSessions.seasonId, count: sql<number>`count(*)` })
+      .from(tennisSessions)
+      .where(inArray(tennisSessions.seasonId, seasonIds))
+      .groupBy(tennisSessions.seasonId);
+    const sessionsCountBySeason = new Map(sessionCountRows.map((r) => [r.seasonId as string, Number(r.count)]));
+
+    const playerCountRows = await db
+      .select({ seasonId: tennisSessions.seasonId, count: sql<number>`count(distinct ${registrations.userId})` })
+      .from(registrations)
+      .innerJoin(tennisSessions, eq(registrations.sessionId, tennisSessions.id))
+      .where(and(inArray(tennisSessions.seasonId, seasonIds), ne(registrations.status, "cancelled")))
+      .groupBy(tennisSessions.seasonId);
+    const playersCountBySeason = new Map(playerCountRows.map((r) => [r.seasonId as string, Number(r.count)]));
+
+    return rows.map((row) => ({
+      ...row,
+      sessionsCount: sessionsCountBySeason.get(row.id) ?? 0,
+      playersCount: playersCountBySeason.get(row.id) ?? 0,
+    }));
+  }
+
+  async getSeasonById(id: string): Promise<Season | undefined> {
+    const [row] = await db.select().from(seasons).where(eq(seasons.id, id));
+    return row;
+  }
+
+  // Same counts as getSeasonsForOrganization computes, but for exactly
+  // one season and without its isNull(archivedAt) filter - an archived
+  // season should still show its real sessionsCount/playersCount on
+  // its own Season Details page, even though it's hidden from the
+  // main Seasons list.
+  async getSeasonWithCounts(id: string): Promise<(Season & { sessionsCount: number; playersCount: number }) | undefined> {
+    const season = await this.getSeasonById(id);
+    if (!season) return undefined;
+
+    const [sessionCountRow] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(tennisSessions)
+      .where(eq(tennisSessions.seasonId, id));
+
+    const [playerCountRow] = await db
+      .select({ count: sql<number>`count(distinct ${registrations.userId})` })
+      .from(registrations)
+      .innerJoin(tennisSessions, eq(registrations.sessionId, tennisSessions.id))
+      .where(and(eq(tennisSessions.seasonId, id), ne(registrations.status, "cancelled")));
+
+    return {
+      ...season,
+      sessionsCount: Number(sessionCountRow?.count ?? 0),
+      playersCount: Number(playerCountRow?.count ?? 0),
+    };
+  }
+
+  async updateSeason(id: string, updates: Partial<InsertSeason>): Promise<Season> {
+    const [row] = await db
+      .update(seasons)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(seasons.id, id))
+      .returning();
+    return row;
+  }
+
+  // Hides the season from getSeasonsForOrganization's own query (see
+  // its isNull(archivedAt) filter) without ever touching a single row
+  // in sessions, registrations, or match scores - archiving is purely
+  // a flag on the season itself.
+  async archiveSeason(id: string): Promise<Season> {
+    const [row] = await db
+      .update(seasons)
+      .set({ archivedAt: new Date(), updatedAt: new Date() })
+      .where(eq(seasons.id, id))
+      .returning();
+    return row;
+  }
+
+  // Only meant to be called for a season with zero sessions (the
+  // route enforces this) - a season that already has real history
+  // should be archived instead, never deleted, per the spec.
+  async deleteSeason(id: string): Promise<void> {
+    await db.delete(seasons).where(eq(seasons.id, id));
+  }
+
+  async addSessionsToSeason(seasonId: string, sessionIds: string[]): Promise<void> {
+    if (sessionIds.length === 0) return;
+    await db
+      .update(tennisSessions)
+      .set({ seasonId, updatedAt: new Date() })
+      .where(inArray(tennisSessions.id, sessionIds));
+  }
+
+  // Only ever nulls out the one column - the session itself, its
+  // registrations, and any scores/results are completely untouched.
+  async removeSessionFromSeason(sessionId: string): Promise<void> {
+    await db
+      .update(tennisSessions)
+      .set({ seasonId: null, updatedAt: new Date() })
+      .where(eq(tennisSessions.id, sessionId));
   }
 
   async updateMessageConversation(
