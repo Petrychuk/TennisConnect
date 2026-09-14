@@ -587,6 +587,13 @@ export const tennisSessions = pgTable("sessions", {
   // when a session is removed from a season is the only effect that
   // removal ever has - the session itself is never touched otherwise.
   seasonId: varchar("season_id").references(() => seasons.id),
+  // Optional, and only ever meaningful when seasonId is also set (a
+  // Series always belongs to a Season - see the series table's own
+  // comment). Null is exactly "No Ranking" for this session (spec
+  // §13): nothing else needs to change for a casual session to stay
+  // completely outside every Series Ranking - it just never gets a
+  // seriesId in the first place.
+  seriesId: varchar("series_id").references((): any => series.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 
@@ -660,6 +667,48 @@ export const insertSeasonSchema = baseSeasonSchema.refine((data) => data.endDate
 export const updateSeasonSchema = baseSeasonSchema.partial();
 export type Season = typeof seasons.$inferSelect;
 export type InsertSeason = z.infer<typeof insertSeasonSchema>;
+
+// A recurring stream of Sessions within a Season - "Wednesday
+// Competition", "Beginners Ladder", etc (see the Organiser Rankings
+// spec §2/§15). Deliberately NOT modelled as a weekday: `name` is a
+// free-text business entity, same as a Season's own name. Every Series
+// belongs to exactly one Season (a Series never spans seasons - a new
+// Season starting means the organiser creates a fresh Series, even if
+// it's the "same" Wednesday competition in spirit) - this is what
+// keeps a completed season's final standings permanently frozen (spec
+// §21) without any special-casing.
+export const series = pgTable("series", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id),
+  seasonId: varchar("season_id").notNull().references(() => seasons.id),
+  name: text("name").notNull(),
+  // Reuses the same session-type vocabulary as everything else
+  // (SESSION_TYPE_OPTIONS) rather than inventing a parallel one.
+  format: text("format").notNull(),
+  description: text("description"),
+  // Same "archive, never delete once it has real history" rule as
+  // seasons.archivedAt - a Series with sessions/results attached is
+  // hidden, not destroyed.
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  seasonIdIdx: index("series_season_id_idx").on(table.seasonId),
+}));
+
+export const insertSeriesSchema = createInsertSchema(series).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  archivedAt: true,
+}).extend({
+  name: z.string().min(1, "Series name is required"),
+  format: z.string().min(1, "Session format is required"),
+});
+export const updateSeriesSchema = insertSeriesSchema.partial();
+export type Series = typeof series.$inferSelect;
+export type InsertSeries = z.infer<typeof insertSeriesSchema>;
 
 export const sessionTemplates = pgTable("session_templates", {  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   organizationId: varchar("organization_id").notNull().references(() => organizations.id),
@@ -840,6 +889,50 @@ export type LeaderboardRow = {
   gamesWon: number;
   gamesLost: number;
   restRounds: number;
+  // Points earned in just this one session under the Rankings points
+  // formula (see RANKING_POINTS_PER_WIN/DRAW/GAME_WON in liveEngine.ts) -
+  // distinct from wins/gamesWon, which TC Live's own per-session
+  // leaderboard already showed before Rankings existed.
+  points: number;
+};
+
+// One row of a Series Ranking (spec §10) - the accumulated standing
+// across every completed, ranked Session in a Series, not any single
+// session's own leaderboard.
+export type SeriesStandingRow = {
+  userId: string;
+  userName: string;
+  userAvatar: string | null;
+  sessionsPlayed: number;
+  wins: number;
+  points: number;
+  // Rank movement after the most recently completed session - positive
+  // means moved up, negative means moved down, 0 means unchanged or
+  // this is the player's first ranked session.
+  change: number;
+};
+
+// One row of a single Session's own results (spec §11) - deliberately
+// the same shape as LeaderboardRow minus draws/losses/gamesWon/
+// gamesLost/restRounds, which the Rankings "Session Results" table
+// doesn't show (see the spec's own worked example table).
+export type SeriesSessionResultRow = {
+  userId: string;
+  userName: string;
+  userAvatar: string | null;
+  matchesPlayed: number;
+  wins: number;
+  points: number;
+};
+
+// One entry of a player's recent form within a Series (spec §17's
+// "Points Breakdown") - the session date plus what they scored that
+// day, most recent first.
+export type PlayerFormEntry = {
+  sessionId: string;
+  date: string; // ISO
+  position: number; // 1-based finishing position in that session
+  points: number;
 };
 
 // Dashboard's Activity Feed - derived from real registration events

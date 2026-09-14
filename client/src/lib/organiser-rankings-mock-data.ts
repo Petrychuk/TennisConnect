@@ -1,3 +1,9 @@
+// NOTE: superseded by the real backend (server/routes/organizer.ts
+// "SERIES & RANKINGS" section + client/src/lib/api/organizer-rankings.ts).
+// client/src/pages/organiser/rankings.tsx no longer imports this file -
+// kept only in case some other still-mock-driven surface starts using it,
+// same convention as organiser-players-mock-data.ts.
+//
 // Mock data for the Organiser Rankings page (see PRD: "Organiser Rankings —
 // Season, Series & Session Results"). No backend endpoint exists for
 // Series/Ranking yet (only `seasons` is a real table today) - this file
