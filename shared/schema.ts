@@ -1013,6 +1013,61 @@ export type ReportsData = {
   playerActivity: PlayerActivityRow[];
 };
 
+// ===== PLAY (public player-facing discovery) =====
+// See the "[Player] Create Play page" spec. Deliberately a thin,
+// derived view over the same `sessions`/`registrations` tables every
+// other feature uses - Play never introduces its own copy of a
+// session, and a player never needs to know what a Season or Series
+// is to use it (spec §11: that context is at most a subtle aside on
+// Session Details, never required).
+
+// Player-facing only - never the organiser's internal
+// draft/pending_review/rejected/cancelled/archived vocabulary (spec
+// §8). "closed" covers a published session whose registration window
+// has passed but the session itself hasn't happened/been marked live
+// yet.
+export type PublicSessionStatus = "live" | "upcoming" | "open" | "almost_full" | "full" | "waitlist" | "closed";
+
+export type PublicSessionCard = {
+  id: string;
+  title: string;
+  type: string; // SessionTypeKey - see organiser-session-wizard-types.ts SESSION_TYPE_OPTIONS for labels
+  playStatus: PublicSessionStatus;
+  startAt: string; // ISO
+  endAt: string | null;
+  timeZone: string;
+  location: string | null;
+  skillLevel: string | null;
+  courtsCount: number | null;
+  maxParticipants: number | null;
+  registeredCount: number;
+  coverImage: string | null;
+  organizationId: string;
+  organizationName: string;
+  organizationSlug: string;
+  organizationLogo: string | null;
+};
+
+export type PublicSessionDetails = PublicSessionCard & {
+  description: string | null;
+  matchMode: string;
+  scoringFormat: string;
+  price: string | null;
+  currency: string;
+  waitingListEnabled: boolean;
+  registrationOpensAt: string | null;
+  registrationClosesAt: string | null;
+  // Subtle Season/Series context only (spec §11) - never required to
+  // understand or use the page. Null whenever the session isn't
+  // attached to either.
+  seasonName: string | null;
+  seriesName: string | null;
+  // Only present for an authenticated viewer - null for a guest, and
+  // null for a signed-in organiser looking at their own listing before
+  // ever registering themselves.
+  myRegistrationStatus: "registered" | "waitlisted" | null;
+};
+
 // Dashboard's Activity Feed - derived from real registration events
 // (there's no dedicated activity-log table), so only what's actually
 // timestamped and attributable is included: a player joining

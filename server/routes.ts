@@ -17,6 +17,7 @@ import coachesRouter from "./routes/coaches";
 import { sendSystemMessage, sendMessageBetween, pairConversationId, ORGANIZER_APPROVED_SUBJECT, ORGANIZER_APPROVED_MESSAGE } from "./services/systemMessages";
 import uploadContentRouter from "./routes/upload-content";
 import organizerRouter from "./routes/organizer";
+import playRouter from "./routes/play";
 import weatherRouter from "./routes/weather";
 import supportRouter from "./routes/support";
 import testHooksRouter from "./routes/testHooks";
@@ -171,6 +172,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/api/coaches", coachesRouter);
   app.use("/api/upload/content", uploadContentRouter);
   app.use("/api/organizer", organizerRouter);
+  app.use("/api/play", playRouter);
   app.use("/api/weather", weatherRouter);
   app.use("/api/support", supportRouter);
 
