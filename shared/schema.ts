@@ -935,6 +935,84 @@ export type PlayerFormEntry = {
   points: number;
 };
 
+// ===== REPORTS (participation & attendance analytics) =====
+// Deliberately separate from Rankings' types above - Reports answers
+// "how many people participate/attend/return" from raw
+// Sessions/Registrations/check-ins, never wins/points/standings (see
+// the Reports spec §14 "Reports vs Rankings").
+
+export type ReportsPeriod = "this_season" | "previous_season" | "last_30_days" | "last_3_months" | "custom";
+
+export type ReportsKPIs = {
+  uniquePlayers: number;
+  sessionsHeld: number;
+  attendanceRate: number; // 0-100, rounded
+  returningPlayers: number; // 0-100, rounded
+};
+
+// Each field is the change vs the previous comparable period - a
+// relative % change for the two count-based KPIs, a percentage-POINT
+// difference for the two already-percentage KPIs (going from 82% to
+// 87% attendance is "+5", not "+6.1%"). null means no valid comparison
+// exists (e.g. no previous season, or a custom range with no natural
+// "previous" range) and the UI must not show anything for that KPI.
+export type ReportsComparison = {
+  uniquePlayers: number | null;
+  sessionsHeld: number | null;
+  attendanceRate: number | null;
+  returningPlayers: number | null;
+};
+
+export type ParticipationPoint = { date: string; registered: number; attended: number };
+
+export type SeriesPerformanceRow = {
+  seriesId: string;
+  seriesName: string;
+  sessions: number;
+  avgPlayers: number;
+  attendanceRate: number;
+  returningPlayers: number;
+};
+
+export type SessionPerformanceRow = {
+  sessionId: string;
+  date: string; // ISO
+  registered: number;
+  attended: number;
+  attendanceRate: number;
+};
+
+export type PlayerActivityRow = {
+  userId: string;
+  userName: string;
+  userAvatar: string | null;
+  userSlug: string;
+  sessions: number;
+  attended: number;
+  attendanceRate: number;
+  lastPlayed: string | null; // ISO, most recent ATTENDED session
+};
+
+// Which empty-state copy the page should show (spec §11) - resolved
+// server-side since only the server knows whether the organiser has
+// zero data ever, vs. just zero in the current Season, vs. zero in the
+// current Series specifically.
+export type ReportsEmptyReason = "no_org_data" | "no_season_data" | "no_series_data" | null;
+
+export type ReportsData = {
+  emptyReason: ReportsEmptyReason;
+  kpis: ReportsKPIs;
+  comparison: ReportsComparison;
+  participation: ParticipationPoint[];
+  // Populated when no Series filter is applied (compare series against
+  // each other); empty when one Series is selected.
+  seriesPerformance: SeriesPerformanceRow[];
+  // Populated when a single Series IS selected (drill into its own
+  // sessions); empty otherwise.
+  sessionPerformance: SessionPerformanceRow[];
+  playerActivity: PlayerActivityRow[];
+};
+
 // Dashboard's Activity Feed - derived from real registration events
 // (there's no dedicated activity-log table), so only what's actually
 // timestamped and attributable is included: a player joining

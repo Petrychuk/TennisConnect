@@ -23,6 +23,15 @@ import {
   type SeriesStandingRow,
   type SeriesSessionResultRow,
   type PlayerFormEntry,
+  type ReportsPeriod,
+  type ReportsData,
+  type ReportsEmptyReason,
+  type ReportsKPIs,
+  type ReportsComparison,
+  type ParticipationPoint,
+  type SeriesPerformanceRow,
+  type SessionPerformanceRow,
+  type PlayerActivityRow,
   passwordResetTokens,
   emailVerificationTokens,
   supportRequests,
@@ -263,6 +272,12 @@ export interface IStorage {
   getSeriesStandings(seriesId: string): Promise<SeriesStandingRow[]>;
   getSeriesSessionResults(seriesId: string, sessionId: string): Promise<SeriesSessionResultRow[]>;
   getPlayerRecentForm(seriesId: string, userId: string, limit?: number): Promise<PlayerFormEntry[]>;
+
+  // ===== REPORTS =====
+  getReportsData(
+    organizationId: string,
+    params: { period: ReportsPeriod; seasonId?: string; seriesId?: string; from?: string; to?: string }
+  ): Promise<ReportsData>;
 
   getUserConversations(userId: string): Promise<MessageWithAvatar[]>;
   findConversationBetweenUsers(userA: string, userB: string): Promise<MessageWithAvatar | undefined>;
@@ -2385,6 +2400,255 @@ export class DatabaseStorage implements IStorage {
         };
       })
       .filter((r): r is PlayerFormEntry => r !== null);
+  }
+
+  // ===== REPORTS =====
+
+  private emptyReportsData(reason: ReportsEmptyReason): ReportsData {
+    return {
+      emptyReason: reason,
+      kpis: { uniquePlayers: 0, sessionsHeld: 0, attendanceRate: 0, returningPlayers: 0 },
+      comparison: { uniquePlayers: null, sessionsHeld: null, attendanceRate: null, returningPlayers: null },
+      participation: [],
+      seriesPerformance: [],
+      sessionPerformance: [],
+      playerActivity: [],
+    };
+  }
+
+  // "Returning" = came back and actually played more than once - based
+  // on ATTENDED sessions, not just registrations, since simply signing
+  // up twice isn't the retention signal an organiser cares about.
+  private computeReturningPct(regRows: { userId: string; checkedInAt: Date | null }[]): number {
+    const attendedCountByUser = new Map<string, number>();
+    for (const r of regRows) {
+      if (!r.checkedInAt) continue;
+      attendedCountByUser.set(r.userId, (attendedCountByUser.get(r.userId) ?? 0) + 1);
+    }
+    if (attendedCountByUser.size === 0) return 0;
+    const returning = Array.from(attendedCountByUser.values()).filter((c) => c >= 2).length;
+    return Math.round((returning / attendedCountByUser.size) * 100);
+  }
+
+  private computeReportsKPIs(sessionRows: TennisSession[], regRows: { userId: string; checkedInAt: Date | null }[]): ReportsKPIs {
+    const attended = regRows.filter((r) => r.checkedInAt).length;
+    return {
+      uniquePlayers: new Set(regRows.map((r) => r.userId)).size,
+      sessionsHeld: sessionRows.length,
+      attendanceRate: regRows.length ? Math.round((attended / regRows.length) * 100) : 0,
+      returningPlayers: this.computeReturningPct(regRows),
+    };
+  }
+
+  // Groups by calendar date (not session id) - two sessions on the same
+  // day, e.g. under different series with "All Series" selected,
+  // combine into a single chart point rather than overlapping.
+  private computeParticipationSeries(
+    sessionRows: TennisSession[],
+    regRows: { sessionId: string; checkedInAt: Date | null }[]
+  ): ParticipationPoint[] {
+    const dateBySession = new Map(sessionRows.map((s) => [s.id, s.startAt.toISOString().slice(0, 10)]));
+    const bucket = new Map<string, { registered: number; attended: number }>();
+    for (const r of regRows) {
+      const date = dateBySession.get(r.sessionId);
+      if (!date) continue;
+      const entry = bucket.get(date) ?? { registered: 0, attended: 0 };
+      entry.registered += 1;
+      if (r.checkedInAt) entry.attended += 1;
+      bucket.set(date, entry);
+    }
+    return Array.from(bucket.entries())
+      .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+      .map(([date, v]) => ({ date, ...v }));
+  }
+
+  private async computePlayerActivity(regRows: { userId: string; sessionId: string; checkedInAt: Date | null }[]): Promise<PlayerActivityRow[]> {
+    const byUser = new Map<string, { sessions: number; attended: number; lastPlayed: Date | null }>();
+    for (const r of regRows) {
+      const entry = byUser.get(r.userId) ?? { sessions: 0, attended: 0, lastPlayed: null };
+      entry.sessions += 1;
+      if (r.checkedInAt) {
+        entry.attended += 1;
+        if (!entry.lastPlayed || r.checkedInAt > entry.lastPlayed) entry.lastPlayed = r.checkedInAt;
+      }
+      byUser.set(r.userId, entry);
+    }
+    const userIds = Array.from(byUser.keys());
+    if (userIds.length === 0) return [];
+    const userRows = await db.select({ id: users.id, name: users.name, avatar: users.avatar, slug: users.slug }).from(users).where(inArray(users.id, userIds));
+    const userById = new Map(userRows.map((u) => [u.id, u]));
+    return userIds
+      .map((userId) => {
+        const stat = byUser.get(userId)!;
+        const user = userById.get(userId);
+        return {
+          userId,
+          userName: user?.name ?? "Unknown player",
+          userAvatar: user?.avatar ?? null,
+          userSlug: user?.slug ?? "",
+          sessions: stat.sessions,
+          attended: stat.attended,
+          attendanceRate: stat.sessions ? Math.round((stat.attended / stat.sessions) * 100) : 0,
+          lastPlayed: stat.lastPlayed ? stat.lastPlayed.toISOString() : null,
+        };
+      })
+      .sort((a, b) => b.sessions - a.sessions || b.attended - a.attended)
+      .slice(0, 10);
+  }
+
+  // Reports is deliberately built directly from Sessions/Registrations/
+  // check-ins (spec §12) rather than any duplicated, manually-maintained
+  // statistics table - the same "derive on demand" principle as
+  // getSessionLeaderboard/getSeriesStandings above.
+  async getReportsData(
+    organizationId: string,
+    params: { period: ReportsPeriod; seasonId?: string; seriesId?: string; from?: string; to?: string }
+  ): Promise<ReportsData> {
+    const { period, seasonId, seriesId, from: customFrom, to: customTo } = params;
+
+    const allSeasons = await db
+      .select()
+      .from(seasons)
+      .where(eq(seasons.organizationId, organizationId))
+      .orderBy(asc(seasons.startDate));
+    const selectedSeason = seasonId ? allSeasons.find((s) => s.id === seasonId) : undefined;
+
+    const seasonBefore = (season: typeof allSeasons[number] | undefined) => {
+      if (!season) return undefined;
+      const earlier = allSeasons.filter((s) => s.startDate < season.startDate);
+      return earlier[earlier.length - 1];
+    };
+
+    type Scope = { from: Date; to: Date; seasonIdFilter: string | null };
+    const toDateRange = (startDate: string, endDate: string): { from: Date; to: Date } => ({
+      from: new Date(`${startDate}T00:00:00Z`),
+      to: new Date(`${endDate}T23:59:59Z`),
+    });
+
+    let scope: Scope | undefined;
+    let previousScope: Scope | undefined;
+    const now = new Date();
+
+    if (period === "this_season") {
+      if (!selectedSeason) return this.emptyReportsData("no_org_data");
+      scope = { ...toDateRange(selectedSeason.startDate, selectedSeason.endDate), seasonIdFilter: selectedSeason.id };
+      const prev = seasonBefore(selectedSeason);
+      if (prev) previousScope = { ...toDateRange(prev.startDate, prev.endDate), seasonIdFilter: prev.id };
+    } else if (period === "previous_season") {
+      const prev = seasonBefore(selectedSeason);
+      if (!prev) return this.emptyReportsData(allSeasons.length === 0 ? "no_org_data" : "no_season_data");
+      scope = { ...toDateRange(prev.startDate, prev.endDate), seasonIdFilter: prev.id };
+      // No natural "period before the previous season" for MVP - the
+      // comparison indicator simply doesn't show for this period.
+    } else if (period === "last_30_days" || period === "last_3_months") {
+      const days = period === "last_30_days" ? 30 : 90;
+      const from = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+      scope = { from, to: now, seasonIdFilter: null };
+      const prevTo = new Date(from.getTime() - 1000);
+      const prevFrom = new Date(from.getTime() - days * 24 * 60 * 60 * 1000);
+      previousScope = { from: prevFrom, to: prevTo, seasonIdFilter: null };
+    } else {
+      if (!customFrom || !customTo) return this.emptyReportsData("no_org_data");
+      scope = { from: new Date(`${customFrom}T00:00:00Z`), to: new Date(`${customTo}T23:59:59Z`), seasonIdFilter: null };
+      // A custom range has no unambiguous "previous" range - skip the
+      // comparison rather than guess one.
+    }
+
+    const computeForScope = async (s: Scope) => {
+      const conditions = [
+        eq(tennisSessions.organizationId, organizationId),
+        eq(tennisSessions.status, "completed"),
+        gte(tennisSessions.startAt, s.from),
+        lte(tennisSessions.startAt, s.to),
+      ];
+      if (s.seasonIdFilter) conditions.push(eq(tennisSessions.seasonId, s.seasonIdFilter));
+      if (seriesId) conditions.push(eq(tennisSessions.seriesId, seriesId));
+
+      const sessionRows = await db.select().from(tennisSessions).where(and(...conditions)).orderBy(asc(tennisSessions.startAt));
+      if (sessionRows.length === 0) return { sessionRows, regRows: [] as (typeof registrations.$inferSelect)[] };
+
+      const sessionIds = sessionRows.map((r) => r.id);
+      const regRows = await db
+        .select()
+        .from(registrations)
+        .where(and(inArray(registrations.sessionId, sessionIds), ne(registrations.status, "cancelled")));
+      return { sessionRows, regRows };
+    };
+
+    const current = await computeForScope(scope);
+
+    if (current.sessionRows.length === 0) {
+      const [{ count: orgCompletedCount }] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(tennisSessions)
+        .where(and(eq(tennisSessions.organizationId, organizationId), eq(tennisSessions.status, "completed")));
+      if (Number(orgCompletedCount) === 0) return this.emptyReportsData("no_org_data");
+      return this.emptyReportsData(seriesId ? "no_series_data" : "no_season_data");
+    }
+
+    const kpis = this.computeReportsKPIs(current.sessionRows, current.regRows);
+
+    let comparison: ReportsComparison = { uniquePlayers: null, sessionsHeld: null, attendanceRate: null, returningPlayers: null };
+    if (previousScope) {
+      const prev = await computeForScope(previousScope);
+      if (prev.sessionRows.length > 0) {
+        const prevKpis = this.computeReportsKPIs(prev.sessionRows, prev.regRows);
+        const relChange = (curr: number, prevVal: number) => (prevVal === 0 ? null : Math.round(((curr - prevVal) / prevVal) * 100));
+        comparison = {
+          uniquePlayers: relChange(kpis.uniquePlayers, prevKpis.uniquePlayers),
+          sessionsHeld: relChange(kpis.sessionsHeld, prevKpis.sessionsHeld),
+          attendanceRate: Math.round(kpis.attendanceRate - prevKpis.attendanceRate),
+          returningPlayers: Math.round(kpis.returningPlayers - prevKpis.returningPlayers),
+        };
+      }
+    }
+
+    const participation = this.computeParticipationSeries(current.sessionRows, current.regRows);
+
+    let seriesPerformance: SeriesPerformanceRow[] = [];
+    let sessionPerformance: SessionPerformanceRow[] = [];
+
+    if (seriesId) {
+      sessionPerformance = current.sessionRows.map((session) => {
+        const regs = current.regRows.filter((r) => r.sessionId === session.id);
+        const registered = regs.length;
+        const attended = regs.filter((r) => r.checkedInAt).length;
+        return {
+          sessionId: session.id,
+          date: session.startAt.toISOString(),
+          registered,
+          attended,
+          attendanceRate: registered ? Math.round((attended / registered) * 100) : 0,
+        };
+      });
+    } else {
+      const seriesIds = Array.from(new Set(current.sessionRows.map((s) => s.seriesId).filter((id): id is string => !!id)));
+      if (seriesIds.length > 0) {
+        const seriesRows = await db.select().from(series).where(inArray(series.id, seriesIds));
+        const seriesById = new Map(seriesRows.map((s) => [s.id, s]));
+        seriesPerformance = seriesIds
+          .map((id) => {
+            const sessionsInSeries = current.sessionRows.filter((s) => s.seriesId === id);
+            const sessionIdsInSeries = new Set(sessionsInSeries.map((s) => s.id));
+            const regsInSeries = current.regRows.filter((r) => sessionIdsInSeries.has(r.sessionId));
+            const registered = regsInSeries.length;
+            const attended = regsInSeries.filter((r) => r.checkedInAt).length;
+            return {
+              seriesId: id,
+              seriesName: seriesById.get(id)?.name ?? "Unknown series",
+              sessions: sessionsInSeries.length,
+              avgPlayers: sessionsInSeries.length ? Math.round(registered / sessionsInSeries.length) : 0,
+              attendanceRate: registered ? Math.round((attended / registered) * 100) : 0,
+              returningPlayers: this.computeReturningPct(regsInSeries),
+            };
+          })
+          .sort((a, b) => b.sessions - a.sessions);
+      }
+    }
+
+    const playerActivity = await this.computePlayerActivity(current.regRows);
+
+    return { emptyReason: null, kpis, comparison, participation, seriesPerformance, sessionPerformance, playerActivity };
   }
 
   async updateMessageConversation(
