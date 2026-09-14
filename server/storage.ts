@@ -32,6 +32,9 @@ import {
   type SeriesPerformanceRow,
   type SessionPerformanceRow,
   type PlayerActivityRow,
+  type PublicSessionStatus,
+  type PublicSessionCard,
+  type PublicSessionDetails,
   passwordResetTokens,
   emailVerificationTokens,
   supportRequests,
@@ -279,6 +282,19 @@ export interface IStorage {
     params: { period: ReportsPeriod; seasonId?: string; seriesId?: string; from?: string; to?: string }
   ): Promise<ReportsData>;
 
+  // ===== PLAY (public discovery) =====
+  getPublicSessions(filters: {
+    search?: string;
+    location?: string;
+    format?: string;
+    level?: string;
+    organizationId?: string;
+    dateFrom?: Date;
+    dateTo?: Date;
+  }): Promise<PublicSessionCard[]>;
+  getPublicSessionById(id: string, viewerUserId?: string): Promise<PublicSessionDetails | undefined>;
+  getRegistrationForUser(sessionId: string, userId: string): Promise<Registration | undefined>;
+
   // ===== TEST-ONLY SEEDING =====
   // Every method here is called from exactly one place:
   // server/routes/testHooks.ts, itself gated by testHooksAllowed() (dev
@@ -300,6 +316,8 @@ export interface IStorage {
     seasonId?: string;
     seriesId?: string;
     type?: string;
+    maxParticipants?: number;
+    waitingListEnabled?: boolean;
   }): Promise<TennisSession>;
   testSeedRegistration(sessionId: string, userId: string, checkedIn: boolean): Promise<{ id: string }>;
   testSeedSessionRound(sessionId: string, roundNumber: number): Promise<{ id: string }>;
@@ -2684,6 +2702,177 @@ export class DatabaseStorage implements IStorage {
     return { emptyReason: null, kpis, comparison, participation, seriesPerformance, sessionPerformance, playerActivity };
   }
 
+  // ===== PLAY (public discovery) =====
+
+  // Player-facing status only (spec §8) - never the organiser's own
+  // draft/pending_review/rejected/cancelled/archived vocabulary, which
+  // is exactly why sessions in those statuses are filtered out before
+  // this ever runs (see getPublicSessions/getPublicSessionById below).
+  private computePublicStatus(
+    session: Pick<TennisSession, "status" | "registrationOpensAt" | "registrationClosesAt" | "maxParticipants" | "waitingListEnabled">,
+    registeredCount: number
+  ): PublicSessionStatus {
+    const now = new Date();
+    if (session.status === "live") return "live";
+    if (session.registrationOpensAt && session.registrationOpensAt > now) return "upcoming";
+    if (session.registrationClosesAt && session.registrationClosesAt < now) return "closed";
+    if (session.maxParticipants) {
+      const spotsLeft = session.maxParticipants - registeredCount;
+      if (spotsLeft <= 0) return session.waitingListEnabled ? "waitlist" : "full";
+      // "Almost Full" once fewer than ~20% of spots remain - matches
+      // the mockup's own worked examples (4 of 24 left = almost full,
+      // 4 of 16 left = still just open).
+      if (spotsLeft / session.maxParticipants <= 0.2) return "almost_full";
+    }
+    return "open";
+  }
+
+  private toPublicSessionCard(session: TennisSession, organization: Organization, registeredCount: number): PublicSessionCard {
+    return {
+      id: session.id,
+      title: session.title,
+      type: session.type,
+      playStatus: this.computePublicStatus(session, registeredCount),
+      startAt: session.startAt.toISOString(),
+      endAt: session.endAt ? session.endAt.toISOString() : null,
+      timeZone: session.timeZone,
+      location: session.location,
+      skillLevel: session.skillLevel,
+      courtsCount: session.courtsCount,
+      maxParticipants: session.maxParticipants,
+      registeredCount,
+      coverImage: session.coverImage,
+      organizationId: organization.id,
+      organizationName: organization.name,
+      organizationSlug: organization.slug,
+      organizationLogo: organization.logo,
+    };
+  }
+
+  // Every publicly-discoverable activity across every organiser, for
+  // the /play page (spec §2/§3) - deliberately one query, one list, no
+  // per-format sub-pages: "published" or currently "live", and
+  // explicitly public visibility, is the entire eligibility rule.
+  // Location/format/level are pushed down into SQL; the free-text
+  // `search` (title OR venue OR organiser name) is applied afterwards
+  // in JS, same convention as server/routes/players.ts, since matching
+  // across a joined organisation name is awkward to express as one SQL
+  // OR without real performance need yet at this scale.
+  async getPublicSessions(filters: {
+    search?: string;
+    location?: string;
+    format?: string;
+    level?: string;
+    organizationId?: string;
+    dateFrom?: Date;
+    dateTo?: Date;
+  }): Promise<PublicSessionCard[]> {
+    const conditions = [
+      inArray(tennisSessions.status, ["published", "live"]),
+      eq(tennisSessions.visibility, "public"),
+    ];
+    if (filters.format) conditions.push(eq(tennisSessions.type, filters.format));
+    if (filters.level) conditions.push(eq(tennisSessions.skillLevel, filters.level));
+    if (filters.organizationId) conditions.push(eq(tennisSessions.organizationId, filters.organizationId));
+    if (filters.location) conditions.push(ilike(tennisSessions.location, `%${filters.location}%`));
+    if (filters.dateFrom) conditions.push(gte(tennisSessions.startAt, filters.dateFrom));
+    if (filters.dateTo) conditions.push(lte(tennisSessions.startAt, filters.dateTo));
+
+    const rows = await db
+      .select({ session: tennisSessions, organization: organizations })
+      .from(tennisSessions)
+      .innerJoin(organizations, eq(tennisSessions.organizationId, organizations.id))
+      .where(and(...conditions))
+      .orderBy(asc(tennisSessions.startAt));
+
+    if (rows.length === 0) return [];
+
+    const sessionIds = rows.map((r) => r.session.id);
+    const countRows = await db
+      .select({ sessionId: registrations.sessionId, count: sql<number>`count(*)` })
+      .from(registrations)
+      .where(and(inArray(registrations.sessionId, sessionIds), ne(registrations.status, "cancelled")))
+      .groupBy(registrations.sessionId);
+    const countBySession = new Map(countRows.map((r) => [r.sessionId, Number(r.count)]));
+
+    let cards = rows.map(({ session, organization }) =>
+      this.toPublicSessionCard(session, organization, countBySession.get(session.id) ?? 0)
+    );
+
+    if (filters.search) {
+      const q = filters.search.trim().toLowerCase();
+      cards = cards.filter(
+        (c) =>
+          c.title.toLowerCase().includes(q) ||
+          (c.location ?? "").toLowerCase().includes(q) ||
+          c.organizationName.toLowerCase().includes(q)
+      );
+    }
+
+    return cards;
+  }
+
+  async getPublicSessionById(id: string, viewerUserId?: string): Promise<PublicSessionDetails | undefined> {
+    const [row] = await db
+      .select({ session: tennisSessions, organization: organizations })
+      .from(tennisSessions)
+      .innerJoin(organizations, eq(tennisSessions.organizationId, organizations.id))
+      .where(
+        and(
+          eq(tennisSessions.id, id),
+          inArray(tennisSessions.status, ["published", "live"]),
+          eq(tennisSessions.visibility, "public")
+        )
+      );
+    if (!row) return undefined;
+
+    const { session, organization } = row;
+    const { registered } = await this.getSessionRegistrationCounts(session.id);
+    const card = this.toPublicSessionCard(session, organization, registered);
+
+    let seasonName: string | null = null;
+    let seriesName: string | null = null;
+    if (session.seasonId) {
+      const [season] = await db.select({ name: seasons.name }).from(seasons).where(eq(seasons.id, session.seasonId));
+      seasonName = season?.name ?? null;
+    }
+    if (session.seriesId) {
+      const [seriesRow] = await db.select({ name: series.name }).from(series).where(eq(series.id, session.seriesId));
+      seriesName = seriesRow?.name ?? null;
+    }
+
+    let myRegistrationStatus: PublicSessionDetails["myRegistrationStatus"] = null;
+    if (viewerUserId) {
+      const existing = await this.getRegistrationForUser(session.id, viewerUserId);
+      if (existing && existing.status !== "cancelled") {
+        myRegistrationStatus = existing.status === "waitlisted" ? "waitlisted" : "registered";
+      }
+    }
+
+    return {
+      ...card,
+      description: session.description,
+      matchMode: session.matchMode,
+      scoringFormat: session.scoringFormat,
+      price: session.price,
+      currency: session.currency,
+      waitingListEnabled: session.waitingListEnabled,
+      registrationOpensAt: session.registrationOpensAt ? session.registrationOpensAt.toISOString() : null,
+      registrationClosesAt: session.registrationClosesAt ? session.registrationClosesAt.toISOString() : null,
+      seasonName,
+      seriesName,
+      myRegistrationStatus,
+    };
+  }
+
+  async getRegistrationForUser(sessionId: string, userId: string): Promise<Registration | undefined> {
+    const [row] = await db
+      .select()
+      .from(registrations)
+      .where(and(eq(registrations.sessionId, sessionId), eq(registrations.userId, userId)));
+    return row;
+  }
+
   // ===== TEST-ONLY SEEDING (see the IStorage interface comment above) =====
 
   async testSeedSession(input: {
@@ -2695,6 +2884,8 @@ export class DatabaseStorage implements IStorage {
     seasonId?: string;
     seriesId?: string;
     type?: string;
+    maxParticipants?: number;
+    waitingListEnabled?: boolean;
   }): Promise<TennisSession> {
     const [session] = await db
       .insert(tennisSessions)
@@ -2707,6 +2898,8 @@ export class DatabaseStorage implements IStorage {
         seasonId: input.seasonId,
         seriesId: input.seriesId,
         type: input.type ?? "social",
+        maxParticipants: input.maxParticipants,
+        waitingListEnabled: input.waitingListEnabled ?? true,
       })
       .returning();
     return session;

@@ -165,9 +165,12 @@ export async function seedSession(
     createdBy: string;
     title: string;
     startAt: string; // ISO
-    status?: 'draft' | 'published' | 'completed';
+    status?: 'draft' | 'published' | 'completed' | 'cancelled' | 'live';
     seasonId?: string;
     seriesId?: string;
+    type?: string;
+    maxParticipants?: number;
+    waitingListEnabled?: boolean;
     registrations?: { userId: string; checkedIn?: boolean }[];
     matches?: SeededMatch[];
   }

@@ -11,6 +11,7 @@ import {
   Trash2,
   AlertTriangle,
   Home,
+  Play as PlayIcon,
   MoreHorizontal,
   Users,
   Award,
@@ -48,6 +49,7 @@ import {
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -119,6 +121,7 @@ export function Navbar() {
     : "/";
 
   const navLinks = [
+    { name: "Play", href: "/play", icon: PlayIcon },
     { name: "Players", href: "/players", icon: Users },
     { name: "Coaches", href: "/coaches", icon: Award },
     /* { name: "Tournaments", href: "/tournaments" }, */
@@ -530,7 +533,7 @@ export function Navbar() {
         data-testid="mobile-bottom-nav"
         className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-background/95 backdrop-blur-md border-t border-border/60 pb-[env(safe-area-inset-bottom)]"
       >
-        <div className="grid grid-cols-5 h-16">
+        <div className={cn("grid h-16", user?.isOrganizer ? "grid-cols-6" : "grid-cols-5")}>
           <Link
             href="/"
             data-testid="mobile-bottomnav-home"
@@ -540,6 +543,17 @@ export function Navbar() {
           >
             <Home className={`w-5 h-5 ${location === "/" ? "fill-primary/15" : ""}`} />
             Home
+          </Link>
+
+          <Link
+            href="/play"
+            data-testid="mobile-bottomnav-play"
+            className={`flex flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${
+              location.startsWith("/play") ? "text-primary" : "text-muted-foreground"
+            }`}
+          >
+            <PlayIcon className={`w-5 h-5 ${location.startsWith("/play") ? "fill-primary/15" : ""}`} />
+            Play
           </Link>
 
           <Link

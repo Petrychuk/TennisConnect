@@ -127,6 +127,8 @@ router.post("/seed-session", async (req, res, next) => {
       seasonId,
       seriesId,
       type,
+      maxParticipants,
+      waitingListEnabled,
       registrations: registrationInput = [],
       matches: matchInput = [],
     } = req.body || {};
@@ -144,6 +146,8 @@ router.post("/seed-session", async (req, res, next) => {
       seasonId: seasonId || undefined,
       seriesId: seriesId || undefined,
       type,
+      maxParticipants: typeof maxParticipants === "number" ? maxParticipants : undefined,
+      waitingListEnabled: typeof waitingListEnabled === "boolean" ? waitingListEnabled : undefined,
     });
 
     const registrationIds: string[] = [];
