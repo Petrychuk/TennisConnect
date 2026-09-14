@@ -17,8 +17,9 @@ import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/organiser/ui/notification-bell";
 import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
 import { SessionStatusTabs } from "@/components/organiser/sessions/session-status-tabs";
-import { SessionFiltersBar } from "@/components/organiser/sessions/session-filters-bar";
+import { SessionFiltersBar, type SessionsViewMode } from "@/components/organiser/sessions/session-filters-bar";
 import { SessionCard } from "@/components/organiser/sessions/session-card";
+import { SessionCardGrid } from "@/components/organiser/sessions/session-card-grid";
 import { SessionsCalendarView } from "@/components/organiser/sessions/sessions-calendar-view";
 import { SessionsEmptyState } from "@/components/organiser/sessions/sessions-empty-state";
 import { NewSessionMenu } from "@/components/organiser/sessions/wizard/new-session-menu";
@@ -64,7 +65,7 @@ export default function OrganiserSessionsPage() {
   const [format, setFormat] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<SessionsViewMode>("list");
 
   // Real venues, derived from the organiser's own sessions - was
   // previously a hardcoded two-item list ("All Venues" / one fixed
@@ -266,16 +267,28 @@ export default function OrganiserSessionsPage() {
                 onDateFromChange={setDateFrom}
                 dateTo={dateTo}
                 onDateToChange={setDateTo}
-                calendarOpen={calendarOpen}
-                onCalendarOpenChange={setCalendarOpen}
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
               />
 
-              {calendarOpen ? (
+              {viewMode === "calendar" ? (
                 <SessionsCalendarView sessions={visible} />
               ) : visible.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-8 text-center" data-testid="organiser-sessions-bucket-empty">
                   No sessions here.
                 </p>
+              ) : viewMode === "grid" ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4" data-testid="organiser-sessions-grid">
+                  {visible.map((session) => (
+                    <SessionCardGrid
+                      key={session.id}
+                      session={session}
+                      onDuplicate={handleDuplicate}
+                      onDelete={handleDelete}
+                      onArchive={handleArchive}
+                    />
+                  ))}
+                </div>
               ) : (
                 <div className="space-y-3" data-testid="organiser-sessions-list">
                   {visible.map((session) => (

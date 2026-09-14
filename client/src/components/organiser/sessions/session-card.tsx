@@ -41,7 +41,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
-import { bucketFor } from "./session-utils";
+import { bucketFor, STATUS_BADGE_LABEL, STATUS_BADGE_STYLE, getPrimaryActionMeta } from "./session-utils";
 import { SaveAsTemplateDialog } from "./save-as-template-dialog";
 import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.webp";
 
@@ -52,31 +52,10 @@ interface SessionCardProps {
   onArchive?: (session: SessionListItem) => void;
 }
 
-const STATUS_BADGE_LABEL: Record<string, string> = {
-  live: "LIVE",
-  "registration-open": "Registration Open",
-  upcoming: "Upcoming",
-  draft: "Draft",
-  completed: "Completed",
-  archived: "Archived",
-};
-
-// Deliberately just background/primary/muted/destructive tints - no
-// per-status hue palette (green/orange/blue/purple like the mockup),
-// keeping to the project's existing tokens.
-const STATUS_BADGE_STYLE: Record<string, string> = {
-  live: "bg-primary text-foreground",
-  "registration-open": "bg-white text-primary",
-  upcoming: "bg-secondary text-secondary-foreground",
-  draft: "bg-muted text-muted-foreground",
-  completed: "bg-accent text-accent-foreground",
-  archived: "bg-muted text-muted-foreground",
-};
-
 // Small icon+value+label chip, reused for every status's own metric
 // row - each status shows a genuinely different set (see the metric
 // blocks below), but always in this same compact shape.
-function Metric({ icon: Icon, value, label, testId }: { icon: typeof Users; value: string | number; label: string; testId?: string }) {
+export function Metric({ icon: Icon, value, label, testId }: { icon: typeof Users; value: string | number; label: string; testId?: string }) {
   return (
     <span className="flex items-center gap-1.5" data-testid={testId}>
       <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
@@ -111,25 +90,18 @@ export function SessionCard({ session, onDuplicate, onDelete, onArchive }: Sessi
 
   // One primary action per status - everything else (Duplicate, Edit,
   // Save as Template, Archive) lives behind the overflow menu instead
-  // of sitting on the row as its own full-size button.
-  //
-  // Green (the site's actual "act now" colour) is reserved for actions
-  // that genuinely need attention right now - Continue Setup, Enter
-  // Live, Manage Session. View Results/View History are the least
-  // urgent thing on the page (the session already happened), so they
-  // stay a plain outline button instead of visually shouting louder
-  // than an unfinished draft or a live session - explicit feedback:
-  // "зелёное = сейчас нужно действовать".
-  const primaryAction =
-    bucket === "draft"
-      ? { label: "Continue Setup", onClick: openWorkspace, urgent: true }
+  // of sitting on the row as its own full-size button. Shared with
+  // session-card-grid.tsx via getPrimaryActionMeta so both layouts
+  // agree on which action is primary and how urgent it looks.
+  const primaryAction = getPrimaryActionMeta(bucket, Play);
+  const primaryOnClick =
+    bucket === "draft" || bucket === "registration-open" || bucket === "upcoming"
+      ? openWorkspace
       : bucket === "live"
-      ? { label: "Enter Live", onClick: openLive, icon: Play, urgent: true }
+      ? openLive
       : bucket === "completed"
-      ? { label: "View Results", onClick: openResults, urgent: false }
-      : bucket === "archived"
-      ? { label: "View History", onClick: openHistory, urgent: false }
-      : { label: "Manage Session", onClick: openWorkspace, urgent: true }; // registration-open, upcoming
+      ? openResults
+      : openHistory; // archived
 
   return (
     <Card className="shadow-sm hover:shadow-md transition-shadow overflow-hidden" data-testid={`organiser-session-card-${session.id}`}>
@@ -241,7 +213,7 @@ export function SessionCard({ session, onDuplicate, onDelete, onArchive }: Sessi
             <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
               <Button
                 variant={primaryAction.urgent ? "default" : "outline"}
-                onClick={primaryAction.onClick}
+                onClick={primaryOnClick}
                 className="flex-1 sm:flex-none"
                 data-testid={`organiser-session-card-${session.id}-primary`}
               >
