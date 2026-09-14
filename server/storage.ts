@@ -17,6 +17,12 @@ import {
   seasons,
   type Season,
   type InsertSeason,
+  series,
+  type Series,
+  type InsertSeries,
+  type SeriesStandingRow,
+  type SeriesSessionResultRow,
+  type PlayerFormEntry,
   passwordResetTokens,
   emailVerificationTokens,
   supportRequests,
@@ -244,6 +250,20 @@ export interface IStorage {
   deleteSeason(id: string): Promise<void>;
   addSessionsToSeason(seasonId: string, sessionIds: string[]): Promise<void>;
   removeSessionFromSeason(sessionId: string): Promise<void>;
+
+  // ===== SERIES & RANKINGS =====
+  createSeries(input: InsertSeries): Promise<Series>;
+  getSeriesForSeason(seasonId: string): Promise<Array<Series & { sessionsCount: number; playersCount: number }>>;
+  getSeriesById(id: string): Promise<Series | undefined>;
+  updateSeries(id: string, updates: Partial<InsertSeries>): Promise<Series>;
+  deleteSeries(id: string): Promise<void>;
+  addSessionsToSeries(seriesId: string, sessionIds: string[]): Promise<void>;
+  removeSessionFromSeries(sessionId: string): Promise<void>;
+  getSessionsForSeries(seriesId: string): Promise<Array<TennisSession & { playersCount: number; roundsCount: number }>>;
+  getSeriesStandings(seriesId: string): Promise<SeriesStandingRow[]>;
+  getSeriesSessionResults(seriesId: string, sessionId: string): Promise<SeriesSessionResultRow[]>;
+  getPlayerRecentForm(seriesId: string, userId: string, limit?: number): Promise<PlayerFormEntry[]>;
+
   getUserConversations(userId: string): Promise<MessageWithAvatar[]>;
   findConversationBetweenUsers(userA: string, userB: string): Promise<MessageWithAvatar | undefined>;
   updateMessageConversation(messageId: string, conversationId: string): Promise<void>;
@@ -2118,6 +2138,253 @@ export class DatabaseStorage implements IStorage {
       .update(tennisSessions)
       .set({ seasonId: null, updatedAt: new Date() })
       .where(eq(tennisSessions.id, sessionId));
+  }
+
+  async createSeries(input: InsertSeries): Promise<Series> {
+    const [row] = await db.insert(series).values(input).returning();
+    return row;
+  }
+
+  // Same shape/reasoning as getSeasonsForOrganization's own counts -
+  // computed on demand rather than stored, so they can never drift.
+  async getSeriesForSeason(seasonId: string): Promise<Array<Series & { sessionsCount: number; playersCount: number }>> {
+    const rows = await db
+      .select()
+      .from(series)
+      .where(and(eq(series.seasonId, seasonId), isNull(series.archivedAt)))
+      .orderBy(desc(series.createdAt));
+
+    if (rows.length === 0) return [];
+    const seriesIds = rows.map((r) => r.id);
+
+    const sessionCountRows = await db
+      .select({ seriesId: tennisSessions.seriesId, count: sql<number>`count(*)` })
+      .from(tennisSessions)
+      .where(inArray(tennisSessions.seriesId, seriesIds))
+      .groupBy(tennisSessions.seriesId);
+    const sessionsCountBySeries = new Map(sessionCountRows.map((r) => [r.seriesId as string, Number(r.count)]));
+
+    const playerCountRows = await db
+      .select({ seriesId: tennisSessions.seriesId, count: sql<number>`count(distinct ${registrations.userId})` })
+      .from(registrations)
+      .innerJoin(tennisSessions, eq(registrations.sessionId, tennisSessions.id))
+      .where(and(inArray(tennisSessions.seriesId, seriesIds), ne(registrations.status, "cancelled")))
+      .groupBy(tennisSessions.seriesId);
+    const playersCountBySeries = new Map(playerCountRows.map((r) => [r.seriesId as string, Number(r.count)]));
+
+    return rows.map((row) => ({
+      ...row,
+      sessionsCount: sessionsCountBySeries.get(row.id) ?? 0,
+      playersCount: playersCountBySeries.get(row.id) ?? 0,
+    }));
+  }
+
+  async getSeriesById(id: string): Promise<Series | undefined> {
+    const [row] = await db.select().from(series).where(eq(series.id, id));
+    return row;
+  }
+
+  async updateSeries(id: string, updates: Partial<InsertSeries>): Promise<Series> {
+    const [row] = await db
+      .update(series)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(series.id, id))
+      .returning();
+    return row;
+  }
+
+  // Only meant to be called for a series with zero sessions (the route
+  // enforces this) - one with real history should stay (or be
+  // archived) rather than deleted, same rule as deleteSeason.
+  async deleteSeries(id: string): Promise<void> {
+    await db.delete(series).where(eq(series.id, id));
+  }
+
+  async addSessionsToSeries(seriesId: string, sessionIds: string[]): Promise<void> {
+    if (sessionIds.length === 0) return;
+    await db
+      .update(tennisSessions)
+      .set({ seriesId, updatedAt: new Date() })
+      .where(inArray(tennisSessions.id, sessionIds));
+  }
+
+  // Only ever nulls out the one column (which is exactly "No Ranking"
+  // for this session, see the schema's own comment) - the session
+  // itself, its registrations, and any scores/results are untouched.
+  async removeSessionFromSeries(sessionId: string): Promise<void> {
+    await db
+      .update(tennisSessions)
+      .set({ seriesId: null, updatedAt: new Date() })
+      .where(eq(tennisSessions.id, sessionId));
+  }
+
+  async getSessionsForSeries(seriesId: string): Promise<Array<TennisSession & { playersCount: number; roundsCount: number }>> {
+    const rows = await db
+      .select()
+      .from(tennisSessions)
+      .where(eq(tennisSessions.seriesId, seriesId))
+      .orderBy(desc(tennisSessions.startAt));
+
+    if (rows.length === 0) return [];
+    const ids = rows.map((r) => r.id);
+
+    const playerCountRows = await db
+      .select({ sessionId: registrations.sessionId, count: sql<number>`count(*)` })
+      .from(registrations)
+      .where(and(inArray(registrations.sessionId, ids), ne(registrations.status, "cancelled")))
+      .groupBy(registrations.sessionId);
+    const playersBySession = new Map(playerCountRows.map((r) => [r.sessionId, Number(r.count)]));
+
+    const roundCountRows = await db
+      .select({ sessionId: sessionRounds.sessionId, count: sql<number>`count(*)` })
+      .from(sessionRounds)
+      .where(inArray(sessionRounds.sessionId, ids))
+      .groupBy(sessionRounds.sessionId);
+    const roundsBySession = new Map(roundCountRows.map((r) => [r.sessionId, Number(r.count)]));
+
+    return rows.map((row) => ({
+      ...row,
+      playersCount: playersBySession.get(row.id) ?? 0,
+      roundsCount: roundsBySession.get(row.id) ?? 0,
+    }));
+  }
+
+  // Internal: every COMPLETED, ranked (seriesId set) Session in a
+  // Series, each with its own already-computed per-player leaderboard
+  // (confirmed matches only) - the one shared building block behind
+  // getSeriesStandings/getSeriesSessionResults/getPlayerRecentForm, so
+  // all three always agree on what "a completed ranked session" means
+  // and use the exact same points formula. Ordered oldest-first, since
+  // "the most recently completed session" (spec §10's Change column)
+  // is just this array's own last element.
+  private async getRankedSessionLeaderboards(seriesId: string) {
+    const sessions = await db
+      .select()
+      .from(tennisSessions)
+      .where(and(eq(tennisSessions.seriesId, seriesId), eq(tennisSessions.status, "completed")))
+      .orderBy(asc(tennisSessions.startAt));
+
+    return Promise.all(
+      sessions.map(async (session) => {
+        const [matchRows, registeredPlayers] = await Promise.all([
+          db.select().from(matches).where(eq(matches.sessionId, session.id)),
+          db
+            .select({ userId: registrations.userId })
+            .from(registrations)
+            .where(and(eq(registrations.sessionId, session.id), ne(registrations.status, "cancelled"))),
+        ]);
+        const entries = computeLeaderboard({
+          matches: matchRows.map((m) => ({
+            teamAIds: m.teamAIds ?? [],
+            teamBIds: m.teamBIds ?? [],
+            teamAGames: m.teamAGames,
+            teamBGames: m.teamBGames,
+            status: m.status,
+          })),
+          restCounts: {},
+          players: registeredPlayers.map((r) => ({ id: r.userId })),
+        });
+        return { session, entries };
+      })
+    );
+  }
+
+  private async joinUserNames<T extends { userId: string }>(rows: T[]): Promise<(T & { userName: string; userAvatar: string | null })[]> {
+    if (rows.length === 0) return [];
+    const userRows = await db
+      .select({ id: users.id, name: users.name, avatar: users.avatar })
+      .from(users)
+      .where(inArray(users.id, rows.map((r) => r.userId)));
+    const byId = new Map(userRows.map((u) => [u.id, u]));
+    return rows.map((r) => ({
+      ...r,
+      userName: byId.get(r.userId)?.name ?? "Unknown player",
+      userAvatar: byId.get(r.userId)?.avatar ?? null,
+    }));
+  }
+
+  private aggregateSessionPoints(sessionLeaderboards: Awaited<ReturnType<DatabaseStorage["getRankedSessionLeaderboards"]>>) {
+    const totals = new Map<string, { sessionsPlayed: number; wins: number; points: number }>();
+    for (const { entries } of sessionLeaderboards) {
+      for (const e of entries) {
+        const row = totals.get(e.userId) ?? { sessionsPlayed: 0, wins: 0, points: 0 };
+        row.sessionsPlayed += 1;
+        row.wins += e.wins;
+        row.points += e.points;
+        totals.set(e.userId, row);
+      }
+    }
+    return Array.from(totals.entries())
+      .map(([userId, t]) => ({ userId, ...t }))
+      .sort((a, b) => b.points - a.points || b.wins - a.wins);
+  }
+
+  // The accumulated Series Ranking (spec §10, "Season -> Series -> All
+  // Sessions"). "Change" compares this against the same ranking with
+  // just the most recently completed session excluded, rather than a
+  // stored history table that could drift out of sync with the real
+  // match data.
+  async getSeriesStandings(seriesId: string): Promise<SeriesStandingRow[]> {
+    const sessionLeaderboards = await this.getRankedSessionLeaderboards(seriesId);
+    if (sessionLeaderboards.length === 0) return [];
+
+    const fullRanked = this.aggregateSessionPoints(sessionLeaderboards);
+    const currentPositions = new Map(fullRanked.map((r, i) => [r.userId, i + 1]));
+
+    const previousRanked = this.aggregateSessionPoints(sessionLeaderboards.slice(0, -1));
+    const previousPositions = new Map(previousRanked.map((r, i) => [r.userId, i + 1]));
+
+    const withNames = await this.joinUserNames(fullRanked);
+    return withNames.map((row) => {
+      const previousPos = previousPositions.get(row.userId);
+      const change = previousPos == null ? 0 : previousPos - currentPositions.get(row.userId)!;
+      return {
+        userId: row.userId,
+        userName: row.userName,
+        userAvatar: row.userAvatar,
+        sessionsPlayed: row.sessionsPlayed,
+        wins: row.wins,
+        points: row.points,
+        change,
+      };
+    });
+  }
+
+  // One Session's own results (spec §11) - never the accumulated
+  // Series total, even for the same player.
+  async getSeriesSessionResults(seriesId: string, sessionId: string): Promise<SeriesSessionResultRow[]> {
+    const sessionLeaderboards = await this.getRankedSessionLeaderboards(seriesId);
+    const match = sessionLeaderboards.find((r) => r.session.id === sessionId);
+    if (!match) return [];
+
+    const rows = match.entries
+      .map((e) => ({ userId: e.userId, matchesPlayed: e.matchesPlayed, wins: e.wins, points: e.points }))
+      .sort((a, b) => b.points - a.points || b.wins - a.wins);
+    return this.joinUserNames(rows);
+  }
+
+  // A player's most recent ranked sessions within this Series (spec
+  // §17's "Points Breakdown") - most recent first. Deliberately not
+  // reconciled against the player's season total (see the spec's own
+  // worked example, which lists 4 sessions that don't sum to the
+  // player's season total either) - this is "recent form", not a
+  // ledger.
+  async getPlayerRecentForm(seriesId: string, userId: string, limit = 5): Promise<PlayerFormEntry[]> {
+    const sessionLeaderboards = await this.getRankedSessionLeaderboards(seriesId);
+    const recent = sessionLeaderboards.slice(-limit).reverse();
+    return recent
+      .map(({ session, entries }): PlayerFormEntry | null => {
+        const sorted = [...entries].sort((a, b) => b.points - a.points || b.wins - a.wins);
+        const idx = sorted.findIndex((e) => e.userId === userId);
+        if (idx === -1) return null;
+        return {
+          sessionId: session.id,
+          date: session.startAt.toISOString(),
+          position: idx + 1,
+          points: sorted[idx].points,
+        };
+      })
+      .filter((r): r is PlayerFormEntry => r !== null);
   }
 
   async updateMessageConversation(

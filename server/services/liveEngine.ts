@@ -242,6 +242,24 @@ export interface LeaderboardEntry {
   gamesWon: number;
   gamesLost: number;
   restRounds: number;
+  points: number;
+}
+
+// Points formula backing both TC Live's per-session leaderboard and
+// the Rankings feature's Series/Session standings (see
+// server/services/rankingEngine.ts) - one shared, transparent formula
+// rather than two separate ones that could quietly drift apart. Wins
+// matter most, but a draw and games actually won still count for
+// something, so a close loss isn't worth exactly the same as not
+// showing up. A per-series configurable scoring system is future work,
+// out of scope for this MVP - see the Rankings spec's own "Points
+// system: Social Tennis" label, which today just means "this formula".
+export const RANKING_POINTS_PER_WIN = 25;
+export const RANKING_POINTS_PER_DRAW = 12;
+export const RANKING_POINTS_PER_GAME_WON = 1;
+
+function pointsFor(entry: Pick<LeaderboardEntry, "wins" | "draws" | "gamesWon">): number {
+  return entry.wins * RANKING_POINTS_PER_WIN + entry.draws * RANKING_POINTS_PER_DRAW + entry.gamesWon * RANKING_POINTS_PER_GAME_WON;
 }
 
 /**
@@ -265,6 +283,7 @@ export function computeLeaderboard(input: LeaderboardInput): LeaderboardEntry[] 
         gamesWon: 0,
         gamesLost: 0,
         restRounds: input.restCounts[id] ?? 0,
+        points: 0,
       });
     }
     return stats.get(id)!;
@@ -300,7 +319,10 @@ export function computeLeaderboard(input: LeaderboardInput): LeaderboardEntry[] 
     }
   }
 
-  return Array.from(stats.values()).sort((a, b) => {
+  const allEntries = Array.from(stats.values());
+  for (const row of allEntries) row.points = pointsFor(row);
+
+  return allEntries.sort((a, b) => {
     if (b.wins !== a.wins) return b.wins - a.wins;
     const diffA = a.gamesWon - a.gamesLost;
     const diffB = b.gamesWon - b.gamesLost;

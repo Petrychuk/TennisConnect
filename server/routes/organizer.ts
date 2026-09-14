@@ -13,6 +13,9 @@ import {
   updateSeasonSchema,
   type Season,
   type TennisSession,
+  insertSeriesSchema,
+  updateSeriesSchema,
+  type Series,
 } from "@shared/schema";
 
 const router = Router();
@@ -475,6 +478,158 @@ router.delete("/seasons/:id/sessions/:sessionId", requireAuth, requireOrganizer,
     // deletes the session, its registrations, or any scores/results.
     await storage.removeSessionFromSeason(req.params.sessionId);
     res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* =========================
+   SERIES & RANKINGS
+   ========================= */
+
+router.get("/seasons/:id/series", requireAuth, requireOrganizer, requireOwnSeason, async (req, res, next) => {
+  try {
+    const rows = await storage.getSeriesForSeason(req.params.id);
+    res.json(rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/series", requireAuth, requireOrganizer, async (req, res, next) => {
+  try {
+    const season = req.body?.seasonId ? await storage.getSeasonById(req.body.seasonId) : undefined;
+    if (!season) {
+      return res.status(404).json({ message: "Season not found" });
+    }
+    const organization = await storage.getOrganizationById(season.organizationId);
+    if (!organization || organization.ownerId !== (req.user as any).id) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    const parsed = insertSeriesSchema.safeParse({
+      ...req.body,
+      organizationId: organization.id,
+      createdBy: (req.user as any).id,
+    });
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid input", errors: parsed.error });
+    }
+    const created = await storage.createSeries(parsed.data);
+    res.status(201).json(created);
+  } catch (error) {
+    next(error);
+  }
+});
+
+async function requireOwnSeries(req: Request, res: Response, next: NextFunction) {
+  try {
+    const item = await storage.getSeriesById(req.params.id);
+    if (!item) {
+      return res.status(404).json({ message: "Series not found" });
+    }
+    const organization = await storage.getOrganizationById(item.organizationId);
+    if (!organization || organization.ownerId !== (req.user as any).id) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    (req as any).series = item;
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+router.put("/series/:id", requireAuth, requireOrganizer, requireOwnSeries, async (req, res, next) => {
+  try {
+    const parsed = updateSeriesSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid input", errors: parsed.error });
+    }
+    const updated = await storage.updateSeries(req.params.id, parsed.data);
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/series/:id", requireAuth, requireOrganizer, requireOwnSeries, async (req, res, next) => {
+  try {
+    const sessionsInSeries = await storage.getSessionsForSeries(req.params.id);
+    if (sessionsInSeries.length > 0) {
+      return res.status(409).json({
+        message: "This series has sessions attached - detach them first so their results stay accessible elsewhere.",
+      });
+    }
+    await storage.deleteSeries(req.params.id);
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/series/:id/sessions", requireAuth, requireOrganizer, requireOwnSeries, async (req, res, next) => {
+  try {
+    const rows = await storage.getSessionsForSeries(req.params.id);
+    res.json(rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/series/:id/sessions", requireAuth, requireOrganizer, requireOwnSeries, async (req, res, next) => {
+  try {
+    const seriesRow = (req as any).series as Series;
+    const sessionIds: string[] = Array.isArray(req.body?.sessionIds) ? req.body.sessionIds : [];
+    if (sessionIds.length === 0) {
+      return res.status(400).json({ message: "No sessions selected" });
+    }
+    // Only ever attaches sessions this organiser owns AND that already
+    // belong to the same Season this Series belongs to - a Series
+    // never spans seasons (see the schema's own comment).
+    const ownSessions = await storage.getSessionsByOrganization(seriesRow.organizationId);
+    const validIds = new Set(
+      ownSessions.filter((s) => s.seasonId === seriesRow.seasonId).map((s) => s.id)
+    );
+    const toAttach = sessionIds.filter((id) => validIds.has(id));
+    await storage.addSessionsToSeries(seriesRow.id, toAttach);
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/series/:id/sessions/:sessionId", requireAuth, requireOrganizer, requireOwnSeries, async (req, res, next) => {
+  try {
+    // Only ever nulls sessions.series_id for this one session - never
+    // touches the session itself or any of its results.
+    await storage.removeSessionFromSeries(req.params.sessionId);
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/series/:id/standings", requireAuth, requireOrganizer, requireOwnSeries, async (req, res, next) => {
+  try {
+    const rows = await storage.getSeriesStandings(req.params.id);
+    res.json(rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/series/:id/sessions/:sessionId/results", requireAuth, requireOrganizer, requireOwnSeries, async (req, res, next) => {
+  try {
+    const rows = await storage.getSeriesSessionResults(req.params.id, req.params.sessionId);
+    res.json(rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/series/:id/players/:userId/form", requireAuth, requireOrganizer, requireOwnSeries, async (req, res, next) => {
+  try {
+    const rows = await storage.getPlayerRecentForm(req.params.id, req.params.userId);
+    res.json(rows);
   } catch (error) {
     next(error);
   }
