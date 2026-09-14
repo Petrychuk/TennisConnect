@@ -68,7 +68,7 @@ export interface NewSessionDraft {
 
   // Step 2 - Session
   name: string;
-  season: string;
+  seasonId: string | null;
   venue: string;
   courtCount: number;
   // IANA zone the venue is in - see client/src/lib/timezone.ts. This is
@@ -138,7 +138,7 @@ export function createEmptyDraft(): NewSessionDraft {
   return {
     type: null,
     name: "",
-    season: "",
+    seasonId: null,
     venue: "",
     courtCount: 6,
     timeZone: "Australia/Sydney",
@@ -259,6 +259,7 @@ export function sessionToDraft(session: SessionWithDetails): NewSessionDraft {
     roundsCount: session.plannedRoundsCount ?? empty.roundsCount,
     noAd: session.noAd ?? empty.noAd,
     tiebreak: session.tiebreak ?? empty.tiebreak,
+    seasonId: session.seasonId ?? empty.seasonId,
   };
 }
 
@@ -425,5 +426,6 @@ export function draftToInsertSession(draft: NewSessionDraft) {
     noAd: draft.noAd,
     tiebreak: draft.tiebreak,
     plannedRoundsCount: draft.roundsCount || undefined,
+    seasonId: draft.seasonId || undefined,
   };
 }

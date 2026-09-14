@@ -37,7 +37,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "home", label: "Home", icon: Home, href: "/organiser" },
   { key: "sessions", label: "Sessions", icon: CalendarDays, href: "/organiser/sessions" },
   { key: "players", label: "Players", icon: Users, href: "/organiser/players" },
-  { key: "seasons", label: "Seasons", icon: CalendarRange },
+  { key: "seasons", label: "Seasons", icon: CalendarRange, href: "/organiser/seasons" },
   { key: "rankings", label: "Rankings", icon: Trophy },
   { key: "messages", label: "Messages", icon: MessageSquare, href: "/organiser/messages" },
   { key: "reports", label: "Reports", icon: FileBarChart },

@@ -14,9 +14,55 @@ import type {
   LeaderboardRow,
   SessionTemplate,
   InsertSessionTemplate,
+  Season,
+  InsertSeason,
 } from "@shared/schema";
 
 const BASE = "/api/organizer";
+
+export type SeasonWithCounts = Season & { sessionsCount: number; playersCount: number };
+
+export async function getSeasons(): Promise<SeasonWithCounts[]> {
+  const res = await apiRequest("GET", `${BASE}/seasons`);
+  return res.json();
+}
+
+export async function getSeasonById(id: string): Promise<SeasonWithCounts> {
+  const res = await apiRequest("GET", `${BASE}/seasons/${id}`);
+  return res.json();
+}
+
+export async function getSessionsForSeason(id: string): Promise<SessionWithDetails[]> {
+  const res = await apiRequest("GET", `${BASE}/seasons/${id}/sessions`);
+  return res.json();
+}
+
+export async function createSeason(data: Omit<InsertSeason, "organizationId" | "createdBy">): Promise<Season> {
+  const res = await apiRequest("POST", `${BASE}/seasons`, data);
+  return res.json();
+}
+
+export async function updateSeason(id: string, data: Partial<InsertSeason>): Promise<Season> {
+  const res = await apiRequest("PUT", `${BASE}/seasons/${id}`, data);
+  return res.json();
+}
+
+export async function archiveSeason(id: string): Promise<Season> {
+  const res = await apiRequest("POST", `${BASE}/seasons/${id}/archive`);
+  return res.json();
+}
+
+export async function deleteSeason(id: string): Promise<void> {
+  await apiRequest("DELETE", `${BASE}/seasons/${id}`);
+}
+
+export async function addSessionsToSeason(id: string, sessionIds: string[]): Promise<void> {
+  await apiRequest("POST", `${BASE}/seasons/${id}/sessions`, { sessionIds });
+}
+
+export async function removeSessionFromSeason(seasonId: string, sessionId: string): Promise<void> {
+  await apiRequest("DELETE", `${BASE}/seasons/${seasonId}/sessions/${sessionId}`);
+}
 
 export async function getSessionTemplates(): Promise<SessionTemplate[]> {
   const res = await apiRequest("GET", `${BASE}/session-templates`);
