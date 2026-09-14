@@ -19,6 +19,7 @@
 import { Router } from "express";
 import { storage } from "../storage";
 import { issueVerificationToken } from "../services/emailVerification";
+import { hashPassword } from "../auth";
 import { env } from "../env";
 
 const router = Router();
@@ -55,6 +56,112 @@ router.post("/issue-verification-token", async (req, res, next) => {
     });
 
     res.json({ token, expiresAt });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ---------------------------------------------------------------------
+// Everything below exists purely so Organiser Hub E2E tests (Rankings/
+// Reports especially) can prepare a KNOWN dataset directly, instead of
+// re-running TC Live's whole real-time flow (check-in -> generate
+// round -> enter score -> confirm -> complete session) inside every
+// single test. Same testHooksAllowed() gate as issue-verification-token
+// above - 404s outside development/staging, never reachable in
+// production. These write directly to tables that real users never
+// write to in this shape (e.g. a session created already "completed",
+// or a match with no admin review ever having happened) - do not reuse
+// this pattern anywhere outside tests.
+// ---------------------------------------------------------------------
+
+// Creates N real, usable player accounts in one call (verified,
+// approved, profile-complete) - for tests that just need a roster of
+// userIds to register/check-in/seed match results for, without paying
+// for N full register+verify-email UI flows.
+router.post("/seed-players", async (req, res, next) => {
+  if (!testHooksAllowed()) {
+    return res.status(404).json({ message: "Not found" });
+  }
+  try {
+    const count = Math.min(Math.max(Number(req.body?.count) || 1, 1), 30);
+    const password = "Test123456!";
+    const hashed = await hashPassword(password);
+
+    const players = [];
+    for (let i = 0; i < count; i++) {
+      const stamp = `${Date.now()}_${i}_${Math.floor(Math.random() * 1_000_000)}`;
+      const user = await storage.createUser({
+        name: `Seed Player ${stamp}`,
+        email: `seed_player_${stamp}@tennisconnect.test`,
+        password: hashed,
+        role: "player",
+        isTestUser: true,
+        profileCompleted: true,
+        isApproved: true,
+        emailVerified: true,
+      } as any);
+      players.push({ id: user.id, name: user.name, email: user.email, slug: user.slug, password });
+    }
+
+    res.json({ players });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Creates one Session in whatever status the test needs (typically
+// "completed"), optionally under a Season/Series, with registrations
+// (each optionally checked-in) and confirmed match results - the full
+// dataset a Rankings/Reports test needs to assert against, in one call.
+router.post("/seed-session", async (req, res, next) => {
+  if (!testHooksAllowed()) {
+    return res.status(404).json({ message: "Not found" });
+  }
+  try {
+    const {
+      organizationId,
+      createdBy,
+      title,
+      startAt,
+      status = "completed",
+      seasonId,
+      seriesId,
+      type,
+      registrations: registrationInput = [],
+      matches: matchInput = [],
+    } = req.body || {};
+
+    if (!organizationId || !createdBy || !title || !startAt) {
+      return res.status(400).json({ message: "organizationId, createdBy, title and startAt are required" });
+    }
+
+    const session = await storage.testSeedSession({
+      organizationId,
+      createdBy,
+      title,
+      startAt: new Date(startAt),
+      status,
+      seasonId: seasonId || undefined,
+      seriesId: seriesId || undefined,
+      type,
+    });
+
+    const registrationIds: string[] = [];
+    for (const r of registrationInput as { userId: string; checkedIn?: boolean }[]) {
+      const row = await storage.testSeedRegistration(session.id, r.userId, !!r.checkedIn);
+      registrationIds.push(row.id);
+    }
+
+    const matchIds: string[] = [];
+    if (Array.isArray(matchInput) && matchInput.length > 0) {
+      const round = await storage.testSeedSessionRound(session.id, 1);
+      for (const m of matchInput as { teamAIds: string[]; teamBIds: string[]; teamAGames: number; teamBGames: number }[]) {
+        const row = await storage.testSeedMatch(session.id, round.id, m.teamAIds, m.teamBIds, m.teamAGames, m.teamBGames);
+        matchIds.push(row.id);
+      }
+    }
+
+    res.json({ ...session, registrationIds, matchIds });
   } catch (error) {
     next(error);
   }

@@ -279,6 +279,39 @@ export interface IStorage {
     params: { period: ReportsPeriod; seasonId?: string; seriesId?: string; from?: string; to?: string }
   ): Promise<ReportsData>;
 
+  // ===== TEST-ONLY SEEDING =====
+  // Every method here is called from exactly one place:
+  // server/routes/testHooks.ts, itself gated by testHooksAllowed() (dev
+  // /staging only, 404s in production). They exist because building a
+  // "completed session with confirmed match results" through the real
+  // multi-step flow (create -> admin review -> publish -> check-in ->
+  // TC Live round generation -> score entry -> confirm -> complete) in
+  // every Rankings/Reports E2E test would make the suite slow and
+  // flaky for no extra coverage - the thing those tests actually verify
+  // is what Rankings/Reports DO with confirmed data, not whether TC
+  // Live's own flow works (that's covered separately). Never call these
+  // from a real user-facing route.
+  testSeedSession(input: {
+    organizationId: string;
+    createdBy: string;
+    title: string;
+    startAt: Date;
+    status: string;
+    seasonId?: string;
+    seriesId?: string;
+    type?: string;
+  }): Promise<TennisSession>;
+  testSeedRegistration(sessionId: string, userId: string, checkedIn: boolean): Promise<{ id: string }>;
+  testSeedSessionRound(sessionId: string, roundNumber: number): Promise<{ id: string }>;
+  testSeedMatch(
+    sessionId: string,
+    roundId: string,
+    teamAIds: string[],
+    teamBIds: string[],
+    teamAGames: number,
+    teamBGames: number
+  ): Promise<{ id: string }>;
+
   getUserConversations(userId: string): Promise<MessageWithAvatar[]>;
   findConversationBetweenUsers(userA: string, userB: string): Promise<MessageWithAvatar | undefined>;
   updateMessageConversation(messageId: string, conversationId: string): Promise<void>;
@@ -2649,6 +2682,80 @@ export class DatabaseStorage implements IStorage {
     const playerActivity = await this.computePlayerActivity(current.regRows);
 
     return { emptyReason: null, kpis, comparison, participation, seriesPerformance, sessionPerformance, playerActivity };
+  }
+
+  // ===== TEST-ONLY SEEDING (see the IStorage interface comment above) =====
+
+  async testSeedSession(input: {
+    organizationId: string;
+    createdBy: string;
+    title: string;
+    startAt: Date;
+    status: string;
+    seasonId?: string;
+    seriesId?: string;
+    type?: string;
+  }): Promise<TennisSession> {
+    const [session] = await db
+      .insert(tennisSessions)
+      .values({
+        organizationId: input.organizationId,
+        createdBy: input.createdBy,
+        title: input.title,
+        startAt: input.startAt,
+        status: input.status,
+        seasonId: input.seasonId,
+        seriesId: input.seriesId,
+        type: input.type ?? "social",
+      })
+      .returning();
+    return session;
+  }
+
+  async testSeedRegistration(sessionId: string, userId: string, checkedIn: boolean): Promise<{ id: string }> {
+    const [row] = await db
+      .insert(registrations)
+      .values({
+        sessionId,
+        userId,
+        status: "registered",
+        checkedInAt: checkedIn ? new Date() : null,
+      })
+      .returning();
+    return { id: row.id };
+  }
+
+  async testSeedSessionRound(sessionId: string, roundNumber: number): Promise<{ id: string }> {
+    const [row] = await db
+      .insert(sessionRounds)
+      .values({ sessionId, roundNumber, status: "completed", completedAt: new Date() })
+      .returning();
+    return { id: row.id };
+  }
+
+  async testSeedMatch(
+    sessionId: string,
+    roundId: string,
+    teamAIds: string[],
+    teamBIds: string[],
+    teamAGames: number,
+    teamBGames: number
+  ): Promise<{ id: string }> {
+    const [row] = await db
+      .insert(matches)
+      .values({
+        sessionId,
+        roundId,
+        courtLabel: "Court 1",
+        teamAIds,
+        teamBIds,
+        teamAGames,
+        teamBGames,
+        status: "confirmed",
+        confirmedAt: new Date(),
+      })
+      .returning();
+    return { id: row.id };
   }
 
   async updateMessageConversation(
