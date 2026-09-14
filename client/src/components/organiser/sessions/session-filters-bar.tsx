@@ -9,8 +9,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Search, CalendarDays, SlidersHorizontal, List } from "lucide-react";
+import { Search, CalendarDays, SlidersHorizontal, List, LayoutGrid } from "lucide-react";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
+
+export type SessionsViewMode = "grid" | "list" | "calendar";
 
 interface SessionFiltersBarProps {
   search: string;
@@ -24,16 +26,16 @@ interface SessionFiltersBarProps {
   onDateFromChange: (value: string) => void;
   dateTo: string;
   onDateToChange: (value: string) => void;
-  calendarOpen: boolean;
-  onCalendarOpenChange: (open: boolean) => void;
+  viewMode: SessionsViewMode;
+  onViewModeChange: (mode: SessionsViewMode) => void;
 }
 
 // Venue and Format are real filters now, driven by the organiser's
 // actual session data (venueOptions) and the same 12 session types
 // used everywhere else in the app - this used to be a fixed
 // two-venue, four-format placeholder list from back when there was
-// only ever one venue in the mock data. Calendar view and the extra
-// filters button are still genuinely unbuilt.
+// only ever one venue in the mock data. The extra filters button is
+// still genuinely unbuilt.
 export function SessionFiltersBar({
   search,
   onSearchChange,
@@ -46,8 +48,8 @@ export function SessionFiltersBar({
   onDateFromChange,
   dateTo,
   onDateToChange,
-  calendarOpen,
-  onCalendarOpenChange,
+  viewMode,
+  onViewModeChange,
 }: SessionFiltersBarProps) {
   const hasDateFilter = !!dateFrom || !!dateTo;
 
@@ -95,28 +97,38 @@ export function SessionFiltersBar({
       </div>
 
       <div className="flex gap-2">
-        {/* A real two-state segmented toggle (both options always
+        {/* A real three-state segmented toggle (all options always
             visible, the active one highlighted) rather than a single
-            button whose own label used to flip between "Calendar" and
-            "List" depending on state - the toggle shape itself makes it
-            obvious this switches how the same Sessions are shown, not
-            a separate feature living next to the list. */}
+            button whose own label used to flip between two states -
+            the toggle shape itself makes it obvious this switches how
+            the same Sessions are shown, not a separate feature living
+            next to the list. */}
         <div className="hidden md:inline-flex rounded-lg border border-border p-0.5" data-testid="organiser-sessions-view-toggle">
           <Button
-            variant={calendarOpen ? "ghost" : "secondary"}
+            variant={viewMode === "grid" ? "secondary" : "ghost"}
             size="sm"
             className="gap-1.5 shadow-none"
-            onClick={() => onCalendarOpenChange(false)}
+            onClick={() => onViewModeChange("grid")}
+            data-testid="organiser-sessions-view-grid"
+          >
+            <LayoutGrid className="w-4 h-4" />
+            Grid
+          </Button>
+          <Button
+            variant={viewMode === "list" ? "secondary" : "ghost"}
+            size="sm"
+            className="gap-1.5 shadow-none"
+            onClick={() => onViewModeChange("list")}
             data-testid="organiser-sessions-view-list"
           >
             <List className="w-4 h-4" />
             List
           </Button>
           <Button
-            variant={calendarOpen ? "secondary" : "ghost"}
+            variant={viewMode === "calendar" ? "secondary" : "ghost"}
             size="sm"
             className="gap-1.5 shadow-none"
-            onClick={() => onCalendarOpenChange(true)}
+            onClick={() => onViewModeChange("calendar")}
             data-testid="organiser-sessions-view-calendar"
           >
             <CalendarDays className="w-4 h-4" />
