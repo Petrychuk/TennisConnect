@@ -201,7 +201,7 @@ export default function OrganiserReportsPage() {
         from: period === "custom" ? customFrom : undefined,
         to: period === "custom" ? customTo : undefined,
       }),
-    enabled: isAuthenticated && filtersReady && (!seasonAware || !!seasonId),
+    enabled: isAuthenticated && filtersReady && seasonsQuery.isFetched && (!seasonAware || seasons.length === 0 || !!seasonId),
   });
   const data = reportsQuery.data;
 
