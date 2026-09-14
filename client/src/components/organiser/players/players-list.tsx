@@ -1,3 +1,4 @@
+import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -8,8 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, UserCircle, MessageSquare, History, UserX } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { MoreHorizontal, UserCircle, ExternalLink } from "lucide-react";
 import type { OrgPlayer } from "@/lib/organiser-players-mock-data";
 
 interface PlayersListProps {
@@ -24,15 +24,22 @@ const LEVEL_BADGE_STYLE: Record<OrgPlayer["levelLabel"], string> = {
   Beginner: "bg-accent text-accent-foreground",
 };
 
+// Same real navigation as players-table.tsx's own desktop version -
+// see its comment for why "Remove"/"Message"/"View History" aren't
+// fake toast stubs here anymore.
 export function PlayersList({ players, showSessions = true }: PlayersListProps) {
-  const { toast } = useToast();
-  const notify = (action: string, player: OrgPlayer) =>
-    toast({ title: `${action} — coming soon`, description: `Would apply to ${player.name}.` });
+  const [, setLocation] = useLocation();
+  const openDetails = (player: OrgPlayer) => setLocation(`/organiser/players/${player.slug}`);
 
   return (
     <div className="space-y-2" data-testid="organiser-players-page-list">
       {players.map((player) => (
-        <Card key={player.id} className="shadow-sm" data-testid={`organiser-players-page-list-item-${player.id}`}>
+        <Card
+          key={player.id}
+          className="shadow-sm cursor-pointer hover:border-primary/40 transition-colors"
+          onClick={() => openDetails(player)}
+          data-testid={`organiser-players-page-list-item-${player.id}`}
+        >
           <CardContent className="p-3 flex items-center gap-3">
             <Avatar className="h-9 w-9 border border-border">
               <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
@@ -51,31 +58,25 @@ export function PlayersList({ players, showSessions = true }: PlayersListProps) 
                 {player.sessionsPlayed}
               </span>
             )}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="shrink-0" data-testid={`organiser-players-page-list-item-${player.id}-menu`}>
-                  <MoreHorizontal className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => notify("View Profile", player)}>
-                  <UserCircle className="w-4 h-4 mr-2" />
-                  View Profile
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => notify("Message", player)}>
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  Message
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => notify("View History", player)}>
-                  <History className="w-4 h-4 mr-2" />
-                  View History
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => notify("Remove", player)} className="text-destructive">
-                  <UserX className="w-4 h-4 mr-2" />
-                  Remove
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div onClick={(e) => e.stopPropagation()}>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="shrink-0" data-testid={`organiser-players-page-list-item-${player.id}-menu`}>
+                    <MoreHorizontal className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => openDetails(player)}>
+                    <UserCircle className="w-4 h-4 mr-2" />
+                    View Player
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setLocation(`/player/${player.slug}`)}>
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    View Public Profile
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </CardContent>
         </Card>
       ))}

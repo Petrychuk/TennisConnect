@@ -185,12 +185,12 @@ export function toOrgPlayer(row: OrgPlayerRow): OrgPlayer {
   const daysSinceLastPlayed = (Date.now() - lastPlayed.getTime()) / (24 * 60 * 60 * 1000);
   return {
     id: row.userId,
+    slug: row.userSlug,
     name: row.userName,
     avatar: row.userAvatar,
     level: skillLevelToUtr(row.userSkillLevel) ?? 0,
     levelLabel: toLevelLabel(row.userSkillLevel),
     sessionsPlayed: row.sessionsPlayed,
-    winRate: 0,
     lastPlayed: lastPlayed.toISOString(),
     // Active if they've registered for something in the last ~90 days.
     status: daysSinceLastPlayed <= 90 ? "active" : "inactive",

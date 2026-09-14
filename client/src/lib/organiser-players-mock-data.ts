@@ -1,11 +1,11 @@
 export interface OrgPlayer {
   id: string;
+  slug: string;
   name: string;
   avatar: string | null;
   level: number;
   levelLabel: "Advanced" | "Intermediate" | "Social" | "Beginner";
   sessionsPlayed: number;
-  winRate: number; // percent
   lastPlayed: string; // ISO
   status: "active" | "inactive";
 }
@@ -15,43 +15,31 @@ function daysAgo(days: number) {
 }
 
 export const mockOrgPlayers: OrgPlayer[] = [
-  { id: "op-1", name: "Emma Wilson", avatar: null, level: 4.5, levelLabel: "Advanced", sessionsPlayed: 24, winRate: 67, lastPlayed: daysAgo(3), status: "active" },
-  { id: "op-2", name: "Kate Smith", avatar: null, level: 4.0, levelLabel: "Intermediate", sessionsPlayed: 18, winRate: 61, lastPlayed: daysAgo(3), status: "active" },
-  { id: "op-3", name: "Michael Lee", avatar: null, level: 4.0, levelLabel: "Intermediate", sessionsPlayed: 20, winRate: 58, lastPlayed: daysAgo(7), status: "active" },
-  { id: "op-4", name: "Alex Brown", avatar: null, level: 3.5, levelLabel: "Intermediate", sessionsPlayed: 16, winRate: 55, lastPlayed: daysAgo(3), status: "active" },
-  { id: "op-5", name: "James Davis", avatar: null, level: 3.5, levelLabel: "Intermediate", sessionsPlayed: 14, winRate: 53, lastPlayed: daysAgo(5), status: "active" },
-  { id: "op-6", name: "Sophie Carter", avatar: null, level: 3.0, levelLabel: "Social", sessionsPlayed: 12, winRate: 50, lastPlayed: daysAgo(8), status: "active" },
-  { id: "op-7", name: "Olena Boncheva", avatar: null, level: 3.0, levelLabel: "Social", sessionsPlayed: 10, winRate: 48, lastPlayed: daysAgo(9), status: "active" },
-  { id: "op-8", name: "Katerina Leon", avatar: null, level: 3.0, levelLabel: "Social", sessionsPlayed: 9, winRate: 46, lastPlayed: daysAgo(10), status: "active" },
-  { id: "op-9", name: "Tom Anderson", avatar: null, level: 3.0, levelLabel: "Social", sessionsPlayed: 8, winRate: 45, lastPlayed: daysAgo(11), status: "inactive" },
-  { id: "op-10", name: "Liam Johnson", avatar: null, level: 2.5, levelLabel: "Beginner", sessionsPlayed: 6, winRate: 44, lastPlayed: daysAgo(16), status: "inactive" },
+  { id: "op-1", slug: "emma-wilson", name: "Emma Wilson", avatar: null, level: 4.5, levelLabel: "Advanced", sessionsPlayed: 24, lastPlayed: daysAgo(3), status: "active" },
+  { id: "op-2", slug: "kate-smith", name: "Kate Smith", avatar: null, level: 4.0, levelLabel: "Intermediate", sessionsPlayed: 18, lastPlayed: daysAgo(3), status: "active" },
+  { id: "op-3", slug: "michael-lee", name: "Michael Lee", avatar: null, level: 4.0, levelLabel: "Intermediate", sessionsPlayed: 20, lastPlayed: daysAgo(7), status: "active" },
+  { id: "op-4", slug: "alex-brown", name: "Alex Brown", avatar: null, level: 3.5, levelLabel: "Intermediate", sessionsPlayed: 16, lastPlayed: daysAgo(3), status: "active" },
+  { id: "op-5", slug: "james-davis", name: "James Davis", avatar: null, level: 3.5, levelLabel: "Intermediate", sessionsPlayed: 14, lastPlayed: daysAgo(5), status: "active" },
+  { id: "op-6", slug: "sophie-carter", name: "Sophie Carter", avatar: null, level: 3.0, levelLabel: "Social", sessionsPlayed: 12, lastPlayed: daysAgo(8), status: "active" },
+  { id: "op-7", slug: "olena-boncheva", name: "Olena Boncheva", avatar: null, level: 3.0, levelLabel: "Social", sessionsPlayed: 10, lastPlayed: daysAgo(9), status: "active" },
+  { id: "op-8", slug: "katerina-leon", name: "Katerina Leon", avatar: null, level: 3.0, levelLabel: "Social", sessionsPlayed: 9, lastPlayed: daysAgo(10), status: "active" },
+  { id: "op-9", slug: "tom-anderson", name: "Tom Anderson", avatar: null, level: 3.0, levelLabel: "Social", sessionsPlayed: 8, lastPlayed: daysAgo(11), status: "inactive" },
+  { id: "op-10", slug: "liam-johnson", name: "Liam Johnson", avatar: null, level: 2.5, levelLabel: "Beginner", sessionsPlayed: 6, lastPlayed: daysAgo(16), status: "inactive" },
 ];
 
-// The mockup's headline numbers (128 total, 42 active, etc.) describe a
-// larger org than the 10 sample rows above represent — kept as its own
-// object rather than derived from mockOrgPlayers.length, same pattern as
-// the Sessions list page's "Completed (52)" style counts.
+// This whole file is unused by the real Players page now (players.tsx
+// computes its own real summary/filters directly from real data) -
+// kept only in case some other still-mock-driven surface imports it;
+// not deleted outright without confirming nothing else does.
 export const mockOrgPlayersSummary = {
   totalPlayers: 128,
-  totalPlayersDelta: "12 this month",
   activeThisSeason: 42,
-  activeThisSeasonDelta: "8 this month",
-  newThisMonth: 18,
-  newThisMonthDelta: "5 this month",
-  returnRate: 76,
-  returnRateDelta: "6% vs last season",
-  avgRating: 4.3,
-  avgRatingDelta: "6% vs last month",
+  returningPlayers: 97,
 };
 
 export const mockTopPlayersBySessions = mockOrgPlayers
   .slice()
   .sort((a, b) => b.sessionsPlayed - a.sessionsPlayed)
-  .slice(0, 5);
-
-export const mockTopPlayersByWinRate = mockOrgPlayers
-  .slice()
-  .sort((a, b) => b.winRate - a.winRate)
   .slice(0, 5);
 
 export interface RecentNewPlayer {
