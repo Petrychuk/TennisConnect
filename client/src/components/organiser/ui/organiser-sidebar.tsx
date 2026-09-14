@@ -13,7 +13,6 @@ import {
   Trophy,
   MessageSquare,
   FileBarChart,
-  Settings,
   ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
@@ -41,7 +40,6 @@ const NAV_ITEMS: NavItem[] = [
   { key: "rankings", label: "Rankings", icon: Trophy, href: "/organiser/rankings" },
   { key: "reports", label: "Reports", icon: FileBarChart },
   { key: "messages", label: "Messages", icon: MessageSquare, href: "/organiser/messages" },
-  { key: "settings", label: "Settings", icon: Settings },
 ];
 
 // Same six sections the old standalone /admin page's own horizontal
