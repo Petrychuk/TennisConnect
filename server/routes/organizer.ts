@@ -635,6 +635,42 @@ router.get("/series/:id/players/:userId/form", requireAuth, requireOrganizer, re
   }
 });
 
+/* =========================
+   REPORTS
+   ========================= */
+
+router.get("/reports", requireAuth, requireOrganizer, async (req, res, next) => {
+  try {
+    const organization = await storage.getOrganizationOwnedByUser((req.user as any).id);
+    if (!organization) {
+      return res.json({
+        emptyReason: "no_org_data",
+        kpis: { uniquePlayers: 0, sessionsHeld: 0, attendanceRate: 0, returningPlayers: 0 },
+        comparison: { uniquePlayers: null, sessionsHeld: null, attendanceRate: null, returningPlayers: null },
+        participation: [],
+        seriesPerformance: [],
+        sessionPerformance: [],
+        playerActivity: [],
+      });
+    }
+    const period = typeof req.query.period === "string" ? req.query.period : "this_season";
+    const validPeriods = ["this_season", "previous_season", "last_30_days", "last_3_months", "custom"];
+    if (!validPeriods.includes(period)) {
+      return res.status(400).json({ message: "Invalid period" });
+    }
+    const data = await storage.getReportsData(organization.id, {
+      period: period as any,
+      seasonId: typeof req.query.seasonId === "string" ? req.query.seasonId : undefined,
+      seriesId: typeof req.query.seriesId === "string" ? req.query.seriesId : undefined,
+      from: typeof req.query.from === "string" ? req.query.from : undefined,
+      to: typeof req.query.to === "string" ? req.query.to : undefined,
+    });
+    res.json(data);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Org-wide Players page - every distinct player who's registered for
 // any of this organiser's sessions, not just one at a time.
 router.get("/players/mine", requireAuth, async (req, res, next) => {
