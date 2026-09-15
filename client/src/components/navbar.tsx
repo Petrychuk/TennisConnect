@@ -121,9 +121,9 @@ export function Navbar() {
     : "/";
 
   const navLinks = [
-    { name: "Play", href: "/play", icon: PlayIcon },
     { name: "Players", href: "/players", icon: Users },
     { name: "Coaches", href: "/coaches", icon: Award },
+    { name: "Play", href: "/play", icon: PlayIcon },
     /* { name: "Tournaments", href: "/tournaments" }, */
     { name: "Club Communities", href: "/clubs", icon: Building2 },
     { name: "Travels", href: "/travels", icon: Plane },
