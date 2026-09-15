@@ -296,7 +296,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
               <span className="inline-block w-2 h-2 ml-1 rounded-full bg-[hsl(var(--tennis-ball))] animate-pulse" />
             </h1>
               <p className="text-muted-foreground">
-                Join Sydney's largest tennis community.
+                One online community for everyone in Australian tennis.
               </p>
             </div>
 
