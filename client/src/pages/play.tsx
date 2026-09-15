@@ -5,6 +5,7 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import SEO from "@/components/seo";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -15,14 +16,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Search, MapPin, CalendarDays, X, Sparkles } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { PlaySessionCard } from "@/components/play/session-card";
 import { getPlaySessions } from "@/lib/api/play";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
 import { PLAY_DATE_FILTER_OPTIONS, PLAY_LEVEL_OPTIONS, resolveDateFilterRange, type PlayDateFilter } from "@/lib/play-status";
 import playHeroDesktop from "/assets/images/play-hero-desktop.webp";
-import playHeroMobile from "/assets/images/play-hero-mobile.webp";
 
 const ALL = "all";
+
+// "Custom Session" is an organiser-defined free-for-all format (spec:
+// "Build your own format by choosing the rules, scoring..."), not a
+// recognisable category a player would ever filter by - it's excluded
+// from Play's own Format filter for that reason, even though it's a
+// perfectly valid session type elsewhere (the organiser wizard, etc).
+const PLAY_FORMAT_OPTIONS = SESSION_TYPE_OPTIONS.filter((opt) => opt.key !== "custom");
 
 export default function PlayPage() {
   const [, setLocation] = useLocation();
@@ -67,6 +75,32 @@ export default function PlayPage() {
 
   const clearOrganizerFilter = () => setLocation("/play");
 
+  // Shared between the md+ sidebar and the mobile fallback row so the
+  // two never drift out of sync with each other.
+  const formatSelect = (testIdPrefix: string) => (
+    <Select value={format} onValueChange={setFormat}>
+      <SelectTrigger data-testid={`${testIdPrefix}-format`}><SelectValue placeholder="All Formats" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value={ALL} data-testid={`${testIdPrefix}-format-all`}>All Formats</SelectItem>
+        {PLAY_FORMAT_OPTIONS.map((opt) => (
+          <SelectItem key={opt.key} value={opt.key} data-testid={`${testIdPrefix}-format-${opt.key}`}>{opt.label}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
+  const levelSelect = (testIdPrefix: string) => (
+    <Select value={level} onValueChange={setLevel}>
+      <SelectTrigger data-testid={`${testIdPrefix}-level`}><SelectValue placeholder="All Levels" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value={ALL} data-testid={`${testIdPrefix}-level-all`}>All Levels</SelectItem>
+        {PLAY_LEVEL_OPTIONS.filter((l) => l !== "All Levels").map((lvl) => (
+          <SelectItem key={lvl} value={lvl} data-testid={`${testIdPrefix}-level-${lvl}`}>{lvl}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
   return (
     <div className="min-h-screen bg-background font-sans" data-testid="play-page">
       <SEO
@@ -76,32 +110,55 @@ export default function PlayPage() {
       <Navbar />
 
       <main id="main-content">
-        <div className="relative h-56 sm:h-72 md:h-80 overflow-hidden bg-black">
-          <picture>
-            <source media="(min-width: 768px)" srcSet={playHeroDesktop} />
-            <img
-              src={playHeroMobile}
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover"
-              fetchPriority="high"
-            />
-          </picture>
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
-          <div className="relative h-full container mx-auto px-4 flex flex-col justify-end pb-6 sm:pb-8">
-            <p className="text-primary text-xs sm:text-sm font-bold tracking-widest uppercase mb-1">Play more tennis</p>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-white" data-testid="play-page-title">
-              Find a Game
-            </h1>
-            <p className="text-sm sm:text-base text-gray-200 mt-1 max-w-xl">
-              Tennis sessions, competitions and events near you.
-            </p>
+        {/* Hero: text and photo sit SIDE BY SIDE on md+ (never one on
+            top of the other) - the photo used to be a full-bleed
+            background with the title text overlaid on it, which both
+            crushed the photo into a very short/wide crop and made the
+            text hard to read against it. A dedicated photo panel next
+            to the text fixes both at once. Mobile keeps just the text
+            for now (no cramped photo strip) - a proper mobile hero
+            treatment is a follow-up once this layout is settled. */}
+        <div className="border-b border-border bg-gradient-to-b from-primary/5 to-transparent">
+          <div className="container mx-auto px-4 py-8 md:py-12">
+            <div className="flex flex-col md:flex-row md:items-center gap-6 lg:gap-10">
+              <div className="flex-1 min-w-0">
+                <p className="text-primary text-xs sm:text-sm font-bold tracking-widest uppercase mb-1">Play more tennis</p>
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold" data-testid="play-page-title">
+                  Find a Game
+                </h1>
+                <p className="text-muted-foreground mt-1 max-w-md">
+                  Tennis sessions, competitions and events near you.
+                </p>
+
+                <div className="relative mt-5 max-w-xl">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search by session, venue or organiser..."
+                    className="pl-10 h-11 bg-background"
+                    data-testid="play-page-search-input"
+                  />
+                </div>
+              </div>
+
+              <div className="hidden md:block relative w-full md:w-[42%] lg:w-[46%] h-48 lg:h-64 rounded-2xl overflow-hidden shrink-0 bg-muted">
+                <img
+                  src={playHeroDesktop}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  style={{ objectPosition: "center 40%" }}
+                  fetchPriority="high"
+                />
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="container mx-auto px-4 py-6 space-y-5">
+        <div className="container mx-auto px-4 py-6">
           {organizerId && (
             <div
-              className="flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5"
+              className="flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5 mb-5"
               data-testid="play-page-organizer-filter-banner"
             >
               <p className="text-sm">
@@ -113,113 +170,158 @@ export default function PlayPage() {
             </div>
           )}
 
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by session, venue or organiser..."
-              className="pl-10 h-11"
-              data-testid="play-page-search-input"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2" data-testid="play-page-filters">
-            <div className="relative">
+          {/* Mobile-only compact filter row - the sidebar (below) is
+              md+ only. A proper mobile filter layout (drawer, chips,
+              etc) is a follow-up once the md+ sidebar is confirmed. */}
+          <div className="md:hidden grid grid-cols-2 gap-2 mb-5" data-testid="play-page-filters-mobile">
+            <div className="relative col-span-2">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               <Input
                 value={location}
                 onChange={(e) => setLocationFilter(e.target.value)}
                 placeholder="Location"
                 className="pl-9"
-                data-testid="play-page-filter-location"
+                data-testid="play-page-filter-location-mobile"
               />
             </div>
-
             <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as PlayDateFilter)}>
-              <SelectTrigger data-testid="play-page-filter-date">
+              <SelectTrigger data-testid="play-page-filter-date-mobile">
                 <CalendarDays className="w-4 h-4 mr-1.5 text-muted-foreground shrink-0" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {PLAY_DATE_FILTER_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value} data-testid={`play-page-filter-date-${opt.value}`}>{opt.label}</SelectItem>
+                  <SelectItem key={opt.value} value={opt.value} data-testid={`play-page-filter-date-mobile-${opt.value}`}>{opt.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-
-            <Select value={format} onValueChange={setFormat}>
-              <SelectTrigger data-testid="play-page-filter-format"><SelectValue placeholder="All Formats" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL} data-testid="play-page-filter-format-all">All Formats</SelectItem>
-                {SESSION_TYPE_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.key} value={opt.key} data-testid={`play-page-filter-format-${opt.key}`}>{opt.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={level} onValueChange={setLevel}>
-              <SelectTrigger data-testid="play-page-filter-level"><SelectValue placeholder="All Levels" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL} data-testid="play-page-filter-level-all">All Levels</SelectItem>
-                {PLAY_LEVEL_OPTIONS.filter((l) => l !== "All Levels").map((lvl) => (
-                  <SelectItem key={lvl} value={lvl} data-testid={`play-page-filter-level-${lvl}`}>{lvl}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {formatSelect("play-page-filter-mobile")}
+            {levelSelect("play-page-filter-mobile")}
+            {dateFilter === "custom" && (
+              <Input
+                type="date"
+                value={customDate}
+                onChange={(e) => setCustomDate(e.target.value)}
+                className="col-span-2"
+                data-testid="play-page-filter-custom-date-mobile"
+              />
+            )}
           </div>
 
-          {dateFilter === "custom" && (
-            <Input
-              type="date"
-              value={customDate}
-              onChange={(e) => setCustomDate(e.target.value)}
-              className="max-w-xs"
-              data-testid="play-page-filter-custom-date"
-            />
-          )}
-
-          {sessionsQuery.isLoading ? (
-            <div className="space-y-4" data-testid="play-page-loading">
-              {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-40 w-full rounded-2xl" />)}
-            </div>
-          ) : sessions.length === 0 ? (
-            hasActiveFilters || organizerId ? (
-              <div className="flex flex-col items-center text-center gap-3 py-16" data-testid="play-page-no-matches">
-                <Search className="w-8 h-8 text-muted-foreground" />
-                <div>
-                  <p className="font-semibold">No games found</p>
-                  <p className="text-sm text-muted-foreground mt-1">Try changing your date, location or level.</p>
+          <div className="flex flex-col md:flex-row gap-6">
+            {/* Main filters - side column on tablet and desktop. */}
+            <aside className="hidden md:block w-64 shrink-0" data-testid="play-page-filters-sidebar">
+              <div className="sticky top-20 space-y-5">
+                <div className="space-y-1.5">
+                  <Label htmlFor="play-sidebar-location" className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Location</Label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                    <Input
+                      id="play-sidebar-location"
+                      value={location}
+                      onChange={(e) => setLocationFilter(e.target.value)}
+                      placeholder="Suburb, city or venue..."
+                      className="pl-9"
+                      data-testid="play-page-filter-location"
+                    />
+                  </div>
                 </div>
+
+                <div className="space-y-1.5">
+                  <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Date</p>
+                  <RadioGroup
+                    value={dateFilter}
+                    onValueChange={(v) => setDateFilter(v as PlayDateFilter)}
+                    className="gap-1.5"
+                    data-testid="play-page-filter-date"
+                  >
+                    {PLAY_DATE_FILTER_OPTIONS.map((opt) => (
+                      <label key={opt.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                        <RadioGroupItem value={opt.value} data-testid={`play-page-filter-date-${opt.value}`} />
+                        {opt.label}
+                      </label>
+                    ))}
+                  </RadioGroup>
+                  {dateFilter === "custom" && (
+                    <Input
+                      type="date"
+                      value={customDate}
+                      onChange={(e) => setCustomDate(e.target.value)}
+                      className="mt-1.5"
+                      data-testid="play-page-filter-custom-date"
+                    />
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Format</Label>
+                  {formatSelect("play-page-filter")}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Level</Label>
+                  {levelSelect("play-page-filter")}
+                </div>
+
                 {hasActiveFilters && (
-                  <Button variant="outline" onClick={clearFilters} data-testid="play-page-clear-filters">
-                    Clear filters
+                  <Button variant="outline" size="sm" className="w-full" onClick={clearFilters} data-testid="play-page-clear-filters-sidebar">
+                    Clear all filters
                   </Button>
                 )}
               </div>
-            ) : (
-              <div className="flex flex-col items-center text-center gap-3 py-16" data-testid="play-page-empty">
-                <Sparkles className="w-8 h-8 text-muted-foreground" />
-                <div>
-                  <p className="font-semibold">New games are coming soon</p>
-                  <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-                    TennisConnect organisers are adding new sessions and events.
-                  </p>
+            </aside>
+
+            <div className="flex-1 min-w-0 space-y-5">
+              {sessionsQuery.isLoading ? (
+                <div className="space-y-4" data-testid="play-page-loading">
+                  {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-40 w-full rounded-2xl" />)}
                 </div>
-              </div>
-            )
-          ) : (
-            <>
-              <p className="text-sm text-muted-foreground" data-testid="play-page-results-count">
-                {sessions.length} session{sessions.length === 1 ? "" : "s"} found
-              </p>
-              <div className="space-y-4" data-testid="play-page-results">
-                {sessions.map((session) => (
-                  <PlaySessionCard key={session.id} session={session} />
-                ))}
-              </div>
-            </>
-          )}
+              ) : sessions.length === 0 ? (
+                hasActiveFilters || organizerId ? (
+                  <div className="flex flex-col items-center text-center gap-3 py-16" data-testid="play-page-no-matches">
+                    <Search className="w-8 h-8 text-muted-foreground" />
+                    <div>
+                      <p className="font-semibold">No games found</p>
+                      <p className="text-sm text-muted-foreground mt-1">Try changing your date, location or level.</p>
+                    </div>
+                    {hasActiveFilters && (
+                      <Button variant="outline" onClick={clearFilters} data-testid="play-page-clear-filters">
+                        Clear filters
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center text-center gap-3 py-16" data-testid="play-page-empty">
+                    <Sparkles className="w-8 h-8 text-muted-foreground" />
+                    <div>
+                      <p className="font-semibold">New games are coming soon</p>
+                      <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+                        TennisConnect organisers are adding new sessions and events.
+                      </p>
+                    </div>
+                  </div>
+                )
+              ) : (
+                <>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground" data-testid="play-page-results-count">
+                      {sessions.length} session{sessions.length === 1 ? "" : "s"} found
+                    </p>
+                    {hasActiveFilters && (
+                      <Button variant="ghost" size="sm" className="md:hidden" onClick={clearFilters} data-testid="play-page-clear-filters-mobile">
+                        Clear filters
+                      </Button>
+                    )}
+                  </div>
+                  <div className="space-y-4" data-testid="play-page-results">
+                    {sessions.map((session) => (
+                      <PlaySessionCard key={session.id} session={session} />
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       </main>
 
@@ -227,3 +329,4 @@ export default function PlayPage() {
     </div>
   );
 }
+
