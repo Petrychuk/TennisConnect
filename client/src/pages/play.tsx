@@ -22,7 +22,6 @@ import { getPlaySessions } from "@/lib/api/play";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
 import { PLAY_DATE_FILTER_OPTIONS, PLAY_LEVEL_OPTIONS, resolveDateFilterRange, type PlayDateFilter } from "@/lib/play-status";
 import playHeroDesktop from "/assets/images/play-hero-desktop.webp";
-import playHeroMobile from "/assets/images/play-hero-mobile.webp";
 
 const ALL = "all";
 
@@ -113,24 +112,25 @@ export default function PlayPage() {
       <main id="main-content">
         {/* Full-bleed hero, same convention as the rest of the site
             (see tournaments.tsx): background photo + dark gradient +
-            centered text, photo swapped per breakpoint via <picture>
-            so mobile never downloads the desktop asset or vice versa.
-            The interactive search field lives BELOW the hero on plain
-            background instead of on top of the photo - a control needs
-            to stay legible regardless of what's behind it, unlike a
-            headline that can be styled against a known dark area. */}
-        <div className="relative min-h-[38vh] sm:min-h-[46vh] md:mt-10 md:min-h-[calc(46vh+50px)] flex items-center justify-center overflow-hidden bg-black">
-          <picture>
-            <source media="(min-width: 768px)" srcSet={playHeroDesktop} />
-            <img
-              src={playHeroMobile}
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover"
-              fetchPriority="high"
-            />
-          </picture>
+            centered text. Same photo on every breakpoint now (no more
+            picture/source swap) - object-position shifts per
+            breakpoint instead, keeping the branded left-hand part of
+            the photo in frame on a narrow/tall mobile screen rather
+            than centre-cropping into the plain court/sideline area on
+            the right (that stray white court line is what read as a
+            floating "stripe" on mobile). The search field sits inside
+            the hero, in its lower part, where the gradient is already
+            almost fully the page's own background colour - legible
+            regardless of which photo is behind it. */}
+        <div className="relative min-h-[42vh] sm:min-h-[46vh] md:mt-10 md:min-h-[calc(46vh+50px)] flex items-center justify-center overflow-hidden bg-black">
+          <img
+            src={playHeroDesktop}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover object-[20%_center] md:object-center"
+            fetchPriority="high"
+          />
           <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-background" />
-          <div className="relative z-10 container mx-auto px-4 text-center mt-14 sm:mt-16">
+          <div className="relative z-10 container mx-auto px-4 text-center mt-[106px] sm:mt-[114px]">
             <p className="text-primary text-xs sm:text-sm font-bold tracking-widest uppercase mb-2">Play more tennis</p>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-white" data-testid="play-page-title">
               Find a Game
@@ -138,21 +138,21 @@ export default function PlayPage() {
             <p className="text-sm sm:text-base text-gray-200 mt-2 max-w-xl mx-auto">
               Tennis sessions, competitions and events near you.
             </p>
+
+            <div className="relative max-w-xs mx-auto mt-5">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by session, venue or organiser..."
+                className="pl-10 h-11 bg-background"
+                data-testid="play-page-search-input"
+              />
+            </div>
           </div>
         </div>
 
         <div className="container mx-auto px-4 py-6">
-          <div className="relative max-w-xs mx-auto md:mx-0 mb-6">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by session, venue or organiser..."
-              className="pl-10 h-11"
-              data-testid="play-page-search-input"
-            />
-          </div>
-
           {organizerId && (
             <div
               className="flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5 mb-5"
@@ -168,10 +168,10 @@ export default function PlayPage() {
           )}
 
           {/* Mobile-only compact filter row - the sidebar (below) is
-              md+ only. A proper mobile filter layout (drawer, chips,
-              etc) is a follow-up once the md+ sidebar is confirmed. */}
+              md+ only. Clean 2x2: Location/Date on top, Format/Level
+              below - no field spans a row on its own. */}
           <div className="md:hidden grid grid-cols-2 gap-2 mb-5" data-testid="play-page-filters-mobile">
-            <div className="relative col-span-2">
+            <div className="relative">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               <Input
                 value={location}
