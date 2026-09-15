@@ -136,7 +136,7 @@ export default function PlayPage() {
               Find a Game
             </h1>
             <p className="text-sm sm:text-base text-gray-200 mt-2 max-w-xl mx-auto">
-              Tennis sessions, competitions and events near you.
+              Your next match is closer than you think.
             </p>
 
             <div className="relative max-w-xs mx-auto mt-5">
