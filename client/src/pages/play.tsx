@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { Helmet } from "react-helmet-async";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import SEO from "@/components/seo";
@@ -15,7 +16,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, MapPin, CalendarDays, X, Sparkles } from "lucide-react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { Search, MapPin, CalendarDays, X, Sparkles, Tag, BarChart3 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { PlaySessionCard } from "@/components/play/session-card";
 import { getPlaySessions } from "@/lib/api/play";
@@ -24,6 +33,7 @@ import { PLAY_DATE_FILTER_OPTIONS, PLAY_LEVEL_OPTIONS, resolveDateFilterRange, t
 import playHeroDesktop from "/assets/images/play-hero-desktop.webp";
 
 const ALL = "all";
+const PAGE_SIZE = 6;
 
 // "Custom Session" is an organiser-defined free-for-all format (spec:
 // "Build your own format by choosing the rules, scoring..."), not a
@@ -43,6 +53,7 @@ export default function PlayPage() {
   const [customDate, setCustomDate] = useState("");
   const [format, setFormat] = useState<string>(ALL);
   const [level, setLevel] = useState<string>(ALL);
+  const [page, setPage] = useState(1);
 
   const { from, to } = useMemo(() => resolveDateFilterRange(dateFilter, customDate), [dateFilter, customDate]);
 
@@ -61,6 +72,17 @@ export default function PlayPage() {
   });
   const sessions = sessionsQuery.data ?? [];
   const organiserName = sessions.find((s) => s.organizationId === organizerId)?.organizationName;
+
+  // Any filter change invalidates whatever page the person was on -
+  // starting back at page 1 is the only choice that can't strand them
+  // on a now-empty page.
+  useEffect(() => {
+    setPage(1);
+  }, [search, location, format, level, dateFilter, customDate, organizerId]);
+
+  const totalPages = Math.max(1, Math.ceil(sessions.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const visibleSessions = sessions.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const hasActiveFilters = !!search || !!location || dateFilter !== "any" || format !== ALL || level !== ALL;
 
@@ -107,6 +129,12 @@ export default function PlayPage() {
         title="Find a Game | TennisConnect"
         description="Find tennis sessions, competitions and events near you - Social Tennis, Americano, Tournaments and more, all in one place."
       />
+      {/* The hero photo is the page's LCP element - preloaded so the
+          browser starts fetching it immediately instead of only once
+          it's discovered mid-way through parsing the DOM. */}
+      <Helmet>
+        <link rel="preload" as="image" href={playHeroDesktop} />
+      </Helmet>
       <Navbar />
 
       <main id="main-content">
@@ -152,7 +180,7 @@ export default function PlayPage() {
           </div>
         </div>
 
-        <div className="container mx-auto px-4 py-6">
+        <div className="container mx-auto px-4 pt-6 pb-16">
           {organizerId && (
             <div
               className="flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5 mb-5"
@@ -210,7 +238,9 @@ export default function PlayPage() {
             <aside className="hidden md:block w-64 shrink-0" data-testid="play-page-filters-sidebar">
               <div className="sticky top-20 space-y-5">
                 <div className="space-y-1.5">
-                  <Label htmlFor="play-sidebar-location" className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Location</Label>
+                  <Label htmlFor="play-sidebar-location" className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                    <MapPin className="w-3.5 h-3.5" /> Location
+                  </Label>
                   <div className="relative">
                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                     <Input
@@ -225,7 +255,9 @@ export default function PlayPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Date</p>
+                  <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                    <CalendarDays className="w-3.5 h-3.5" /> Date
+                  </p>
                   <RadioGroup
                     value={dateFilter}
                     onValueChange={(v) => setDateFilter(v as PlayDateFilter)}
@@ -251,12 +283,16 @@ export default function PlayPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Format</Label>
+                  <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                    <Tag className="w-3.5 h-3.5" /> Format
+                  </Label>
                   {formatSelect("play-page-filter")}
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Level</Label>
+                  <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                    <BarChart3 className="w-3.5 h-3.5" /> Level
+                  </Label>
                   {levelSelect("play-page-filter")}
                 </div>
 
@@ -311,10 +347,54 @@ export default function PlayPage() {
                     )}
                   </div>
                   <div className="space-y-4" data-testid="play-page-results">
-                    {sessions.map((session) => (
+                    {visibleSessions.map((session) => (
                       <PlaySessionCard key={session.id} session={session} />
                     ))}
                   </div>
+
+                  {totalPages > 1 && (
+                    <Pagination data-testid="play-page-pagination">
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (currentPage > 1) setPage(currentPage - 1);
+                            }}
+                            className={currentPage === 1 ? "pointer-events-none opacity-50" : undefined}
+                            data-testid="play-page-pagination-previous"
+                          />
+                        </PaginationItem>
+                        {Array.from({ length: totalPages }).map((_, i) => (
+                          <PaginationItem key={i}>
+                            <PaginationLink
+                              href="#"
+                              isActive={currentPage === i + 1}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setPage(i + 1);
+                              }}
+                              data-testid={`play-page-pagination-${i + 1}`}
+                            >
+                              {i + 1}
+                            </PaginationLink>
+                          </PaginationItem>
+                        ))}
+                        <PaginationItem>
+                          <PaginationNext
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (currentPage < totalPages) setPage(currentPage + 1);
+                            }}
+                            className={currentPage === totalPages ? "pointer-events-none opacity-50" : undefined}
+                            data-testid="play-page-pagination-next"
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  )}
                 </>
               )}
             </div>
