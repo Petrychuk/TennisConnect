@@ -51,6 +51,15 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
+// Prefix matching (location.startsWith(href)) is not enough on its
+// own - "/player/emily-carter".startsWith("/play") is true, which
+// made the Play nav link light up while viewing an individual
+// player's profile. Requires an exact match or a real path boundary
+// (a following "/") instead.
+function isNavActive(location: string, href: string): boolean {
+  return location === href || location.startsWith(`${href}/`);
+}
+
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [location, setLocation] = useLocation();
@@ -173,13 +182,13 @@ export function Navbar() {
               key={link.name}
               href={link.href}
               className={`text-sm font-medium transition-colors cursor-pointer relative ${
-                location.startsWith(link.href)
+                isNavActive(location, link.href)
                   ? "text-primary font-bold"
                   : "hover:text-lime-600"
               }`}
             >
               {link.name}
-              {location.startsWith(link.href) && (
+              {isNavActive(location, link.href) && (
                 <span className="absolute -bottom-1.5 left-0 right-0 h-0.5 rounded-full bg-primary" />
               )}
             </Link>  
@@ -549,10 +558,10 @@ export function Navbar() {
             href="/play"
             data-testid="mobile-bottomnav-play"
             className={`flex flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${
-              location.startsWith("/play") ? "text-primary" : "text-muted-foreground"
+              isNavActive(location, "/play") ? "text-primary" : "text-muted-foreground"
             }`}
           >
-            <PlayIcon className={`w-5 h-5 ${location.startsWith("/play") ? "fill-primary/15" : ""}`} />
+            <PlayIcon className={`w-5 h-5 ${isNavActive(location, "/play") ? "fill-primary/15" : ""}`} />
             Play
           </Link>
 
