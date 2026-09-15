@@ -22,6 +22,7 @@ import { getPlaySessions } from "@/lib/api/play";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
 import { PLAY_DATE_FILTER_OPTIONS, PLAY_LEVEL_OPTIONS, resolveDateFilterRange, type PlayDateFilter } from "@/lib/play-status";
 import playHeroDesktop from "/assets/images/play-hero-desktop.webp";
+import playHeroMobile from "/assets/images/play-hero-mobile.webp";
 
 const ALL = "all";
 
@@ -110,52 +111,48 @@ export default function PlayPage() {
       <Navbar />
 
       <main id="main-content">
-        {/* Hero: text and photo sit SIDE BY SIDE on md+ (never one on
-            top of the other) - the photo used to be a full-bleed
-            background with the title text overlaid on it, which both
-            crushed the photo into a very short/wide crop and made the
-            text hard to read against it. A dedicated photo panel next
-            to the text fixes both at once. Mobile keeps just the text
-            for now (no cramped photo strip) - a proper mobile hero
-            treatment is a follow-up once this layout is settled. */}
-        <div className="border-b border-border bg-gradient-to-b from-primary/5 to-transparent">
-          <div className="container mx-auto px-4 py-8 md:py-12">
-            <div className="flex flex-col md:flex-row md:items-center gap-6 lg:gap-10">
-              <div className="flex-1 min-w-0">
-                <p className="text-primary text-xs sm:text-sm font-bold tracking-widest uppercase mb-1">Play more tennis</p>
-                <h1 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold" data-testid="play-page-title">
-                  Find a Game
-                </h1>
-                <p className="text-muted-foreground mt-1 max-w-md">
-                  Tennis sessions, competitions and events near you.
-                </p>
-
-                <div className="relative mt-5 max-w-xl">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search by session, venue or organiser..."
-                    className="pl-10 h-11 bg-background"
-                    data-testid="play-page-search-input"
-                  />
-                </div>
-              </div>
-
-              <div className="hidden md:block relative w-full md:w-[42%] lg:w-[46%] h-48 lg:h-64 rounded-2xl overflow-hidden shrink-0 bg-muted">
-                <img
-                  src={playHeroDesktop}
-                  alt=""
-                  className="w-full h-full object-cover"
-                  style={{ objectPosition: "center 40%" }}
-                  fetchPriority="high"
-                />
-              </div>
-            </div>
+        {/* Full-bleed hero, same convention as the rest of the site
+            (see tournaments.tsx): background photo + dark gradient +
+            centered text, photo swapped per breakpoint via <picture>
+            so mobile never downloads the desktop asset or vice versa.
+            The interactive search field lives BELOW the hero on plain
+            background instead of on top of the photo - a control needs
+            to stay legible regardless of what's behind it, unlike a
+            headline that can be styled against a known dark area. */}
+        <div className="relative min-h-[38vh] sm:min-h-[46vh] flex items-center justify-center overflow-hidden bg-black">
+          <picture>
+            <source media="(min-width: 768px)" srcSet={playHeroDesktop} />
+            <img
+              src={playHeroMobile}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+              fetchPriority="high"
+            />
+          </picture>
+          <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/35 to-black/55" />
+          <div className="relative z-10 container mx-auto px-4 text-center mt-14 sm:mt-16">
+            <p className="text-primary text-xs sm:text-sm font-bold tracking-widest uppercase mb-2">Play more tennis</p>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-white" data-testid="play-page-title">
+              Find a Game
+            </h1>
+            <p className="text-sm sm:text-base text-gray-200 mt-2 max-w-xl mx-auto">
+              Tennis sessions, competitions and events near you.
+            </p>
           </div>
         </div>
 
         <div className="container mx-auto px-4 py-6">
+          <div className="relative max-w-xs mx-auto md:mx-0 mb-6">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by session, venue or organiser..."
+              className="pl-10 h-11"
+              data-testid="play-page-search-input"
+            />
+          </div>
+
           {organizerId && (
             <div
               className="flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5 mb-5"
