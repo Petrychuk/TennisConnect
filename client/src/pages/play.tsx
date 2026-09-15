@@ -119,7 +119,7 @@ export default function PlayPage() {
             background instead of on top of the photo - a control needs
             to stay legible regardless of what's behind it, unlike a
             headline that can be styled against a known dark area. */}
-        <div className="relative min-h-[38vh] sm:min-h-[46vh] flex items-center justify-center overflow-hidden bg-black">
+        <div className="relative min-h-[38vh] sm:min-h-[46vh] md:mt-10 md:min-h-[calc(46vh+50px)] flex items-center justify-center overflow-hidden bg-black">
           <picture>
             <source media="(min-width: 768px)" srcSet={playHeroDesktop} />
             <img
@@ -129,7 +129,7 @@ export default function PlayPage() {
               fetchPriority="high"
             />
           </picture>
-          <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/35 to-black/55" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-background" />
           <div className="relative z-10 container mx-auto px-4 text-center mt-14 sm:mt-16">
             <p className="text-primary text-xs sm:text-sm font-bold tracking-widest uppercase mb-2">Play more tennis</p>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-white" data-testid="play-page-title">
