@@ -316,7 +316,7 @@ export function Navbar() {
             </div>
           ) : (
             <Link href="/auth" className="hidden xl:inline-flex">
-              <Button className="bg-primary text-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer">
+              <Button className="bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer">
                 Sign In
               </Button>
             </Link>
@@ -383,7 +383,7 @@ export function Navbar() {
 
                 {!isAuthenticated && (
                   <Link href="/auth" onClick={() => setIsOpen(false)}>
-                    <Button className="w-full mt-4 bg-primary text-foreground font-bold rounded-full cursor-pointer">
+                    <Button className="w-full mt-4 bg-primary text-foreground border-primary font-bold rounded-full cursor-pointer">
                       Sign In
                     </Button>
                   </Link>

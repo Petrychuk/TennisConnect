@@ -96,7 +96,7 @@ export function ProShop() {
           >
             <Button 
               onClick={handleShopClick}
-              className="hidden md:flex gap-2 bg-primary text-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
+              className="hidden md:flex gap-2 bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
               data-testid="shop-visit-button"
             >
               Visit Shop <ExternalLink className="w-4 h-4" />
@@ -175,7 +175,7 @@ export function ProShop() {
         >
           <Button 
             onClick={handleShopClick}
-            className="w-full gap-2 bg-primary text-foreground hover:bg-primary/90 font-bold rounded-full cursor-pointer"
+            className="w-full gap-2 bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full cursor-pointer"
           >
             Visit Shop <ExternalLink className="w-4 h-4" />
           </Button>
