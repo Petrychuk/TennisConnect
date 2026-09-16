@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { storage } from "../storage";
+import { toPublicUser } from "../lib/sanitizeUser";
 
 const router = Router();
 
@@ -60,7 +61,7 @@ router.get("/:slug", async (req, res) => {
   const profile = user.profileCompleted ? await storage.getPlayerProfile(user.id) : null;
 
   res.json({
-    user,
+    user: toPublicUser(user),
     profile,
   });
 });
