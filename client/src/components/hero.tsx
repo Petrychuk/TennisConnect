@@ -49,7 +49,7 @@ export function Hero() {
                 mb-6
                 drop-shadow-xl">
               Everything You Need for  <br />
-              <span className="text-primary relative inline-block">
+              <span className="text-primary relative inline-block bg-black/40 sm:bg-transparent backdrop-blur-sm sm:backdrop-blur-none rounded-lg px-2 py-0.5 sm:px-0 sm:py-0">
               Your Tennis Journey
                 <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary/50" viewBox="0 0 100 10" preserveAspectRatio="none">
                   <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="4" fill="none" />
