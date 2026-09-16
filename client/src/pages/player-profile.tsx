@@ -148,6 +148,12 @@ export default function PlayerProfile() {
   const [tournaments, setTournaments] = useState<TournamentDraft[]>([]);
   const [editingTournament, setEditingTournament] = useState<TournamentDraft | null>(null);
   const [isDemo, setIsDemo] = useState(false);
+  // True once we've confirmed there's genuinely no real profile to
+  // show (fetch 404'd and no demo-data fallback matched either) - lets
+  // the render branch show an honest "not available" message instead
+  // of silently falling through to DEFAULT_PLAYER_PROFILE's
+  // placeholder content as if it were this person's real profile.
+  const [profileNotFound, setProfileNotFound] = useState(false);
   
   // Marketplace State
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
@@ -228,6 +234,7 @@ export default function PlayerProfile() {
           setProfileData(data.profile || null);
           setProfileIsOrganizer(!!data.user.isOrganizer);
           setPlayerUserId(data.user.id);
+          setProfileNotFound(false);
 
           /* ===== PUBLIC TOURNAMENTS + MARKETPLACE (parallel - neither
              depends on the other, only on data.user.id from the fetch
@@ -264,6 +271,15 @@ export default function PlayerProfile() {
               //preferredCourts: demoPlayer.courts || [],
             });
             setIsDemo(true);
+          } else {
+            // No real account and no demo match - this is a genuinely
+            // missing/not-yet-public profile (most commonly: someone
+            // registered but hasn't finished their profile yet, which
+            // GET /api/players/:slug 404s on by design). Showing
+            // DEFAULT_PLAYER_PROFILE's placeholder content here would
+            // otherwise look exactly like a real account with a name
+            // of "New Player" and fabricated stats.
+            setProfileNotFound(true);
           }
         } finally {
           setLoading(false);
@@ -661,6 +677,26 @@ export default function PlayerProfile() {
     }
   };
 
+  if (!loading && profileNotFound) {
+    return (
+      <div className="min-h-screen bg-background font-sans flex flex-col">
+        <SEO title="Player not found | TennisConnect" description="This player's profile isn't available." noIndex />
+        <Navbar />
+        <div className="flex-1 flex flex-col items-center justify-center text-center px-4 py-24" data-testid="player-profile-not-found">
+          <User className="w-10 h-10 text-muted-foreground mb-3" />
+          <p className="font-semibold text-lg">This profile isn't available</p>
+          <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+            This player may not have finished setting up their profile yet, or the link may be incorrect.
+          </p>
+          <Button variant="outline" className="mt-5" onClick={() => setLocation("/players")} data-testid="player-profile-not-found-back">
+            Browse Players
+          </Button>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <>
       <SEO
@@ -746,6 +782,7 @@ export default function PlayerProfile() {
             ) : (
             <PlayerHero
                 profile={profile}
+                tournaments={tournaments}
                 isEditing={isEditing}
                 isOwnProfile={isOwnProfile}
                 setProfile={setProfile}
