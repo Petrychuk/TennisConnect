@@ -198,9 +198,9 @@ export interface IStorage {
   getAllMarketplaceItems(): Promise<MarketplaceItem[]>;
   getUserMarketplaceItems(userId: string): Promise<MarketplaceItem[]>;
   createMarketplaceItem(item: InsertMarketplaceItem): Promise<MarketplaceItem>;
-  deleteMarketplaceItem(id: string): Promise<void>;
-  addMarketplacePhoto(itemId: string, photoUrl: string): Promise<MarketplaceItem>;
-  removeMarketplacePhoto(itemId: string, photoUrl: string): Promise<MarketplaceItem>;
+  deleteMarketplaceItem(id: string, userId: string): Promise<void>;
+  addMarketplacePhoto(itemId: string, userId: string, photoUrl: string): Promise<MarketplaceItem>;
+  removeMarketplacePhoto(itemId: string, userId: string, photoUrl: string): Promise<MarketplaceItem>;
   
   // Clubs
   getAllClubs(): Promise<Club[]>;
@@ -1123,25 +1123,53 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(marketplaceItems.createdAt));
   }
 
-  async updateMarketplaceItem(id: string, updates: any) {
+  async updateMarketplaceItem(
+    id: string,
+    userId: string,
+    updates: Partial<Pick<MarketplaceItem, "title" | "price" | "condition" | "photos" | "location" | "description" | "type" | "sellerName" | "sellerEmail" | "isActive">>
+  ) {
+    // Explicit allowlist, not a spread of the raw request body - id/
+    // userId/createdAt must never be settable this way (userId
+    // especially: accepting it here would let anyone re-assign someone
+    // else's listing to themselves).
+    const safeUpdates: typeof updates = {};
+    if (updates.title !== undefined) safeUpdates.title = updates.title;
+    if (updates.price !== undefined) safeUpdates.price = updates.price;
+    if (updates.condition !== undefined) safeUpdates.condition = updates.condition;
+    if (updates.photos !== undefined) safeUpdates.photos = updates.photos;
+    if (updates.location !== undefined) safeUpdates.location = updates.location;
+    if (updates.description !== undefined) safeUpdates.description = updates.description;
+    if (updates.type !== undefined) safeUpdates.type = updates.type;
+    if (updates.sellerName !== undefined) safeUpdates.sellerName = updates.sellerName;
+    if (updates.sellerEmail !== undefined) safeUpdates.sellerEmail = updates.sellerEmail;
+    if (updates.isActive !== undefined) safeUpdates.isActive = updates.isActive;
+
     const [item] = await db
       .update(marketplaceItems)
-      .set(updates)
-      .where(eq(marketplaceItems.id, id))
+      .set(safeUpdates)
+      .where(and(eq(marketplaceItems.id, id), eq(marketplaceItems.userId, userId)))
       .returning();
+
+    if (!item) {
+      throw new Error("Item not found or access denied");
+    }
 
     return item;
   }
  
-  async deleteMarketplaceItem(id: string): Promise<void> {
-    await db
+  async deleteMarketplaceItem(id: string, userId: string): Promise<void> {
+    const [deleted] = await db
       .delete(marketplaceItems)
-      .where(eq(marketplaceItems.id, id));
+      .where(and(eq(marketplaceItems.id, id), eq(marketplaceItems.userId, userId)))
+      .returning();
+    if (!deleted) {
+      throw new Error("Item not found or access denied");
+    }
   }
 
-  async addMarketplacePhoto(itemId: string, photoUrl: string) {
+  async addMarketplacePhoto(itemId: string, userId: string, photoUrl: string) {
     const item = await this.getMarketplaceItemById(itemId);
-    if (!item) throw new Error("Item not found");
+    if (!item || item.userId !== userId) throw new Error("Item not found or access denied");
 
     const updatedPhotos = [...(item.photos || []), photoUrl];
 
@@ -1154,9 +1182,9 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async removeMarketplacePhoto(itemId: string, photoUrl: string) {
+  async removeMarketplacePhoto(itemId: string, userId: string, photoUrl: string) {
   const item = await this.getMarketplaceItemById(itemId);
-  if (!item) throw new Error("Item not found");
+  if (!item || item.userId !== userId) throw new Error("Item not found or access denied");
 
   const updatedPhotos = (item.photos || []).filter(
     (photo: string) => photo !== photoUrl

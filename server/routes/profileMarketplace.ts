@@ -66,11 +66,15 @@ router.put("/:id", requireAuth, async (req, res, next) => {
   try {
     const updated = await storage.updateMarketplaceItem(
       req.params.id,
+      req.user!.id,
       req.body
     );
 
     res.json(updated);
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.message === "Item not found or access denied") {
+      return res.status(404).json({ message: err.message });
+    }
     next(err);
   }
 });
@@ -80,9 +84,12 @@ router.put("/:id", requireAuth, async (req, res, next) => {
 ========================================= */
 router.delete("/:id", requireAuth, async (req, res, next) => {
   try {
-    await storage.deleteMarketplaceItem(req.params.id);
+    await storage.deleteMarketplaceItem(req.params.id, req.user!.id);
     res.json({ success: true });
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.message === "Item not found or access denied") {
+      return res.status(404).json({ message: err.message });
+    }
     next(err);
   }
 });
@@ -123,11 +130,15 @@ router.post(
 
       const updatedItem = await storage.addMarketplacePhoto(
         id,
+        userId,
         publicUrl
       );
 
       res.json(updatedItem);
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.message === "Item not found or access denied") {
+        return res.status(404).json({ message: err.message });
+      }
       next(err);
     }
   }
@@ -145,11 +156,15 @@ router.delete(
 
       const updatedItem = await storage.removeMarketplacePhoto(
         req.params.id,
+        req.user!.id,
         photoUrl
       );
 
       res.json(updatedItem);
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.message === "Item not found or access denied") {
+        return res.status(404).json({ message: err.message });
+      }
       next(err);
     }
   }
