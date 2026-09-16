@@ -42,13 +42,22 @@ router.get("/", async (req, res) => {
 router.get("/:slug", async (req, res) => {
   const user = await storage.getUserBySlug(req.params.slug);
 
-  if (!user || user.role !== "player" || !user.profileCompleted) {
+  // Role and existence are still hard requirements - a coach's or
+  // organiser's slug, or one that doesn't exist at all, is genuinely
+  // "not found" here. profileCompleted is NOT one of these anymore:
+  // the person's name is already real (captured at registration,
+  // before profileCompleted ever becomes true), so there's no reason
+  // to hide the whole profile just because they haven't finished the
+  // separate "set up your profile" step yet - the client shows an
+  // honest "still setting up" state for what's genuinely missing
+  // instead.
+  if (!user || user.role !== "player") {
     return res.status(404).json({
       message: "Player not found",
     });
   }
 
-  const profile = await storage.getPlayerProfile(user.id);
+  const profile = user.profileCompleted ? await storage.getPlayerProfile(user.id) : null;
 
   res.json({
     user,

@@ -153,6 +153,12 @@ export default function PlayerProfile() {
   // the render branch show an honest "not available" message instead
   // of silently falling through to DEFAULT_PLAYER_PROFILE's
   // placeholder content as if it were this person's real profile.
+  // True for someone else's real-but-incomplete profile (registered,
+  // never finished "set up your profile") - lets the render show an
+  // honest "still setting up their profile" note instead of quietly
+  // presenting DEFAULT_PLAYER_PROFILE's specific placeholder values
+  // as if they were this person's real choices.
+  const [profileSetupIncomplete, setProfileSetupIncomplete] = useState(false);
   const [profileNotFound, setProfileNotFound] = useState(false);
   
   // Marketplace State
@@ -213,20 +219,33 @@ export default function PlayerProfile() {
             cover: data.user.cover || null,
           };
 
+          // A player who hasn't finished their own "set up your
+          // profile" step yet has a real name (captured at
+          // registration) but no real player_profiles row - showing
+          // DEFAULT_PLAYER_PROFILE's specific placeholder values
+          // (Sydney NSW, Intermediate, Bondi Beach/Manly, the canned
+          // bio) here would make them look like real choices this
+          // person made, which they never did. Honest neutral
+          // placeholders instead - only used for someone ELSE'S
+          // incomplete profile, never for editing your own (the
+          // "complete profile" flow handles that separately).
+          const isIncomplete = !normalizedUser.profileCompleted;
+          setProfileSetupIncomplete(isIncomplete);
+
           setProfile({
             ...DEFAULT_PLAYER_PROFILE,
             name: normalizedUser.name,
             avatar: normalizedUser.avatar || DEFAULT_PLAYER_PROFILE.avatar,
             cover: normalizedUser.cover || DEFAULT_PLAYER_PROFILE.cover,
             createdAt: data.user.createdAt,
-            location: data.profile?.location || DEFAULT_PLAYER_PROFILE.location,
-            age: data.profile?.age || DEFAULT_PLAYER_PROFILE.age,
-            country: data.profile?.country || DEFAULT_PLAYER_PROFILE.country,
-            skillLevel: data.profile?.skillLevel || DEFAULT_PLAYER_PROFILE.skillLevel,
-            bio: data.profile?.bio || DEFAULT_PLAYER_PROFILE.bio,
+            location: data.profile?.location || (isIncomplete ? "" : DEFAULT_PLAYER_PROFILE.location),
+            age: data.profile?.age || (isIncomplete ? "" : DEFAULT_PLAYER_PROFILE.age),
+            country: data.profile?.country || (isIncomplete ? "" : DEFAULT_PLAYER_PROFILE.country),
+            skillLevel: data.profile?.skillLevel || (isIncomplete ? "" : DEFAULT_PLAYER_PROFILE.skillLevel),
+            bio: data.profile?.bio || (isIncomplete ? "" : DEFAULT_PLAYER_PROFILE.bio),
             preferredCourts:
               data.profile?.preferredCourts ||
-              DEFAULT_PLAYER_PROFILE.preferredCourts,
+              (isIncomplete ? [] : DEFAULT_PLAYER_PROFILE.preferredCourts),
             phone: data.profile?.phone ?? "",
             email: data.profile?.email ?? "",
           });
@@ -800,6 +819,14 @@ export default function PlayerProfile() {
                 onSave={handleSave}
              />
             )}
+              {!loading && profileSetupIncomplete && !isOwnProfile && (
+                <div
+                  className="mt-4 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-500/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-300"
+                  data-testid="player-profile-setup-incomplete-banner"
+                >
+                  {profile.name} is still setting up their profile - some details aren't available yet.
+                </div>
+              )}
               {loading ? (
                 <div className="mt-12 space-y-4" data-testid="player-tabs-skeleton">
                   <div className="flex gap-4">
