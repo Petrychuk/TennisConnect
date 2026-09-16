@@ -4,6 +4,7 @@ import { createServer, type Server } from "http";
 import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import { hashPassword, comparePasswords } from "./auth";
+import { omitPassword } from "./lib/sanitizeUser";
 import uploadMediaRouter from "./routes/uploadMedia";
 import profileTournamentHistoryRouter from "./routes/profileTournamentHistory";
 import profileMarketplace from "./routes/profileMarketplace";
@@ -46,13 +47,8 @@ import sitemapRoutes from "./routes/sitemapRoutes";
 
 // Storage reads pull every column (including the password hash) since
 // most internal callers need the full row. Anything that gets sent back
-// to a client goes through this first so the hash never crosses the wire.
-function omitPassword<T extends { password?: unknown }>(
-  user: T
-): Omit<T, "password"> {
-  const { password, ...safeUser } = user;
-  return safeUser;
-}
+// to a client goes through omitPassword() first (imported above) so the
+// hash never crosses the wire.
 
 // Brute-force / abuse protection for auth endpoints. Login gets the
 // tightest window since it's the classic credential-stuffing target;
