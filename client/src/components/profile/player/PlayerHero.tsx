@@ -18,6 +18,7 @@ import {
 
 interface PlayerHeroProps {
   profile: any;
+  tournaments: { result?: string | null }[];
 
   isEditing: boolean;
   isOwnProfile: boolean;
@@ -33,6 +34,7 @@ interface PlayerHeroProps {
 
 export function PlayerHero({
   profile,
+  tournaments,
   isEditing,
   isOwnProfile,
   setProfile,
@@ -41,6 +43,10 @@ export function PlayerHero({
   onSave,
   onCancel,
 }: PlayerHeroProps) {
+  const tournamentsCount = tournaments.length;
+  const wins = tournaments.filter((t) => t.result === "Winner").length;
+  const winRateLabel = tournamentsCount > 0 ? `${Math.round((wins / tournamentsCount) * 100)}% win rate` : "No tournaments yet";
+
   return (
     <ProfileHeroCard
 
@@ -78,7 +84,7 @@ export function PlayerHero({
           <StatCard
             data-testid="player-stat-tournaments"
             icon={<Users className="w-5 h-5" />}
-            value="12"
+            value={String(tournamentsCount)}
             label="Tournaments"
             subtitle="View details"
             clickable
@@ -87,9 +93,9 @@ export function PlayerHero({
           <StatCard
             data-testid="player-stat-wins"
             icon={<Trophy className="w-5 h-5" />}
-            value="8"
+            value={String(wins)}
             label="Wins"
-            subtitle="67% win rate"
+            subtitle={winRateLabel}
           />
 
           <StatCard
