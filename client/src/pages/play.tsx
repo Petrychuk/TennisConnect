@@ -31,6 +31,7 @@ import { getPlaySessions } from "@/lib/api/play";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
 import { PLAY_DATE_FILTER_OPTIONS, PLAY_LEVEL_OPTIONS, resolveDateFilterRange, type PlayDateFilter } from "@/lib/play-status";
 import playHeroDesktop from "/assets/images/play-hero-desktop.webp";
+import playHeroMobile from "/assets/images/play-hero-mobile.webp";
 
 const ALL = "all";
 const PAGE_SIZE = 6;
@@ -131,13 +132,45 @@ export default function PlayPage() {
       />
       {/* The hero photo is the page's LCP element - preloaded so the
           browser starts fetching it immediately instead of only once
-          it's discovered mid-way through parsing the DOM. */}
+          it's discovered mid-way through parsing the DOM. Two
+          separate photos now (mobile vs sm+), so each preload is
+          scoped with `media` to the breakpoint that actually uses it -
+          otherwise every visitor would fetch both. */}
       <Helmet>
-        <link rel="preload" as="image" href={playHeroDesktop} />
+        <link rel="preload" as="image" href={playHeroMobile} media="(max-width: 639px)" />
+        <link rel="preload" as="image" href={playHeroDesktop} media="(min-width: 640px)" />
       </Helmet>
       <Navbar />
 
       <main id="main-content">
+        {/* Mobile only (sm:hidden below): compact photo strip up top,
+            no overlay/text on it, then the headline + search on plain
+            background - matches the original mockup exactly (a full-
+            bleed dark-overlay hero was tried for mobile and reverted -
+            see the sm+ block right after this one for that version,
+            which stays as-is for tablet/desktop). Its own photo
+            (play-hero-mobile.webp) rather than a crop of the desktop
+            one, since that source is an ultra-wide banner that has no
+            good vertical crop for a strip this short. */}
+        <div className="sm:hidden">
+          <img src={playHeroMobile} alt="" className="w-full h-56 object-cover" fetchPriority="high" />
+          <div className="px-4 pt-5 pb-2 text-center">
+            <p className="text-primary text-xs font-bold tracking-widest uppercase mb-2">Play more tennis</p>
+            <h1 className="text-3xl font-display font-bold" data-testid="play-page-title-mobile">Find a Game</h1>
+            <p className="text-sm text-muted-foreground mt-2">Your next match is closer than you think.</p>
+            <div className="relative max-w-xs mx-auto mt-5">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by session, venue or organiser..."
+                className="pl-10 h-11"
+                data-testid="play-page-search-input-mobile"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Full-bleed hero, same convention as the rest of the site
             (see tournaments.tsx): background photo + dark gradient +
             centered text. Same photo on every breakpoint now (no more
@@ -150,11 +183,11 @@ export default function PlayPage() {
             the hero, in its lower part, where the gradient is already
             almost fully the page's own background colour - legible
             regardless of which photo is behind it. */}
-        <div className="relative min-h-[42vh] sm:min-h-[46vh] md:mt-10 md:min-h-[calc(46vh+50px)] flex items-center justify-center overflow-hidden bg-black">
+        <div className="hidden sm:flex relative min-h-[46vh] md:mt-10 md:min-h-[calc(46vh+50px)] items-center justify-center overflow-hidden bg-black">
           <img
             src={playHeroDesktop}
             alt=""
-            className="absolute inset-0 w-full h-full object-cover object-[20%_center] md:object-center"
+            className="absolute inset-0 w-full h-full object-cover"
             fetchPriority="high"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-background" />
