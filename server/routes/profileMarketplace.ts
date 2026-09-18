@@ -3,12 +3,14 @@ import multer from "multer";
 import { requireAuth } from "../requireAuth";
 import { supabaseAdmin } from "../supabaseAdmin";
 import { storage } from "../storage";
+import { multerImageFileFilter, detectImageType } from "../lib/imageValidation";
 
 const router = Router();
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: multerImageFileFilter,
 });
 
 // PUBLIC VIEW
@@ -110,13 +112,23 @@ router.post(
         return res.status(400).json({ message: "No file uploaded" });
       }
 
+      // Belt-and-suspenders, same as uploadMedia.ts: fileFilter above
+      // only checked the declared mimetype - this checks the actual
+      // bytes so an HTML/SVG/script payload relabelled as an image
+      // can't be smuggled in and served back from the public bucket
+      // with a browser-executable content type.
+      const detectedType = detectImageType(req.file.buffer);
+      if (!detectedType) {
+        return res.status(400).json({ message: "File content doesn't look like a valid image" });
+      }
+
       const fileName = `photo-${Date.now()}.webp`;
       const filePath = `marketplace/${userId}/${id}/${fileName}`;
 
       const { error } = await supabaseAdmin.storage
         .from("media")
         .upload(filePath, req.file.buffer, {
-          contentType: req.file.mimetype,
+          contentType: detectedType,
           upsert: false,
         });
 
