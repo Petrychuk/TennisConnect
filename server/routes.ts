@@ -34,7 +34,7 @@ import {
   passwordResetTokens,
 } from "@shared/schema";
 import { z } from "zod";
-import { sendPasswordResetEmail, sendVerificationEmail } from "./services/emailService";
+import { sendPasswordResetEmail, sendVerificationEmail, sendDuplicateRegistrationAlertEmail } from "./services/emailService";
 import { issueVerificationToken, verifyEmailToken } from "./services/emailVerification";
 import { db } from "./db";
 import { env } from "./env";
@@ -211,7 +211,22 @@ export async function registerRoutes(app: Express): Promise<void> {
 
       const exists = await storage.getUserByEmail(parsed.data.email);
       if (exists) {
-        return res.status(400).json({ message: "Email already exists" });
+        // Deliberately generic, same reasoning and pattern as
+        // forgot-password below: the person registering never learns
+        // whether this email was already taken (that's a classic
+        // user-enumeration leak) - they get the exact same "check your
+        // email" response as a genuine new signup. The one person who
+        // actually IS entitled to know gets told instead, via email -
+        // see sendDuplicateRegistrationAlertEmail's own comment.
+        sendDuplicateRegistrationAlertEmail(exists.email).catch((error) => {
+          console.error(`❌ Duplicate-registration alert email threw for ${exists.email}:`, error);
+        });
+
+        return res.status(201).json({
+          message: "Check your email to confirm your account before signing in.",
+          email: parsed.data.email,
+          requiresVerification: true,
+        });
       }
 
       const hashedPassword = await hashPassword(parsed.data.password);
