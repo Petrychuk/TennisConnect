@@ -9,7 +9,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ProfileCover } from "@/components/profile/shared/ProfileCover";
 import { Skeleton } from "@/components/ui/skeleton";
-import defaultPlayerCover from "/assets/images/default_player_cover.jpg";
+import defaultPlayerCover from "/assets/images/default_player_cover.webp";
+import defaultPlayerCoverMobile from "/assets/images/default_player_cover_mobile.webp";
 import { PlayerHero } from "@/components/profile/player/PlayerHero";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogDescription, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
@@ -768,6 +769,7 @@ export default function PlayerProfile() {
               <ProfileCover
                   cover={profile.cover}
                   defaultCover={defaultPlayerCover}
+                  defaultCoverMobile={defaultPlayerCoverMobile}
                   isOwner={isOwnProfile}
                   onEdit={() =>
                       document.getElementById("cover-upload")?.click()

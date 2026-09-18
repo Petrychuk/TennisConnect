@@ -11,6 +11,21 @@ interface ProfileCoverProps {
   // Role-specific branded default (player vs coach). Falls back to a
   // generic tennis-court image if a page doesn't pass one.
   defaultCover?: string;
+  // A separate, purpose-cropped version of defaultCover for narrow
+  // screens - the branded defaults are an ultra-wide banner (~2.7:1)
+  // with a headline, icon row and taglines spread across nearly the
+  // full width; on a phone-width viewport, a plain object-cover crop
+  // of that same wide image only ever shows a thin vertical sliver of
+  // its centre, and depending on exactly which sliver, that can cut
+  // the icon row in half. This is a dedicated centre crop (kept
+  // reasonably tight around the headline + icons, dropping the
+  // decorative side taglines that were never going to fit on a phone
+  // anyway) rather than relying on the browser to crop the wide
+  // version live. Only used when cover (the user's own photo) is
+  // absent - a real uploaded cover still just uses defaultCover's
+  // breakpoint-driven height + object-cover, since we have no
+  // per-user mobile crop for those.
+  defaultCoverMobile?: string;
 }
 
 export function ProfileCover({
@@ -18,21 +33,43 @@ export function ProfileCover({
   isOwner,
   onEdit,
   defaultCover,
+  defaultCoverMobile,
 }: ProfileCoverProps) {
+  const fallback = defaultCover || genericDefaultCover;
+
   return (
     <div className="relative w-full h-[280px] sm:h-[300px] md:h-[380px] lg:h-[460px] overflow-hidden rounded-t-3xl group">
 
       {/* Cover Image — a single bundled default when the user has none,
-          so there's nothing to swap once their real data loads. */}
-      <img
-        src={cover || defaultCover || genericDefaultCover}
-        alt="Profile Cover"
-        data-testid="profile-cover"
-        fetchPriority="high"
-        loading="eager"
-        decoding="async"
-        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
-      />
+          so there's nothing to swap once their real data loads. The
+          default specifically gets a dedicated mobile crop (see
+          defaultCoverMobile's own comment above); a real user-uploaded
+          cover just uses the one image at every breakpoint, same as
+          before. */}
+      {!cover && defaultCoverMobile ? (
+        <picture>
+          <source media="(min-width: 640px)" srcSet={fallback} />
+          <img
+            src={defaultCoverMobile}
+            alt="Profile Cover"
+            data-testid="profile-cover"
+            fetchPriority="high"
+            loading="eager"
+            decoding="async"
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
+          />
+        </picture>
+      ) : (
+        <img
+          src={cover || fallback}
+          alt="Profile Cover"
+          data-testid="profile-cover"
+          fetchPriority="high"
+          loading="eager"
+          decoding="async"
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
+        />
+      )}
 
       {/* Dark Overlay — the only scrim now. The old extra fade-to-background
           strip at the bottom sat exactly where the hero card overlaps,

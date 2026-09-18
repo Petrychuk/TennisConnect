@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/navbar";
 import { ProfileCover } from "@/components/profile/shared/ProfileCover";
-import defaultCoachCover from "/assets/images/default_coach_cover.jpg";
+import defaultCoachCover from "/assets/images/default_coach_cover.webp";
+import defaultCoachCoverMobile from "/assets/images/default_coach_cover_mobile.webp";
 import { CoachHero } from "@/components/profile/coach/CoachHero";
 import { Footer } from "@/components/footer";
 import { Button } from "@/components/ui/button";
@@ -736,6 +737,7 @@ export default function CoachProfile() {
            <ProfileCover
               cover={profile.cover}
               defaultCover={defaultCoachCover}
+              defaultCoverMobile={defaultCoachCoverMobile}
               isOwner={isOwnProfile}
               onEdit={() =>
                 document.getElementById("cover-upload")?.click()
