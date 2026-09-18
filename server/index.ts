@@ -113,6 +113,41 @@ app.use(
   }),
 );
 
+// Lightweight CSRF defense-in-depth on top of the cookie's own
+// SameSite=lax (server/auth.ts) - lax already blocks the classic
+// cross-site <form>/<img> auto-submit case, but this catches a
+// same-site-cookie-sent-anyway edge case lax doesn't (e.g. a
+// top-level navigation, or a browser that doesn't enforce SameSite):
+// a browser ALWAYS attaches a real Origin header to a cross-origin
+// fetch/XHR, and that header can't be forged by page JS - so for any
+// state-changing request, an Origin that's present but doesn't match
+// this app's own origins is exactly what a forged cross-site request
+// looks like. Deliberately does NOT reject a request with no Origin
+// at all - some legitimate same-origin requests omit it (older
+// browsers, some non-browser API clients, server-to-server calls like
+// the Stripe webhook, which has its own signature verification
+// anyway) - the goal is catching a forged Origin, not requiring one.
+app.use((req, res, next) => {
+  const mutatingMethods = ["POST", "PUT", "PATCH", "DELETE"];
+  if (!mutatingMethods.includes(req.method)) {
+    return next();
+  }
+
+  const requestOrigin = req.header("Origin");
+  if (!requestOrigin) {
+    return next();
+  }
+
+  const selfOrigin = `${req.protocol}://${req.get("host")}`;
+  const allowed = allowedOrigins.includes(requestOrigin) || requestOrigin === selfOrigin;
+
+  if (!allowed) {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+
+  next();
+});
+
 const httpServer = createServer(app);
 
 declare module "http" {
@@ -201,7 +236,24 @@ app.use((req, res, next) => {
   app.use(
     (err: any, _req: Request, res: Response, _next: NextFunction) => {
       const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
+
+      // Only suppresses messages that look like a RAW driver/DB
+      // exception (node-postgres errors carry a SQLSTATE-style `.code`,
+      // e.g. "23505" for a unique violation, and their .message often
+      // includes constraint/table/column names never meant for a
+      // client). Every error this app throws itself - `new
+      // Error("Item not found or access denied")` and the like,
+      // status-coded or not - has no `.code` at all, so none of those
+      // existing, deliberately-written messages are affected; this
+      // only catches the case nothing here was actually handling
+      // before. Full detail always still goes to the server log;
+      // only the response sent back is generic for this one category,
+      // and only in production (kept verbose in development).
+      const looksLikeRawDriverError = typeof err.code === "string" && !err.status && !err.statusCode;
+      const message =
+        looksLikeRawDriverError && process.env.NODE_ENV === "production"
+          ? "Something went wrong. Please try again."
+          : err.message || "Internal Server Error";
 
       console.error(err);
 

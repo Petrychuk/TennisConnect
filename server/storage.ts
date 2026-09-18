@@ -88,7 +88,7 @@ import {
   type LeaderboardRow,
   type ActivityFeedItem,
 } from "@shared/schema";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { eq, desc, and, or, asc, sql, lte, ne, gte, ilike, inArray, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { supabaseAdmin } from "./supabaseAdmin";
@@ -156,6 +156,9 @@ export interface IStorage {
   ): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User>;
   updateUserPassword(id: string, hashedPassword: string): Promise<void>;
+  invalidateUserSessions(userId: string): Promise<void>;
+  recordFailedLogin(userId: string): Promise<{ locked: boolean; lockedUntil?: Date }>;
+  resetFailedLogins(userId: string): Promise<void>;
   getUserBySlug(slug: string): Promise<User | undefined>;
   deleteUserAccount(userId: string): Promise<void>;
   deleteUserAccounts(userIds: string[]): Promise<{ deleted: string[]; failed: { id: string; message: string }[] }>;
@@ -509,6 +512,52 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({ password: hashedPassword })
       .where(eq(users.id, id));
+  }
+
+  // Sessions live in their own table managed entirely by
+  // connect-pg-simple (server/auth.ts's PgStore), not part of the
+  // Drizzle schema - passport.serializeUser stores just the bare user
+  // id, so each row's sess.passport.user is exactly that id. Called
+  // after a password reset (and anywhere else a session-worthy
+  // security event happens in the future, e.g. a future "change
+  // password while logged in" route) so a session an attacker already
+  // had open can't keep working after the real owner takes their
+  // account back.
+  async invalidateUserSessions(userId: string): Promise<void> {
+    await pool.query(
+      `DELETE FROM user_sessions WHERE sess::jsonb -> 'passport' ->> 'user' = $1`,
+      [userId]
+    );
+  }
+
+  // Per-account lockout - a backstop against distributed brute force/
+  // credential stuffing that spreads guesses across many IPs against
+  // one account, which the login route's per-IP rate limiter alone
+  // never sees. 10 failed attempts locks the account for 15 minutes;
+  // any single successful login (resetFailedLogins, called from
+  // server/auth.ts's LocalStrategy) clears the count entirely.
+  private static readonly MAX_FAILED_LOGIN_ATTEMPTS = 10;
+  private static readonly LOCKOUT_DURATION_MS = 15 * 60 * 1000;
+
+  async recordFailedLogin(userId: string): Promise<{ locked: boolean; lockedUntil?: Date }> {
+    const [user] = await db
+      .select({ failedLoginAttempts: users.failedLoginAttempts })
+      .from(users)
+      .where(eq(users.id, userId));
+    const attempts = (user?.failedLoginAttempts ?? 0) + 1;
+
+    if (attempts >= DatabaseStorage.MAX_FAILED_LOGIN_ATTEMPTS) {
+      const lockedUntil = new Date(Date.now() + DatabaseStorage.LOCKOUT_DURATION_MS);
+      await db.update(users).set({ failedLoginAttempts: 0, lockedUntil }).where(eq(users.id, userId));
+      return { locked: true, lockedUntil };
+    }
+
+    await db.update(users).set({ failedLoginAttempts: attempts }).where(eq(users.id, userId));
+    return { locked: false };
+  }
+
+  async resetFailedLogins(userId: string): Promise<void> {
+    await db.update(users).set({ failedLoginAttempts: 0, lockedUntil: null }).where(eq(users.id, userId));
   }
 
   // Batched version of deleteUserAccount() below - the same cleanup,

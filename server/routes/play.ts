@@ -4,8 +4,10 @@
 // their own registration status on the details endpoint.
 import { Router } from "express";
 import { storage } from "../storage";
+import { publicBrowseLimiter } from "../lib/rateLimiters";
 
 const router = Router();
+router.use(publicBrowseLimiter);
 
 function parseDate(value: unknown): Date | undefined {
   if (typeof value !== "string" || !value) return undefined;

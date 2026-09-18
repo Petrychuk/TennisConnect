@@ -253,6 +253,42 @@ test.describe('Security: malicious file upload rejection', () => {
   });
 });
 
+test.describe('Security: stored XSS is neutralised on render', () => {
+  // React escapes text children by default (it renders a <script> tag
+  // in a bio as inert TEXT, never as markup that gets parsed) - this
+  // is what actually protects the app, not any server-side stripping
+  // of the input. These tests check the rendered PAGE for a stored
+  // payload, not just that the API accepted/returned it, since storing
+  // the raw string is expected and correct; only the render matters.
+  const xssPayload = `<script>window.__xssFired = true;</script>`;
+
+  test('@smoke SEC-010 A script tag saved in a player bio never executes when the profile is viewed', async ({ page }) => {
+    await registerPlayer(page);
+    await completePlayerProfile(page);
+
+    const meRes = await page.request.get('/api/auth/me');
+    const me = await meRes.json();
+
+    const updateRes = await page.request.put('/api/me/player-profile', {
+      data: { bio: xssPayload },
+    });
+    expect(updateRes.ok()).toBeTruthy();
+
+    await page.goto(`/player/${me.slug}`);
+
+    // If the payload had actually executed as script, this flag would
+    // be set on the page's own window object.
+    const fired = await page.evaluate(() => (window as any).__xssFired);
+    expect(fired).toBeUndefined();
+
+    // And it should still be visible as plain, inert text somewhere on
+    // the page - proving it was rendered, not silently dropped (a bio
+    // that just vanished would also make the __xssFired check above
+    // pass for the wrong reason).
+    await expect(page.getByText('window.__xssFired', { exact: false })).toBeVisible();
+  });
+});
+
 test.describe('Security: registration does not leak whether an email is already taken', () => {
   test('@smoke SEC-009 Registering with an already-used email gets the exact same response as a real new signup', async ({ page }) => {
     const email = `sec009_${Date.now()}@tennisconnect.test`;
