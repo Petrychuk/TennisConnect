@@ -42,6 +42,16 @@ export const users = pgTable("users", {
   .default(false)
   .notNull(),
   isHidden: boolean("is_hidden").default(false),
+  // Distributed-brute-force / credential-stuffing protection - the
+  // login route's own rate limiter caps attempts per IP, but a
+  // distributed attack spreads guesses across many IPs against the
+  // SAME account, which a per-IP limiter never sees. This is the
+  // per-account backstop: reset to 0 on any successful login,
+  // incremented on every failed one, and once it crosses the
+  // threshold (see server/auth.ts) the account is locked until
+  // lockedUntil regardless of which IP is trying.
+  failedLoginAttempts: integer("failed_login_attempts").default(0).notNull(),
+  lockedUntil: timestamp("locked_until", { withTimezone: true }),
   // Defaults to true so every existing row (and any insert path other
   // than /api/auth/register - there isn't one today, but this is the
   // safe direction to fail in if that changes) is treated as verified

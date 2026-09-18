@@ -344,6 +344,19 @@ export async function registerRoutes(app: Express): Promise<void> {
           });
         }
 
+        // Also deliberately not generic, for the same reason as
+        // EMAIL_NOT_VERIFIED above - this only ever fires for a real
+        // account (the lockout check runs before the password is even
+        // compared), and the person trying right now needs to know to
+        // stop guessing and wait, not just retry into a longer lock.
+        if ((info as any)?.message === "ACCOUNT_LOCKED") {
+          return res.status(429).json({
+            message: "Too many failed login attempts. This account is temporarily locked - please try again later or reset your password.",
+            code: "ACCOUNT_LOCKED",
+            lockedUntil: (info as any).lockedUntil,
+          });
+        }
+
         // Deliberately generic (doesn't say which of email/password was
         // wrong - that's a login-enumeration best practice, not an
         // oversight), but previously this literally read "Login failed"
@@ -622,6 +635,17 @@ export async function registerRoutes(app: Express): Promise<void> {
 
       // Update user password
       await storage.updateUserPassword(resetToken.userId, hashedPassword);
+
+      // Any session an attacker already had open (the exact scenario
+      // that justifies a password reset in the first place) shouldn't
+      // keep working just because it predates the reset.
+      await storage.invalidateUserSessions(resetToken.userId);
+
+      // A successful reset is a strong enough proof of ownership to
+      // also clear any lockout from failed login attempts - otherwise
+      // the real owner would reset their password successfully and
+      // still be locked out for the rest of that window.
+      await storage.resetFailedLogins(resetToken.userId);
 
       // Mark token as used
       await db

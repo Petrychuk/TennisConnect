@@ -1,8 +1,10 @@
 import { Router } from "express";
 import { storage } from "../storage";
 import { toPublicUser } from "../lib/sanitizeUser";
+import { publicBrowseLimiter } from "../lib/rateLimiters";
 
 const router = Router();
+router.use(publicBrowseLimiter);
 
 // GET /api/players
 router.get("/", async (req, res) => {
