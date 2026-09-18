@@ -253,6 +253,29 @@ test.describe('Security: malicious file upload rejection', () => {
   });
 });
 
+test.describe('Security: registration does not leak whether an email is already taken', () => {
+  test('@smoke SEC-009 Registering with an already-used email gets the exact same response as a real new signup', async ({ page }) => {
+    const email = `sec009_${Date.now()}@tennisconnect.test`;
+    const payload = { email, password: 'Test123456!', name: 'Sec Test', role: 'player' };
+
+    const firstRes = await page.request.post('/api/auth/register', { data: payload });
+    expect(firstRes.status()).toBe(201);
+    const firstBody = await firstRes.json();
+
+    // Second attempt, same email - must be indistinguishable from the
+    // first: same status, same message, same requiresVerification
+    // flag. No "Email already exists", nothing that lets the caller
+    // tell these two responses apart.
+    const secondRes = await page.request.post('/api/auth/register', {
+      data: { ...payload, name: 'Someone Else' },
+    });
+    expect(secondRes.status()).toBe(firstRes.status());
+    const secondBody = await secondRes.json();
+    expect(secondBody).toEqual(firstBody);
+    expect(JSON.stringify(secondBody).toLowerCase()).not.toContain('already');
+  });
+});
+
 test.describe('Security: tournament history ownership (regression - already correct, locking it in)', () => {
   async function createTournamentEntry(page: import('@playwright/test').Page, name: string) {
     const res = await page.request.post('/api/profile/tournament-history', {
