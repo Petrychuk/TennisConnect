@@ -36,18 +36,15 @@ export function ProfileCover({
   defaultCoverMobile,
 }: ProfileCoverProps) {
   const fallback = defaultCover || genericDefaultCover;
-  // Container aspect ratio matches whichever image is actually
-  // showing, so object-cover never needs to crop anything - mobile
-  // (aspect-[1000/716], matching defaultCoverMobile's own dedicated
-  // crop) and sm+ (aspect-[8/3], matching the 2000x750 desktop banner)
-  // each show their own image at 100%, not a live browser-side crop of
-  // one wide image at every size. A real user-uploaded cover keeps the
-  // original fixed-height behaviour untouched - there's no per-user
-  // mobile crop for those.
+  // Same fixed height for the default banner as a real uploaded cover
+  // (no more aspect-ratio-matched sizing) - whatever doesn't fit gets
+  // cropped at the bottom, same as any other cover photo on this site;
+  // the fade below is what keeps that crop from looking like a hard
+  // cut.
   const isDefault = !cover && defaultCoverMobile;
 
   return (
-    <div className={`relative w-full overflow-hidden rounded-t-3xl group ${isDefault ? "aspect-[1000/716] sm:aspect-[8/3]" : "h-[280px] sm:h-[300px] md:h-[380px] lg:h-[460px]"}`}>
+    <div className="relative w-full h-[280px] sm:h-[300px] md:h-[380px] lg:h-[460px] overflow-hidden rounded-t-3xl group">
 
       {/* Cover Image — a single bundled default when the user has none,
           so there's nothing to swap once their real data loads. */}
@@ -77,12 +74,13 @@ export function ProfileCover({
       )}
 
       {/* Bottom fade — blends the photo smoothly into the page's own
-          background right where the avatar/info card now overlaps it
-          more heavily, instead of that card cutting into the photo on
-          a hard edge (same from-transparent-to-background technique as
-          the Play page's hero). */}
+          background right where the avatar/info card overlaps it,
+          instead of that card cutting into the photo on a hard edge
+          (same from-transparent-to-background technique as the Play
+          page's hero). Taller and more visible than the first attempt -
+          about a third of the cover's own height at every breakpoint. */}
       {isDefault && (
-        <div className="absolute inset-x-0 bottom-0 h-24 sm:h-32 bg-gradient-to-t from-background to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-24 sm:h-28 md:h-32 lg:h-40 bg-gradient-to-t from-background via-background/70 to-transparent" />
       )}
 
       {/* Dark Overlay — the only scrim now. The old extra fade-to-background
