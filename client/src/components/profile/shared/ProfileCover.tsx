@@ -36,9 +36,18 @@ export function ProfileCover({
   defaultCoverMobile,
 }: ProfileCoverProps) {
   const fallback = defaultCover || genericDefaultCover;
+  // Showing the full, uncropped default banner (not object-cover
+  // slicing off its top/bottom) needs the container's own aspect
+  // ratio to match the image's, at both breakpoints - a fixed pixel
+  // height, sized for a REAL uploaded cover of any random aspect
+  // ratio, was cropping into this specific image's important content
+  // instead. 1000x721 is the mobile crop's own ratio,
+  // 2000x750 (=8:3) is the desktop banner's. A real user-uploaded
+  // cover keeps the original fixed-height behaviour untouched.
+  const isDefault = !cover && defaultCoverMobile;
 
   return (
-    <div className="relative w-full h-[280px] sm:h-[300px] md:h-[380px] lg:h-[460px] overflow-hidden rounded-t-3xl group">
+    <div className={`relative w-full overflow-hidden rounded-t-3xl group ${isDefault ? "aspect-[1000/721] sm:aspect-[8/3]" : "h-[280px] sm:h-[300px] md:h-[380px] lg:h-[460px]"}`}>
 
       {/* Cover Image — a single bundled default when the user has none,
           so there's nothing to swap once their real data loads. The
