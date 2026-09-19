@@ -36,28 +36,54 @@ export function ProfileCover({
   defaultCoverMobile,
 }: ProfileCoverProps) {
   const fallback = defaultCover || genericDefaultCover;
-  // Showing the full, uncropped default banner (not object-cover
-  // slicing off its top/bottom) needs the container's own aspect
-  // ratio to match the image's - 2000x750 (=8:3) - at every
-  // breakpoint, not just sm+: on mobile this scales the whole banner
-  // down rather than cropping into it. A real user-uploaded cover
-  // keeps the original fixed-height behaviour untouched.
-  const isDefault = !cover;
+  // Container aspect ratio matches whichever image is actually
+  // showing, so object-cover never needs to crop anything - mobile
+  // (aspect-[1000/716], matching defaultCoverMobile's own dedicated
+  // crop) and sm+ (aspect-[8/3], matching the 2000x750 desktop banner)
+  // each show their own image at 100%, not a live browser-side crop of
+  // one wide image at every size. A real user-uploaded cover keeps the
+  // original fixed-height behaviour untouched - there's no per-user
+  // mobile crop for those.
+  const isDefault = !cover && defaultCoverMobile;
 
   return (
-    <div className={`relative w-full overflow-hidden rounded-t-3xl group ${isDefault ? "aspect-[8/3]" : "h-[280px] sm:h-[300px] md:h-[380px] lg:h-[460px]"}`}>
+    <div className={`relative w-full overflow-hidden rounded-t-3xl group ${isDefault ? "aspect-[1000/716] sm:aspect-[8/3]" : "h-[280px] sm:h-[300px] md:h-[380px] lg:h-[460px]"}`}>
 
       {/* Cover Image — a single bundled default when the user has none,
           so there's nothing to swap once their real data loads. */}
-      <img
-        src={cover || fallback}
-        alt="Profile Cover"
-        data-testid="profile-cover"
-        fetchPriority="high"
-        loading="eager"
-        decoding="async"
-        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
-      />
+      {isDefault ? (
+        <picture>
+          <source media="(min-width: 640px)" srcSet={fallback} />
+          <img
+            src={defaultCoverMobile}
+            alt="Profile Cover"
+            data-testid="profile-cover"
+            fetchPriority="high"
+            loading="eager"
+            decoding="async"
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
+          />
+        </picture>
+      ) : (
+        <img
+          src={cover || fallback}
+          alt="Profile Cover"
+          data-testid="profile-cover"
+          fetchPriority="high"
+          loading="eager"
+          decoding="async"
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
+        />
+      )}
+
+      {/* Bottom fade — blends the photo smoothly into the page's own
+          background right where the avatar/info card now overlaps it
+          more heavily, instead of that card cutting into the photo on
+          a hard edge (same from-transparent-to-background technique as
+          the Play page's hero). */}
+      {isDefault && (
+        <div className="absolute inset-x-0 bottom-0 h-24 sm:h-32 bg-gradient-to-t from-background to-transparent" />
+      )}
 
       {/* Dark Overlay — the only scrim now. The old extra fade-to-background
           strip at the bottom sat exactly where the hero card overlaps,
