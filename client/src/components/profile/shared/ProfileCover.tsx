@@ -38,47 +38,26 @@ export function ProfileCover({
   const fallback = defaultCover || genericDefaultCover;
   // Showing the full, uncropped default banner (not object-cover
   // slicing off its top/bottom) needs the container's own aspect
-  // ratio to match the image's, at both breakpoints - a fixed pixel
-  // height, sized for a REAL uploaded cover of any random aspect
-  // ratio, was cropping into this specific image's important content
-  // instead. 1000x721 is the mobile crop's own ratio,
-  // 2000x750 (=8:3) is the desktop banner's. A real user-uploaded
-  // cover keeps the original fixed-height behaviour untouched.
-  const isDefault = !cover && defaultCoverMobile;
+  // ratio to match the image's - 2000x750 (=8:3) - at every
+  // breakpoint, not just sm+: on mobile this scales the whole banner
+  // down rather than cropping into it. A real user-uploaded cover
+  // keeps the original fixed-height behaviour untouched.
+  const isDefault = !cover;
 
   return (
-    <div className={`relative w-full overflow-hidden rounded-t-3xl group ${isDefault ? "aspect-[1000/721] sm:aspect-[8/3]" : "h-[280px] sm:h-[300px] md:h-[380px] lg:h-[460px]"}`}>
+    <div className={`relative w-full overflow-hidden rounded-t-3xl group ${isDefault ? "aspect-[8/3]" : "h-[280px] sm:h-[300px] md:h-[380px] lg:h-[460px]"}`}>
 
       {/* Cover Image — a single bundled default when the user has none,
-          so there's nothing to swap once their real data loads. The
-          default specifically gets a dedicated mobile crop (see
-          defaultCoverMobile's own comment above); a real user-uploaded
-          cover just uses the one image at every breakpoint, same as
-          before. */}
-      {!cover && defaultCoverMobile ? (
-        <picture>
-          <source media="(min-width: 640px)" srcSet={fallback} />
-          <img
-            src={defaultCoverMobile}
-            alt="Profile Cover"
-            data-testid="profile-cover"
-            fetchPriority="high"
-            loading="eager"
-            decoding="async"
-            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
-          />
-        </picture>
-      ) : (
-        <img
-          src={cover || fallback}
-          alt="Profile Cover"
-          data-testid="profile-cover"
-          fetchPriority="high"
-          loading="eager"
-          decoding="async"
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
-        />
-      )}
+          so there's nothing to swap once their real data loads. */}
+      <img
+        src={cover || fallback}
+        alt="Profile Cover"
+        data-testid="profile-cover"
+        fetchPriority="high"
+        loading="eager"
+        decoding="async"
+        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
+      />
 
       {/* Dark Overlay — the only scrim now. The old extra fade-to-background
           strip at the bottom sat exactly where the hero card overlaps,
