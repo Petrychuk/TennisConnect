@@ -21,7 +21,7 @@ export function ProfileHeroCard({
   cardBackgroundClassName = "bg-card/50",
 }: ProfileHeroCardProps) {
   return (
-    <div className="container mx-auto max-w-6xl sm:px-4 relative -mt-[108px] sm:-mt-6 md:-mt-[214px] lg:-mt-[230px] z-30">
+    <div className="container mx-auto max-w-6xl sm:px-4 relative -mt-[88px] sm:-mt-6 md:-mt-[214px] lg:-mt-[230px] z-30">
 
       <div className="relative">
 
