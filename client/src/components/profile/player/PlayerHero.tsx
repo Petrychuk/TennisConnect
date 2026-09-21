@@ -4,8 +4,6 @@ import { ProfileHeroCard } from "../shared/ProfileHeroCard";
 import { PlayerInfo } from "./PlayerInfo";
 import { PlayerActions } from "./PlayerActions";
 
-import { ProfileStats } from "../shared/ProfileStats";
-import { StatCard } from "../shared/StatCard";
 import { formatSkillLevelUtr } from "@/lib/skillLevel";
 
 import {
@@ -31,14 +29,6 @@ interface PlayerHeroProps {
   onCancel: () => void;
 }
 
-// Statically shared/light card style, matching the redesigned Overview
-// cards (border-0, subtle wash) instead of StatCard's own default
-// border - overridden here via className only, so coach profiles,
-// the organiser dashboard and session-live (StatCard's other callers)
-// keep their original look untouched.
-const lightCardClass = "border-0 shadow-none bg-transparent hover:bg-muted/20";
-const compactValueClass = "text-xs sm:text-sm md:text-base font-semibold";
-
 export function PlayerHero({
   profile,
   tournaments,
@@ -50,6 +40,39 @@ export function PlayerHero({
   onSave,
   onCancel,
 }: PlayerHeroProps) {
+  // Redesigned stat row: no individual card boxes at all (the previous
+  // StatCard-based version read as 4 floating translucent boxes that
+  // didn't match the rest of the page) - just icon+value+label groups,
+  // separated by a hairline divider instead. 2x2 on mobile (rows
+  // divided), one line on sm+ (columns divided) - same info, no card
+  // shell either way.
+  const stats = [
+    {
+      testId: "player-stat-rating",
+      icon: <Star className="w-4 h-4" />,
+      value: formatSkillLevelUtr(profile.skillLevel),
+      label: "Level",
+    },
+    {
+      testId: "player-stat-hand",
+      icon: <Hand className="w-4 h-4" />,
+      value: profile.playingHand || "—",
+      label: "Playing hand",
+    },
+    {
+      testId: "player-stat-distance",
+      icon: <MapPin className="w-4 h-4" />,
+      value: profile.playRadiusKm ? `${profile.playRadiusKm} km` : "—",
+      label: "Preferred distance",
+    },
+    {
+      testId: "player-stat-availability",
+      icon: <CalendarCheck className="w-4 h-4" />,
+      value: profile.availabilityStatus || "Not set",
+      label: "Available to play",
+    },
+  ];
+
   return (
     <ProfileHeroCard
 
@@ -82,46 +105,23 @@ export function PlayerHero({
       }
 
       stats={
-        <ProfileStats>
-
-          <StatCard
-            data-testid="player-stat-rating"
-            icon={<Star className="w-5 h-5" />}
-            value={formatSkillLevelUtr(profile.skillLevel)}
-            label="Level"
-            subtitle={profile.skillLevel || "Not set"}
-            className={lightCardClass}
-            valueClassName={compactValueClass}
-          />
-
-          <StatCard
-            data-testid="player-stat-hand"
-            icon={<Hand className="w-5 h-5" />}
-            value={profile.playingHand || "—"}
-            label="Playing hand"
-            className={lightCardClass}
-            valueClassName={compactValueClass}
-          />
-
-          <StatCard
-            data-testid="player-stat-distance"
-            icon={<MapPin className="w-5 h-5" />}
-            value={profile.playRadiusKm ? `${profile.playRadiusKm} km` : "—"}
-            label="Preferred distance"
-            className={lightCardClass}
-            valueClassName={compactValueClass}
-          />
-
-          <StatCard
-            data-testid="player-stat-availability"
-            icon={<CalendarCheck className="w-5 h-5" />}
-            value={profile.availabilityStatus || "Not set"}
-            label="Available to play"
-            className={lightCardClass}
-            valueClassName={compactValueClass}
-          />
-
-        </ProfileStats>
+        <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-border/30 -mx-1">
+          {stats.map((stat) => (
+            <div
+              key={stat.testId}
+              data-testid={stat.testId}
+              className="flex items-center gap-2 py-2.5 px-1 sm:px-4 sm:first:pl-1 min-w-0"
+            >
+              <span className="text-primary shrink-0">{stat.icon}</span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold leading-tight truncate">{stat.value}</p>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground truncate">
+                  {stat.label}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
       }
 
     />

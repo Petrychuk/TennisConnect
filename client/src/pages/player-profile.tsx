@@ -1017,7 +1017,7 @@ export default function PlayerProfile() {
                   <Skeleton className="h-40 w-full rounded-2xl" />
                 </div>
               ) : (
-              <Tabs defaultValue={initialTab} className="mt-8 space-y-5">
+              <Tabs defaultValue={initialTab} className="mt-4 space-y-2.5">
                 <TabsList className="w-full
                       flex
                       overflow-x-auto
@@ -1045,10 +1045,10 @@ export default function PlayerProfile() {
                   {/* <TabsTrigger value="marketplace" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><ShoppingBag className="w-4 h-4" />Selling ({marketplaceItems.length})</TabsTrigger> */}
                 </TabsList>
 
-                <TabsContent value="overview" className="space-y-5">
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <TabsContent value="overview" className="space-y-2.5">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
                     {/* Main column */}
-                    <div className="lg:col-span-2 space-y-4">
+                    <div className="lg:col-span-2 space-y-2">
                       <AboutMeCard
                         bio={profile.bio}
                         isOwner={isOwnProfile}
@@ -1083,7 +1083,7 @@ export default function PlayerProfile() {
                     </div>
 
                     {/* Sidebar */}
-                    <div className="space-y-4">
+                    <div className="space-y-2">
                       {/* Visitors get the photo gallery here instead of
                           in the main column - makes better use of this
                           column's space, and keeps the main column
