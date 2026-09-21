@@ -517,7 +517,7 @@ export function GoodMatchCard({
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          Based on level, availability and preferences (demo score - real matching is coming soon).
+          Based on level, availability and preferred areas - a simple first pass, not a full matching algorithm yet.
         </p>
         <Button className="w-full" onClick={onSuggestGame} data-testid="suggest-a-game-button">
           Suggest a game

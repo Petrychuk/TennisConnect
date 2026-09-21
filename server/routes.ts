@@ -107,6 +107,8 @@ const playerProfileUpdateSchema = z.object({
   playRadiusKm: z.number().int().min(1).max(500).optional(),
   courtSurfacePreference: z.string().max(30).optional(),
   photos: z.array(z.string()).max(20).optional(),
+  playingHand: z.string().max(20).optional(),
+  availabilityStatus: z.string().max(50).optional(),
 });
 
 const coachProfileUpdateSchema = z.object({
