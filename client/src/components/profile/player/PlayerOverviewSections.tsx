@@ -25,6 +25,9 @@ import {
   Users2,
   MapPin,
   BarChart3,
+  ChevronLeft,
+  ChevronRight,
+  Trash2,
 } from "lucide-react";
 
 /* =========================================================
@@ -413,15 +416,41 @@ export function PhotosCard({
   photos,
   isOwner,
   onAddPhoto,
+  onDeletePhoto,
 }: {
   photos: string[];
   isOwner: boolean;
   onAddPhoto?: () => void;
+  onDeletePhoto?: (url: string) => void;
 }) {
   const [galleryOpen, setGalleryOpen] = useState(false);
+  // The enlarged single-photo view - set to an index to open it
+  // directly on that photo (not just the small-thumbnail grid).
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   if (!photos.length && !isOwner) return null;
 
   const visible = photos.slice(0, 4);
+  const openLightbox = (index: number) => {
+    setGalleryOpen(false);
+    setLightboxIndex(index);
+  };
+  const closeLightbox = () => setLightboxIndex(null);
+  const showPrev = () =>
+    setLightboxIndex((i) => (i === null ? null : (i - 1 + photos.length) % photos.length));
+  const showNext = () =>
+    setLightboxIndex((i) => (i === null ? null : (i + 1) % photos.length));
+  const deleteCurrent = () => {
+    if (lightboxIndex === null) return;
+    const url = photos[lightboxIndex];
+    onDeletePhoto?.(url);
+    // Land on a sensible next photo (or close if that was the last one)
+    // rather than pointing at a now-stale index.
+    if (photos.length <= 1) {
+      closeLightbox();
+    } else {
+      setLightboxIndex(Math.min(lightboxIndex, photos.length - 2));
+    }
+  };
 
   return (
     <Card data-testid="photos-card" className="border-0 shadow-sm bg-muted/40">
@@ -445,7 +474,7 @@ export function PhotosCard({
           <button
             key={i}
             className="aspect-square rounded-lg overflow-hidden bg-muted"
-            onClick={() => setGalleryOpen(true)}
+            onClick={() => openLightbox(i)}
             data-testid={`photo-thumb-${i}`}
           >
             <img src={url} alt="" className="w-full h-full object-cover" />
@@ -463,6 +492,7 @@ export function PhotosCard({
         )}
       </CardContent>
 
+      {/* Thumbnail grid for browsing everything at once */}
       <Dialog open={galleryOpen} onOpenChange={setGalleryOpen}>
         <DialogContent className="max-w-3xl" data-testid="photos-gallery-modal">
           <DialogHeader>
@@ -470,11 +500,64 @@ export function PhotosCard({
           </DialogHeader>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[70vh] overflow-y-auto">
             {photos.map((url, i) => (
-              <div key={i} className="aspect-square rounded-lg overflow-hidden bg-muted">
+              <button
+                key={i}
+                className="aspect-square rounded-lg overflow-hidden bg-muted"
+                onClick={() => openLightbox(i)}
+                data-testid={`photo-gallery-thumb-${i}`}
+              >
                 <img src={url} alt="" className="w-full h-full object-cover" />
-              </div>
+              </button>
             ))}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Enlarged single-photo view */}
+      <Dialog open={lightboxIndex !== null} onOpenChange={(open) => !open && closeLightbox()}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black/95 border-0" data-testid="photo-lightbox">
+          {lightboxIndex !== null && (
+            <div className="relative flex items-center justify-center min-h-[50vh] max-h-[85vh]">
+              <img
+                src={photos[lightboxIndex]}
+                alt=""
+                className="max-w-full max-h-[85vh] object-contain"
+                data-testid="photo-lightbox-image"
+              />
+
+              {photos.length > 1 && (
+                <>
+                  <button
+                    onClick={showPrev}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"
+                    data-testid="photo-lightbox-prev"
+                    aria-label="Previous photo"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={showNext}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"
+                    data-testid="photo-lightbox-next"
+                    aria-label="Next photo"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </>
+              )}
+
+              {isOwner && onDeletePhoto && (
+                <button
+                  onClick={deleteCurrent}
+                  className="absolute top-2 right-2 w-9 h-9 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-destructive"
+                  data-testid="photo-lightbox-delete"
+                  aria-label="Delete photo"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </Card>

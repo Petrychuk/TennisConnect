@@ -770,6 +770,29 @@ export default function PlayerProfile() {
     setTournaments(prev => prev.filter(t => t.id !== id));
   };
 
+ const handleDeletePhoto = async (photoUrl: string) => {
+    // Optimistic - removes it from view immediately, restores it if the
+    // request actually fails.
+    const previousPhotos = profile.photos || [];
+    setProfile((prev) => ({ ...prev, photos: previousPhotos.filter((p) => p !== photoUrl) }));
+    try {
+      const res = await fetch("/api/me/player-profile/photos", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ photoUrl }),
+      });
+      if (!res.ok) throw new Error("Failed to delete photo");
+    } catch (err) {
+      setProfile((prev) => ({ ...prev, photos: previousPhotos }));
+      toast({
+        variant: "destructive",
+        title: "Couldn't delete photo",
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+    }
+  };
+
  const handleGalleryPhotoChange = async (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -1053,6 +1076,7 @@ export default function PlayerProfile() {
                           photos={profile.photos || []}
                           isOwner={isOwnProfile}
                           onAddPhoto={() => document.getElementById("player-photo-upload")?.click()}
+                          onDeletePhoto={handleDeletePhoto}
                         />
                       )}
                     </div>
