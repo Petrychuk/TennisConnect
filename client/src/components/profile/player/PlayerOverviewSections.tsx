@@ -50,7 +50,7 @@ export interface PlayingPrefsData {
   courtSurfacePreference: string;
 }
 
-export const LOOKING_FOR_OPTIONS = ["Hitting Partner", "Social Tennis", "Competitions"];
+export const LOOKING_FOR_OPTIONS = ["Hitting Partner", "Coach", "Playing Events"];
 export const AVAILABILITY_OPTIONS = [
   "Weekday mornings",
   "Weekday evenings",
@@ -515,7 +515,10 @@ export function PhotosCard({
 
       {/* Enlarged single-photo view */}
       <Dialog open={lightboxIndex !== null} onOpenChange={(open) => !open && closeLightbox()}>
-        <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black/95 border-0" data-testid="photo-lightbox">
+        <DialogContent
+          className="max-w-4xl p-0 overflow-hidden bg-black/95 border-0 [&>button]:text-white [&>button]:opacity-90 [&>button]:hover:opacity-100 [&>button]:bg-black/40 [&>button]:rounded-full [&>button]:p-1.5"
+          data-testid="photo-lightbox"
+        >
           {lightboxIndex !== null && (
             <div className="relative flex items-center justify-center min-h-[50vh] max-h-[85vh]">
               <img

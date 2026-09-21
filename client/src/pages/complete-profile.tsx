@@ -19,6 +19,7 @@ import SEO from "@/components/seo";
 import { playerProfileSchema, coachProfileSchema } from "@/lib/validations/profile"
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { LOOKING_FOR_OPTIONS } from "@/components/profile/player/PlayerOverviewSections";
 
 // Kept in one place since both the Country combobox and any future
 // country-dependent logic should read from the same list. "USA"/"UK"
@@ -444,7 +445,7 @@ export default function CompleteProfilePage() {
                   <div className="space-y-2">
                     <Label>Looking for</Label>
                     <div className="flex flex-wrap gap-2">
-                      {["Hitting Partner", "Coach", "Playing Events"].map((option) => {
+                      {LOOKING_FOR_OPTIONS.map((option) => {
                         const selected = (playerForm.watch("lookingFor") || []).includes(option);
                         return (
                           <Badge
