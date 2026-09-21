@@ -1084,7 +1084,7 @@ export default function PlayerProfile() {
                         );
                       })()}
                       <AvailabilityQuickCard availability={profile.availability || []} />
-                      {isOwnProfile && <LatestActivityCard items={mockActivity} />}
+                      <LatestActivityCard items={mockActivity} />
                       {isOwnProfile && organizerStatus.data && (
                         <BecomeOrganizerCard
                           status={organizerStatus.data}
