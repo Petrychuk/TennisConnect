@@ -36,7 +36,7 @@ interface PlayerHeroProps {
 // border - overridden here via className only, so coach profiles,
 // the organiser dashboard and session-live (StatCard's other callers)
 // keep their original look untouched.
-const lightCardClass = "border-0 shadow-sm bg-muted/40 hover:bg-muted/60";
+const lightCardClass = "border-0 shadow-none bg-transparent hover:bg-muted/20";
 const compactValueClass = "text-xs sm:text-sm md:text-base font-semibold";
 
 export function PlayerHero({
