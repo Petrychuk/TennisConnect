@@ -8,6 +8,7 @@ import { omitPassword } from "./lib/sanitizeUser";
 import uploadMediaRouter from "./routes/uploadMedia";
 import profileTournamentHistoryRouter from "./routes/profileTournamentHistory";
 import profileMarketplace from "./routes/profileMarketplace";
+import playerPhotos from "./routes/playerPhotos";
 import contentRouter from "./routes/adminContent";
 import passport from "passport";
 import { requireAuth, requireAdmin } from "./requireAuth";
@@ -97,6 +98,15 @@ const playerProfileUpdateSchema = z.object({
   skillLevel: z.string().max(50).optional(),
   bio: z.string().trim().max(1000).optional(),
   preferredCourts: z.array(z.string()).optional(),
+  // --- Profile redesign additions - all optional/self-declared ---
+  sex: z.string().max(30).optional(),
+  lookingFor: z.array(z.string()).max(10).optional(),
+  gameFormat: z.string().max(30).optional(),
+  playStyle: z.string().max(30).optional(),
+  availability: z.array(z.string()).max(10).optional(),
+  playRadiusKm: z.number().int().min(1).max(500).optional(),
+  courtSurfacePreference: z.string().max(30).optional(),
+  photos: z.array(z.string()).max(20).optional(),
 });
 
 const coachProfileUpdateSchema = z.object({
@@ -162,6 +172,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/api/uploadMedia", uploadMediaRouter);
   app.use("/api/profile/tournament-history", profileTournamentHistoryRouter);
   app.use("/api/profile/marketplace", profileMarketplace);
+  app.use("/api/me/player-profile/photos", playerPhotos);
   app.use("/api", contentRouter);
   app.use("/", sitemapRoutes);
   app.use("/api/players", playersRouter);

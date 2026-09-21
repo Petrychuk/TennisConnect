@@ -1,12 +1,46 @@
 import { expect, Page } from '@playwright/test';
 import { login, logout } from './auth';
 
-// ---------- Send via profile "Contact" tab ----------
+// ---------- Send via the profile's "Message" quick-message modal
+// (player-profile.tsx's redesign - Contact tab was removed for player
+// profiles specifically; coach-profile.tsx is untouched and still uses
+// sendContactMessage above) ----------
 
-// Shared by MSG-001 (player -> coach), MSG-005 (player -> player),
-// MSG-006 (coach -> player), MSG-007 (organizer -> player) - they all
-// land on the same recipient profile page and the same Contact tab UI,
-// only the logged-in sender's role differs.
+// Shared by MSG-005 (player -> player), MSG-006 (coach -> player),
+// MSG-007 (organizer -> player) - all land on a player's profile page.
+// The new modal has no separate subject field, so `subject` (when
+// given) is folded into the message body instead of dropped silently.
+export async function sendPlayerProfileMessage(
+  page: Page,
+  profilePath: string,
+  data: { subject?: string; message: string }
+) {
+  await page.goto(profilePath);
+
+  await page.getByTestId('bottom-cta-message').click();
+
+  const fullMessage = data.subject ? `${data.subject}: ${data.message}` : data.message;
+  await page.getByTestId('input-quick-message').fill(fullMessage);
+
+  const sendButton = page.getByTestId('button-send-quick-message');
+  await expect(sendButton).toBeEnabled();
+
+  const [response] = await Promise.all([
+    page.waitForResponse(
+      response =>
+        response.url().includes('/api/messages') &&
+        response.request().method() === 'POST'
+    ),
+    sendButton.click(),
+  ]);
+
+  return response;
+}
+
+// Shared by MSG-001 (player -> coach) and any other coach-target
+// scenario - coach-profile.tsx's Contact tab is unchanged. Player-
+// target scenarios (MSG-005/006/007) now use sendPlayerProfileMessage
+// above instead.
 export async function sendContactMessage(
   page: Page,
   profilePath: string,

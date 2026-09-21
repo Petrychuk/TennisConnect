@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { registerPlayer, login, logout } from '../helpers/auth';
 import { completePlayerProfile } from '../helpers/profile';
-import { sendContactMessage, getMyUserId, approveUser } from '../helpers/messages';
+import { sendContactMessage, sendPlayerProfileMessage, getMyUserId, approveUser } from '../helpers/messages';
 import { TEST_USERS } from '../fixtures/test-users';
 
 /*
@@ -266,7 +266,7 @@ test('MSG-005 Player → Player Message', async ({ page }) => {
 
   // ---------- Actions / Save / Verify request ----------
 
-  const response = await sendContactMessage(
+  const response = await sendPlayerProfileMessage(
     page,
     `/player/${TEST_USERS.player.slug}`,
     { subject: "Let's play", message: content }
@@ -294,7 +294,7 @@ test('MSG-006 Coach → Player Message', async ({ page }) => {
 
   // ---------- Actions / Verify request ----------
 
-  const response = await sendContactMessage(
+  const response = await sendPlayerProfileMessage(
     page,
     `/player/${TEST_USERS.player.slug}`,
     { subject: 'Session follow-up', message: content }
@@ -349,7 +349,7 @@ test('MSG-007 Organizer → Player Message', async ({ page }) => {
 
   await login(page, organiser.email, organiser.password);
 
-  const response = await sendContactMessage(
+  const response = await sendPlayerProfileMessage(
     page,
     `/player/${TEST_USERS.player.slug}`,
     { subject: 'Session reminder', message: content }

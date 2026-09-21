@@ -182,6 +182,22 @@ export const playerProfiles = pgTable("player_profiles", {
   preferredCourts: json("preferred_courts").$type<string[]>().default([]),
   isDraft: boolean("is_draft").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  // --- Profile redesign (2026) additions - all nullable/optional so no
+  // backfill is needed and every existing row stays valid as-is. ---
+  // Self-declared, optional - used only for better player matching
+  // (e.g. surfacing mixed-doubles-friendly matches), never required.
+  sex: text("sex"),
+  // What this player is actually here for - drives what Play/shopping
+  // content gets prioritised for them. Multi-select, e.g.
+  // ["Hitting Partner", "Coach", "Playing Events"].
+  lookingFor: json("looking_for").$type<string[]>().default([]),
+  gameFormat: text("game_format"),
+  playStyle: text("play_style"),
+  availability: json("availability").$type<string[]>().default([]),
+  playRadiusKm: integer("play_radius_km"),
+  courtSurfacePreference: text("court_surface_preference"),
+  // Profile gallery (distinct from the single cover/avatar images).
+  photos: json("photos").$type<string[]>().default([]),
 });
 
 // Coach profiles
