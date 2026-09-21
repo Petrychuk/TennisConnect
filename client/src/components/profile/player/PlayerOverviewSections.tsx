@@ -495,6 +495,30 @@ export function GoodMatchCard({
   reasons: string[];
   onSuggestGame: () => void;
 }) {
+  // Default/empty state: nothing in common was found yet (usually
+  // because one or both profiles haven't filled in preferences) - a
+  // friendly invitation instead of either a hollow "0%" or hiding the
+  // whole card, so a visitor always sees SOMETHING here, not a gap.
+  if (reasons.length === 0) {
+    return (
+      <Card data-testid="good-match-card" className="border-0 shadow-none bg-primary/[0.03]">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Sparkles className="w-5 h-5 text-primary" /> Good match for you?
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Not enough shared info yet to suggest a match score - but that doesn't mean you shouldn't say hi!
+          </p>
+          <Button className="w-full" onClick={onSuggestGame} data-testid="suggest-a-game-button">
+            Suggest a game
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card data-testid="good-match-card" className="border-0 shadow-none bg-primary/[0.03]">
       <CardHeader>
@@ -531,8 +555,31 @@ export function GoodMatchCard({
    Sidebar: Availability (small quick-view - reuses Playing
    Preferences' own availability data, not a separate field)
 ========================================================= */
-export function AvailabilityQuickCard({ availability }: { availability: string[] }) {
-  if (!availability.length) return null;
+export function AvailabilityQuickCard({
+  availability,
+  isOwner,
+}: {
+  availability: string[];
+  isOwner: boolean;
+}) {
+  if (!availability.length) {
+    return (
+      <Card data-testid="availability-quick-card" className="border-0 shadow-none bg-transparent">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <CalendarClock className="w-4 h-4" /> Availability
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-xs text-muted-foreground">
+            {isOwner
+              ? "You haven't set your availability yet - add it in Playing preferences so other players know when to invite you."
+              : "This player hasn't shared their availability yet."}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
   return (
     <Card data-testid="availability-quick-card" className="border-0 shadow-none bg-transparent">
       <CardHeader>

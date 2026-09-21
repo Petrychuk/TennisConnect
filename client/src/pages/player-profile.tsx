@@ -1065,11 +1065,6 @@ export default function PlayerProfile() {
                           gameFormat: profile.gameFormat,
                           lookingFor: profile.lookingFor,
                         });
-                        // Nothing in common yet found - showing "0%
-                        // match" reads as broken, not honest, so the
-                        // card just doesn't render rather than
-                        // claiming a match that isn't there.
-                        if (match.reasons.length === 0) return null;
                         return (
                           <GoodMatchCard
                             percent={match.percent}
@@ -1083,7 +1078,7 @@ export default function PlayerProfile() {
                           />
                         );
                       })()}
-                      <AvailabilityQuickCard availability={profile.availability || []} />
+                      <AvailabilityQuickCard availability={profile.availability || []} isOwner={isOwnProfile} />
                       {isOwnProfile && <LatestActivityCard items={mockActivity} />}
                       {isOwnProfile && organizerStatus.data && (
                         <BecomeOrganizerCard
