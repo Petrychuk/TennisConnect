@@ -1048,15 +1048,30 @@ export default function PlayerProfile() {
                         isOwner={isOwnProfile}
                         onSave={(data) => saveProfileFields(data)}
                       />
-                      <PhotosCard
-                        photos={profile.photos || []}
-                        isOwner={isOwnProfile}
-                        onAddPhoto={() => document.getElementById("player-photo-upload")?.click()}
-                      />
+                      {isOwnProfile && (
+                        <PhotosCard
+                          photos={profile.photos || []}
+                          isOwner={isOwnProfile}
+                          onAddPhoto={() => document.getElementById("player-photo-upload")?.click()}
+                        />
+                      )}
                     </div>
 
                     {/* Sidebar */}
                     <div className="space-y-4">
+                      {/* Visitors get the photo gallery here instead of
+                          in the main column - makes better use of this
+                          column's space, and keeps the main column
+                          focused on About/Looking For/Playing
+                          Preferences for a guest. Owners still manage
+                          photos in the main column above, alongside
+                          everything else they edit. */}
+                      {!isOwnProfile && (
+                        <PhotosCard
+                          photos={profile.photos || []}
+                          isOwner={false}
+                        />
+                      )}
                       {!isOwnProfile && viewerProfile && (() => {
                         const match = computeMatchScore(viewerProfile, {
                           skillLevel: profile.skillLevel,
