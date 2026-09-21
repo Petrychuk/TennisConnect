@@ -77,7 +77,7 @@ export function AboutMeCard({
   if (!bio && !isOwner) return null;
 
   return (
-    <Card data-testid="about-me-card" className="border-0 shadow-none bg-transparent">
+    <Card data-testid="about-me-card" className="border-0 shadow-sm bg-muted/40">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="flex items-center gap-2 text-lg">
           <User className="w-5 h-5" /> About me
@@ -155,7 +155,7 @@ export function LookingForCard({
   };
 
   return (
-    <Card data-testid="looking-for-card" className="border-0 shadow-none bg-transparent">
+    <Card data-testid="looking-for-card" className="border-0 shadow-sm bg-muted/40">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Target className="w-5 h-5" /> Looking for
@@ -262,7 +262,7 @@ export function PlayingPreferencesCard({
   ];
 
   return (
-    <Card data-testid="playing-preferences-card" className="border-0 shadow-none bg-transparent">
+    <Card data-testid="playing-preferences-card" className="border-0 shadow-sm bg-muted/40">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="flex items-center gap-2 text-lg">
           <SlidersHorizontal className="w-5 h-5" /> Playing preferences
@@ -424,7 +424,7 @@ export function PhotosCard({
   const visible = photos.slice(0, 4);
 
   return (
-    <Card data-testid="photos-card" className="border-0 shadow-none bg-transparent">
+    <Card data-testid="photos-card" className="border-0 shadow-sm bg-muted/40">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Images className="w-5 h-5" /> Photos
@@ -501,7 +501,7 @@ export function GoodMatchCard({
   // whole card, so a visitor always sees SOMETHING here, not a gap.
   if (reasons.length === 0) {
     return (
-      <Card data-testid="good-match-card" className="border-0 shadow-none bg-primary/[0.03]">
+      <Card data-testid="good-match-card" className="border-0 shadow-sm bg-primary/5">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Sparkles className="w-5 h-5 text-primary" /> Good match for you?
@@ -520,7 +520,7 @@ export function GoodMatchCard({
   }
 
   return (
-    <Card data-testid="good-match-card" className="border-0 shadow-none bg-primary/[0.03]">
+    <Card data-testid="good-match-card" className="border-0 shadow-sm bg-primary/5">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <Sparkles className="w-5 h-5 text-primary" /> Good match for you!
@@ -564,7 +564,7 @@ export function AvailabilityQuickCard({
 }) {
   if (!availability.length) {
     return (
-      <Card data-testid="availability-quick-card" className="border-0 shadow-none bg-transparent">
+      <Card data-testid="availability-quick-card" className="border-0 shadow-sm bg-muted/40">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <CalendarClock className="w-4 h-4" /> Availability
@@ -581,7 +581,7 @@ export function AvailabilityQuickCard({
     );
   }
   return (
-    <Card data-testid="availability-quick-card" className="border-0 shadow-none bg-transparent">
+    <Card data-testid="availability-quick-card" className="border-0 shadow-sm bg-muted/40">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <CalendarClock className="w-4 h-4" /> Availability
@@ -624,7 +624,7 @@ export function LatestActivityCard({ items }: { items: ActivityItem[] }) {
     );
 
   return (
-    <Card data-testid="latest-activity-card" className="border-0 shadow-none bg-transparent">
+    <Card data-testid="latest-activity-card" className="border-0 shadow-sm bg-muted/40">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Activity className="w-4 h-4" /> Latest activity
