@@ -332,6 +332,7 @@ export default function PlayerProfile() {
               (isIncomplete ? "" : DEFAULT_PLAYER_PROFILE.courtSurfacePreference),
             playingHand: data.profile?.playingHand || "",
             availabilityStatus: data.profile?.availabilityStatus || "",
+            photos: data.profile?.photos ?? [],
           });
 
           setProfileData(data.profile || null);
