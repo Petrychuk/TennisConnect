@@ -32,6 +32,20 @@ import { MyOrganizedSessionsSection } from "@/components/profile/shared/MyOrgani
 import { useOrganizerStatus } from "@/hooks/use-organizer-status";
 import { TennisLoader } from "@/components/ui/tennisLoader";
 import { uploadMedia } from "@/lib/uploadImage";
+import { QuickMessageModal } from "@/components/messaging/QuickMessageModal";
+import {
+  AboutMeCard,
+  LookingForCard,
+  PlayingPreferencesCard,
+  PhotosCard,
+  GoodMatchCard,
+  AvailabilityQuickCard,
+  LatestActivityCard,
+  PlayerBottomCTA,
+  type LookingForData,
+  type PlayingPrefsData,
+  type ActivityItem,
+} from "@/components/profile/player/PlayerOverviewSections";
 
 type MarketplaceDraft = {
   id: string;
@@ -123,6 +137,31 @@ export default function PlayerProfile() {
   const [contactPhone, setContactPhone] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [playerUserId, setPlayerUserId] = useState<string>("");
+
+  // --- Profile redesign (2026) - Overview section state ---------------
+  // Mock/local for this first pass: none of these fields exist on the
+  // backend yet (per the redesign spec's own "mock data for first
+  // implementation" note). Editing updates this local state only; wiring
+  // to real fields is a follow-up once those columns exist.
+  const [lookingFor, setLookingFor] = useState<LookingForData>({
+    tags: ["Hitting Partner", "Social Tennis"],
+  });
+  const [playingPrefs, setPlayingPrefs] = useState<PlayingPrefsData>({
+    utrRange: "3.5 - 4.2",
+    gameFormat: "Both",
+    playStyle: "Social & Competitive",
+    availability: ["Weekday evenings", "Saturday", "Sunday"],
+    radiusKm: 15,
+    courtPreference: "Hard (also open to other surfaces)",
+  });
+  const [mockPhotos] = useState<string[]>([]);
+  const mockActivity: ActivityItem[] = [
+    { icon: "session", label: "Joined a session", date: "Thu, 25 Sep" },
+    { icon: "competition", label: "Played a competition", date: "Sun, 7 Sep" },
+    { icon: "venue", label: "Visited a new venue", date: "Wed, 3 Sep" },
+  ];
+  const [messageModalOpen, setMessageModalOpen] = useState(false);
+  const [messageModalDefaultText, setMessageModalDefaultText] = useState("");
   const [profile, setProfile] = useState<PlayerProfile>(DEFAULT_PLAYER_PROFILE);
   const [originalProfile, setOriginalProfile] = useState<PlayerProfile>(DEFAULT_PLAYER_PROFILE);
   const [loading, setLoading] = useState(true);
@@ -854,80 +893,90 @@ export default function PlayerProfile() {
                       gap-2
                       scrollbar-hide">
                   <TabsTrigger value="overview" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><User className="w-4 h-4" />Overview</TabsTrigger>
-                  <TabsTrigger value="communities" data-testid="my-communities-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Users2 className="w-4 h-4" />Communities</TabsTrigger>
-                  <TabsTrigger value="courts" data-testid="my-courts-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Heart className="w-4 h-4" />My Courts</TabsTrigger>
                   <TabsTrigger value="sessions" data-testid="my-sessions-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Trophy className="w-4 h-4" />My Sessions</TabsTrigger>
-                  <TabsTrigger value="results" data-testid="my-results-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Award className="w-4 h-4" />Results</TabsTrigger>
+                  <TabsTrigger value="courts" data-testid="my-courts-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Heart className="w-4 h-4" />My Courts</TabsTrigger>
+                  {/* Results is owner-only in the redesign - a visitor's
+                      profile view no longer shows this tab at all. */}
+                  {isOwnProfile && (
+                    <TabsTrigger value="results" data-testid="my-results-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Award className="w-4 h-4" />Results</TabsTrigger>
+                  )}
                   {showOrganisingTab && (
                     <TabsTrigger value="organizing" data-testid="my-organized-sessions-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><ClipboardList className="w-4 h-4" />Organising</TabsTrigger>
                   )}
                   {/* Selling tab hidden for now, per request - marketplace items still exist in marketplaceItems if this needs to come back */}
                   {/* <TabsTrigger value="marketplace" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><ShoppingBag className="w-4 h-4" />Selling ({marketplaceItems.length})</TabsTrigger> */}
-                  {!isOwnProfile && (
-                    <TabsTrigger value="contact" data-testid="contact-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><MessageCircle className="w-4 h-4" />Contact</TabsTrigger>
-                  )}
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-8">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Playing Preferences</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <Label className="text-muted-foreground mb-2 block">Skill Level</Label>
-                          {isEditing ? (
-                            <Select 
-                              value={profile.skillLevel} 
-                              onValueChange={(val) => setProfile({...profile, skillLevel: val})}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select level" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Social">Social</SelectItem>
-                                <SelectItem value="Beginner">Beginner</SelectItem>
-                                <SelectItem value="Intermediate">Intermediate</SelectItem>
-                                <SelectItem value="Advanced">Advanced</SelectItem>
-                                <SelectItem value="Pro">Pro</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <div className="text-xl font-medium">{profile.skillLevel}</div>
-                          )}
-                        </div>
-                        <div>
-                          <Label className="text-muted-foreground mb-2 block">Preferred Locations</Label>
-                          {isEditing ? (
-                            <Input 
-                              value={profile.preferredCourts.join(", ")} 
-                              onChange={(e) => setProfile({...profile, preferredCourts: e.target.value.split(", ")})}
-                              placeholder="e.g. Bondi, Manly"
-                            />
-                          ) : (
-                            <div className="flex flex-wrap gap-2">
-                              {profile.preferredCourts.map((court, i) => (
-                                <Badge key={i} variant="secondary" className="text-base py-1 px-3">
-                                  <MapPin className="w-3 h-3 mr-1" /> {court}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  {isOwnProfile && organizerStatus.data && (
-                    <BecomeOrganizerCard
-                      status={organizerStatus.data}
-                      onChange={() => organizerStatus.refresh()}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Main column */}
+                    <div className="lg:col-span-2 space-y-6">
+                      <AboutMeCard
+                        bio={profile.bio}
+                        isOwner={isOwnProfile}
+                        onSave={(bio) => setProfile({ ...profile, bio })}
+                      />
+                      <LookingForCard
+                        data={lookingFor}
+                        isOwner={isOwnProfile}
+                        onSave={setLookingFor}
+                      />
+                      <PlayingPreferencesCard
+                        data={playingPrefs}
+                        isOwner={isOwnProfile}
+                        onSave={setPlayingPrefs}
+                      />
+                      <PhotosCard
+                        photos={mockPhotos}
+                        isOwner={isOwnProfile}
+                        onAddPhoto={() => document.getElementById("avatar-upload")?.click()}
+                      />
+                    </div>
+
+                    {/* Sidebar */}
+                    <div className="space-y-6">
+                      {!isOwnProfile && (
+                        <GoodMatchCard
+                          percent={92}
+                          reasons={[
+                            "Similar level",
+                            "Both available Thursday evening",
+                            "Only 6 km away",
+                          ]}
+                          onSuggestGame={() => {
+                            setMessageModalDefaultText(
+                              `Hi ${profile.name.split(" ")[0]}, want to play a match sometime?`
+                            );
+                            setMessageModalOpen(true);
+                          }}
+                        />
+                      )}
+                      <AvailabilityQuickCard availability={playingPrefs.availability} />
+                      {isOwnProfile && <LatestActivityCard items={mockActivity} />}
+                      {isOwnProfile && organizerStatus.data && (
+                        <BecomeOrganizerCard
+                          status={organizerStatus.data}
+                          onChange={() => organizerStatus.refresh()}
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  {!isOwnProfile && (
+                    <PlayerBottomCTA
+                      name={profile.name.split(" ")[0] || profile.name}
+                      onInvite={() => {
+                        setMessageModalDefaultText(
+                          `Hi ${profile.name.split(" ")[0]}, I'd love to invite you to play sometime!`
+                        );
+                        setMessageModalOpen(true);
+                      }}
+                      onMessage={() => {
+                        setMessageModalDefaultText("");
+                        setMessageModalOpen(true);
+                      }}
                     />
                   )}
-                </TabsContent>
-
-                <TabsContent value="communities" className="space-y-6" data-testid="my-communities-tab-content">
-                  <MyClubsSection isOwnProfile={isOwnProfile} isAuthenticated={isAuthenticated} mode="communities" />
                 </TabsContent>
 
                 <TabsContent value="courts" className="space-y-6" data-testid="my-courts-tab-content">
@@ -1537,122 +1586,16 @@ export default function PlayerProfile() {
                   </div>
                 </TabsContent>
                 )}
-
-                {!isOwnProfile && (
-                  <TabsContent value="contact" className="space-y-8" data-testid="contact-tab-content">
-                    {!isAuthenticated ? (
-                      <Card data-testid="player-contact-signed-out">
-                        <CardContent className="py-10 text-center space-y-3">
-                          <p className="text-muted-foreground">Sign in to see contact details and send a message.</p>
-                          <Button asChild size="sm" data-testid="player-contact-sign-in">
-                            <a href={`/auth?returnTo=${encodeURIComponent(`/player/${profileSlug}?tab=contact`)}`}>
-                              <LogIn className="w-4 h-4 mr-2" />
-                              Sign In
-                            </a>
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    ) : (
-                      <Card>
-                        <CardHeader>
-                          <CardTitle asChild className="flex items-center gap-2">
-                            <h2>
-                              <MessageCircle className="w-5 h-5 text-primary" />
-                              Get in Touch
-                            </h2>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="flex items-center gap-3 p-4 rounded-lg bg-primary/5 border border-primary/10">
-                              <div className="w-10 h-10 rounded-full bg-card flex items-center justify-center text-primary shadow-sm">
-                                <Phone className="w-5 h-5" />
-                              </div>
-                              <div>
-                                <p className="text-sm text-muted-foreground">Phone Number</p>
-                                {showPlayerPhone ? (
-                                  <p className="font-bold text-lg">{profile.phone || "No phone listed"}</p>
-                                ) : (
-                                  <Button
-                                    variant="link"
-                                    className="font-bold text-lg p-0 h-auto text-primary"
-                                    onClick={() => setShowPlayerPhone(true)}
-                                    disabled={!profile.phone}
-                                  >
-                                    {profile.phone ? "Show Number" : "No Phone Listed"}
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3 p-4 rounded-lg bg-primary/5 border border-primary/10">
-                              <div className="w-10 h-10 rounded-full bg-card flex items-center justify-center text-primary shadow-sm">
-                                <Mail className="w-5 h-5" />
-                              </div>
-                              <div>
-                                <p className="text-sm text-muted-foreground">Email Address</p>
-                                {showPlayerEmail ? (
-                                  <p className="font-bold text-lg">{profile.email || "No email listed"}</p>
-                                ) : (
-                                  <Button
-                                    variant="link"
-                                    className="font-bold text-lg p-0 h-auto text-primary"
-                                    onClick={() => setShowPlayerEmail(true)}
-                                    disabled={!profile.email}
-                                  >
-                                    {profile.email ? "Show Email" : "No Email Listed"}
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="space-y-4 pt-4 border-t">
-                            <h3 className="font-bold text-lg">Send a Message</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <Label>Subject *</Label>
-                                <Input
-                                  data-testid="input-contact-subject"
-                                  placeholder="Let's play tennis"
-                                  value={contactSubject}
-                                  onChange={(e) => setContactSubject(e.target.value)}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Phone (optional)</Label>
-                                <Input
-                                  data-testid="input-contact-phone"
-                                  placeholder="+61 4XX XXX XXX"
-                                  value={contactPhone}
-                                  onChange={(e) => setContactPhone(e.target.value)}
-                                />
-                              </div>
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Message</Label>
-                              <Textarea
-                                data-testid="textarea-contact-message"
-                                placeholder="Hi, would you like to play a match sometime..."
-                                className="min-h-[120px]"
-                                value={contactMessage}
-                                onChange={(e) => setContactMessage(e.target.value)}
-                              />
-                            </div>
-                            <Button
-                              data-testid="button-send-contact-message"
-                              onClick={handleContactSubmit}
-                              disabled={isSending || !contactSubject.trim() || !contactMessage.trim()}
-                            >
-                              <Send className="w-4 h-4 mr-2" />
-                              {isSending ? "Sending..." : "Send Message"}
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-                  </TabsContent>
-                )}
               </Tabs>
+              )}
+
+              {!isOwnProfile && playerUserId && (
+                <QuickMessageModal
+                  open={messageModalOpen}
+                  onOpenChange={setMessageModalOpen}
+                  recipient={{ id: playerUserId, name: profile.name, type: "player" }}
+                  defaultMessage={messageModalDefaultText}
+                />
               )}
             </div>
             </main>
