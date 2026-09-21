@@ -81,6 +81,13 @@ export type PlayerProfile = {
   createdAt?: string;
   preferredCourts: string[];
   photos?: string[];
+  sex?: string;
+  lookingFor?: string[];
+  gameFormat?: string;
+  playStyle?: string;
+  availability?: string[];
+  playRadiusKm?: number;
+  courtSurfacePreference?: string;
   coaches: number[];          
   marketplaceItems: any[];
   tournaments: any[];
@@ -100,6 +107,13 @@ export const DEFAULT_PLAYER_PROFILE: PlayerProfile = {
   cover: null,
   preferredCourts: ["Bondi Beach", "Manly"],
   photos: [],
+  sex: "",
+  lookingFor: [],
+  gameFormat: "",
+  playStyle: "",
+  availability: [],
+  playRadiusKm: 15,
+  courtSurfacePreference: "",
   coaches: [1], // IDs of connected coaches
   marketplaceItems: [] as any[],
   tournaments: [] as any[],
@@ -139,22 +153,12 @@ export default function PlayerProfile() {
   const [playerUserId, setPlayerUserId] = useState<string>("");
 
   // --- Profile redesign (2026) - Overview section state ---------------
-  // Mock/local for this first pass: none of these fields exist on the
-  // backend yet (per the redesign spec's own "mock data for first
-  // implementation" note). Editing updates this local state only; wiring
-  // to real fields is a follow-up once those columns exist.
-  const [lookingFor, setLookingFor] = useState<LookingForData>({
-    tags: ["Hitting Partner", "Social Tennis"],
-  });
-  const [playingPrefs, setPlayingPrefs] = useState<PlayingPrefsData>({
-    utrRange: "3.5 - 4.2",
-    gameFormat: "Both",
-    playStyle: "Social & Competitive",
-    availability: ["Weekday evenings", "Saturday", "Sunday"],
-    radiusKm: 15,
-    courtPreference: "Hard (also open to other surfaces)",
-  });
-  const [mockPhotos] = useState<string[]>([]);
+  // About Me / Looking For / Playing Preferences / Photos now live on
+  // `profile` itself (real, persisted fields - see saveProfileFields
+  // below and the playerProfileUpdateSchema/player_profiles migration
+  // that added them). Latest Activity stays mock per the spec (it's
+  // meant to be auto-generated from real activity later, never
+  // manually edited).
   const mockActivity: ActivityItem[] = [
     { icon: "session", label: "Joined a session", date: "Thu, 25 Sep" },
     { icon: "competition", label: "Played a competition", date: "Sun, 7 Sep" },
@@ -288,6 +292,15 @@ export default function PlayerProfile() {
               (isIncomplete ? [] : DEFAULT_PLAYER_PROFILE.preferredCourts),
             phone: data.profile?.phone ?? "",
             email: data.profile?.email ?? "",
+            sex: data.profile?.sex ?? "",
+            lookingFor: data.profile?.lookingFor ?? [],
+            gameFormat: data.profile?.gameFormat || (isIncomplete ? "" : DEFAULT_PLAYER_PROFILE.gameFormat),
+            playStyle: data.profile?.playStyle || (isIncomplete ? "" : DEFAULT_PLAYER_PROFILE.playStyle),
+            availability: data.profile?.availability ?? [],
+            playRadiusKm: data.profile?.playRadiusKm ?? DEFAULT_PLAYER_PROFILE.playRadiusKm,
+            courtSurfacePreference:
+              data.profile?.courtSurfacePreference ||
+              (isIncomplete ? "" : DEFAULT_PLAYER_PROFILE.courtSurfacePreference),
           });
 
           setProfileData(data.profile || null);
@@ -412,6 +425,32 @@ export default function PlayerProfile() {
       });
     } finally {
       setIsSending(false);
+    }
+  };
+
+  // Partial save for the redesigned Overview cards (About Me, Looking
+  // For, Playing Preferences) - each field on playerProfileUpdateSchema
+  // is optional, so a PUT with just the changed keys is a real, safe
+  // partial update, not a mock. Updates local state only on success -
+  // an optimistic update here could show a value that never actually
+  // saved.
+  const saveProfileFields = async (fields: Partial<PlayerProfile>) => {
+    try {
+      const res = await fetch("/api/me/player-profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(fields),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to update profile");
+      setProfile((prev) => ({ ...prev, ...fields }));
+      toast({ title: "Saved" });
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Couldn't save",
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
     }
   };
 
@@ -697,6 +736,38 @@ export default function PlayerProfile() {
     setTournaments(prev => prev.filter(t => t.id !== id));
   };
 
+ const handleGalleryPhotoChange = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/me/player-profile/photos", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.message || "Failed to upload photo");
+      }
+      const updatedProfile = await res.json();
+      setProfile((prev) => ({ ...prev, photos: updatedProfile.photos || [] }));
+      toast({ title: "Photo added" });
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Upload failed",
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+    } finally {
+      e.target.value = "";
+    }
+  };
+
  const handleFileChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
     field: "avatar" | "cover"
@@ -799,6 +870,15 @@ export default function PlayerProfile() {
               data-testid="cover-upload"
             />
 
+            <input
+              type="file"
+              id="player-photo-upload"
+              className="hidden"
+              accept="image/*"
+              onChange={handleGalleryPhotoChange}
+              data-testid="player-photo-upload"
+            />
+
             {loading ? (
               <Skeleton
                 className="w-full h-[280px] sm:h-[300px] md:h-[380px] lg:h-[460px] rounded-t-3xl"
@@ -879,7 +959,7 @@ export default function PlayerProfile() {
                   <Skeleton className="h-40 w-full rounded-2xl" />
                 </div>
               ) : (
-              <Tabs defaultValue={initialTab} className="mt-12 space-y-8">
+              <Tabs defaultValue={initialTab} className="mt-8 space-y-5">
                 <TabsList className="w-full
                       flex
                       overflow-x-auto
@@ -907,34 +987,42 @@ export default function PlayerProfile() {
                   {/* <TabsTrigger value="marketplace" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><ShoppingBag className="w-4 h-4" />Selling ({marketplaceItems.length})</TabsTrigger> */}
                 </TabsList>
 
-                <TabsContent value="overview" className="space-y-8">
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <TabsContent value="overview" className="space-y-5">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                     {/* Main column */}
-                    <div className="lg:col-span-2 space-y-6">
+                    <div className="lg:col-span-2 space-y-4">
                       <AboutMeCard
                         bio={profile.bio}
                         isOwner={isOwnProfile}
-                        onSave={(bio) => setProfile({ ...profile, bio })}
+                        onSave={(bio) => saveProfileFields({ bio })}
                       />
                       <LookingForCard
-                        data={lookingFor}
+                        data={{ tags: profile.lookingFor || [] }}
                         isOwner={isOwnProfile}
-                        onSave={setLookingFor}
+                        onSave={(data) => saveProfileFields({ lookingFor: data.tags })}
                       />
                       <PlayingPreferencesCard
-                        data={playingPrefs}
+                        data={{
+                          skillLevel: profile.skillLevel,
+                          preferredCourts: profile.preferredCourts,
+                          gameFormat: profile.gameFormat || "",
+                          playStyle: profile.playStyle || "",
+                          availability: profile.availability || [],
+                          playRadiusKm: profile.playRadiusKm ?? 15,
+                          courtSurfacePreference: profile.courtSurfacePreference || "",
+                        }}
                         isOwner={isOwnProfile}
-                        onSave={setPlayingPrefs}
+                        onSave={(data) => saveProfileFields(data)}
                       />
                       <PhotosCard
-                        photos={mockPhotos}
+                        photos={profile.photos || []}
                         isOwner={isOwnProfile}
-                        onAddPhoto={() => document.getElementById("avatar-upload")?.click()}
+                        onAddPhoto={() => document.getElementById("player-photo-upload")?.click()}
                       />
                     </div>
 
                     {/* Sidebar */}
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                       {!isOwnProfile && (
                         <GoodMatchCard
                           percent={92}
@@ -951,7 +1039,7 @@ export default function PlayerProfile() {
                           }}
                         />
                       )}
-                      <AvailabilityQuickCard availability={playingPrefs.availability} />
+                      <AvailabilityQuickCard availability={profile.availability || []} />
                       {isOwnProfile && <LatestActivityCard items={mockActivity} />}
                       {isOwnProfile && organizerStatus.data && (
                         <BecomeOrganizerCard

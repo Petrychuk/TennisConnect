@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -37,12 +38,13 @@ export interface LookingForData {
 }
 
 export interface PlayingPrefsData {
-  utrRange: string;
+  skillLevel: string;
+  preferredCourts: string[];
   gameFormat: string;
   playStyle: string;
   availability: string[];
-  radiusKm: number;
-  courtPreference: string;
+  playRadiusKm: number;
+  courtSurfacePreference: string;
 }
 
 export const LOOKING_FOR_OPTIONS = ["Hitting Partner", "Social Tennis", "Competitions"];
@@ -55,6 +57,7 @@ export const AVAILABILITY_OPTIONS = [
 export const GAME_FORMAT_OPTIONS = ["Singles", "Doubles", "Both"];
 export const PLAY_STYLE_OPTIONS = ["Social", "Competitive", "Both"];
 export const COURT_OPTIONS = ["Hard", "Clay", "Grass", "Synthetic", "Any"];
+export const SKILL_LEVEL_OPTIONS = ["Social", "Beginner", "Intermediate", "Advanced", "Pro"];
 
 /* =========================================================
    About Me
@@ -74,7 +77,7 @@ export function AboutMeCard({
   if (!bio && !isOwner) return null;
 
   return (
-    <Card data-testid="about-me-card">
+    <Card data-testid="about-me-card" className="border-0 shadow-sm bg-muted/40">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="flex items-center gap-2 text-lg">
           <User className="w-5 h-5" /> About me
@@ -152,7 +155,7 @@ export function LookingForCard({
   };
 
   return (
-    <Card data-testid="looking-for-card">
+    <Card data-testid="looking-for-card" className="border-0 shadow-sm bg-muted/40">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Target className="w-5 h-5" /> Looking for
@@ -241,20 +244,25 @@ export function PlayingPreferencesCard({
   };
 
   const rows: { icon: React.ReactNode; label: string; value: string }[] = [
-    { icon: <BarChart3 className="w-4 h-4" />, label: "Level", value: data.utrRange },
-    { icon: <Users2 className="w-4 h-4" />, label: "Play style", value: data.playStyle },
-    { icon: <Target className="w-4 h-4" />, label: "Game format", value: data.gameFormat },
+    { icon: <BarChart3 className="w-4 h-4" />, label: "Level", value: data.skillLevel || "Not set" },
+    { icon: <Users2 className="w-4 h-4" />, label: "Play style", value: data.playStyle || "Not set" },
+    { icon: <Target className="w-4 h-4" />, label: "Game format", value: data.gameFormat || "Not set" },
     {
       icon: <CalendarClock className="w-4 h-4" />,
       label: "Availability",
       value: data.availability.join(", ") || "Not set",
     },
-    { icon: <MapPin className="w-4 h-4" />, label: "Location", value: `Within ${data.radiusKm} km` },
-    { icon: <Trophy className="w-4 h-4" />, label: "Courts", value: data.courtPreference },
+    {
+      icon: <MapPin className="w-4 h-4" />,
+      label: "Preferred areas",
+      value: data.preferredCourts.join(", ") || "Not set",
+    },
+    { icon: <MapPin className="w-4 h-4" />, label: "Play radius", value: `Within ${data.playRadiusKm} km` },
+    { icon: <Trophy className="w-4 h-4" />, label: "Courts", value: data.courtSurfacePreference || "Any" },
   ];
 
   return (
-    <Card data-testid="playing-preferences-card">
+    <Card data-testid="playing-preferences-card" className="border-0 shadow-sm bg-muted/40">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="flex items-center gap-2 text-lg">
           <SlidersHorizontal className="w-5 h-5" /> Playing preferences
@@ -291,6 +299,35 @@ export function PlayingPreferencesCard({
             <DialogTitle>Playing preferences</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            <div>
+              <p className="text-sm font-medium mb-2">Level</p>
+              <div className="flex flex-wrap gap-2">
+                {SKILL_LEVEL_OPTIONS.map((opt) => (
+                  <Badge
+                    key={opt}
+                    variant={draft.skillLevel === opt ? "default" : "outline"}
+                    className="cursor-pointer py-1.5 px-3"
+                    onClick={() => setDraft({ ...draft, skillLevel: opt })}
+                  >
+                    {opt}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-medium mb-2">Preferred areas</p>
+              <Input
+                value={draft.preferredCourts.join(", ")}
+                onChange={(e) =>
+                  setDraft({
+                    ...draft,
+                    preferredCourts: e.target.value.split(",").map((s) => s.trim()).filter(Boolean),
+                  })
+                }
+                placeholder="e.g. Bondi Beach, Manly"
+                data-testid="input-preferred-areas"
+              />
+            </div>
             <div>
               <p className="text-sm font-medium mb-2">Game format</p>
               <div className="flex flex-wrap gap-2">
@@ -342,9 +379,9 @@ export function PlayingPreferencesCard({
                 {COURT_OPTIONS.map((opt) => (
                   <Badge
                     key={opt}
-                    variant={draft.courtPreference === opt ? "default" : "outline"}
+                    variant={draft.courtSurfacePreference === opt ? "default" : "outline"}
                     className="cursor-pointer py-1.5 px-3"
-                    onClick={() => setDraft({ ...draft, courtPreference: opt })}
+                    onClick={() => setDraft({ ...draft, courtSurfacePreference: opt })}
                   >
                     {opt}
                   </Badge>
@@ -387,7 +424,7 @@ export function PhotosCard({
   const visible = photos.slice(0, 4);
 
   return (
-    <Card data-testid="photos-card">
+    <Card data-testid="photos-card" className="border-0 shadow-sm bg-muted/40">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Images className="w-5 h-5" /> Photos
@@ -459,7 +496,7 @@ export function GoodMatchCard({
   onSuggestGame: () => void;
 }) {
   return (
-    <Card data-testid="good-match-card" className="border-primary/20 bg-primary/5">
+    <Card data-testid="good-match-card" className="border-0 shadow-sm bg-primary/5">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <Sparkles className="w-5 h-5 text-primary" /> Good match for you!
@@ -497,7 +534,7 @@ export function GoodMatchCard({
 export function AvailabilityQuickCard({ availability }: { availability: string[] }) {
   if (!availability.length) return null;
   return (
-    <Card data-testid="availability-quick-card">
+    <Card data-testid="availability-quick-card" className="border-0 shadow-sm bg-muted/40">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <CalendarClock className="w-4 h-4" /> Availability
@@ -540,7 +577,7 @@ export function LatestActivityCard({ items }: { items: ActivityItem[] }) {
     );
 
   return (
-    <Card data-testid="latest-activity-card">
+    <Card data-testid="latest-activity-card" className="border-0 shadow-sm bg-muted/40">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Activity className="w-4 h-4" /> Latest activity

@@ -18,6 +18,7 @@ import { useAuth } from "@/lib/auth-context";
 import SEO from "@/components/seo";
 import { playerProfileSchema, coachProfileSchema } from "@/lib/validations/profile"
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 // Kept in one place since both the Country combobox and any future
 // country-dependent logic should read from the same list. "USA"/"UK"
@@ -91,6 +92,8 @@ export default function CompleteProfilePage() {
       bio: "",
       skillLevel: "Beginner",
       preferredCourts: "",
+      lookingFor: [],
+      sex: "",
     },
   });
 
@@ -436,6 +439,68 @@ export default function CompleteProfilePage() {
                       {...playerForm.register("preferredCourts")}
                       data-testid="input-courts"
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Looking for</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {["Hitting Partner", "Coach", "Playing Events"].map((option) => {
+                        const selected = (playerForm.watch("lookingFor") || []).includes(option);
+                        return (
+                          <Badge
+                            key={option}
+                            variant={selected ? "default" : "outline"}
+                            className="cursor-pointer py-1.5 px-3"
+                            data-testid={`looking-for-option-${option.toLowerCase().replace(/\s+/g, "-")}`}
+                            onClick={() => {
+                              const current = playerForm.getValues("lookingFor") || [];
+                              playerForm.setValue(
+                                "lookingFor",
+                                current.includes(option)
+                                  ? current.filter((o) => o !== option)
+                                  : [...current, option],
+                                { shouldValidate: true }
+                              );
+                            }}
+                          >
+                            {option}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      This helps us show you the right people and content - more options (like shopping deals) are coming soon.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="age">Age (optional)</Label>
+                      <Input
+                        id="age"
+                        type="number"
+                        min={13}
+                        max={120}
+                        placeholder="e.g. 32"
+                        autoComplete="off"
+                        {...playerForm.register("age")}
+                        data-testid="input-age"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="sex">Sex (optional)</Label>
+                      <select
+                        id="sex"
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        {...playerForm.register("sex")}
+                        data-testid="select-sex"
+                      >
+                        <option value="">Prefer not to say</option>
+                        <option value="female">Female</option>
+                        <option value="male">Male</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
                   </div>
 
                   <div className="space-y-2">

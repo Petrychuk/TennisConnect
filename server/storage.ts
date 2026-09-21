@@ -175,6 +175,8 @@ export interface IStorage {
   
   // Player Profiles
   getPlayerProfile(userId: string): Promise<PlayerProfile | undefined>;
+  addPlayerProfilePhoto(userId: string, photoUrl: string): Promise<PlayerProfile>;
+  removePlayerProfilePhoto(userId: string, photoUrl: string): Promise<PlayerProfile>;
   getAllPlayers(): Promise<
       {
         user: typeof users.$inferSelect;
@@ -830,6 +832,42 @@ export class DatabaseStorage implements IStorage {
     return profile;
   }
 
+  // Player profile gallery (distinct from the single avatar/cover) - up
+  // to 8 photos, max enforced here so a request can't silently grow the
+  // array without bound. Always scoped by userId, never a bare photo/
+  // profile id, so there's no IDOR surface here at all - a caller can
+  // only ever touch their OWN player_profiles row.
+  async addPlayerProfilePhoto(userId: string, photoUrl: string): Promise<PlayerProfile> {
+    const profile = await this.getPlayerProfile(userId);
+    if (!profile) throw new Error("Player profile not found");
+
+    const current = profile.photos ?? [];
+    if (current.length >= 8) {
+      throw new Error("Maximum 8 photos allowed");
+    }
+
+    const [updated] = await db
+      .update(playerProfiles)
+      .set({ photos: [...current, photoUrl] })
+      .where(eq(playerProfiles.userId, userId))
+      .returning();
+
+    return updated;
+  }
+
+  async removePlayerProfilePhoto(userId: string, photoUrl: string): Promise<PlayerProfile> {
+    const profile = await this.getPlayerProfile(userId);
+    if (!profile) throw new Error("Player profile not found");
+
+    const [updated] = await db
+      .update(playerProfiles)
+      .set({ photos: (profile.photos ?? []).filter((p) => p !== photoUrl) })
+      .where(eq(playerProfiles.userId, userId))
+      .returning();
+
+    return updated;
+  }
+
   async getAllPlayers(): Promise<
       {
         user: typeof users.$inferSelect;
@@ -863,6 +901,9 @@ export class DatabaseStorage implements IStorage {
         ...profile,
         isDraft: true,
         preferredCourts: profile.preferredCourts as string[] | undefined,
+        lookingFor: profile.lookingFor as string[] | undefined,
+        availability: profile.availability as string[] | undefined,
+        photos: profile.photos as string[] | undefined,
       })
       .returning();
 
