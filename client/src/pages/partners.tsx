@@ -33,6 +33,7 @@ interface PartnerData {
     bio: string;
     isDemo: boolean;
     isOrganizer: boolean;
+    lookingFor: string[];
   }
 
 export default function PartnersPage() {
@@ -145,6 +146,7 @@ export default function PartnersPage() {
         bio: p.bio ?? "",
         isDemo: true,
         isOrganizer: false,
+        lookingFor: [],
       }));
   const normalizeApiPlayers = (data: any[]): PartnerData[] =>
     data.map((item) => ({
@@ -161,6 +163,7 @@ export default function PartnersPage() {
       bio: item.bio ?? "",
       isDemo: false,
       isOrganizer: Boolean(item.isOrganizer),
+      lookingFor: Array.isArray(item.lookingFor) ? item.lookingFor : [],
     }));
 
     useEffect(() => {
@@ -586,6 +589,16 @@ export default function PartnersPage() {
                       <Activity className="w-3 h-3 mr-1" />
                       {partner.skillLevel}
                     </Badge>
+
+                    {partner.lookingFor.length > 0 && (
+                      <div className="flex flex-wrap justify-center gap-1 mb-1 md:mb-3 max-w-full px-1">
+                        {partner.lookingFor.slice(0, 2).map((tag) => (
+                          <Badge key={tag} variant="outline" className="text-[10px] md:text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
 
                     <p className="hidden
                         md:line-clamp-3

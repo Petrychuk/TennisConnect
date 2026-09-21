@@ -32,6 +32,7 @@ import { MyOrganizedSessionsSection } from "@/components/profile/shared/MyOrgani
 import { useOrganizerStatus } from "@/hooks/use-organizer-status";
 import { TennisLoader } from "@/components/ui/tennisLoader";
 import { uploadMedia } from "@/lib/uploadImage";
+import { computeMatchScore, type MatchProfileInput } from "@/lib/matchScore";
 import { QuickMessageModal } from "@/components/messaging/QuickMessageModal";
 import {
   AboutMeCard,
@@ -88,6 +89,8 @@ export type PlayerProfile = {
   availability?: string[];
   playRadiusKm?: number;
   courtSurfacePreference?: string;
+  playingHand?: string;
+  availabilityStatus?: string;
   coaches: number[];          
   marketplaceItems: any[];
   tournaments: any[];
@@ -114,6 +117,8 @@ export const DEFAULT_PLAYER_PROFILE: PlayerProfile = {
   availability: [],
   playRadiusKm: 15,
   courtSurfacePreference: "",
+  playingHand: "",
+  availabilityStatus: "",
   coaches: [1], // IDs of connected coaches
   marketplaceItems: [] as any[],
   tournaments: [] as any[],
@@ -166,6 +171,7 @@ export default function PlayerProfile() {
   ];
   const [messageModalOpen, setMessageModalOpen] = useState(false);
   const [messageModalDefaultText, setMessageModalDefaultText] = useState("");
+  const [viewerProfile, setViewerProfile] = useState<MatchProfileInput | null>(null);
   const [profile, setProfile] = useState<PlayerProfile>(DEFAULT_PLAYER_PROFILE);
   const [originalProfile, setOriginalProfile] = useState<PlayerProfile>(DEFAULT_PLAYER_PROFILE);
   const [loading, setLoading] = useState(true);
@@ -225,6 +231,29 @@ export default function PlayerProfile() {
       setLocation("/complete-profile");
     }
   }, [authLoading, isOwnProfile, user, setLocation]);
+
+  // Fetches the VIEWER's own player profile so the Good Match card can
+  // compute a real score against the profile being viewed (see
+  // lib/matchScore.ts) - only needed when looking at someone else's
+  // profile while logged in as a player.
+  useEffect(() => {
+    if (isOwnProfile || !user || user.role !== "player") {
+      setViewerProfile(null);
+      return;
+    }
+    let cancelled = false;
+    fetch("/api/me/player-profile", { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data) setViewerProfile(data);
+      })
+      .catch(() => {
+        /* Good Match card just won't render if this fails - not worth surfacing an error for. */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOwnProfile, user]);
 
    useEffect(() => {
     if (!profileSlug) return;
@@ -301,6 +330,8 @@ export default function PlayerProfile() {
             courtSurfacePreference:
               data.profile?.courtSurfacePreference ||
               (isIncomplete ? "" : DEFAULT_PLAYER_PROFILE.courtSurfacePreference),
+            playingHand: data.profile?.playingHand || "",
+            availabilityStatus: data.profile?.availabilityStatus || "",
           });
 
           setProfileData(data.profile || null);
@@ -467,6 +498,9 @@ export default function PlayerProfile() {
           skillLevel: profile.skillLevel,
           bio: profile.bio,
           preferredCourts: profile.preferredCourts,
+          sex: profile.sex,
+          playingHand: profile.playingHand,
+          availabilityStatus: profile.availabilityStatus,
         }),
         credentials: "include",
       });
@@ -1023,22 +1057,32 @@ export default function PlayerProfile() {
 
                     {/* Sidebar */}
                     <div className="space-y-4">
-                      {!isOwnProfile && (
-                        <GoodMatchCard
-                          percent={92}
-                          reasons={[
-                            "Similar level",
-                            "Both available Thursday evening",
-                            "Only 6 km away",
-                          ]}
-                          onSuggestGame={() => {
-                            setMessageModalDefaultText(
-                              `Hi ${profile.name.split(" ")[0]}, want to play a match sometime?`
-                            );
-                            setMessageModalOpen(true);
-                          }}
-                        />
-                      )}
+                      {!isOwnProfile && viewerProfile && (() => {
+                        const match = computeMatchScore(viewerProfile, {
+                          skillLevel: profile.skillLevel,
+                          availability: profile.availability,
+                          preferredCourts: profile.preferredCourts,
+                          gameFormat: profile.gameFormat,
+                          lookingFor: profile.lookingFor,
+                        });
+                        // Nothing in common yet found - showing "0%
+                        // match" reads as broken, not honest, so the
+                        // card just doesn't render rather than
+                        // claiming a match that isn't there.
+                        if (match.reasons.length === 0) return null;
+                        return (
+                          <GoodMatchCard
+                            percent={match.percent}
+                            reasons={match.reasons}
+                            onSuggestGame={() => {
+                              setMessageModalDefaultText(
+                                `Hi ${profile.name.split(" ")[0]}, want to play a match sometime?`
+                              );
+                              setMessageModalOpen(true);
+                            }}
+                          />
+                        );
+                      })()}
                       <AvailabilityQuickCard availability={profile.availability || []} />
                       {isOwnProfile && <LatestActivityCard items={mockActivity} />}
                       {isOwnProfile && organizerStatus.data && (

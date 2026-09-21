@@ -196,6 +196,10 @@ export const playerProfiles = pgTable("player_profiles", {
   availability: json("availability").$type<string[]>().default([]),
   playRadiusKm: integer("play_radius_km"),
   courtSurfacePreference: text("court_surface_preference"),
+  // Header/stats-row additions - the redesign's "stats block" needs
+  // these instead of tournament counts. Both optional/self-declared.
+  playingHand: text("playing_hand"),
+  availabilityStatus: text("availability_status"),
   // Profile gallery (distinct from the single cover/avatar images).
   photos: json("photos").$type<string[]>().default([]),
 });
