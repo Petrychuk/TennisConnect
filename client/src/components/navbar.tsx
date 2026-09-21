@@ -77,14 +77,6 @@ export function Navbar() {
 
   const showMobileBottomNav = isAuthenticated && location !== "/auth";
 
-  // Stripe Checkout is fully hosted, so the only way back into this
-  // app after paying (or cancelling) is the success_url/cancel_url
-  // redirect from server/routes/support.ts - both land back on
-  // whichever page the visitor started from, with a ?support= query
-  // param. Reopen the same modal straight into its success/cancelled
-  // view instead of building a separate confirmation page. The query
-  // param is stripped from the URL right after so refreshing the page
-  // doesn't reopen it again.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const support = params.get("support");
@@ -106,19 +98,11 @@ export function Navbar() {
     setBackTheRallyOpen(true);
   }
 
-  // Reserve space at the bottom of every page on mobile so content/footer
-  // never sits underneath the fixed mobile bottom nav.
   useEffect(() => {
     document.body.classList.toggle("has-mobile-bottom-nav", showMobileBottomNav);
     return () => document.body.classList.remove("has-mobile-bottom-nav");
   }, [showMobileBottomNav]);
 
-  // Navbar stays mounted across route changes (only the page content
-  // swaps) - close any menu that was open the moment the route
-  // actually changes, rather than relying solely on each menu's own
-  // click-to-close behavior, which could otherwise leave a menu
-  // visually stuck open through a navigation in some interaction
-  // orders.
   useEffect(() => {
     setMoreOpen(false);
     setAccountMenuOpen(false);
@@ -197,21 +181,7 @@ export function Navbar() {
 
         {/* CTA & Mobile Menu */}
         <div className="flex items-center gap-4">
-          {/* Back the Rally replaces the weather/time widget in this
-              slot (see the brief this came from) - HeaderClockWeather
-              itself is untouched and still fully working, just not
-              rendered, so restoring it later is a one-line change.
-              Same hidden md:flex breakpoint the weather widget already
-              used - that's 768px and up, tablet and desktop both,
-              which already covers "show it on tablet if it fits".
-              A prior attempt wrapped this in its own flex-1 slot
-              between nav-links and this CTA group to genuinely center
-              it regardless of viewport width - reverted, since it
-              also pulled nav-links away from their own established
-              justify-between position, crowding them against the
-              logo instead. Back to a plain margin - less perfectly
-              centered, but doesn't disturb everything else's
-              positioning to get there. */}
+        
           {/* <HeaderClockWeather /> */}
           <BackTheRallyWidget
             className="hidden md:inline-flex ml-8"
@@ -345,10 +315,6 @@ export function Navbar() {
                      </div>
                    </div>
                 )}
-
-                <p className="text-xs font-semibold uppercase tracking-wider text-[hsl(var(--tennis-ball))] mb-1 px-3">
-                  Explore
-                </p>
                 <nav className="flex flex-col">
                   {navLinks.map((link) => {
                     const Icon = link.icon;
