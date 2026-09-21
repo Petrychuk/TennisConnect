@@ -37,6 +37,7 @@ interface PlayerHeroProps {
 // the organiser dashboard and session-live (StatCard's other callers)
 // keep their original look untouched.
 const lightCardClass = "border-0 shadow-sm bg-muted/40 hover:bg-muted/60";
+const compactValueClass = "text-xs sm:text-sm md:text-base font-semibold";
 
 export function PlayerHero({
   profile,
@@ -90,6 +91,7 @@ export function PlayerHero({
             label="Level"
             subtitle={profile.skillLevel || "Not set"}
             className={lightCardClass}
+            valueClassName={compactValueClass}
           />
 
           <StatCard
@@ -98,6 +100,7 @@ export function PlayerHero({
             value={profile.playingHand || "—"}
             label="Playing hand"
             className={lightCardClass}
+            valueClassName={compactValueClass}
           />
 
           <StatCard
@@ -106,6 +109,7 @@ export function PlayerHero({
             value={profile.playRadiusKm ? `${profile.playRadiusKm} km` : "—"}
             label="Preferred distance"
             className={lightCardClass}
+            valueClassName={compactValueClass}
           />
 
           <StatCard
@@ -114,6 +118,7 @@ export function PlayerHero({
             value={profile.availabilityStatus || "Not set"}
             label="Available to play"
             className={lightCardClass}
+            valueClassName={compactValueClass}
           />
 
         </ProfileStats>
