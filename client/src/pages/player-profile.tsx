@@ -996,6 +996,10 @@ export default function PlayerProfile() {
                   setIsEditing(false);
                 }}
                 onSave={handleSave}
+                onMessageClick={() => {
+                  setMessageModalDefaultText("");
+                  setMessageModalOpen(true);
+                }}
              />
             )}
               {!loading && profileSetupIncomplete && !isOwnProfile && (
