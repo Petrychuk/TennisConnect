@@ -1017,7 +1017,7 @@ export default function PlayerProfile() {
                   <Skeleton className="h-40 w-full rounded-2xl" />
                 </div>
               ) : (
-              <Tabs defaultValue={initialTab} className="mt-4 space-y-1">
+              <Tabs defaultValue={initialTab} className="mt-4 md:mt-0 space-y-1">
                 <TabsList className="w-full
                       flex
                       overflow-x-auto
@@ -1160,31 +1160,31 @@ export default function PlayerProfile() {
                       </TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="regular" className="mt-6">
+                    <TabsContent value="regular" className="mt-2">
                       <Tabs defaultValue="upcoming">
                         <TabsList>
                           <TabsTrigger value="upcoming" data-testid="my-sessions-regular-subtab-upcoming">Upcoming</TabsTrigger>
                           <TabsTrigger value="history" data-testid="my-sessions-regular-subtab-history">History</TabsTrigger>
                         </TabsList>
-                        <TabsContent value="upcoming" className="mt-6">
+                        <TabsContent value="upcoming" className="mt-2">
                           <MySessionsSection isOwnProfile={isOwnProfile} isAuthenticated={isAuthenticated} excludeTypes={TOURNAMENT_TYPES} timeframe="upcoming" />
                         </TabsContent>
-                        <TabsContent value="history" className="mt-6">
+                        <TabsContent value="history" className="mt-2">
                           <MySessionsSection isOwnProfile={isOwnProfile} isAuthenticated={isAuthenticated} excludeTypes={TOURNAMENT_TYPES} timeframe="past" />
                         </TabsContent>
                       </Tabs>
                     </TabsContent>
 
-                    <TabsContent value="tournament" className="mt-6">
+                    <TabsContent value="tournament" className="mt-2">
                       <Tabs defaultValue="upcoming">
                         <TabsList>
                           <TabsTrigger value="upcoming" data-testid="my-sessions-subtab-upcoming">Upcoming</TabsTrigger>
                           <TabsTrigger value="history" data-testid="my-sessions-subtab-history">History</TabsTrigger>
                         </TabsList>
-                        <TabsContent value="upcoming" className="mt-6">
+                        <TabsContent value="upcoming" className="mt-2">
                           <MySessionsSection isOwnProfile={isOwnProfile} isAuthenticated={isAuthenticated} sessionTypes={TOURNAMENT_TYPES} timeframe="upcoming" />
                         </TabsContent>
-                        <TabsContent value="history" className="mt-6">
+                        <TabsContent value="history" className="mt-2">
                           <MySessionsSection isOwnProfile={isOwnProfile} isAuthenticated={isAuthenticated} sessionTypes={TOURNAMENT_TYPES} timeframe="past" />
                         </TabsContent>
                       </Tabs>

@@ -61,7 +61,7 @@ export function MySessionsSection({ isOwnProfile, isAuthenticated, sessionTypes,
 
   if (!isAuthenticated) {
     return (
-      <Card data-testid="my-sessions-signed-out">
+      <Card data-testid="my-sessions-signed-out" className="border-0 shadow-sm bg-muted/40">
         <CardContent className="py-10 text-center space-y-3">
           <p className="text-muted-foreground">Sign in to see the sessions you've joined.</p>
           <Button asChild size="sm" data-testid="my-sessions-sign-in">
@@ -77,7 +77,7 @@ export function MySessionsSection({ isOwnProfile, isAuthenticated, sessionTypes,
 
   if (!isOwnProfile) {
     return (
-      <Card data-testid="my-sessions-not-own-profile">
+      <Card data-testid="my-sessions-not-own-profile" className="border-0 shadow-sm bg-muted/40">
         <CardContent className="py-10 text-center text-muted-foreground">
           "My Sessions" shows sessions you've joined, not this profile's — visit your own profile to see yours.
         </CardContent>
@@ -87,7 +87,7 @@ export function MySessionsSection({ isOwnProfile, isAuthenticated, sessionTypes,
 
   if (registeredQuery.isLoading) {
     return (
-      <Card data-testid="my-sessions-loading">
+      <Card data-testid="my-sessions-loading" className="border-0 shadow-sm bg-muted/40">
         <CardContent className="py-10 text-center text-muted-foreground">Loading…</CardContent>
       </Card>
     );
