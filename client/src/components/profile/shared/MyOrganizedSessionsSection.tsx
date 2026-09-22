@@ -266,7 +266,7 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
   if (isLoading) {
     return (
       <div className="space-y-3" data-testid="my-organized-sessions-loading">
-        <Card>
+        <Card className="border-0 shadow-sm bg-muted/40">
           <CardContent className="py-10 text-center text-muted-foreground">Loading…</CardContent>
         </Card>
       </div>
@@ -287,7 +287,7 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
       )}
 
       {sessions.length === 0 ? (
-        <Card data-testid="my-organized-sessions-empty">
+        <Card data-testid="my-organized-sessions-empty" className="border-0 shadow-sm bg-muted/40">
           <CardContent className="py-10 text-center text-muted-foreground">
             {isOwnProfile
               ? "You haven't created any sessions yet. Head to your Organiser Hub to create one."
