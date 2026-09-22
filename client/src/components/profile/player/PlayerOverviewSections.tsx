@@ -552,7 +552,7 @@ export function PhotosCard({
               {isOwner && onDeletePhoto && (
                 <button
                   onClick={deleteCurrent}
-                  className="absolute top-2 right-2 w-9 h-9 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-destructive"
+                  className="absolute top-2 left-2 w-9 h-9 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-destructive"
                   data-testid="photo-lightbox-delete"
                   aria-label="Delete photo"
                 >

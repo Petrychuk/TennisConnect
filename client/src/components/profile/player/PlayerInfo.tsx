@@ -251,11 +251,13 @@ export function PlayerInfo({
               mt-3
 
               flex
-              flex-wrap
-              items-center
+              flex-col
+              sm:flex-row
+              sm:flex-wrap
+              sm:items-center
 
               gap-x-5
-              gap-y-2
+              gap-y-1.5
 
               text-sm
               md:text-base
@@ -264,30 +266,36 @@ export function PlayerInfo({
             "
           >
 
-            <div className="flex items-center gap-1.5"
-                data-testid="player-country-display"
-            >
-              <Globe className="w-4 h-4 shrink-0" />
-              {profile.country}
-            </div>
-
-            <div className="flex items-center gap-1.5"
-                 data-testid="player-location-display">
-              <MapPin className="w-4 h-4 shrink-0" />
-              {profile.location}
-            </div>
-
-            {profile.age && (
-              <div className="flex items-center gap-1.5" data-testid="player-age-display">
-                <CalendarDays className="w-4 h-4 shrink-0" />
-                {profile.age} yrs
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
+              <div className="flex items-center gap-1.5"
+                  data-testid="player-country-display"
+              >
+                <Globe className="w-4 h-4 shrink-0" />
+                {profile.country}
               </div>
-            )}
 
-            {profile.sex && (
-              <div className="flex items-center gap-1.5" data-testid="player-sex-display">
-                <UserRound className="w-4 h-4 shrink-0" />
-                {profile.sex.charAt(0).toUpperCase() + profile.sex.slice(1)}
+              <div className="flex items-center gap-1.5"
+                   data-testid="player-location-display">
+                <MapPin className="w-4 h-4 shrink-0" />
+                {profile.location}
+              </div>
+            </div>
+
+            {(profile.age || profile.sex) && (
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
+                {profile.age && (
+                  <div className="flex items-center gap-1.5" data-testid="player-age-display">
+                    <CalendarDays className="w-4 h-4 shrink-0" />
+                    {profile.age} yrs
+                  </div>
+                )}
+
+                {profile.sex && (
+                  <div className="flex items-center gap-1.5" data-testid="player-sex-display">
+                    <UserRound className="w-4 h-4 shrink-0" />
+                    {profile.sex.charAt(0).toUpperCase() + profile.sex.slice(1)}
+                  </div>
+                )}
               </div>
             )}
 
