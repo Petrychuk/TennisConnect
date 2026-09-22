@@ -585,25 +585,33 @@ export default function PartnersPage() {
                       <MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{partner.location}</span>
                     </div>
 
-                    <Badge variant="secondary" className="mb-1 md:mb-3 text-xs">
-                      <Activity className="w-3 h-3 mr-1" />
-                      {partner.skillLevel}
-                    </Badge>
+                    <div className="flex flex-wrap items-center justify-center gap-1.5 mb-1 md:mb-3 max-w-full px-1">
+                      <Badge variant="secondary" className="text-[10px] md:text-xs">
+                        <Activity className="w-2.5 h-2.5 md:w-3 md:h-3 mr-1" />
+                        {partner.skillLevel}
+                      </Badge>
 
-                    {partner.lookingFor.length > 0 && (
-                      <div className="flex flex-wrap justify-center gap-1 mb-1 md:mb-3 max-w-full px-1">
-                        {partner.lookingFor.slice(0, 2).map((tag) => (
-                          <Badge
-                            key={tag}
-                            variant="outline"
-                            className="text-[10px] md:text-xs bg-primary/10 text-primary border-primary/20 font-medium gap-1"
-                          >
-                            <Target className="w-2.5 h-2.5 md:w-3 md:h-3" />
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
+                      {partner.lookingFor.slice(0, 1).map((tag) => (
+                        <Badge
+                          key={tag}
+                          variant="outline"
+                          className="text-[10px] md:text-xs bg-primary/10 text-primary border-primary/20 font-medium gap-1"
+                        >
+                          <Target className="w-2.5 h-2.5 md:w-3 md:h-3" />
+                          {tag}
+                        </Badge>
+                      ))}
+
+                      {partner.lookingFor.length > 1 && (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] md:text-xs bg-primary/10 text-primary border-primary/20 font-medium"
+                          title={partner.lookingFor.slice(1).join(", ")}
+                        >
+                          +{partner.lookingFor.length - 1}
+                        </Badge>
+                      )}
+                    </div>
 
                     <p className="hidden
                         md:line-clamp-3
