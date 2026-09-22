@@ -1,4 +1,3 @@
-import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -38,13 +37,22 @@ function initials(name: string): string {
   return name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
 }
 
-export function PlaySessionCard({ session }: { session: PublicSessionCardData }) {
+export function PlaySessionCard({ session, onView }: { session: PublicSessionCardData; onView: () => void }) {
   const spotsLeft = session.maxParticipants != null ? session.maxParticipants - session.registeredCount : null;
   const showAsFull = session.playStatus === "full" || session.playStatus === "waitlist";
 
   return (
     <div
-      className="rounded-2xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow flex flex-col sm:flex-row"
+      role="button"
+      tabIndex={0}
+      onClick={onView}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onView();
+        }
+      }}
+      className="rounded-2xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow flex flex-col sm:flex-row cursor-pointer"
       data-testid={`play-session-card-${session.id}`}
     >
       <div className="relative w-full sm:w-40 h-40 sm:h-auto shrink-0 bg-muted">
@@ -107,8 +115,16 @@ export function PlaySessionCard({ session }: { session: PublicSessionCardData })
               Organised by <span className="text-foreground font-medium">{session.organizationName}</span>
             </span>
           </div>
-          <Button asChild size="sm" className="shrink-0" data-testid={`play-session-card-${session.id}-view`}>
-            <Link href={`/play/${session.id}`}>View</Link>
+          <Button
+            size="sm"
+            className="shrink-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              onView();
+            }}
+            data-testid={`play-session-card-${session.id}-view`}
+          >
+            View
           </Button>
         </div>
       </div>

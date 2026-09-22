@@ -35,6 +35,7 @@ import {
 import { Search, MapPin, CalendarDays, X, Sparkles, Tag, BarChart3, SlidersHorizontal, Trophy } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { PlaySessionCard } from "@/components/play/session-card";
+import { EventQuickViewModal } from "@/components/play/EventQuickViewModal";
 import { getPlaySessions } from "@/lib/api/play";
 import { useAuth } from "@/lib/auth-context";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
@@ -169,6 +170,7 @@ export default function PlayPage() {
     setDraftLevel(ALL);
   };
 
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const dateFilterLabel = PLAY_DATE_FILTER_OPTIONS.find((o) => o.value === dateFilter)?.label;
   const formatLabel = PLAY_FORMAT_OPTIONS.find((o) => o.key === format)?.label;
 
@@ -390,7 +392,7 @@ export default function PlayPage() {
                 </p>
                 <div className="space-y-4" data-testid="play-page-results">
                   {visibleSessions.map((session) => (
-                    <PlaySessionCard key={session.id} session={session} />
+                    <PlaySessionCard key={session.id} session={session} onView={() => setSelectedSessionId(session.id)} />
                   ))}
                 </div>
 
@@ -538,6 +540,11 @@ export default function PlayPage() {
       </Dialog>
 
       <Footer />
+
+      <EventQuickViewModal
+        sessionId={selectedSessionId}
+        onOpenChange={(open) => !open && setSelectedSessionId(null)}
+      />
     </div>
   );
 }
