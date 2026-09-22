@@ -3,9 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SessionActivityItem } from "@/lib/organiser-sessions-mock-data";
+import { formatInTimeZone } from "@/lib/timezone";
 
 interface SessionActivityCardProps {
   items: SessionActivityItem[];
+  // The venue's own zone - without it, activity times showed the
+  // ORGANIZER'S OWN BROWSER's local time instead of the venue's.
+  timeZone: string;
 }
 
 type Filter = "all" | SessionActivityItem["kind"];
@@ -17,14 +21,17 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: "live", label: "Live" },
 ];
 
-function formatActivityTime(iso: string) {
-  const date = new Date(iso);
-  const isToday = date.toDateString() === new Date().toDateString();
-  const time = date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  return isToday ? `Today, ${time}` : `${date.toLocaleDateString(undefined, { day: "numeric", month: "short" })}, ${time}`;
+function formatActivityTime(iso: string, timeZone: string) {
+  // "Today" itself has to be judged in the venue's own zone too - not
+  // ambient, or the wrong day could show right at the boundary.
+  const todayInZone = formatInTimeZone(new Date(), timeZone, { year: "numeric", month: "2-digit", day: "2-digit" });
+  const dateInZone = formatInTimeZone(iso, timeZone, { year: "numeric", month: "2-digit", day: "2-digit" });
+  const isToday = dateInZone === todayInZone;
+  const time = formatInTimeZone(iso, timeZone, { hour: "numeric", minute: "2-digit" });
+  return isToday ? `Today, ${time}` : `${formatInTimeZone(iso, timeZone, { day: "numeric", month: "short" })}, ${time}`;
 }
 
-export function SessionActivityCard({ items }: SessionActivityCardProps) {
+export function SessionActivityCard({ items, timeZone }: SessionActivityCardProps) {
   const [filter, setFilter] = useState<Filter>("all");
   const visible = filter === "all" ? items : items.filter((i) => i.kind === filter);
 
@@ -68,7 +75,7 @@ export function SessionActivityCard({ items }: SessionActivityCardProps) {
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm leading-snug">{item.message}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{formatActivityTime(item.timestamp)}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{formatActivityTime(item.timestamp, timeZone)}</p>
                 </div>
               </li>
             ))}

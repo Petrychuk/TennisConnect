@@ -29,6 +29,8 @@ const ClubsPage = lazy(() => import("@/pages/clubs"));
 const ClubDetailPage = lazy(() => import("@/pages/club-detail"));
 const PartnersPage = lazy(() => import("@/pages/partners"));
 const TournamentsPage = lazy(() => import("@/pages/tournaments"));
+const PlayPage = lazy(() => import("@/pages/play"));
+const PlaySessionDetailsPage = lazy(() => import("@/pages/play-session-details"));
 const MessagesPage = lazy(() => import("@/pages/messages"));
 const CompleteProfilePage = lazy(() => import("@/pages/complete-profile"));
 const ArticlesPage = lazy(() => import("@/pages/articles"));
@@ -42,8 +44,17 @@ const AdminTravelPreviewPage = lazy(() => import("@/pages/admin-travel-preview")
 const AdminArticlePreviewPage = lazy(() => import("@/pages/admin-article-preview"));
 const OrganiserDashboardPage = lazy(() => import("@/pages/organiser/organiser-dashboard"));
 const OrganiserSessionsPage = lazy(() => import("@/pages/organiser/sessions"));
+const OrganiserSessionTemplatesPage = lazy(() => import("@/pages/organiser/session-templates"));
+const OrganiserSeasonsPage = lazy(() => import("@/pages/organiser/seasons"));
+const OrganiserSeasonNewPage = lazy(() => import("@/pages/organiser/season-new"));
+const OrganiserSeasonDetailsPage = lazy(() => import("@/pages/organiser/season-details"));
+const OrganiserSeasonEditPage = lazy(() => import("@/pages/organiser/season-edit"));
+const OrganiserSessionTemplateEditPage = lazy(() => import("@/pages/organiser/session-template-edit"));
 const OrganiserPlayersPage = lazy(() => import("@/pages/organiser/players"));
+const OrganiserPlayerDetailsPage = lazy(() => import("@/pages/organiser/player-details"));
 const OrganiserMessagesPage = lazy(() => import("@/pages/organiser/messages"));
+const OrganiserRankingsPage = lazy(() => import("@/pages/organiser/rankings"));
+const OrganiserReportsPage = lazy(() => import("@/pages/organiser/reports"));
 const OrganiserSessionNewPage = lazy(() => import("@/pages/organiser/session-new"));
 const OrganiserSessionWorkspacePage = lazy(() => import("@/pages/organiser/session-workspace"));
 const OrganiserSessionLivePage = lazy(() => import("@/pages/organiser/session-live"));
@@ -94,6 +105,8 @@ function Router() {
         <Route path="/maintenance" component={MaintenancePage} />
         <Route path="/500" component={Error500Page} />
         <Route path="/tournaments" component={TournamentsPage} />
+        <Route path="/play" component={PlayPage} />
+        <Route path="/play/:id" component={PlaySessionDetailsPage} />
         <Route path="/articles" component={ArticlesPage} />
         <Route path="/articles/:slug" component={ArticleDetailPage} />
         {/* "/travels" is the canonical URL going forward - "/travel"
@@ -115,7 +128,16 @@ function Router() {
         {/* <Route path="/organiser" component={MaintenancePage} /> */}
         <Route path="/organiser/sessions" component={OrganiserSessionsPage} />
         <Route path="/organiser/sessions/new" component={OrganiserSessionNewPage} />
+        <Route path="/organiser/sessions/templates" component={OrganiserSessionTemplatesPage} />
+        <Route path="/organiser/seasons" component={OrganiserSeasonsPage} />
+        <Route path="/organiser/seasons/new" component={OrganiserSeasonNewPage} />
+        <Route path="/organiser/seasons/:id/edit" component={OrganiserSeasonEditPage} />
+        <Route path="/organiser/seasons/:id" component={OrganiserSeasonDetailsPage} />
+        <Route path="/organiser/sessions/templates/:id/edit" component={OrganiserSessionTemplateEditPage} />
+        <Route path="/organiser/rankings" component={OrganiserRankingsPage} />
+        <Route path="/organiser/reports" component={OrganiserReportsPage} />
         <Route path="/organiser/players" component={OrganiserPlayersPage} />
+        <Route path="/organiser/players/:slug" component={OrganiserPlayerDetailsPage} />
         <Route path="/organiser/messages" component={OrganiserMessagesPage} />
         <Route path="/organiser/sessions/:id/live" component={OrganiserSessionLivePage} />
         <Route path="/organiser/sessions/:id/edit" component={OrganiserSessionEditPage} />

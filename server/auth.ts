@@ -129,10 +129,25 @@ export function setupAuth(app: Express) {
             return done(null, false);
           }
 
+          // Checked BEFORE the password comparison - a locked account
+          // shouldn't validate a guess at all, correct or not, while
+          // it's locked.
+          if (user.lockedUntil && user.lockedUntil > new Date()) {
+            return done(null, false, {
+              message: "ACCOUNT_LOCKED",
+              lockedUntil: user.lockedUntil,
+            } as any);
+          }
+
           const isMatch = await comparePasswords(password, user.password);
           if (!isMatch) {
+            await storage.recordFailedLogin(user.id);
             return done(null, false);
           }
+
+          // Correct password - whatever failed-attempt count had been
+          // accumulating no longer reflects anything real.
+          await storage.resetFailedLogins(user.id);
 
           // Credentials are correct at this point - deliberately a
           // separate check from the two above, so the route handler can

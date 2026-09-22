@@ -9,7 +9,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ProfileCover } from "@/components/profile/shared/ProfileCover";
 import { Skeleton } from "@/components/ui/skeleton";
-import defaultPlayerCover from "/assets/images/default_player_cover.jpg";
+import defaultPlayerCover from "/assets/images/default_player_cover.webp";
+import defaultPlayerCoverMobile from "/assets/images/default_player_cover_mobile.webp";
 import { PlayerHero } from "@/components/profile/player/PlayerHero";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogDescription, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
@@ -31,6 +32,21 @@ import { MyOrganizedSessionsSection } from "@/components/profile/shared/MyOrgani
 import { useOrganizerStatus } from "@/hooks/use-organizer-status";
 import { TennisLoader } from "@/components/ui/tennisLoader";
 import { uploadMedia } from "@/lib/uploadImage";
+import { computeMatchScore, type MatchProfileInput } from "@/lib/matchScore";
+import { QuickMessageModal } from "@/components/messaging/QuickMessageModal";
+import {
+  AboutMeCard,
+  LookingForCard,
+  PlayingPreferencesCard,
+  PhotosCard,
+  GoodMatchCard,
+  AvailabilityQuickCard,
+  LatestActivityCard,
+  PlayerBottomCTA,
+  type LookingForData,
+  type PlayingPrefsData,
+  type ActivityItem,
+} from "@/components/profile/player/PlayerOverviewSections";
 
 type MarketplaceDraft = {
   id: string;
@@ -66,6 +82,15 @@ export type PlayerProfile = {
   createdAt?: string;
   preferredCourts: string[];
   photos?: string[];
+  sex?: string;
+  lookingFor?: string[];
+  gameFormat?: string;
+  playStyle?: string;
+  availability?: string[];
+  playRadiusKm?: number;
+  courtSurfacePreference?: string;
+  playingHand?: string;
+  availabilityStatus?: string;
   coaches: number[];          
   marketplaceItems: any[];
   tournaments: any[];
@@ -85,6 +110,15 @@ export const DEFAULT_PLAYER_PROFILE: PlayerProfile = {
   cover: null,
   preferredCourts: ["Bondi Beach", "Manly"],
   photos: [],
+  sex: "",
+  lookingFor: [],
+  gameFormat: "",
+  playStyle: "",
+  availability: [],
+  playRadiusKm: 15,
+  courtSurfacePreference: "",
+  playingHand: "",
+  availabilityStatus: "",
   coaches: [1], // IDs of connected coaches
   marketplaceItems: [] as any[],
   tournaments: [] as any[],
@@ -122,6 +156,22 @@ export default function PlayerProfile() {
   const [contactPhone, setContactPhone] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [playerUserId, setPlayerUserId] = useState<string>("");
+
+  // --- Profile redesign (2026) - Overview section state ---------------
+  // About Me / Looking For / Playing Preferences / Photos now live on
+  // `profile` itself (real, persisted fields - see saveProfileFields
+  // below and the playerProfileUpdateSchema/player_profiles migration
+  // that added them). Latest Activity stays mock per the spec (it's
+  // meant to be auto-generated from real activity later, never
+  // manually edited).
+  const mockActivity: ActivityItem[] = [
+    { icon: "session", label: "Joined a session", date: "Thu, 25 Sep" },
+    { icon: "competition", label: "Played a competition", date: "Sun, 7 Sep" },
+    { icon: "venue", label: "Visited a new venue", date: "Wed, 3 Sep" },
+  ];
+  const [messageModalOpen, setMessageModalOpen] = useState(false);
+  const [messageModalDefaultText, setMessageModalDefaultText] = useState("");
+  const [viewerProfile, setViewerProfile] = useState<MatchProfileInput | null>(null);
   const [profile, setProfile] = useState<PlayerProfile>(DEFAULT_PLAYER_PROFILE);
   const [originalProfile, setOriginalProfile] = useState<PlayerProfile>(DEFAULT_PLAYER_PROFILE);
   const [loading, setLoading] = useState(true);
@@ -148,6 +198,18 @@ export default function PlayerProfile() {
   const [tournaments, setTournaments] = useState<TournamentDraft[]>([]);
   const [editingTournament, setEditingTournament] = useState<TournamentDraft | null>(null);
   const [isDemo, setIsDemo] = useState(false);
+  // True once we've confirmed there's genuinely no real profile to
+  // show (fetch 404'd and no demo-data fallback matched either) - lets
+  // the render branch show an honest "not available" message instead
+  // of silently falling through to DEFAULT_PLAYER_PROFILE's
+  // placeholder content as if it were this person's real profile.
+  // True for someone else's real-but-incomplete profile (registered,
+  // never finished "set up your profile") - lets the render show an
+  // honest "still setting up their profile" note instead of quietly
+  // presenting DEFAULT_PLAYER_PROFILE's specific placeholder values
+  // as if they were this person's real choices.
+  const [profileSetupIncomplete, setProfileSetupIncomplete] = useState(false);
+  const [profileNotFound, setProfileNotFound] = useState(false);
   
   // Marketplace State
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
@@ -169,6 +231,29 @@ export default function PlayerProfile() {
       setLocation("/complete-profile");
     }
   }, [authLoading, isOwnProfile, user, setLocation]);
+
+  // Fetches the VIEWER's own player profile so the Good Match card can
+  // compute a real score against the profile being viewed (see
+  // lib/matchScore.ts) - only needed when looking at someone else's
+  // profile while logged in as a player.
+  useEffect(() => {
+    if (isOwnProfile || !user || user.role !== "player") {
+      setViewerProfile(null);
+      return;
+    }
+    let cancelled = false;
+    fetch("/api/me/player-profile", { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data) setViewerProfile(data);
+      })
+      .catch(() => {
+        /* Good Match card just won't render if this fails - not worth surfacing an error for. */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOwnProfile, user]);
 
    useEffect(() => {
     if (!profileSlug) return;
@@ -207,27 +292,53 @@ export default function PlayerProfile() {
             cover: data.user.cover || null,
           };
 
+          // A player who hasn't finished their own "set up your
+          // profile" step yet has a real name (captured at
+          // registration) but no real player_profiles row - showing
+          // DEFAULT_PLAYER_PROFILE's specific placeholder values
+          // (Sydney NSW, Intermediate, Bondi Beach/Manly, the canned
+          // bio) here would make them look like real choices this
+          // person made, which they never did. Honest neutral
+          // placeholders instead - only used for someone ELSE'S
+          // incomplete profile, never for editing your own (the
+          // "complete profile" flow handles that separately).
+          const isIncomplete = !normalizedUser.profileCompleted;
+          setProfileSetupIncomplete(isIncomplete);
+
           setProfile({
             ...DEFAULT_PLAYER_PROFILE,
             name: normalizedUser.name,
             avatar: normalizedUser.avatar || DEFAULT_PLAYER_PROFILE.avatar,
             cover: normalizedUser.cover || DEFAULT_PLAYER_PROFILE.cover,
             createdAt: data.user.createdAt,
-            location: data.profile?.location || DEFAULT_PLAYER_PROFILE.location,
-            age: data.profile?.age || DEFAULT_PLAYER_PROFILE.age,
-            country: data.profile?.country || DEFAULT_PLAYER_PROFILE.country,
-            skillLevel: data.profile?.skillLevel || DEFAULT_PLAYER_PROFILE.skillLevel,
-            bio: data.profile?.bio || DEFAULT_PLAYER_PROFILE.bio,
+            location: data.profile?.location || (isIncomplete ? "" : DEFAULT_PLAYER_PROFILE.location),
+            age: data.profile?.age || (isIncomplete ? "" : DEFAULT_PLAYER_PROFILE.age),
+            country: data.profile?.country || (isIncomplete ? "" : DEFAULT_PLAYER_PROFILE.country),
+            skillLevel: data.profile?.skillLevel || (isIncomplete ? "" : DEFAULT_PLAYER_PROFILE.skillLevel),
+            bio: data.profile?.bio || (isIncomplete ? "" : DEFAULT_PLAYER_PROFILE.bio),
             preferredCourts:
               data.profile?.preferredCourts ||
-              DEFAULT_PLAYER_PROFILE.preferredCourts,
+              (isIncomplete ? [] : DEFAULT_PLAYER_PROFILE.preferredCourts),
             phone: data.profile?.phone ?? "",
             email: data.profile?.email ?? "",
+            sex: data.profile?.sex ?? "",
+            lookingFor: data.profile?.lookingFor ?? [],
+            gameFormat: data.profile?.gameFormat || (isIncomplete ? "" : DEFAULT_PLAYER_PROFILE.gameFormat),
+            playStyle: data.profile?.playStyle || (isIncomplete ? "" : DEFAULT_PLAYER_PROFILE.playStyle),
+            availability: data.profile?.availability ?? [],
+            playRadiusKm: data.profile?.playRadiusKm ?? DEFAULT_PLAYER_PROFILE.playRadiusKm,
+            courtSurfacePreference:
+              data.profile?.courtSurfacePreference ||
+              (isIncomplete ? "" : DEFAULT_PLAYER_PROFILE.courtSurfacePreference),
+            playingHand: data.profile?.playingHand || "",
+            availabilityStatus: data.profile?.availabilityStatus || "",
+            photos: data.profile?.photos ?? [],
           });
 
           setProfileData(data.profile || null);
           setProfileIsOrganizer(!!data.user.isOrganizer);
           setPlayerUserId(data.user.id);
+          setProfileNotFound(false);
 
           /* ===== PUBLIC TOURNAMENTS + MARKETPLACE (parallel - neither
              depends on the other, only on data.user.id from the fetch
@@ -264,6 +375,15 @@ export default function PlayerProfile() {
               //preferredCourts: demoPlayer.courts || [],
             });
             setIsDemo(true);
+          } else {
+            // No real account and no demo match - this is a genuinely
+            // missing/not-yet-public profile (most commonly: someone
+            // registered but hasn't finished their profile yet, which
+            // GET /api/players/:slug 404s on by design). Showing
+            // DEFAULT_PLAYER_PROFILE's placeholder content here would
+            // otherwise look exactly like a real account with a name
+            // of "New Player" and fabricated stats.
+            setProfileNotFound(true);
           }
         } finally {
           setLoading(false);
@@ -340,6 +460,32 @@ export default function PlayerProfile() {
     }
   };
 
+  // Partial save for the redesigned Overview cards (About Me, Looking
+  // For, Playing Preferences) - each field on playerProfileUpdateSchema
+  // is optional, so a PUT with just the changed keys is a real, safe
+  // partial update, not a mock. Updates local state only on success -
+  // an optimistic update here could show a value that never actually
+  // saved.
+  const saveProfileFields = async (fields: Partial<PlayerProfile>) => {
+    try {
+      const res = await fetch("/api/me/player-profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(fields),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to update profile");
+      setProfile((prev) => ({ ...prev, ...fields }));
+      toast({ title: "Saved" });
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Couldn't save",
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+    }
+  };
+
   const handleSave = async () => {
     try {
       const res = await fetch("/api/me/player-profile", {
@@ -353,6 +499,9 @@ export default function PlayerProfile() {
           skillLevel: profile.skillLevel,
           bio: profile.bio,
           preferredCourts: profile.preferredCourts,
+          sex: profile.sex,
+          playingHand: profile.playingHand,
+          availabilityStatus: profile.availabilityStatus,
         }),
         credentials: "include",
       });
@@ -622,6 +771,61 @@ export default function PlayerProfile() {
     setTournaments(prev => prev.filter(t => t.id !== id));
   };
 
+ const handleDeletePhoto = async (photoUrl: string) => {
+    // Optimistic - removes it from view immediately, restores it if the
+    // request actually fails.
+    const previousPhotos = profile.photos || [];
+    setProfile((prev) => ({ ...prev, photos: previousPhotos.filter((p) => p !== photoUrl) }));
+    try {
+      const res = await fetch("/api/me/player-profile/photos", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ photoUrl }),
+      });
+      if (!res.ok) throw new Error("Failed to delete photo");
+    } catch (err) {
+      setProfile((prev) => ({ ...prev, photos: previousPhotos }));
+      toast({
+        variant: "destructive",
+        title: "Couldn't delete photo",
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+    }
+  };
+
+ const handleGalleryPhotoChange = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/me/player-profile/photos", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.message || "Failed to upload photo");
+      }
+      const updatedProfile = await res.json();
+      setProfile((prev) => ({ ...prev, photos: updatedProfile.photos || [] }));
+      toast({ title: "Photo added" });
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Upload failed",
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+    } finally {
+      e.target.value = "";
+    }
+  };
+
  const handleFileChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
     field: "avatar" | "cover"
@@ -660,6 +864,26 @@ export default function PlayerProfile() {
       e.target.value = "";
     }
   };
+
+  if (!loading && profileNotFound) {
+    return (
+      <div className="min-h-screen bg-background font-sans flex flex-col">
+        <SEO title="Player not found | TennisConnect" description="This player's profile isn't available." noIndex />
+        <Navbar />
+        <div className="flex-1 flex flex-col items-center justify-center text-center px-4 py-24" data-testid="player-profile-not-found">
+          <User className="w-10 h-10 text-muted-foreground mb-3" />
+          <p className="font-semibold text-lg">This profile isn't available</p>
+          <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+            This player may not have finished setting up their profile yet, or the link may be incorrect.
+          </p>
+          <Button variant="outline" className="mt-5" onClick={() => setLocation("/players")} data-testid="player-profile-not-found-back">
+            Browse Players
+          </Button>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -704,6 +928,15 @@ export default function PlayerProfile() {
               data-testid="cover-upload"
             />
 
+            <input
+              type="file"
+              id="player-photo-upload"
+              className="hidden"
+              accept="image/*"
+              onChange={handleGalleryPhotoChange}
+              data-testid="player-photo-upload"
+            />
+
             {loading ? (
               <Skeleton
                 className="w-full h-[280px] sm:h-[300px] md:h-[380px] lg:h-[460px] rounded-t-3xl"
@@ -713,6 +946,7 @@ export default function PlayerProfile() {
               <ProfileCover
                   cover={profile.cover}
                   defaultCover={defaultPlayerCover}
+                  defaultCoverMobile={defaultPlayerCoverMobile}
                   isOwner={isOwnProfile}
                   onEdit={() =>
                       document.getElementById("cover-upload")?.click()
@@ -746,6 +980,7 @@ export default function PlayerProfile() {
             ) : (
             <PlayerHero
                 profile={profile}
+                tournaments={tournaments}
                 isEditing={isEditing}
                 isOwnProfile={isOwnProfile}
                 setProfile={setProfile}
@@ -761,8 +996,20 @@ export default function PlayerProfile() {
                   setIsEditing(false);
                 }}
                 onSave={handleSave}
+                onMessageClick={() => {
+                  setMessageModalDefaultText("");
+                  setMessageModalOpen(true);
+                }}
              />
             )}
+              {!loading && profileSetupIncomplete && !isOwnProfile && (
+                <div
+                  className="mt-4 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-500/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-300"
+                  data-testid="player-profile-setup-incomplete-banner"
+                >
+                  {profile.name} is still setting up their profile - some details aren't available yet.
+                </div>
+              )}
               {loading ? (
                 <div className="mt-12 space-y-4" data-testid="player-tabs-skeleton">
                   <div className="flex gap-4">
@@ -774,7 +1021,7 @@ export default function PlayerProfile() {
                   <Skeleton className="h-40 w-full rounded-2xl" />
                 </div>
               ) : (
-              <Tabs defaultValue={initialTab} className="mt-12 space-y-8">
+              <Tabs defaultValue={initialTab} className="mt-4 space-y-1">
                 <TabsList className="w-full
                       flex
                       overflow-x-auto
@@ -788,80 +1035,119 @@ export default function PlayerProfile() {
                       gap-2
                       scrollbar-hide">
                   <TabsTrigger value="overview" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><User className="w-4 h-4" />Overview</TabsTrigger>
-                  <TabsTrigger value="communities" data-testid="my-communities-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Users2 className="w-4 h-4" />Communities</TabsTrigger>
-                  <TabsTrigger value="courts" data-testid="my-courts-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Heart className="w-4 h-4" />My Courts</TabsTrigger>
                   <TabsTrigger value="sessions" data-testid="my-sessions-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Trophy className="w-4 h-4" />My Sessions</TabsTrigger>
-                  <TabsTrigger value="results" data-testid="my-results-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Award className="w-4 h-4" />Results</TabsTrigger>
+                  <TabsTrigger value="courts" data-testid="my-courts-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Heart className="w-4 h-4" />My Courts</TabsTrigger>
+                  {/* Results is owner-only in the redesign - a visitor's
+                      profile view no longer shows this tab at all. */}
+                  {isOwnProfile && (
+                    <TabsTrigger value="results" data-testid="my-results-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><Award className="w-4 h-4" />Results</TabsTrigger>
+                  )}
                   {showOrganisingTab && (
                     <TabsTrigger value="organizing" data-testid="my-organized-sessions-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><ClipboardList className="w-4 h-4" />Organising</TabsTrigger>
                   )}
                   {/* Selling tab hidden for now, per request - marketplace items still exist in marketplaceItems if this needs to come back */}
                   {/* <TabsTrigger value="marketplace" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><ShoppingBag className="w-4 h-4" />Selling ({marketplaceItems.length})</TabsTrigger> */}
-                  {!isOwnProfile && (
-                    <TabsTrigger value="contact" data-testid="contact-tab" className="data-[state=active]:bg-primary/10 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 md:px-4 py-3 text-sm md:text-base gap-1.5"><MessageCircle className="w-4 h-4" />Contact</TabsTrigger>
-                  )}
                 </TabsList>
 
-                <TabsContent value="overview" className="space-y-8">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Playing Preferences</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <Label className="text-muted-foreground mb-2 block">Skill Level</Label>
-                          {isEditing ? (
-                            <Select 
-                              value={profile.skillLevel} 
-                              onValueChange={(val) => setProfile({...profile, skillLevel: val})}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select level" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Social">Social</SelectItem>
-                                <SelectItem value="Beginner">Beginner</SelectItem>
-                                <SelectItem value="Intermediate">Intermediate</SelectItem>
-                                <SelectItem value="Advanced">Advanced</SelectItem>
-                                <SelectItem value="Pro">Pro</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <div className="text-xl font-medium">{profile.skillLevel}</div>
-                          )}
-                        </div>
-                        <div>
-                          <Label className="text-muted-foreground mb-2 block">Preferred Locations</Label>
-                          {isEditing ? (
-                            <Input 
-                              value={profile.preferredCourts.join(", ")} 
-                              onChange={(e) => setProfile({...profile, preferredCourts: e.target.value.split(", ")})}
-                              placeholder="e.g. Bondi, Manly"
-                            />
-                          ) : (
-                            <div className="flex flex-wrap gap-2">
-                              {profile.preferredCourts.map((court, i) => (
-                                <Badge key={i} variant="secondary" className="text-base py-1 px-3">
-                                  <MapPin className="w-3 h-3 mr-1" /> {court}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  {isOwnProfile && organizerStatus.data && (
-                    <BecomeOrganizerCard
-                      status={organizerStatus.data}
-                      onChange={() => organizerStatus.refresh()}
+                <TabsContent value="overview" className="space-y-2.5">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
+                    {/* Main column */}
+                    <div className="lg:col-span-2 space-y-2">
+                      <AboutMeCard
+                        bio={profile.bio}
+                        isOwner={isOwnProfile}
+                        onSave={(bio) => saveProfileFields({ bio })}
+                      />
+                      <LookingForCard
+                        data={{ tags: profile.lookingFor || [] }}
+                        isOwner={isOwnProfile}
+                        onSave={(data) => saveProfileFields({ lookingFor: data.tags })}
+                      />
+                      <PlayingPreferencesCard
+                        data={{
+                          skillLevel: profile.skillLevel,
+                          preferredCourts: profile.preferredCourts,
+                          gameFormat: profile.gameFormat || "",
+                          playStyle: profile.playStyle || "",
+                          availability: profile.availability || [],
+                          playRadiusKm: profile.playRadiusKm ?? 15,
+                          courtSurfacePreference: profile.courtSurfacePreference || "",
+                        }}
+                        isOwner={isOwnProfile}
+                        onSave={(data) => saveProfileFields(data)}
+                      />
+                      {isOwnProfile && (
+                        <PhotosCard
+                          photos={profile.photos || []}
+                          isOwner={isOwnProfile}
+                          onAddPhoto={() => document.getElementById("player-photo-upload")?.click()}
+                          onDeletePhoto={handleDeletePhoto}
+                        />
+                      )}
+                    </div>
+
+                    {/* Sidebar */}
+                    <div className="space-y-2">
+                      {/* Visitors get the photo gallery here instead of
+                          in the main column - makes better use of this
+                          column's space, and keeps the main column
+                          focused on About/Looking For/Playing
+                          Preferences for a guest. Owners still manage
+                          photos in the main column above, alongside
+                          everything else they edit. */}
+                      {!isOwnProfile && (
+                        <PhotosCard
+                          photos={profile.photos || []}
+                          isOwner={false}
+                        />
+                      )}
+                      {!isOwnProfile && viewerProfile && (() => {
+                        const match = computeMatchScore(viewerProfile, {
+                          skillLevel: profile.skillLevel,
+                          availability: profile.availability,
+                          preferredCourts: profile.preferredCourts,
+                          gameFormat: profile.gameFormat,
+                          lookingFor: profile.lookingFor,
+                        });
+                        return (
+                          <GoodMatchCard
+                            percent={match.percent}
+                            reasons={match.reasons}
+                            onSuggestGame={() => {
+                              setMessageModalDefaultText(
+                                `Hi ${profile.name.split(" ")[0]}, want to play a match sometime?`
+                              );
+                              setMessageModalOpen(true);
+                            }}
+                          />
+                        );
+                      })()}
+                      <AvailabilityQuickCard availability={profile.availability || []} isOwner={isOwnProfile} />
+                      {isOwnProfile && <LatestActivityCard items={mockActivity} />}
+                      {isOwnProfile && organizerStatus.data && (
+                        <BecomeOrganizerCard
+                          status={organizerStatus.data}
+                          onChange={() => organizerStatus.refresh()}
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  {!isOwnProfile && (
+                    <PlayerBottomCTA
+                      name={profile.name.split(" ")[0] || profile.name}
+                      onInvite={() => {
+                        setMessageModalDefaultText(
+                          `Hi ${profile.name.split(" ")[0]}, I'd love to invite you to play sometime!`
+                        );
+                        setMessageModalOpen(true);
+                      }}
+                      onMessage={() => {
+                        setMessageModalDefaultText("");
+                        setMessageModalOpen(true);
+                      }}
                     />
                   )}
-                </TabsContent>
-
-                <TabsContent value="communities" className="space-y-6" data-testid="my-communities-tab-content">
-                  <MyClubsSection isOwnProfile={isOwnProfile} isAuthenticated={isAuthenticated} mode="communities" />
                 </TabsContent>
 
                 <TabsContent value="courts" className="space-y-6" data-testid="my-courts-tab-content">
@@ -878,31 +1164,31 @@ export default function PlayerProfile() {
                       </TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="regular" className="mt-6">
+                    <TabsContent value="regular" className="mt-2">
                       <Tabs defaultValue="upcoming">
                         <TabsList>
                           <TabsTrigger value="upcoming" data-testid="my-sessions-regular-subtab-upcoming">Upcoming</TabsTrigger>
                           <TabsTrigger value="history" data-testid="my-sessions-regular-subtab-history">History</TabsTrigger>
                         </TabsList>
-                        <TabsContent value="upcoming" className="mt-6">
+                        <TabsContent value="upcoming" className="mt-2">
                           <MySessionsSection isOwnProfile={isOwnProfile} isAuthenticated={isAuthenticated} excludeTypes={TOURNAMENT_TYPES} timeframe="upcoming" />
                         </TabsContent>
-                        <TabsContent value="history" className="mt-6">
+                        <TabsContent value="history" className="mt-2">
                           <MySessionsSection isOwnProfile={isOwnProfile} isAuthenticated={isAuthenticated} excludeTypes={TOURNAMENT_TYPES} timeframe="past" />
                         </TabsContent>
                       </Tabs>
                     </TabsContent>
 
-                    <TabsContent value="tournament" className="mt-6">
+                    <TabsContent value="tournament" className="mt-2">
                       <Tabs defaultValue="upcoming">
                         <TabsList>
                           <TabsTrigger value="upcoming" data-testid="my-sessions-subtab-upcoming">Upcoming</TabsTrigger>
                           <TabsTrigger value="history" data-testid="my-sessions-subtab-history">History</TabsTrigger>
                         </TabsList>
-                        <TabsContent value="upcoming" className="mt-6">
+                        <TabsContent value="upcoming" className="mt-2">
                           <MySessionsSection isOwnProfile={isOwnProfile} isAuthenticated={isAuthenticated} sessionTypes={TOURNAMENT_TYPES} timeframe="upcoming" />
                         </TabsContent>
-                        <TabsContent value="history" className="mt-6">
+                        <TabsContent value="history" className="mt-2">
                           <MySessionsSection isOwnProfile={isOwnProfile} isAuthenticated={isAuthenticated} sessionTypes={TOURNAMENT_TYPES} timeframe="past" />
                         </TabsContent>
                       </Tabs>
@@ -1471,122 +1757,16 @@ export default function PlayerProfile() {
                   </div>
                 </TabsContent>
                 )}
-
-                {!isOwnProfile && (
-                  <TabsContent value="contact" className="space-y-8" data-testid="contact-tab-content">
-                    {!isAuthenticated ? (
-                      <Card data-testid="player-contact-signed-out">
-                        <CardContent className="py-10 text-center space-y-3">
-                          <p className="text-muted-foreground">Sign in to see contact details and send a message.</p>
-                          <Button asChild size="sm" data-testid="player-contact-sign-in">
-                            <a href={`/auth?returnTo=${encodeURIComponent(`/player/${profileSlug}?tab=contact`)}`}>
-                              <LogIn className="w-4 h-4 mr-2" />
-                              Sign In
-                            </a>
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    ) : (
-                      <Card>
-                        <CardHeader>
-                          <CardTitle asChild className="flex items-center gap-2">
-                            <h2>
-                              <MessageCircle className="w-5 h-5 text-primary" />
-                              Get in Touch
-                            </h2>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="flex items-center gap-3 p-4 rounded-lg bg-primary/5 border border-primary/10">
-                              <div className="w-10 h-10 rounded-full bg-card flex items-center justify-center text-primary shadow-sm">
-                                <Phone className="w-5 h-5" />
-                              </div>
-                              <div>
-                                <p className="text-sm text-muted-foreground">Phone Number</p>
-                                {showPlayerPhone ? (
-                                  <p className="font-bold text-lg">{profile.phone || "No phone listed"}</p>
-                                ) : (
-                                  <Button
-                                    variant="link"
-                                    className="font-bold text-lg p-0 h-auto text-primary"
-                                    onClick={() => setShowPlayerPhone(true)}
-                                    disabled={!profile.phone}
-                                  >
-                                    {profile.phone ? "Show Number" : "No Phone Listed"}
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3 p-4 rounded-lg bg-primary/5 border border-primary/10">
-                              <div className="w-10 h-10 rounded-full bg-card flex items-center justify-center text-primary shadow-sm">
-                                <Mail className="w-5 h-5" />
-                              </div>
-                              <div>
-                                <p className="text-sm text-muted-foreground">Email Address</p>
-                                {showPlayerEmail ? (
-                                  <p className="font-bold text-lg">{profile.email || "No email listed"}</p>
-                                ) : (
-                                  <Button
-                                    variant="link"
-                                    className="font-bold text-lg p-0 h-auto text-primary"
-                                    onClick={() => setShowPlayerEmail(true)}
-                                    disabled={!profile.email}
-                                  >
-                                    {profile.email ? "Show Email" : "No Email Listed"}
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="space-y-4 pt-4 border-t">
-                            <h3 className="font-bold text-lg">Send a Message</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <Label>Subject *</Label>
-                                <Input
-                                  data-testid="input-contact-subject"
-                                  placeholder="Let's play tennis"
-                                  value={contactSubject}
-                                  onChange={(e) => setContactSubject(e.target.value)}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Phone (optional)</Label>
-                                <Input
-                                  data-testid="input-contact-phone"
-                                  placeholder="+61 4XX XXX XXX"
-                                  value={contactPhone}
-                                  onChange={(e) => setContactPhone(e.target.value)}
-                                />
-                              </div>
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Message</Label>
-                              <Textarea
-                                data-testid="textarea-contact-message"
-                                placeholder="Hi, would you like to play a match sometime..."
-                                className="min-h-[120px]"
-                                value={contactMessage}
-                                onChange={(e) => setContactMessage(e.target.value)}
-                              />
-                            </div>
-                            <Button
-                              data-testid="button-send-contact-message"
-                              onClick={handleContactSubmit}
-                              disabled={isSending || !contactSubject.trim() || !contactMessage.trim()}
-                            >
-                              <Send className="w-4 h-4 mr-2" />
-                              {isSending ? "Sending..." : "Send Message"}
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-                  </TabsContent>
-                )}
               </Tabs>
+              )}
+
+              {!isOwnProfile && playerUserId && (
+                <QuickMessageModal
+                  open={messageModalOpen}
+                  onOpenChange={setMessageModalOpen}
+                  recipient={{ id: playerUserId, name: profile.name, type: "player" }}
+                  defaultMessage={messageModalDefaultText}
+                />
               )}
             </div>
             </main>

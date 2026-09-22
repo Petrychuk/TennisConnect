@@ -4,12 +4,14 @@ import { requireAuth } from "../requireAuth";
 import { storage } from "../storage";
 import { insertTournamentHistorySchema } from "@shared/schema";
 import * as imageService from "../services/tournamentHistoryImages";
+import { multerImageFileFilter } from "../lib/imageValidation";
 
 const router = Router();
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: multerImageFileFilter,
 });
 
 /* =========================

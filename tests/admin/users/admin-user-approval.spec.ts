@@ -25,7 +25,7 @@ test('ADMIN-001 New User Queue - Approve Pending Player', async ({ page }) => {
   // ---------- Open page ----------
 
   await page.goto('/admin');
-  await page.getByTestId('admin-tab-users').click();
+  await page.getByTestId('organiser-sidebar-nav-admin-users').click();
 
   const row = page.locator('tr', {
     has: page.getByText(player.email, { exact: true }),

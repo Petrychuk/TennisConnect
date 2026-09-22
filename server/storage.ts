@@ -8,6 +8,33 @@ import {
   clubFollows,
   clubFavorites,
   messages,
+  sessionUpdates,
+  type SessionUpdate,
+  type InsertSessionUpdate,
+  sessionTemplates,
+  type SessionTemplate,
+  type InsertSessionTemplate,
+  seasons,
+  type Season,
+  type InsertSeason,
+  series,
+  type Series,
+  type InsertSeries,
+  type SeriesStandingRow,
+  type SeriesSessionResultRow,
+  type PlayerFormEntry,
+  type ReportsPeriod,
+  type ReportsData,
+  type ReportsEmptyReason,
+  type ReportsKPIs,
+  type ReportsComparison,
+  type ParticipationPoint,
+  type SeriesPerformanceRow,
+  type SessionPerformanceRow,
+  type PlayerActivityRow,
+  type PublicSessionStatus,
+  type PublicSessionCard,
+  type PublicSessionDetails,
   passwordResetTokens,
   emailVerificationTokens,
   supportRequests,
@@ -61,7 +88,7 @@ import {
   type LeaderboardRow,
   type ActivityFeedItem,
 } from "@shared/schema";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { eq, desc, and, or, asc, sql, lte, ne, gte, ilike, inArray, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { supabaseAdmin } from "./supabaseAdmin";
@@ -129,6 +156,9 @@ export interface IStorage {
   ): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User>;
   updateUserPassword(id: string, hashedPassword: string): Promise<void>;
+  invalidateUserSessions(userId: string): Promise<void>;
+  recordFailedLogin(userId: string): Promise<{ locked: boolean; lockedUntil?: Date }>;
+  resetFailedLogins(userId: string): Promise<void>;
   getUserBySlug(slug: string): Promise<User | undefined>;
   deleteUserAccount(userId: string): Promise<void>;
   deleteUserAccounts(userIds: string[]): Promise<{ deleted: string[]; failed: { id: string; message: string }[] }>;
@@ -145,6 +175,8 @@ export interface IStorage {
   
   // Player Profiles
   getPlayerProfile(userId: string): Promise<PlayerProfile | undefined>;
+  addPlayerProfilePhoto(userId: string, photoUrl: string): Promise<PlayerProfile>;
+  removePlayerProfilePhoto(userId: string, photoUrl: string): Promise<PlayerProfile>;
   getAllPlayers(): Promise<
       {
         user: typeof users.$inferSelect;
@@ -171,9 +203,9 @@ export interface IStorage {
   getAllMarketplaceItems(): Promise<MarketplaceItem[]>;
   getUserMarketplaceItems(userId: string): Promise<MarketplaceItem[]>;
   createMarketplaceItem(item: InsertMarketplaceItem): Promise<MarketplaceItem>;
-  deleteMarketplaceItem(id: string): Promise<void>;
-  addMarketplacePhoto(itemId: string, photoUrl: string): Promise<MarketplaceItem>;
-  removeMarketplacePhoto(itemId: string, photoUrl: string): Promise<MarketplaceItem>;
+  deleteMarketplaceItem(id: string, userId: string): Promise<void>;
+  addMarketplacePhoto(itemId: string, userId: string, photoUrl: string): Promise<MarketplaceItem>;
+  removeMarketplacePhoto(itemId: string, userId: string, photoUrl: string): Promise<MarketplaceItem>;
   
   // Clubs
   getAllClubs(): Promise<Club[]>;
@@ -219,6 +251,90 @@ export interface IStorage {
   markMessageAsRead(id: string): Promise<Message>;
   markConversationAsRead(conversationId: string, recipientId: string): Promise<void>;
   getConversationMessages(conversationId: string): Promise<MessageWithAvatar[]>;
+  createSessionUpdate(update: InsertSessionUpdate): Promise<SessionUpdate>;
+  getSessionUpdates(sessionId: string): Promise<SessionUpdate[]>;
+  createSessionTemplate(template: InsertSessionTemplate): Promise<SessionTemplate>;
+  getSessionTemplatesForOrganization(organizationId: string): Promise<SessionTemplate[]>;
+  getSessionTemplateById(id: string): Promise<SessionTemplate | undefined>;
+  updateSessionTemplate(id: string, updates: Partial<InsertSessionTemplate>): Promise<SessionTemplate>;
+  deleteSessionTemplate(id: string): Promise<void>;
+  createSeason(season: InsertSeason): Promise<Season>;
+  getSeasonsForOrganization(organizationId: string): Promise<Array<Season & { sessionsCount: number; playersCount: number }>>;
+  getSeasonById(id: string): Promise<Season | undefined>;
+  getSeasonWithCounts(id: string): Promise<(Season & { sessionsCount: number; playersCount: number }) | undefined>;
+  updateSeason(id: string, updates: Partial<InsertSeason>): Promise<Season>;
+  archiveSeason(id: string): Promise<Season>;
+  deleteSeason(id: string): Promise<void>;
+  addSessionsToSeason(seasonId: string, sessionIds: string[]): Promise<void>;
+  removeSessionFromSeason(sessionId: string): Promise<void>;
+
+  // ===== SERIES & RANKINGS =====
+  createSeries(input: InsertSeries): Promise<Series>;
+  getSeriesForSeason(seasonId: string): Promise<Array<Series & { sessionsCount: number; playersCount: number }>>;
+  getSeriesById(id: string): Promise<Series | undefined>;
+  updateSeries(id: string, updates: Partial<InsertSeries>): Promise<Series>;
+  deleteSeries(id: string): Promise<void>;
+  addSessionsToSeries(seriesId: string, sessionIds: string[]): Promise<void>;
+  removeSessionFromSeries(sessionId: string): Promise<void>;
+  getSessionsForSeries(seriesId: string): Promise<Array<TennisSession & { playersCount: number; roundsCount: number }>>;
+  getSeriesStandings(seriesId: string): Promise<SeriesStandingRow[]>;
+  getSeriesSessionResults(seriesId: string, sessionId: string): Promise<SeriesSessionResultRow[]>;
+  getPlayerRecentForm(seriesId: string, userId: string, limit?: number): Promise<PlayerFormEntry[]>;
+
+  // ===== REPORTS =====
+  getReportsData(
+    organizationId: string,
+    params: { period: ReportsPeriod; seasonId?: string; seriesId?: string; from?: string; to?: string }
+  ): Promise<ReportsData>;
+
+  // ===== PLAY (public discovery) =====
+  getPublicSessions(filters: {
+    search?: string;
+    location?: string;
+    format?: string;
+    level?: string;
+    organizationId?: string;
+    dateFrom?: Date;
+    dateTo?: Date;
+  }): Promise<PublicSessionCard[]>;
+  getPublicSessionById(id: string, viewerUserId?: string): Promise<PublicSessionDetails | undefined>;
+  getRegistrationForUser(sessionId: string, userId: string): Promise<Registration | undefined>;
+
+  // ===== TEST-ONLY SEEDING =====
+  // Every method here is called from exactly one place:
+  // server/routes/testHooks.ts, itself gated by testHooksAllowed() (dev
+  // /staging only, 404s in production). They exist because building a
+  // "completed session with confirmed match results" through the real
+  // multi-step flow (create -> admin review -> publish -> check-in ->
+  // TC Live round generation -> score entry -> confirm -> complete) in
+  // every Rankings/Reports E2E test would make the suite slow and
+  // flaky for no extra coverage - the thing those tests actually verify
+  // is what Rankings/Reports DO with confirmed data, not whether TC
+  // Live's own flow works (that's covered separately). Never call these
+  // from a real user-facing route.
+  testSeedSession(input: {
+    organizationId: string;
+    createdBy: string;
+    title: string;
+    startAt: Date;
+    status: string;
+    seasonId?: string;
+    seriesId?: string;
+    type?: string;
+    maxParticipants?: number;
+    waitingListEnabled?: boolean;
+  }): Promise<TennisSession>;
+  testSeedRegistration(sessionId: string, userId: string, checkedIn: boolean): Promise<{ id: string }>;
+  testSeedSessionRound(sessionId: string, roundNumber: number): Promise<{ id: string }>;
+  testSeedMatch(
+    sessionId: string,
+    roundId: string,
+    teamAIds: string[],
+    teamBIds: string[],
+    teamAGames: number,
+    teamBGames: number
+  ): Promise<{ id: string }>;
+
   getUserConversations(userId: string): Promise<MessageWithAvatar[]>;
   findConversationBetweenUsers(userA: string, userB: string): Promise<MessageWithAvatar | undefined>;
   updateMessageConversation(messageId: string, conversationId: string): Promise<void>;
@@ -287,7 +403,7 @@ export interface IStorage {
  getSessionByIdWithDetails(id: string, viewerId?: string): Promise<SessionWithDetails | undefined>;
  getSessionDivisions(parentSessionId: string): Promise<SessionWithDetails[]>;
  createSessionDivision(baseSession: TennisSession, createdBy: string, overrides: Partial<InsertSession> & { title: string }): Promise<TennisSession>;
-  getSessionsByOrganization(organizationId: string): Promise<TennisSession[]>;
+  getSessionsByOrganization(organizationId: string): Promise<SessionWithDetails[]>;
   getUpcomingPublishedSessionsByOrganization(organizationId: string): Promise<SessionWithDetails[]>;
   getSessionsThisWeek(): Promise<SessionWithDetails[]>;
   getSessionsUserRegisteredFor(userId: string): Promise<SessionWithDetails[]>;
@@ -398,6 +514,52 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({ password: hashedPassword })
       .where(eq(users.id, id));
+  }
+
+  // Sessions live in their own table managed entirely by
+  // connect-pg-simple (server/auth.ts's PgStore), not part of the
+  // Drizzle schema - passport.serializeUser stores just the bare user
+  // id, so each row's sess.passport.user is exactly that id. Called
+  // after a password reset (and anywhere else a session-worthy
+  // security event happens in the future, e.g. a future "change
+  // password while logged in" route) so a session an attacker already
+  // had open can't keep working after the real owner takes their
+  // account back.
+  async invalidateUserSessions(userId: string): Promise<void> {
+    await pool.query(
+      `DELETE FROM user_sessions WHERE sess::jsonb -> 'passport' ->> 'user' = $1`,
+      [userId]
+    );
+  }
+
+  // Per-account lockout - a backstop against distributed brute force/
+  // credential stuffing that spreads guesses across many IPs against
+  // one account, which the login route's per-IP rate limiter alone
+  // never sees. 10 failed attempts locks the account for 15 minutes;
+  // any single successful login (resetFailedLogins, called from
+  // server/auth.ts's LocalStrategy) clears the count entirely.
+  private static readonly MAX_FAILED_LOGIN_ATTEMPTS = 10;
+  private static readonly LOCKOUT_DURATION_MS = 15 * 60 * 1000;
+
+  async recordFailedLogin(userId: string): Promise<{ locked: boolean; lockedUntil?: Date }> {
+    const [user] = await db
+      .select({ failedLoginAttempts: users.failedLoginAttempts })
+      .from(users)
+      .where(eq(users.id, userId));
+    const attempts = (user?.failedLoginAttempts ?? 0) + 1;
+
+    if (attempts >= DatabaseStorage.MAX_FAILED_LOGIN_ATTEMPTS) {
+      const lockedUntil = new Date(Date.now() + DatabaseStorage.LOCKOUT_DURATION_MS);
+      await db.update(users).set({ failedLoginAttempts: 0, lockedUntil }).where(eq(users.id, userId));
+      return { locked: true, lockedUntil };
+    }
+
+    await db.update(users).set({ failedLoginAttempts: attempts }).where(eq(users.id, userId));
+    return { locked: false };
+  }
+
+  async resetFailedLogins(userId: string): Promise<void> {
+    await db.update(users).set({ failedLoginAttempts: 0, lockedUntil: null }).where(eq(users.id, userId));
   }
 
   // Batched version of deleteUserAccount() below - the same cleanup,
@@ -670,6 +832,42 @@ export class DatabaseStorage implements IStorage {
     return profile;
   }
 
+  // Player profile gallery (distinct from the single avatar/cover) - up
+  // to 8 photos, max enforced here so a request can't silently grow the
+  // array without bound. Always scoped by userId, never a bare photo/
+  // profile id, so there's no IDOR surface here at all - a caller can
+  // only ever touch their OWN player_profiles row.
+  async addPlayerProfilePhoto(userId: string, photoUrl: string): Promise<PlayerProfile> {
+    const profile = await this.getPlayerProfile(userId);
+    if (!profile) throw new Error("Player profile not found");
+
+    const current = profile.photos ?? [];
+    if (current.length >= 8) {
+      throw new Error("Maximum 8 photos allowed");
+    }
+
+    const [updated] = await db
+      .update(playerProfiles)
+      .set({ photos: [...current, photoUrl] })
+      .where(eq(playerProfiles.userId, userId))
+      .returning();
+
+    return updated;
+  }
+
+  async removePlayerProfilePhoto(userId: string, photoUrl: string): Promise<PlayerProfile> {
+    const profile = await this.getPlayerProfile(userId);
+    if (!profile) throw new Error("Player profile not found");
+
+    const [updated] = await db
+      .update(playerProfiles)
+      .set({ photos: (profile.photos ?? []).filter((p) => p !== photoUrl) })
+      .where(eq(playerProfiles.userId, userId))
+      .returning();
+
+    return updated;
+  }
+
   async getAllPlayers(): Promise<
       {
         user: typeof users.$inferSelect;
@@ -703,6 +901,9 @@ export class DatabaseStorage implements IStorage {
         ...profile,
         isDraft: true,
         preferredCourts: profile.preferredCourts as string[] | undefined,
+        lookingFor: profile.lookingFor as string[] | undefined,
+        availability: profile.availability as string[] | undefined,
+        photos: profile.photos as string[] | undefined,
       })
       .returning();
 
@@ -1012,25 +1213,53 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(marketplaceItems.createdAt));
   }
 
-  async updateMarketplaceItem(id: string, updates: any) {
+  async updateMarketplaceItem(
+    id: string,
+    userId: string,
+    updates: Partial<Pick<MarketplaceItem, "title" | "price" | "condition" | "photos" | "location" | "description" | "type" | "sellerName" | "sellerEmail" | "isActive">>
+  ) {
+    // Explicit allowlist, not a spread of the raw request body - id/
+    // userId/createdAt must never be settable this way (userId
+    // especially: accepting it here would let anyone re-assign someone
+    // else's listing to themselves).
+    const safeUpdates: typeof updates = {};
+    if (updates.title !== undefined) safeUpdates.title = updates.title;
+    if (updates.price !== undefined) safeUpdates.price = updates.price;
+    if (updates.condition !== undefined) safeUpdates.condition = updates.condition;
+    if (updates.photos !== undefined) safeUpdates.photos = updates.photos;
+    if (updates.location !== undefined) safeUpdates.location = updates.location;
+    if (updates.description !== undefined) safeUpdates.description = updates.description;
+    if (updates.type !== undefined) safeUpdates.type = updates.type;
+    if (updates.sellerName !== undefined) safeUpdates.sellerName = updates.sellerName;
+    if (updates.sellerEmail !== undefined) safeUpdates.sellerEmail = updates.sellerEmail;
+    if (updates.isActive !== undefined) safeUpdates.isActive = updates.isActive;
+
     const [item] = await db
       .update(marketplaceItems)
-      .set(updates)
-      .where(eq(marketplaceItems.id, id))
+      .set(safeUpdates)
+      .where(and(eq(marketplaceItems.id, id), eq(marketplaceItems.userId, userId)))
       .returning();
+
+    if (!item) {
+      throw new Error("Item not found or access denied");
+    }
 
     return item;
   }
  
-  async deleteMarketplaceItem(id: string): Promise<void> {
-    await db
+  async deleteMarketplaceItem(id: string, userId: string): Promise<void> {
+    const [deleted] = await db
       .delete(marketplaceItems)
-      .where(eq(marketplaceItems.id, id));
+      .where(and(eq(marketplaceItems.id, id), eq(marketplaceItems.userId, userId)))
+      .returning();
+    if (!deleted) {
+      throw new Error("Item not found or access denied");
+    }
   }
 
-  async addMarketplacePhoto(itemId: string, photoUrl: string) {
+  async addMarketplacePhoto(itemId: string, userId: string, photoUrl: string) {
     const item = await this.getMarketplaceItemById(itemId);
-    if (!item) throw new Error("Item not found");
+    if (!item || item.userId !== userId) throw new Error("Item not found or access denied");
 
     const updatedPhotos = [...(item.photos || []), photoUrl];
 
@@ -1043,9 +1272,9 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async removeMarketplacePhoto(itemId: string, photoUrl: string) {
+  async removeMarketplacePhoto(itemId: string, userId: string, photoUrl: string) {
   const item = await this.getMarketplaceItemById(itemId);
-  if (!item) throw new Error("Item not found");
+  if (!item || item.userId !== userId) throw new Error("Item not found or access denied");
 
   const updatedPhotos = (item.photos || []).filter(
     (photo: string) => photo !== photoUrl
@@ -1904,16 +2133,940 @@ export class DatabaseStorage implements IStorage {
         actionStatus: messages.actionStatus,
   
         senderAvatar: users.avatar,
+        relatedSessionStartAt: tennisSessions.startAt,
       })
       .from(messages)
       .leftJoin(
         users,
         eq(messages.senderUserId, users.id)
       )
+      .leftJoin(
+        tennisSessions,
+        eq(messages.relatedSessionId, tennisSessions.id)
+      )
       .where(
         eq(messages.conversationId, conversationId)
       )
       .orderBy(asc(messages.createdAt));
+  }
+
+  async createSessionUpdate(update: InsertSessionUpdate): Promise<SessionUpdate> {
+    const [row] = await db.insert(sessionUpdates).values(update).returning();
+    return row;
+  }
+
+  async getSessionUpdates(sessionId: string): Promise<SessionUpdate[]> {
+    return db
+      .select()
+      .from(sessionUpdates)
+      .where(eq(sessionUpdates.sessionId, sessionId))
+      .orderBy(desc(sessionUpdates.createdAt));
+  }
+
+  async createSessionTemplate(template: InsertSessionTemplate): Promise<SessionTemplate> {
+    const [row] = await db.insert(sessionTemplates).values(template).returning();
+    return row;
+  }
+
+  async getSessionTemplatesForOrganization(organizationId: string): Promise<SessionTemplate[]> {
+    return db
+      .select()
+      .from(sessionTemplates)
+      .where(eq(sessionTemplates.organizationId, organizationId))
+      .orderBy(desc(sessionTemplates.createdAt));
+  }
+
+  async getSessionTemplateById(id: string): Promise<SessionTemplate | undefined> {
+    const [row] = await db.select().from(sessionTemplates).where(eq(sessionTemplates.id, id));
+    return row;
+  }
+
+  // Deliberately no sessionId/templateId link stored anywhere (see the
+  // table's own comment) - editing a template can never reach back and
+  // change a session already created from it, because nothing connects
+  // them once that session exists.
+  async updateSessionTemplate(id: string, updates: Partial<InsertSessionTemplate>): Promise<SessionTemplate> {
+    const [row] = await db
+      .update(sessionTemplates)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(sessionTemplates.id, id))
+      .returning();
+    return row;
+  }
+
+  // Deleting a template only ever removes the row here - there is no
+  // foreign key anywhere pointing FROM a real session back TO a
+  // template, so this can never cascade into deleting or orphaning any
+  // session that was created from it.
+  async deleteSessionTemplate(id: string): Promise<void> {
+    await db.delete(sessionTemplates).where(eq(sessionTemplates.id, id));
+  }
+
+  async createSeason(season: InsertSeason): Promise<Season> {
+    const [row] = await db.insert(seasons).values(season).returning();
+    return row;
+  }
+
+  // sessionsCount/playersCount are computed here rather than stored -
+  // both change every time a session is added/removed or someone
+  // registers, so a stored count would need updating from several
+  // unrelated code paths and could drift. playersCount is unique
+  // players across every session in the season (a player who played
+  // all 10 weeks still counts once), matching the spec's own explicit
+  // definition.
+  async getSeasonsForOrganization(organizationId: string): Promise<Array<Season & { sessionsCount: number; playersCount: number }>> {
+    const rows = await db
+      .select()
+      .from(seasons)
+      .where(and(eq(seasons.organizationId, organizationId), isNull(seasons.archivedAt)))
+      .orderBy(desc(seasons.startDate));
+
+    if (rows.length === 0) return [];
+    const seasonIds = rows.map((r) => r.id);
+
+    const sessionCountRows = await db
+      .select({ seasonId: tennisSessions.seasonId, count: sql<number>`count(*)` })
+      .from(tennisSessions)
+      .where(inArray(tennisSessions.seasonId, seasonIds))
+      .groupBy(tennisSessions.seasonId);
+    const sessionsCountBySeason = new Map(sessionCountRows.map((r) => [r.seasonId as string, Number(r.count)]));
+
+    const playerCountRows = await db
+      .select({ seasonId: tennisSessions.seasonId, count: sql<number>`count(distinct ${registrations.userId})` })
+      .from(registrations)
+      .innerJoin(tennisSessions, eq(registrations.sessionId, tennisSessions.id))
+      .where(and(inArray(tennisSessions.seasonId, seasonIds), ne(registrations.status, "cancelled")))
+      .groupBy(tennisSessions.seasonId);
+    const playersCountBySeason = new Map(playerCountRows.map((r) => [r.seasonId as string, Number(r.count)]));
+
+    return rows.map((row) => ({
+      ...row,
+      sessionsCount: sessionsCountBySeason.get(row.id) ?? 0,
+      playersCount: playersCountBySeason.get(row.id) ?? 0,
+    }));
+  }
+
+  async getSeasonById(id: string): Promise<Season | undefined> {
+    const [row] = await db.select().from(seasons).where(eq(seasons.id, id));
+    return row;
+  }
+
+  // Same counts as getSeasonsForOrganization computes, but for exactly
+  // one season and without its isNull(archivedAt) filter - an archived
+  // season should still show its real sessionsCount/playersCount on
+  // its own Season Details page, even though it's hidden from the
+  // main Seasons list.
+  async getSeasonWithCounts(id: string): Promise<(Season & { sessionsCount: number; playersCount: number }) | undefined> {
+    const season = await this.getSeasonById(id);
+    if (!season) return undefined;
+
+    const [sessionCountRow] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(tennisSessions)
+      .where(eq(tennisSessions.seasonId, id));
+
+    const [playerCountRow] = await db
+      .select({ count: sql<number>`count(distinct ${registrations.userId})` })
+      .from(registrations)
+      .innerJoin(tennisSessions, eq(registrations.sessionId, tennisSessions.id))
+      .where(and(eq(tennisSessions.seasonId, id), ne(registrations.status, "cancelled")));
+
+    return {
+      ...season,
+      sessionsCount: Number(sessionCountRow?.count ?? 0),
+      playersCount: Number(playerCountRow?.count ?? 0),
+    };
+  }
+
+  async updateSeason(id: string, updates: Partial<InsertSeason>): Promise<Season> {
+    const [row] = await db
+      .update(seasons)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(seasons.id, id))
+      .returning();
+    return row;
+  }
+
+  // Hides the season from getSeasonsForOrganization's own query (see
+  // its isNull(archivedAt) filter) without ever touching a single row
+  // in sessions, registrations, or match scores - archiving is purely
+  // a flag on the season itself.
+  async archiveSeason(id: string): Promise<Season> {
+    const [row] = await db
+      .update(seasons)
+      .set({ archivedAt: new Date(), updatedAt: new Date() })
+      .where(eq(seasons.id, id))
+      .returning();
+    return row;
+  }
+
+  // Only meant to be called for a season with zero sessions (the
+  // route enforces this) - a season that already has real history
+  // should be archived instead, never deleted, per the spec.
+  async deleteSeason(id: string): Promise<void> {
+    await db.delete(seasons).where(eq(seasons.id, id));
+  }
+
+  async addSessionsToSeason(seasonId: string, sessionIds: string[]): Promise<void> {
+    if (sessionIds.length === 0) return;
+    await db
+      .update(tennisSessions)
+      .set({ seasonId, updatedAt: new Date() })
+      .where(inArray(tennisSessions.id, sessionIds));
+  }
+
+  // Only ever nulls out the one column - the session itself, its
+  // registrations, and any scores/results are completely untouched.
+  async removeSessionFromSeason(sessionId: string): Promise<void> {
+    await db
+      .update(tennisSessions)
+      .set({ seasonId: null, updatedAt: new Date() })
+      .where(eq(tennisSessions.id, sessionId));
+  }
+
+  async createSeries(input: InsertSeries): Promise<Series> {
+    const [row] = await db.insert(series).values(input).returning();
+    return row;
+  }
+
+  // Same shape/reasoning as getSeasonsForOrganization's own counts -
+  // computed on demand rather than stored, so they can never drift.
+  async getSeriesForSeason(seasonId: string): Promise<Array<Series & { sessionsCount: number; playersCount: number }>> {
+    const rows = await db
+      .select()
+      .from(series)
+      .where(and(eq(series.seasonId, seasonId), isNull(series.archivedAt)))
+      .orderBy(desc(series.createdAt));
+
+    if (rows.length === 0) return [];
+    const seriesIds = rows.map((r) => r.id);
+
+    const sessionCountRows = await db
+      .select({ seriesId: tennisSessions.seriesId, count: sql<number>`count(*)` })
+      .from(tennisSessions)
+      .where(inArray(tennisSessions.seriesId, seriesIds))
+      .groupBy(tennisSessions.seriesId);
+    const sessionsCountBySeries = new Map(sessionCountRows.map((r) => [r.seriesId as string, Number(r.count)]));
+
+    const playerCountRows = await db
+      .select({ seriesId: tennisSessions.seriesId, count: sql<number>`count(distinct ${registrations.userId})` })
+      .from(registrations)
+      .innerJoin(tennisSessions, eq(registrations.sessionId, tennisSessions.id))
+      .where(and(inArray(tennisSessions.seriesId, seriesIds), ne(registrations.status, "cancelled")))
+      .groupBy(tennisSessions.seriesId);
+    const playersCountBySeries = new Map(playerCountRows.map((r) => [r.seriesId as string, Number(r.count)]));
+
+    return rows.map((row) => ({
+      ...row,
+      sessionsCount: sessionsCountBySeries.get(row.id) ?? 0,
+      playersCount: playersCountBySeries.get(row.id) ?? 0,
+    }));
+  }
+
+  async getSeriesById(id: string): Promise<Series | undefined> {
+    const [row] = await db.select().from(series).where(eq(series.id, id));
+    return row;
+  }
+
+  async updateSeries(id: string, updates: Partial<InsertSeries>): Promise<Series> {
+    const [row] = await db
+      .update(series)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(series.id, id))
+      .returning();
+    return row;
+  }
+
+  // Only meant to be called for a series with zero sessions (the route
+  // enforces this) - one with real history should stay (or be
+  // archived) rather than deleted, same rule as deleteSeason.
+  async deleteSeries(id: string): Promise<void> {
+    await db.delete(series).where(eq(series.id, id));
+  }
+
+  async addSessionsToSeries(seriesId: string, sessionIds: string[]): Promise<void> {
+    if (sessionIds.length === 0) return;
+    await db
+      .update(tennisSessions)
+      .set({ seriesId, updatedAt: new Date() })
+      .where(inArray(tennisSessions.id, sessionIds));
+  }
+
+  // Only ever nulls out the one column (which is exactly "No Ranking"
+  // for this session, see the schema's own comment) - the session
+  // itself, its registrations, and any scores/results are untouched.
+  async removeSessionFromSeries(sessionId: string): Promise<void> {
+    await db
+      .update(tennisSessions)
+      .set({ seriesId: null, updatedAt: new Date() })
+      .where(eq(tennisSessions.id, sessionId));
+  }
+
+  async getSessionsForSeries(seriesId: string): Promise<Array<TennisSession & { playersCount: number; roundsCount: number }>> {
+    const rows = await db
+      .select()
+      .from(tennisSessions)
+      .where(eq(tennisSessions.seriesId, seriesId))
+      .orderBy(desc(tennisSessions.startAt));
+
+    if (rows.length === 0) return [];
+    const ids = rows.map((r) => r.id);
+
+    const playerCountRows = await db
+      .select({ sessionId: registrations.sessionId, count: sql<number>`count(*)` })
+      .from(registrations)
+      .where(and(inArray(registrations.sessionId, ids), ne(registrations.status, "cancelled")))
+      .groupBy(registrations.sessionId);
+    const playersBySession = new Map(playerCountRows.map((r) => [r.sessionId, Number(r.count)]));
+
+    const roundCountRows = await db
+      .select({ sessionId: sessionRounds.sessionId, count: sql<number>`count(*)` })
+      .from(sessionRounds)
+      .where(inArray(sessionRounds.sessionId, ids))
+      .groupBy(sessionRounds.sessionId);
+    const roundsBySession = new Map(roundCountRows.map((r) => [r.sessionId, Number(r.count)]));
+
+    return rows.map((row) => ({
+      ...row,
+      playersCount: playersBySession.get(row.id) ?? 0,
+      roundsCount: roundsBySession.get(row.id) ?? 0,
+    }));
+  }
+
+  // Internal: every COMPLETED, ranked (seriesId set) Session in a
+  // Series, each with its own already-computed per-player leaderboard
+  // (confirmed matches only) - the one shared building block behind
+  // getSeriesStandings/getSeriesSessionResults/getPlayerRecentForm, so
+  // all three always agree on what "a completed ranked session" means
+  // and use the exact same points formula. Ordered oldest-first, since
+  // "the most recently completed session" (spec §10's Change column)
+  // is just this array's own last element.
+  private async getRankedSessionLeaderboards(seriesId: string) {
+    const sessions = await db
+      .select()
+      .from(tennisSessions)
+      .where(and(eq(tennisSessions.seriesId, seriesId), eq(tennisSessions.status, "completed")))
+      .orderBy(asc(tennisSessions.startAt));
+
+    return Promise.all(
+      sessions.map(async (session) => {
+        const [matchRows, registeredPlayers] = await Promise.all([
+          db.select().from(matches).where(eq(matches.sessionId, session.id)),
+          db
+            .select({ userId: registrations.userId })
+            .from(registrations)
+            .where(and(eq(registrations.sessionId, session.id), ne(registrations.status, "cancelled"))),
+        ]);
+        const entries = computeLeaderboard({
+          matches: matchRows.map((m) => ({
+            teamAIds: m.teamAIds ?? [],
+            teamBIds: m.teamBIds ?? [],
+            teamAGames: m.teamAGames,
+            teamBGames: m.teamBGames,
+            status: m.status,
+          })),
+          restCounts: {},
+          players: registeredPlayers.map((r) => ({ id: r.userId })),
+        });
+        return { session, entries };
+      })
+    );
+  }
+
+  private async joinUserNames<T extends { userId: string }>(rows: T[]): Promise<(T & { userName: string; userAvatar: string | null })[]> {
+    if (rows.length === 0) return [];
+    const userRows = await db
+      .select({ id: users.id, name: users.name, avatar: users.avatar })
+      .from(users)
+      .where(inArray(users.id, rows.map((r) => r.userId)));
+    const byId = new Map(userRows.map((u) => [u.id, u]));
+    return rows.map((r) => ({
+      ...r,
+      userName: byId.get(r.userId)?.name ?? "Unknown player",
+      userAvatar: byId.get(r.userId)?.avatar ?? null,
+    }));
+  }
+
+  private aggregateSessionPoints(sessionLeaderboards: Awaited<ReturnType<DatabaseStorage["getRankedSessionLeaderboards"]>>) {
+    const totals = new Map<string, { sessionsPlayed: number; wins: number; points: number }>();
+    for (const { entries } of sessionLeaderboards) {
+      for (const e of entries) {
+        const row = totals.get(e.userId) ?? { sessionsPlayed: 0, wins: 0, points: 0 };
+        row.sessionsPlayed += 1;
+        row.wins += e.wins;
+        row.points += e.points;
+        totals.set(e.userId, row);
+      }
+    }
+    return Array.from(totals.entries())
+      .map(([userId, t]) => ({ userId, ...t }))
+      .sort((a, b) => b.points - a.points || b.wins - a.wins);
+  }
+
+  // The accumulated Series Ranking (spec §10, "Season -> Series -> All
+  // Sessions"). "Change" compares this against the same ranking with
+  // just the most recently completed session excluded, rather than a
+  // stored history table that could drift out of sync with the real
+  // match data.
+  async getSeriesStandings(seriesId: string): Promise<SeriesStandingRow[]> {
+    const sessionLeaderboards = await this.getRankedSessionLeaderboards(seriesId);
+    if (sessionLeaderboards.length === 0) return [];
+
+    const fullRanked = this.aggregateSessionPoints(sessionLeaderboards);
+    const currentPositions = new Map(fullRanked.map((r, i) => [r.userId, i + 1]));
+
+    const previousRanked = this.aggregateSessionPoints(sessionLeaderboards.slice(0, -1));
+    const previousPositions = new Map(previousRanked.map((r, i) => [r.userId, i + 1]));
+
+    const withNames = await this.joinUserNames(fullRanked);
+    return withNames.map((row) => {
+      const previousPos = previousPositions.get(row.userId);
+      const change = previousPos == null ? 0 : previousPos - currentPositions.get(row.userId)!;
+      return {
+        userId: row.userId,
+        userName: row.userName,
+        userAvatar: row.userAvatar,
+        sessionsPlayed: row.sessionsPlayed,
+        wins: row.wins,
+        points: row.points,
+        change,
+      };
+    });
+  }
+
+  // One Session's own results (spec §11) - never the accumulated
+  // Series total, even for the same player.
+  async getSeriesSessionResults(seriesId: string, sessionId: string): Promise<SeriesSessionResultRow[]> {
+    const sessionLeaderboards = await this.getRankedSessionLeaderboards(seriesId);
+    const match = sessionLeaderboards.find((r) => r.session.id === sessionId);
+    if (!match) return [];
+
+    const rows = match.entries
+      .map((e) => ({ userId: e.userId, matchesPlayed: e.matchesPlayed, wins: e.wins, points: e.points }))
+      .sort((a, b) => b.points - a.points || b.wins - a.wins);
+    return this.joinUserNames(rows);
+  }
+
+  // A player's most recent ranked sessions within this Series (spec
+  // §17's "Points Breakdown") - most recent first. Deliberately not
+  // reconciled against the player's season total (see the spec's own
+  // worked example, which lists 4 sessions that don't sum to the
+  // player's season total either) - this is "recent form", not a
+  // ledger.
+  async getPlayerRecentForm(seriesId: string, userId: string, limit = 5): Promise<PlayerFormEntry[]> {
+    const sessionLeaderboards = await this.getRankedSessionLeaderboards(seriesId);
+    const recent = sessionLeaderboards.slice(-limit).reverse();
+    return recent
+      .map(({ session, entries }): PlayerFormEntry | null => {
+        const sorted = [...entries].sort((a, b) => b.points - a.points || b.wins - a.wins);
+        const idx = sorted.findIndex((e) => e.userId === userId);
+        if (idx === -1) return null;
+        return {
+          sessionId: session.id,
+          date: session.startAt.toISOString(),
+          position: idx + 1,
+          points: sorted[idx].points,
+        };
+      })
+      .filter((r): r is PlayerFormEntry => r !== null);
+  }
+
+  // ===== REPORTS =====
+
+  private emptyReportsData(reason: ReportsEmptyReason): ReportsData {
+    return {
+      emptyReason: reason,
+      kpis: { uniquePlayers: 0, sessionsHeld: 0, attendanceRate: 0, returningPlayers: 0 },
+      comparison: { uniquePlayers: null, sessionsHeld: null, attendanceRate: null, returningPlayers: null },
+      participation: [],
+      seriesPerformance: [],
+      sessionPerformance: [],
+      playerActivity: [],
+    };
+  }
+
+  // "Returning" = came back and actually played more than once - based
+  // on ATTENDED sessions, not just registrations, since simply signing
+  // up twice isn't the retention signal an organiser cares about.
+  private computeReturningPct(regRows: { userId: string; checkedInAt: Date | null }[]): number {
+    const attendedCountByUser = new Map<string, number>();
+    for (const r of regRows) {
+      if (!r.checkedInAt) continue;
+      attendedCountByUser.set(r.userId, (attendedCountByUser.get(r.userId) ?? 0) + 1);
+    }
+    if (attendedCountByUser.size === 0) return 0;
+    const returning = Array.from(attendedCountByUser.values()).filter((c) => c >= 2).length;
+    return Math.round((returning / attendedCountByUser.size) * 100);
+  }
+
+  private computeReportsKPIs(sessionRows: TennisSession[], regRows: { userId: string; checkedInAt: Date | null }[]): ReportsKPIs {
+    const attended = regRows.filter((r) => r.checkedInAt).length;
+    return {
+      uniquePlayers: new Set(regRows.map((r) => r.userId)).size,
+      sessionsHeld: sessionRows.length,
+      attendanceRate: regRows.length ? Math.round((attended / regRows.length) * 100) : 0,
+      returningPlayers: this.computeReturningPct(regRows),
+    };
+  }
+
+  // Groups by calendar date (not session id) - two sessions on the same
+  // day, e.g. under different series with "All Series" selected,
+  // combine into a single chart point rather than overlapping.
+  private computeParticipationSeries(
+    sessionRows: TennisSession[],
+    regRows: { sessionId: string; checkedInAt: Date | null }[]
+  ): ParticipationPoint[] {
+    const dateBySession = new Map(sessionRows.map((s) => [s.id, s.startAt.toISOString().slice(0, 10)]));
+    const bucket = new Map<string, { registered: number; attended: number }>();
+    for (const r of regRows) {
+      const date = dateBySession.get(r.sessionId);
+      if (!date) continue;
+      const entry = bucket.get(date) ?? { registered: 0, attended: 0 };
+      entry.registered += 1;
+      if (r.checkedInAt) entry.attended += 1;
+      bucket.set(date, entry);
+    }
+    return Array.from(bucket.entries())
+      .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+      .map(([date, v]) => ({ date, ...v }));
+  }
+
+  private async computePlayerActivity(regRows: { userId: string; sessionId: string; checkedInAt: Date | null }[]): Promise<PlayerActivityRow[]> {
+    const byUser = new Map<string, { sessions: number; attended: number; lastPlayed: Date | null }>();
+    for (const r of regRows) {
+      const entry = byUser.get(r.userId) ?? { sessions: 0, attended: 0, lastPlayed: null };
+      entry.sessions += 1;
+      if (r.checkedInAt) {
+        entry.attended += 1;
+        if (!entry.lastPlayed || r.checkedInAt > entry.lastPlayed) entry.lastPlayed = r.checkedInAt;
+      }
+      byUser.set(r.userId, entry);
+    }
+    const userIds = Array.from(byUser.keys());
+    if (userIds.length === 0) return [];
+    const userRows = await db.select({ id: users.id, name: users.name, avatar: users.avatar, slug: users.slug }).from(users).where(inArray(users.id, userIds));
+    const userById = new Map(userRows.map((u) => [u.id, u]));
+    return userIds
+      .map((userId) => {
+        const stat = byUser.get(userId)!;
+        const user = userById.get(userId);
+        return {
+          userId,
+          userName: user?.name ?? "Unknown player",
+          userAvatar: user?.avatar ?? null,
+          userSlug: user?.slug ?? "",
+          sessions: stat.sessions,
+          attended: stat.attended,
+          attendanceRate: stat.sessions ? Math.round((stat.attended / stat.sessions) * 100) : 0,
+          lastPlayed: stat.lastPlayed ? stat.lastPlayed.toISOString() : null,
+        };
+      })
+      .sort((a, b) => b.sessions - a.sessions || b.attended - a.attended)
+      .slice(0, 10);
+  }
+
+  // Reports is deliberately built directly from Sessions/Registrations/
+  // check-ins (spec §12) rather than any duplicated, manually-maintained
+  // statistics table - the same "derive on demand" principle as
+  // getSessionLeaderboard/getSeriesStandings above.
+  async getReportsData(
+    organizationId: string,
+    params: { period: ReportsPeriod; seasonId?: string; seriesId?: string; from?: string; to?: string }
+  ): Promise<ReportsData> {
+    const { period, seasonId, seriesId, from: customFrom, to: customTo } = params;
+
+    const allSeasons = await db
+      .select()
+      .from(seasons)
+      .where(eq(seasons.organizationId, organizationId))
+      .orderBy(asc(seasons.startDate));
+    const selectedSeason = seasonId ? allSeasons.find((s) => s.id === seasonId) : undefined;
+
+    const seasonBefore = (season: typeof allSeasons[number] | undefined) => {
+      if (!season) return undefined;
+      const earlier = allSeasons.filter((s) => s.startDate < season.startDate);
+      return earlier[earlier.length - 1];
+    };
+
+    type Scope = { from: Date; to: Date; seasonIdFilter: string | null };
+    const toDateRange = (startDate: string, endDate: string): { from: Date; to: Date } => ({
+      from: new Date(`${startDate}T00:00:00Z`),
+      to: new Date(`${endDate}T23:59:59Z`),
+    });
+
+    let scope: Scope | undefined;
+    let previousScope: Scope | undefined;
+    const now = new Date();
+
+    if (period === "this_season") {
+      if (!selectedSeason) return this.emptyReportsData("no_org_data");
+      scope = { ...toDateRange(selectedSeason.startDate, selectedSeason.endDate), seasonIdFilter: selectedSeason.id };
+      const prev = seasonBefore(selectedSeason);
+      if (prev) previousScope = { ...toDateRange(prev.startDate, prev.endDate), seasonIdFilter: prev.id };
+    } else if (period === "previous_season") {
+      const prev = seasonBefore(selectedSeason);
+      if (!prev) return this.emptyReportsData(allSeasons.length === 0 ? "no_org_data" : "no_season_data");
+      scope = { ...toDateRange(prev.startDate, prev.endDate), seasonIdFilter: prev.id };
+      // No natural "period before the previous season" for MVP - the
+      // comparison indicator simply doesn't show for this period.
+    } else if (period === "last_30_days" || period === "last_3_months") {
+      const days = period === "last_30_days" ? 30 : 90;
+      const from = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+      scope = { from, to: now, seasonIdFilter: null };
+      const prevTo = new Date(from.getTime() - 1000);
+      const prevFrom = new Date(from.getTime() - days * 24 * 60 * 60 * 1000);
+      previousScope = { from: prevFrom, to: prevTo, seasonIdFilter: null };
+    } else {
+      if (!customFrom || !customTo) return this.emptyReportsData("no_org_data");
+      scope = { from: new Date(`${customFrom}T00:00:00Z`), to: new Date(`${customTo}T23:59:59Z`), seasonIdFilter: null };
+      // A custom range has no unambiguous "previous" range - skip the
+      // comparison rather than guess one.
+    }
+
+    const computeForScope = async (s: Scope) => {
+      const conditions = [
+        eq(tennisSessions.organizationId, organizationId),
+        eq(tennisSessions.status, "completed"),
+        gte(tennisSessions.startAt, s.from),
+        lte(tennisSessions.startAt, s.to),
+      ];
+      if (s.seasonIdFilter) conditions.push(eq(tennisSessions.seasonId, s.seasonIdFilter));
+      if (seriesId) conditions.push(eq(tennisSessions.seriesId, seriesId));
+
+      const sessionRows = await db.select().from(tennisSessions).where(and(...conditions)).orderBy(asc(tennisSessions.startAt));
+      if (sessionRows.length === 0) return { sessionRows, regRows: [] as (typeof registrations.$inferSelect)[] };
+
+      const sessionIds = sessionRows.map((r) => r.id);
+      const regRows = await db
+        .select()
+        .from(registrations)
+        .where(and(inArray(registrations.sessionId, sessionIds), ne(registrations.status, "cancelled")));
+      return { sessionRows, regRows };
+    };
+
+    const current = await computeForScope(scope);
+
+    if (current.sessionRows.length === 0) {
+      const [{ count: orgCompletedCount }] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(tennisSessions)
+        .where(and(eq(tennisSessions.organizationId, organizationId), eq(tennisSessions.status, "completed")));
+      if (Number(orgCompletedCount) === 0) return this.emptyReportsData("no_org_data");
+      return this.emptyReportsData(seriesId ? "no_series_data" : "no_season_data");
+    }
+
+    const kpis = this.computeReportsKPIs(current.sessionRows, current.regRows);
+
+    let comparison: ReportsComparison = { uniquePlayers: null, sessionsHeld: null, attendanceRate: null, returningPlayers: null };
+    if (previousScope) {
+      const prev = await computeForScope(previousScope);
+      if (prev.sessionRows.length > 0) {
+        const prevKpis = this.computeReportsKPIs(prev.sessionRows, prev.regRows);
+        const relChange = (curr: number, prevVal: number) => (prevVal === 0 ? null : Math.round(((curr - prevVal) / prevVal) * 100));
+        comparison = {
+          uniquePlayers: relChange(kpis.uniquePlayers, prevKpis.uniquePlayers),
+          sessionsHeld: relChange(kpis.sessionsHeld, prevKpis.sessionsHeld),
+          attendanceRate: Math.round(kpis.attendanceRate - prevKpis.attendanceRate),
+          returningPlayers: Math.round(kpis.returningPlayers - prevKpis.returningPlayers),
+        };
+      }
+    }
+
+    const participation = this.computeParticipationSeries(current.sessionRows, current.regRows);
+
+    let seriesPerformance: SeriesPerformanceRow[] = [];
+    let sessionPerformance: SessionPerformanceRow[] = [];
+
+    if (seriesId) {
+      sessionPerformance = current.sessionRows.map((session) => {
+        const regs = current.regRows.filter((r) => r.sessionId === session.id);
+        const registered = regs.length;
+        const attended = regs.filter((r) => r.checkedInAt).length;
+        return {
+          sessionId: session.id,
+          date: session.startAt.toISOString(),
+          registered,
+          attended,
+          attendanceRate: registered ? Math.round((attended / registered) * 100) : 0,
+        };
+      });
+    } else {
+      const seriesIds = Array.from(new Set(current.sessionRows.map((s) => s.seriesId).filter((id): id is string => !!id)));
+      if (seriesIds.length > 0) {
+        const seriesRows = await db.select().from(series).where(inArray(series.id, seriesIds));
+        const seriesById = new Map(seriesRows.map((s) => [s.id, s]));
+        seriesPerformance = seriesIds
+          .map((id) => {
+            const sessionsInSeries = current.sessionRows.filter((s) => s.seriesId === id);
+            const sessionIdsInSeries = new Set(sessionsInSeries.map((s) => s.id));
+            const regsInSeries = current.regRows.filter((r) => sessionIdsInSeries.has(r.sessionId));
+            const registered = regsInSeries.length;
+            const attended = regsInSeries.filter((r) => r.checkedInAt).length;
+            return {
+              seriesId: id,
+              seriesName: seriesById.get(id)?.name ?? "Unknown series",
+              sessions: sessionsInSeries.length,
+              avgPlayers: sessionsInSeries.length ? Math.round(registered / sessionsInSeries.length) : 0,
+              attendanceRate: registered ? Math.round((attended / registered) * 100) : 0,
+              returningPlayers: this.computeReturningPct(regsInSeries),
+            };
+          })
+          .sort((a, b) => b.sessions - a.sessions);
+      }
+    }
+
+    const playerActivity = await this.computePlayerActivity(current.regRows);
+
+    return { emptyReason: null, kpis, comparison, participation, seriesPerformance, sessionPerformance, playerActivity };
+  }
+
+  // ===== PLAY (public discovery) =====
+
+  // Player-facing status only (spec §8) - never the organiser's own
+  // draft/pending_review/rejected/cancelled/archived vocabulary, which
+  // is exactly why sessions in those statuses are filtered out before
+  // this ever runs (see getPublicSessions/getPublicSessionById below).
+  private computePublicStatus(
+    session: Pick<TennisSession, "status" | "registrationOpensAt" | "registrationClosesAt" | "maxParticipants" | "waitingListEnabled">,
+    registeredCount: number
+  ): PublicSessionStatus {
+    const now = new Date();
+    if (session.status === "live") return "live";
+    if (session.registrationOpensAt && session.registrationOpensAt > now) return "upcoming";
+    if (session.registrationClosesAt && session.registrationClosesAt < now) return "closed";
+    if (session.maxParticipants) {
+      const spotsLeft = session.maxParticipants - registeredCount;
+      if (spotsLeft <= 0) return session.waitingListEnabled ? "waitlist" : "full";
+      // "Almost Full" once fewer than ~20% of spots remain - matches
+      // the mockup's own worked examples (4 of 24 left = almost full,
+      // 4 of 16 left = still just open).
+      if (spotsLeft / session.maxParticipants <= 0.2) return "almost_full";
+    }
+    return "open";
+  }
+
+  private toPublicSessionCard(session: TennisSession, organization: Organization, registeredCount: number): PublicSessionCard {
+    return {
+      id: session.id,
+      title: session.title,
+      type: session.type,
+      playStatus: this.computePublicStatus(session, registeredCount),
+      startAt: session.startAt.toISOString(),
+      endAt: session.endAt ? session.endAt.toISOString() : null,
+      timeZone: session.timeZone,
+      location: session.location,
+      skillLevel: session.skillLevel,
+      courtsCount: session.courtsCount,
+      maxParticipants: session.maxParticipants,
+      registeredCount,
+      coverImage: session.coverImage,
+      organizationId: organization.id,
+      organizationName: organization.name,
+      organizationSlug: organization.slug,
+      organizationLogo: organization.logo,
+    };
+  }
+
+  // Every publicly-discoverable activity across every organiser, for
+  // the /play page (spec §2/§3) - deliberately one query, one list, no
+  // per-format sub-pages: "published" or currently "live", and
+  // explicitly public visibility, is the entire eligibility rule.
+  // Location/format/level are pushed down into SQL; the free-text
+  // `search` (title OR venue OR organiser name) is applied afterwards
+  // in JS, same convention as server/routes/players.ts, since matching
+  // across a joined organisation name is awkward to express as one SQL
+  // OR without real performance need yet at this scale.
+  async getPublicSessions(filters: {
+    search?: string;
+    location?: string;
+    format?: string;
+    level?: string;
+    organizationId?: string;
+    dateFrom?: Date;
+    dateTo?: Date;
+  }): Promise<PublicSessionCard[]> {
+    const conditions = [
+      inArray(tennisSessions.status, ["published", "live"]),
+      eq(tennisSessions.visibility, "public"),
+    ];
+    if (filters.format) conditions.push(eq(tennisSessions.type, filters.format));
+    if (filters.level) conditions.push(eq(tennisSessions.skillLevel, filters.level));
+    if (filters.organizationId) conditions.push(eq(tennisSessions.organizationId, filters.organizationId));
+    if (filters.location) conditions.push(ilike(tennisSessions.location, `%${filters.location}%`));
+    if (filters.dateFrom) conditions.push(gte(tennisSessions.startAt, filters.dateFrom));
+    if (filters.dateTo) conditions.push(lte(tennisSessions.startAt, filters.dateTo));
+
+    const rows = await db
+      .select({ session: tennisSessions, organization: organizations })
+      .from(tennisSessions)
+      .innerJoin(organizations, eq(tennisSessions.organizationId, organizations.id))
+      .where(and(...conditions))
+      .orderBy(asc(tennisSessions.startAt));
+
+    if (rows.length === 0) return [];
+
+    const sessionIds = rows.map((r) => r.session.id);
+    const countRows = await db
+      .select({ sessionId: registrations.sessionId, count: sql<number>`count(*)` })
+      .from(registrations)
+      .where(and(inArray(registrations.sessionId, sessionIds), ne(registrations.status, "cancelled")))
+      .groupBy(registrations.sessionId);
+    const countBySession = new Map(countRows.map((r) => [r.sessionId, Number(r.count)]));
+
+    let cards = rows.map(({ session, organization }) =>
+      this.toPublicSessionCard(session, organization, countBySession.get(session.id) ?? 0)
+    );
+
+    if (filters.search) {
+      const q = filters.search.trim().toLowerCase();
+      cards = cards.filter(
+        (c) =>
+          c.title.toLowerCase().includes(q) ||
+          (c.location ?? "").toLowerCase().includes(q) ||
+          c.organizationName.toLowerCase().includes(q)
+      );
+    }
+
+    return cards;
+  }
+
+  async getPublicSessionById(id: string, viewerUserId?: string): Promise<PublicSessionDetails | undefined> {
+    const [row] = await db
+      .select({ session: tennisSessions, organization: organizations })
+      .from(tennisSessions)
+      .innerJoin(organizations, eq(tennisSessions.organizationId, organizations.id))
+      .where(
+        and(
+          eq(tennisSessions.id, id),
+          inArray(tennisSessions.status, ["published", "live"]),
+          eq(tennisSessions.visibility, "public")
+        )
+      );
+    if (!row) return undefined;
+
+    const { session, organization } = row;
+    const { registered } = await this.getSessionRegistrationCounts(session.id);
+    const card = this.toPublicSessionCard(session, organization, registered);
+
+    let seasonName: string | null = null;
+    let seriesName: string | null = null;
+    if (session.seasonId) {
+      const [season] = await db.select({ name: seasons.name }).from(seasons).where(eq(seasons.id, session.seasonId));
+      seasonName = season?.name ?? null;
+    }
+    if (session.seriesId) {
+      const [seriesRow] = await db.select({ name: series.name }).from(series).where(eq(series.id, session.seriesId));
+      seriesName = seriesRow?.name ?? null;
+    }
+
+    let myRegistrationStatus: PublicSessionDetails["myRegistrationStatus"] = null;
+    if (viewerUserId) {
+      const existing = await this.getRegistrationForUser(session.id, viewerUserId);
+      if (existing && existing.status !== "cancelled") {
+        myRegistrationStatus = existing.status === "waitlisted" ? "waitlisted" : "registered";
+      }
+    }
+
+    return {
+      ...card,
+      description: session.description,
+      matchMode: session.matchMode,
+      scoringFormat: session.scoringFormat,
+      price: session.price,
+      currency: session.currency,
+      waitingListEnabled: session.waitingListEnabled,
+      registrationOpensAt: session.registrationOpensAt ? session.registrationOpensAt.toISOString() : null,
+      registrationClosesAt: session.registrationClosesAt ? session.registrationClosesAt.toISOString() : null,
+      seasonName,
+      seriesName,
+      myRegistrationStatus,
+    };
+  }
+
+  async getRegistrationForUser(sessionId: string, userId: string): Promise<Registration | undefined> {
+    const [row] = await db
+      .select()
+      .from(registrations)
+      .where(and(eq(registrations.sessionId, sessionId), eq(registrations.userId, userId)));
+    return row;
+  }
+
+  // ===== TEST-ONLY SEEDING (see the IStorage interface comment above) =====
+
+  async testSeedSession(input: {
+    organizationId: string;
+    createdBy: string;
+    title: string;
+    startAt: Date;
+    status: string;
+    seasonId?: string;
+    seriesId?: string;
+    type?: string;
+    maxParticipants?: number;
+    waitingListEnabled?: boolean;
+  }): Promise<TennisSession> {
+    const [session] = await db
+      .insert(tennisSessions)
+      .values({
+        organizationId: input.organizationId,
+        createdBy: input.createdBy,
+        title: input.title,
+        startAt: input.startAt,
+        status: input.status,
+        seasonId: input.seasonId,
+        seriesId: input.seriesId,
+        type: input.type ?? "social",
+        maxParticipants: input.maxParticipants,
+        waitingListEnabled: input.waitingListEnabled ?? true,
+      })
+      .returning();
+    return session;
+  }
+
+  async testSeedRegistration(sessionId: string, userId: string, checkedIn: boolean): Promise<{ id: string }> {
+    const [row] = await db
+      .insert(registrations)
+      .values({
+        sessionId,
+        userId,
+        status: "registered",
+        checkedInAt: checkedIn ? new Date() : null,
+      })
+      .returning();
+    return { id: row.id };
+  }
+
+  async testSeedSessionRound(sessionId: string, roundNumber: number): Promise<{ id: string }> {
+    const [row] = await db
+      .insert(sessionRounds)
+      .values({ sessionId, roundNumber, status: "completed", completedAt: new Date() })
+      .returning();
+    return { id: row.id };
+  }
+
+  async testSeedMatch(
+    sessionId: string,
+    roundId: string,
+    teamAIds: string[],
+    teamBIds: string[],
+    teamAGames: number,
+    teamBGames: number
+  ): Promise<{ id: string }> {
+    const [row] = await db
+      .insert(matches)
+      .values({
+        sessionId,
+        roundId,
+        courtLabel: "Court 1",
+        teamAIds,
+        teamBIds,
+        teamAGames,
+        teamBGames,
+        status: "confirmed",
+        confirmedAt: new Date(),
+      })
+      .returning();
+    return { id: row.id };
   }
 
   async updateMessageConversation(
@@ -2393,6 +3546,23 @@ export class DatabaseStorage implements IStorage {
       .groupBy(registrations.sessionId);
     const checkedInBySession = new Map(checkInRows.map((r) => [r.sessionId, Number(r.count)]));
 
+    // Only worth asking for on sessions actually live right now - a
+    // session-card "Round X of Y" line was previously only ever
+    // populated by mock data, never by anything real, because this
+    // query never fetched it. Scoped to live sessionIds specifically
+    // (usually a small set, often just one) rather than every session
+    // in the list.
+    const liveSessionIds = rows.filter((r) => r.status === "live").map((r) => r.id);
+    let roundCurrentBySession = new Map<string, number>();
+    if (liveSessionIds.length > 0) {
+      const roundRows = await db
+        .select({ sessionId: sessionRounds.sessionId, roundNumber: sql<number>`max(${sessionRounds.roundNumber})` })
+        .from(sessionRounds)
+        .where(sql`${sessionRounds.sessionId} IN ${liveSessionIds}`)
+        .groupBy(sessionRounds.sessionId);
+      roundCurrentBySession = new Map(roundRows.map((r) => [r.sessionId, Number(r.roundNumber)]));
+    }
+
       let creatorById = new Map<string, string>();
       let creatorAvatarById = new Map<string, string | null>();
     if (includeCreatorNames) {
@@ -2434,6 +3604,7 @@ export class DatabaseStorage implements IStorage {
         creatorAvatar: includeCreatorNames ? creatorAvatarById.get(session.createdBy) ?? null : undefined,
         hasDivisions: sessionIdsWithDivisions.has(session.id),
         parentSessionTitle: session.parentSessionId ? parentTitleById.get(session.parentSessionId) : undefined,
+        roundCurrent: roundCurrentBySession.get(session.id),
       };
     });
   }
@@ -2535,7 +3706,7 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async getSessionsByOrganization(organizationId: string): Promise<TennisSession[]> {
+  async getSessionsByOrganization(organizationId: string): Promise<SessionWithDetails[]> {
     // A session that's genuinely wrapped up (past its end time, or its
     // start time if it has no explicit end) moves to archived - either
     // the organiser closed it out via TC Live, or nobody did and it's
@@ -2553,11 +3724,13 @@ export class DatabaseStorage implements IStorage {
         )
       );
 
-    return db
+    const rows = await db
       .select()
       .from(tennisSessions)
       .where(eq(tennisSessions.organizationId, organizationId))
       .orderBy(desc(tennisSessions.startAt));
+
+    return this.attachSessionDetails(rows);
   }
 
   async getUpcomingPublishedSessionsByOrganization(
@@ -2992,6 +4165,7 @@ export class DatabaseStorage implements IStorage {
         .select({
           id: registrations.id,
           userName: users.name,
+          sessionId: tennisSessions.id,
           sessionTitle: tennisSessions.title,
           at: registrations.createdAt,
         })
@@ -3005,6 +4179,7 @@ export class DatabaseStorage implements IStorage {
         .select({
           id: registrations.id,
           userName: users.name,
+          sessionId: tennisSessions.id,
           sessionTitle: tennisSessions.title,
           at: registrations.checkedInAt,
         })
@@ -3026,6 +4201,7 @@ export class DatabaseStorage implements IStorage {
         id: `${r.id}-joined`,
         type: "joined" as const,
         userName: r.userName,
+        sessionId: r.sessionId,
         sessionTitle: r.sessionTitle,
         at: new Date(r.at).toISOString(),
       })),
@@ -3035,6 +4211,7 @@ export class DatabaseStorage implements IStorage {
           id: `${r.id}-checked_in`,
           type: "checked_in" as const,
           userName: r.userName,
+          sessionId: r.sessionId,
           sessionTitle: r.sessionTitle,
           at: new Date(r.at as Date).toISOString(),
         })),

@@ -187,3 +187,42 @@ export async function sendPasswordResetEmail(
     `,
   });
 }
+
+// Sent instead of a verification email when someone tries to register
+// with an email address that already has an account - the person
+// attempting registration never learns whether the email was taken
+// (their own response stays generic, see /api/auth/register), so this
+// is the only place that information goes, and it goes to the one
+// person who's actually entitled to it: whoever already owns that
+// email address. Doubles as an early warning if it wasn't them.
+export async function sendDuplicateRegistrationAlertEmail(
+  to: string
+): Promise<SendEmailResult> {
+  return sendEmail({
+    to,
+    subject: "Someone tried to sign up with your TennisConnect email",
+    text:
+      `Someone just tried to create a new TennisConnect account using this email address, which already has an account.\n\n` +
+      `If this was you, you don't need to do anything differently - just sign in with your existing account, or use "Forgot password" if you don't remember it.\n\n` +
+      `If this wasn't you, no new account was created and your existing one is safe - you can ignore this email.`,
+    html: `
+      <div style="font-family: -apple-system, Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+        ${EMAIL_LOGO_HTML}
+        <h2 style="color: #111;">Someone tried to sign up with this email</h2>
+        <p style="color: #444; line-height: 1.6;">
+          Someone just tried to create a new TennisConnect account using
+          this email address - but you already have one.
+        </p>
+        <p style="color: #444; line-height: 1.6;">
+          If this was you, just sign in with your existing account, or
+          use "Forgot password" on the sign-in page if you don't
+          remember it.
+        </p>
+        <p style="color: #888; font-size: 13px; line-height: 1.5;">
+          If this wasn't you, no new account was created and your
+          existing one is safe - you can safely ignore this email.
+        </p>
+      </div>
+    `,
+  });
+}

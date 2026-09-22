@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +12,7 @@ import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 import { useToast } from "@/hooks/use-toast";
 import { uploadImage } from "@/lib/uploadImage";
 import { AU_CITY_TIMEZONES } from "@/lib/timezone";
+import { getSeasons } from "@/lib/api/organizer-sessions";
 import type { NewSessionDraft } from "@/lib/organiser-session-wizard-types";
 import { NumberField } from "./number-field";
 import { SessionWeatherPreview } from "./session-weather-preview";
@@ -18,6 +20,12 @@ import { SessionWeatherPreview } from "./session-weather-preview";
 interface Step2DateRegistrationProps {
   draft: NewSessionDraft;
   onChange: <K extends keyof NewSessionDraft>(key: K, value: NewSessionDraft[K]) => void;
+}
+
+// Same shape as createEmptyDraft's own local helper - just today's date
+// as a yyyy-mm-dd string, for the "already passed" comparison below.
+function todayInput() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -45,6 +53,16 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [isUploadingCover, setIsUploadingCover] = useState(false);
+
+  // Only same-format seasons are offered - attaching a Social Tennis
+  // session to an Americano season (or vice versa) would mix formats
+  // into the same ranking pool, which the whole point of scoping a
+  // season to one type is meant to prevent.
+  const seasonsQuery = useQuery({
+    queryKey: ["/api/organizer/seasons"],
+    queryFn: getSeasons,
+  });
+  const matchingSeasons = (seasonsQuery.data ?? []).filter((s) => s.type === draft.type);
 
   const handlePhotoSelect = async (file: File | undefined) => {
     if (!file) return;
@@ -136,12 +154,20 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
           />
         </Field>
         <Field label="Season (Optional)">
-          <Input
-            value={draft.season}
-            onChange={(e) => onChange("season", e.target.value)}
-            placeholder="e.g. Winter 2027"
-            data-testid="organiser-wizard-session-season"
-          />
+          <Select
+            value={draft.seasonId ?? "none"}
+            onValueChange={(v) => onChange("seasonId", v === "none" ? null : v)}
+          >
+            <SelectTrigger data-testid="organiser-wizard-session-season">
+              <SelectValue placeholder="No Season" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">No Season</SelectItem>
+              {matchingSeasons.map((s) => (
+                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </Field>
         <Field label="Venue">
           <Input
@@ -176,35 +202,75 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
       </SectionCard>
 
       <SectionCard icon={CalendarDays} title="Date">
-        <Field label="Date">
-          <Input
-            type="date"
-            value={draft.date}
-            onChange={(e) => onChange("date", e.target.value)}
-            data-testid="organiser-wizard-date"
-          />
+        <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Field label="Date">
+            <Input
+              type="date"
+              value={draft.date}
+              onChange={(e) => onChange("date", e.target.value)}
+              data-testid="organiser-wizard-date"
+            />
+            {draft.date && draft.date < todayInput() && (
+              <p className="text-xs text-destructive" data-testid="organiser-wizard-date-past-error">
+                That date has already passed.
+              </p>
+            )}
+          </Field>
+          <Field label="Start Time">
+            <Input
+              type="time"
+              value={draft.startTime}
+              onChange={(e) => onChange("startTime", e.target.value)}
+              data-testid="organiser-wizard-start-time"
+            />
+          </Field>
+          <Field label="End Time">
+            <Input
+              type="time"
+              value={draft.endTime}
+              onChange={(e) => onChange("endTime", e.target.value)}
+              data-testid="organiser-wizard-end-time"
+            />
+          </Field>
+        </div>
+
+        <div className="sm:col-span-2 space-y-1.5">
+          <label className="flex items-center gap-2 text-sm cursor-pointer w-fit">
+            <input
+              type="checkbox"
+              checked={!!draft.endDate}
+              onChange={(e) => onChange("endDate", e.target.checked ? draft.date : "")}
+              className="accent-primary"
+              data-testid="organiser-wizard-multiday-toggle"
+            />
+            This runs over multiple days (e.g. a 2-3 day tournament)
+          </label>
+          {draft.endDate && (
+            <div className="max-w-[200px]">
+              <Field label="Ends On">
+                <Input
+                  type="date"
+                  value={draft.endDate}
+                  min={draft.date || undefined}
+                  onChange={(e) => onChange("endDate", e.target.value)}
+                  data-testid="organiser-wizard-end-date"
+                />
+                {draft.date && draft.endDate < draft.date && (
+                  <p className="text-xs text-destructive" data-testid="organiser-wizard-end-date-error">
+                    End date can't be before the start date.
+                  </p>
+                )}
+              </Field>
+            </div>
+          )}
+        </div>
+
+        <div className="sm:col-span-2">
           <SessionWeatherPreview
             city={AU_CITY_TIMEZONES.find((c) => c.timeZone === draft.timeZone)?.label ?? ""}
             date={draft.date}
           />
-        </Field>
-        <div />
-        <Field label="Start Time">
-          <Input
-            type="time"
-            value={draft.startTime}
-            onChange={(e) => onChange("startTime", e.target.value)}
-            data-testid="organiser-wizard-start-time"
-          />
-        </Field>
-        <Field label="End Time">
-          <Input
-            type="time"
-            value={draft.endTime}
-            onChange={(e) => onChange("endTime", e.target.value)}
-            data-testid="organiser-wizard-end-time"
-          />
-        </Field>
+        </div>
       </SectionCard>
 
       <SectionCard icon={ClipboardList} title="Registration">
@@ -251,12 +317,14 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
           )}
         </Field>
         <Field label="Max Players">
-          <NumberField
-            min={1}
-            value={draft.maxPlayers}
-            onChange={(v) => onChange("maxPlayers", v)}
-            data-testid="organiser-wizard-max-players"
-          />
+          <div className="max-w-[140px]">
+            <NumberField
+              min={1}
+              value={draft.maxPlayers}
+              onChange={(v) => onChange("maxPlayers", v)}
+              data-testid="organiser-wizard-max-players"
+            />
+          </div>
         </Field>
         <div className="flex items-center justify-between rounded-xl border border-border px-3 py-2.5">
           <Label className="text-sm">Waiting List</Label>
@@ -268,7 +336,7 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
         </div>
         {draft.waitingListEnabled && (
           <Field label="Waiting List Spots">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 max-w-[220px]">
               <NumberField
                 min={1}
                 value={draft.waitingListCapacity ?? NaN}

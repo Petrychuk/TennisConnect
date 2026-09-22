@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -12,31 +12,35 @@ import { useToast } from "@/hooks/use-toast";
 import SEO from "@/components/seo";
 
 import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar";
+import { useSidebarCollapsed } from "@/lib/use-sidebar-collapsed";
+import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/organiser/ui/notification-bell";
 import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
 import { SessionStatusTabs } from "@/components/organiser/sessions/session-status-tabs";
-import { SessionFiltersBar } from "@/components/organiser/sessions/session-filters-bar";
+import { SessionFiltersBar, type SessionsViewMode } from "@/components/organiser/sessions/session-filters-bar";
 import { SessionCard } from "@/components/organiser/sessions/session-card";
+import { SessionCardGrid } from "@/components/organiser/sessions/session-card-grid";
 import { SessionsCalendarView } from "@/components/organiser/sessions/sessions-calendar-view";
 import { SessionsEmptyState } from "@/components/organiser/sessions/sessions-empty-state";
 import { NewSessionMenu } from "@/components/organiser/sessions/wizard/new-session-menu";
-import { groupSessionsByBucket, type SessionBucket } from "@/components/organiser/sessions/session-utils";
+import { groupSessionsByBucket, BUCKET_ORDER, type SessionBucket } from "@/components/organiser/sessions/session-utils";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
-import { getMySessions, deleteSession } from "@/lib/api/organizer-sessions";
+import { getMySessions, deleteSession, archiveSession } from "@/lib/api/organizer-sessions";
 import { toSessionListItems } from "@/lib/api/session-adapter";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 
 export default function OrganiserSessionsPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const profileHref = user ? `/${user.role}/${user.slug}` : "/";
   // Real name/avatar from the authenticated user - role/organization
   // fields stay mock for now since there's no backend for those yet.
-  const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null } : mockOrganiser;
+  const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null, isAdmin: user.isAdmin ?? false } : mockOrganiser;
 
   const sessionsQuery = useQuery({
     queryKey: ["/api/organizer/sessions/mine"],
@@ -45,12 +49,23 @@ export default function OrganiserSessionsPage() {
   });
   const sessions = useMemo(() => toSessionListItems(sessionsQuery.data ?? []), [sessionsQuery.data]);
   const [activeBucket, setActiveBucket] = useState<SessionBucket>("all");
+  const urlSearch = useSearch();
+
+  // Lets the dashboard's own KPI cards ("3 Upcoming Sessions", "1 Live
+  // Session") deep-link straight into the matching tab here, instead of
+  // landing on "All" and making the organiser reselect it themselves.
+  useEffect(() => {
+    const requested = new URLSearchParams(urlSearch).get("bucket");
+    if (requested && BUCKET_ORDER.includes(requested as SessionBucket)) {
+      setActiveBucket(requested as SessionBucket);
+    }
+  }, [urlSearch]);
   const [search, setSearch] = useState("");
   const [venue, setVenue] = useState("all");
   const [format, setFormat] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<SessionsViewMode>("list");
 
   // Real venues, derived from the organiser's own sessions - was
   // previously a hardcoded two-item list ("All Venues" / one fixed
@@ -77,17 +92,28 @@ export default function OrganiserSessionsPage() {
   }, [sessions, search, venue, format, dateFrom, dateTo]);
 
   const grouped = useMemo(() => groupSessionsByBucket(filtered), [filtered]);
+  // Upcoming is deliberately a superset of registration-open here (not
+  // a separate, mutually-exclusive bucket the way bucketFor's own
+  // one-bucket-per-session assignment treats them internally) - a
+  // session with registration still open hasn't happened yet either,
+  // so it belongs in "what's coming up" too, not just in the narrower
+  // "registration open" tab. Registration Open itself stays exactly as
+  // specific as before - this only widens what Upcoming shows/counts.
+  const upcomingInclusive = useMemo(
+    () => [...grouped.upcoming, ...grouped["registration-open"]],
+    [grouped]
+  );
   const counts: Record<SessionBucket, number> = {
     all: filtered.length,
     live: grouped.live.length,
     "registration-open": grouped["registration-open"].length,
-    upcoming: grouped.upcoming.length,
+    upcoming: upcomingInclusive.length,
     draft: grouped.draft.length,
     completed: grouped.completed.length,
     archived: grouped.archived.length,
   };
 
-  const visible = activeBucket === "all" ? filtered : grouped[activeBucket];
+  const visible = activeBucket === "all" ? filtered : activeBucket === "upcoming" ? upcomingInclusive : grouped[activeBucket];
 
   const invalidateSessions = () => queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine"] });
 
@@ -107,6 +133,16 @@ export default function OrganiserSessionsPage() {
       toast({ title: "Draft deleted", description: `"${session.title}" was removed.` });
     } catch (error: any) {
       toast({ title: "Couldn't delete draft", description: error?.message ?? "Please try again.", variant: "destructive" });
+    }
+  };
+
+  const handleArchive = async (session: SessionListItem) => {
+    try {
+      await archiveSession(session.id);
+      invalidateSessions();
+      toast({ title: "Session archived", description: `"${session.title}" moved to Archived.` });
+    } catch (error: any) {
+      toast({ title: "Couldn't archive session", description: error?.message ?? "Please try again.", variant: "destructive" });
     }
   };
 
@@ -141,8 +177,14 @@ export default function OrganiserSessionsPage() {
         noIndex
       />
 
-      <aside className="hidden xl:flex xl:w-64 shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto">
-        <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} className="w-full" />
+      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-64")}>
+        <OrganiserSidebarNav
+          organiser={organiser}
+          profileHref={profileHref}
+          className="w-full"
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={() => setSidebarCollapsed((v) => !v)}
+        />
       </aside>
 
       {/* The public site's equivalent pages use <Navbar>/<Footer> with a
@@ -179,16 +221,18 @@ export default function OrganiserSessionsPage() {
           </div>
         </div>
 
-        <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 max-w-[1500px] mx-auto">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <h1 className="font-display text-2xl sm:text-3xl font-bold">Sessions</h1>
               <p className="text-muted-foreground mt-1">Manage all your tennis sessions in one place.</p>
             </div>
             <div className="hidden sm:flex items-center gap-2 shrink-0">
-              <Button variant="outline" className="gap-2" data-testid="organiser-sessions-templates-button" onClick={() => toast({ title: "Templates isn't wired up yet" })}>
-                <LayoutTemplate className="w-4 h-4" />
-                Templates
+              <Button variant="outline" className="gap-2" asChild data-testid="organiser-sessions-templates-button">
+                <Link href="/organiser/sessions/templates">
+                  <LayoutTemplate className="w-4 h-4" />
+                  Templates
+                </Link>
               </Button>
               <NewSessionMenu className="gap-2" />
             </div>
@@ -223,16 +267,28 @@ export default function OrganiserSessionsPage() {
                 onDateFromChange={setDateFrom}
                 dateTo={dateTo}
                 onDateToChange={setDateTo}
-                calendarOpen={calendarOpen}
-                onCalendarOpenChange={setCalendarOpen}
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
               />
 
-              {calendarOpen ? (
+              {viewMode === "calendar" ? (
                 <SessionsCalendarView sessions={visible} />
               ) : visible.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-8 text-center" data-testid="organiser-sessions-bucket-empty">
                   No sessions here.
                 </p>
+              ) : viewMode === "grid" ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4" data-testid="organiser-sessions-grid">
+                  {visible.map((session) => (
+                    <SessionCardGrid
+                      key={session.id}
+                      session={session}
+                      onDuplicate={handleDuplicate}
+                      onDelete={handleDelete}
+                      onArchive={handleArchive}
+                    />
+                  ))}
+                </div>
               ) : (
                 <div className="space-y-3" data-testid="organiser-sessions-list">
                   {visible.map((session) => (
@@ -241,6 +297,7 @@ export default function OrganiserSessionsPage() {
                       session={session}
                       onDuplicate={handleDuplicate}
                       onDelete={handleDelete}
+                      onArchive={handleArchive}
                     />
                   ))}
                 </div>

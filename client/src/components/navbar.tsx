@@ -7,11 +7,11 @@ import {
   Bell,
   Mail,
   UserCircle,
-  ShieldCheck,
   Settings,
   Trash2,
   AlertTriangle,
   Home,
+  Play as PlayIcon,
   MoreHorizontal,
   Users,
   Award,
@@ -49,6 +49,16 @@ import {
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+
+// Prefix matching (location.startsWith(href)) is not enough on its
+// own - "/player/emily-carter".startsWith("/play") is true, which
+// made the Play nav link light up while viewing an individual
+// player's profile. Requires an exact match or a real path boundary
+// (a following "/") instead.
+function isNavActive(location: string, href: string): boolean {
+  return location === href || location.startsWith(`${href}/`);
+}
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -67,14 +77,6 @@ export function Navbar() {
 
   const showMobileBottomNav = isAuthenticated && location !== "/auth";
 
-  // Stripe Checkout is fully hosted, so the only way back into this
-  // app after paying (or cancelling) is the success_url/cancel_url
-  // redirect from server/routes/support.ts - both land back on
-  // whichever page the visitor started from, with a ?support= query
-  // param. Reopen the same modal straight into its success/cancelled
-  // view instead of building a separate confirmation page. The query
-  // param is stripped from the URL right after so refreshing the page
-  // doesn't reopen it again.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const support = params.get("support");
@@ -96,19 +98,11 @@ export function Navbar() {
     setBackTheRallyOpen(true);
   }
 
-  // Reserve space at the bottom of every page on mobile so content/footer
-  // never sits underneath the fixed mobile bottom nav.
   useEffect(() => {
     document.body.classList.toggle("has-mobile-bottom-nav", showMobileBottomNav);
     return () => document.body.classList.remove("has-mobile-bottom-nav");
   }, [showMobileBottomNav]);
 
-  // Navbar stays mounted across route changes (only the page content
-  // swaps) - close any menu that was open the moment the route
-  // actually changes, rather than relying solely on each menu's own
-  // click-to-close behavior, which could otherwise leave a menu
-  // visually stuck open through a navigation in some interaction
-  // orders.
   useEffect(() => {
     setMoreOpen(false);
     setAccountMenuOpen(false);
@@ -122,6 +116,7 @@ export function Navbar() {
   const navLinks = [
     { name: "Players", href: "/players", icon: Users },
     { name: "Coaches", href: "/coaches", icon: Award },
+    { name: "Play", href: "/play", icon: PlayIcon },
     /* { name: "Tournaments", href: "/tournaments" }, */
     { name: "Club Communities", href: "/clubs", icon: Building2 },
     { name: "Travels", href: "/travels", icon: Plane },
@@ -139,7 +134,7 @@ export function Navbar() {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="text-2xl font-display font-bold flex items-center gap-1 cursor-pointer" data-testid="navbar-logo-link">
-          Tennis<span className="text-[hsl(var(--tennis-ball))]">Connect</span>
+          Tennis<span className="text-[hsl(var(--tennis-ball))] [text-shadow:0_1px_3px_rgba(0,0,0,0.45)]">Connect</span>
           <div className="w-2 h-2 rounded-full bg-[hsl(var(--tennis-ball))] mt-1 animate-pulse" />
         </Link>
 
@@ -171,13 +166,13 @@ export function Navbar() {
               key={link.name}
               href={link.href}
               className={`text-sm font-medium transition-colors cursor-pointer relative ${
-                location.startsWith(link.href)
+                isNavActive(location, link.href)
                   ? "text-primary font-bold"
                   : "hover:text-lime-600"
               }`}
             >
               {link.name}
-              {location.startsWith(link.href) && (
+              {isNavActive(location, link.href) && (
                 <span className="absolute -bottom-1.5 left-0 right-0 h-0.5 rounded-full bg-primary" />
               )}
             </Link>  
@@ -186,21 +181,7 @@ export function Navbar() {
 
         {/* CTA & Mobile Menu */}
         <div className="flex items-center gap-4">
-          {/* Back the Rally replaces the weather/time widget in this
-              slot (see the brief this came from) - HeaderClockWeather
-              itself is untouched and still fully working, just not
-              rendered, so restoring it later is a one-line change.
-              Same hidden md:flex breakpoint the weather widget already
-              used - that's 768px and up, tablet and desktop both,
-              which already covers "show it on tablet if it fits".
-              A prior attempt wrapped this in its own flex-1 slot
-              between nav-links and this CTA group to genuinely center
-              it regardless of viewport width - reverted, since it
-              also pulled nav-links away from their own established
-              justify-between position, crowding them against the
-              logo instead. Back to a plain margin - less perfectly
-              centered, but doesn't disturb everything else's
-              positioning to get there. */}
+        
           {/* <HeaderClockWeather /> */}
           <BackTheRallyWidget
             className="hidden md:inline-flex ml-8"
@@ -245,15 +226,15 @@ export function Navbar() {
                       )}
                     </Link>
                   </DropdownMenuItem>
-                  {user?.isAdmin && (
-                    <DropdownMenuItem asChild className="cursor-pointer">
-                      <Link href="/admin" className="flex items-center gap-2" data-testid="navbar-admin-link">
-                        <ShieldCheck className="w-4 h-4" />
-                        Admin Panel
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
-                  {user?.isOrganizer && (
+                  {/* Admin Panel used to be its own separate link here -
+                      removed now that admin functionality lives inside
+                      the Organiser Hub itself (see OrganiserSidebarNav's
+                      own ADMIN section, shown there for isAdmin). The
+                      Organiser Hub link below now also covers a pure
+                      admin account (isAdmin but not isOrganizer) so
+                      there's still a way in - organiser-dashboard.tsx's
+                      own access gate was relaxed to match. */}
+                  {(user?.isOrganizer || user?.isAdmin) && (
                     <DropdownMenuItem asChild className="cursor-pointer">
                       <Link href="/organiser" className="flex items-center gap-2" data-testid="navbar-organiser-hub-link">
                         <Trophy className="w-4 h-4" />
@@ -305,7 +286,7 @@ export function Navbar() {
             </div>
           ) : (
             <Link href="/auth" className="hidden xl:inline-flex">
-              <Button className="bg-primary text-foreground hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer">
+              <Button className="bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer">
                 Sign In
               </Button>
             </Link>
@@ -334,10 +315,6 @@ export function Navbar() {
                      </div>
                    </div>
                 )}
-
-                <p className="text-xs font-semibold uppercase tracking-wider text-[hsl(var(--tennis-ball))] mb-1 px-3">
-                  Explore
-                </p>
                 <nav className="flex flex-col">
                   {navLinks.map((link) => {
                     const Icon = link.icon;
@@ -372,7 +349,7 @@ export function Navbar() {
 
                 {!isAuthenticated && (
                   <Link href="/auth" onClick={() => setIsOpen(false)}>
-                    <Button className="w-full mt-4 bg-primary text-foreground font-bold rounded-full cursor-pointer">
+                    <Button className="w-full mt-4 bg-primary text-foreground border-primary font-bold rounded-full cursor-pointer">
                       Sign In
                     </Button>
                   </Link>
@@ -531,7 +508,7 @@ export function Navbar() {
         data-testid="mobile-bottom-nav"
         className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-background/95 backdrop-blur-md border-t border-border/60 pb-[env(safe-area-inset-bottom)]"
       >
-        <div className="grid grid-cols-5 h-16">
+        <div className={cn("grid h-16", user?.isOrganizer ? "grid-cols-6" : "grid-cols-5")}>
           <Link
             href="/"
             data-testid="mobile-bottomnav-home"
@@ -541,6 +518,17 @@ export function Navbar() {
           >
             <Home className={`w-5 h-5 ${location === "/" ? "fill-primary/15" : ""}`} />
             Home
+          </Link>
+
+          <Link
+            href="/play"
+            data-testid="mobile-bottomnav-play"
+            className={`flex flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${
+              isNavActive(location, "/play") ? "text-primary" : "text-muted-foreground"
+            }`}
+          >
+            <PlayIcon className={`w-5 h-5 ${isNavActive(location, "/play") ? "fill-primary/15" : ""}`} />
+            Play
           </Link>
 
           <Link
@@ -620,19 +608,9 @@ export function Navbar() {
         </div>
 
         <div className="flex flex-col gap-1 border-t border-border pt-3">
-          {user?.isAdmin && (
-            <Link
-              href="/admin"
-              data-testid="mobile-more-admin-link"
-              className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-muted transition-colors cursor-pointer"
-              onClick={() => setMoreOpen(false)}
-            >
-              <ShieldCheck className="w-4 h-4" />
-              Admin Panel
-            </Link>
-          )}
-
-          {user?.isOrganizer && (
+          {/* Admin Panel used to be its own separate link here - see the
+              same removal reasoning in the desktop dropdown above. */}
+          {(user?.isOrganizer || user?.isAdmin) && (
             <Link
               href="/organiser"
               data-testid="mobile-more-organiser-hub-link"

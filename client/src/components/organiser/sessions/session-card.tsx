@@ -16,66 +16,66 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Calendar,
   MapPin,
-  Users,
   Play,
-  FileText,
-  Trophy,
+  MoreHorizontal,
+  Copy,
+  Pencil,
+  LayoutTemplate,
   Archive,
-  Radio,
-  UsersRound,
+  Users,
+  CheckCircle2,
+  Hourglass,
+  Square,
+  AlertTriangle,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
-import { bucketFor } from "./session-utils";
+import { bucketFor, STATUS_BADGE_LABEL, STATUS_BADGE_STYLE, getPrimaryActionMeta } from "./session-utils";
+import { SaveAsTemplateDialog } from "./save-as-template-dialog";
 import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.webp";
 
 interface SessionCardProps {
   session: SessionListItem;
   onDuplicate?: (session: SessionListItem) => void;
   onDelete?: (session: SessionListItem) => void;
+  onArchive?: (session: SessionListItem) => void;
 }
 
-const STATUS_BADGE_LABEL: Record<string, string> = {
-  live: "LIVE",
-  "registration-open": "Registration Open",
-  upcoming: "Upcoming",
-  draft: "Draft",
-  completed: "Completed",
-  archived: "Archived",
-};
+// Small icon+value+label chip, reused for every status's own metric
+// row - each status shows a genuinely different set (see the metric
+// blocks below), but always in this same compact shape.
+export function Metric({ icon: Icon, value, label, testId }: { icon: typeof Users; value: string | number; label: string; testId?: string }) {
+  return (
+    <span className="flex items-center gap-1.5" data-testid={testId}>
+      <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+      <span className="font-bold">{value}</span>
+      <span className="text-muted-foreground">{label}</span>
+    </span>
+  );
+}
 
-// Deliberately just background/primary/muted/destructive tints - no
-// per-status hue palette (green/orange/blue/purple like the mockup),
-// keeping to the project's existing tokens.
-const STATUS_BADGE_STYLE: Record<string, string> = {
-  live: "bg-primary text-foreground",
-  "registration-open": "bg-primary/10 text-primary",
-  upcoming: "bg-secondary text-secondary-foreground",
-  draft: "bg-muted text-muted-foreground",
-  completed: "bg-accent text-accent-foreground",
-  archived: "bg-muted text-muted-foreground",
-};
-
-const BUCKET_ICON: Record<string, typeof Users> = {
-  live: Radio,
-  "registration-open": Calendar,
-  upcoming: UsersRound,
-  draft: FileText,
-  completed: Trophy,
-  archived: Archive,
-};
-
-export function SessionCard({ session, onDuplicate, onDelete }: SessionCardProps) {
+export function SessionCard({ session, onDuplicate, onDelete, onArchive }: SessionCardProps) {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   const bucket = bucketFor(session);
-  const Icon = BUCKET_ICON[bucket];
   const spots = session.maxParticipants !== null ? session.maxParticipants - session.registeredCount : null;
   const typeLabel = SESSION_TYPE_OPTIONS.find((t) => t.key === session.type)?.label ?? "Session";
+  const attendancePercent =
+    (bucket === "completed" || bucket === "archived") && session.registeredCount > 0
+      ? Math.round((session.checkedInCount / session.registeredCount) * 100)
+      : null;
 
   const openWorkspace = () => setLocation(`/organiser/sessions/${session.id}`);
   const openLive = () => setLocation(`/organiser/sessions/${session.id}/live`);
@@ -88,65 +88,55 @@ export function SessionCard({ session, onDuplicate, onDelete }: SessionCardProps
     toast({ title: "Session duplicated", description: `"${session.title}" was copied as a new draft.` });
   };
 
-  // The whole point: the card decides which two buttons make sense, the
-  // organiser never has to figure out which one applies.
-  const primaryAction =
-    bucket === "draft"
-      ? { label: "Continue Setup", onClick: openWorkspace }
+  // One primary action per status - everything else (Duplicate, Edit,
+  // Save as Template, Archive) lives behind the overflow menu instead
+  // of sitting on the row as its own full-size button. Shared with
+  // session-card-grid.tsx via getPrimaryActionMeta so both layouts
+  // agree on which action is primary and how urgent it looks.
+  const primaryAction = getPrimaryActionMeta(bucket, Play);
+  const primaryOnClick =
+    bucket === "draft" || bucket === "registration-open" || bucket === "upcoming"
+      ? openWorkspace
       : bucket === "live"
-      ? { label: "Enter Live", onClick: openLive, icon: Play }
+      ? openLive
       : bucket === "completed"
-      ? { label: "View Results", onClick: openResults }
-      : bucket === "archived"
-      ? { label: "View History", onClick: openHistory }
-      : { label: "Manage Session", onClick: openWorkspace }; // registration-open, upcoming
-
-  const secondaryAction =
-    bucket === "draft"
-      ? null // Delete is rendered separately below (needs the confirm dialog)
-      : bucket === "live"
-      ? { label: "Manage Session", onClick: openWorkspace }
-      : bucket === "completed" || bucket === "archived"
-      ? { label: "Duplicate", onClick: handleDuplicate }
-      : { label: "Edit", onClick: openEdit }; // registration-open, upcoming
+      ? openResults
+      : openHistory; // archived
 
   return (
     <Card className="shadow-sm hover:shadow-md transition-shadow overflow-hidden" data-testid={`organiser-session-card-${session.id}`}>
       <CardContent className="p-0">
         <div className="flex flex-col sm:flex-row">
-          {/* Cover — live gets the photographic treatment, everything else
-              is a quiet icon tile differentiated by icon, not colour. */}
-          <div className="relative w-full sm:w-40 h-32 sm:h-auto shrink-0 overflow-hidden">
-            {bucket === "live" ? (
-              <>
-                <img src={session.coverImage || courtImage} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-foreground/40" />
-              </>
-            ) : (
-              <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
-                <Icon className="w-10 h-10 text-primary/40" />
-              </div>
-            )}
-            <Badge
-              className={cn("absolute top-2 left-2 gap-1", STATUS_BADGE_STYLE[bucket])}
-              data-testid={`organiser-session-card-${session.id}-badge`}
-            >
-              {bucket === "live" && (
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-foreground opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary-foreground" />
-                </span>
-              )}
-              {STATUS_BADGE_LABEL[bucket]}
-            </Badge>
+          {/* Cover — no status badge overlaid on it anymore (moved next
+              to the title below - a badge sitting on a photo read like
+              a stock-photo watermark, not session status). Still the
+              real uploaded photo whenever one exists, falling back to
+              the same default stock court photo when it doesn't.
+              Shorter than before (h-24 vs h-32) to match the overall
+              more compact row height. */}
+          <div className="relative w-full sm:w-32 h-24 sm:h-auto shrink-0 overflow-hidden">
+            <img src={session.coverImage || courtImage} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" />
+            {bucket === "live" && <div className="absolute inset-0 bg-foreground/40" />}
           </div>
 
-          <div className="flex-1 min-w-0 p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex-1 min-w-0 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <h3 className="font-display font-bold truncate">{session.title}</h3>
                 <Badge variant="outline" className="text-[11px] font-medium shrink-0" data-testid={`organiser-session-card-${session.id}-type`}>
                   {typeLabel}
+                </Badge>
+                <Badge
+                  className={cn("gap-1 shrink-0", STATUS_BADGE_STYLE[bucket])}
+                  data-testid={`organiser-session-card-${session.id}-badge`}
+                >
+                  {bucket === "live" && (
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-foreground opacity-75" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary-foreground" />
+                    </span>
+                  )}
+                  {STATUS_BADGE_LABEL[bucket]}
                 </Badge>
               </div>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground mt-1">
@@ -165,55 +155,65 @@ export function SessionCard({ session, onDuplicate, onDelete }: SessionCardProps
                 </span>
               </div>
 
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs mt-2">
-                <span data-testid={`organiser-session-card-${session.id}-registered`}>
-                  <span className="font-bold">{session.registeredCount}</span>{" "}
-                  <span className="text-muted-foreground">Registered</span>
-                </span>
-                {bucket === "live" || bucket === "completed" || bucket === "archived" ? (
-                  <span data-testid={`organiser-session-card-${session.id}-checkedin`}>
-                    <span className="font-bold">{session.checkedInCount}</span>{" "}
-                    <span className="text-muted-foreground">Checked In</span>
-                  </span>
-                ) : (
-                  <>
-                    <span data-testid={`organiser-session-card-${session.id}-waiting`}>
-                      <span className="font-bold">{session.waitingCount}</span>{" "}
-                      <span className="text-muted-foreground">Waiting</span>
-                    </span>
-                    {spots !== null && (
-                      <span data-testid={`organiser-session-card-${session.id}-spots`}>
-                        <span className="font-bold">{spots}</span>{" "}
-                        <span className="text-muted-foreground">Spots</span>
-                      </span>
-                    )}
-                  </>
-                )}
-              </div>
-
-              {bucket === "live" && session.roundCurrent && session.roundTotal && (
-                <p className="text-xs font-medium text-primary mt-1" data-testid={`organiser-session-card-${session.id}-round`}>
-                  Round {session.roundCurrent} / {session.roundTotal}
+              {/* What this row shows genuinely changes by status - the
+                  spec's own table: Live gets round/players/courts,
+                  Registration Open/Upcoming get registered/waiting/
+                  courts, Completed/Archived get a plain outcome
+                  summary (players/attended/attendance%), Draft gets a
+                  single "not published yet" line instead of metrics
+                  that don't exist yet for a session with no
+                  registrations. */}
+              {bucket === "draft" ? (
+                <p className="flex items-center gap-1.5 text-xs font-medium text-amber-700 mt-2" data-testid={`organiser-session-card-${session.id}-draft-warning`}>
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  Complete session setup
                 </p>
+              ) : bucket === "completed" || bucket === "archived" ? (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs mt-2">
+                  <Metric icon={Users} value={session.registeredCount} label="Players" testId={`organiser-session-card-${session.id}-registered`} />
+                  <Metric icon={CheckCircle2} value={session.checkedInCount} label="Attended" testId={`organiser-session-card-${session.id}-checkedin`} />
+                  {attendancePercent !== null && (
+                    <span className="font-semibold text-primary" data-testid={`organiser-session-card-${session.id}-attendance`}>
+                      {attendancePercent}% Attendance
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs mt-2">
+                  {bucket === "live" && session.roundCurrent && session.roundTotal && (
+                    <span className="font-semibold text-primary" data-testid={`organiser-session-card-${session.id}-round`}>
+                      Round {session.roundCurrent} / {session.roundTotal}
+                    </span>
+                  )}
+                  <Metric
+                    icon={Users}
+                    value={`${session.registeredCount}${session.maxParticipants !== null ? `/${session.maxParticipants}` : ""}`}
+                    label={bucket === "live" ? "Players" : "Registered"}
+                    testId={`organiser-session-card-${session.id}-registered`}
+                  />
+                  {bucket === "live" ? (
+                    <Metric icon={CheckCircle2} value={session.checkedInCount} label="Checked In" testId={`organiser-session-card-${session.id}-checkedin`} />
+                  ) : (
+                    session.waitingCount > 0 && (
+                      <Metric icon={Hourglass} value={session.waitingCount} label="Waiting" testId={`organiser-session-card-${session.id}-waiting`} />
+                    )
+                  )}
+                  {session.courtsCount !== null && (
+                    <Metric icon={Square} value={session.courtsCount} label="Courts" testId={`organiser-session-card-${session.id}-courts`} />
+                  )}
+                </div>
               )}
-
-              <div className="mt-2 space-y-1">
-                <p className="text-xs text-muted-foreground">{session.progressLabel}</p>
-                {session.progressPercent > 0 && (
-                  <div className="h-1.5 w-full max-w-xs rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="h-full bg-primary rounded-full"
-                      style={{ width: `${session.progressPercent}%` }}
-                      data-testid={`organiser-session-card-${session.id}-progress`}
-                    />
-                  </div>
-                )}
-              </div>
             </div>
 
-            <div className="flex sm:flex-col gap-2 shrink-0 w-full sm:w-40">
+            {/* Action + overflow menu sit side by side, not stacked -
+                and this group no longer stretches to fill the row's
+                remaining width, so it sits right next to the content
+                instead of pinned to the far edge of a very wide
+                screen with a wall of empty space in between. */}
+            <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
               <Button
-                onClick={primaryAction.onClick}
+                variant={primaryAction.urgent ? "default" : "outline"}
+                onClick={primaryOnClick}
                 className="flex-1 sm:flex-none"
                 data-testid={`organiser-session-card-${session.id}-primary`}
               >
@@ -226,10 +226,12 @@ export function SessionCard({ session, onDuplicate, onDelete }: SessionCardProps
                   <AlertDialogTrigger asChild>
                     <Button
                       variant="outline"
-                      className="flex-1 sm:flex-none"
+                      size="icon"
+                      className="shrink-0"
                       data-testid={`organiser-session-card-${session.id}-delete`}
                     >
-                      Delete
+                      <Trash2 className="w-4 h-4" />
+                      <span className="sr-only">Delete</span>
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
@@ -252,22 +254,66 @@ export function SessionCard({ session, onDuplicate, onDelete }: SessionCardProps
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
+              ) : bucket === "live" ? (
+                // Live deliberately gets no overflow menu at all - the
+                // only thing that matters while it's running is getting
+                // back into it, nothing secondary is worth surfacing.
+                <Button
+                  variant="outline"
+                  onClick={openWorkspace}
+                  className="flex-1 sm:flex-none"
+                  data-testid={`organiser-session-card-${session.id}-secondary`}
+                >
+                  Manage Session
+                </Button>
               ) : (
-                secondaryAction && (
-                  <Button
-                    variant="outline"
-                    onClick={secondaryAction.onClick}
-                    className="flex-1 sm:flex-none"
-                    data-testid={`organiser-session-card-${session.id}-secondary`}
-                  >
-                    {secondaryAction.label}
-                  </Button>
-                )
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="shrink-0"
+                      data-testid={`organiser-session-card-${session.id}-menu`}
+                    >
+                      <MoreHorizontal className="w-4 h-4" />
+                      <span className="sr-only">More actions</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleDuplicate} data-testid={`organiser-session-card-${session.id}-duplicate`}>
+                      <Copy className="w-4 h-4 mr-2" />
+                      Duplicate
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSaveTemplateOpen(true)} data-testid={`organiser-session-card-${session.id}-save-template`}>
+                      <LayoutTemplate className="w-4 h-4 mr-2" />
+                      Save as Template
+                    </DropdownMenuItem>
+                    {(bucket === "registration-open" || bucket === "upcoming") && (
+                      <DropdownMenuItem onClick={openEdit} data-testid={`organiser-session-card-${session.id}-edit`}>
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                    )}
+                    {bucket === "completed" && onArchive && (
+                      <DropdownMenuItem onClick={() => onArchive(session)} data-testid={`organiser-session-card-${session.id}-archive`}>
+                        <Archive className="w-4 h-4 mr-2" />
+                        Archive
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
             </div>
           </div>
         </div>
       </CardContent>
+
+      <SaveAsTemplateDialog
+        sessionId={session.id}
+        sessionTitle={session.title}
+        open={saveTemplateOpen}
+        onOpenChange={setSaveTemplateOpen}
+      />
     </Card>
   );
 }

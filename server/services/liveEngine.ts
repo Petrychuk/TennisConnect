@@ -238,9 +238,28 @@ export interface LeaderboardEntry {
   matchesPlayed: number;
   wins: number;
   losses: number;
+  draws: number;
   gamesWon: number;
   gamesLost: number;
   restRounds: number;
+  points: number;
+}
+
+// Points formula backing both TC Live's per-session leaderboard and
+// the Rankings feature's Series/Session standings (see
+// server/services/rankingEngine.ts) - one shared, transparent formula
+// rather than two separate ones that could quietly drift apart. Wins
+// matter most, but a draw and games actually won still count for
+// something, so a close loss isn't worth exactly the same as not
+// showing up. A per-series configurable scoring system is future work,
+// out of scope for this MVP - see the Rankings spec's own "Points
+// system: Social Tennis" label, which today just means "this formula".
+export const RANKING_POINTS_PER_WIN = 25;
+export const RANKING_POINTS_PER_DRAW = 12;
+export const RANKING_POINTS_PER_GAME_WON = 1;
+
+function pointsFor(entry: Pick<LeaderboardEntry, "wins" | "draws" | "gamesWon">): number {
+  return entry.wins * RANKING_POINTS_PER_WIN + entry.draws * RANKING_POINTS_PER_DRAW + entry.gamesWon * RANKING_POINTS_PER_GAME_WON;
 }
 
 /**
@@ -260,9 +279,11 @@ export function computeLeaderboard(input: LeaderboardInput): LeaderboardEntry[] 
         matchesPlayed: 0,
         wins: 0,
         losses: 0,
+        draws: 0,
         gamesWon: 0,
         gamesLost: 0,
         restRounds: input.restCounts[id] ?? 0,
+        points: 0,
       });
     }
     return stats.get(id)!;
@@ -272,26 +293,36 @@ export function computeLeaderboard(input: LeaderboardInput): LeaderboardEntry[] 
 
   for (const m of input.matches) {
     if (m.status !== "confirmed" || m.teamAGames == null || m.teamBGames == null) continue;
-    const aWon = m.teamAGames > m.teamBGames;
+    // Ties are a real, allowed outcome now (insertMatchScoreSchema no
+    // longer rejects an equal score) - neither side should be credited
+    // a win OR a loss for one, so this is genuinely three-way, not the
+    // two-way aWon/!aWon split it used to be.
+    const outcome: "a" | "b" | "draw" =
+      m.teamAGames > m.teamBGames ? "a" : m.teamAGames < m.teamBGames ? "b" : "draw";
     for (const id of m.teamAIds) {
       const row = ensure(id);
       row.matchesPlayed += 1;
       row.gamesWon += m.teamAGames;
       row.gamesLost += m.teamBGames;
-      if (aWon) row.wins += 1;
-      else row.losses += 1;
+      if (outcome === "a") row.wins += 1;
+      else if (outcome === "b") row.losses += 1;
+      else row.draws += 1;
     }
     for (const id of m.teamBIds) {
       const row = ensure(id);
       row.matchesPlayed += 1;
       row.gamesWon += m.teamBGames;
       row.gamesLost += m.teamAGames;
-      if (!aWon) row.wins += 1;
-      else row.losses += 1;
+      if (outcome === "b") row.wins += 1;
+      else if (outcome === "a") row.losses += 1;
+      else row.draws += 1;
     }
   }
 
-  return Array.from(stats.values()).sort((a, b) => {
+  const allEntries = Array.from(stats.values());
+  for (const row of allEntries) row.points = pointsFor(row);
+
+  return allEntries.sort((a, b) => {
     if (b.wins !== a.wins) return b.wins - a.wins;
     const diffA = a.gamesWon - a.gamesLost;
     const diffB = b.gamesWon - b.gamesLost;

@@ -42,6 +42,16 @@ export const users = pgTable("users", {
   .default(false)
   .notNull(),
   isHidden: boolean("is_hidden").default(false),
+  // Distributed-brute-force / credential-stuffing protection - the
+  // login route's own rate limiter caps attempts per IP, but a
+  // distributed attack spreads guesses across many IPs against the
+  // SAME account, which a per-IP limiter never sees. This is the
+  // per-account backstop: reset to 0 on any successful login,
+  // incremented on every failed one, and once it crosses the
+  // threshold (see server/auth.ts) the account is locked until
+  // lockedUntil regardless of which IP is trying.
+  failedLoginAttempts: integer("failed_login_attempts").default(0).notNull(),
+  lockedUntil: timestamp("locked_until", { withTimezone: true }),
   // Defaults to true so every existing row (and any insert path other
   // than /api/auth/register - there isn't one today, but this is the
   // safe direction to fail in if that changes) is treated as verified
@@ -172,6 +182,26 @@ export const playerProfiles = pgTable("player_profiles", {
   preferredCourts: json("preferred_courts").$type<string[]>().default([]),
   isDraft: boolean("is_draft").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  // --- Profile redesign (2026) additions - all nullable/optional so no
+  // backfill is needed and every existing row stays valid as-is. ---
+  // Self-declared, optional - used only for better player matching
+  // (e.g. surfacing mixed-doubles-friendly matches), never required.
+  sex: text("sex"),
+  // What this player is actually here for - drives what Play/shopping
+  // content gets prioritised for them. Multi-select, e.g.
+  // ["Hitting Partner", "Coach", "Playing Events"].
+  lookingFor: json("looking_for").$type<string[]>().default([]),
+  gameFormat: text("game_format"),
+  playStyle: text("play_style"),
+  availability: json("availability").$type<string[]>().default([]),
+  playRadiusKm: integer("play_radius_km"),
+  courtSurfacePreference: text("court_surface_preference"),
+  // Header/stats-row additions - the redesign's "stats block" needs
+  // these instead of tournament counts. Both optional/self-declared.
+  playingHand: text("playing_hand"),
+  availabilityStatus: text("availability_status"),
+  // Profile gallery (distinct from the single cover/avatar images).
+  photos: json("photos").$type<string[]>().default([]),
 });
 
 // Coach profiles
@@ -581,10 +611,186 @@ export const tennisSessions = pgTable("sessions", {
   reviewedBy: varchar("reviewed_by").references(() => users.id),
   reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
   reviewNote: text("review_note"),
+  // Optional - most sessions (a one-off tournament, a single coaching
+  // clinic) never need this at all (see the seasons table's own
+  // comment on why Season is deliberately opt-in). Nulling this out
+  // when a session is removed from a season is the only effect that
+  // removal ever has - the session itself is never touched otherwise.
+  seasonId: varchar("season_id").references(() => seasons.id),
+  // Optional, and only ever meaningful when seasonId is also set (a
+  // Series always belongs to a Season - see the series table's own
+  // comment). Null is exactly "No Ranking" for this session (spec
+  // §13): nothing else needs to change for a casual session to stay
+  // completely outside every Series Ranking - it just never gets a
+  // seriesId in the first place.
+  seriesId: varchar("series_id").references((): any => series.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 
 });
+
+// A reusable, saved session setup ("Thursday Social Tennis" - always
+// doubles, 6 courts, 24 players, waiting list on, the same rules text)
+// so a recurring session doesn't need every field re-entered each
+// week. Deliberately only the FORMAT/SETTINGS half of a session - never
+// a specific date, registrations, check-ins, waiting-list players,
+// scores, generated rounds, or leaderboard/results, none of which mean
+// anything outside the one session they happened in. Venue IS included
+// (unlike date/time) - a recurring club session usually happens at the
+// same court every time, and it's just as easy to change at
+// create-from-template time if this particular week is different.
+// A Season groups a set of related Sessions over a defined period so
+// an organiser can track participation and results across the whole
+// series, not just one event at a time - "Season groups multiple
+// related sessions over a defined period", deliberately not
+// "Season = Social Tennis". Entirely optional: most sessions (a
+// one-off tournament, a single coaching clinic, a casual social
+// night) never belong to one at all, and a session works exactly the
+// same with or without a seasonId set.
+//
+// type scopes which session formats can be attached (see
+// SESSION_TYPE_OPTIONS on the client) - keeps a Social Tennis series
+// and a League Match series from ever being mixed into the same
+// ranking pool. Status (Upcoming/Active/Completed) is deliberately
+// NOT a stored column - it's derived purely from comparing today's
+// date against startDate/endDate, so there's nothing for the
+// organiser to keep in sync manually and nothing that can drift out
+// of truth with the dates themselves.
+export const seasons = pgTable("seasons", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id),
+  name: text("name").notNull(),
+  type: text("type").notNull(),
+  startDate: text("start_date").notNull(), // YYYY-MM-DD, same date-only convention as tennisSessions' own date-only fields
+  endDate: text("end_date").notNull(),
+  description: text("description"),
+  // Hides from the normal Seasons list without ever touching the
+  // sessions that belong to it, or their scores/results - see the
+  // spec's own "Archive, never delete, once a season has real
+  // history" requirement.
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  organizationIdIdx: index("seasons_organization_id_idx").on(table.organizationId),
+}));
+
+const baseSeasonSchema = createInsertSchema(seasons).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  archivedAt: true,
+}).extend({
+  name: z.string().min(1, "Season name is required"),
+  startDate: z.string().min(1, "Start date is required"),
+  endDate: z.string().min(1, "End date is required"),
+});
+export const insertSeasonSchema = baseSeasonSchema.refine((data) => data.endDate >= data.startDate, {
+  message: "End date must be after the start date",
+  path: ["endDate"],
+});
+// Used for PUT (partial edits) - a partial update like a rename-only
+// edit never has both dates present at once, which the refine above
+// requires; PUT's own route checks endDate>=startDate itself instead,
+// merged against the season's current stored values.
+export const updateSeasonSchema = baseSeasonSchema.partial();
+export type Season = typeof seasons.$inferSelect;
+export type InsertSeason = z.infer<typeof insertSeasonSchema>;
+
+// A recurring stream of Sessions within a Season - "Wednesday
+// Competition", "Beginners Ladder", etc (see the Organiser Rankings
+// spec §2/§15). Deliberately NOT modelled as a weekday: `name` is a
+// free-text business entity, same as a Season's own name. Every Series
+// belongs to exactly one Season (a Series never spans seasons - a new
+// Season starting means the organiser creates a fresh Series, even if
+// it's the "same" Wednesday competition in spirit) - this is what
+// keeps a completed season's final standings permanently frozen (spec
+// §21) without any special-casing.
+export const series = pgTable("series", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id),
+  seasonId: varchar("season_id").notNull().references(() => seasons.id),
+  name: text("name").notNull(),
+  // Reuses the same session-type vocabulary as everything else
+  // (SESSION_TYPE_OPTIONS) rather than inventing a parallel one.
+  format: text("format").notNull(),
+  description: text("description"),
+  // Same "archive, never delete once it has real history" rule as
+  // seasons.archivedAt - a Series with sessions/results attached is
+  // hidden, not destroyed.
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  seasonIdIdx: index("series_season_id_idx").on(table.seasonId),
+}));
+
+export const insertSeriesSchema = createInsertSchema(series).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  archivedAt: true,
+}).extend({
+  name: z.string().min(1, "Series name is required"),
+  format: z.string().min(1, "Session format is required"),
+});
+export const updateSeriesSchema = insertSeriesSchema.partial();
+export type Series = typeof series.$inferSelect;
+export type InsertSeries = z.infer<typeof insertSeriesSchema>;
+
+export const sessionTemplates = pgTable("session_templates", {  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  name: text("name").notNull(),
+
+  type: text("type").default("social").notNull(),
+  description: text("description"),
+  location: text("location"),
+  timeZone: text("time_zone").default("Australia/Sydney").notNull(),
+  // "HH:mm" (24h), the regular start time-of-day this session usually
+  // runs at - a template has no date of its own, but a recurring
+  // Thursday session usually DOES have a consistent start time worth
+  // pre-filling (unlike the date, which must always be picked fresh).
+  // Nullable - older templates or ones created without a clear regular
+  // time simply leave this to the organizer to pick each time.
+  preferredStartTime: text("preferred_start_time"),
+  // Relative, not absolute - a template has no date of its own. Minutes
+  // rather than separate start/end times, since only the session's
+  // LENGTH is reusable; the actual start time is picked fresh each
+  // time a session gets created from this template.
+  durationMinutes: integer("duration_minutes"),
+
+  price: numeric("price", { precision: 10, scale: 2 }),
+  currency: varchar("currency", { length: 8 }).default("AUD").notNull(),
+  maxParticipants: integer("max_participants"),
+  skillLevel: text("skill_level"),
+  visibility: text("visibility").default("public").notNull(),
+  courtsCount: integer("courts_count"),
+  scoringFormat: text("scoring_format").default("games").notNull(),
+  matchMode: text("match_mode").default("doubles").notNull(),
+  category: text("category"),
+  gamesTo: integer("games_to"),
+  noAd: boolean("no_ad"),
+  tiebreak: boolean("tiebreak"),
+  plannedRoundsCount: integer("planned_rounds_count"),
+  waitingListEnabled: boolean("waiting_list_enabled").default(true).notNull(),
+  waitingListCapacity: integer("waiting_list_capacity"),
+
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  organizationIdIdx: index("session_templates_organization_id_idx").on(table.organizationId),
+}));
+
+export const insertSessionTemplateSchema = createInsertSchema(sessionTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type SessionTemplate = typeof sessionTemplates.$inferSelect;
+export type InsertSessionTemplate = z.infer<typeof insertSessionTemplateSchema>;
 
 // A player joining a Session. `checkedInAt` is unused today but reserved
 // so QR Check-In (v2) can land without a schema change.
@@ -709,9 +915,187 @@ export type LeaderboardRow = {
   matchesPlayed: number;
   wins: number;
   losses: number;
+  draws: number;
   gamesWon: number;
   gamesLost: number;
   restRounds: number;
+  // Points earned in just this one session under the Rankings points
+  // formula (see RANKING_POINTS_PER_WIN/DRAW/GAME_WON in liveEngine.ts) -
+  // distinct from wins/gamesWon, which TC Live's own per-session
+  // leaderboard already showed before Rankings existed.
+  points: number;
+};
+
+// One row of a Series Ranking (spec §10) - the accumulated standing
+// across every completed, ranked Session in a Series, not any single
+// session's own leaderboard.
+export type SeriesStandingRow = {
+  userId: string;
+  userName: string;
+  userAvatar: string | null;
+  sessionsPlayed: number;
+  wins: number;
+  points: number;
+  // Rank movement after the most recently completed session - positive
+  // means moved up, negative means moved down, 0 means unchanged or
+  // this is the player's first ranked session.
+  change: number;
+};
+
+// One row of a single Session's own results (spec §11) - deliberately
+// the same shape as LeaderboardRow minus draws/losses/gamesWon/
+// gamesLost/restRounds, which the Rankings "Session Results" table
+// doesn't show (see the spec's own worked example table).
+export type SeriesSessionResultRow = {
+  userId: string;
+  userName: string;
+  userAvatar: string | null;
+  matchesPlayed: number;
+  wins: number;
+  points: number;
+};
+
+// One entry of a player's recent form within a Series (spec §17's
+// "Points Breakdown") - the session date plus what they scored that
+// day, most recent first.
+export type PlayerFormEntry = {
+  sessionId: string;
+  date: string; // ISO
+  position: number; // 1-based finishing position in that session
+  points: number;
+};
+
+// ===== REPORTS (participation & attendance analytics) =====
+// Deliberately separate from Rankings' types above - Reports answers
+// "how many people participate/attend/return" from raw
+// Sessions/Registrations/check-ins, never wins/points/standings (see
+// the Reports spec §14 "Reports vs Rankings").
+
+export type ReportsPeriod = "this_season" | "previous_season" | "last_30_days" | "last_3_months" | "custom";
+
+export type ReportsKPIs = {
+  uniquePlayers: number;
+  sessionsHeld: number;
+  attendanceRate: number; // 0-100, rounded
+  returningPlayers: number; // 0-100, rounded
+};
+
+// Each field is the change vs the previous comparable period - a
+// relative % change for the two count-based KPIs, a percentage-POINT
+// difference for the two already-percentage KPIs (going from 82% to
+// 87% attendance is "+5", not "+6.1%"). null means no valid comparison
+// exists (e.g. no previous season, or a custom range with no natural
+// "previous" range) and the UI must not show anything for that KPI.
+export type ReportsComparison = {
+  uniquePlayers: number | null;
+  sessionsHeld: number | null;
+  attendanceRate: number | null;
+  returningPlayers: number | null;
+};
+
+export type ParticipationPoint = { date: string; registered: number; attended: number };
+
+export type SeriesPerformanceRow = {
+  seriesId: string;
+  seriesName: string;
+  sessions: number;
+  avgPlayers: number;
+  attendanceRate: number;
+  returningPlayers: number;
+};
+
+export type SessionPerformanceRow = {
+  sessionId: string;
+  date: string; // ISO
+  registered: number;
+  attended: number;
+  attendanceRate: number;
+};
+
+export type PlayerActivityRow = {
+  userId: string;
+  userName: string;
+  userAvatar: string | null;
+  userSlug: string;
+  sessions: number;
+  attended: number;
+  attendanceRate: number;
+  lastPlayed: string | null; // ISO, most recent ATTENDED session
+};
+
+// Which empty-state copy the page should show (spec §11) - resolved
+// server-side since only the server knows whether the organiser has
+// zero data ever, vs. just zero in the current Season, vs. zero in the
+// current Series specifically.
+export type ReportsEmptyReason = "no_org_data" | "no_season_data" | "no_series_data" | null;
+
+export type ReportsData = {
+  emptyReason: ReportsEmptyReason;
+  kpis: ReportsKPIs;
+  comparison: ReportsComparison;
+  participation: ParticipationPoint[];
+  // Populated when no Series filter is applied (compare series against
+  // each other); empty when one Series is selected.
+  seriesPerformance: SeriesPerformanceRow[];
+  // Populated when a single Series IS selected (drill into its own
+  // sessions); empty otherwise.
+  sessionPerformance: SessionPerformanceRow[];
+  playerActivity: PlayerActivityRow[];
+};
+
+// ===== PLAY (public player-facing discovery) =====
+// See the "[Player] Create Play page" spec. Deliberately a thin,
+// derived view over the same `sessions`/`registrations` tables every
+// other feature uses - Play never introduces its own copy of a
+// session, and a player never needs to know what a Season or Series
+// is to use it (spec §11: that context is at most a subtle aside on
+// Session Details, never required).
+
+// Player-facing only - never the organiser's internal
+// draft/pending_review/rejected/cancelled/archived vocabulary (spec
+// §8). "closed" covers a published session whose registration window
+// has passed but the session itself hasn't happened/been marked live
+// yet.
+export type PublicSessionStatus = "live" | "upcoming" | "open" | "almost_full" | "full" | "waitlist" | "closed";
+
+export type PublicSessionCard = {
+  id: string;
+  title: string;
+  type: string; // SessionTypeKey - see organiser-session-wizard-types.ts SESSION_TYPE_OPTIONS for labels
+  playStatus: PublicSessionStatus;
+  startAt: string; // ISO
+  endAt: string | null;
+  timeZone: string;
+  location: string | null;
+  skillLevel: string | null;
+  courtsCount: number | null;
+  maxParticipants: number | null;
+  registeredCount: number;
+  coverImage: string | null;
+  organizationId: string;
+  organizationName: string;
+  organizationSlug: string;
+  organizationLogo: string | null;
+};
+
+export type PublicSessionDetails = PublicSessionCard & {
+  description: string | null;
+  matchMode: string;
+  scoringFormat: string;
+  price: string | null;
+  currency: string;
+  waitingListEnabled: boolean;
+  registrationOpensAt: string | null;
+  registrationClosesAt: string | null;
+  // Subtle Season/Series context only (spec §11) - never required to
+  // understand or use the page. Null whenever the session isn't
+  // attached to either.
+  seasonName: string | null;
+  seriesName: string | null;
+  // Only present for an authenticated viewer - null for a guest, and
+  // null for a signed-in organiser looking at their own listing before
+  // ever registering themselves.
+  myRegistrationStatus: "registered" | "waitlisted" | null;
 };
 
 // Dashboard's Activity Feed - derived from real registration events
@@ -725,6 +1109,7 @@ export type ActivityFeedItem = {
   id: string; // registrationId - type suffix, so join+check-in on the same registration don't collide
   type: "joined" | "checked_in";
   userName: string;
+  sessionId: string;
   sessionTitle: string;
   at: string; // ISO
 };
@@ -733,8 +1118,6 @@ export type ActivityFeedItem = {
 export const insertMatchScoreSchema = z.object({
   teamAGames: z.number().int().min(0),
   teamBGames: z.number().int().min(0),
-}).refine((v) => v.teamAGames !== v.teamBGames, {
-  message: "Games can't be tied - every match needs a winner",
 });
 
 export const organizerRequestsRelations = relations(organizerRequests, ({ one }) => ({
@@ -918,6 +1301,35 @@ export const messages = pgTable("messages", {
   senderUserIdIdx: index("messages_sender_user_id_idx").on(table.senderUserId),
   conversationIdIdx: index("messages_conversation_id_idx").on(table.conversationId),
 }));
+
+// The session workspace's own "Messages" tab needs a real record of
+// what's been broadcast to a session's registered players, separate
+// from the messages table itself - sendMessageBetween() writes one row
+// PER RECIPIENT there (by design, so it lands in each person's own
+// inbox/conversation thread), which makes it awkward to read back as
+// "the history of updates posted to this session" without
+// deduplicating across recipients. One row per broadcast here instead
+// - the tab reads from this table directly, and it survives a page
+// refresh or a fresh deploy instead of resetting to empty (the gap
+// that prompted this: the previous version kept "what's been posted"
+// in local component state only).
+export const sessionUpdates = pgTable("session_updates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => tennisSessions.id),
+  organizerId: varchar("organizer_id").notNull().references(() => users.id),
+  message: text("message").notNull(),
+  sentTo: integer("sent_to").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  sessionIdIdx: index("session_updates_session_id_idx").on(table.sessionId),
+}));
+
+export const insertSessionUpdateSchema = createInsertSchema(sessionUpdates).omit({
+  id: true,
+  createdAt: true,
+});
+export type SessionUpdate = typeof sessionUpdates.$inferSelect;
+export type InsertSessionUpdate = z.infer<typeof insertSessionUpdateSchema>;
 
 // A player's relationship to an organiser's community - separate from
 // any specific session's registrations, and separate from
@@ -1191,6 +1603,12 @@ export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
 export type MessageWithAvatar = Message & {
   senderAvatar?: string | null;
+  // The related session's own startAt, when this message is a
+  // session_invite - lets the client hide stale Join/Decline buttons
+  // once the session has already started and the player never
+  // responded, rather than showing an action that no longer makes
+  // sense. undefined for every other message type.
+  relatedSessionStartAt?: Date | null;
   // Who a conversation-list row should say it's "with" - the other
   // participant, regardless of whether they or the current viewer
   // sent the most recent message in the thread. Only populated by
@@ -1243,6 +1661,12 @@ export type SessionWithDetails = TennisSession & {
   creatorAvatar?: string | null; // populated only when creatorName is (same includeCreatorNames flag)
   hasDivisions: boolean; // true if any session (any status) has this one as its parentSessionId
   parentSessionTitle?: string; // the container's own title, when this session is a division
+  // The session's current round number - only ever populated for a
+  // "live" session (a draft/completed one has no meaningful "current"
+  // round); undefined for everything else. plannedRoundsCount (a real
+  // column on TennisSession, already inherited above) is the "of Y"
+  // half of the same "Round X of Y" display.
+  roundCurrent?: number;
 };
 
 // One row per player registered for a session, with just enough user
