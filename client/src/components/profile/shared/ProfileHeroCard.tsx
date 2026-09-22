@@ -92,6 +92,11 @@ export function ProfileHeroCard({
             {stats}
           </div>
 
+          {/* Soft bottom edge - dissolves into the page background
+              instead of the card's rounded bottom edge reading as a
+              hard line against the plain page below it. */}
+          <div className="absolute inset-x-0 bottom-0 h-6 rounded-b-2xl bg-gradient-to-b from-transparent to-background pointer-events-none" />
+
         </div>
       </div>
     </div>

@@ -75,7 +75,7 @@ export function PlayerHero({
 
   return (
     <ProfileHeroCard
-      cardBackgroundClassName="bg-card/80"
+      cardBackgroundClassName="bg-card/80 border-0 shadow-none"
 
       avatar={
         <ProfileAvatar
