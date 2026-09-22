@@ -50,7 +50,7 @@ export interface PlayingPrefsData {
   courtSurfacePreference: string;
 }
 
-export const LOOKING_FOR_OPTIONS = ["Hitting Partner", "Coach", "Playing Events"];
+export const LOOKING_FOR_OPTIONS = ["Hitting Partner", "Coach", "Playing Events", "Doubles", "Mixed"];
 export const AVAILABILITY_OPTIONS = [
   "Weekday mornings",
   "Weekday evenings",

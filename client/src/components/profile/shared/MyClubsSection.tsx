@@ -56,7 +56,7 @@ export function MyClubsSection({ isOwnProfile, isAuthenticated, mode }: MyClubsS
 
   if (!isAuthenticated) {
     return (
-      <Card data-testid={`${copy.testPrefix}-signed-out`}>
+      <Card data-testid={`${copy.testPrefix}-signed-out`} className="border-0 shadow-sm bg-muted/40">
         <CardContent className="py-10 text-center space-y-3">
           <p className="text-muted-foreground">
             {mode === "communities" ? "Sign in to see the communities you follow." : "Sign in to see your favorite courts."}
@@ -74,7 +74,7 @@ export function MyClubsSection({ isOwnProfile, isAuthenticated, mode }: MyClubsS
 
   if (!isOwnProfile) {
     return (
-      <Card data-testid={`${copy.testPrefix}-not-own-profile`}>
+      <Card data-testid={`${copy.testPrefix}-not-own-profile`} className="border-0 shadow-sm bg-muted/40">
         <CardContent className="py-10 text-center text-muted-foreground">
           {mode === "communities"
             ? "This shows communities you follow, not this profile's - visit your own profile to see yours."
@@ -86,7 +86,7 @@ export function MyClubsSection({ isOwnProfile, isAuthenticated, mode }: MyClubsS
 
   if (clubsQuery.isLoading) {
     return (
-      <Card data-testid={`${copy.testPrefix}-loading`}>
+      <Card data-testid={`${copy.testPrefix}-loading`} className="border-0 shadow-sm bg-muted/40">
         <CardContent className="py-10 text-center text-muted-foreground">Loading…</CardContent>
       </Card>
     );
@@ -110,7 +110,7 @@ export function MyClubsSection({ isOwnProfile, isAuthenticated, mode }: MyClubsS
 
   if (clubs.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-xl border-2 border-dashed" data-testid={`${copy.testPrefix}-empty`}>
+      <div className="text-center py-12 text-muted-foreground bg-muted/40 rounded-xl" data-testid={`${copy.testPrefix}-empty`}>
         <Icon className="w-12 h-12 mx-auto mb-4 opacity-20" />
         <p>{copy.emptyOwn}</p>
       </div>
