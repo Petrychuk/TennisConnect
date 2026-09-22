@@ -77,11 +77,10 @@ export function ProfileCover({
           background right where the avatar/info card overlaps it,
           instead of that card cutting into the photo on a hard edge
           (same from-transparent-to-background technique as the Play
-          page's hero). Taller and more visible than the first attempt -
-          about a third of the cover's own height at every breakpoint. */}
-      {isDefault && (
-        <div className="absolute inset-x-0 bottom-0 h-24 sm:h-28 md:h-32 lg:h-40 bg-gradient-to-t from-background via-background/70 to-transparent" />
-      )}
+          page's hero). Applies to every cover now, not just the
+          branded default - a real uploaded photo hit the same hard
+          cutoff before this. */}
+      <div className="absolute inset-x-0 bottom-0 h-24 sm:h-28 md:h-32 lg:h-40 bg-gradient-to-t from-background via-background/70 to-transparent" />
 
       {/* Dark Overlay — the only scrim now. The old extra fade-to-background
           strip at the bottom sat exactly where the hero card overlaps,
