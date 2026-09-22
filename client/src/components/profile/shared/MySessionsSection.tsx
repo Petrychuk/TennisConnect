@@ -132,7 +132,7 @@ export function MySessionsSection({ isOwnProfile, isAuthenticated, sessionTypes,
 
   if (joined.length === 0) {
     return (
-      <Card data-testid="my-sessions-empty">
+      <Card data-testid="my-sessions-empty" className="border-0 shadow-sm bg-muted/40">
         <CardContent className="py-10 text-center text-muted-foreground">
           {timeframe === "upcoming"
             ? "Nothing here yet. Check \"Play This Week\" on the homepage to find something to join."

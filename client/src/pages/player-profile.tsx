@@ -1017,7 +1017,7 @@ export default function PlayerProfile() {
                   <Skeleton className="h-40 w-full rounded-2xl" />
                 </div>
               ) : (
-              <Tabs defaultValue={initialTab} className="mt-4 space-y-2.5">
+              <Tabs defaultValue={initialTab} className="mt-4 space-y-1">
                 <TabsList className="w-full
                       flex
                       overflow-x-auto

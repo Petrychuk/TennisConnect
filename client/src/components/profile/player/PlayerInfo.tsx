@@ -150,7 +150,7 @@ export function PlayerInfo({
           {/* AGE + SEX + PLAYING HAND + AVAILABILITY - self-declared,
               all optional, shown in the same edit block as everything
               else in this hero card. */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-[0.7fr_0.9fr_1fr_1.5fr] gap-3 md:gap-4">
             <div className="space-y-1 md:space-y-2">
               <p className="text-xs font-medium tracking-wider text-muted-foreground">Age (optional)</p>
               <Input
@@ -262,7 +262,7 @@ export function PlayerInfo({
               text-sm
               md:text-base
 
-              text-muted-foreground
+              text-foreground/70
             "
           >
 
