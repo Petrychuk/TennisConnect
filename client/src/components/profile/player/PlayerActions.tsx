@@ -26,14 +26,29 @@ export function PlayerActions({
   if (!isOwnProfile) {
     if (!onMessageClick) return null;
     return (
-      <Button
-        onClick={onMessageClick}
-        className="h-10 px-5 gap-2 text-sm font-medium"
-        data-testid="hero-message-button"
-      >
-        <MessageCircle className="w-4 h-4" />
-        Message
-      </Button>
+      <div className="absolute top-3 right-3 md:static">
+        <Button
+          onClick={onMessageClick}
+          className="
+            h-10
+            w-10
+            md:w-auto
+            md:min-w-[150px]
+            px-0
+            md:px-5
+
+            gap-0
+            md:gap-2
+
+            text-sm
+            font-medium
+          "
+          data-testid="hero-message-button"
+        >
+          <MessageCircle className="w-4 h-4" />
+          <span className="hidden md:inline">Message</span>
+        </Button>
+      </div>
     );
   }
 
