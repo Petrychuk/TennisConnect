@@ -519,6 +519,10 @@ export function PhotosCard({
           className="max-w-4xl p-0 overflow-hidden bg-black/95 border-0 [&>button]:text-white [&>button]:opacity-90 [&>button]:hover:opacity-100 [&>button]:bg-black/40 [&>button]:rounded-full [&>button]:p-1.5"
           data-testid="photo-lightbox"
         >
+          {/* Visually hidden, not omitted - Radix requires a
+              DialogTitle for screen readers even when the dialog is
+              a pure image viewer with no visible heading. */}
+          <DialogTitle className="sr-only">Photo</DialogTitle>
           {lightboxIndex !== null && (
             <div className="relative flex items-center justify-center min-h-[50vh] max-h-[85vh]">
               <img
