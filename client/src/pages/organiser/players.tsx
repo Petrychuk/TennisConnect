@@ -5,44 +5,38 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Menu, ChevronRight, Download, UserPlus } from "lucide-react";
+import { Menu, ChevronRight, UserPlus } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { useToast } from "@/hooks/use-toast";
 import SEO from "@/components/seo";
 
 import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar";
+import { useSidebarCollapsed } from "@/lib/use-sidebar-collapsed";
+import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/organiser/ui/notification-bell";
 import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
 import { PlayersStatStrip } from "@/components/organiser/players/players-stat-strip";
 import { PlayersToolbar } from "@/components/organiser/players/players-toolbar";
 import { PlayersTable } from "@/components/organiser/players/players-table";
 import { PlayersList } from "@/components/organiser/players/players-list";
-import { TopPlayersCard } from "@/components/organiser/players/top-players-card";
-import { RecentNewPlayersCard } from "@/components/organiser/players/recent-new-players-card";
 
 import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
 import {
-  mockOrgPlayers,
-  mockOrgPlayersSummary,
-  mockTopPlayersBySessions,
-  mockTopPlayersByWinRate,
-  mockRecentNewPlayers,
   type OrgPlayer,
 } from "@/lib/organiser-players-mock-data";
 import { getMyPlayers, inviteToOrganization } from "@/lib/api/organizer-sessions";
 import { toOrgPlayers } from "@/lib/api/session-adapter";
 import { InvitePlayersDialog } from "@/components/organiser/shared/invite-players-dialog";
 
-type MobileFilter = "all" | "active" | "new";
+type MobileFilter = "all" | "active" | "returning";
 
 export default function OrganiserPlayersPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
+  const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed();
   const profileHref = user ? `/${user.role}/${user.slug}` : "/";
   // Real name/avatar from the authenticated user - role/organization
   // fields stay mock for now since there's no backend for those yet.
-  const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null } : mockOrganiser;
+  const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null, isAdmin: user.isAdmin ?? false } : mockOrganiser;
 
   const myPlayersQuery = useQuery({
     queryKey: ["/api/organizer/players/mine"],
@@ -50,41 +44,53 @@ export default function OrganiserPlayersPage() {
     enabled: isAuthenticated,
   });
 
-  // Real players first, then the mock roster padding out the rest -
-  // same "real leads, mock stays for testing volume" pattern used for
-  // the session-level Players/Registration tabs and the dashboard.
-  const allPlayers: OrgPlayer[] = useMemo(() => {
-    const real = toOrgPlayers(myPlayersQuery.data ?? []);
-    return [...real, ...mockOrgPlayers];
-  }, [myPlayersQuery.data]);
+  // Real players only now - was padding the list with the mock
+  // "crowd" (same pattern already removed from the session-level
+  // Players/Registration tabs earlier), which is exactly why test
+  // players kept reappearing here even after being cleaned up
+  // elsewhere: this page's own list was never touched.
+  const allPlayers: OrgPlayer[] = useMemo(
+    () => toOrgPlayers(myPlayersQuery.data ?? []),
+    [myPlayersQuery.data]
+  );
 
   const realCount = myPlayersQuery.data?.length ?? 0;
-  // The headline "128 total" etc. describe a bigger mock org than the
-  // 10 sample rows represent (see organiser-players-mock-data.ts) -
-  // once there are real players, their count is added on top of that
-  // baseline rather than replacing it, so the summary strip and the
-  // "Showing 1 to N of totalPlayers" line stay consistent with what's
-  // actually rendered below.
+  // Real total/active/returning only - was previously baselined on top
+  // of the mock org's own fake figures (a fake "128 total", a fake
+  // return rate, a fake avg rating with no real rating system behind
+  // it), which would have kept disagreeing with the now-real-only list
+  // below it. "Returning" = played more than one session - the
+  // simplest honest reading of "participated more than once" given
+  // sessionsPlayed is the one real signal available; there's no
+  // separate per-season session count to scope this to "this season"
+  // more precisely yet.
   const playersSummary = {
-    ...mockOrgPlayersSummary,
-    totalPlayers: mockOrgPlayersSummary.totalPlayers + realCount,
+    totalPlayers: realCount,
+    activeThisSeason: allPlayers.filter((p) => p.status === "active").length,
+    returningPlayers: allPlayers.filter((p) => p.sessionsPlayed > 1).length,
   };
 
   const [search, setSearch] = useState("");
-  const [view, setView] = useState<"table" | "grid">("table");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [levelFilter, setLevelFilter] = useState("all");
   const [mobileFilter, setMobileFilter] = useState<MobileFilter>("all");
   const [inviteOpen, setInviteOpen] = useState(false);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return query ? allPlayers.filter((p) => p.name.toLowerCase().includes(query)) : allPlayers;
-  }, [allPlayers, search]);
+    return allPlayers.filter((p) => {
+      if (query && !p.name.toLowerCase().includes(query)) return false;
+      if (statusFilter !== "all" && p.status !== statusFilter) return false;
+      if (levelFilter !== "all" && p.levelLabel !== levelFilter) return false;
+      return true;
+    });
+  }, [allPlayers, search, statusFilter, levelFilter]);
 
   const mobileFiltered = useMemo(() => {
     if (mobileFilter === "active") return filtered.filter((p) => p.status === "active");
-    if (mobileFilter === "new") return allPlayers.slice(0, mockOrgPlayersSummary.newThisMonth > filtered.length ? filtered.length : mockOrgPlayersSummary.newThisMonth).filter((p) => filtered.includes(p));
+    if (mobileFilter === "returning") return filtered.filter((p) => p.sessionsPlayed > 1);
     return filtered;
-  }, [filtered, mobileFilter, allPlayers]);
+  }, [filtered, mobileFilter]);
 
   if (authLoading) return null;
   if (!isAuthenticated) {
@@ -116,8 +122,14 @@ export default function OrganiserPlayersPage() {
         noIndex
       />
 
-      <aside className="hidden xl:flex xl:w-64 shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto">
-        <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} className="w-full" />
+      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-64")}>
+        <OrganiserSidebarNav
+          organiser={organiser}
+          profileHref={profileHref}
+          className="w-full"
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={() => setSidebarCollapsed((v) => !v)}
+        />
       </aside>
 
       {/* See sessions.tsx's own comment on this same pattern - <aside>
@@ -170,14 +182,6 @@ export default function OrganiserPlayersPage() {
             </div>
             <div className="hidden sm:flex items-center gap-2 shrink-0">
               <Button
-                variant="outline"
-                onClick={() => toast({ title: "Export List isn't wired up yet" })}
-                data-testid="organiser-players-page-export"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Export List
-              </Button>
-              <Button
                 onClick={() => setInviteOpen(true)}
                 data-testid="organiser-players-page-invite"
               >
@@ -189,57 +193,64 @@ export default function OrganiserPlayersPage() {
 
           <PlayersStatStrip summary={playersSummary} />
 
+          {allPlayers.length === 0 ? (
+            <div className="flex flex-col items-center text-center gap-3 py-16 rounded-2xl border border-dashed border-border" data-testid="organiser-players-page-empty">
+              <UserPlus className="w-8 h-8 text-muted-foreground" />
+              <div>
+                <p className="font-semibold">No players yet</p>
+                <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+                  Invite players or create a session to start building your tennis community.
+                </p>
+              </div>
+              <Button onClick={() => setInviteOpen(true)} data-testid="organiser-players-page-empty-invite">
+                <UserPlus className="w-4 h-4 mr-2" />
+                Invite Players
+              </Button>
+            </div>
+          ) : (
+          <>
           {/* Desktop */}
           <div className="hidden xl:block space-y-6">
-            <PlayersToolbar search={search} onSearchChange={setSearch} view={view} onViewChange={setView} showAdvancedFilters />
-            <PlayersTable players={filtered} />
-            <p className="text-sm text-muted-foreground" data-testid="organiser-players-page-pagination">
-              Showing 1 to {Math.min(filtered.length, 10)} of {playersSummary.totalPlayers} players
-            </p>
-            <div className="grid grid-cols-3 gap-6">
-              <TopPlayersCard
-                title="Top Players by Sessions"
-                testId="organiser-players-page-top-sessions"
-                entries={mockTopPlayersBySessions.map((p) => ({ id: p.id, name: p.name, value: String(p.sessionsPlayed) }))}
-              />
-              <TopPlayersCard
-                title="Top Win Rate"
-                testId="organiser-players-page-top-winrate"
-                entries={mockTopPlayersByWinRate.map((p) => ({ id: p.id, name: p.name, value: `${p.winRate}%` }))}
-              />
-              <RecentNewPlayersCard players={mockRecentNewPlayers} />
-            </div>
+            <PlayersToolbar search={search} onSearchChange={setSearch} status={statusFilter} onStatusChange={setStatusFilter} level={levelFilter} onLevelChange={setLevelFilter} />
+            {filtered.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center" data-testid="organiser-players-page-no-matches">
+                No players match your filters.
+              </p>
+            ) : (
+              <>
+                <PlayersTable players={filtered} />
+                <p className="text-sm text-muted-foreground" data-testid="organiser-players-page-pagination">
+                  Showing 1 to {Math.min(filtered.length, 10)} of {playersSummary.totalPlayers} players
+                </p>
+              </>
+            )}
           </div>
 
           {/* Tablet */}
           <div className="hidden md:block xl:hidden space-y-6">
-            <PlayersToolbar search={search} onSearchChange={setSearch} />
-            <PlayersList players={filtered} />
-            <p className="text-sm text-muted-foreground" data-testid="organiser-players-page-pagination-tablet">
-              Showing 1 to {Math.min(filtered.length, 10)} of {playersSummary.totalPlayers} players
-            </p>
-            <div className="grid grid-cols-2 gap-6">
-              <TopPlayersCard
-                title="Top Sessions"
-                testId="organiser-players-page-top-sessions-tablet"
-                entries={mockTopPlayersBySessions.slice(0, 3).map((p) => ({ id: p.id, name: p.name, value: String(p.sessionsPlayed) }))}
-              />
-              <TopPlayersCard
-                title="Top Win Rate"
-                testId="organiser-players-page-top-winrate-tablet"
-                entries={mockTopPlayersByWinRate.slice(0, 3).map((p) => ({ id: p.id, name: p.name, value: `${p.winRate}%` }))}
-              />
-            </div>
+            <PlayersToolbar search={search} onSearchChange={setSearch} status={statusFilter} onStatusChange={setStatusFilter} level={levelFilter} onLevelChange={setLevelFilter} />
+            {filtered.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center" data-testid="organiser-players-page-no-matches-tablet">
+                No players match your filters.
+              </p>
+            ) : (
+              <>
+                <PlayersList players={filtered} />
+                <p className="text-sm text-muted-foreground" data-testid="organiser-players-page-pagination-tablet">
+                  Showing 1 to {Math.min(filtered.length, 10)} of {playersSummary.totalPlayers} players
+                </p>
+              </>
+            )}
           </div>
 
           {/* Mobile */}
           <div className="md:hidden space-y-6">
-            <PlayersToolbar search={search} onSearchChange={setSearch} />
+            <PlayersToolbar search={search} onSearchChange={setSearch} status={statusFilter} onStatusChange={setStatusFilter} level={levelFilter} onLevelChange={setLevelFilter} />
             <div className="flex items-center gap-2" data-testid="organiser-players-page-mobile-filters">
               {([
                 ["all", `All (${playersSummary.totalPlayers})`],
-                ["active", `Active (${mockOrgPlayersSummary.activeThisSeason})`],
-                ["new", `New (${mockOrgPlayersSummary.newThisMonth})`],
+                ["active", `Active (${playersSummary.activeThisSeason})`],
+                ["returning", `Returning (${playersSummary.returningPlayers})`],
               ] as [MobileFilter, string][]).map(([key, label]) => (
                 <button
                   key={key}
@@ -256,11 +267,21 @@ export default function OrganiserPlayersPage() {
                 </button>
               ))}
             </div>
-            <PlayersList players={mobileFiltered} showSessions={false} />
-            <p className="text-sm text-muted-foreground" data-testid="organiser-players-page-pagination-mobile">
-              Showing 1 to {Math.min(mobileFiltered.length, 10)} of {playersSummary.totalPlayers} players
-            </p>
+            {mobileFiltered.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center" data-testid="organiser-players-page-no-matches-mobile">
+                No players match your filters.
+              </p>
+            ) : (
+              <>
+                <PlayersList players={mobileFiltered} showSessions={false} />
+                <p className="text-sm text-muted-foreground" data-testid="organiser-players-page-pagination-mobile">
+                  Showing 1 to {Math.min(mobileFiltered.length, 10)} of {playersSummary.totalPlayers} players
+                </p>
+              </>
+            )}
           </div>
+          </>
+          )}
         </div>
       </main>
 

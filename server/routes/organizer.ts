@@ -7,7 +7,15 @@ import {
   insertOrganizationSchema,
   insertSessionSchema,
   insertMatchScoreSchema,
+  insertSessionTemplateSchema,
+  type SessionTemplate,
+  insertSeasonSchema,
+  updateSeasonSchema,
+  type Season,
   type TennisSession,
+  insertSeriesSchema,
+  updateSeriesSchema,
+  type Series,
 } from "@shared/schema";
 
 const router = Router();
@@ -223,6 +231,446 @@ router.get("/sessions/mine", requireAuth, async (req, res, next) => {
   }
 });
 
+/* =========================
+   SESSION TEMPLATES
+   ========================= */
+
+router.get("/session-templates", requireAuth, requireOrganizer, async (req, res, next) => {
+  try {
+    const organization = await storage.getOrganizationOwnedByUser((req.user as any).id);
+    if (!organization) {
+      return res.json([]);
+    }
+    const templates = await storage.getSessionTemplatesForOrganization(organization.id);
+    res.json(templates);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/session-templates", requireAuth, requireOrganizer, async (req, res, next) => {
+  try {
+    const organization = await storage.getOrganizationOwnedByUser((req.user as any).id);
+    if (!organization) {
+      return res.status(404).json({ message: "Organisation not found" });
+    }
+    const parsed = insertSessionTemplateSchema.safeParse({
+      ...req.body,
+      organizationId: organization.id,
+      createdBy: (req.user as any).id,
+    });
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid input", errors: parsed.error });
+    }
+    const template = await storage.createSessionTemplate(parsed.data);
+    res.status(201).json(template);
+  } catch (error) {
+    next(error);
+  }
+});
+
+async function requireOwnTemplate(req: Request, res: Response, next: NextFunction) {
+  try {
+    const template = await storage.getSessionTemplateById(req.params.id);
+    if (!template) {
+      return res.status(404).json({ message: "Template not found" });
+    }
+    const organization = await storage.getOrganizationById(template.organizationId);
+    if (!organization || organization.ownerId !== (req.user as any).id) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    (req as any).template = template;
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+router.put("/session-templates/:id", requireAuth, requireOrganizer, requireOwnTemplate, async (req, res, next) => {
+  try {
+    // .partial() - editing a template is a partial update (e.g. just
+    // renaming it), not required to resend every field every time.
+    const parsed = insertSessionTemplateSchema.partial().safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid input", errors: parsed.error });
+    }
+    const updated = await storage.updateSessionTemplate(req.params.id, parsed.data);
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/session-templates/:id/duplicate", requireAuth, requireOrganizer, requireOwnTemplate, async (req, res, next) => {
+  try {
+    const source = (req as any).template as SessionTemplate;
+    const { id, createdAt, updatedAt, ...rest } = source;
+    const copy = await storage.createSessionTemplate({
+      ...rest,
+      name: `${source.name} — Copy`,
+    });
+    res.status(201).json(copy);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/session-templates/:id", requireAuth, requireOrganizer, requireOwnTemplate, async (req, res, next) => {
+  try {
+    // Deliberately does not touch the sessions table at all - see
+    // deleteSessionTemplate's own comment. Nothing references this
+    // template's id anywhere else, so there's nothing to cascade or
+    // orphan.
+    await storage.deleteSessionTemplate(req.params.id);
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* =========================
+   SEASONS
+   ========================= */
+
+router.get("/seasons", requireAuth, requireOrganizer, async (req, res, next) => {
+  try {
+    const organization = await storage.getOrganizationOwnedByUser((req.user as any).id);
+    if (!organization) {
+      return res.json([]);
+    }
+    const rows = await storage.getSeasonsForOrganization(organization.id);
+    res.json(rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/seasons", requireAuth, requireOrganizer, async (req, res, next) => {
+  try {
+    const organization = await storage.getOrganizationOwnedByUser((req.user as any).id);
+    if (!organization) {
+      return res.status(404).json({ message: "Organisation not found" });
+    }
+    const parsed = insertSeasonSchema.safeParse({
+      ...req.body,
+      organizationId: organization.id,
+      createdBy: (req.user as any).id,
+    });
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid input", errors: parsed.error });
+    }
+    const season = await storage.createSeason(parsed.data);
+    res.status(201).json(season);
+  } catch (error) {
+    next(error);
+  }
+});
+
+async function requireOwnSeason(req: Request, res: Response, next: NextFunction) {
+  try {
+    const season = await storage.getSeasonById(req.params.id);
+    if (!season) {
+      return res.status(404).json({ message: "Season not found" });
+    }
+    const organization = await storage.getOrganizationById(season.organizationId);
+    if (!organization || organization.ownerId !== (req.user as any).id) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    (req as any).season = season;
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+router.get("/seasons/:id", requireAuth, requireOrganizer, requireOwnSeason, async (req, res, next) => {
+  try {
+    const withCounts = await storage.getSeasonWithCounts(req.params.id);
+    res.json(withCounts);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/seasons/:id/sessions", requireAuth, requireOrganizer, requireOwnSeason, async (req, res, next) => {
+  try {
+    const season = (req as any).season as Season;
+    const sessions = await storage.getSessionsByOrganization(season.organizationId);
+    res.json(sessions.filter((s) => s.seasonId === season.id));
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.put("/seasons/:id", requireAuth, requireOrganizer, requireOwnSeason, async (req, res, next) => {
+  try {
+    // A partial edit (e.g. just renaming the season) never has both
+    // dates present at once, which insertSeasonSchema's own refine
+    // requires - updateSeasonSchema is the same shape without that
+    // refine; the ordering check below covers it instead, merged
+    // against the season's current stored values.
+    const parsed = updateSeasonSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid input", errors: parsed.error });
+    }
+    const season = (req as any).season as Season;
+    const nextStart = parsed.data.startDate ?? season.startDate;
+    const nextEnd = parsed.data.endDate ?? season.endDate;
+    if (nextEnd < nextStart) {
+      return res.status(400).json({ message: "End date must be after the start date" });
+    }
+    const updated = await storage.updateSeason(req.params.id, parsed.data);
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/seasons/:id/archive", requireAuth, requireOrganizer, requireOwnSeason, async (req, res, next) => {
+  try {
+    const updated = await storage.archiveSeason(req.params.id);
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/seasons/:id", requireAuth, requireOrganizer, requireOwnSeason, async (req, res, next) => {
+  try {
+    const season = (req as any).season as Season;
+    const sessions = await storage.getSessionsByOrganization(season.organizationId);
+    const hasSessions = sessions.some((s) => s.seasonId === season.id);
+    if (hasSessions) {
+      return res.status(409).json({
+        message: "This season has sessions attached - archive it instead of deleting, so those sessions and their results are preserved.",
+      });
+    }
+    await storage.deleteSeason(req.params.id);
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/seasons/:id/sessions", requireAuth, requireOrganizer, requireOwnSeason, async (req, res, next) => {
+  try {
+    const season = (req as any).season as Season;
+    const sessionIds: string[] = Array.isArray(req.body?.sessionIds) ? req.body.sessionIds : [];
+    if (sessionIds.length === 0) {
+      return res.status(400).json({ message: "No sessions selected" });
+    }
+    // Only ever attaches sessions this same organiser actually owns -
+    // an id for someone else's session (or one that doesn't exist)
+    // is silently dropped rather than attached.
+    const ownSessions = await storage.getSessionsByOrganization(season.organizationId);
+    const ownIds = new Set(ownSessions.map((s) => s.id));
+    const validIds = sessionIds.filter((id) => ownIds.has(id));
+    await storage.addSessionsToSeason(season.id, validIds);
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/seasons/:id/sessions/:sessionId", requireAuth, requireOrganizer, requireOwnSeason, async (req, res, next) => {
+  try {
+    // Only ever nulls sessions.season_id for this one session - never
+    // deletes the session, its registrations, or any scores/results.
+    await storage.removeSessionFromSeason(req.params.sessionId);
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* =========================
+   SERIES & RANKINGS
+   ========================= */
+
+router.get("/seasons/:id/series", requireAuth, requireOrganizer, requireOwnSeason, async (req, res, next) => {
+  try {
+    const rows = await storage.getSeriesForSeason(req.params.id);
+    res.json(rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/series", requireAuth, requireOrganizer, async (req, res, next) => {
+  try {
+    const season = req.body?.seasonId ? await storage.getSeasonById(req.body.seasonId) : undefined;
+    if (!season) {
+      return res.status(404).json({ message: "Season not found" });
+    }
+    const organization = await storage.getOrganizationById(season.organizationId);
+    if (!organization || organization.ownerId !== (req.user as any).id) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    const parsed = insertSeriesSchema.safeParse({
+      ...req.body,
+      organizationId: organization.id,
+      createdBy: (req.user as any).id,
+    });
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid input", errors: parsed.error });
+    }
+    const created = await storage.createSeries(parsed.data);
+    res.status(201).json(created);
+  } catch (error) {
+    next(error);
+  }
+});
+
+async function requireOwnSeries(req: Request, res: Response, next: NextFunction) {
+  try {
+    const item = await storage.getSeriesById(req.params.id);
+    if (!item) {
+      return res.status(404).json({ message: "Series not found" });
+    }
+    const organization = await storage.getOrganizationById(item.organizationId);
+    if (!organization || organization.ownerId !== (req.user as any).id) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    (req as any).series = item;
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+router.put("/series/:id", requireAuth, requireOrganizer, requireOwnSeries, async (req, res, next) => {
+  try {
+    const parsed = updateSeriesSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid input", errors: parsed.error });
+    }
+    const updated = await storage.updateSeries(req.params.id, parsed.data);
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/series/:id", requireAuth, requireOrganizer, requireOwnSeries, async (req, res, next) => {
+  try {
+    const sessionsInSeries = await storage.getSessionsForSeries(req.params.id);
+    if (sessionsInSeries.length > 0) {
+      return res.status(409).json({
+        message: "This series has sessions attached - detach them first so their results stay accessible elsewhere.",
+      });
+    }
+    await storage.deleteSeries(req.params.id);
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/series/:id/sessions", requireAuth, requireOrganizer, requireOwnSeries, async (req, res, next) => {
+  try {
+    const rows = await storage.getSessionsForSeries(req.params.id);
+    res.json(rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/series/:id/sessions", requireAuth, requireOrganizer, requireOwnSeries, async (req, res, next) => {
+  try {
+    const seriesRow = (req as any).series as Series;
+    const sessionIds: string[] = Array.isArray(req.body?.sessionIds) ? req.body.sessionIds : [];
+    if (sessionIds.length === 0) {
+      return res.status(400).json({ message: "No sessions selected" });
+    }
+    // Only ever attaches sessions this organiser owns AND that already
+    // belong to the same Season this Series belongs to - a Series
+    // never spans seasons (see the schema's own comment).
+    const ownSessions = await storage.getSessionsByOrganization(seriesRow.organizationId);
+    const validIds = new Set(
+      ownSessions.filter((s) => s.seasonId === seriesRow.seasonId).map((s) => s.id)
+    );
+    const toAttach = sessionIds.filter((id) => validIds.has(id));
+    await storage.addSessionsToSeries(seriesRow.id, toAttach);
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/series/:id/sessions/:sessionId", requireAuth, requireOrganizer, requireOwnSeries, async (req, res, next) => {
+  try {
+    // Only ever nulls sessions.series_id for this one session - never
+    // touches the session itself or any of its results.
+    await storage.removeSessionFromSeries(req.params.sessionId);
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/series/:id/standings", requireAuth, requireOrganizer, requireOwnSeries, async (req, res, next) => {
+  try {
+    const rows = await storage.getSeriesStandings(req.params.id);
+    res.json(rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/series/:id/sessions/:sessionId/results", requireAuth, requireOrganizer, requireOwnSeries, async (req, res, next) => {
+  try {
+    const rows = await storage.getSeriesSessionResults(req.params.id, req.params.sessionId);
+    res.json(rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/series/:id/players/:userId/form", requireAuth, requireOrganizer, requireOwnSeries, async (req, res, next) => {
+  try {
+    const rows = await storage.getPlayerRecentForm(req.params.id, req.params.userId);
+    res.json(rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* =========================
+   REPORTS
+   ========================= */
+
+router.get("/reports", requireAuth, requireOrganizer, async (req, res, next) => {
+  try {
+    const organization = await storage.getOrganizationOwnedByUser((req.user as any).id);
+    if (!organization) {
+      return res.json({
+        emptyReason: "no_org_data",
+        kpis: { uniquePlayers: 0, sessionsHeld: 0, attendanceRate: 0, returningPlayers: 0 },
+        comparison: { uniquePlayers: null, sessionsHeld: null, attendanceRate: null, returningPlayers: null },
+        participation: [],
+        seriesPerformance: [],
+        sessionPerformance: [],
+        playerActivity: [],
+      });
+    }
+    const period = typeof req.query.period === "string" ? req.query.period : "this_season";
+    const validPeriods = ["this_season", "previous_season", "last_30_days", "last_3_months", "custom"];
+    if (!validPeriods.includes(period)) {
+      return res.status(400).json({ message: "Invalid period" });
+    }
+    const data = await storage.getReportsData(organization.id, {
+      period: period as any,
+      seasonId: typeof req.query.seasonId === "string" ? req.query.seasonId : undefined,
+      seriesId: typeof req.query.seriesId === "string" ? req.query.seriesId : undefined,
+      from: typeof req.query.from === "string" ? req.query.from : undefined,
+      to: typeof req.query.to === "string" ? req.query.to : undefined,
+    });
+    res.json(data);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Org-wide Players page - every distinct player who's registered for
 // any of this organiser's sessions, not just one at a time.
 router.get("/players/mine", requireAuth, async (req, res, next) => {
@@ -385,7 +833,39 @@ router.put("/sessions/:id", requireAuth, requireOrganizer, requireOwnSession, as
     if (!parsed.success) {
       return res.status(400).json({ message: "Invalid input", errors: parsed.error });
     }
+    const before = (req as any).session_ as TennisSession;
     const updated = await storage.updateSession(req.params.id, parsed.data);
+
+    // Only startAt actually changing means a real reschedule - a
+    // no-op PUT (saving the form without touching the date/time) or a
+    // change to some other field shouldn't spam everyone who joined.
+    // endAt moving on its own (session got longer/shorter, same start)
+    // isn't included - that doesn't change when to show up, which is
+    // the actual decision a "when's it now" notice needs to inform.
+    const oldStart = new Date(before.startAt).getTime();
+    const newStart = new Date(updated.startAt).getTime();
+    if (oldStart !== newStart) {
+      const organizer = await storage.getUser((req.user as any).id);
+      if (organizer) {
+        const newWhen = new Date(updated.startAt).toLocaleString("en-US", {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+          timeZone: updated.timeZone,
+        });
+        await notifyActiveRegistrants(
+          before,
+          organizer,
+          `Rescheduled: ${updated.title}`,
+          `${organizer.name} has rescheduled "${updated.title}" to ${newWhen}.`
+        );
+      }
+    }
+
     res.json(updated);
   } catch (error) {
     next(error);
@@ -442,9 +922,45 @@ router.post("/sessions/:id/publish", requireAuth, requireOrganizer, requireOwnSe
   }
 });
 
+// Shared by the cancel route and the reschedule-detection below - both
+// need "tell everyone actually registered", just with a different
+// message. Same fetch-registrations-filter-active-send-to-each shape
+// the existing manual /broadcast route already used (extracted here
+// rather than duplicated a third time).
+async function notifyActiveRegistrants(
+  session: TennisSession,
+  organizer: { id: string; name: string; role: string; slug: string },
+  subject: string,
+  message: string
+) {
+  const registrationsList = await storage.getRegistrationsForSession(session.id);
+  const activeRecipients = registrationsList.filter((r) => r.status !== "cancelled");
+  await Promise.all(
+    activeRecipients.map((r) =>
+      sendMessageBetween(organizer as any, r.userId, r.userRole, subject, message)
+    )
+  );
+}
+
 router.post("/sessions/:id/cancel", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
   try {
-    const session = await storage.cancelSession(req.params.id);
+    const thisSession = (req as any).session_ as TennisSession;
+    const [session, organizer] = await Promise.all([
+      storage.cancelSession(req.params.id),
+      storage.getUser((req.user as any).id),
+    ]);
+    // Whoever had already joined needs to hear this directly, not
+    // discover it by the session quietly vanishing from their Upcoming
+    // Sessions - a cancellation notice is exactly what a real organizer
+    // would send by hand if this route didn't do it for them.
+    if (organizer) {
+      await notifyActiveRegistrants(
+        thisSession,
+        organizer,
+        `Cancelled: ${thisSession.title}`,
+        `${organizer.name} has cancelled "${thisSession.title}". We're sorry for the inconvenience.`
+      );
+    }
     res.json(session);
   } catch (error) {
     next(error);
@@ -890,10 +1406,53 @@ router.post("/sessions/:id/finish", requireStagingEnv, requireAuth, requireOrgan
   }
 });
 
-router.get("/sessions/:id/leaderboard", requireStagingEnv, requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+// Viewing final standings for a completed session is basic, always-
+// needed functionality (like check-in - see its own route above for
+// the same reasoning), not an experimental live-scoring feature - only
+// go-live/rounds/pairing/QR check-in stay staging-gated.
+router.get("/sessions/:id/leaderboard", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
   try {
     const leaderboard = await storage.getSessionLeaderboard(req.params.id);
     res.json(leaderboard);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Final standings, sent to every active registrant as a real message -
+// same notifyActiveRegistrants() helper the cancel/reschedule notices
+// already use. One shared summary (not a per-player personalized
+// message) - everyone sees the same full standings, matching what a
+// results page itself shows.
+router.post("/sessions/:id/send-results", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+  try {
+    const session = (req as any).session_ as TennisSession;
+    if (session.status !== "completed") {
+      return res.status(400).json({ message: "Results are only available once the session has finished" });
+    }
+    const [leaderboard, organizer] = await Promise.all([
+      storage.getSessionLeaderboard(session.id),
+      storage.getUser((req.user as any).id),
+    ]);
+    if (!organizer) {
+      return res.status(404).json({ message: "Organiser not found" });
+    }
+    if (leaderboard.length === 0) {
+      return res.status(400).json({ message: "No results to send yet" });
+    }
+
+    const standingsText = leaderboard
+      .map((row, i) => `${i + 1}. ${row.userName} - ${row.wins}W${row.draws > 0 ? `-${row.draws}D` : ""}-${row.losses}L`)
+      .join("\n");
+
+    await notifyActiveRegistrants(
+      session,
+      organizer,
+      `Results: ${session.title}`,
+      `Final standings for "${session.title}":\n${standingsText}`
+    );
+
+    res.status(201).json({ sentTo: leaderboard.length });
   } catch (error) {
     next(error);
   }
@@ -932,7 +1491,28 @@ router.post("/sessions/:id/broadcast", requireAuth, requireOrganizer, requireOwn
       )
     );
 
+    // A real, queryable record of this specific broadcast - separate
+    // from the per-recipient rows sendMessageBetween just wrote to the
+    // messages table - so the Messages tab's own history survives a
+    // page refresh instead of resetting to whatever's still in local
+    // component state.
+    await storage.createSessionUpdate({
+      sessionId: session.id,
+      organizerId: organizer.id,
+      message,
+      sentTo: activeRecipients.length,
+    });
+
     res.status(201).json({ sentTo: activeRecipients.length });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/sessions/:id/updates", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+  try {
+    const updates = await storage.getSessionUpdates(req.params.id);
+    res.json(updates);
   } catch (error) {
     next(error);
   }
@@ -976,13 +1556,39 @@ router.post("/sessions/:id/invite", requireAuth, requireOrganizer, requireOwnSes
         day: "numeric",
         month: "short",
         year: "numeric",
+        timeZone: session.timeZone,
       });
+      const timeOptions: Intl.DateTimeFormatOptions = {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: session.timeZone,
+      };
+      const startTime = new Date(session.startAt).toLocaleTimeString("en-US", timeOptions);
+      const endTime = session.endAt ? new Date(session.endAt).toLocaleTimeString("en-US", timeOptions) : null;
+      const timeRange = endTime ? `${startTime}–${endTime}` : startTime;
+
+      const formatLabel = session.matchMode === "singles" ? "Singles" : "Doubles";
+      const priceValue = session.price ? Number(session.price) : 0;
+      const costLabel = priceValue > 0 ? `$${priceValue} ${session.currency}` : "Free";
+
+      // Enough to actually decide Join vs Decline without opening the
+      // session first - just the date used to say "on 13 Sept 2026"
+      // with none of the details (time, venue, format, cost) that
+      // actually matter for that decision.
+      const detailParts = [
+        session.location,
+        formatLabel,
+        costLabel,
+      ].filter(Boolean);
+
       await sendMessageBetween(
         organizer,
         invitee.id,
         invitee.role,
         `You're invited: ${session.title}`,
-        `${organizer.name} invited you to "${session.title}" on ${sessionDate}.`,
+        `${organizer.name} invited you to "${session.title}" on ${sessionDate}, ${timeRange}` +
+          (detailParts.length ? ` — ${detailParts.join(" · ")}.` : "."),
         { messageType: "session_invite", relatedSessionId: session.id }
       );
     }

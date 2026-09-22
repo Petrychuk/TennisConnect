@@ -292,11 +292,11 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
             <div className="text-center lg:text-left">
             <h1 className="text-3xl md:text-4xl font-display font-bold mb-2">
               Tennis
-              <span className="text-primary">Connect</span>
+              <span className="text-[hsl(var(--tennis-ball))]">Connect</span>
               <span className="inline-block w-2 h-2 ml-1 rounded-full bg-[hsl(var(--tennis-ball))] animate-pulse" />
             </h1>
               <p className="text-muted-foreground">
-                Join Sydney's largest tennis community.
+                One online community for everyone in Australian tennis.
               </p>
             </div>
 
@@ -329,7 +329,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                       <Button
                         onClick={() => handleResendVerification(verificationRequiredEmail)}
                         disabled={resendLoading}
-                        className="w-2/3 mx-auto flex items-center justify-center font-bold bg-primary text-foreground hover:bg-primary/90 rounded-full cursor-pointer mb-3"
+                        className="w-2/3 mx-auto flex items-center justify-center font-bold bg-primary text-foreground border-primary hover:bg-primary/90 rounded-full cursor-pointer mb-3"
                         data-testid="resend-verification-button"
                       >
                         {resendLoading ? <TennisBallSpinner /> : "Resend verification email"}
@@ -401,7 +401,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                           </div>
                           <Button
                             type="submit"
-                            className="w-2/3 mx-auto flex items-center justify-center font-bold bg-primary text-foreground hover:bg-primary/90 rounded-full cursor-pointer"
+                            className="w-2/3 mx-auto flex items-center justify-center font-bold bg-primary text-foreground border-primary hover:bg-primary/90 rounded-full cursor-pointer"
                             disabled={forgotPasswordLoading}
                             data-testid="send-reset-link-button"
                           >
@@ -497,7 +497,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                     </label>
                   </div>
 
-                  <Button type="submit"  data-testid="login-button" className="w-2/3 mx-auto flex items-center justify-center whitespace-nowrap font-bold bg-primary text-foreground hover:bg-primary/90 rounded-full cursor-pointer" disabled={isLoading}>
+                  <Button type="submit"  data-testid="login-button" className="w-2/3 mx-auto flex items-center justify-center whitespace-nowrap font-bold bg-primary text-foreground border-primary hover:bg-primary/90 rounded-full cursor-pointer" disabled={isLoading}>
                     {isLoading ? <TennisBallSpinner /> : "Sign In"}
                   </Button>
                 </form>
@@ -686,7 +686,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                     )}
                   </div>
 
-                  <Button type="submit" data-testid="register-button" className="w-2/3 mx-auto flex items-center justify-center whitespace-nowrap font-bold bg-primary text-foreground hover:bg-primary/90 rounded-full cursor-pointer" disabled={isLoading}>
+                  <Button type="submit" data-testid="register-button" className="w-2/3 mx-auto flex items-center justify-center whitespace-nowrap font-bold bg-primary text-foreground border-primary hover:bg-primary/90 rounded-full cursor-pointer" disabled={isLoading}>
                     {isLoading ? <TennisBallSpinner /> : "Create Account"}
                   </Button>
                   

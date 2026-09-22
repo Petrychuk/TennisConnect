@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import SEO from "@/components/seo";
 
 import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar";
+import { useSidebarCollapsed } from "@/lib/use-sidebar-collapsed";
+import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/organiser/ui/notification-bell";
 import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
 import { WizardStepSidebar } from "@/components/organiser/sessions/wizard/wizard-step-sidebar";
@@ -21,11 +23,12 @@ import { Step4ReviewPublish } from "@/components/organiser/sessions/wizard/step4
 import { PendingApprovalDialog } from "@/components/organiser/sessions/wizard/pending-approval-dialog";
 
 import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
-import { ensureMyOrganization, createSession, publishSession, getSessionById } from "@/lib/api/organizer-sessions";
+import { ensureMyOrganization, createSession, publishSession, getSessionById, getSessionTemplates } from "@/lib/api/organizer-sessions";
 import {
   createEmptyDraft,
   draftToInsertSession,
   sessionToDraft,
+  templateToDraft,
   SESSION_TYPE_OPTIONS,
   type NewSessionDraft,
 } from "@/lib/organiser-session-wizard-types";
@@ -33,11 +36,12 @@ import {
 export default function OrganiserSessionNewPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed();
   const { toast } = useToast();
   const profileHref = user ? `/${user.role}/${user.slug}` : "/";
   // Real name/avatar from the authenticated user - role/organization
   // fields stay mock for now since there's no backend for those yet.
-  const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null } : mockOrganiser;
+  const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null, isAdmin: user.isAdmin ?? false } : mockOrganiser;
 
   const [draft, setDraft] = useState<NewSessionDraft>(createEmptyDraft);
   const [step, setStep] = useState(1);
@@ -73,6 +77,40 @@ export default function OrganiserSessionNewPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [duplicateFromId]);
+
+  // "Use Template" (from the Templates page) lands here with
+  // ?templateId=<id> - pre-fills the same way duplicateFrom does, via
+  // templateToDraft instead of sessionToDraft. templateToDraft already
+  // starts from createEmptyDraft() (today's date) and only ever
+  // overrides the reusable fields a template actually stores, so the
+  // date/registration-window fields are already fresh without any
+  // extra reset logic needed here - the organiser still reviews and
+  // picks a real date on Step 2 like any other new session, exactly
+  // per the "template does not create a session immediately" rule.
+  //
+  // No single-template GET route exists - list + find is the simplest
+  // correct option (an organiser typically has few templates) rather
+  // than adding a route just for this one pre-fill.
+  const templateId = new URLSearchParams(search).get("templateId");
+  useEffect(() => {
+    if (!templateId) return;
+    let cancelled = false;
+    getSessionTemplates()
+      .then((templates) => {
+        const template = templates.find((t) => t.id === templateId);
+        if (!cancelled && template) setDraft(templateToDraft(template));
+        else if (!cancelled) toast({ title: "That template couldn't be found", variant: "destructive" });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          toast({ title: "Couldn't load that template", variant: "destructive" });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templateId]);
 
   const updateDraft = <K extends keyof NewSessionDraft>(key: K, value: NewSessionDraft[K]) => {
     setDraft((prev) => ({ ...prev, [key]: value }));
@@ -189,8 +227,14 @@ export default function OrganiserSessionNewPage() {
         noIndex
       />
 
-      <aside className="hidden xl:flex xl:w-64 shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto">
-        <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} className="w-full" />
+      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-64")}>
+        <OrganiserSidebarNav
+          organiser={organiser}
+          profileHref={profileHref}
+          className="w-full"
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={() => setSidebarCollapsed((v) => !v)}
+        />
       </aside>
 
       {/* See sessions.tsx's own comment on this same pattern - <aside>
@@ -229,26 +273,9 @@ export default function OrganiserSessionNewPage() {
 
         <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 max-w-6xl mx-auto">
           {/* Desktop header row */}
-          <div className="hidden xl:flex items-start justify-between gap-4">
-            <div>
-              <h1 className="font-display text-2xl sm:text-3xl font-bold">Create New Session</h1>
-              <p className="text-muted-foreground mt-1">Create a new tennis session in just a few steps.</p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Button variant="outline" onClick={handleSaveDraft} disabled={submitting} data-testid="organiser-wizard-save-draft-top">
-                Save as Draft
-              </Button>
-              {step < 4 ? (
-                <Button onClick={handleNext} data-testid="organiser-wizard-next-top">
-                  Next Step
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              ) : (
-                <Button onClick={handlePublish} disabled={submitting} data-testid="organiser-wizard-publish-top">
-                  Publish Session
-                </Button>
-              )}
-            </div>
+          <div className="hidden xl:block">
+            <h1 className="font-display text-2xl sm:text-3xl font-bold">Create New Session</h1>
+            <p className="text-muted-foreground mt-1">Create a new tennis session in just a few steps.</p>
           </div>
 
           {/* Tablet/mobile header */}

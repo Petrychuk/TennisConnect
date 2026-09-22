@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -10,8 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, UserCircle, MessageSquare, History, UserX } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { MoreHorizontal, UserCircle, MessageSquare } from "lucide-react";
 import type { OrgPlayer } from "@/lib/organiser-players-mock-data";
 
 interface PlayersTableProps {
@@ -25,8 +25,17 @@ const LEVEL_BADGE_STYLE: Record<OrgPlayer["levelLabel"], string> = {
   Beginner: "bg-accent text-accent-foreground",
 };
 
+// Win Rate removed - it was hardcoded to 0 for every real player (no
+// win/loss data exists at the org-wide level), never a real column.
+// Clicking a row (or "View Player" in the menu) opens Player Details
+// (/organiser/players/:slug) - the one place session-level performance
+// data actually makes sense to show, once that's genuinely available.
+// "Remove"/"Add to Group" aren't here - no real backend action exists
+// for either yet (Group doesn't exist at all - Phase 2), and a fake
+// destructive-looking "Remove" that does nothing is worse than not
+// offering it.
 export function PlayersTable({ players }: PlayersTableProps) {
-  const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const toggle = (id: string) => {
@@ -37,8 +46,7 @@ export function PlayersTable({ players }: PlayersTableProps) {
     });
   };
 
-  const notify = (action: string, player: OrgPlayer) =>
-    toast({ title: `${action} — coming soon`, description: `Would apply to ${player.name}.` });
+  const openDetails = (player: OrgPlayer) => setLocation(`/organiser/players/${player.slug}`);
 
   return (
     <div className="overflow-x-auto" data-testid="organiser-players-page-table">
@@ -54,8 +62,7 @@ export function PlayersTable({ players }: PlayersTableProps) {
             </TableHead>
             <TableHead>Player</TableHead>
             <TableHead>Level</TableHead>
-            <TableHead>Sessions Played</TableHead>
-            <TableHead>Win Rate</TableHead>
+            <TableHead>Sessions</TableHead>
             <TableHead>Last Played</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Actions</TableHead>
@@ -63,8 +70,13 @@ export function PlayersTable({ players }: PlayersTableProps) {
         </TableHeader>
         <TableBody>
           {players.map((player) => (
-            <TableRow key={player.id} data-testid={`organiser-players-page-row-${player.id}`}>
-              <TableCell>
+            <TableRow
+              key={player.id}
+              className="cursor-pointer"
+              onClick={() => openDetails(player)}
+              data-testid={`organiser-players-page-row-${player.id}`}
+            >
+              <TableCell onClick={(e) => e.stopPropagation()}>
                 <Checkbox
                   checked={selected.has(player.id)}
                   onCheckedChange={() => toggle(player.id)}
@@ -88,7 +100,6 @@ export function PlayersTable({ players }: PlayersTableProps) {
                 </div>
               </TableCell>
               <TableCell>{player.sessionsPlayed}</TableCell>
-              <TableCell>{player.winRate}%</TableCell>
               <TableCell className="text-muted-foreground text-sm">
                 {new Date(player.lastPlayed).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
               </TableCell>
@@ -97,7 +108,7 @@ export function PlayersTable({ players }: PlayersTableProps) {
                   {player.status === "active" ? "Active" : "Inactive"}
                 </Badge>
               </TableCell>
-              <TableCell className="text-right">
+              <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" data-testid={`organiser-players-page-row-${player.id}-menu`}>
@@ -105,21 +116,13 @@ export function PlayersTable({ players }: PlayersTableProps) {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => notify("View Profile", player)}>
+                    <DropdownMenuItem onClick={() => openDetails(player)} data-testid={`organiser-players-page-row-${player.id}-view`}>
                       <UserCircle className="w-4 h-4 mr-2" />
-                      View Profile
+                      View Player
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => notify("Message", player)}>
+                    <DropdownMenuItem onClick={() => setLocation(`/player/${player.slug}`)} data-testid={`organiser-players-page-row-${player.id}-public-profile`}>
                       <MessageSquare className="w-4 h-4 mr-2" />
-                      Message
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => notify("View History", player)}>
-                      <History className="w-4 h-4 mr-2" />
-                      View History
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => notify("Remove", player)} className="text-destructive">
-                      <UserX className="w-4 h-4 mr-2" />
-                      Remove
+                      View Public Profile
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

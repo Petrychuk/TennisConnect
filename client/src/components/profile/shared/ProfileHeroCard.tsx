@@ -21,7 +21,7 @@ export function ProfileHeroCard({
   cardBackgroundClassName = "bg-card/50",
 }: ProfileHeroCardProps) {
   return (
-    <div className="container mx-auto max-w-6xl sm:px-4 relative -mt-2 sm:-mt-6 md:-mt-16 lg:-mt-20 z-30">
+    <div className="container mx-auto max-w-6xl sm:px-4 relative -mt-[88px] sm:-mt-6 md:-mt-[114px] lg:-mt-[130px] z-30">
 
       <div className="relative">
 
@@ -91,6 +91,11 @@ export function ProfileHeroCard({
           <div className="mt-8">
             {stats}
           </div>
+
+          {/* Soft bottom edge - dissolves into the page background
+              instead of the card's rounded bottom edge reading as a
+              hard line against the plain page below it. */}
+          <div className="absolute inset-x-0 bottom-0 h-6 rounded-b-2xl bg-gradient-to-b from-transparent to-background pointer-events-none" />
 
         </div>
       </div>

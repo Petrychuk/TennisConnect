@@ -9,8 +9,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Search, CalendarDays, SlidersHorizontal } from "lucide-react";
+import { Search, CalendarDays, SlidersHorizontal, List, LayoutGrid } from "lucide-react";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
+
+export type SessionsViewMode = "grid" | "list" | "calendar";
 
 interface SessionFiltersBarProps {
   search: string;
@@ -24,16 +26,16 @@ interface SessionFiltersBarProps {
   onDateFromChange: (value: string) => void;
   dateTo: string;
   onDateToChange: (value: string) => void;
-  calendarOpen: boolean;
-  onCalendarOpenChange: (open: boolean) => void;
+  viewMode: SessionsViewMode;
+  onViewModeChange: (mode: SessionsViewMode) => void;
 }
 
 // Venue and Format are real filters now, driven by the organiser's
 // actual session data (venueOptions) and the same 12 session types
 // used everywhere else in the app - this used to be a fixed
 // two-venue, four-format placeholder list from back when there was
-// only ever one venue in the mock data. Calendar view and the extra
-// filters button are still genuinely unbuilt.
+// only ever one venue in the mock data. The extra filters button is
+// still genuinely unbuilt.
 export function SessionFiltersBar({
   search,
   onSearchChange,
@@ -46,8 +48,8 @@ export function SessionFiltersBar({
   onDateFromChange,
   dateTo,
   onDateToChange,
-  calendarOpen,
-  onCalendarOpenChange,
+  viewMode,
+  onViewModeChange,
 }: SessionFiltersBarProps) {
   const hasDateFilter = !!dateFrom || !!dateTo;
 
@@ -95,15 +97,44 @@ export function SessionFiltersBar({
       </div>
 
       <div className="flex gap-2">
-        <Button
-          variant={calendarOpen ? "default" : "outline"}
-          className="hidden md:inline-flex gap-2"
-          onClick={() => onCalendarOpenChange(!calendarOpen)}
-          data-testid="organiser-sessions-calendar-button"
-        >
-          <CalendarDays className="w-4 h-4" />
-          {calendarOpen ? "List" : "Calendar"}
-        </Button>
+        {/* A real three-state segmented toggle (all options always
+            visible, the active one highlighted) rather than a single
+            button whose own label used to flip between two states -
+            the toggle shape itself makes it obvious this switches how
+            the same Sessions are shown, not a separate feature living
+            next to the list. */}
+        <div className="hidden md:inline-flex rounded-lg border border-border p-0.5" data-testid="organiser-sessions-view-toggle">
+          <Button
+            variant={viewMode === "grid" ? "secondary" : "ghost"}
+            size="sm"
+            className="gap-1.5 shadow-none"
+            onClick={() => onViewModeChange("grid")}
+            data-testid="organiser-sessions-view-grid"
+          >
+            <LayoutGrid className="w-4 h-4" />
+            Grid
+          </Button>
+          <Button
+            variant={viewMode === "list" ? "secondary" : "ghost"}
+            size="sm"
+            className="gap-1.5 shadow-none"
+            onClick={() => onViewModeChange("list")}
+            data-testid="organiser-sessions-view-list"
+          >
+            <List className="w-4 h-4" />
+            List
+          </Button>
+          <Button
+            variant={viewMode === "calendar" ? "secondary" : "ghost"}
+            size="sm"
+            className="gap-1.5 shadow-none"
+            onClick={() => onViewModeChange("calendar")}
+            data-testid="organiser-sessions-view-calendar"
+          >
+            <CalendarDays className="w-4 h-4" />
+            Calendar
+          </Button>
+        </div>
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="outline" size="icon" className="relative" data-testid="organiser-sessions-filters-button">

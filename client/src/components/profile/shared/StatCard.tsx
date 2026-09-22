@@ -12,6 +12,11 @@ interface StatCardProps {
   onClick?: () => void;
 
   className?: string;
+  /** Overrides just the value text's size/weight - e.g. for a longer
+      string value (a status label) that would look oversized at the
+      default numeric-stat sizing. Purely additive/optional - every
+      existing caller keeps the default look. */
+  valueClassName?: string;
   "data-testid"?: string;
 }
 
@@ -23,6 +28,7 @@ export function StatCard({
   clickable = false,
   onClick,
   className,
+  valueClassName,
   "data-testid": dataTestId,
 }: StatCardProps) {
   return (
@@ -95,7 +101,8 @@ export function StatCard({
   </div>
 
   <div
-    className="
+    className={cn(
+      `
       text-sm
       sm:text-base
       md:text-xl
@@ -107,7 +114,9 @@ export function StatCard({
 
       whitespace-nowrap
       truncate
-    "
+      `,
+      valueClassName
+    )}
   >
     {value}
   </div>

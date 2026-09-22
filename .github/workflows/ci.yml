@@ -1,0 +1,122 @@
+name: CI
+
+# Runs on every push and PR - the point of this workflow existing at
+# all is that a security regression (or a plain type error) gets
+# caught here, before merge, instead of being noticed in production.
+# See the security audit this came out of: "Security Testing in CI"
+# was a flat gap - there was no .github/ directory before this file.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+
+  dependency-audit:
+    name: Dependency vulnerability scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # Fails the build on high/critical advisories - moderate/low
+      # ones are reported but don't block, since those are common
+      # enough in transitive deps that blocking on every one of them
+      # would make this check something people learn to ignore.
+      - run: npm audit --audit-level=high
+
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # gitleaks is free for public repos and for a single private repo
+      # under its own free tier at the time of writing - re-check that
+      # before relying on this long-term. Scans the full history on
+      # every run (fetch-depth: 0 above), not just the current diff, so
+      # it also catches a secret that was committed and later removed
+      # but still sits in git history.
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ---------------------------------------------------------------------
+  # E2E / security regression tests (Playwright).
+  #
+  # NOT verified end-to-end in this environment - there was no CI setup
+  # at all before this file, so this job is a best-effort starting
+  # point, not a proven-working pipeline. Before trusting it:
+  #   1. Add repo secrets: DATABASE_URL (a real, disposable TEST
+  #      database - never point this at production or staging data),
+  #      SESSION_SECRET, and any other env vars server/env.ts requires
+  #      at boot (check that file for the full required list).
+  #   2. Confirm `npm run db:push` against that DATABASE_URL actually
+  #      produces a schema the app can run against from a clean slate.
+  #   3. Confirm the server actually becomes reachable at
+  #      http://localhost:5000 after `npm run dev` (check server/
+  #      index.ts for the real port if this doesn't match) - the sleep
+  #      below is a crude fixed wait, not a real readiness check.
+  #   4. Run this job once and read its actual output before trusting
+  #      green/red - a workflow that's never executed can look
+  #      complete while quietly failing at step 1.
+  e2e-tests:
+    name: E2E tests (Playwright)
+    runs-on: ubuntu-latest
+    needs: [typecheck]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      - name: Push schema to the test database
+        run: npm run db:push
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Start the app
+        run: npm run dev &
+        env:
+          NODE_ENV: development
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+
+      - name: Wait for the app to be ready
+        run: npx wait-on http://localhost:5000 --timeout 60000
+
+      # Every @smoke-tagged test across every suite (organiser hub,
+      # play, security) - see individual spec files for what each one
+      # covers. Full (non-smoke) regression is intentionally NOT run
+      # on every push - it's slower and belongs on a schedule or before
+      # a release, not blocking every commit.
+      - name: Run smoke tests
+        run: npx playwright test --grep @smoke
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14

@@ -3,12 +3,14 @@ import multer from "multer";
 import { requireAuth } from "../requireAuth";
 import { supabaseAdmin } from "../supabaseAdmin";
 import { storage } from "../storage";
+import { multerImageFileFilter, detectImageType } from "../lib/imageValidation";
 
 const router = Router();
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: multerImageFileFilter,
 });
 
 // PUBLIC VIEW
@@ -66,11 +68,15 @@ router.put("/:id", requireAuth, async (req, res, next) => {
   try {
     const updated = await storage.updateMarketplaceItem(
       req.params.id,
+      req.user!.id,
       req.body
     );
 
     res.json(updated);
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.message === "Item not found or access denied") {
+      return res.status(404).json({ message: err.message });
+    }
     next(err);
   }
 });
@@ -80,9 +86,12 @@ router.put("/:id", requireAuth, async (req, res, next) => {
 ========================================= */
 router.delete("/:id", requireAuth, async (req, res, next) => {
   try {
-    await storage.deleteMarketplaceItem(req.params.id);
+    await storage.deleteMarketplaceItem(req.params.id, req.user!.id);
     res.json({ success: true });
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.message === "Item not found or access denied") {
+      return res.status(404).json({ message: err.message });
+    }
     next(err);
   }
 });
@@ -103,13 +112,23 @@ router.post(
         return res.status(400).json({ message: "No file uploaded" });
       }
 
+      // Belt-and-suspenders, same as uploadMedia.ts: fileFilter above
+      // only checked the declared mimetype - this checks the actual
+      // bytes so an HTML/SVG/script payload relabelled as an image
+      // can't be smuggled in and served back from the public bucket
+      // with a browser-executable content type.
+      const detectedType = detectImageType(req.file.buffer);
+      if (!detectedType) {
+        return res.status(400).json({ message: "File content doesn't look like a valid image" });
+      }
+
       const fileName = `photo-${Date.now()}.webp`;
       const filePath = `marketplace/${userId}/${id}/${fileName}`;
 
       const { error } = await supabaseAdmin.storage
         .from("media")
         .upload(filePath, req.file.buffer, {
-          contentType: req.file.mimetype,
+          contentType: detectedType,
           upsert: false,
         });
 
@@ -123,11 +142,15 @@ router.post(
 
       const updatedItem = await storage.addMarketplacePhoto(
         id,
+        userId,
         publicUrl
       );
 
       res.json(updatedItem);
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.message === "Item not found or access denied") {
+        return res.status(404).json({ message: err.message });
+      }
       next(err);
     }
   }
@@ -145,11 +168,15 @@ router.delete(
 
       const updatedItem = await storage.removeMarketplacePhoto(
         req.params.id,
+        req.user!.id,
         photoUrl
       );
 
       res.json(updatedItem);
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.message === "Item not found or access denied") {
+        return res.status(404).json({ message: err.message });
+      }
       next(err);
     }
   }

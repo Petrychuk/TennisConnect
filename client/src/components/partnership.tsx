@@ -73,7 +73,7 @@ export function Partnership() {
             <div className="flex flex-col items-start gap-3">
             <Button
                 size="lg"
-                className="bg-primary text-foreground hover:bg-primary/90 font-bold rounded-full px-8 cursor-pointer"
+                className="bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full px-8 cursor-pointer"
                 onClick={() =>
                   window.dispatchEvent(
                     new CustomEvent("open-support-chat", {

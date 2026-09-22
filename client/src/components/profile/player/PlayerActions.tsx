@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Edit2, Save } from "lucide-react";
+import { Edit2, Save, MessageCircle } from "lucide-react";
 
 interface PlayerActionsProps {
   isOwnProfile: boolean;
@@ -8,6 +8,11 @@ interface PlayerActionsProps {
   onEdit: () => void;
   onSave: () => void;
   onCancel: () => void;
+  /** Visitor-only - opens the same quick-message modal used by the
+      Bottom CTA. One button, not separate Invite/Message actions -
+      the distinction wasn't meaningful enough to justify two buttons
+      here. */
+  onMessageClick?: () => void;
 }
 
 export function PlayerActions({
@@ -16,8 +21,36 @@ export function PlayerActions({
   onEdit,
   onSave,
   onCancel,
+  onMessageClick,
 }: PlayerActionsProps) {
-  if (!isOwnProfile) return null;
+  if (!isOwnProfile) {
+    if (!onMessageClick) return null;
+    return (
+      <div className="absolute top-3 right-3 md:static">
+        <Button
+          onClick={onMessageClick}
+          className="
+            h-10
+            w-10
+            md:w-auto
+            md:min-w-[150px]
+            px-0
+            md:px-5
+
+            gap-0
+            md:gap-2
+
+            text-sm
+            font-medium
+          "
+          data-testid="hero-message-button"
+        >
+          <MessageCircle className="w-4 h-4" />
+          <span className="hidden md:inline">Message</span>
+        </Button>
+      </div>
+    );
+  }
 
   if (isEditing) {
     return (

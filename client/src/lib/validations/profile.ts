@@ -32,6 +32,11 @@ export const playerProfileSchema = z.object({
     .trim()
     .min(10, "Bio must be at least 10 characters")
     .max(1000, "Bio is too long"),
+
+  // Both optional/self-declared, per the redesign: used only for
+  // better player matching (nothing forces a player to answer).
+  sex: z.string().optional(),
+  lookingFor: z.array(z.string()).max(10).optional(),
 });
 
 export const coachProfileSchema = z.object({

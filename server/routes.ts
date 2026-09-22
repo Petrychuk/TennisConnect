@@ -4,9 +4,11 @@ import { createServer, type Server } from "http";
 import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import { hashPassword, comparePasswords } from "./auth";
+import { omitPassword } from "./lib/sanitizeUser";
 import uploadMediaRouter from "./routes/uploadMedia";
 import profileTournamentHistoryRouter from "./routes/profileTournamentHistory";
 import profileMarketplace from "./routes/profileMarketplace";
+import playerPhotos from "./routes/playerPhotos";
 import contentRouter from "./routes/adminContent";
 import passport from "passport";
 import { requireAuth, requireAdmin } from "./requireAuth";
@@ -17,6 +19,7 @@ import coachesRouter from "./routes/coaches";
 import { sendSystemMessage, sendMessageBetween, pairConversationId, ORGANIZER_APPROVED_SUBJECT, ORGANIZER_APPROVED_MESSAGE } from "./services/systemMessages";
 import uploadContentRouter from "./routes/upload-content";
 import organizerRouter from "./routes/organizer";
+import playRouter from "./routes/play";
 import weatherRouter from "./routes/weather";
 import supportRouter from "./routes/support";
 import testHooksRouter from "./routes/testHooks";
@@ -32,7 +35,7 @@ import {
   passwordResetTokens,
 } from "@shared/schema";
 import { z } from "zod";
-import { sendPasswordResetEmail, sendVerificationEmail } from "./services/emailService";
+import { sendPasswordResetEmail, sendVerificationEmail, sendDuplicateRegistrationAlertEmail } from "./services/emailService";
 import { issueVerificationToken, verifyEmailToken } from "./services/emailVerification";
 import { db } from "./db";
 import { env } from "./env";
@@ -45,13 +48,8 @@ import sitemapRoutes from "./routes/sitemapRoutes";
 
 // Storage reads pull every column (including the password hash) since
 // most internal callers need the full row. Anything that gets sent back
-// to a client goes through this first so the hash never crosses the wire.
-function omitPassword<T extends { password?: unknown }>(
-  user: T
-): Omit<T, "password"> {
-  const { password, ...safeUser } = user;
-  return safeUser;
-}
+// to a client goes through omitPassword() first (imported above) so the
+// hash never crosses the wire.
 
 // Brute-force / abuse protection for auth endpoints. Login gets the
 // tightest window since it's the classic credential-stuffing target;
@@ -100,6 +98,17 @@ const playerProfileUpdateSchema = z.object({
   skillLevel: z.string().max(50).optional(),
   bio: z.string().trim().max(1000).optional(),
   preferredCourts: z.array(z.string()).optional(),
+  // --- Profile redesign additions - all optional/self-declared ---
+  sex: z.string().max(30).optional(),
+  lookingFor: z.array(z.string()).max(10).optional(),
+  gameFormat: z.string().max(30).optional(),
+  playStyle: z.string().max(30).optional(),
+  availability: z.array(z.string()).max(10).optional(),
+  playRadiusKm: z.number().int().min(1).max(500).optional(),
+  courtSurfacePreference: z.string().max(30).optional(),
+  photos: z.array(z.string()).max(20).optional(),
+  playingHand: z.string().max(20).optional(),
+  availabilityStatus: z.string().max(50).optional(),
 });
 
 const coachProfileUpdateSchema = z.object({
@@ -165,12 +174,14 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/api/uploadMedia", uploadMediaRouter);
   app.use("/api/profile/tournament-history", profileTournamentHistoryRouter);
   app.use("/api/profile/marketplace", profileMarketplace);
+  app.use("/api/me/player-profile/photos", playerPhotos);
   app.use("/api", contentRouter);
   app.use("/", sitemapRoutes);
   app.use("/api/players", playersRouter);
   app.use("/api/coaches", coachesRouter);
   app.use("/api/upload/content", uploadContentRouter);
   app.use("/api/organizer", organizerRouter);
+  app.use("/api/play", playRouter);
   app.use("/api/weather", weatherRouter);
   app.use("/api/support", supportRouter);
 
@@ -213,7 +224,22 @@ export async function registerRoutes(app: Express): Promise<void> {
 
       const exists = await storage.getUserByEmail(parsed.data.email);
       if (exists) {
-        return res.status(400).json({ message: "Email already exists" });
+        // Deliberately generic, same reasoning and pattern as
+        // forgot-password below: the person registering never learns
+        // whether this email was already taken (that's a classic
+        // user-enumeration leak) - they get the exact same "check your
+        // email" response as a genuine new signup. The one person who
+        // actually IS entitled to know gets told instead, via email -
+        // see sendDuplicateRegistrationAlertEmail's own comment.
+        sendDuplicateRegistrationAlertEmail(exists.email).catch((error) => {
+          console.error(`❌ Duplicate-registration alert email threw for ${exists.email}:`, error);
+        });
+
+        return res.status(201).json({
+          message: "Check your email to confirm your account before signing in.",
+          email: parsed.data.email,
+          requiresVerification: true,
+        });
       }
 
       const hashedPassword = await hashPassword(parsed.data.password);
@@ -328,6 +354,19 @@ export async function registerRoutes(app: Express): Promise<void> {
             message: "Please confirm your email address before signing in.",
             code: "EMAIL_NOT_VERIFIED",
             email: (info as any).email,
+          });
+        }
+
+        // Also deliberately not generic, for the same reason as
+        // EMAIL_NOT_VERIFIED above - this only ever fires for a real
+        // account (the lockout check runs before the password is even
+        // compared), and the person trying right now needs to know to
+        // stop guessing and wait, not just retry into a longer lock.
+        if ((info as any)?.message === "ACCOUNT_LOCKED") {
+          return res.status(429).json({
+            message: "Too many failed login attempts. This account is temporarily locked - please try again later or reset your password.",
+            code: "ACCOUNT_LOCKED",
+            lockedUntil: (info as any).lockedUntil,
           });
         }
 
@@ -609,6 +648,17 @@ export async function registerRoutes(app: Express): Promise<void> {
 
       // Update user password
       await storage.updateUserPassword(resetToken.userId, hashedPassword);
+
+      // Any session an attacker already had open (the exact scenario
+      // that justifies a password reset in the first place) shouldn't
+      // keep working just because it predates the reset.
+      await storage.invalidateUserSessions(resetToken.userId);
+
+      // A successful reset is a strong enough proof of ownership to
+      // also clear any lockout from failed login attempts - otherwise
+      // the real owner would reset their password successfully and
+      // still be locked out for the rest of that window.
+      await storage.resetFailedLogins(resetToken.userId);
 
       // Mark token as used
       await db

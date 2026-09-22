@@ -5,10 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { WaitingPlayer } from "@/lib/organiser-sessions-mock-data";
+import { formatInTimeZone } from "@/lib/timezone";
 
 interface WaitingListCardProps {
   players: WaitingPlayer[];
   className?: string;
+  // See players-table.tsx's own comment - without this, "Joined" showed
+  // the organizer's own browser's local time instead of the venue's.
+  timeZone: string;
 }
 
 const LEVEL_BADGE_STYLE: Record<WaitingPlayer["levelLabel"], string> = {
@@ -18,7 +22,7 @@ const LEVEL_BADGE_STYLE: Record<WaitingPlayer["levelLabel"], string> = {
   Social: "bg-muted text-muted-foreground",
 };
 
-export function WaitingListCard({ players, className }: WaitingListCardProps) {
+export function WaitingListCard({ players, className, timeZone }: WaitingListCardProps) {
   const { toast } = useToast();
 
   return (
@@ -55,7 +59,7 @@ export function WaitingListCard({ players, className }: WaitingListCardProps) {
                 <div className="flex items-center gap-1.5">
                   <Badge className={LEVEL_BADGE_STYLE[player.levelLabel]}>{player.levelLabel}</Badge>
                   <span className="text-xs text-muted-foreground">
-                    Joined {new Date(player.joinedAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+                    Joined {formatInTimeZone(player.joinedAt, timeZone, { hour: "numeric", minute: "2-digit" })}
                   </span>
                 </div>
               </div>

@@ -1,7 +1,10 @@
 import { Router } from "express";
 import { storage } from "../storage";
+import { toPublicUser } from "../lib/sanitizeUser";
+import { publicBrowseLimiter } from "../lib/rateLimiters";
 
 const router = Router();
+router.use(publicBrowseLimiter);
 
 // GET /api/coaches
 router.get("/", async (req, res) => {
@@ -58,7 +61,7 @@ router.get("/:slug", async (req, res) => {
   const profile = await storage.getCoachProfile(user.id);
 
   res.json({
-    user,
+    user: toPublicUser(user),
     profile,
   });
 });

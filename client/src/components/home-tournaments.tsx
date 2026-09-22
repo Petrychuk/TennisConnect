@@ -220,7 +220,7 @@ export function HomeTournaments({ variant }: Props) {
           className="mt-8 md:hidden"
         >
           <Link href="/tournaments">
-            <Button className="w-full gap-2 bg-primary text-foreground hover:bg-primary/90 font-bold rounded-full cursor-pointer">
+            <Button className="w-full gap-2 bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full cursor-pointer">
               View All <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>

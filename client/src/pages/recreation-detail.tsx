@@ -176,7 +176,7 @@ export default function RecreationDetailPage() {
 
                 <Button
                   onClick={handleBook}
-                  className="w-full bg-primary text-foreground hover:bg-primary/90 font-bold rounded-full cursor-pointer"
+                  className="w-full bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full cursor-pointer"
                   data-testid="recreation-book-button"
                 >
                   Book Session

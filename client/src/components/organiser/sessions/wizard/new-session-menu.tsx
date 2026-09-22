@@ -6,21 +6,21 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, FileText, LayoutTemplate, Copy, ChevronDown } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Plus, FileText, LayoutTemplate, ChevronDown } from "lucide-react";
 
 interface NewSessionMenuProps {
   className?: string;
 }
 
-// "Duplicate Previous" and "From Template" both skip Step 1 in spirit -
-// they're the ~10-second path organisers reach for once they have a
-// regular session running. Only "Blank Session" is wired to the real
-// wizard this pass; the other two are flagged honestly as coming soon
-// rather than silently doing the same thing as blank.
+// Create from Scratch / Use Template - matches the Session Templates
+// spec exactly (two options, not three). "Use Template" goes straight
+// to the Templates management page rather than a separate picker
+// modal - that page is already a browsable list of templates each
+// with their own "Use Template" button, so it doubles as the picker
+// without needing a second, near-identical UI just for this entry
+// point.
 export function NewSessionMenu({ className }: NewSessionMenuProps) {
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
 
   return (
     <DropdownMenu>
@@ -34,21 +34,20 @@ export function NewSessionMenu({ className }: NewSessionMenuProps) {
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => setLocation("/organiser/sessions/new")} data-testid="organiser-new-session-menu-blank">
           <FileText className="w-4 h-4 mr-2" />
-          Blank Session
+          <div>
+            <p>Create from Scratch</p>
+            <p className="text-xs text-muted-foreground font-normal">Start a new session with custom settings.</p>
+          </div>
         </DropdownMenuItem>
         <DropdownMenuItem
-          onClick={() => toast({ title: "From Template isn't wired up yet" })}
+          onClick={() => setLocation("/organiser/sessions/templates")}
           data-testid="organiser-new-session-menu-template"
         >
           <LayoutTemplate className="w-4 h-4 mr-2" />
-          From Template
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => toast({ title: "Duplicate Previous isn't wired up yet" })}
-          data-testid="organiser-new-session-menu-duplicate"
-        >
-          <Copy className="w-4 h-4 mr-2" />
-          Duplicate Previous
+          <div>
+            <p>Use Template</p>
+            <p className="text-xs text-muted-foreground font-normal">Start with settings from a saved template.</p>
+          </div>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

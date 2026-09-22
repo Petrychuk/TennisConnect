@@ -23,7 +23,7 @@ test('ADMIN-005 Bulk delete - selected ordinary players are all removed', async 
   );
 
   await page.goto('/admin');
-  await page.getByTestId('admin-tab-users').click();
+  await page.getByTestId('organiser-sidebar-nav-admin-users').click();
 
   const rowA = page.locator('tr', { has: page.getByText(playerA.email, { exact: true }) });
   const rowB = page.locator('tr', { has: page.getByText(playerB.email, { exact: true }) });
@@ -90,7 +90,7 @@ test('ADMIN-006 Bulk delete - an org owner in the batch is reported, not deleted
   );
 
   await page.goto('/admin');
-  await page.getByTestId('admin-tab-users').click();
+  await page.getByTestId('organiser-sidebar-nav-admin-users').click();
 
   const orgOwnerRow = page.locator('tr', { has: page.getByText(orgOwner.email, { exact: true }) });
   await expect(orgOwnerRow).toBeVisible();
@@ -135,7 +135,7 @@ test('ADMIN-006 Bulk delete - an org owner in the batch is reported, not deleted
   );
 
   await page.goto('/admin');
-  await page.getByTestId('admin-tab-users').click();
+  await page.getByTestId('organiser-sidebar-nav-admin-users').click();
 
   const plainPlayerRow = page.locator('tr', { has: page.getByText(plainPlayer.email, { exact: true }) });
   await expect(plainPlayerRow).toBeVisible();

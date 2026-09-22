@@ -1,6 +1,8 @@
 import type { Express } from "express";
+import crypto from "crypto";
 import { storage } from "../storage";
 import { supabaseAdmin } from "../supabaseAdmin";
+import { detectImageType } from "../lib/imageValidation";
 
 const MAX_PHOTOS = 5;
 
@@ -37,13 +39,29 @@ export async function addPhoto({
     throw new Error("Maximum 5 photos allowed");
   }
 
-  const fileName = `${Date.now()}-${file.originalname}`;
+  // Belt-and-suspenders, same as uploadMedia.ts: the route's multer
+  // fileFilter only checked the declared mimetype - this checks the
+  // actual bytes so an HTML/SVG/script payload relabelled as an image
+  // can't be smuggled in and served back with a browser-executable
+  // content type. The extension AND filename are both fully
+  // server-generated from here on - file.originalname (fully
+  // attacker-controlled) never touches the storage path, since a
+  // crafted name like "../../coaches/someone-else/avatar.webp" is
+  // exactly the kind of thing an object-storage key should never be
+  // built from directly.
+  const detectedType = detectImageType(file.buffer);
+  if (!detectedType) {
+    throw new Error("File content doesn't look like a valid image");
+  }
+  const extension = detectedType.split("/")[1];
+
+  const fileName = `${Date.now()}-${crypto.randomUUID()}.${extension}`;
   const path = `players/${userId}/tournaments/${tournamentId}/${fileName}`;
 
   const uploadResult = await supabaseAdmin.storage
     .from("media")
     .upload(path, file.buffer, {
-      contentType: file.mimetype,
+      contentType: detectedType,
       upsert: false,
     });
 

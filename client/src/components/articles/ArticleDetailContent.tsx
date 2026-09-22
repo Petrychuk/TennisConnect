@@ -290,7 +290,7 @@ export function ArticleDetailContent({
             Explore our full library of articles.
           </p>
           <Link href="/articles">
-            <Button className="bg-primary text-foreground hover:bg-primary/90 rounded-full font-bold px-6 cursor-pointer">
+            <Button className="bg-primary text-foreground border-primary hover:bg-primary/90 rounded-full font-bold px-6 cursor-pointer">
               Browse All Articles
             </Button>
           </Link>

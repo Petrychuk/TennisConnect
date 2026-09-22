@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils";
 const ITEMS = [
   { key: "home", label: "Home", icon: Home, href: "/organiser" },
   { key: "sessions", label: "Sessions", icon: CalendarDays, href: "/organiser/sessions" },
+  { key: "seasons", label: "Seasons & Series", icon: CalendarRange },
   { key: "players", label: "Players", icon: Users, href: "/organiser/players" },
-  { key: "seasons", label: "Seasons", icon: CalendarRange },
   { key: "more", label: "More", icon: MoreHorizontal },
 ];
 
