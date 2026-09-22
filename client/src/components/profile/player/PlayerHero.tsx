@@ -27,6 +27,7 @@ interface PlayerHeroProps {
   onEdit: () => void;
   onSave: () => void;
   onCancel: () => void;
+  onMessageClick?: () => void;
 }
 
 export function PlayerHero({
@@ -39,6 +40,7 @@ export function PlayerHero({
   onEdit,
   onSave,
   onCancel,
+  onMessageClick,
 }: PlayerHeroProps) {
   // Redesigned stat row: no individual card boxes at all (the previous
   // StatCard-based version read as 4 floating translucent boxes that
@@ -102,6 +104,7 @@ export function PlayerHero({
           onEdit={onEdit}
           onSave={onSave}
           onCancel={onCancel}
+          onMessageClick={onMessageClick}
         />
       }
 
