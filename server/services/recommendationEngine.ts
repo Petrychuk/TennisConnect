@@ -15,6 +15,10 @@ export type RecommendationReasonCode =
   | "SIMILAR_LEVEL"
   | "CLOSE_LEVEL"
   | "MATCHING_AVAILABILITY"
+  // NEARBY is intentionally unused right now - see the Distance
+  // section below for why. Kept in the type so the follow-up
+  // (radius-based distance matching) doesn't need to touch every
+  // caller again once it lands.
   | "NEARBY"
   | "PREFERRED_FORMAT"
   | "PREFERRED_STYLE"
@@ -173,19 +177,18 @@ export function computeRecommendation(
     }
   }
 
-  // Distance/location (20) - honest proxy, not real geocoding (none
-  // exists in this app yet): a shared preferred area is a full match,
-  // otherwise no points, same approach as the player-to-player match
-  // score in client/src/lib/matchScore.ts.
-  if (player.preferredCourts && player.preferredCourts.length > 0) {
-    available += 20;
-    const playerAreas = player.preferredCourts.map((c) => c.toLowerCase().trim());
-    const eventLocation = (event.location || "").toLowerCase();
-    if (eventLocation && playerAreas.some((area) => eventLocation.includes(area))) {
-      matched += 20;
-      reasons.push("NEARBY");
-    }
-  }
+  // Distance/location (spec weight: 20) - DISABLED for this merge.
+  // There's no real geocoding in this app (no lat/lng on player or
+  // event), so the only thing available was a text match against
+  // preferredCourts area names - too coarse to honestly claim as a
+  // 20-point "distance" signal (a shared suburb name isn't "6 km
+  // away"). Per review: don't award points for that, and don't show a
+  // NEARBY reason, until a real radius-based calculation exists
+  // (player coordinates + event coordinates + player.playRadiusKm -
+  // tracked as its own follow-up: "[PLAY] Add radius-based distance
+  // matching to recommendation engine"). Distance is excluded from
+  // both matched and available entirely, same as any other signal
+  // with no real data behind it.
 
   // Game format (15)
   if (player.gameFormat && player.gameFormat !== "Both") {
