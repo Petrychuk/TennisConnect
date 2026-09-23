@@ -41,6 +41,11 @@ interface EventQuickViewModalProps {
       small explanation banner (spec section 11), never a separate
       AI-recommendation modal. */
   recommendation?: { score: number; reasons: string[] } | null;
+  /** Fires once the join/waitlist mutation actually succeeds - lets a
+      caller (e.g. play.tsx) fire its own play_recommendation_join
+      analytics event without this modal needing to know analytics
+      exist at all. */
+  onJoinSuccess?: (sessionId: string) => void;
 }
 
 // Spec §9: clicking a Play card opens this instead of navigating to a
@@ -49,7 +54,7 @@ interface EventQuickViewModalProps {
 // play-session-details.tsx (that page itself is untouched - kept
 // around for any direct/shared link to a specific session, just no
 // longer how the normal Play discovery flow gets here).
-export function EventQuickViewModal({ sessionId, onOpenChange, recommendation }: EventQuickViewModalProps) {
+export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, onJoinSuccess }: EventQuickViewModalProps) {
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -69,6 +74,7 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation }:
       queryClient.invalidateQueries({ queryKey: ["/api/play/sessions", sessionId] });
       queryClient.invalidateQueries({ queryKey: ["/api/play/sessions"] });
       toast({ title: waitlisted ? "You're on the waiting list" : "You're registered!" });
+      if (sessionId) onJoinSuccess?.(sessionId);
     },
     onError: (error: any) => {
       toast({ title: "Couldn't register", description: error?.message ?? "Please try again.", variant: "destructive" });

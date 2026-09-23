@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Helmet } from "react-helmet-async";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
@@ -23,6 +23,7 @@ import { EventQuickViewModal } from "@/components/play/EventQuickViewModal";
 import { PlayQuickFilters } from "@/components/play/PlayQuickFilters";
 import { PlayFilters, PLAY_FILTER_ALL, PLAY_FORMAT_OPTIONS, type PlayFiltersDraft } from "@/components/play/PlayFilters";
 import { PlayNoMatches, PlayNoActivitiesYet } from "@/components/play/PlayEmptyState";
+import { AvailabilityNudge } from "@/components/play/AvailabilityNudge";
 import { getPlaySessions, getPlayRecommendations } from "@/lib/api/play";
 import { useAuth } from "@/lib/auth-context";
 import { PLAY_DATE_FILTER_OPTIONS, resolveDateFilterRange, type PlayDateFilter } from "@/lib/play-status";
@@ -39,6 +40,7 @@ export default function PlayPage() {
   const searchString = useSearch();
   const organizerId = new URLSearchParams(searchString).get("organizer") ?? undefined;
   const { user, isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
 
   const [search, setSearch] = useState("");
   const [location, setLocationFilter] = useState("");
@@ -101,6 +103,36 @@ export default function PlayPage() {
     queryFn: getPlayRecommendations,
     enabled: isAuthenticated && user?.role === "player",
   });
+
+  // [ANALYTICS][PLAY] Track personalised recommendation engagement -
+  // impression fires once per item, the first time the list actually
+  // has data (not on every re-render/refetch of the same data).
+  // Deliberately minimal properties (spec section 15's own list) - no
+  // player profile data goes into these events.
+  const trackedImpressions = useRef(false);
+  useEffect(() => {
+    if (trackedImpressions.current) return;
+    const recs = recommendationsQuery.data?.recommendations;
+    if (!recs || recs.length === 0) return;
+    trackedImpressions.current = true;
+    recs.forEach(({ activity, recommendation }, position) => {
+      (window as any).gtag?.("event", "play_recommendation_impression", {
+        activityId: activity.id,
+        matchScore: recommendation?.score ?? null,
+        position,
+        format: activity.type,
+      });
+    });
+  }, [recommendationsQuery.data]);
+
+  const trackRecommendationOpen = (activityId: string, score: number | undefined, position: number, format: string) => {
+    (window as any).gtag?.("event", "play_recommendation_open", {
+      activityId,
+      matchScore: score ?? null,
+      position,
+      format,
+    });
+  };
 
   const sessionsQuery = useQuery({
     queryKey: ["/api/play/sessions", search, location, format, level, organizerId, from?.toISOString(), to?.toISOString()],
@@ -308,6 +340,15 @@ export default function PlayPage() {
           )}
 
           <div className="space-y-5">
+            {!hasActiveFilters && isAuthenticated && user?.role === "player" && myProfileQuery.data && !myProfileQuery.data.availability?.length && (
+              <AvailabilityNudge
+                onSaved={() => {
+                  queryClient.invalidateQueries({ queryKey: ["/api/me/player-profile"] });
+                  queryClient.invalidateQueries({ queryKey: ["/api/play/recommendations"] });
+                }}
+              />
+            )}
+
             {!hasActiveFilters && isAuthenticated && user?.role === "player" && recommendationsQuery.data && recommendationsQuery.data.recommendations.length > 0 && (
               <div className="space-y-3" data-testid="play-recommendations-section">
                 <div>
@@ -325,7 +366,7 @@ export default function PlayPage() {
                   </p>
                 </div>
                 <div className="space-y-4">
-                  {recommendationsQuery.data.recommendations.map(({ activity, recommendation }) => (
+                  {recommendationsQuery.data.recommendations.map(({ activity, recommendation }, position) => (
                     <PlaySessionCard
                       key={activity.id}
                       session={activity}
@@ -333,6 +374,7 @@ export default function PlayPage() {
                       onView={() => {
                         setSelectedSessionId(activity.id);
                         setSelectedRecommendation(recommendation);
+                        trackRecommendationOpen(activity.id, recommendation?.score, position, activity.type);
                       }}
                     />
                   ))}
@@ -431,6 +473,16 @@ export default function PlayPage() {
       <EventQuickViewModal
         sessionId={selectedSessionId}
         recommendation={selectedRecommendation}
+        onJoinSuccess={(id) => {
+          if (selectedRecommendation) {
+            const activity = recommendationsQuery.data?.recommendations.find((r) => r.activity.id === id)?.activity;
+            (window as any).gtag?.("event", "play_recommendation_join", {
+              activityId: id,
+              matchScore: selectedRecommendation.score,
+              format: activity?.type ?? null,
+            });
+          }
+        }}
         onOpenChange={(open) => {
           if (!open) {
             setSelectedSessionId(null);
