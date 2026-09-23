@@ -17,7 +17,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { formatInTimeZone } from "@/lib/timezone";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
-import { PLAY_STATUS_LABEL, PLAY_STATUS_STYLE, RECOMMENDATION_REASON_TEXT } from "@/lib/play-status";
+import { RECOMMENDATION_REASON_TEXT } from "@/lib/play-status";
+import { ActivityStatus } from "./ActivityStatus";
 import { getPlaySessionById, joinSession, leaveSession } from "@/lib/api/play";
 
 function formatLabel(type: string): string {
@@ -172,9 +173,7 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation }:
                   </span>
                 </div>
               )}
-              <Badge className={PLAY_STATUS_STYLE[session.playStatus]} data-testid="event-modal-status">
-                {PLAY_STATUS_LABEL[session.playStatus]}
-              </Badge>
+              <ActivityStatus status={session.playStatus} data-testid="event-modal-status" />
 
               {(session.seasonName || session.seriesName) && (
                 <p className="text-xs text-muted-foreground" data-testid="event-modal-season-series">
