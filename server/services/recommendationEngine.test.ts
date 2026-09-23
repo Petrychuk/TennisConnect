@@ -84,16 +84,12 @@ test("availability mismatch scores 0 for that signal, no false reason", () => {
   assert.ok(!result.reasons.includes("MATCHING_AVAILABILITY"));
 });
 
-test("event location containing a preferred area scores full distance weight", () => {
+test("distance/location is NOT scored (no real geocoding yet) - a shared area name gives zero points, not partial credit", () => {
   const player: RecommendationPlayerInput = { preferredCourts: ["Bondi Beach"] };
   const result = computeRecommendation(player, event({ location: "Bondi Beach Tennis Courts" }));
-  assert.equal(result.score, 100);
-  assert.ok(result.reasons.includes("NEARBY"));
-});
-
-test("event location outside every preferred area scores 0 for that signal", () => {
-  const player: RecommendationPlayerInput = { preferredCourts: ["Bondi Beach"] };
-  const result = computeRecommendation(player, event({ location: "Parramatta Park" }));
+  // preferredCourts alone contributes nothing to the score right now -
+  // available stays 0 for this signal, so the overall score is 0 (no
+  // other signal supplied either) and NEARBY never appears.
   assert.equal(result.score, 0);
   assert.ok(!result.reasons.includes("NEARBY"));
 });
