@@ -62,7 +62,7 @@ export default function Home() {
         <Hero />       
         <AboutUs />
         <Features />
-        <PlayThisWeek />
+        {/* <PlayThisWeek /> */}
         <HomeClubs />
         <HomeTravel />       
         {/* <ProShop /> */}
