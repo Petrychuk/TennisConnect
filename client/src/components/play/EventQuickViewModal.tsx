@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { formatInTimeZone } from "@/lib/timezone";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
-import { PLAY_STATUS_LABEL, PLAY_STATUS_STYLE } from "@/lib/play-status";
+import { PLAY_STATUS_LABEL, PLAY_STATUS_STYLE, RECOMMENDATION_REASON_TEXT } from "@/lib/play-status";
 import { getPlaySessionById, joinSession, leaveSession } from "@/lib/api/play";
 
 function formatLabel(type: string): string {
@@ -36,6 +36,10 @@ const COMPETITION_TYPES = new Set(["tournament", "league", "club-championship", 
 interface EventQuickViewModalProps {
   sessionId: string | null;
   onOpenChange: (open: boolean) => void;
+  /** Set only when opened from a "Recommended for You" card - shows a
+      small explanation banner (spec section 11), never a separate
+      AI-recommendation modal. */
+  recommendation?: { score: number; reasons: string[] } | null;
 }
 
 // Spec §9: clicking a Play card opens this instead of navigating to a
@@ -44,7 +48,7 @@ interface EventQuickViewModalProps {
 // play-session-details.tsx (that page itself is untouched - kept
 // around for any direct/shared link to a specific session, just no
 // longer how the normal Play discovery flow gets here).
-export function EventQuickViewModal({ sessionId, onOpenChange }: EventQuickViewModalProps) {
+export function EventQuickViewModal({ sessionId, onOpenChange, recommendation }: EventQuickViewModalProps) {
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -159,6 +163,15 @@ export function EventQuickViewModal({ sessionId, onOpenChange }: EventQuickViewM
             </DialogHeader>
 
             <div className="space-y-3">
+              {recommendation && recommendation.score > 0 && (
+                <div className="bg-primary/5 rounded-lg px-3 py-2 text-sm" data-testid="event-modal-recommendation-banner">
+                  <span className="font-semibold text-primary">✨ Great match for you</span>
+                  <span className="text-muted-foreground">
+                    {" · "}
+                    {recommendation.reasons.map((r) => RECOMMENDATION_REASON_TEXT[r] ?? r).join(" · ")}
+                  </span>
+                </div>
+              )}
               <Badge className={PLAY_STATUS_STYLE[session.playStatus]} data-testid="event-modal-status">
                 {PLAY_STATUS_LABEL[session.playStatus]}
               </Badge>
