@@ -36,7 +36,7 @@ import { Search, MapPin, CalendarDays, X, Sparkles, Tag, BarChart3, SlidersHoriz
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { PlaySessionCard } from "@/components/play/session-card";
 import { EventQuickViewModal } from "@/components/play/EventQuickViewModal";
-import { getPlaySessions } from "@/lib/api/play";
+import { getPlaySessions, getPlayRecommendations } from "@/lib/api/play";
 import { useAuth } from "@/lib/auth-context";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
 import { PLAY_DATE_FILTER_OPTIONS, PLAY_LEVEL_OPTIONS, resolveDateFilterRange, type PlayDateFilter } from "@/lib/play-status";
@@ -101,6 +101,19 @@ export default function PlayPage() {
   }, [myProfileQuery.data]);
 
   const { from, to } = useMemo(() => resolveDateFilterRange(dateFilter, customDate), [dateFilter, customDate]);
+
+  // "Recommended for You" (spec [PLAY] Personalised Recommendations) -
+  // only fetched for a signed-in player, and only shown while the
+  // player hasn't made an explicit request of their own (search or
+  // any filter) - spec section 10 is explicit that personalisation
+  // must never override/hide an explicit search or filter, and the
+  // simplest way to guarantee that is to not show this block at all
+  // once one is active, rather than trying to blend the two.
+  const recommendationsQuery = useQuery({
+    queryKey: ["/api/play/recommendations", user?.id],
+    queryFn: getPlayRecommendations,
+    enabled: isAuthenticated && user?.role === "player",
+  });
 
   const sessionsQuery = useQuery({
     queryKey: ["/api/play/sessions", search, location, format, level, organizerId, from?.toISOString(), to?.toISOString()],
@@ -171,6 +184,7 @@ export default function PlayPage() {
   };
 
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [selectedRecommendation, setSelectedRecommendation] = useState<{ score: number; reasons: string[] } | null>(null);
   const dateFilterLabel = PLAY_DATE_FILTER_OPTIONS.find((o) => o.value === dateFilter)?.label;
   const formatLabel = PLAY_FORMAT_OPTIONS.find((o) => o.key === format)?.label;
 
@@ -356,6 +370,38 @@ export default function PlayPage() {
           )}
 
           <div className="space-y-5">
+            {!hasActiveFilters && isAuthenticated && user?.role === "player" && recommendationsQuery.data && recommendationsQuery.data.recommendations.length > 0 && (
+              <div className="space-y-3" data-testid="play-recommendations-section">
+                <div>
+                  <h2 className="font-display font-bold text-lg flex items-center gap-1.5">
+                    {recommendationsQuery.data.isPersonalised ? (
+                      <>✨ Recommended for You</>
+                    ) : (
+                      <>Popular near you</>
+                    )}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {recommendationsQuery.data.isPersonalised
+                      ? "Games that match your level, location and tennis preferences."
+                      : "Tennis happening near you - add your preferences for better matches."}
+                  </p>
+                </div>
+                <div className="space-y-4">
+                  {recommendationsQuery.data.recommendations.map(({ activity, recommendation }) => (
+                    <PlaySessionCard
+                      key={activity.id}
+                      session={activity}
+                      recommendation={recommendation}
+                      onView={() => {
+                        setSelectedSessionId(activity.id);
+                        setSelectedRecommendation(recommendation);
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
             {sessionsQuery.isLoading ? (
               <div className="space-y-4" data-testid="play-page-loading">
                 {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-40 w-full rounded-2xl" />)}
@@ -392,7 +438,14 @@ export default function PlayPage() {
                 </p>
                 <div className="space-y-4" data-testid="play-page-results">
                   {visibleSessions.map((session) => (
-                    <PlaySessionCard key={session.id} session={session} onView={() => setSelectedSessionId(session.id)} />
+                    <PlaySessionCard
+                      key={session.id}
+                      session={session}
+                      onView={() => {
+                        setSelectedSessionId(session.id);
+                        setSelectedRecommendation(null);
+                      }}
+                    />
                   ))}
                 </div>
 
@@ -543,7 +596,13 @@ export default function PlayPage() {
 
       <EventQuickViewModal
         sessionId={selectedSessionId}
-        onOpenChange={(open) => !open && setSelectedSessionId(null)}
+        recommendation={selectedRecommendation}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedSessionId(null);
+            setSelectedRecommendation(null);
+          }
+        }}
       />
     </div>
   );

@@ -5,7 +5,7 @@ import { MapPin, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatInTimeZone } from "@/lib/timezone";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
-import { PLAY_STATUS_LABEL, PLAY_STATUS_STYLE } from "@/lib/play-status";
+import { PLAY_STATUS_LABEL, PLAY_STATUS_STYLE, RECOMMENDATION_REASON_TEXT } from "@/lib/play-status";
 import type { PublicSessionCard as PublicSessionCardData } from "@shared/schema";
 
 function formatLabel(type: string): string {
@@ -37,7 +37,19 @@ function initials(name: string): string {
   return name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
 }
 
-export function PlaySessionCard({ session, onView }: { session: PublicSessionCardData; onView: () => void }) {
+export function PlaySessionCard({
+  session,
+  onView,
+  recommendation,
+}: {
+  session: PublicSessionCardData;
+  onView: () => void;
+  // Optional - only present when this same card is reused inside
+  // "Recommended for You" (spec: reuse ActivityCard, don't build a
+  // separate card architecture for recommendations). A normal search
+  // result never passes this.
+  recommendation?: { score: number; reasons: string[] } | null;
+}) {
   const spotsLeft = session.maxParticipants != null ? session.maxParticipants - session.registeredCount : null;
   const showAsFull = session.playStatus === "full" || session.playStatus === "waitlist";
 
@@ -104,6 +116,18 @@ export function PlaySessionCard({ session, onView }: { session: PublicSessionCar
             <span>{session.registeredCount} players</span>
           )}
         </div>
+
+        {recommendation && recommendation.score > 0 && (
+          <div
+            className="flex items-center gap-1.5 text-sm bg-primary/5 rounded-lg px-2.5 py-1.5"
+            data-testid={`play-session-card-${session.id}-match`}
+          >
+            <span className="font-bold text-primary">{recommendation.score}% match</span>
+            <span className="text-muted-foreground text-xs truncate">
+              · {recommendation.reasons.map((r) => RECOMMENDATION_REASON_TEXT[r] ?? r).join(" · ")}
+            </span>
+          </div>
+        )}
 
         <div className="flex items-center justify-between gap-3 mt-1 pt-2 border-t border-border/60">
           <div className="flex items-center gap-2 min-w-0">

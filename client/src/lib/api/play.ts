@@ -28,6 +28,16 @@ export async function getPlaySessions(filters: PlayFilters): Promise<PublicSessi
   return data.sessions;
 }
 
+export interface PlayRecommendation {
+  activity: PublicSessionCard;
+  recommendation: { score: number; reasons: string[] } | null;
+}
+
+export async function getPlayRecommendations(): Promise<{ isPersonalised: boolean; recommendations: PlayRecommendation[] }> {
+  const res = await apiRequest("GET", `${BASE}/recommendations`);
+  return res.json();
+}
+
 export async function getPlaySessionById(id: string): Promise<PublicSessionDetails> {
   const res = await apiRequest("GET", `${BASE}/sessions/${id}`);
   return res.json();
