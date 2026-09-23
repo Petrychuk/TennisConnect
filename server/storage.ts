@@ -2855,6 +2855,8 @@ export class DatabaseStorage implements IStorage {
       endAt: session.endAt ? session.endAt.toISOString() : null,
       timeZone: session.timeZone,
       location: session.location,
+      latitude: session.latitude,
+      longitude: session.longitude,
       skillLevel: session.skillLevel,
       courtsCount: session.courtsCount,
       maxParticipants: session.maxParticipants,

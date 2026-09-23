@@ -9,6 +9,7 @@ import {
   computeRecommendation,
   isEventEligibleForPlayer,
   hasEnoughSignalForPersonalisation,
+  computeDistanceKm,
   type RecommendationPlayerInput,
   type RecommendationEventInput,
 } from "./recommendationEngine";
@@ -92,6 +93,48 @@ test("distance/location is NOT scored (no real geocoding yet) - a shared area na
   // other signal supplied either) and NEARBY never appears.
   assert.equal(result.score, 0);
   assert.ok(!result.reasons.includes("NEARBY"));
+});
+
+test("computeDistanceKm returns null when either side lacks coordinates", () => {
+  assert.equal(computeDistanceKm({ latitude: null, longitude: null }, { latitude: -33.89, longitude: 151.27 }), null);
+  assert.equal(computeDistanceKm({ latitude: -33.89, longitude: 151.27 }, { latitude: null, longitude: null }), null);
+});
+
+test("computeDistanceKm returns a sane distance for two known Sydney points (Bondi to CBD, roughly 7-8km)", () => {
+  const km = computeDistanceKm(
+    { latitude: -33.8908, longitude: 151.2743 }, // Bondi Beach
+    { latitude: -33.8688, longitude: 151.2093 } // Sydney CBD
+  );
+  assert.ok(km !== null && km > 5 && km < 10, `expected ~7km, got ${km}`);
+});
+
+test("a real event within the player's radius scores full distance weight and NEARBY", () => {
+  const player: RecommendationPlayerInput = { playRadiusKm: 15, latitude: -33.8908, longitude: 151.2743 };
+  const result = computeRecommendation(player, event({ latitude: -33.8688, longitude: 151.2093 }));
+  assert.equal(result.score, 100);
+  assert.ok(result.reasons.includes("NEARBY"));
+});
+
+test("a real event just outside the radius scores partial distance credit, not zero and not full", () => {
+  // ~7km apart, radius 5km -> outside radius but within 2x it.
+  const player: RecommendationPlayerInput = { playRadiusKm: 5, latitude: -33.8908, longitude: 151.2743 };
+  const result = computeRecommendation(player, event({ latitude: -33.8688, longitude: 151.2093 }));
+  assert.ok(result.score > 0 && result.score < 100, `expected partial credit, got ${result.score}`);
+});
+
+test("a real event far beyond 2x the radius scores zero for distance", () => {
+  // Sydney vs Melbourne - roughly 700km+ apart.
+  const player: RecommendationPlayerInput = { playRadiusKm: 15, latitude: -33.8688, longitude: 151.2093 };
+  const result = computeRecommendation(player, event({ latitude: -37.8136, longitude: 144.9631 }));
+  assert.equal(result.score, 0);
+  assert.ok(!result.reasons.includes("NEARBY"));
+});
+
+test("distance is skipped (not scored) when the player has no playRadiusKm even with coordinates on both sides", () => {
+  const player: RecommendationPlayerInput = { latitude: -33.8908, longitude: 151.2743 };
+  const result = computeRecommendation(player, event({ latitude: -33.8688, longitude: 151.2093 }));
+  assert.equal(result.score, 0);
+  assert.deepEqual(result.reasons, []);
 });
 
 test("matching game format (Doubles) scores that weight", () => {
