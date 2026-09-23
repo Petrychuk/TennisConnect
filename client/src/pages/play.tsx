@@ -6,24 +6,9 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import SEO from "@/components/seo";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Pagination,
   PaginationContent,
@@ -32,21 +17,21 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { Search, MapPin, CalendarDays, X, Sparkles, Tag, BarChart3, SlidersHorizontal, Trophy } from "lucide-react";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Search, MapPin, X } from "lucide-react";
 import { PlaySessionCard } from "@/components/play/session-card";
 import { EventQuickViewModal } from "@/components/play/EventQuickViewModal";
+import { PlayQuickFilters } from "@/components/play/PlayQuickFilters";
+import { PlayFilters, PLAY_FILTER_ALL, PLAY_FORMAT_OPTIONS, type PlayFiltersDraft } from "@/components/play/PlayFilters";
+import { PlayNoMatches, PlayNoActivitiesYet } from "@/components/play/PlayEmptyState";
 import { getPlaySessions, getPlayRecommendations } from "@/lib/api/play";
 import { useAuth } from "@/lib/auth-context";
-import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
-import { PLAY_DATE_FILTER_OPTIONS, PLAY_LEVEL_OPTIONS, resolveDateFilterRange, type PlayDateFilter } from "@/lib/play-status";
+import { PLAY_DATE_FILTER_OPTIONS, resolveDateFilterRange, type PlayDateFilter } from "@/lib/play-status";
 import playHeroDesktop from "/assets/images/play-hero-desktop.webp";
 import playHeroMobile from "/assets/images/play-hero-mobile.webp";
 
-const ALL = "all";
+const ALL = PLAY_FILTER_ALL;
 const PAGE_SIZE = 6;
 
-const PLAY_FORMAT_OPTIONS = SESSION_TYPE_OPTIONS.filter((opt) => opt.key !== "custom");
 const COMPETITION_FORMAT_KEYS = new Set(["tournament", "league", "club-championship", "junior-event"]);
 
 export default function PlayPage() {
@@ -64,11 +49,13 @@ export default function PlayPage() {
   const [competitionsOnly, setCompetitionsOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [draftLocation, setDraftLocation] = useState("");
-  const [draftDateFilter, setDraftDateFilter] = useState<PlayDateFilter>("any");
-  const [draftCustomDate, setDraftCustomDate] = useState("");
-  const [draftFormat, setDraftFormat] = useState<string>(ALL);
-  const [draftLevel, setDraftLevel] = useState<string>(ALL);
+  const [draft, setDraft] = useState<PlayFiltersDraft>({
+    location: "",
+    dateFilter: "any",
+    customDate: "",
+    format: ALL,
+    level: ALL,
+  });
 
   const appliedSmartDefaults = useRef(false);
   const myProfileQuery = useQuery({
@@ -158,29 +145,21 @@ export default function PlayPage() {
   const clearOrganizerFilter = () => setLocation("/play");
 
   const openFilters = () => {
-    setDraftLocation(location);
-    setDraftDateFilter(dateFilter);
-    setDraftCustomDate(customDate);
-    setDraftFormat(format);
-    setDraftLevel(level);
+    setDraft({ location, dateFilter, customDate, format, level });
     setFiltersOpen(true);
   };
 
   const applyDraftFilters = () => {
-    setLocationFilter(draftLocation);
-    setDateFilter(draftDateFilter);
-    setCustomDate(draftCustomDate);
-    setFormat(draftFormat);
-    setLevel(draftLevel);
+    setLocationFilter(draft.location);
+    setDateFilter(draft.dateFilter);
+    setCustomDate(draft.customDate);
+    setFormat(draft.format);
+    setLevel(draft.level);
     setFiltersOpen(false);
   };
 
   const clearDraftFilters = () => {
-    setDraftLocation("");
-    setDraftDateFilter("any");
-    setDraftCustomDate("");
-    setDraftFormat(ALL);
-    setDraftLevel(ALL);
+    setDraft({ location: "", dateFilter: "any", customDate: "", format: ALL, level: ALL });
   };
 
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
@@ -265,61 +244,20 @@ export default function PlayPage() {
             </div>
           )}
 
-          <div
-            className="flex items-center gap-2 overflow-x-auto pb-1 mb-3 -mx-4 px-4 sm:mx-0 sm:px-0"
-            data-testid="play-page-quick-filters"
-          >
-            <Button
-              variant={location ? "default" : "outline"}
-              size="sm"
-              className="shrink-0 rounded-full"
-              onClick={() => {
-                const mine = myProfileQuery.data?.preferredCourts?.[0] || myProfileQuery.data?.location;
-                setLocationFilter(mine || location);
-              }}
-              disabled={!isAuthenticated}
-              title={!isAuthenticated ? "Sign in to filter by your own area" : undefined}
-              data-testid="play-quick-filter-near-me"
-            >
-              <MapPin className="w-3.5 h-3.5 mr-1.5" /> Near me
-            </Button>
-            <Button
-              variant={dateFilter === "this_week" ? "default" : "outline"}
-              size="sm"
-              className="shrink-0 rounded-full"
-              onClick={() => setDateFilter((v) => (v === "this_week" ? "any" : "this_week"))}
-              data-testid="play-quick-filter-this-week"
-            >
-              This week
-            </Button>
-            <Button
-              variant={dateFilter === "this_weekend" ? "default" : "outline"}
-              size="sm"
-              className="shrink-0 rounded-full"
-              onClick={() => setDateFilter((v) => (v === "this_weekend" ? "any" : "this_weekend"))}
-              data-testid="play-quick-filter-this-weekend"
-            >
-              This weekend
-            </Button>
-            <Button
-              variant={competitionsOnly ? "default" : "outline"}
-              size="sm"
-              className="shrink-0 rounded-full"
-              onClick={() => setCompetitionsOnly((v) => !v)}
-              data-testid="play-quick-filter-competitions"
-            >
-              <Trophy className="w-3.5 h-3.5 mr-1.5" /> Competitions
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="shrink-0 rounded-full"
-              onClick={openFilters}
-              data-testid="play-quick-filter-open"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 mr-1.5" /> Filters
-            </Button>
-          </div>
+          <PlayQuickFilters
+            location={location}
+            dateFilter={dateFilter}
+            competitionsOnly={competitionsOnly}
+            isAuthenticated={isAuthenticated}
+            onNearMe={() => {
+              const mine = myProfileQuery.data?.preferredCourts?.[0] || myProfileQuery.data?.location;
+              setLocationFilter(mine || location);
+            }}
+            onToggleThisWeek={() => setDateFilter((v) => (v === "this_week" ? "any" : "this_week"))}
+            onToggleThisWeekend={() => setDateFilter((v) => (v === "this_weekend" ? "any" : "this_weekend"))}
+            onToggleCompetitions={() => setCompetitionsOnly((v) => !v)}
+            onOpenFilters={openFilters}
+          />
 
           {hasActiveFilters && (
             <div className="flex flex-wrap items-center gap-2 mb-5" data-testid="play-page-active-chips">
@@ -408,28 +346,9 @@ export default function PlayPage() {
               </div>
             ) : sessions.length === 0 ? (
               hasActiveFilters || organizerId ? (
-                <div className="flex flex-col items-center text-center gap-3 py-16" data-testid="play-page-no-matches">
-                  <Search className="w-8 h-8 text-muted-foreground" />
-                  <div>
-                    <p className="font-semibold">No games found</p>
-                    <p className="text-sm text-muted-foreground mt-1">Try changing your date, location or filters.</p>
-                  </div>
-                  {hasActiveFilters && (
-                    <Button variant="outline" onClick={clearFilters} data-testid="play-page-clear-filters">
-                      Clear filters
-                    </Button>
-                  )}
-                </div>
+                <PlayNoMatches hasActiveFilters={hasActiveFilters} onClearFilters={clearFilters} />
               ) : (
-                <div className="flex flex-col items-center text-center gap-3 py-16" data-testid="play-page-empty">
-                  <Sparkles className="w-8 h-8 text-muted-foreground" />
-                  <div>
-                    <p className="font-semibold">New games are coming soon</p>
-                    <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-                      TennisConnect organisers are adding new sessions and competitions.
-                    </p>
-                  </div>
-                </div>
+                <PlayNoActivitiesYet />
               )
             ) : (
               <>
@@ -498,99 +417,14 @@ export default function PlayPage() {
         </div>
       </main>
 
-      <Dialog open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <DialogContent className="max-w-md" data-testid="play-filters-dialog">
-          <DialogHeader>
-            <DialogTitle>Filters</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-5">
-            <div className="space-y-1.5">
-              <Label htmlFor="play-filter-location" className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                <MapPin className="w-3.5 h-3.5" /> Location
-              </Label>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                <Input
-                  id="play-filter-location"
-                  value={draftLocation}
-                  onChange={(e) => setDraftLocation(e.target.value)}
-                  placeholder="Suburb, city or venue..."
-                  className="pl-9"
-                  data-testid="play-filter-location"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                <CalendarDays className="w-3.5 h-3.5" /> Date
-              </p>
-              <RadioGroup
-                value={draftDateFilter}
-                onValueChange={(v) => setDraftDateFilter(v as PlayDateFilter)}
-                className="gap-1.5"
-                data-testid="play-filter-date"
-              >
-                {PLAY_DATE_FILTER_OPTIONS.map((opt) => (
-                  <label key={opt.value} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <RadioGroupItem value={opt.value} data-testid={`play-filter-date-${opt.value}`} />
-                    {opt.label}
-                  </label>
-                ))}
-              </RadioGroup>
-              {draftDateFilter === "custom" && (
-                <Input
-                  type="date"
-                  value={draftCustomDate}
-                  onChange={(e) => setDraftCustomDate(e.target.value)}
-                  className="mt-1.5"
-                  data-testid="play-filter-custom-date"
-                />
-              )}
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                <Tag className="w-3.5 h-3.5" /> Format
-              </Label>
-              <Select value={draftFormat} onValueChange={setDraftFormat}>
-                <SelectTrigger data-testid="play-filter-format"><SelectValue placeholder="All Formats" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL} data-testid="play-filter-format-all">All Formats</SelectItem>
-                  {PLAY_FORMAT_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.key} value={opt.key} data-testid={`play-filter-format-${opt.key}`}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                <BarChart3 className="w-3.5 h-3.5" /> Level
-              </Label>
-              <Select value={draftLevel} onValueChange={setDraftLevel}>
-                <SelectTrigger data-testid="play-filter-level"><SelectValue placeholder="All Levels" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL} data-testid="play-filter-level-all">All Levels</SelectItem>
-                  {PLAY_LEVEL_OPTIONS.filter((l) => l !== "All Levels").map((lvl) => (
-                    <SelectItem key={lvl} value={lvl} data-testid={`play-filter-level-${lvl}`}>{lvl}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <DialogFooter className="flex-row justify-between sm:justify-between">
-            <Button variant="ghost" onClick={clearDraftFilters} data-testid="play-filters-clear-all">
-              Clear all
-            </Button>
-            <Button onClick={applyDraftFilters} data-testid="play-filters-show-results">
-              Show results
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <PlayFilters
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        draft={draft}
+        onDraftChange={setDraft}
+        onClear={clearDraftFilters}
+        onApply={applyDraftFilters}
+      />
 
       <Footer />
 

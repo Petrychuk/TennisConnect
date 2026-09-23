@@ -2,10 +2,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MapPin, Users } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { formatInTimeZone } from "@/lib/timezone";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
-import { PLAY_STATUS_LABEL, PLAY_STATUS_STYLE, RECOMMENDATION_REASON_TEXT } from "@/lib/play-status";
+import { RECOMMENDATION_REASON_TEXT } from "@/lib/play-status";
+import { ActivityStatus } from "./ActivityStatus";
 import type { PublicSessionCard as PublicSessionCardData } from "@shared/schema";
 
 function formatLabel(type: string): string {
@@ -75,12 +75,11 @@ export function PlaySessionCard({
             <span className="text-3xl">🎾</span>
           </div>
         )}
-        <Badge
-          className={cn("absolute top-2 left-2 text-[11px] font-semibold", PLAY_STATUS_STYLE[session.playStatus])}
+        <ActivityStatus
+          status={session.playStatus}
+          className="absolute top-2 left-2 text-[11px] font-semibold"
           data-testid={`play-session-card-${session.id}-status`}
-        >
-          {PLAY_STATUS_LABEL[session.playStatus]}
-        </Badge>
+        />
       </div>
 
       <div className="flex-1 min-w-0 p-4 flex flex-col gap-2">
