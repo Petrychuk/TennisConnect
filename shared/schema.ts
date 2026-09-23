@@ -196,6 +196,11 @@ export const playerProfiles = pgTable("player_profiles", {
   availability: json("availability").$type<string[]>().default([]),
   playRadiusKm: integer("play_radius_km"),
   courtSurfacePreference: text("court_surface_preference"),
+  // Nullable, same story as sessions.latitude/longitude above - no
+  // geocoding or manual-entry UI wired up yet. playRadiusKm already
+  // exists; this is the other half real distance matching needs.
+  latitude: real("latitude"),
+  longitude: real("longitude"),
   // Header/stats-row additions - the redesign's "stats block" needs
   // these instead of tournament counts. Both optional/self-declared.
   playingHand: text("playing_hand"),
@@ -526,6 +531,14 @@ export const tennisSessions = pgTable("sessions", {
   type: text("type").default("social").notNull(),
   status: text("status").default("draft").notNull(), // draft | published | cancelled | live | completed
   location: text("location"),
+  // Nullable - populated by geocoding the location text or manual
+  // entry (neither is wired up yet - see [PLAY] Add radius-based
+  // distance matching). Used by the recommendation engine's distance
+  // signal only when both this AND the player's own coordinates are
+  // set; otherwise distance is excluded from the match score entirely
+  // rather than faking a value.
+  latitude: real("latitude"),
+  longitude: real("longitude"),
   // IANA zone the VENUE is in (e.g. "Australia/Sydney") - not the
   // organizer's or any viewer's own timezone. A session's advertised
   // time is a property of where it physically happens: "6:30pm" at a
@@ -1067,6 +1080,8 @@ export type PublicSessionCard = {
   endAt: string | null;
   timeZone: string;
   location: string | null;
+  latitude: number | null;
+  longitude: number | null;
   skillLevel: string | null;
   courtsCount: number | null;
   maxParticipants: number | null;

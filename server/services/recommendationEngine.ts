@@ -29,6 +29,8 @@ export interface RecommendationPlayerInput {
   skillLevel?: string | null; // Beginner / Intermediate / Advanced / Pro
   preferredCourts?: string[] | null;
   playRadiusKm?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
   availability?: string[] | null; // "Weekday evenings", "Saturday", "Sunday", ...
   gameFormat?: string | null; // Singles / Doubles / Both
   playStyle?: string | null; // Social / Competitive / Both
@@ -40,6 +42,8 @@ export interface RecommendationEventInput {
   type: string; // SESSION_TYPE_OPTIONS key
   skillLevel?: string | null; // the event's own accepted level, if organiser set one
   location?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   startAt: string; // ISO
   timeZone?: string | null; // IANA zone - when omitted, startAt is read in the server's own local time (only safe for tests/local data with no real zone attached)
   playStatus: string; // PublicSessionStatus
@@ -55,6 +59,36 @@ export interface RecommendationResult {
 }
 
 const SKILL_LEVEL_ORDER = ["Beginner", "Intermediate", "Advanced", "Pro"];
+
+// Standard haversine great-circle distance, in km. Accurate enough for
+// "is this within my preferred radius" - no need for anything more
+// precise (ellipsoidal models etc.) at this scale.
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/**
+ * Returns the real distance in km, or null when either side's
+ * coordinates are missing - callers must treat null as "unknown", not
+ * "far away". Exported so a caller (e.g. the Play route) can show an
+ * honest "4.8 km away" in the UI wherever both sides happen to have
+ * coordinates, independent of whether the match score itself uses it.
+ */
+export function computeDistanceKm(
+  player: Pick<RecommendationPlayerInput, "latitude" | "longitude">,
+  event: Pick<RecommendationEventInput, "latitude" | "longitude">
+): number | null {
+  if (player.latitude == null || player.longitude == null || event.latitude == null || event.longitude == null) {
+    return null;
+  }
+  return haversineKm(player.latitude, player.longitude, event.latitude, event.longitude);
+}
 
 // Coarse day/time -> availability-bucket mapping, resolved in the
 // EVENT's own IANA time zone when one is supplied (a session already
@@ -177,18 +211,30 @@ export function computeRecommendation(
     }
   }
 
-  // Distance/location (spec weight: 20) - DISABLED for this merge.
-  // There's no real geocoding in this app (no lat/lng on player or
-  // event), so the only thing available was a text match against
-  // preferredCourts area names - too coarse to honestly claim as a
-  // 20-point "distance" signal (a shared suburb name isn't "6 km
-  // away"). Per review: don't award points for that, and don't show a
-  // NEARBY reason, until a real radius-based calculation exists
-  // (player coordinates + event coordinates + player.playRadiusKm -
-  // tracked as its own follow-up: "[PLAY] Add radius-based distance
-  // matching to recommendation engine"). Distance is excluded from
-  // both matched and available entirely, same as any other signal
-  // with no real data behind it.
+  // Distance/location (spec weight: 20) - real haversine distance
+  // against the player's own preferred radius, only when BOTH sides
+  // have coordinates. Neither field is populated anywhere yet (no
+  // geocoding or manual-entry UI - see the schema comments on
+  // player_profiles.latitude/sessions.latitude), so this signal is
+  // simply unavailable for everyone until that's built - the moment
+  // it's not, no code here needs to change again. Distance inside the
+  // radius scores full weight; outside it scores proportionally less
+  // down to 0 at 2x the radius, never negative.
+  const distanceKm = computeDistanceKm(player, event);
+  if (distanceKm != null && player.playRadiusKm != null && player.playRadiusKm > 0) {
+    available += 20;
+    if (distanceKm <= player.playRadiusKm) {
+      matched += 20;
+      reasons.push("NEARBY");
+    } else if (distanceKm <= player.playRadiusKm * 2) {
+      // Linear falloff from full credit at the radius to zero at 2x it -
+      // "weak match" per the spec's own worked example (27 km vs a
+      // 15 km radius), not a hard cliff.
+      const fraction = 1 - (distanceKm - player.playRadiusKm) / player.playRadiusKm;
+      matched += Math.round(20 * fraction);
+      if (fraction >= 0.5) reasons.push("NEARBY");
+    }
+  }
 
   // Game format (15)
   if (player.gameFormat && player.gameFormat !== "Both") {
