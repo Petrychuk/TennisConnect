@@ -373,7 +373,7 @@ export default function PlayPage() {
             {!hasActiveFilters && isAuthenticated && user?.role === "player" && recommendationsQuery.data && recommendationsQuery.data.recommendations.length > 0 && (
               <div className="space-y-3" data-testid="play-recommendations-section">
                 <div>
-                  <h2 className="font-display font-bold text-lg flex items-center gap-1.5">
+                  <h2 className="font-display font-bold text-lg flex items-center gap-1.5" data-testid="play-recommendations-heading">
                     {recommendationsQuery.data.isPersonalised ? (
                       <>✨ Recommended for You</>
                     ) : (

@@ -89,8 +89,8 @@ export function PlaySessionCard({
         </h3>
 
         <div className="flex flex-wrap gap-1.5">
-          <Badge variant="secondary" className="text-xs">{formatLabel(session.type)}</Badge>
-          <Badge variant="outline" className="text-xs">{session.skillLevel ?? "All Levels"}</Badge>
+          <Badge variant="secondary" className="text-xs" data-testid={`play-session-card-${session.id}-format`}>{formatLabel(session.type)}</Badge>
+          <Badge variant="outline" className="text-xs" data-testid={`play-session-card-${session.id}-level`}>{session.skillLevel ?? "All Levels"}</Badge>
           {session.courtsCount != null && <Badge variant="outline" className="text-xs">{session.courtsCount} courts</Badge>}
         </div>
 
@@ -103,7 +103,7 @@ export function PlaySessionCard({
           </p>
         )}
 
-        <div className="flex items-center gap-1.5 text-sm">
+        <div className="flex items-center gap-1.5 text-sm" data-testid={`play-session-card-${session.id}-players`}>
           <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
           {session.maxParticipants != null ? (
             <>
@@ -119,18 +119,18 @@ export function PlaySessionCard({
 
         {recommendation && recommendation.score > 0 && (
           <div
-            className="flex items-center gap-1.5 text-sm bg-primary/5 rounded-lg px-2.5 py-1.5"
+            className="flex items-center gap-1.5 text-sm bg-primary/5 rounded-lg px-2.5 py-1.5 min-w-0"
             data-testid={`play-session-card-${session.id}-match`}
           >
-            <span className="font-bold text-primary">{recommendation.score}% match</span>
-            <span className="text-muted-foreground text-xs truncate">
+            <span className="font-bold text-primary shrink-0">{recommendation.score}% match</span>
+            <span className="text-muted-foreground text-xs truncate min-w-0">
               · {recommendation.reasons.map((r) => RECOMMENDATION_REASON_TEXT[r] ?? r).join(" · ")}
             </span>
           </div>
         )}
 
         <div className="flex items-center justify-between gap-3 mt-1 pt-2 border-t border-border/60">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0" data-testid={`play-session-card-${session.id}-organiser`}>
             <Avatar className="h-6 w-6 shrink-0">
               {session.organizationLogo && <AvatarImage src={session.organizationLogo} alt="" />}
               <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{initials(session.organizationName)}</AvatarFallback>

@@ -183,44 +183,44 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation }:
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                <p className="flex items-center gap-2">
+                <p className="flex items-center gap-2" data-testid="event-modal-datetime">
                   📅 {formatInTimeZone(session.startAt, session.timeZone, { weekday: "short", day: "numeric", month: "short" })}
                   {" · "}
                   {formatInTimeZone(session.startAt, session.timeZone, { hour: "numeric", minute: "2-digit" })}
                   {session.endAt && ` – ${formatInTimeZone(session.endAt, session.timeZone, { hour: "numeric", minute: "2-digit" })}`}
                 </p>
                 {session.location && (
-                  <p className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 shrink-0" /> {session.location}
+                  <p className="flex items-center gap-2 min-w-0" data-testid="event-modal-location">
+                    <MapPin className="w-4 h-4 shrink-0" /> <span className="truncate">{session.location}</span>
                   </p>
                 )}
-                <p className="flex items-center gap-2">
+                <p className="flex items-center gap-2" data-testid="event-modal-format">
                   🎾 {formatLabel(session.type)}
                 </p>
-                <p className="flex items-center gap-2">
+                <p className="flex items-center gap-2" data-testid="event-modal-level">
                   🎯 {session.skillLevel ?? "All Levels"}
                 </p>
-                <p className="flex items-center gap-2">
+                <p className="flex items-center gap-2" data-testid="event-modal-players">
                   <Users className="w-4 h-4 shrink-0" />
                   {session.maxParticipants != null
                     ? `${session.registeredCount} / ${session.maxParticipants} players`
                     : `${session.registeredCount} players`}
                 </p>
                 {session.price && (
-                  <p className="flex items-center gap-2">
+                  <p className="flex items-center gap-2" data-testid="event-modal-price">
                     <DollarSign className="w-4 h-4 shrink-0" /> {session.price}
                   </p>
                 )}
               </div>
 
               {session.description && (
-                <div>
+                <div data-testid="event-modal-description">
                   <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1">About</p>
                   <p className="text-sm text-muted-foreground">{session.description}</p>
                 </div>
               )}
 
-              <div className="flex items-center gap-2 pt-2 border-t border-border/60">
+              <div className="flex items-center gap-2 pt-2 border-t border-border/60" data-testid="event-modal-organiser">
                 <Avatar className="h-7 w-7 shrink-0">
                   {session.organizationLogo && <AvatarImage src={session.organizationLogo} alt="" />}
                   <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{initials(session.organizationName)}</AvatarFallback>
