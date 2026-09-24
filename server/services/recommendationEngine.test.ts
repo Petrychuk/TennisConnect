@@ -150,6 +150,14 @@ test("mismatched game format scores 0 for that signal", () => {
   assert.equal(result.score, 0);
 });
 
+test("BUG FIX regression: a player's game format preference is NOT penalised when the event has no matchFormat data at all (was: 15 unreachable points always added to available)", () => {
+  const player: RecommendationPlayerInput = { skillLevel: "Intermediate", gameFormat: "Doubles" };
+  const result = computeRecommendation(player, event({ skillLevel: "Intermediate" })); // no matchFormat on the event
+  // Only level should count: 30 matched / 30 available = 100%, not
+  // 30/45 = 67% from an unmatchable format signal dragging it down.
+  assert.equal(result.score, 100);
+});
+
 test("gameFormat 'Both' contributes no weight either way", () => {
   const player: RecommendationPlayerInput = { gameFormat: "Both" };
   const result = computeRecommendation(player, event({ matchFormat: "doubles" }));

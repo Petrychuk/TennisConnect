@@ -12,6 +12,13 @@ import {
   type RecommendationPlayerInput,
   type RecommendationEventInput,
 } from "../services/recommendationEngine";
+import {
+  fallbackIntent,
+  callSmartSearchLLM,
+  matchesTimeOfDay,
+  type PlaySearchIntent,
+  type SmartSearchPlayerContext,
+} from "../services/smartSearchEngine";
 
 const router = Router();
 router.use(publicBrowseLimiter);
@@ -35,6 +42,153 @@ router.get("/sessions", async (req, res, next) => {
       dateTo: parseDate(req.query.dateTo),
     });
     res.json({ sessions });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/play/smart-search - [PLAY][AI] Smart Natural-Language
+// Tennis Search. AI interprets intent only; it never invents events,
+// prices, or match scores, and it never decides which events fall in
+// a time window (matchesTimeOfDay/getPublicSessions's own date
+// filtering do that deterministically). Works fully without AI - if
+// ANTHROPIC_API_KEY isn't set, or the call times out/fails/returns
+// something that doesn't validate, this silently falls back to a
+// plain text search using the query as typed (spec section 14).
+router.post("/smart-search", publicBrowseLimiter, async (req, res, next) => {
+  try {
+    const query = typeof req.body?.query === "string" ? req.body.query.trim() : "";
+    if (!query) {
+      return res.status(400).json({ message: "query is required" });
+    }
+
+    // Minimal profile context only (spec section 16's own allowlist) -
+    // never email, messages, DOB, photos, or account/security info.
+    let playerContext: SmartSearchPlayerContext | undefined;
+    if (req.isAuthenticated?.() && (req.user as any).role === "player") {
+      const profile = await storage.getPlayerProfile((req.user as any).id);
+      if (profile) {
+        playerContext = {
+          skillLevel: profile.skillLevel,
+          preferredArea: profile.preferredCourts?.[0] ?? null,
+          playRadiusKm: profile.playRadiusKm,
+          gameFormat: profile.gameFormat,
+          playStyle: profile.playStyle,
+          availability: profile.availability,
+        };
+      }
+    }
+
+    const aiIntent = await callSmartSearchLLM(query, playerContext);
+    const usedAI = aiIntent !== null;
+    const intent: PlaySearchIntent = aiIntent ?? fallbackIntent(query);
+
+    // play_smart_search / play_smart_search_fallback (spec section 17) -
+    // the raw query text is deliberately NOT included, only what's
+    // needed to measure whether AI understood the request at all.
+    const analyticsBase = { intent: intent.intent, usedAI };
+
+    // FIND_PLAYER - Player Matching doesn't exist yet (spec section
+    // 12). Never falls through to a normal event search for this -
+    // that would silently misinterpret "find someone to hit with" as
+    // an event query.
+    if (intent.intent === "FIND_PLAYER") {
+      return res.json({
+        intent: "FIND_PLAYER",
+        aiUsed: usedAI,
+        message: "Player matching is coming to Play.",
+        sessions: [],
+        analytics: analyticsBase,
+      });
+    }
+
+    // Explicit query values always win over profile defaults (spec
+    // section 4/7) - profile is only consulted when the intent itself
+    // says to defer to it (usePlayerLocation/usePlayerPreferences/
+    // levelMode PLAYER_LEVEL), never as a silent override.
+    const resolvedLocation = intent.location || (intent.usePlayerLocation ? playerContext?.preferredArea ?? undefined : undefined);
+    const resolvedLevel =
+      intent.levelMode === "PLAYER_LEVEL" ? playerContext?.skillLevel ?? undefined : intent.level;
+    // The query layer supports one format value at a time - if the AI
+    // returned more than one activityType, only the first is applied
+    // as a hard filter; this is a real simplification, not a bug, and
+    // is worth extending if multi-format search becomes common enough
+    // to matter.
+    const resolvedFormat = intent.activityType?.[0];
+
+    const searchText = intent.intent === "TEXT_SEARCH" ? intent.query || query : undefined;
+
+    const parsedDateFrom = intent.dateFrom ? new Date(intent.dateFrom) : undefined;
+    const parsedDateTo = intent.dateTo ? new Date(intent.dateTo) : undefined;
+    const dateFrom = parsedDateFrom && !isNaN(parsedDateFrom.getTime()) ? parsedDateFrom : undefined;
+    const dateTo = parsedDateTo && !isNaN(parsedDateTo.getTime()) ? parsedDateTo : undefined;
+
+    const baseFilters = {
+      search: searchText,
+      location: resolvedLocation,
+      format: resolvedFormat,
+      level: resolvedLevel,
+      dateFrom,
+      dateTo,
+    };
+
+    let sessions = await storage.getPublicSessions(baseFilters);
+
+    if (intent.timeOfDay) {
+      sessions = sessions.filter((s) => matchesTimeOfDay(s.startAt, s.timeZone, intent.timeOfDay!));
+    }
+    // Note: intent.gameFormat (singles/doubles/mixed) isn't applied as
+    // a filter here - PublicSessionCard has no singles/doubles field
+    // to check it against yet (matchMode on PublicSessionDetails is a
+    // different concept - scoring format, not game format). A real
+    // gameFormat filter needs that field added to the session model
+    // first; flagging rather than filtering against the wrong thing.
+
+    // No-results AI-assisted recovery (spec section 11): only ever
+    // offer a relaxation that's VERIFIED to actually return something -
+    // never a suggestion that would itself come back empty. Tried one
+    // relaxation at a time, cheapest/most-likely-useful first.
+    let suggestions: { label: string; resultCount: number }[] = [];
+    if (sessions.length === 0) {
+      const tryRelaxation = async (label: string, filters: typeof baseFilters) => {
+        const results = await storage.getPublicSessions(filters);
+        if (results.length > 0) suggestions.push({ label, resultCount: results.length });
+        return results;
+      };
+
+      if (intent.timeOfDay || dateFrom || dateTo) {
+        await tryRelaxation("Show all this week", { ...baseFilters, dateFrom: undefined, dateTo: undefined });
+      }
+      if (resolvedLocation) {
+        await tryRelaxation(`Show all ${resolvedFormat ? "matching" : ""} sessions nearby`, {
+          ...baseFilters,
+          location: undefined,
+        });
+      }
+      if (resolvedFormat) {
+        await tryRelaxation("Show all formats", { ...baseFilters, format: undefined });
+      }
+    }
+
+    res.json({
+      intent: intent.intent,
+      aiUsed: usedAI,
+      resolvedFilters: {
+        location: resolvedLocation ?? null,
+        format: resolvedFormat ?? null,
+        level: resolvedLevel ?? null,
+        gameFormat: intent.gameFormat ?? null,
+        timeOfDay: intent.timeOfDay ?? null,
+        dateFrom: dateFrom?.toISOString() ?? null,
+        dateTo: dateTo?.toISOString() ?? null,
+      },
+      sessions,
+      suggestions: sessions.length === 0 ? suggestions : [],
+      analytics: {
+        ...analyticsBase,
+        resultCount: sessions.length,
+      },
+    });
   } catch (error) {
     next(error);
   }

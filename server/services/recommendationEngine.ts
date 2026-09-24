@@ -236,11 +236,19 @@ export function computeRecommendation(
     }
   }
 
-  // Game format (15)
-  if (player.gameFormat && player.gameFormat !== "Both") {
+  // Game format (spec weight: 15) - only counted when the event
+  // actually exposes a real singles/doubles/mixed value. Sessions
+  // don't carry that field yet (PublicSessionCard has no gameFormat/
+  // matchFormat column - found this gap while building Smart Search),
+  // so right now this is always available=0/matched=0 for everyone,
+  // same honest "signal not yet backed by real data" treatment as
+  // Distance was before real coordinates existed. Previously this
+  // added 15 to `available` whenever the PLAYER had a preference, with
+  // no way to ever match it - silently dragging every such player's
+  // score down. Fixed to gate on the event actually having the data.
+  if (player.gameFormat && player.gameFormat !== "Both" && event.matchFormat) {
     available += 15;
-    const eventFormat = event.matchFormat?.toLowerCase();
-    if (eventFormat && eventFormat === player.gameFormat.toLowerCase()) {
+    if (event.matchFormat.toLowerCase() === player.gameFormat.toLowerCase()) {
       matched += 15;
       reasons.push(player.gameFormat === "Doubles" ? "LOOKING_FOR_DOUBLES" : "PREFERRED_FORMAT");
     }
