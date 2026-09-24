@@ -17,14 +17,14 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { Search, MapPin, X } from "lucide-react";
+import { Search, MapPin, X, Sparkles } from "lucide-react";
 import { PlaySessionCard } from "@/components/play/session-card";
 import { EventQuickViewModal } from "@/components/play/EventQuickViewModal";
 import { PlayQuickFilters } from "@/components/play/PlayQuickFilters";
 import { PlayFilters, PLAY_FILTER_ALL, PLAY_FORMAT_OPTIONS, type PlayFiltersDraft } from "@/components/play/PlayFilters";
 import { PlayNoMatches, PlayNoActivitiesYet } from "@/components/play/PlayEmptyState";
 import { AvailabilityNudge } from "@/components/play/AvailabilityNudge";
-import { getPlaySessions, getPlayRecommendations } from "@/lib/api/play";
+import { getPlaySessions, getPlayRecommendations, smartSearch, type SmartSearchResponse } from "@/lib/api/play";
 import { useAuth } from "@/lib/auth-context";
 import { PLAY_DATE_FILTER_OPTIONS, resolveDateFilterRange, type PlayDateFilter } from "@/lib/play-status";
 import playHeroDesktop from "/assets/images/play-hero-desktop.webp";
@@ -43,6 +43,8 @@ export default function PlayPage() {
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState("");
+  const [smartSearchResult, setSmartSearchResult] = useState<SmartSearchResponse | null>(null);
+  const [smartSearchLoading, setSmartSearchLoading] = useState(false);
   const [location, setLocationFilter] = useState("");
   const [dateFilter, setDateFilter] = useState<PlayDateFilter>("any");
   const [customDate, setCustomDate] = useState("");
@@ -134,6 +136,45 @@ export default function PlayPage() {
     });
   };
 
+  // [PLAY][AI] Smart Natural-Language Search - runs on submit (Enter),
+  // not on every keystroke, given the latency/cost of an LLM call per
+  // request. Deliberately does NOT put the raw query text into
+  // analytics (spec section 17 - it could contain personal
+  // information), only the interpreted intent and outcome.
+  const handleSmartSearch = async (query: string) => {
+    if (!query.trim()) {
+      setSmartSearchResult(null);
+      return;
+    }
+    setSmartSearchLoading(true);
+    (window as any).gtag?.("event", "play_smart_search");
+    try {
+      const result = await smartSearch(query);
+      setSmartSearchResult(result);
+      if (!result.aiUsed) {
+        (window as any).gtag?.("event", "play_smart_search_fallback");
+      } else if (result.intent !== "FIND_PLAYER" && result.sessions.length === 0) {
+        (window as any).gtag?.("event", "play_smart_search_no_results", { intent: result.intent });
+      } else {
+        (window as any).gtag?.("event", "play_smart_search_success", {
+          intent: result.intent,
+          resultCount: result.sessions.length,
+        });
+      }
+    } catch {
+      // The route itself already falls back safely server-side - a
+      // failure here means the REQUEST couldn't even be made (offline,
+      // etc). Same visible behaviour either way: clear the AI result
+      // and let the page's own normal filter-driven search keep working.
+      setSmartSearchResult(null);
+      (window as any).gtag?.("event", "play_smart_search_fallback");
+    } finally {
+      setSmartSearchLoading(false);
+    }
+  };
+
+  const clearSmartSearch = () => setSmartSearchResult(null);
+
   const sessionsQuery = useQuery({
     queryKey: ["/api/play/sessions", search, location, format, level, organizerId, from?.toISOString(), to?.toISOString()],
     queryFn: () =>
@@ -218,15 +259,34 @@ export default function PlayPage() {
             <p className="text-primary text-xs font-bold tracking-widest uppercase mb-2">Play more tennis</p>
             <h1 className="text-3xl font-display font-bold" data-testid="play-page-title-mobile">Find a Game</h1>
             <p className="text-sm text-muted-foreground mt-2">Find tennis sessions, competitions and events near you.</p>
-            <div className="relative max-w-xs mx-auto mt-5">
+            <div className="relative max-w-sm mx-auto mt-5">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by session, venue or organiser..."
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  if (smartSearchResult) setSmartSearchResult(null);
+                }}
+                onKeyDown={(e) => e.key === "Enter" && handleSmartSearch(search)}
+                placeholder="What would you like to play?"
                 className="pl-10 h-11"
                 data-testid="play-page-search-input-mobile"
               />
+            </div>
+            <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-2 max-w-xs mx-auto">
+              {["Doubles this weekend", "Social tennis near me", "Competition around my level"].map((example) => (
+                <button
+                  key={example}
+                  className="text-xs text-muted-foreground underline underline-offset-2"
+                  onClick={() => {
+                    setSearch(example);
+                    handleSmartSearch(example);
+                  }}
+                  data-testid={`play-search-example-mobile-${example.replace(/\s+/g, "-").toLowerCase()}`}
+                >
+                  {example}
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -248,15 +308,34 @@ export default function PlayPage() {
               Find tennis sessions, competitions and events near you.
             </p>
 
-            <div className="relative max-w-xs mx-auto mt-5">
+            <div className="relative max-w-sm mx-auto mt-5">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by session, venue or organiser..."
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  if (smartSearchResult) setSmartSearchResult(null);
+                }}
+                onKeyDown={(e) => e.key === "Enter" && handleSmartSearch(search)}
+                placeholder="What would you like to play?"
                 className="pl-10 h-11 bg-background"
                 data-testid="play-page-search-input"
               />
+            </div>
+            <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-2">
+              {["Doubles this weekend", "Social tennis near me", "Competition around my level"].map((example) => (
+                <button
+                  key={example}
+                  className="text-xs text-gray-200 underline underline-offset-2 hover:text-white"
+                  onClick={() => {
+                    setSearch(example);
+                    handleSmartSearch(example);
+                  }}
+                  data-testid={`play-search-example-${example.replace(/\s+/g, "-").toLowerCase()}`}
+                >
+                  {example}
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -340,7 +419,7 @@ export default function PlayPage() {
           )}
 
           <div className="space-y-5">
-            {!hasActiveFilters && isAuthenticated && user?.role === "player" && myProfileQuery.data && !myProfileQuery.data.availability?.length && (
+            {!smartSearchResult && !hasActiveFilters && isAuthenticated && user?.role === "player" && myProfileQuery.data && !myProfileQuery.data.availability?.length && (
               <AvailabilityNudge
                 onSaved={() => {
                   queryClient.invalidateQueries({ queryKey: ["/api/me/player-profile"] });
@@ -349,7 +428,7 @@ export default function PlayPage() {
               />
             )}
 
-            {!hasActiveFilters && isAuthenticated && user?.role === "player" && recommendationsQuery.data && recommendationsQuery.data.recommendations.length > 0 && (
+            {!smartSearchResult && !hasActiveFilters && isAuthenticated && user?.role === "player" && recommendationsQuery.data && recommendationsQuery.data.recommendations.length > 0 && (
               <div className="space-y-3" data-testid="play-recommendations-section">
                 <div>
                   <h2 className="font-display font-bold text-lg flex items-center gap-1.5" data-testid="play-recommendations-heading">
@@ -382,7 +461,80 @@ export default function PlayPage() {
               </div>
             )}
 
-            {sessionsQuery.isLoading ? (
+            {smartSearchLoading && (
+              <div className="space-y-4" data-testid="play-smart-search-loading">
+                {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-40 w-full rounded-2xl" />)}
+              </div>
+            )}
+
+            {!smartSearchLoading && smartSearchResult && (
+              <div className="space-y-4" data-testid="play-smart-search-result">
+                {!smartSearchResult.aiUsed && (
+                  <p className="text-sm text-muted-foreground" data-testid="play-smart-search-fallback-note">
+                    We couldn't understand all of that, so we're showing results for "{search}".
+                  </p>
+                )}
+
+                {smartSearchResult.intent === "FIND_PLAYER" ? (
+                  <div className="flex flex-col items-center text-center gap-2 py-16" data-testid="play-smart-search-find-player">
+                    <Sparkles className="w-8 h-8 text-muted-foreground" />
+                    <p className="font-semibold">{smartSearchResult.message}</p>
+                  </div>
+                ) : (
+                  <>
+                    {smartSearchResult.aiUsed && smartSearchResult.resolvedFilters && (
+                      <div className="flex flex-wrap items-center gap-2" data-testid="play-smart-search-chips">
+                        <span className="text-xs text-muted-foreground">Showing matches for:</span>
+                        {[
+                          smartSearchResult.resolvedFilters.location,
+                          smartSearchResult.resolvedFilters.format,
+                          smartSearchResult.resolvedFilters.level,
+                          smartSearchResult.resolvedFilters.timeOfDay,
+                          ...(smartSearchResult.resolvedFilters.gameFormat ?? []),
+                        ]
+                          .filter(Boolean)
+                          .map((label, i) => (
+                            <Badge key={i} variant="secondary">{label}</Badge>
+                          ))}
+                        <Button variant="ghost" size="sm" onClick={clearSmartSearch} data-testid="play-smart-search-clear">
+                          <X className="w-3.5 h-3.5 mr-1" /> Clear
+                        </Button>
+                      </div>
+                    )}
+
+                    {smartSearchResult.sessions.length === 0 ? (
+                      <div className="flex flex-col items-center text-center gap-3 py-12" data-testid="play-smart-search-no-results">
+                        <Search className="w-8 h-8 text-muted-foreground" />
+                        <p className="font-semibold">No exact matches</p>
+                        {smartSearchResult.suggestions.length > 0 && (
+                          <div className="flex flex-wrap justify-center gap-2 mt-1">
+                            {smartSearchResult.suggestions.map((s) => (
+                              <Button
+                                key={s.label}
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleSmartSearch(s.label)}
+                                data-testid={`play-smart-search-suggestion-${s.label.replace(/\s+/g, "-").toLowerCase()}`}
+                              >
+                                {s.label}
+                              </Button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {smartSearchResult.sessions.map((s) => (
+                          <PlaySessionCard key={s.id} session={s} onView={() => setSelectedSessionId(s.id)} />
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {!smartSearchResult && (sessionsQuery.isLoading ? (
               <div className="space-y-4" data-testid="play-page-loading">
                 {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-40 w-full rounded-2xl" />)}
               </div>
@@ -454,7 +606,7 @@ export default function PlayPage() {
                   </Pagination>
                 )}
               </>
-            )}
+            ))}
           </div>
         </div>
       </main>

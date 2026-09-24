@@ -51,3 +51,31 @@ export async function joinSession(sessionId: string): Promise<{ waitlisted: bool
 export async function leaveSession(sessionId: string): Promise<void> {
   await apiRequest("DELETE", `/api/organizer/sessions/${sessionId}/join`);
 }
+
+// [PLAY][AI] Smart Natural-Language Search - see server/routes/play.ts
+// smart-search route and server/services/smartSearchEngine.ts. This
+// always succeeds with SOME usable result (falls back to a plain text
+// search server-side) - callers don't need their own try/catch just to
+// keep the search box working if AI is unavailable.
+export interface SmartSearchResponse {
+  intent: "FIND_ACTIVITY" | "FIND_PLAYER" | "TEXT_SEARCH";
+  aiUsed: boolean;
+  message?: string; // present for FIND_PLAYER
+  resolvedFilters?: {
+    location: string | null;
+    format: string | null;
+    level: string | null;
+    gameFormat: string[] | null;
+    timeOfDay: string | null;
+    dateFrom: string | null;
+    dateTo: string | null;
+  };
+  sessions: PublicSessionCard[];
+  suggestions: { label: string; resultCount: number }[];
+  analytics: { intent: string; usedAI: boolean; resultCount?: number };
+}
+
+export async function smartSearch(query: string): Promise<SmartSearchResponse> {
+  const res = await apiRequest("POST", `${BASE}/smart-search`, { query });
+  return res.json();
+}
