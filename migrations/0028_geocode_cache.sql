@@ -6,9 +6,9 @@ CREATE TABLE IF NOT EXISTS "geocode_cache" (
   "created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "organizations" ADD COLUMN IF NOT EXISTS "latitude" real;
+ALTER TABLE "clubs" ADD COLUMN IF NOT EXISTS "latitude" real;
 --> statement-breakpoint
-ALTER TABLE "organizations" ADD COLUMN IF NOT EXISTS "longitude" real;
+ALTER TABLE "clubs" ADD COLUMN IF NOT EXISTS "longitude" real;
 --> statement-breakpoint
 ALTER TABLE "coach_profiles" ADD COLUMN IF NOT EXISTS "latitude" real;
 --> statement-breakpoint
