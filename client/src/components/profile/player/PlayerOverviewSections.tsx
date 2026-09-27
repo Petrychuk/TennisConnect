@@ -769,3 +769,136 @@ export function PlayerBottomCTA({
     </div>
   );
 }
+
+/* =========================================================
+   Looking to Play - spec [PLAY] Players Looking to Play,
+   section 2/4. A simple ON/OFF status, not a schedule - shown
+   here (Overview sidebar) since spec explicitly says "do not
+   create a separate settings workflow", manage it right from
+   the profile.
+========================================================= */
+export const LOOKING_TO_PLAY_WHEN_OPTIONS: { value: "today" | "this_week" | "this_weekend"; label: string }[] = [
+  { value: "today", label: "Today" },
+  { value: "this_week", label: "This week" },
+  { value: "this_weekend", label: "This weekend" },
+];
+export const LOOKING_TO_PLAY_FORMAT_OPTIONS: { value: "singles" | "doubles" | "either"; label: string }[] = [
+  { value: "singles", label: "Singles" },
+  { value: "doubles", label: "Doubles" },
+  { value: "either", label: "Either" },
+];
+
+export function LookingToPlayCard({
+  enabled,
+  when,
+  format,
+  onSave,
+}: {
+  enabled: boolean;
+  when: string | null;
+  format: string | null;
+  onSave: (data: { enabled: boolean; when?: "today" | "this_week" | "this_weekend"; format?: "singles" | "doubles" | "either" }) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [draftWhen, setDraftWhen] = useState<"today" | "this_week" | "this_weekend">("today");
+  const [draftFormat, setDraftFormat] = useState<"singles" | "doubles" | "either">("either");
+
+  const whenLabel = LOOKING_TO_PLAY_WHEN_OPTIONS.find((o) => o.value === when)?.label;
+  const formatLabel = LOOKING_TO_PLAY_FORMAT_OPTIONS.find((o) => o.value === format)?.label;
+
+  if (enabled) {
+    return (
+      <Card data-testid="looking-to-play-card" className="border-0 shadow-sm bg-muted/40">
+        <CardContent className="py-4 flex items-center justify-between gap-3">
+          <div>
+            <p className="font-medium flex items-center gap-1.5">🟢 Looking to Play</p>
+            <p className="text-sm text-muted-foreground">
+              {[whenLabel, formatLabel].filter(Boolean).join(" · ")}
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onSave({ enabled: false })}
+            data-testid="looking-to-play-turn-off"
+          >
+            Turn off
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card data-testid="looking-to-play-card" className="border-0 shadow-sm bg-muted/40">
+      <CardContent className="py-4">
+        <p className="font-medium">Want to play?</p>
+        <p className="text-sm text-muted-foreground mb-3">Let nearby players know you're available.</p>
+        <Button
+          size="sm"
+          onClick={() => {
+            setDraftWhen("today");
+            setDraftFormat("either");
+            setOpen(true);
+          }}
+          data-testid="looking-to-play-turn-on"
+        >
+          I'm looking to play
+        </Button>
+      </CardContent>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent data-testid="looking-to-play-modal">
+          <DialogHeader>
+            <DialogTitle>I'm looking to play</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm font-medium mb-2">When?</p>
+              <div className="flex flex-wrap gap-2">
+                {LOOKING_TO_PLAY_WHEN_OPTIONS.map((opt) => (
+                  <Badge
+                    key={opt.value}
+                    variant={draftWhen === opt.value ? "default" : "outline"}
+                    className="cursor-pointer py-1.5 px-3"
+                    onClick={() => setDraftWhen(opt.value)}
+                    data-testid={`looking-to-play-when-${opt.value}`}
+                  >
+                    {opt.label}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-medium mb-2">What?</p>
+              <div className="flex flex-wrap gap-2">
+                {LOOKING_TO_PLAY_FORMAT_OPTIONS.map((opt) => (
+                  <Badge
+                    key={opt.value}
+                    variant={draftFormat === opt.value ? "default" : "outline"}
+                    className="cursor-pointer py-1.5 px-3"
+                    onClick={() => setDraftFormat(opt.value)}
+                    data-testid={`looking-to-play-format-${opt.value}`}
+                  >
+                    {opt.label}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                onSave({ enabled: true, when: draftWhen, format: draftFormat });
+                setOpen(false);
+              }}
+              data-testid="looking-to-play-save"
+            >
+              I'm looking to play
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}

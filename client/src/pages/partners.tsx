@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { MapPin, Search, MessageCircle, User, Activity, Send, Camera, Trophy, SlidersHorizontal, Target } from "lucide-react";
 import { PARTNERS_DATA } from "@/lib/dummy-data";
 import { motion } from "framer-motion";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import SEO from "@/components/seo";
 import { quickMessageSchema } from "@/lib/validations/messages";
 import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.webp";
@@ -34,6 +34,7 @@ interface PartnerData {
     isDemo: boolean;
     isOrganizer: boolean;
     lookingFor: string[];
+    lookingToPlay: boolean;
   }
 
 export default function PartnersPage() {
@@ -47,6 +48,14 @@ export default function PartnersPage() {
   
   const [searchTerm, setSearchTerm] = useState("");
   const [filterLevel, setFilterLevel] = useState("");
+  // [PLAY] "See all players" links here as ?lookingToPlay=true (spec
+  // section 16 - reuse this directory, don't build a second one).
+  // Read once on mount, same simple approach as every other filter on
+  // this page (all client-side over the already-fetched list).
+  const searchString = useSearch();
+  const [filterLookingToPlay, setFilterLookingToPlay] = useState(
+    () => new URLSearchParams(searchString).get("lookingToPlay") === "true"
+  );
   const [levelPopoverOpen, setLevelPopoverOpen] = useState(false);
   const [partners, setPartners] = useState<PartnerData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,6 +156,7 @@ export default function PartnersPage() {
         isDemo: true,
         isOrganizer: false,
         lookingFor: [],
+        lookingToPlay: false,
       }));
   const normalizeApiPlayers = (data: any[]): PartnerData[] =>
     data.map((item) => ({
@@ -164,6 +174,7 @@ export default function PartnersPage() {
       isDemo: false,
       isOrganizer: Boolean(item.isOrganizer),
       lookingFor: Array.isArray(item.lookingFor) ? item.lookingFor : [],
+      lookingToPlay: !!item.lookingToPlay,
     }));
 
     useEffect(() => {
@@ -218,7 +229,9 @@ export default function PartnersPage() {
       ? partner.skillLevel === filterLevel
       : true;
 
-    return matchesSearch && matchesLevel;
+    const matchesLookingToPlay = filterLookingToPlay ? partner.lookingToPlay : true;
+
+    return matchesSearch && matchesLevel && matchesLookingToPlay;
   });
 
   // GA4 "search" - debounced (fires once ~600ms after typing stops, not
@@ -407,6 +420,13 @@ export default function PartnersPage() {
                       {level}
                     </button>
                   ))}
+                  <button
+                    onClick={() => setFilterLookingToPlay((v) => !v)}
+                    className={`h-8 md:h-11 px-3 md:px-4 rounded-full text-xs md:text-sm font-medium whitespace-nowrap transition-all border cursor-pointer ${filterLookingToPlay ? "bg-primary text-foreground border-primary" : "bg-background border-input hover:border-primary/50"}`}
+                    data-testid="players-filter-looking-to-play"
+                  >
+                    🟢 Looking to Play
+                  </button>
                 </div>
 
               </div>
