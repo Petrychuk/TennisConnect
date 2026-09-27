@@ -116,6 +116,32 @@ export default function PlayPage() {
   });
   const [inviteTarget, setInviteTarget] = useState<{ id: string; name: string } | null>(null);
 
+  // play_player_recommendation_impression (spec section 17) - fires
+  // once per item, first time the Players Looking to Play list has
+  // real data. Same guarded-ref pattern as the event recommendations'
+  // own impression tracking above.
+  const trackedPlayerImpressions = useRef(false);
+  useEffect(() => {
+    if (trackedPlayerImpressions.current) return;
+    const players = playersLookingQuery.data?.players;
+    if (!players || players.length === 0) return;
+    trackedPlayerImpressions.current = true;
+    players.forEach((match, position) => {
+      (window as any).gtag?.("event", "play_player_recommendation_impression", {
+        matchScore: match.hasEnoughSignal ? match.score : null,
+        position,
+        gameFormat: match.player.lookingToPlayFormat,
+      });
+    });
+  }, [playersLookingQuery.data]);
+
+  const trackPlayerInviteSent = (match: { score: number; hasEnoughSignal: boolean; player: { lookingToPlayFormat: string | null } }) => {
+    (window as any).gtag?.("event", "play_player_invite_sent", {
+      matchScore: match.hasEnoughSignal ? match.score : null,
+      gameFormat: match.player.lookingToPlayFormat,
+    });
+  };
+
   // [ANALYTICS][PLAY] Track personalised recommendation engagement -
   // impression fires once per item, the first time the list actually
   // has data (not on every re-render/refetch of the same data).
@@ -489,7 +515,10 @@ export default function PlayPage() {
                     <PlayerMatchCard
                       key={match.player.id}
                       match={match}
-                      onInvite={() => setInviteTarget({ id: match.player.id, name: match.player.name })}
+                      onInvite={() => {
+                        setInviteTarget({ id: match.player.id, name: match.player.name });
+                        trackPlayerInviteSent(match);
+                      }}
                     />
                   ))}
                 </div>
@@ -518,7 +547,10 @@ export default function PlayPage() {
                         <PlayerMatchCard
                           key={match.player.id}
                           match={match}
-                          onInvite={() => setInviteTarget({ id: match.player.id, name: match.player.name })}
+                          onInvite={() => {
+                        setInviteTarget({ id: match.player.id, name: match.player.name });
+                        trackPlayerInviteSent(match);
+                      }}
                         />
                       ))}
                     </div>

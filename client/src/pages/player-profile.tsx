@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +33,7 @@ import { MyOrganizedSessionsSection } from "@/components/profile/shared/MyOrgani
 import { useOrganizerStatus } from "@/hooks/use-organizer-status";
 import { TennisLoader } from "@/components/ui/tennisLoader";
 import { uploadMedia } from "@/lib/uploadImage";
-import { computeMatchScore, type MatchProfileInput } from "@/lib/matchScore";
+import { PLAYER_MATCH_REASON_TEXT } from "@/components/play/PlayerMatchCard";
 import { setLookingToPlay } from "@/lib/api/play";
 import { QuickMessageModal } from "@/components/messaging/QuickMessageModal";
 import {
@@ -179,7 +180,6 @@ export default function PlayerProfile() {
   ];
   const [messageModalOpen, setMessageModalOpen] = useState(false);
   const [messageModalDefaultText, setMessageModalDefaultText] = useState("");
-  const [viewerProfile, setViewerProfile] = useState<MatchProfileInput | null>(null);
   const [profile, setProfile] = useState<PlayerProfile>(DEFAULT_PLAYER_PROFILE);
   const [originalProfile, setOriginalProfile] = useState<PlayerProfile>(DEFAULT_PLAYER_PROFILE);
   const [loading, setLoading] = useState(true);
@@ -240,28 +240,34 @@ export default function PlayerProfile() {
     }
   }, [authLoading, isOwnProfile, user, setLocation]);
 
-  // Fetches the VIEWER's own player profile so the Good Match card can
-  // compute a real score against the profile being viewed (see
-  // lib/matchScore.ts) - only needed when looking at someone else's
-  // profile while logged in as a player.
+  // [PLAY] section 13: "Good Match for You" reuses the SAME
+  // playerMatchEngine as Players Looking to Play / Smart Search's
+  // FIND_PLAYER, via one shared server endpoint - not a separate
+  // client-side score computation. Only fetched when viewing someone
+  // else's profile while signed in as a player.
+  const playerMatchQuery = useQuery({
+    queryKey: ["/api/play/player-match", playerUserId],
+    queryFn: async () => {
+      const res = await fetch(`/api/play/player-match/${playerUserId}`, { credentials: "include" });
+      if (!res.ok) return { available: false as const };
+      return res.json() as Promise<{ available: boolean; score?: number; reasons?: string[]; hasEnoughSignal?: boolean }>;
+    },
+    enabled: !isOwnProfile && !!playerUserId && isAuthenticated && user?.role === "player",
+  });
+
+  // play_player_profile_open (spec section 17) - fires once per real
+  // load of another player's profile while signed in as a player,
+  // regardless of how they got here (Players Looking to Play, search,
+  // a direct link) - the funnel this feeds is impression -> open ->
+  // invite, and "open" here means "opened a player's profile", not
+  // specifically "opened FROM a recommendation".
+  const trackedProfileOpen = useRef(false);
   useEffect(() => {
-    if (isOwnProfile || !user || user.role !== "player") {
-      setViewerProfile(null);
-      return;
-    }
-    let cancelled = false;
-    fetch("/api/me/player-profile", { credentials: "include" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!cancelled && data) setViewerProfile(data);
-      })
-      .catch(() => {
-        /* Good Match card just won't render if this fails - not worth surfacing an error for. */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [isOwnProfile, user]);
+    if (trackedProfileOpen.current) return;
+    if (isOwnProfile || !playerUserId || !isAuthenticated || user?.role !== "player") return;
+    trackedProfileOpen.current = true;
+    (window as any).gtag?.("event", "play_player_profile_open");
+  }, [isOwnProfile, playerUserId, isAuthenticated, user]);
 
    useEffect(() => {
     if (!profileSlug) return;
@@ -1112,27 +1118,24 @@ export default function PlayerProfile() {
                           isOwner={false}
                         />
                       )}
-                      {!isOwnProfile && viewerProfile && (() => {
-                        const match = computeMatchScore(viewerProfile, {
-                          skillLevel: profile.skillLevel,
-                          availability: profile.availability,
-                          preferredCourts: profile.preferredCourts,
-                          gameFormat: profile.gameFormat,
-                          lookingFor: profile.lookingFor,
-                        });
-                        return (
+                      {!isOwnProfile &&
+                        playerMatchQuery.data?.available &&
+                        playerMatchQuery.data.hasEnoughSignal &&
+                        typeof playerMatchQuery.data.score === "number" && (
                           <GoodMatchCard
-                            percent={match.percent}
-                            reasons={match.reasons}
+                            percent={playerMatchQuery.data.score}
+                            reasons={(playerMatchQuery.data.reasons ?? []).map((r: string) => PLAYER_MATCH_REASON_TEXT[r] ?? r)}
                             onSuggestGame={() => {
                               setMessageModalDefaultText(
                                 `Hi ${profile.name.split(" ")[0]}, want to play a match sometime?`
                               );
                               setMessageModalOpen(true);
+                              (window as any).gtag?.("event", "play_player_invite_sent", {
+                                matchScore: playerMatchQuery.data?.score ?? null,
+                              });
                             }}
                           />
-                        );
-                      })()}
+                        )}
                       <AvailabilityQuickCard availability={profile.availability || []} isOwner={isOwnProfile} />
                       {isOwnProfile && (
                         <LookingToPlayCard
