@@ -135,13 +135,6 @@ export default function PlayPage() {
     });
   }, [playersLookingQuery.data]);
 
-  const trackPlayerInviteSent = (match: { score: number; hasEnoughSignal: boolean; player: { lookingToPlayFormat: string | null } }) => {
-    (window as any).gtag?.("event", "play_player_invite_sent", {
-      matchScore: match.hasEnoughSignal ? match.score : null,
-      gameFormat: match.player.lookingToPlayFormat,
-    });
-  };
-
   // [ANALYTICS][PLAY] Track personalised recommendation engagement -
   // impression fires once per item, the first time the list actually
   // has data (not on every re-render/refetch of the same data).
@@ -515,10 +508,7 @@ export default function PlayPage() {
                     <PlayerMatchCard
                       key={match.player.id}
                       match={match}
-                      onInvite={() => {
-                        setInviteTarget({ id: match.player.id, name: match.player.name });
-                        trackPlayerInviteSent(match);
-                      }}
+                      onInvite={() => setInviteTarget({ id: match.player.id, name: match.player.name })}
                     />
                   ))}
                 </div>
@@ -547,10 +537,7 @@ export default function PlayPage() {
                         <PlayerMatchCard
                           key={match.player.id}
                           match={match}
-                          onInvite={() => {
-                        setInviteTarget({ id: match.player.id, name: match.player.name });
-                        trackPlayerInviteSent(match);
-                      }}
+                          onInvite={() => setInviteTarget({ id: match.player.id, name: match.player.name })}
                         />
                       ))}
                     </div>
@@ -742,6 +729,7 @@ export default function PlayPage() {
           recipient={{ id: inviteTarget.id, name: inviteTarget.name, type: "player" }}
           title={`Invite ${inviteTarget.name.split(" ")[0]} to play 🎾`}
           defaultMessage={`Hi ${inviteTarget.name.split(" ")[0]}, want to play sometime soon?`}
+          messageType="play_invite"
         />
       )}
     </div>

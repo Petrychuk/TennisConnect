@@ -180,6 +180,7 @@ export default function PlayerProfile() {
   ];
   const [messageModalOpen, setMessageModalOpen] = useState(false);
   const [messageModalDefaultText, setMessageModalDefaultText] = useState("");
+  const [messageModalType, setMessageModalType] = useState<"play_invite" | undefined>(undefined);
   const [profile, setProfile] = useState<PlayerProfile>(DEFAULT_PLAYER_PROFILE);
   const [originalProfile, setOriginalProfile] = useState<PlayerProfile>(DEFAULT_PLAYER_PROFILE);
   const [loading, setLoading] = useState(true);
@@ -1015,6 +1016,7 @@ export default function PlayerProfile() {
                 onSave={handleSave}
                 onMessageClick={() => {
                   setMessageModalDefaultText("");
+                  setMessageModalType(undefined);
                   setMessageModalOpen(true);
                 }}
              />
@@ -1129,10 +1131,8 @@ export default function PlayerProfile() {
                               setMessageModalDefaultText(
                                 `Hi ${profile.name.split(" ")[0]}, want to play a match sometime?`
                               );
+                              setMessageModalType("play_invite");
                               setMessageModalOpen(true);
-                              (window as any).gtag?.("event", "play_player_invite_sent", {
-                                matchScore: playerMatchQuery.data?.score ?? null,
-                              });
                             }}
                           />
                         )}
@@ -1183,10 +1183,12 @@ export default function PlayerProfile() {
                         setMessageModalDefaultText(
                           `Hi ${profile.name.split(" ")[0]}, I'd love to invite you to play sometime!`
                         );
+                        setMessageModalType("play_invite");
                         setMessageModalOpen(true);
                       }}
                       onMessage={() => {
                         setMessageModalDefaultText("");
+                        setMessageModalType(undefined);
                         setMessageModalOpen(true);
                       }}
                     />
@@ -1809,6 +1811,7 @@ export default function PlayerProfile() {
                   onOpenChange={setMessageModalOpen}
                   recipient={{ id: playerUserId, name: profile.name, type: "player" }}
                   defaultMessage={messageModalDefaultText}
+                  messageType={messageModalType}
                 />
               )}
             </div>
