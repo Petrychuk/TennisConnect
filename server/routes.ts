@@ -10,7 +10,7 @@ import profileTournamentHistoryRouter from "./routes/profileTournamentHistory";
 import profileMarketplace from "./routes/profileMarketplace";
 import playerPhotos from "./routes/playerPhotos";
 import { computeLookingToPlayExpiry } from "./services/playerMatchEngine";
-import { lookupKnownCoordinates } from "./lib/knownLocationCoordinates";
+import { resolveCoordinates } from "./services/geocodingService";
 import contentRouter from "./routes/adminContent";
 import passport from "passport";
 import { requireAuth, requireAdmin } from "./requireAuth";
@@ -1040,20 +1040,21 @@ export async function registerRoutes(app: Express): Promise<void> {
         // ✅ 2. Обновляем профиль (только разрешённые поля - см.
         // playerProfileUpdateSchema)
         //
-        // Auto-fill lat/lng from the small known-locations table
-        // (server/lib/knownLocationCoordinates.ts) when the player's
-        // location or first preferred area matches one exactly - a
-        // real, honest stand-in for actual geocoding until that
-        // exists. Never overwrites coordinates the player might
-        // already have some other way, and does nothing at all for a
-        // location this table doesn't recognise (most of them - it's
-        // a short curated list, not real geocoding).
+        // Auto-fill lat/lng via the shared geocoding service (server/
+        // services/geocodingService.ts) when the player's location or
+        // first preferred area doesn't already have coordinates - the
+        // curated table and shared DB cache are checked first (no
+        // network), only reaching out to the real external geocoder
+        // when neither already has it, and caching that result for
+        // every future caller (any player, coach, or club with the
+        // same location string). Never overwrites coordinates the
+        // player might already have some other way.
         const updateData: typeof parsed.data & { latitude?: number; longitude?: number } = { ...parsed.data };
         const locationToResolve = updateData.location || updateData.preferredCourts?.[0];
-        const knownCoords = lookupKnownCoordinates(locationToResolve);
-        if (knownCoords) {
-          updateData.latitude = knownCoords.latitude;
-          updateData.longitude = knownCoords.longitude;
+        const resolvedCoords = await resolveCoordinates(locationToResolve);
+        if (resolvedCoords) {
+          updateData.latitude = resolvedCoords.latitude;
+          updateData.longitude = resolvedCoords.longitude;
         }
 
         const profile = await storage.updatePlayerProfileByUserId(
@@ -1154,9 +1155,21 @@ export async function registerRoutes(app: Express): Promise<void> {
   
         // обновляем профиль коуча (только разрешённые поля - см.
         // coachProfileUpdateSchema; rating/reviews сюда намеренно не входят)
+        //
+        // Same shared geocoding service used for player profiles - see
+        // server/services/geocodingService.ts. Never overwrites
+        // coordinates the coach might already have some other way.
+        const coachUpdateData: typeof parsed.data & { latitude?: number; longitude?: number } = { ...parsed.data };
+        const coachLocationToResolve = coachUpdateData.location || coachUpdateData.locations?.[0];
+        const coachCoords = await resolveCoordinates(coachLocationToResolve);
+        if (coachCoords) {
+          coachUpdateData.latitude = coachCoords.latitude;
+          coachUpdateData.longitude = coachCoords.longitude;
+        }
+
         const profile = await storage.updateCoachProfileByUserId(
           userId,
-          parsed.data
+          coachUpdateData
         );
   
         // возвращаем свежие данные
