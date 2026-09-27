@@ -524,8 +524,16 @@ export default function PlayPage() {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {smartSearchResult.sessions.map((s) => (
-                          <PlaySessionCard key={s.id} session={s} onView={() => setSelectedSessionId(s.id)} />
+                        {smartSearchResult.sessions.map((s, i) => (
+                          <PlaySessionCard
+                            key={s.id}
+                            session={s}
+                            recommendation={smartSearchResult.recommendations[i]}
+                            onView={() => {
+                              setSelectedSessionId(s.id);
+                              setSelectedRecommendation(smartSearchResult.recommendations[i]);
+                            }}
+                          />
                         ))}
                       </div>
                     )}

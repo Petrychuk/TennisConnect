@@ -71,6 +71,13 @@ export interface SmartSearchResponse {
     dateTo: string | null;
   };
   sessions: PublicSessionCard[];
+  // Parallel to `sessions` (same index = same session) - spec section
+  // 8 ("Combine AI Search + Match Score"): the Recommendation Engine
+  // ranks the AI-found eligible events, the LLM never generates these
+  // percentages. null per-item when the viewer is signed out/not a
+  // player, or when that specific event doesn't pass the
+  // recommendation engine's own eligibility check.
+  recommendations: ({ score: number; reasons: string[] } | null)[];
   suggestions: { label: string; resultCount: number }[];
   analytics: { intent: string; usedAI: boolean; resultCount?: number };
 }
