@@ -33,6 +33,7 @@ import { useOrganizerStatus } from "@/hooks/use-organizer-status";
 import { TennisLoader } from "@/components/ui/tennisLoader";
 import { uploadMedia } from "@/lib/uploadImage";
 import { computeMatchScore, type MatchProfileInput } from "@/lib/matchScore";
+import { setLookingToPlay } from "@/lib/api/play";
 import { QuickMessageModal } from "@/components/messaging/QuickMessageModal";
 import {
   AboutMeCard,
@@ -43,6 +44,7 @@ import {
   AvailabilityQuickCard,
   LatestActivityCard,
   PlayerBottomCTA,
+  LookingToPlayCard,
   type LookingForData,
   type PlayingPrefsData,
   type ActivityItem,
@@ -91,6 +93,9 @@ export type PlayerProfile = {
   courtSurfacePreference?: string;
   playingHand?: string;
   availabilityStatus?: string;
+  lookingToPlayEnabled?: boolean;
+  lookingToPlayWhen?: string | null;
+  lookingToPlayFormat?: string | null;
   coaches: number[];          
   marketplaceItems: any[];
   tournaments: any[];
@@ -119,6 +124,9 @@ export const DEFAULT_PLAYER_PROFILE: PlayerProfile = {
   courtSurfacePreference: "",
   playingHand: "",
   availabilityStatus: "",
+  lookingToPlayEnabled: false,
+  lookingToPlayWhen: null,
+  lookingToPlayFormat: null,
   coaches: [1], // IDs of connected coaches
   marketplaceItems: [] as any[],
   tournaments: [] as any[],
@@ -332,6 +340,9 @@ export default function PlayerProfile() {
               (isIncomplete ? "" : DEFAULT_PLAYER_PROFILE.courtSurfacePreference),
             playingHand: data.profile?.playingHand || "",
             availabilityStatus: data.profile?.availabilityStatus || "",
+            lookingToPlayEnabled: !!data.profile?.lookingToPlayEnabled,
+            lookingToPlayWhen: data.profile?.lookingToPlayWhen ?? null,
+            lookingToPlayFormat: data.profile?.lookingToPlayFormat ?? null,
             photos: data.profile?.photos ?? [],
           });
 
@@ -1123,6 +1134,35 @@ export default function PlayerProfile() {
                         );
                       })()}
                       <AvailabilityQuickCard availability={profile.availability || []} isOwner={isOwnProfile} />
+                      {isOwnProfile && (
+                        <LookingToPlayCard
+                          enabled={!!profile.lookingToPlayEnabled}
+                          when={profile.lookingToPlayWhen ?? null}
+                          format={profile.lookingToPlayFormat ?? null}
+                          onSave={async (data) => {
+                            try {
+                              const res = await setLookingToPlay(
+                                data.enabled
+                                  ? { enabled: true, when: data.when!, format: data.format }
+                                  : { enabled: false }
+                              );
+                              setProfile((prev) => ({
+                                ...prev,
+                                lookingToPlayEnabled: res.profile.lookingToPlayEnabled,
+                                lookingToPlayWhen: res.profile.lookingToPlayWhen,
+                                lookingToPlayFormat: res.profile.lookingToPlayFormat,
+                              }));
+                              (window as any).gtag?.(
+                                "event",
+                                data.enabled ? "looking_to_play_enabled" : "looking_to_play_disabled",
+                                data.enabled ? { when: data.when, format: data.format } : undefined
+                              );
+                            } catch {
+                              toast({ variant: "destructive", title: "Couldn't update status" });
+                            }
+                          }}
+                        />
+                      )}
                       {isOwnProfile && <LatestActivityCard items={mockActivity} />}
                       {isOwnProfile && organizerStatus.data && (
                         <BecomeOrganizerCard
