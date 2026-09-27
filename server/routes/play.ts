@@ -62,19 +62,24 @@ router.post("/smart-search", publicBrowseLimiter, async (req, res, next) => {
       return res.status(400).json({ message: "query is required" });
     }
 
-    // Minimal profile context only (spec section 16's own allowlist) -
-    // never email, messages, DOB, photos, or account/security info.
+    // Minimal profile context sent to the AI (spec section 16's own
+    // allowlist) - never email, messages, DOB, photos, or account/
+    // security info. The FULL profile is kept separately (below) for
+    // server-side Match Score ranking (spec section 8) - that's a
+    // local computation, not something sent to the model, so the
+    // privacy allowlist doesn't constrain it the same way.
     let playerContext: SmartSearchPlayerContext | undefined;
+    let fullProfile: Awaited<ReturnType<typeof storage.getPlayerProfile>> | undefined;
     if (req.isAuthenticated?.() && (req.user as any).role === "player") {
-      const profile = await storage.getPlayerProfile((req.user as any).id);
-      if (profile) {
+      fullProfile = await storage.getPlayerProfile((req.user as any).id);
+      if (fullProfile) {
         playerContext = {
-          skillLevel: profile.skillLevel,
-          preferredArea: profile.preferredCourts?.[0] ?? null,
-          playRadiusKm: profile.playRadiusKm,
-          gameFormat: profile.gameFormat,
-          playStyle: profile.playStyle,
-          availability: profile.availability,
+          skillLevel: fullProfile.skillLevel,
+          preferredArea: fullProfile.preferredCourts?.[0] ?? null,
+          playRadiusKm: fullProfile.playRadiusKm,
+          gameFormat: fullProfile.gameFormat,
+          playStyle: fullProfile.playStyle,
+          availability: fullProfile.availability,
         };
       }
     }
@@ -144,6 +149,56 @@ router.post("/smart-search", publicBrowseLimiter, async (req, res, next) => {
     // gameFormat filter needs that field added to the session model
     // first; flagging rather than filtering against the wrong thing.
 
+    // Spec section 8 ("Combine AI Search + Match Score"): once the AI's
+    // interpreted criteria have found the eligible real events, the
+    // EXISTING deterministic Recommendation Engine ranks them - the
+    // LLM never generates these percentages. Scored (not filtered) for
+    // a signed-in player: an event the player explicitly searched for
+    // stays in the list even if it fails the recommendation engine's
+    // OWN hard-eligibility check (e.g. their level is a poor fit) -
+    // that check only decides whether to show a score at all, never
+    // removes a result the player asked for by name/criteria. No
+    // scoring at all for a signed-out visitor or non-player - sessions
+    // are returned in their natural (soonest-first, from
+    // getPublicSessions) order.
+    let scoredSessions: { activity: (typeof sessions)[number]; recommendation: { score: number; reasons: string[] } | null }[];
+    if (fullProfile) {
+      const recPlayerInput: RecommendationPlayerInput = {
+        skillLevel: fullProfile.skillLevel,
+        preferredCourts: fullProfile.preferredCourts,
+        playRadiusKm: fullProfile.playRadiusKm,
+        latitude: fullProfile.latitude,
+        longitude: fullProfile.longitude,
+        availability: fullProfile.availability,
+        gameFormat: fullProfile.gameFormat,
+        playStyle: fullProfile.playStyle,
+        lookingFor: fullProfile.lookingFor,
+      };
+      const toEventInputForScoring = (s: (typeof sessions)[number]): RecommendationEventInput => ({
+        id: s.id,
+        type: s.type,
+        skillLevel: s.skillLevel,
+        location: s.location,
+        latitude: s.latitude,
+        longitude: s.longitude,
+        startAt: s.startAt,
+        timeZone: s.timeZone,
+        playStatus: s.playStatus,
+        registeredCount: s.registeredCount,
+        maxParticipants: s.maxParticipants,
+      });
+      scoredSessions = sessions
+        .map((activity) => ({
+          activity,
+          recommendation: isEventEligibleForPlayer(recPlayerInput, toEventInputForScoring(activity))
+            ? computeRecommendation(recPlayerInput, toEventInputForScoring(activity))
+            : null,
+        }))
+        .sort((a, b) => (b.recommendation?.score ?? -1) - (a.recommendation?.score ?? -1));
+    } else {
+      scoredSessions = sessions.map((activity) => ({ activity, recommendation: null }));
+    }
+
     // No-results AI-assisted recovery (spec section 11): only ever
     // offer a relaxation that's VERIFIED to actually return something -
     // never a suggestion that would itself come back empty. Tried one
@@ -182,7 +237,8 @@ router.post("/smart-search", publicBrowseLimiter, async (req, res, next) => {
         dateFrom: dateFrom?.toISOString() ?? null,
         dateTo: dateTo?.toISOString() ?? null,
       },
-      sessions,
+      sessions: scoredSessions.map((s) => s.activity),
+      recommendations: scoredSessions.map((s) => s.recommendation),
       suggestions: sessions.length === 0 ? suggestions : [],
       analytics: {
         ...analyticsBase,
