@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { MapPin } from "lucide-react";
 import type { MatchedPlayer } from "@/lib/api/play";
 
-const REASON_TEXT: Record<string, string> = {
+export const PLAYER_MATCH_REASON_TEXT: Record<string, string> = {
   SIMILAR_LEVEL: "Similar level",
   CLOSE_LEVEL: "Close level",
   SAME_AVAILABILITY: "Same availability",
@@ -56,7 +56,7 @@ export function PlayerMatchCard({
           <div className="mt-1.5 flex items-center gap-1.5 text-sm" data-testid={`player-match-card-${player.id}-score`}>
             <span className="font-bold text-primary">{score}% match</span>
             <span className="text-xs text-muted-foreground truncate">
-              · {reasons.map((r) => REASON_TEXT[r] ?? r).join(" · ")}
+              · {reasons.map((r) => PLAYER_MATCH_REASON_TEXT[r] ?? r).join(" · ")}
             </span>
           </div>
         ) : (

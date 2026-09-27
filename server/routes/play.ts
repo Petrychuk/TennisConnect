@@ -411,6 +411,71 @@ async function getMatchedPlayers(viewerId: string, limit = 4) {
   return { players: results.slice(0, limit), total: results.length };
 }
 
+// GET /api/play/player-match/:userId - powers the profile's own "Good
+// Match for You" (spec section 13 - "one matching service powers
+// both" Play and Profile, not two separate implementations). Unlike
+// /players-looking, this does NOT require the target to have an
+// active Looking to Play status - viewing someone's profile and
+// wanting to know your compatibility isn't the same request as
+// discovering who's currently up for a game.
+router.get("/player-match/:userId", async (req, res, next) => {
+  try {
+    if (!req.isAuthenticated?.() || (req.user as any).role !== "player") {
+      return res.json({ available: false });
+    }
+    const viewerId = (req.user as any).id;
+    const targetId = req.params.userId;
+    if (targetId === viewerId) {
+      return res.json({ available: false });
+    }
+
+    const [viewerProfile, targetUser, targetProfile] = await Promise.all([
+      storage.getPlayerProfile(viewerId),
+      storage.getUser(targetId),
+      storage.getPlayerProfile(targetId),
+    ]);
+
+    if (!targetUser || !targetProfile || targetUser.isHidden || (targetUser.status && targetUser.status !== "active")) {
+      return res.json({ available: false });
+    }
+
+    const viewerInput: MatchCandidateInput = {
+      userId: viewerId,
+      skillLevel: viewerProfile?.skillLevel,
+      latitude: viewerProfile?.latitude,
+      longitude: viewerProfile?.longitude,
+      playRadiusKm: viewerProfile?.playRadiusKm,
+      gameFormat: viewerProfile?.gameFormat,
+      playStyle: viewerProfile?.playStyle,
+      lookingToPlayEnabled: !!viewerProfile?.lookingToPlayEnabled,
+      lookingToPlayExpiresAt: viewerProfile?.lookingToPlayExpiresAt ?? null,
+      lookingToPlayWhen: viewerProfile?.lookingToPlayWhen as any,
+    };
+    const targetInput: MatchCandidateInput = {
+      userId: targetId,
+      skillLevel: targetProfile.skillLevel,
+      latitude: targetProfile.latitude,
+      longitude: targetProfile.longitude,
+      playRadiusKm: targetProfile.playRadiusKm,
+      gameFormat: targetProfile.gameFormat,
+      playStyle: targetProfile.playStyle,
+      lookingToPlayEnabled: !!targetProfile.lookingToPlayEnabled,
+      lookingToPlayExpiresAt: targetProfile.lookingToPlayExpiresAt,
+      lookingToPlayWhen: targetProfile.lookingToPlayWhen as any,
+    };
+
+    const match = computePlayerMatch(viewerInput, targetInput);
+    res.json({
+      available: true,
+      score: match.score,
+      reasons: match.reasons,
+      hasEnoughSignal: hasEnoughSignalForPlayerMatch(match.reasons),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // GET /api/play/players-looking - [PLAY] Players Looking to Play.
 // Signed-in players only (matching another player requires the viewer
 // to have their own profile signals to compare against, and there's
