@@ -205,6 +205,17 @@ export const playerProfiles = pgTable("player_profiles", {
   // these instead of tournament counts. Both optional/self-declared.
   playingHand: text("playing_hand"),
   availabilityStatus: text("availability_status"),
+  // "Looking to Play" (spec [PLAY] Players Looking to Play, section 2/3):
+  // a simple, self-expiring status - never a persistent "always on"
+  // flag. lookingToPlayExpiresAt is computed server-side from
+  // lookingToPlayWhen at the moment the player turns it on (today ->
+  // end of day, this_week -> +7 days, this_weekend -> after the
+  // weekend) - a player past their own expiresAt is treated as OFF
+  // everywhere, without needing a cron job to flip the boolean.
+  lookingToPlayEnabled: boolean("looking_to_play_enabled").default(false),
+  lookingToPlayWhen: text("looking_to_play_when"), // today | this_week | this_weekend
+  lookingToPlayFormat: text("looking_to_play_format"), // singles | doubles | either
+  lookingToPlayExpiresAt: timestamp("looking_to_play_expires_at", { withTimezone: true }),
   // Profile gallery (distinct from the single cover/avatar images).
   photos: json("photos").$type<string[]>().default([]),
 });
