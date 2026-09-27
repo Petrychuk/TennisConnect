@@ -58,7 +58,7 @@ interface Message {
   isUnreadForViewer?: boolean;
   createdAt: string;
 
-  messageType?: "community_invite" | "session_invite" | null;
+  messageType?: "community_invite" | "session_invite" | "play_invite" | null;
   relatedSessionId?: string | null;
   relatedOrganizationId?: string | null;
   actionStatus?: "pending" | "accepted" | "declined" | null;
@@ -474,6 +474,12 @@ export function MessagesInbox() {
       if (action === "accept" && message.messageType === "session_invite") {
         queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine/registered"] });
       }
+      if (message.messageType === "play_invite") {
+        (window as any).gtag?.(
+          "event",
+          action === "accept" ? "play_player_invite_accepted" : "play_player_invite_declined"
+        );
+      }
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -832,7 +838,11 @@ export function MessagesInbox() {
                                         disabled={respondingId === msg.id}
                                         data-testid={`invitation-accept-${msg.id}`}
                                       >
-                                        {msg.messageType === "community_invite" ? "Accept invitation" : "Join session"}
+                                        {msg.messageType === "community_invite"
+                                          ? "Accept invitation"
+                                          : msg.messageType === "play_invite"
+                                          ? "Accept"
+                                          : "Join session"}
                                       </Button>
                                       <Button
                                         size="sm"
@@ -856,11 +866,17 @@ export function MessagesInbox() {
                                     <div className="mt-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2" data-testid={`invitation-status-${msg.id}`}>
                                       <p className="text-sm font-medium text-primary flex items-center gap-1.5">
                                         <Check className="w-4 h-4" />
-                                        {msg.messageType === "community_invite" ? "Invitation accepted" : "You're joining this session"}
+                                        {msg.messageType === "community_invite"
+                                          ? "Invitation accepted"
+                                          : msg.messageType === "play_invite"
+                                          ? "You're playing! 🎾"
+                                          : "You're joining this session"}
                                       </p>
                                       <p className="text-xs text-muted-foreground mt-0.5">
                                         {msg.messageType === "community_invite"
                                           ? "You are now a member of this tennis community."
+                                          : msg.messageType === "play_invite"
+                                          ? "Arrange the exact time and court in this conversation."
                                           : "It's now in your Upcoming Sessions."}
                                       </p>
                                     </div>

@@ -23,6 +23,12 @@ interface QuickMessageModalProps {
   /** Overrides the dialog title/description for an "invite" framing vs a plain message. */
   title?: string;
   description?: string;
+  /** Set to "play_invite" for an actual Invite to Play (spec [PLAY]
+      Players Looking to Play, section 10) - tags the sent message so
+      the recipient sees Accept/Decline actions on it, instead of it
+      being an ordinary message. Omitted (the default) for a plain
+      "Message" send. */
+  messageType?: "play_invite";
 }
 
 // Same request shape and flow as the Players listing page's own message
@@ -38,6 +44,7 @@ export function QuickMessageModal({
   defaultMessage = "",
   title = "Send Message",
   description,
+  messageType,
 }: QuickMessageModalProps) {
   const [messageText, setMessageText] = useState(defaultMessage);
   const [sending, setSending] = useState(false);
@@ -71,6 +78,7 @@ export function QuickMessageModal({
           recipientId: recipient.id,
           recipientType: recipient.type ?? "player",
           content: messageText,
+          ...(messageType ? { messageType } : {}),
         }),
       });
 
@@ -80,10 +88,13 @@ export function QuickMessageModal({
       }
 
       toast({
-        title: "Message sent!",
-        description: `Your message has been sent to ${recipient.name}.`,
+        title: messageType === "play_invite" ? "Invite sent!" : "Message sent!",
+        description:
+          messageType === "play_invite"
+            ? `Your invite has been sent to ${recipient.name}.`
+            : `Your message has been sent to ${recipient.name}.`,
       });
-      (window as any).gtag?.("event", "send_message", { context: "player_profile" });
+      (window as any).gtag?.("event", messageType === "play_invite" ? "play_player_invite_sent" : "send_message", { context: "quick_message_modal" });
 
       handleOpenChange(false);
     } catch (error: any) {

@@ -1525,6 +1525,17 @@ export async function registerRoutes(app: Express): Promise<void> {
         subject: z.string().optional(),
         phone: z.string().optional(),
         content: z.string().min(1, "Message is required"),
+        // [PLAY] Invite to Play (spec section 10/11) - the ONLY
+        // messageType a regular sender may self-assign through this
+        // public endpoint. community_invite/session_invite are never
+        // accepted here - those grant real access (org membership,
+        // session registration) and are only ever created internally
+        // by an organiser action (see organizer.ts), never by a
+        // player's own request body. play_invite has no such side
+        // effect on accept/decline beyond flipping this message's own
+        // status (see /api/messages/:id/accept|decline below), so
+        // there's nothing unsafe about letting the sender set it.
+        messageType: z.literal("play_invite").optional(),
       });
 
       const result = messageSchema.safeParse(req.body);
@@ -1569,6 +1580,9 @@ export async function registerRoutes(app: Express): Promise<void> {
         senderName: req.user!.name,
         senderEmail: req.user!.email,
         senderPhone: result.data.phone,
+
+        messageType: result.data.messageType,
+        actionStatus: result.data.messageType ? "pending" : undefined,
       });
 
       res.json(message);
@@ -1632,6 +1646,11 @@ export async function registerRoutes(app: Express): Promise<void> {
         }
         await storage.acceptInvitedRegistration(message.relatedSessionId, req.user!.id);
       }
+      // play_invite (spec section 12) has no side effect to perform
+      // here at all - "do not require the players to create an
+      // official TennisConnect Session just to arrange a casual hit."
+      // Accepting is just the status flip below; the two players
+      // continue arranging details in the conversation itself.
 
       const updated = await storage.updateMessageActionStatus(message.id, "accepted");
       res.json(updated);
@@ -1661,6 +1680,8 @@ export async function registerRoutes(app: Express): Promise<void> {
         }
         await storage.cancelRegistration(message.relatedSessionId, req.user!.id);
       }
+      // play_invite: same as accept above, nothing else to undo -
+      // declining is just the status flip.
 
       const updated = await storage.updateMessageActionStatus(message.id, "declined");
       res.json(updated);
