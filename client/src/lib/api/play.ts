@@ -71,18 +71,42 @@ export interface SmartSearchResponse {
     dateTo: string | null;
   };
   sessions: PublicSessionCard[];
-  // Parallel to `sessions` (same index = same session) - spec section
-  // 8 ("Combine AI Search + Match Score"): the Recommendation Engine
-  // ranks the AI-found eligible events, the LLM never generates these
-  // percentages. null per-item when the viewer is signed out/not a
-  // player, or when that specific event doesn't pass the
-  // recommendation engine's own eligibility check.
   recommendations: ({ score: number; reasons: string[] } | null)[];
+  players: MatchedPlayer[];
   suggestions: { label: string; resultCount: number }[];
   analytics: { intent: string; usedAI: boolean; resultCount?: number };
 }
 
 export async function smartSearch(query: string): Promise<SmartSearchResponse> {
   const res = await apiRequest("POST", `${BASE}/smart-search`, { query });
+  return res.json();
+}
+
+// [PLAY] Players Looking to Play
+export interface MatchedPlayer {
+  player: {
+    id: string;
+    slug: string | null;
+    name: string;
+    avatar: string | null;
+    location: string | null;
+    skillLevel: string | null;
+    lookingToPlayWhen: string | null;
+    lookingToPlayFormat: string | null;
+  };
+  score: number;
+  reasons: string[];
+  hasEnoughSignal: boolean;
+}
+
+export async function getPlayersLookingToPlay(): Promise<{ players: MatchedPlayer[]; total: number }> {
+  const res = await apiRequest("GET", `${BASE}/players-looking`);
+  return res.json();
+}
+
+export async function setLookingToPlay(
+  data: { enabled: false } | { enabled: true; when: "today" | "this_week" | "this_weekend"; format?: "singles" | "doubles" | "either" }
+): Promise<{ success: boolean; profile: any }> {
+  const res = await apiRequest("PUT", "/api/me/looking-to-play", data);
   return res.json();
 }

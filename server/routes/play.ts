@@ -19,6 +19,12 @@ import {
   type PlaySearchIntent,
   type SmartSearchPlayerContext,
 } from "../services/smartSearchEngine";
+import {
+  computePlayerMatch,
+  isPlayerEligibleForMatching,
+  hasEnoughSignalForPlayerMatch,
+  type MatchCandidateInput,
+} from "../services/playerMatchEngine";
 
 const router = Router();
 router.use(publicBrowseLimiter);
@@ -98,12 +104,26 @@ router.post("/smart-search", publicBrowseLimiter, async (req, res, next) => {
     // that would silently misinterpret "find someone to hit with" as
     // an event query.
     if (intent.intent === "FIND_PLAYER") {
+      if (!req.isAuthenticated?.() || (req.user as any).role !== "player") {
+        return res.json({
+          intent: "FIND_PLAYER",
+          aiUsed: usedAI,
+          message: "Sign in to find players to play with.",
+          sessions: [],
+          recommendations: [],
+          players: [],
+          analytics: analyticsBase,
+        });
+      }
+      const matched = await getMatchedPlayers((req.user as any).id);
       return res.json({
         intent: "FIND_PLAYER",
         aiUsed: usedAI,
-        message: "Player matching is coming to Play.",
+        message: matched.players.length === 0 ? "No players are currently looking to play right now." : undefined,
         sessions: [],
-        analytics: analyticsBase,
+        recommendations: [],
+        players: matched.players,
+        analytics: { ...analyticsBase, resultCount: matched.players.length },
       });
     }
 
@@ -318,6 +338,92 @@ router.get("/recommendations", async (req, res, next) => {
       isPersonalised,
       recommendations: results.slice(0, 4),
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Shared by /players-looking and smart-search's FIND_PLAYER intent
+// (spec section 14 - "one Smart Search can eventually search both
+// events AND players") - one matching computation, not duplicated
+// per caller.
+async function getMatchedPlayers(viewerId: string, limit = 4) {
+  const viewerProfile = await storage.getPlayerProfile(viewerId);
+  const now = new Date();
+
+  const viewerInput: MatchCandidateInput = {
+    userId: viewerId,
+    skillLevel: viewerProfile?.skillLevel,
+    latitude: viewerProfile?.latitude,
+    longitude: viewerProfile?.longitude,
+    playRadiusKm: viewerProfile?.playRadiusKm,
+    gameFormat: viewerProfile?.gameFormat,
+    playStyle: viewerProfile?.playStyle,
+    lookingToPlayEnabled: !!viewerProfile?.lookingToPlayEnabled,
+    lookingToPlayExpiresAt: viewerProfile?.lookingToPlayExpiresAt ?? null,
+    lookingToPlayWhen: viewerProfile?.lookingToPlayWhen as any,
+    lookingToPlayFormat: viewerProfile?.lookingToPlayFormat as any,
+  };
+
+  const candidates = await storage.getPlayersLookingToPlay();
+
+  const results = candidates
+    .map(({ user, profile }) => {
+      const candidateInput: MatchCandidateInput = {
+        userId: user.id,
+        skillLevel: profile.skillLevel,
+        latitude: profile.latitude,
+        longitude: profile.longitude,
+        playRadiusKm: profile.playRadiusKm,
+        gameFormat: profile.gameFormat,
+        playStyle: profile.playStyle,
+        lookingToPlayEnabled: !!profile.lookingToPlayEnabled,
+        lookingToPlayExpiresAt: profile.lookingToPlayExpiresAt,
+        lookingToPlayWhen: profile.lookingToPlayWhen as any,
+        lookingToPlayFormat: profile.lookingToPlayFormat as any,
+        isSelf: user.id === viewerId,
+        accountStatus: user.status,
+        isHiddenFromDiscovery: !!user.isHidden,
+      };
+
+      if (!isPlayerEligibleForMatching(candidateInput, now)) return null;
+
+      const match = computePlayerMatch(viewerInput, candidateInput);
+      return {
+        player: {
+          id: user.id,
+          slug: user.slug,
+          name: user.name,
+          avatar: user.avatar,
+          location: profile.location,
+          skillLevel: profile.skillLevel,
+          lookingToPlayWhen: profile.lookingToPlayWhen,
+          lookingToPlayFormat: profile.lookingToPlayFormat,
+        },
+        score: match.score,
+        reasons: match.reasons,
+        hasEnoughSignal: hasEnoughSignalForPlayerMatch(match.reasons),
+      };
+    })
+    .filter((r): r is NonNullable<typeof r> => r !== null)
+    .sort((a, b) => b.score - a.score);
+
+  return { players: results.slice(0, limit), total: results.length };
+}
+
+// GET /api/play/players-looking - [PLAY] Players Looking to Play.
+// Signed-in players only (matching another player requires the viewer
+// to have their own profile signals to compare against, and there's
+// no sense showing this to a coach/organiser/guest). Uses the SAME
+// playerMatchEngine as the profile's own "Good Match for You" would
+// (spec section 13 - one matching service powers both).
+router.get("/players-looking", async (req, res, next) => {
+  try {
+    if (!req.isAuthenticated?.() || (req.user as any).role !== "player") {
+      return res.json({ players: [] });
+    }
+    const result = await getMatchedPlayers((req.user as any).id);
+    res.json(result);
   } catch (error) {
     next(error);
   }

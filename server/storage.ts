@@ -183,6 +183,12 @@ export interface IStorage {
         profile: typeof playerProfiles.$inferSelect;
       }[]
     >;
+  getPlayersLookingToPlay(): Promise<
+      {
+        user: typeof users.$inferSelect;
+        profile: typeof playerProfiles.$inferSelect;
+      }[]
+    >;
   createPlayerProfile(profile: InsertPlayerProfile): Promise<PlayerProfile>;
   updatePlayerProfile(id: string, updates: Partial<PlayerProfile>): Promise<PlayerProfile>;
   
@@ -890,6 +896,42 @@ export class DatabaseStorage implements IStorage {
             eq(users.profileCompleted, true),
             eq(users.isApproved, true),
             eq(users.isHidden, false)
+          )
+        );
+    }
+
+  // [PLAY] Players Looking to Play - same base eligibility as
+  // getAllPlayers (published/approved/not hidden) plus the one extra
+  // condition specific to this feature. Still returns everyone with
+  // the flag set REGARDLESS of their own expiresAt - the
+  // playerMatchEngine's own isPlayerEligibleForMatching does the real
+  // "has this actually expired" check against the current moment,
+  // since that's a moving target a SQL query captured once can't
+  // re-evaluate as time passes within the same request/response cycle
+  // as cleanly as the already-tested engine function can.
+  async getPlayersLookingToPlay(): Promise<
+      {
+        user: typeof users.$inferSelect;
+        profile: typeof playerProfiles.$inferSelect;
+      }[]> {
+      return await db
+        .select({
+          user: users,
+          profile: playerProfiles,
+        })
+        .from(users)
+        .innerJoin(
+          playerProfiles,
+          eq(users.id, playerProfiles.userId)
+        )
+        .where(
+          and(
+            eq(users.role, "player"),
+            eq(playerProfiles.isDraft, false),
+            eq(users.profileCompleted, true),
+            eq(users.isApproved, true),
+            eq(users.isHidden, false),
+            eq(playerProfiles.lookingToPlayEnabled, true)
           )
         );
     }
