@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MapPin, Users, Trophy, DollarSign, CheckCircle2 } from "lucide-react";
+import { MapPin, Users, Trophy, DollarSign, CheckCircle2, ExternalLink } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -98,7 +98,19 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
   const joinLabel = isCompetition ? "Join Competition" : "Join Session";
 
   if (session) {
-    if (!isAuthenticated) {
+    if (session.sourceType === "EXTERNAL") {
+      // [PLAY][AI] TC Discovery Agent, section 19 - external activities
+      // never show Join/Register (no TennisConnect registration
+      // integration exists for them), regardless of sign-in state -
+      // this is a link out, not an action TennisConnect can fulfil.
+      actionButton = (
+        <Button className="w-full" asChild data-testid="event-modal-view-original">
+          <a href={session.externalSourceUrl ?? "#"} target="_blank" rel="noopener noreferrer">
+            View original <ExternalLink className="w-4 h-4 ml-1.5" />
+          </a>
+        </Button>
+      );
+    } else if (!isAuthenticated) {
       actionButton = (
         <Button className="w-full" onClick={() => setLocation("/auth")} data-testid="event-modal-signin">
           Sign in to Register
@@ -166,7 +178,13 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
           <>
             <DialogHeader>
               <DialogTitle data-testid="event-modal-title">{session.title}</DialogTitle>
-              <DialogDescription>{session.organizationName}</DialogDescription>
+              <DialogDescription>
+                {session.sourceType === "EXTERNAL" ? (
+                  <span className="text-primary font-medium">Found by TennisConnect</span>
+                ) : (
+                  session.organizationName
+                )}
+              </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-3">
@@ -225,15 +243,28 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
                 </div>
               )}
 
-              <div className="flex items-center gap-2 pt-2 border-t border-border/60" data-testid="event-modal-organiser">
-                <Avatar className="h-7 w-7 shrink-0">
-                  {session.organizationLogo && <AvatarImage src={session.organizationLogo} alt="" />}
-                  <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{initials(session.organizationName)}</AvatarFallback>
-                </Avatar>
-                <span className="text-sm text-muted-foreground">
-                  Organised by <span className="text-foreground font-medium">{session.organizationName}</span>
-                </span>
-              </div>
+              {session.sourceType === "EXTERNAL" ? (
+                <div className="pt-2 border-t border-border/60 space-y-0.5" data-testid="event-modal-source-info">
+                  <p className="text-sm">
+                    Source: <span className="font-medium">{session.organizationName}</span>
+                  </p>
+                  {session.externalLastCheckedAt && (
+                    <p className="text-xs text-muted-foreground">
+                      Last checked: {formatInTimeZone(session.externalLastCheckedAt, session.timeZone, { day: "numeric", month: "short" })}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 pt-2 border-t border-border/60" data-testid="event-modal-organiser">
+                  <Avatar className="h-7 w-7 shrink-0">
+                    {session.organizationLogo && <AvatarImage src={session.organizationLogo} alt="" />}
+                    <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{initials(session.organizationName)}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm text-muted-foreground">
+                    Organised by <span className="text-foreground font-medium">{session.organizationName}</span>
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="pt-2">{actionButton}</div>

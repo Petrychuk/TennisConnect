@@ -135,7 +135,15 @@ export function PlaySessionCard({
               <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{initials(session.organizationName)}</AvatarFallback>
             </Avatar>
             <span className="text-xs text-muted-foreground truncate">
-              Organised by <span className="text-foreground font-medium">{session.organizationName}</span>
+              {session.sourceType === "EXTERNAL" ? (
+                <>
+                  <span className="text-primary font-medium">Found by TennisConnect</span> · {session.organizationName}
+                </>
+              ) : (
+                <>
+                  Organised by <span className="text-foreground font-medium">{session.organizationName}</span>
+                </>
+              )}
             </span>
           </div>
           <Button
