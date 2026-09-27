@@ -1,0 +1,81 @@
+CREATE TABLE IF NOT EXISTS "discovery_sources" (
+  "id" varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+  "name" text NOT NULL,
+  "base_url" text NOT NULL,
+  "source_type" text NOT NULL,
+  "country" text NOT NULL DEFAULT 'Australia',
+  "state" text,
+  "enabled" boolean NOT NULL DEFAULT true,
+  "discovery_method" text NOT NULL,
+  "last_scan_at" timestamp with time zone,
+  "next_scan_at" timestamp with time zone,
+  "reliability_score" integer NOT NULL DEFAULT 50,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "external_activities" (
+  "id" varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+  "source_id" varchar NOT NULL REFERENCES "discovery_sources"("id"),
+  "title" text NOT NULL,
+  "description" text,
+  "activity_type" text,
+  "game_format" text,
+  "start_date" text,
+  "end_date" text,
+  "start_time" text,
+  "end_time" text,
+  "recurrence_frequency" text,
+  "recurrence_day_of_week" text,
+  "venue_name" text,
+  "address" text,
+  "suburb" text,
+  "city" text,
+  "state" text,
+  "postcode" text,
+  "country" text NOT NULL DEFAULT 'Australia',
+  "latitude" real,
+  "longitude" real,
+  "time_zone" text,
+  "original_level_text" text,
+  "normalised_level" text,
+  "price" integer,
+  "currency" text NOT NULL DEFAULT 'AUD',
+  "organiser_name" text,
+  "registration_url" text,
+  "source_name" text NOT NULL,
+  "source_url" text NOT NULL,
+  "discovered_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "last_checked_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "discovery_status" text NOT NULL DEFAULT 'NEEDS_REVIEW',
+  "confidence" text NOT NULL,
+  "review_status" text NOT NULL DEFAULT 'PENDING',
+  "reviewed_by" varchar REFERENCES "users"("id"),
+  "reviewed_at" timestamp with time zone,
+  "duplicate_of_external_id" varchar,
+  "duplicate_of_session_id" varchar REFERENCES "sessions"("id"),
+  "duplicate_confidence" integer,
+  "extraction_evidence" json DEFAULT '{}'::json
+);
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "external_activities_review_status_idx" ON "external_activities" ("review_status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "external_activities_source_idx" ON "external_activities" ("source_id");
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "discovery_runs" (
+  "id" varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+  "started_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "completed_at" timestamp with time zone,
+  "is_dry_run" boolean NOT NULL DEFAULT true,
+  "target_country" text,
+  "target_state" text,
+  "target_city" text,
+  "target_source_id" varchar REFERENCES "discovery_sources"("id"),
+  "sources_scanned" integer NOT NULL DEFAULT 0,
+  "pages_checked" integer NOT NULL DEFAULT 0,
+  "events_discovered" integer NOT NULL DEFAULT 0,
+  "events_created" integer NOT NULL DEFAULT 0,
+  "events_updated" integer NOT NULL DEFAULT 0,
+  "duplicates_detected" integer NOT NULL DEFAULT 0,
+  "validation_failures" integer NOT NULL DEFAULT 0,
+  "errors" json DEFAULT '[]'::json
+);

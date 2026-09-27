@@ -12,6 +12,7 @@ import playerPhotos from "./routes/playerPhotos";
 import { computeLookingToPlayExpiry } from "./services/playerMatchEngine";
 import { resolveCoordinates } from "./services/geocodingService";
 import contentRouter from "./routes/adminContent";
+import adminDiscoveryRouter from "./routes/adminDiscovery";
 import passport from "passport";
 import { requireAuth, requireAdmin } from "./requireAuth";
 import supportRoutes from "./routes/supportRoutes";
@@ -178,6 +179,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/api/profile/marketplace", profileMarketplace);
   app.use("/api/me/player-profile/photos", playerPhotos);
   app.use("/api", contentRouter);
+  app.use("/api/admin/discovery", adminDiscoveryRouter);
   app.use("/", sitemapRoutes);
   app.use("/api/players", playersRouter);
   app.use("/api/coaches", coachesRouter);

@@ -3,6 +3,9 @@ import {
   playerProfiles,
   coachProfiles,
   geocodeCache,
+  discoverySources,
+  externalActivities,
+  discoveryRuns,
   tournamentHistory,
   marketplaceItems,
   clubs,
@@ -192,6 +195,19 @@ export interface IStorage {
     >;
   getCachedGeocode(location: string): Promise<{ latitude: number; longitude: number } | undefined>;
   saveCachedGeocode(location: string, latitude: number, longitude: number, source: string): Promise<void>;
+  // [PLAY][AI] TC Discovery Agent
+  getDiscoverySources(filters: { enabledOnly?: boolean; country?: string; state?: string; city?: string; sourceId?: string }): Promise<(typeof discoverySources.$inferSelect)[]>;
+  createDiscoverySource(data: Partial<typeof discoverySources.$inferInsert>): Promise<typeof discoverySources.$inferSelect>;
+  updateDiscoverySource(id: string, data: Partial<typeof discoverySources.$inferInsert>): Promise<typeof discoverySources.$inferSelect | undefined>;
+  createExternalActivity(record: Partial<typeof externalActivities.$inferInsert>): Promise<typeof externalActivities.$inferSelect | undefined>;
+  getExternalActivitiesForDuplicateCheck(filters: { suburb?: string | null; startDate?: string | null }): Promise<(typeof externalActivities.$inferSelect)[]>;
+  getPublicSessionsForDuplicateCheck(filters: { location?: string | null; startDate?: string | null }): Promise<{ id: string; title: string; location: string | null; startAt: string }[]>;
+  getExternalActivitiesForReview(status: string): Promise<(typeof externalActivities.$inferSelect)[]>;
+  reviewExternalActivity(id: string, data: Partial<typeof externalActivities.$inferInsert>): Promise<typeof externalActivities.$inferSelect | undefined>;
+  updateExternalActivity(id: string, data: Partial<typeof externalActivities.$inferInsert>): Promise<typeof externalActivities.$inferSelect | undefined>;
+  createDiscoveryRun(data: Partial<typeof discoveryRuns.$inferInsert>): Promise<typeof discoveryRuns.$inferSelect>;
+  completeDiscoveryRun(id: string, summary: Partial<typeof discoveryRuns.$inferInsert>): Promise<typeof discoveryRuns.$inferSelect | undefined>;
+  getDiscoveryRuns(): Promise<(typeof discoveryRuns.$inferSelect)[]>;
   createPlayerProfile(profile: InsertPlayerProfile): Promise<PlayerProfile>;
   updatePlayerProfile(id: string, updates: Partial<PlayerProfile>): Promise<PlayerProfile>;
   
@@ -953,6 +969,98 @@ export class DatabaseStorage implements IStorage {
       .insert(geocodeCache)
       .values({ location: key, latitude, longitude, source })
       .onConflictDoNothing();
+  }
+
+  // [PLAY][AI] TC Discovery Agent
+  async getDiscoverySources(filters: { enabledOnly?: boolean; country?: string; state?: string; city?: string; sourceId?: string }) {
+    const conditions = [];
+    if (filters.enabledOnly) conditions.push(eq(discoverySources.enabled, true));
+    if (filters.sourceId) conditions.push(eq(discoverySources.id, filters.sourceId));
+    if (filters.country) conditions.push(eq(discoverySources.country, filters.country));
+    if (filters.state) conditions.push(eq(discoverySources.state, filters.state));
+    // Note: city isn't a column on discoverySources itself (a source
+    // covers a state/country, not necessarily one city) - accepted in
+    // the filter shape for forward compatibility with spec section 22's
+    // "Melbourne / VIC"-style targeting once sources carry a city field,
+    // currently a no-op here.
+    return conditions.length
+      ? await db.select().from(discoverySources).where(and(...conditions))
+      : await db.select().from(discoverySources);
+  }
+
+  async createExternalActivity(record: Partial<typeof externalActivities.$inferInsert>) {
+    const [created] = await db.insert(externalActivities).values(record as typeof externalActivities.$inferInsert).returning();
+    return created;
+  }
+
+  async getExternalActivitiesForDuplicateCheck(filters: { suburb?: string | null; startDate?: string | null }) {
+    const conditions = [eq(externalActivities.reviewStatus, "APPROVED")];
+    if (filters.suburb) conditions.push(eq(externalActivities.suburb, filters.suburb));
+    if (filters.startDate) conditions.push(eq(externalActivities.startDate, filters.startDate));
+    return await db.select().from(externalActivities).where(and(...conditions));
+  }
+
+  async getPublicSessionsForDuplicateCheck(filters: { location?: string | null; startDate?: string | null }) {
+    // Deliberately narrow (title/location/startAt only) - this is only
+    // ever fed into computeDuplicateConfidence, which doesn't need
+    // anything else about the session.
+    const rows = await db
+      .select({ id: tennisSessions.id, title: tennisSessions.title, location: tennisSessions.location, startAt: tennisSessions.startAt })
+      .from(tennisSessions);
+    return rows
+      .filter((r) => !filters.location || (r.location ?? "").toLowerCase().includes(filters.location.toLowerCase()))
+      .map((r) => ({ ...r, startAt: r.startAt instanceof Date ? r.startAt.toISOString() : String(r.startAt) }));
+  }
+
+  async createDiscoverySource(data: Partial<typeof discoverySources.$inferInsert>) {
+    const [created] = await db.insert(discoverySources).values(data as typeof discoverySources.$inferInsert).returning();
+    return created;
+  }
+
+  async updateDiscoverySource(id: string, data: Partial<typeof discoverySources.$inferInsert>) {
+    const [updated] = await db.update(discoverySources).set(data).where(eq(discoverySources.id, id)).returning();
+    return updated;
+  }
+
+  async getExternalActivitiesForReview(status: string) {
+    // "NEEDS_REVIEW" is a discoveryStatus value (freshness needing a
+    // recheck), every other tab (PENDING/APPROVED/REJECTED/DUPLICATE)
+    // is a reviewStatus value (the human decision) - both land in the
+    // same admin queue view, just filtered on a different column.
+    const column = status === "NEEDS_REVIEW" ? externalActivities.discoveryStatus : externalActivities.reviewStatus;
+    return await db.select().from(externalActivities).where(eq(column, status));
+  }
+
+  async reviewExternalActivity(id: string, data: Partial<typeof externalActivities.$inferInsert>) {
+    const [updated] = await db
+      .update(externalActivities)
+      .set({ ...data, reviewedAt: new Date() })
+      .where(eq(externalActivities.id, id))
+      .returning();
+    return updated;
+  }
+
+  async updateExternalActivity(id: string, data: Partial<typeof externalActivities.$inferInsert>) {
+    const [updated] = await db.update(externalActivities).set(data).where(eq(externalActivities.id, id)).returning();
+    return updated;
+  }
+
+  async createDiscoveryRun(data: Partial<typeof discoveryRuns.$inferInsert>) {
+    const [created] = await db.insert(discoveryRuns).values(data as typeof discoveryRuns.$inferInsert).returning();
+    return created;
+  }
+
+  async completeDiscoveryRun(id: string, summary: Partial<typeof discoveryRuns.$inferInsert>) {
+    const [updated] = await db
+      .update(discoveryRuns)
+      .set({ ...summary, completedAt: new Date() })
+      .where(eq(discoveryRuns.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getDiscoveryRuns() {
+    return await db.select().from(discoveryRuns).orderBy(desc(discoveryRuns.startedAt));
   }
 
   async createPlayerProfile(profile: InsertPlayerProfile): Promise<PlayerProfile> {
