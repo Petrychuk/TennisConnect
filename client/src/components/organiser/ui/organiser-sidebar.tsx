@@ -17,6 +17,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ShieldCheck,
+  Compass,
   Building2,
   Plane,
   FileText,
@@ -56,6 +57,7 @@ const ADMIN_NAV_ITEMS: NavItem[] = [
   { key: "admin-travel", label: "Travel Packages", icon: Plane, href: "/admin?tab=travel" },
   { key: "admin-articles", label: "Articles", icon: FileText, href: "/admin?tab=articles" },
   { key: "admin-recreation", label: "Recreation Services", icon: Heart, href: "/admin?tab=recreation" },
+  { key: "admin-discovery", label: "Discovery", icon: Compass, href: "/admin/discovery" },
 ];
 
 interface OrganiserSidebarProps {
