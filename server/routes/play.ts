@@ -4,7 +4,7 @@
 // their own registration status on the details endpoint.
 import { Router } from "express";
 import { storage } from "../storage";
-import { publicBrowseLimiter } from "../lib/rateLimiters";
+import { publicBrowseLimiter, smartSearchLimiter } from "../lib/rateLimiters";
 import {
   computeRecommendation,
   isEventEligibleForPlayer,
@@ -61,7 +61,7 @@ router.get("/sessions", async (req, res, next) => {
 // ANTHROPIC_API_KEY isn't set, or the call times out/fails/returns
 // something that doesn't validate, this silently falls back to a
 // plain text search using the query as typed (spec section 14).
-router.post("/smart-search", publicBrowseLimiter, async (req, res, next) => {
+router.post("/smart-search", smartSearchLimiter, async (req, res, next) => {
   try {
     const query = typeof req.body?.query === "string" ? req.body.query.trim() : "";
     if (!query) {
