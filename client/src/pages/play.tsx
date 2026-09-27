@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useSearch } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Helmet } from "react-helmet-async";
 import { Navbar } from "@/components/navbar";
@@ -24,7 +24,9 @@ import { PlayQuickFilters } from "@/components/play/PlayQuickFilters";
 import { PlayFilters, PLAY_FILTER_ALL, PLAY_FORMAT_OPTIONS, type PlayFiltersDraft } from "@/components/play/PlayFilters";
 import { PlayNoMatches, PlayNoActivitiesYet } from "@/components/play/PlayEmptyState";
 import { AvailabilityNudge } from "@/components/play/AvailabilityNudge";
-import { getPlaySessions, getPlayRecommendations, smartSearch, type SmartSearchResponse } from "@/lib/api/play";
+import { getPlaySessions, getPlayRecommendations, smartSearch, getPlayersLookingToPlay, type SmartSearchResponse } from "@/lib/api/play";
+import { PlayerMatchCard } from "@/components/play/PlayerMatchCard";
+import { QuickMessageModal } from "@/components/messaging/QuickMessageModal";
 import { useAuth } from "@/lib/auth-context";
 import { PLAY_DATE_FILTER_OPTIONS, resolveDateFilterRange, type PlayDateFilter } from "@/lib/play-status";
 import playHeroDesktop from "/assets/images/play-hero-desktop.webp";
@@ -105,6 +107,14 @@ export default function PlayPage() {
     queryFn: getPlayRecommendations,
     enabled: isAuthenticated && user?.role === "player",
   });
+
+  // [PLAY] Players Looking to Play
+  const playersLookingQuery = useQuery({
+    queryKey: ["/api/play/players-looking", user?.id],
+    queryFn: getPlayersLookingToPlay,
+    enabled: isAuthenticated && user?.role === "player",
+  });
+  const [inviteTarget, setInviteTarget] = useState<{ id: string; name: string } | null>(null);
 
   // [ANALYTICS][PLAY] Track personalised recommendation engagement -
   // impression fires once per item, the first time the list actually
@@ -461,6 +471,31 @@ export default function PlayPage() {
               </div>
             )}
 
+            {!smartSearchResult && !hasActiveFilters && isAuthenticated && user?.role === "player" && playersLookingQuery.data && playersLookingQuery.data.players.length > 0 && (
+              <div className="space-y-3" data-testid="play-players-looking-section">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="font-display font-bold text-lg" data-testid="play-players-looking-heading">
+                      👥 Players Looking to Play
+                    </h2>
+                    <p className="text-sm text-muted-foreground">Find players near you who are ready for a game.</p>
+                  </div>
+                  <Link href="/players?lookingToPlay=true" className="text-sm text-primary font-medium shrink-0" data-testid="play-see-all-players">
+                    See all players →
+                  </Link>
+                </div>
+                <div className="space-y-3">
+                  {playersLookingQuery.data.players.map((match) => (
+                    <PlayerMatchCard
+                      key={match.player.id}
+                      match={match}
+                      onInvite={() => setInviteTarget({ id: match.player.id, name: match.player.name })}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
             {smartSearchLoading && (
               <div className="space-y-4" data-testid="play-smart-search-loading">
                 {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-40 w-full rounded-2xl" />)}
@@ -476,10 +511,23 @@ export default function PlayPage() {
                 )}
 
                 {smartSearchResult.intent === "FIND_PLAYER" ? (
-                  <div className="flex flex-col items-center text-center gap-2 py-16" data-testid="play-smart-search-find-player">
-                    <Sparkles className="w-8 h-8 text-muted-foreground" />
-                    <p className="font-semibold">{smartSearchResult.message}</p>
-                  </div>
+                  smartSearchResult.players.length > 0 ? (
+                    <div className="space-y-3">
+                      <p className="text-sm font-medium">Players matching your search</p>
+                      {smartSearchResult.players.map((match) => (
+                        <PlayerMatchCard
+                          key={match.player.id}
+                          match={match}
+                          onInvite={() => setInviteTarget({ id: match.player.id, name: match.player.name })}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center text-center gap-2 py-16" data-testid="play-smart-search-find-player">
+                      <Sparkles className="w-8 h-8 text-muted-foreground" />
+                      <p className="font-semibold">{smartSearchResult.message}</p>
+                    </div>
+                  )
                 ) : (
                   <>
                     {smartSearchResult.aiUsed && smartSearchResult.resolvedFilters && (
@@ -630,8 +678,7 @@ export default function PlayPage() {
 
       <Footer />
 
-      <EventQuickViewModal
-        sessionId={selectedSessionId}
+      <EventQuickViewModal        sessionId={selectedSessionId}
         recommendation={selectedRecommendation}
         onJoinSuccess={(id) => {
           if (selectedRecommendation) {
@@ -650,6 +697,21 @@ export default function PlayPage() {
           }
         }}
       />
+
+      {/* [PLAY] Invite to Play - spec section 10: "use existing
+          messaging functionality where possible" rather than a
+          separate booking flow. Prefilled with a friendly default the
+          player can edit before sending, same modal used elsewhere in
+          the app for a quick message. */}
+      {inviteTarget && (
+        <QuickMessageModal
+          open={!!inviteTarget}
+          onOpenChange={(open) => !open && setInviteTarget(null)}
+          recipient={{ id: inviteTarget.id, name: inviteTarget.name, type: "player" }}
+          title={`Invite ${inviteTarget.name.split(" ")[0]} to play 🎾`}
+          defaultMessage={`Hi ${inviteTarget.name.split(" ")[0]}, want to play sometime soon?`}
+        />
+      )}
     </div>
   );
 }

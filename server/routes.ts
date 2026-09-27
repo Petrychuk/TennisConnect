@@ -9,6 +9,7 @@ import uploadMediaRouter from "./routes/uploadMedia";
 import profileTournamentHistoryRouter from "./routes/profileTournamentHistory";
 import profileMarketplace from "./routes/profileMarketplace";
 import playerPhotos from "./routes/playerPhotos";
+import { computeLookingToPlayExpiry } from "./services/playerMatchEngine";
 import contentRouter from "./routes/adminContent";
 import passport from "passport";
 import { requireAuth, requireAdmin } from "./requireAuth";
@@ -1046,6 +1047,57 @@ export async function registerRoutes(app: Express): Promise<void> {
       } catch (err) {
         console.error("Update profile error:", err);
         res.status(500).json({ message: "Failed to update profile" });
+      }
+    }
+  );
+
+  // PUT /api/me/looking-to-play - [PLAY] Players Looking to Play,
+  // section 2/3. Deliberately its own small endpoint rather than one
+  // more field on the general profile PUT above - the expiry
+  // calculation is server-side and specific to this one status, and
+  // this route needs to accept {enabled: false} as a complete request
+  // on its own (turning it off doesn't require re-sending when/format).
+  app.put(
+    "/api/me/looking-to-play",
+    requireAuth,
+    requireRole("player"),
+    async (req, res) => {
+      try {
+        const schema = z.object({
+          enabled: z.boolean(),
+          when: z.enum(["today", "this_week", "this_weekend"]).optional(),
+          format: z.enum(["singles", "doubles", "either"]).optional(),
+        });
+        const parsed = schema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({ message: "Invalid request", errors: parsed.error });
+        }
+
+        const userId = req.user!.id;
+
+        if (!parsed.data.enabled) {
+          const profile = await storage.updatePlayerProfileByUserId(userId, {
+            lookingToPlayEnabled: false,
+          });
+          return res.json({ success: true, profile });
+        }
+
+        if (!parsed.data.when) {
+          return res.status(400).json({ message: "when is required to turn Looking to Play on" });
+        }
+
+        const expiresAt = computeLookingToPlayExpiry(parsed.data.when, new Date());
+        const profile = await storage.updatePlayerProfileByUserId(userId, {
+          lookingToPlayEnabled: true,
+          lookingToPlayWhen: parsed.data.when,
+          lookingToPlayFormat: parsed.data.format ?? "either",
+          lookingToPlayExpiresAt: expiresAt,
+        });
+
+        res.json({ success: true, profile });
+      } catch (err) {
+        console.error("Update looking-to-play error:", err);
+        res.status(500).json({ message: "Failed to update status" });
       }
     }
   );
