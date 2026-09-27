@@ -30,5 +30,13 @@ export const smartSearchLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => (req.isAuthenticated?.() ? (req.user as any).id : req.ip),
-  message: { message: "You're searching a bit fast - please wait a moment and try again." },
+  handler: (req, res) => {
+    console.log(
+      JSON.stringify({
+        event: "smart_search_rate_limited",
+        userId: req.isAuthenticated?.() ? (req.user as any).id : null,
+      })
+    );
+    res.status(429).json({ message: "You're searching a bit fast - please wait a moment and try again." });
+  },
 });
