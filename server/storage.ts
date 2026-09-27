@@ -2,6 +2,7 @@ import {
   users, 
   playerProfiles,
   coachProfiles,
+  geocodeCache,
   tournamentHistory,
   marketplaceItems,
   clubs,
@@ -189,6 +190,8 @@ export interface IStorage {
         profile: typeof playerProfiles.$inferSelect;
       }[]
     >;
+  getCachedGeocode(location: string): Promise<{ latitude: number; longitude: number } | undefined>;
+  saveCachedGeocode(location: string, latitude: number, longitude: number, source: string): Promise<void>;
   createPlayerProfile(profile: InsertPlayerProfile): Promise<PlayerProfile>;
   updatePlayerProfile(id: string, updates: Partial<PlayerProfile>): Promise<PlayerProfile>;
   
@@ -935,6 +938,22 @@ export class DatabaseStorage implements IStorage {
           )
         );
     }
+
+  // Shared location -> coordinates cache (players/coaches/clubs/
+  // sessions all use the same table via the geocoding service).
+  async getCachedGeocode(location: string): Promise<{ latitude: number; longitude: number } | undefined> {
+    const key = location.trim().toLowerCase();
+    const [row] = await db.select().from(geocodeCache).where(eq(geocodeCache.location, key));
+    return row ? { latitude: row.latitude, longitude: row.longitude } : undefined;
+  }
+
+  async saveCachedGeocode(location: string, latitude: number, longitude: number, source: string): Promise<void> {
+    const key = location.trim().toLowerCase();
+    await db
+      .insert(geocodeCache)
+      .values({ location: key, latitude, longitude, source })
+      .onConflictDoNothing();
+  }
 
   async createPlayerProfile(profile: InsertPlayerProfile): Promise<PlayerProfile> {
     const [newProfile] = await db

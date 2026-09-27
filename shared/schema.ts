@@ -171,6 +171,22 @@ export const tournaments = pgTable("tournaments", {
 });
 
 // Player profiles
+// [Geocoding] Shared location -> coordinates cache, used by players,
+// coaches, clubs/organisations, and sessions alike - one place any of
+// them can check before ever calling an external geocoder, and where
+// a fresh external lookup gets saved so it's never looked up twice.
+export const geocodeCache = pgTable("geocode_cache", {
+  // The trimmed, lowercased location string IS the key - no separate
+  // id needed, and it's exactly what every caller already has on hand.
+  location: varchar("location").primaryKey(),
+  latitude: real("latitude").notNull(),
+  longitude: real("longitude").notNull(),
+  // "curated" (server/lib/knownLocationCoordinates.ts's small hand-
+  // checked table) or "nominatim" (the real external geocoder).
+  source: text("source").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const playerProfiles = pgTable("player_profiles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
@@ -233,6 +249,10 @@ export const coachProfiles = pgTable("coach_profiles", {
   certificationDetails: text("certification_details"),
   location: text("location").notNull(),
   locations: json("locations").$type<string[]>().default([]),
+  // Nullable - filled in by the shared geocoding service, same as
+  // player_profiles/sessions/organizations.
+  latitude: real("latitude"),
+  longitude: real("longitude"),
   bio: text("bio"),
   rating: real("rating"),
   reviews: integer("reviews").default(0),
@@ -331,6 +351,11 @@ export const clubs = pgTable("clubs", {
   state: text("state"),
   suburb: text("suburb"),
   address: text("address"),
+  // Nullable - filled in by the shared geocoding service (server/
+  // services/geocodingService.ts) when suburb/location/address is set,
+  // same as player_profiles/sessions.
+  latitude: real("latitude"),
+  longitude: real("longitude"),
   googleMapsUrl: text("google_maps_url"),
   hasMultipleLocations: boolean("has_multiple_locations")
   .default(false),
