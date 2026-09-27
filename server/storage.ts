@@ -93,6 +93,7 @@ import {
   type ActivityFeedItem,
 } from "@shared/schema";
 import { db, pool } from "./db";
+import { zonedTimeToUtc } from "./lib/zonedTime";
 import { eq, desc, and, or, asc, sql, lte, ne, gte, ilike, inArray, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { supabaseAdmin } from "./supabaseAdmin";
@@ -3035,6 +3036,60 @@ export class DatabaseStorage implements IStorage {
       organizationName: organization.name,
       organizationSlug: organization.slug,
       organizationLogo: organization.logo,
+      sourceType: "TENNISCONNECT",
+      externalSourceUrl: null,
+      externalLastCheckedAt: null,
+    };
+  }
+
+  // Converts an admin-approved external_activities row into the SAME
+  // PublicSessionCard shape a real TennisConnect session produces
+  // (spec section 20 - "do NOT create a separate recommendation
+  // system for external events"). Only ever called for reviewStatus =
+  // APPROVED rows - the caller (getPublicSessionsIncludingExternal)
+  // enforces that, this function just does the shape conversion.
+  private externalActivityToPublicSessionCard(activity: typeof externalActivities.$inferSelect): PublicSessionCard {
+    // startAt/endAt need a real ISO instant for the same date-range
+    // filtering/sorting every TC session already gets - built from the
+    // activity's own local wall-clock date+time in its own resolved
+    // time zone (never assuming Sydney, per spec section 8).
+    const zone = activity.timeZone ?? "Australia/Sydney";
+    const startAt = activity.startDate
+      ? zonedTimeToUtc(activity.startDate, activity.startTime ?? "00:00", zone).toISOString()
+      : new Date().toISOString(); // a recurring session with no specific next date - occurrence generation (spec section 7) is a follow-up; for now it sorts as "now" rather than being excluded entirely
+    const endAt =
+      activity.endDate && activity.endTime
+        ? zonedTimeToUtc(activity.endDate, activity.endTime, zone).toISOString()
+        : null;
+
+    return {
+      id: activity.id,
+      title: activity.title,
+      type: activity.activityType ?? "social",
+      // External activities never have TennisConnect registration data
+      // to compute a real playStatus from - "open" is the only status
+      // that makes sense before a player even clicks through (spec
+      // section 19: the CTA becomes "View original", not a
+      // TennisConnect join flow with its own Full/Waitlist states).
+      playStatus: "open",
+      startAt,
+      endAt,
+      timeZone: zone,
+      location: activity.venueName ?? activity.suburb ?? activity.city,
+      latitude: activity.latitude,
+      longitude: activity.longitude,
+      skillLevel: activity.normalisedLevel,
+      courtsCount: null,
+      maxParticipants: null,
+      registeredCount: 0,
+      coverImage: null,
+      organizationId: "",
+      organizationName: activity.organiserName || activity.sourceName,
+      organizationSlug: "",
+      organizationLogo: null,
+      sourceType: "EXTERNAL",
+      externalSourceUrl: activity.sourceUrl,
+      externalLastCheckedAt: activity.lastCheckedAt instanceof Date ? activity.lastCheckedAt.toISOString() : String(activity.lastCheckedAt),
     };
   }
 
@@ -3096,6 +3151,38 @@ export class DatabaseStorage implements IStorage {
           (c.location ?? "").toLowerCase().includes(q) ||
           c.organizationName.toLowerCase().includes(q)
       );
+    }
+
+    // [PLAY][AI] TC Discovery Agent, section 20 - "do NOT create a
+    // separate recommendation system for external events." Approved
+    // external activities are merged into the SAME list, converted to
+    // the same PublicSessionCard shape, filtered by the same criteria
+    // as the TC sessions above, and re-sorted together - so the
+    // existing Recommendation Engine (and Smart Search, which consumes
+    // this same function) scores/ranks them identically, no separate
+    // code path. Anything with duplicateOfSessionId set is excluded
+    // even if somehow marked APPROVED (spec section 13: an existing TC
+    // event always wins - belt-and-suspenders alongside the review
+    // action itself not clearing that field).
+    if (!filters.organizationId) {
+      const externalConditions = [eq(externalActivities.reviewStatus, "APPROVED"), isNull(externalActivities.duplicateOfSessionId)];
+      if (filters.location) externalConditions.push(ilike(externalActivities.suburb, `%${filters.location}%`));
+      if (filters.format) externalConditions.push(eq(externalActivities.activityType, filters.format));
+      if (filters.level) externalConditions.push(eq(externalActivities.normalisedLevel, filters.level));
+
+      const externalRows = await db.select().from(externalActivities).where(and(...externalConditions));
+      let externalCards = externalRows.map((row) => this.externalActivityToPublicSessionCard(row));
+
+      if (filters.dateFrom) externalCards = externalCards.filter((c) => new Date(c.startAt) >= filters.dateFrom!);
+      if (filters.dateTo) externalCards = externalCards.filter((c) => new Date(c.startAt) <= filters.dateTo!);
+      if (filters.search) {
+        const q = filters.search.trim().toLowerCase();
+        externalCards = externalCards.filter(
+          (c) => c.title.toLowerCase().includes(q) || (c.location ?? "").toLowerCase().includes(q) || c.organizationName.toLowerCase().includes(q)
+        );
+      }
+
+      cards = cards.concat(externalCards).sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
     }
 
     return cards;

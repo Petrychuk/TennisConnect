@@ -1274,6 +1274,15 @@ export type PublicSessionCard = {
   organizationName: string;
   organizationSlug: string;
   organizationLogo: string | null;
+  // [PLAY][AI] TC Discovery Agent, sections 6/13/18-19 - "TENNISCONNECT"
+  // for a real, native session (the only value this ever was before
+  // the Discovery Agent existed); "EXTERNAL" for an admin-approved
+  // discovered activity. Only EXTERNAL cards populate the three fields
+  // below - source transparency (spec section 18) and the "View
+  // original" CTA instead of Join (spec section 19) both key off this.
+  sourceType: "TENNISCONNECT" | "EXTERNAL";
+  externalSourceUrl?: string | null;
+  externalLastCheckedAt?: string | null;
 };
 
 export type PublicSessionDetails = PublicSessionCard & {
