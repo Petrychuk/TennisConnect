@@ -149,7 +149,10 @@ export async function callSmartSearchLLM(
   player?: SmartSearchPlayerContext
 ): Promise<PlaySearchIntent | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) {
+    console.log(JSON.stringify({ event: "smart_search_ai_error", reason: "no_api_key" }));
+    return null;
+  }
 
   const { system, user } = buildSmartSearchPrompt(query, player);
   const controller = new AbortController();
@@ -172,15 +175,32 @@ export async function callSmartSearchLLM(
       signal: controller.signal,
     });
 
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.log(JSON.stringify({ event: "smart_search_ai_error", reason: "non_200", status: res.status }));
+      return null;
+    }
     const data = await res.json();
     const text = data?.content?.find((block: any) => block.type === "text")?.text;
-    if (typeof text !== "string") return null;
+    if (typeof text !== "string") {
+      console.log(JSON.stringify({ event: "smart_search_ai_error", reason: "no_text_block" }));
+      return null;
+    }
 
-    return parseSmartSearchResponse(text);
-  } catch {
-    // Timeout, network error, JSON parse error on the HTTP response
-    // itself - all the same outcome: no usable intent, fall back.
+    const parsed = parseSmartSearchResponse(text);
+    if (!parsed) {
+      console.log(JSON.stringify({ event: "smart_search_ai_error", reason: "invalid_json_or_schema" }));
+      return null;
+    }
+
+    console.log(JSON.stringify({ event: "smart_search_ai_success", intent: parsed.intent }));
+    return parsed;
+  } catch (err: any) {
+    console.log(
+      JSON.stringify({
+        event: "smart_search_ai_error",
+        reason: err?.name === "AbortError" ? "timeout" : "network_error",
+      })
+    );
     return null;
   } finally {
     clearTimeout(timeout);
