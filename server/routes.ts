@@ -10,6 +10,7 @@ import profileTournamentHistoryRouter from "./routes/profileTournamentHistory";
 import profileMarketplace from "./routes/profileMarketplace";
 import playerPhotos from "./routes/playerPhotos";
 import { computeLookingToPlayExpiry } from "./services/playerMatchEngine";
+import { lookupKnownCoordinates } from "./lib/knownLocationCoordinates";
 import contentRouter from "./routes/adminContent";
 import passport from "passport";
 import { requireAuth, requireAdmin } from "./requireAuth";
@@ -1038,9 +1039,26 @@ export async function registerRoutes(app: Express): Promise<void> {
 
         // ✅ 2. Обновляем профиль (только разрешённые поля - см.
         // playerProfileUpdateSchema)
+        //
+        // Auto-fill lat/lng from the small known-locations table
+        // (server/lib/knownLocationCoordinates.ts) when the player's
+        // location or first preferred area matches one exactly - a
+        // real, honest stand-in for actual geocoding until that
+        // exists. Never overwrites coordinates the player might
+        // already have some other way, and does nothing at all for a
+        // location this table doesn't recognise (most of them - it's
+        // a short curated list, not real geocoding).
+        const updateData: typeof parsed.data & { latitude?: number; longitude?: number } = { ...parsed.data };
+        const locationToResolve = updateData.location || updateData.preferredCourts?.[0];
+        const knownCoords = lookupKnownCoordinates(locationToResolve);
+        if (knownCoords) {
+          updateData.latitude = knownCoords.latitude;
+          updateData.longitude = knownCoords.longitude;
+        }
+
         const profile = await storage.updatePlayerProfileByUserId(
           userId,
-          parsed.data
+          updateData
         );
 
         res.json({ success: true, profile });
