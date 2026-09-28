@@ -8,6 +8,7 @@ import {
 } from "./discoveryNormalization";
 import { computeDuplicateConfidence, DUPLICATE_REVIEW_THRESHOLD, type DuplicateCandidate } from "./discoveryDuplicateDetection";
 import { resolveCoordinates } from "./geocodingService";
+import { initialDiscoveryStatus } from "./discoveryQueue";
 
 // [PLAY][AI] TC Discovery Agent - orchestration (spec sections 4, 24,
 // 26, 29). Real fetch() calls to actual external pages - this is the
@@ -222,9 +223,16 @@ export async function runDiscovery(options: DiscoveryRunOptions): Promise<Discov
         registrationUrl: extracted.registrationUrl,
         sourceName: source.name,
         sourceUrl: source.baseUrl,
-        discoveryStatus: "NEEDS_REVIEW" as const,
+        // A possible duplicate stays PENDING (undecided) but is flagged
+        // NEEDS_REVIEW so it surfaces in that tab with its duplicate
+        // confidence badge - previously it was written as
+        // reviewStatus DUPLICATE, which no admin tab showed at all, so
+        // exactly the items spec section 12 says to flag for review
+        // would have been invisible. DUPLICATE is now reserved for an
+        // admin's own decision.
+        discoveryStatus: initialDiscoveryStatus({ confidence, isPossibleDuplicate: isDuplicate }),
         confidence,
-        reviewStatus: isDuplicate ? ("DUPLICATE" as const) : ("PENDING" as const),
+        reviewStatus: "PENDING" as const,
         duplicateOfExternalId: bestDuplicate?.externalId ?? null,
         duplicateOfSessionId: bestDuplicate?.sessionId ?? null,
         duplicateConfidence: bestDuplicate?.confidence ?? null,

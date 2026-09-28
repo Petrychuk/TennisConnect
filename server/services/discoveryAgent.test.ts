@@ -9,6 +9,7 @@ import {
 } from "./discoveryNormalization";
 import { computeDuplicateConfidence, DUPLICATE_REVIEW_THRESHOLD } from "./discoveryDuplicateDetection";
 import { parseExtractedActivity, classifyConfidence, buildExtractionPrompt, type ExtractedActivity } from "./discoveryExtraction";
+import { classifyQueueTab, initialDiscoveryStatus } from "./discoveryQueue";
 
 let passed = 0;
 let failed = 0;
@@ -260,6 +261,52 @@ test("the extraction prompt explicitly forbids inventing missing fields", () => 
 test("the extraction prompt explicitly forbids inventing a UTR number", () => {
   const { system } = buildExtractionPrompt("some page text", "https://example.com");
   assert.ok(system.toLowerCase().includes("never invent a specific utr"));
+});
+
+// --- Admin queue tabs ---
+
+test("a clean new discovery lands in Pending", () => {
+  assert.equal(classifyQueueTab("PENDING", "ACTIVE"), "PENDING");
+});
+
+test("a questionable new discovery lands in Needs Review, not Pending", () => {
+  assert.equal(classifyQueueTab("PENDING", "NEEDS_REVIEW"), "NEEDS_REVIEW");
+});
+
+test("an approved, healthy item is in Approved", () => {
+  assert.equal(classifyQueueTab("APPROVED", "ACTIVE"), "APPROVED");
+});
+
+test("an approved item whose source needs re-checking moves to Needs Review", () => {
+  assert.equal(classifyQueueTab("APPROVED", "NEEDS_REVIEW"), "NEEDS_REVIEW");
+});
+
+test("rejected and admin-marked duplicates both land in Rejected, whatever their freshness status", () => {
+  assert.equal(classifyQueueTab("REJECTED", "ACTIVE"), "REJECTED");
+  assert.equal(classifyQueueTab("REJECTED", "NEEDS_REVIEW"), "REJECTED");
+  assert.equal(classifyQueueTab("DUPLICATE", "NEEDS_REVIEW"), "REJECTED");
+});
+
+test("every (reviewStatus, discoveryStatus) combination maps to exactly one tab", () => {
+  const review = ["PENDING", "APPROVED", "REJECTED", "DUPLICATE"];
+  const discovery = ["ACTIVE", "CHANGED", "EXPIRED", "SOURCE_UNAVAILABLE", "NEEDS_REVIEW", "CANCELLED"];
+  const valid = new Set(["PENDING", "APPROVED", "REJECTED", "NEEDS_REVIEW"]);
+  for (const r of review) for (const d of discovery) {
+    assert.ok(valid.has(classifyQueueTab(r, d)), `${r}/${d} mapped to an unknown tab`);
+  }
+});
+
+test("a confident, non-duplicate discovery starts ACTIVE (so it appears in Pending)", () => {
+  assert.equal(initialDiscoveryStatus({ confidence: "HIGH", isPossibleDuplicate: false }), "ACTIVE");
+  assert.equal(initialDiscoveryStatus({ confidence: "MEDIUM", isPossibleDuplicate: false }), "ACTIVE");
+});
+
+test("a low-confidence discovery starts NEEDS_REVIEW", () => {
+  assert.equal(initialDiscoveryStatus({ confidence: "LOW", isPossibleDuplicate: false }), "NEEDS_REVIEW");
+});
+
+test("a possible duplicate starts NEEDS_REVIEW even when otherwise confident", () => {
+  assert.equal(initialDiscoveryStatus({ confidence: "HIGH", isPossibleDuplicate: true }), "NEEDS_REVIEW");
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

@@ -58,6 +58,16 @@ router.put("/sources/:id", async (req, res, next) => {
 
 // --- Discovery Queue (spec section 17) ---
 
+// Tab counts for the queue header - computed with the same
+// classifyQueueTab as the list itself, so the numbers always match.
+router.get("/counts", async (req, res, next) => {
+  try {
+    res.json(await storage.getExternalActivityCounts());
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get("/activities", async (req, res, next) => {
   try {
     const status = typeof req.query.status === "string" ? req.query.status : "PENDING";
