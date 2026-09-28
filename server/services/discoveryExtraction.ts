@@ -7,6 +7,9 @@ import { z } from "zod";
 // nothing in this file's own test suite can exercise without a live
 // API key and network access.
 
+/** Upper bound on activities taken from one page - a cost/abuse guard. */
+export const MAX_ACTIVITIES_PER_PAGE = 20;
+
 export const extractedActivitySchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().max(2000).nullable(),
@@ -35,6 +38,15 @@ export const extractedActivitySchema = z.object({
 
   organiserName: z.string().max(200).nullable(),
   registrationUrl: z.string().max(500).nullable(),
+
+  // true ONLY if the page itself says this activity is cancelled or
+  // postponed - never inferred from an activity simply not being listed.
+  cancelled: z.boolean().nullable().optional(),
+
+  // Short verbatim snippets from the page backing the fields an admin is
+  // most likely to question (spec section 28), e.g.
+  // { "price": "$15 visitors", "startTime": "9am-11am" }. Internal only.
+  evidence: z.record(z.string(), z.string().max(300)).nullable().optional(),
 });
 
 export type ExtractedActivity = z.infer<typeof extractedActivitySchema>;
@@ -48,8 +60,15 @@ export type ExtractedActivity = z.infer<typeof extractedActivitySchema>;
  * reinforces "never invent a UTR").
  */
 export function buildExtractionPrompt(sourceText: string, sourceUrl: string): { system: string; user: string } {
-  const system = `You extract structured data about a tennis activity from a webpage's text content. Return ONLY a JSON object matching this exact shape - no prose, no markdown fences:
+  const system = `You extract structured data about tennis activities that a player could take part in, from a webpage's text content. A page may list several activities, one activity, or none. Return ONLY a JSON object of this exact shape - no prose, no markdown fences:
 
+{ "activities": [ <activity>, ... ] }
+
+Return { "activities": [] } if the page describes no tennis activity a recreational player could join (news, coaching bios, court hire prices, etc.).
+
+One entry per distinct activity. A session that repeats ("every Thursday 7-9pm") is ONE entry with recurrenceText set - never split it into individual dates.
+
+Each <activity> has exactly these fields:
 {
   "title": string,
   "description": string | null,
@@ -70,7 +89,9 @@ export function buildExtractionPrompt(sourceText: string, sourceUrl: string): { 
   "price": number | null (a plain number in whole dollars, only if a specific price is stated - never invent one),
   "currency": string | null (e.g. "AUD" - default AUD only if a dollar sign with no other currency is present and the source is clearly Australian; otherwise null),
   "organiserName": string | null,
-  "registrationUrl": string | null (only if an actual URL is present in the source text - never fabricate one)
+  "registrationUrl": string | null (only if an actual URL is present in the source text - never fabricate one),
+  "cancelled": boolean | null (true ONLY if the page explicitly says this activity is cancelled or postponed; otherwise null),
+  "evidence": { [fieldName: string]: string } | null (for price, startDate, startTime, recurrenceText and levelText - whichever you filled in - a SHORT verbatim snippet (under 100 characters) from the page that supports it)
 }
 
 Critical rule: EXTRACT, DO NOT INVENT. If a field isn't stated in the source text, its value is null - never a plausible-sounding guess. This applies especially to level, price, and dates - a missing value is far better than a wrong one that looks confident.
@@ -84,19 +105,37 @@ Return ONLY the JSON object.`;
   return { system, user };
 }
 
+export interface ParsedExtraction {
+  activities: ExtractedActivity[];
+  /** Entries the model returned that failed validation and were dropped. */
+  invalidCount: number;
+}
+
 /**
- * Parses and validates a raw model response. Never throws - null on
- * anything that doesn't validate, same contract as
- * smartSearchEngine.ts's parseSmartSearchResponse, so a caller always
- * has a safe "this page didn't yield a usable extraction" path (which,
- * per spec section 26, must never stop the rest of a discovery run).
+ * Parses a raw model response into the activities it found. Never
+ * throws - null only when the response isn't usable JSON with an
+ * `activities` array at all. Validation is per-entry: one malformed
+ * activity on a page of five is dropped (and counted) rather than
+ * discarding the four good ones, and a valid empty list ("nothing
+ * here") is a real answer, distinct from a failed extraction (null).
+ * Same "never throws" contract as smartSearchEngine.ts, so one bad page
+ * can never stop a discovery run (spec section 26).
  */
-export function parseExtractedActivity(raw: string): ExtractedActivity | null {
+export function parseExtractedActivities(raw: string): ParsedExtraction | null {
   try {
     const cleaned = raw.trim().replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
     const parsed = JSON.parse(cleaned);
-    const result = extractedActivitySchema.safeParse(parsed);
-    return result.success ? result.data : null;
+    const list = Array.isArray(parsed) ? parsed : parsed?.activities;
+    if (!Array.isArray(list)) return null;
+
+    const activities: ExtractedActivity[] = [];
+    let invalidCount = 0;
+    for (const item of list.slice(0, MAX_ACTIVITIES_PER_PAGE)) {
+      const result = extractedActivitySchema.safeParse(item);
+      if (result.success) activities.push(result.data);
+      else invalidCount++;
+    }
+    return { activities, invalidCount };
   } catch {
     return null;
   }
@@ -111,7 +150,7 @@ export function parseExtractedActivity(raw: string): ExtractedActivity | null {
  * page must never take down the rest of a discovery run (spec section
  * 26).
  */
-export async function callExtractionLLM(sourceText: string, sourceUrl: string): Promise<ExtractedActivity | null> {
+export async function callExtractionLLM(sourceText: string, sourceUrl: string): Promise<ParsedExtraction | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     console.log(JSON.stringify({ event: "discovery_extraction_error", reason: "no_api_key", sourceUrl }));
@@ -132,7 +171,7 @@ export async function callExtractionLLM(sourceText: string, sourceUrl: string): 
       },
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
-        max_tokens: 800,
+        max_tokens: 4000,
         system,
         messages: [{ role: "user", content: user }],
       }),
@@ -150,13 +189,13 @@ export async function callExtractionLLM(sourceText: string, sourceUrl: string): 
       return null;
     }
 
-    const parsed = parseExtractedActivity(text);
+    const parsed = parseExtractedActivities(text);
     if (!parsed) {
       console.log(JSON.stringify({ event: "discovery_extraction_error", reason: "invalid_json_or_schema", sourceUrl }));
       return null;
     }
 
-    console.log(JSON.stringify({ event: "discovery_extraction_success", sourceUrl }));
+    console.log(JSON.stringify({ event: "discovery_extraction_success", sourceUrl, activities: parsed.activities.length, invalid: parsed.invalidCount }));
     return parsed;
   } catch (err: any) {
     console.log(

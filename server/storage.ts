@@ -95,7 +95,9 @@ import {
 import { db, pool } from "./db";
 import { zonedTimeToUtc } from "./lib/zonedTime";
 import { classifyQueueTab, type QueueTab } from "./services/discoveryQueue";
-import { eq, desc, and, or, asc, sql, lte, ne, gte, ilike, inArray, isNull } from "drizzle-orm";
+import { expandOccurrences, makeOccurrenceId, parseOccurrenceId } from "./services/discoveryOccurrences";
+import { resolveRegistrationUrl } from "./services/discoveryNormalization";
+import { eq, desc, and, or, asc, sql, lte, ne, gte, ilike, inArray, isNull, isNotNull, notInArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { planRound, computeLeaderboard, type PastMatch } from "./services/liveEngine";
@@ -198,12 +200,15 @@ export interface IStorage {
   getCachedGeocode(location: string): Promise<{ latitude: number; longitude: number } | undefined>;
   saveCachedGeocode(location: string, latitude: number, longitude: number, source: string): Promise<void>;
   // [PLAY][AI] TC Discovery Agent
-  getDiscoverySources(filters: { enabledOnly?: boolean; country?: string; state?: string; city?: string; sourceId?: string }): Promise<(typeof discoverySources.$inferSelect)[]>;
+  getDiscoverySources(filters: { enabledOnly?: boolean; country?: string; state?: string; city?: string; sourceId?: string; dueOnly?: boolean }): Promise<(typeof discoverySources.$inferSelect)[]>;
   createDiscoverySource(data: Partial<typeof discoverySources.$inferInsert>): Promise<typeof discoverySources.$inferSelect>;
   updateDiscoverySource(id: string, data: Partial<typeof discoverySources.$inferInsert>): Promise<typeof discoverySources.$inferSelect | undefined>;
   createExternalActivity(record: Partial<typeof externalActivities.$inferInsert>): Promise<typeof externalActivities.$inferSelect | undefined>;
-  getExternalActivitiesForDuplicateCheck(filters: { suburb?: string | null; startDate?: string | null }): Promise<(typeof externalActivities.$inferSelect)[]>;
-  getPublicSessionsForDuplicateCheck(filters: { location?: string | null; startDate?: string | null }): Promise<{ id: string; title: string; location: string | null; startAt: string }[]>;
+  getExternalActivitiesForDuplicateCheck(filters: { suburb?: string | null; startDate?: string | null; excludeSourceUrl?: string }): Promise<(typeof externalActivities.$inferSelect)[]>;
+  getExternalActivityById(id: string): Promise<typeof externalActivities.$inferSelect | undefined>;
+  getPublicSessionsForDuplicateCheck(filters: { location?: string | null; startDate?: string | null }): Promise<{ id: string; title: string; location: string | null; startAt: string; timeZone: string }[]>;
+  getExternalActivitiesForSourcePage(sourceId: string, pageUrl: string): Promise<(typeof externalActivities.$inferSelect)[]>;
+  getExternalActivitiesForExpirySweep(): Promise<{ id: string; startDate: string | null; endDate: string | null; startTime: string | null; endTime: string | null; timeZone: string | null; recurrenceFrequency: string | null }[]>;
   getExternalActivitiesForReview(status: string): Promise<(typeof externalActivities.$inferSelect)[]>;
   getExternalActivityCounts(): Promise<Record<QueueTab, number>>;
   reviewExternalActivity(id: string, data: Partial<typeof externalActivities.$inferInsert>): Promise<typeof externalActivities.$inferSelect | undefined>;
@@ -211,6 +216,7 @@ export interface IStorage {
   createDiscoveryRun(data: Partial<typeof discoveryRuns.$inferInsert>): Promise<typeof discoveryRuns.$inferSelect>;
   completeDiscoveryRun(id: string, summary: Partial<typeof discoveryRuns.$inferInsert>): Promise<typeof discoveryRuns.$inferSelect | undefined>;
   getDiscoveryRuns(): Promise<(typeof discoveryRuns.$inferSelect)[]>;
+  getDiscoveryRunById(id: string): Promise<typeof discoveryRuns.$inferSelect | undefined>;
   createPlayerProfile(profile: InsertPlayerProfile): Promise<PlayerProfile>;
   updatePlayerProfile(id: string, updates: Partial<PlayerProfile>): Promise<PlayerProfile>;
   
@@ -975,17 +981,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   // [PLAY][AI] TC Discovery Agent
-  async getDiscoverySources(filters: { enabledOnly?: boolean; country?: string; state?: string; city?: string; sourceId?: string }) {
+  async getDiscoverySources(filters: {
+    enabledOnly?: boolean;
+    country?: string;
+    state?: string;
+    city?: string;
+    sourceId?: string;
+    /** Only sources an admin has already scanned for real once
+        (nextScanAt set) and whose next scan is now due - what the
+        scheduled recheck uses. A brand-new source is never scanned
+        automatically; its first real run is a deliberate admin action. */
+    dueOnly?: boolean;
+  }) {
     const conditions = [];
     if (filters.enabledOnly) conditions.push(eq(discoverySources.enabled, true));
     if (filters.sourceId) conditions.push(eq(discoverySources.id, filters.sourceId));
     if (filters.country) conditions.push(eq(discoverySources.country, filters.country));
     if (filters.state) conditions.push(eq(discoverySources.state, filters.state));
-    // Note: city isn't a column on discoverySources itself (a source
-    // covers a state/country, not necessarily one city) - accepted in
-    // the filter shape for forward compatibility with spec section 22's
-    // "Melbourne / VIC"-style targeting once sources carry a city field,
-    // currently a no-op here.
+    if (filters.city) conditions.push(ilike(discoverySources.city, filters.city));
+    if (filters.dueOnly) {
+      conditions.push(isNotNull(discoverySources.nextScanAt));
+      conditions.push(lte(discoverySources.nextScanAt, new Date()));
+    }
     return conditions.length
       ? await db.select().from(discoverySources).where(and(...conditions))
       : await db.select().from(discoverySources);
@@ -996,23 +1013,83 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async getExternalActivitiesForDuplicateCheck(filters: { suburb?: string | null; startDate?: string | null }) {
-    const conditions = [eq(externalActivities.reviewStatus, "APPROVED")];
-    if (filters.suburb) conditions.push(eq(externalActivities.suburb, filters.suburb));
-    if (filters.startDate) conditions.push(eq(externalActivities.startDate, filters.startDate));
+  // Candidates a newly discovered activity might duplicate: items from
+  // OTHER pages (other sources, or another page of the same source) that
+  // are approved OR still pending - two of them both sitting in Pending
+  // would otherwise both get approved. The same page's own earlier
+  // findings are handled by identity matching on re-scan, so the caller
+  // excludes that page. A recurring existing item has no fixed date, so
+  // "no date" also counts as a possible match.
+  async getExternalActivitiesForDuplicateCheck(filters: { suburb?: string | null; startDate?: string | null; excludeSourceUrl?: string }) {
+    const conditions = [inArray(externalActivities.reviewStatus, ["APPROVED", "PENDING"])];
+    if (filters.excludeSourceUrl) conditions.push(ne(externalActivities.sourceUrl, filters.excludeSourceUrl));
+    if (filters.suburb) conditions.push(ilike(externalActivities.suburb, filters.suburb));
+    if (filters.startDate) {
+      conditions.push(or(eq(externalActivities.startDate, filters.startDate), isNull(externalActivities.startDate))!);
+    }
     return await db.select().from(externalActivities).where(and(...conditions));
   }
 
+  // Real, published TennisConnect sessions a discovered activity might
+  // duplicate (TC always wins - spec section 13). Only sessions near the
+  // candidate's date are loaded (a day either side, since sessions are
+  // stored as UTC instants and the venue's local date can differ by a
+  // day); with no date (a recurring listing) it's every upcoming one.
+  // Each row carries its own time zone so the caller can compare LOCAL
+  // date/time - comparing a UTC date to a local one would mis-match
+  // every morning session.
   async getPublicSessionsForDuplicateCheck(filters: { location?: string | null; startDate?: string | null }) {
-    // Deliberately narrow (title/location/startAt only) - this is only
-    // ever fed into computeDuplicateConfidence, which doesn't need
-    // anything else about the session.
+    const conditions = [inArray(tennisSessions.status, ["published", "live"]), eq(tennisSessions.visibility, "public")];
+    if (filters.startDate) {
+      const day = new Date(`${filters.startDate}T00:00:00Z`).getTime();
+      conditions.push(gte(tennisSessions.startAt, new Date(day - 36 * 3_600_000)));
+      conditions.push(lte(tennisSessions.startAt, new Date(day + 60 * 3_600_000)));
+    } else {
+      conditions.push(gte(tennisSessions.startAt, new Date()));
+    }
     const rows = await db
-      .select({ id: tennisSessions.id, title: tennisSessions.title, location: tennisSessions.location, startAt: tennisSessions.startAt })
-      .from(tennisSessions);
+      .select({
+        id: tennisSessions.id,
+        title: tennisSessions.title,
+        location: tennisSessions.location,
+        startAt: tennisSessions.startAt,
+        timeZone: tennisSessions.timeZone,
+      })
+      .from(tennisSessions)
+      .where(and(...conditions));
     return rows
       .filter((r) => !filters.location || (r.location ?? "").toLowerCase().includes(filters.location.toLowerCase()))
       .map((r) => ({ ...r, startAt: r.startAt instanceof Date ? r.startAt.toISOString() : String(r.startAt) }));
+  }
+
+  // Everything previously found on one source page - used to recognise
+  // the same event on a re-scan, and to notice ones that have gone.
+  async getExternalActivityById(id: string) {
+    const [row] = await db.select().from(externalActivities).where(eq(externalActivities.id, id));
+    return row;
+  }
+
+  async getExternalActivitiesForSourcePage(sourceId: string, pageUrl: string) {
+    return await db
+      .select()
+      .from(externalActivities)
+      .where(and(eq(externalActivities.sourceId, sourceId), eq(externalActivities.sourceUrl, pageUrl)));
+  }
+
+  // Narrow rows for the expiry sweep - everything not already finished.
+  async getExternalActivitiesForExpirySweep() {
+    return await db
+      .select({
+        id: externalActivities.id,
+        startDate: externalActivities.startDate,
+        endDate: externalActivities.endDate,
+        startTime: externalActivities.startTime,
+        endTime: externalActivities.endTime,
+        timeZone: externalActivities.timeZone,
+        recurrenceFrequency: externalActivities.recurrenceFrequency,
+      })
+      .from(externalActivities)
+      .where(notInArray(externalActivities.discoveryStatus, ["EXPIRED", "CANCELLED"]));
   }
 
   async createDiscoverySource(data: Partial<typeof discoverySources.$inferInsert>) {
@@ -1040,7 +1117,7 @@ export class DatabaseStorage implements IStorage {
     const rows = await db
       .select({ reviewStatus: externalActivities.reviewStatus, discoveryStatus: externalActivities.discoveryStatus })
       .from(externalActivities);
-    const counts: Record<QueueTab, number> = { PENDING: 0, APPROVED: 0, REJECTED: 0, NEEDS_REVIEW: 0 };
+    const counts: Record<QueueTab, number> = { PENDING: 0, APPROVED: 0, REJECTED: 0, NEEDS_REVIEW: 0, ARCHIVED: 0 };
     for (const r of rows) counts[classifyQueueTab(r.reviewStatus, r.discoveryStatus)]++;
     return counts;
   }
@@ -1075,6 +1152,11 @@ export class DatabaseStorage implements IStorage {
 
   async getDiscoveryRuns() {
     return await db.select().from(discoveryRuns).orderBy(desc(discoveryRuns.startedAt));
+  }
+
+  async getDiscoveryRunById(id: string) {
+    const [row] = await db.select().from(discoveryRuns).where(eq(discoveryRuns.id, id));
+    return row;
   }
 
   async createPlayerProfile(profile: InsertPlayerProfile): Promise<PlayerProfile> {
@@ -3057,52 +3139,102 @@ export class DatabaseStorage implements IStorage {
 
   // Converts an admin-approved external_activities row into the SAME
   // PublicSessionCard shape a real TennisConnect session produces
-  // (spec section 20 - "do NOT create a separate recommendation
-  // system for external events"). Only ever called for reviewStatus =
-  // APPROVED rows - the caller (getPublicSessionsIncludingExternal)
-  // enforces that, this function just does the shape conversion.
-  private externalActivityToPublicSessionCard(activity: typeof externalActivities.$inferSelect): PublicSessionCard {
-    // startAt/endAt need a real ISO instant for the same date-range
-    // filtering/sorting every TC session already gets - built from the
-    // activity's own local wall-clock date+time in its own resolved
-    // time zone (never assuming Sydney, per spec section 8).
+  // (spec section 20 - "do NOT create a separate recommendation system
+  // for external events"): the Recommendation Engine and Smart Search
+  // never learn where a card came from.
+  //
+  // One stored row can yield SEVERAL cards: a recurring "every Thursday"
+  // session is stored once as a pattern and expanded here into its next
+  // few upcoming dates (spec section 7 - never a database row per
+  // occurrence). Each occurrence gets its own id ("<id>~<date>") that
+  // getPublicSessionById resolves back to the one row. A one-off keeps
+  // its plain id. An event that has already finished yields no card.
+  private externalActivityToPublicSessionCards(
+    activity: typeof externalActivities.$inferSelect,
+    now: Date = new Date()
+  ): PublicSessionCard[] {
+    // Display time zone only. An activity with no resolved zone starts
+    // life flagged for review (spec section 8: never silently assume
+    // Sydney), and the finished-check inside expandOccurrences uses the
+    // most conservative zone instead of this one.
     const zone = activity.timeZone ?? "Australia/Sydney";
-    const startAt = activity.startDate
-      ? zonedTimeToUtc(activity.startDate, activity.startTime ?? "00:00", zone).toISOString()
-      : new Date().toISOString(); // a recurring session with no specific next date - occurrence generation (spec section 7) is a follow-up; for now it sorts as "now" rather than being excluded entirely
-    const endAt =
-      activity.endDate && activity.endTime
-        ? zonedTimeToUtc(activity.endDate, activity.endTime, zone).toISOString()
-        : null;
+    const recurring = !!activity.recurrenceFrequency;
+    // Where "View original" sends the player: a verified registration
+    // link when the source gave one, otherwise the page it was found on.
+    const linkOut = resolveRegistrationUrl(activity.registrationUrl, activity.sourceUrl) ?? activity.sourceUrl;
+    const lastChecked =
+      activity.lastCheckedAt instanceof Date ? activity.lastCheckedAt.toISOString() : String(activity.lastCheckedAt);
+
+    return expandOccurrences(activity, now).map((date) => {
+      const endDate = !recurring && activity.endDate ? activity.endDate : date;
+      return {
+        id: recurring ? makeOccurrenceId(activity.id, date) : activity.id,
+        title: activity.title,
+        type: activity.activityType ?? "social",
+        // External activities carry no TennisConnect registration data to
+        // derive a real status from; the CTA is "View original" (spec
+        // section 19), not a TennisConnect join flow with its own
+        // Full/Waitlist states.
+        playStatus: "open" as const,
+        startAt: zonedTimeToUtc(date, activity.startTime ?? "00:00", zone).toISOString(),
+        endAt: activity.endTime ? zonedTimeToUtc(endDate, activity.endTime, zone).toISOString() : null,
+        timeZone: zone,
+        location: activity.venueName ?? activity.suburb ?? activity.city,
+        latitude: activity.latitude,
+        longitude: activity.longitude,
+        skillLevel: activity.normalisedLevel,
+        courtsCount: null,
+        maxParticipants: null,
+        registeredCount: 0,
+        coverImage: null,
+        organizationId: "",
+        organizationName: activity.organiserName || activity.sourceName,
+        organizationSlug: "",
+        organizationLogo: null,
+        sourceType: "EXTERNAL" as const,
+        externalSourceUrl: linkOut,
+        externalLastCheckedAt: lastChecked,
+      };
+    });
+  }
+
+  // Full details for the Event Quick View modal, for an external card.
+  // Without this the modal - the only place "View original" lives - could
+  // not load, because getPublicSessionById only knew native sessions.
+  private async getExternalPublicSessionById(id: string): Promise<PublicSessionDetails | undefined> {
+    const { baseId, date } = parseOccurrenceId(id);
+    const [activity] = await db
+      .select()
+      .from(externalActivities)
+      .where(
+        and(
+          eq(externalActivities.id, baseId),
+          eq(externalActivities.reviewStatus, "APPROVED"),
+          isNull(externalActivities.duplicateOfSessionId),
+          notInArray(externalActivities.discoveryStatus, ["EXPIRED", "CANCELLED"])
+        )
+      );
+    if (!activity) return undefined;
+
+    const cards = this.externalActivityToPublicSessionCards(activity);
+    // A plain id for a recurring activity (an old/shared link) resolves to
+    // its next occurrence; a dated id that's no longer upcoming is gone.
+    const card = cards.find((c) => c.id === id) ?? (date === null ? cards[0] : undefined);
+    if (!card) return undefined;
 
     return {
-      id: activity.id,
-      title: activity.title,
-      type: activity.activityType ?? "social",
-      // External activities never have TennisConnect registration data
-      // to compute a real playStatus from - "open" is the only status
-      // that makes sense before a player even clicks through (spec
-      // section 19: the CTA becomes "View original", not a
-      // TennisConnect join flow with its own Full/Waitlist states).
-      playStatus: "open",
-      startAt,
-      endAt,
-      timeZone: zone,
-      location: activity.venueName ?? activity.suburb ?? activity.city,
-      latitude: activity.latitude,
-      longitude: activity.longitude,
-      skillLevel: activity.normalisedLevel,
-      courtsCount: null,
-      maxParticipants: null,
-      registeredCount: 0,
-      coverImage: null,
-      organizationId: "",
-      organizationName: activity.organiserName || activity.sourceName,
-      organizationSlug: "",
-      organizationLogo: null,
-      sourceType: "EXTERNAL",
-      externalSourceUrl: activity.sourceUrl,
-      externalLastCheckedAt: activity.lastCheckedAt instanceof Date ? activity.lastCheckedAt.toISOString() : String(activity.lastCheckedAt),
+      ...card,
+      description: activity.description,
+      matchMode: "",
+      scoringFormat: "",
+      price: activity.price != null ? String(activity.price) : null,
+      currency: activity.currency,
+      waitingListEnabled: false,
+      registrationOpensAt: null,
+      registrationClosesAt: null,
+      seasonName: null,
+      seriesName: null,
+      myRegistrationStatus: null,
     };
   }
 
@@ -3166,34 +3298,52 @@ export class DatabaseStorage implements IStorage {
       );
     }
 
-    // [PLAY][AI] TC Discovery Agent, section 20 - "do NOT create a
-    // separate recommendation system for external events." Approved
-    // external activities are merged into the SAME list, converted to
-    // the same PublicSessionCard shape, filtered by the same criteria
-    // as the TC sessions above, and re-sorted together - so the
-    // existing Recommendation Engine (and Smart Search, which consumes
-    // this same function) scores/ranks them identically, no separate
-    // code path. Anything with duplicateOfSessionId set is excluded
-    // even if somehow marked APPROVED (spec section 13: an existing TC
-    // event always wins - belt-and-suspenders alongside the review
-    // action itself not clearing that field).
+    // [PLAY][AI] TC Discovery Agent, section 20 - approved external
+    // activities join the SAME list, converted to the same card shape,
+    // filtered by the same criteria, and re-sorted together - so the
+    // Recommendation Engine and Smart Search treat them identically.
+    // Visible in Play only while approved AND not expired/cancelled
+    // (isPlayVisible in discoveryFreshness.ts states the rule). Anything
+    // with duplicateOfSessionId set is excluded even if marked APPROVED
+    // (spec section 13: an existing TC event always wins).
     if (!filters.organizationId) {
-      const externalConditions = [eq(externalActivities.reviewStatus, "APPROVED"), isNull(externalActivities.duplicateOfSessionId)];
-      if (filters.location) externalConditions.push(ilike(externalActivities.suburb, `%${filters.location}%`));
+      const now = new Date();
+      const externalConditions = [
+        eq(externalActivities.reviewStatus, "APPROVED"),
+        isNull(externalActivities.duplicateOfSessionId),
+        notInArray(externalActivities.discoveryStatus, ["EXPIRED", "CANCELLED"]),
+      ];
+      if (filters.location) {
+        // A player can mean a suburb, a city, a state or a venue
+        // ("around Melbourne", "VIC", "Moore Park").
+        const like = `%${filters.location}%`;
+        externalConditions.push(
+          or(
+            ilike(externalActivities.suburb, like),
+            ilike(externalActivities.city, like),
+            ilike(externalActivities.state, like),
+            ilike(externalActivities.venueName, like),
+            ilike(externalActivities.address, like)
+          )!
+        );
+      }
       if (filters.format) externalConditions.push(eq(externalActivities.activityType, filters.format));
       if (filters.level) externalConditions.push(eq(externalActivities.normalisedLevel, filters.level));
 
-      const externalRows = await db.select().from(externalActivities).where(and(...externalConditions));
-      let externalCards = externalRows.map((row) => this.externalActivityToPublicSessionCard(row));
+      let externalRows = await db.select().from(externalActivities).where(and(...externalConditions));
 
-      if (filters.dateFrom) externalCards = externalCards.filter((c) => new Date(c.startAt) >= filters.dateFrom!);
-      if (filters.dateTo) externalCards = externalCards.filter((c) => new Date(c.startAt) <= filters.dateTo!);
       if (filters.search) {
         const q = filters.search.trim().toLowerCase();
-        externalCards = externalCards.filter(
-          (c) => c.title.toLowerCase().includes(q) || (c.location ?? "").toLowerCase().includes(q) || c.organizationName.toLowerCase().includes(q)
+        externalRows = externalRows.filter((r) =>
+          [r.title, r.venueName, r.suburb, r.city, r.state, r.organiserName, r.sourceName].some((f) =>
+            (f ?? "").toLowerCase().includes(q)
+          )
         );
       }
+
+      let externalCards = externalRows.flatMap((row) => this.externalActivityToPublicSessionCards(row, now));
+      if (filters.dateFrom) externalCards = externalCards.filter((c) => new Date(c.startAt) >= filters.dateFrom!);
+      if (filters.dateTo) externalCards = externalCards.filter((c) => new Date(c.startAt) <= filters.dateTo!);
 
       cards = cards.concat(externalCards).sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
     }
@@ -3213,7 +3363,7 @@ export class DatabaseStorage implements IStorage {
           eq(tennisSessions.visibility, "public")
         )
       );
-    if (!row) return undefined;
+    if (!row) return this.getExternalPublicSessionById(id);
 
     const { session, organization } = row;
     const { registered } = await this.getSessionRegistrationCounts(session.id);

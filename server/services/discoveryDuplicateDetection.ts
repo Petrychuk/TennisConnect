@@ -12,6 +12,9 @@ export interface DuplicateCandidate {
   venueName?: string | null;
   suburb?: string | null;
   startDate?: string | null; // YYYY-MM-DD
+  /** For a recurring session with no fixed date - "same weekday" is the
+      equivalent of "same day" when comparing two recurring listings. */
+  recurrenceDayOfWeek?: string | null;
   startTime?: string | null; // HH:MM
   organiserName?: string | null;
   registrationUrl?: string | null;
@@ -85,8 +88,11 @@ export function computeDuplicateConfidence(a: DuplicateCandidate, b: DuplicateCa
     score += 15;
   }
 
-  // Date (20) - exact match only; a duplicate must be the same day.
-  if (a.startDate && b.startDate && a.startDate === b.startDate) {
+  // Date (20) - exact match only; a duplicate must be the same day. Two
+  // recurring listings with no fixed date match on the same weekday.
+  if (a.startDate && b.startDate) {
+    if (a.startDate === b.startDate) score += 20;
+  } else if (a.recurrenceDayOfWeek && b.recurrenceDayOfWeek && a.recurrenceDayOfWeek === b.recurrenceDayOfWeek) {
     score += 20;
   }
 

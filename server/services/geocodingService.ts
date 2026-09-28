@@ -33,11 +33,12 @@ export interface Coordinates {
 
 const NOMINATIM_USER_AGENT = "TennisConnect/1.0 (+https://tennisconnect.com.au)";
 
-async function fetchFromNominatim(location: string): Promise<Coordinates | null> {
+async function fetchFromNominatim(location: string, countryCodes?: string): Promise<Coordinates | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5000);
   try {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(location)}`;
+    const country = countryCodes ? `&countrycodes=${encodeURIComponent(countryCodes)}` : "";
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1${country}&q=${encodeURIComponent(location)}`;
     const res = await fetch(url, {
       headers: { "User-Agent": NOMINATIM_USER_AGENT },
       signal: controller.signal,
@@ -67,7 +68,10 @@ async function fetchFromNominatim(location: string): Promise<Coordinates | null>
  * sessions - with the same location string a person typed, no
  * per-entity-type logic needed here at all.
  */
-export async function resolveCoordinates(location: string | null | undefined): Promise<Coordinates | null> {
+export async function resolveCoordinates(
+  location: string | null | undefined,
+  options?: { countryCodes?: string }
+): Promise<Coordinates | null> {
   if (!location || !location.trim()) return null;
 
   const known = lookupKnownCoordinates(location);
@@ -76,7 +80,7 @@ export async function resolveCoordinates(location: string | null | undefined): P
   const cached = await storage.getCachedGeocode(location);
   if (cached) return cached;
 
-  const external = await fetchFromNominatim(location);
+  const external = await fetchFromNominatim(location, options?.countryCodes);
   if (external) {
     // Best-effort - if the cache write fails for some reason, the
     // caller still gets a usable result this one time; it'll just be
@@ -86,4 +90,31 @@ export async function resolveCoordinates(location: string | null | undefined): P
   }
 
   return null;
+}
+
+/**
+ * Coordinates for an externally discovered venue (Discovery Agent,
+ * spec section 9). Australia-wide, so a bare suburb is NOT enough:
+ * "Richmond" is a suburb in VIC, NSW, QLD and TAS. This resolves at
+ * suburb level as "<suburb>, <state>, Australia" (restricted to
+ * Australian results), and returns null - never a guess - when the state
+ * is unknown ("do not guess coordinates if location cannot be
+ * confidently resolved"). The hand-checked table is consulted first for
+ * places that appear in this app's own data; its unqualified entries
+ * are all Sydney locations, so those are only used for NSW.
+ */
+export async function resolveAustralianVenueCoordinates(input: {
+  suburb?: string | null;
+  city?: string | null;
+  state?: string | null;
+}): Promise<Coordinates | null> {
+  const place = (input.suburb || input.city || "").trim();
+  const state = (input.state || "").trim().toUpperCase();
+  if (!place || !state) return null;
+
+  const curated =
+    lookupKnownCoordinates(`${place}, ${state}`) ?? (state === "NSW" ? lookupKnownCoordinates(place) : null);
+  if (curated) return curated;
+
+  return resolveCoordinates(`${place}, ${state}, Australia`, { countryCodes: "au" });
 }
