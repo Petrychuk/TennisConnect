@@ -200,6 +200,23 @@ unclear/garbled text (safe fallback expected)
 Needs the migrations 0029 and 0030 applied and, for real extraction, `ANTHROPIC_API_KEY`.
 Do the DRY RUN steps first - they write nothing.
 
+**Pilot sources** (add from the Sources tab; `npm run seed:discovery-pilot` does it in dev):
+- Tennis Victoria - What's On | `https://www.tennis.com.au/vic/events/whats-on` | Tennis organisation | VIC
+- Strathfield Sports Club - Saturday Social | `https://strathfieldsportsclub.com.au/events/saturday-social-2026-08-01/` | Club | NSW | Sydney
+- Queensland Tennis Centre - Social Tennis | `https://www.queenslandtenniscentre.com.au/adults/programs-fixtures/social-tennis/` | Club | QLD | Brisbane
+
+**Pilot dry run - pass criteria** (run Discovery with Dry run ticked, all three sources):
+- [ ] Sources scanned = 3, Pages checked > 0
+- [ ] Potential events > 0 and Valid > 0 (at least one real activity structured)
+- [ ] Nothing appears in the queue or in /play afterwards (dry run writes nothing)
+- [ ] Problems (if any) name the source and give a reason - an *Unsupported ... JavaScript*
+      reason means that page was skipped on purpose, not that the run broke
+- [ ] Then run ONE source for real: its items are in Pending, with the right source name and
+      link ("View Source"), the recurring ones (Strathfield, QTC) show a weekday not a date,
+      and anything the page didn't state (level, price, times, city) is blank - not filled in
+- [ ] Expect Tennis Victoria's already-passed events (e.g. Pride Cup, 12 Sep) to be rejected,
+      not published
+
 **Sources tab**
 - [ ] Add a source (name, main page, type, state). It appears in the list as "Never scanned".
 - [ ] Try adding `http://localhost/x` or `file:///etc/passwd` - it is refused.

@@ -39,7 +39,7 @@ export function normaliseLevelText(originalLevelText: string | null | undefined)
 }
 
 export type NormalisedFormat = {
-  activityType: string; // matches SESSION_TYPE_OPTIONS keys where possible (social, tournament, league, ...)
+  activityType: string | null; // matches SESSION_TYPE_OPTIONS keys where possible; null = not recognised
   gameFormat: "singles" | "doubles" | "mixed" | null;
 };
 
@@ -54,7 +54,10 @@ export type NormalisedFormat = {
 export function normaliseFormatText(sourceText: string): NormalisedFormat {
   const text = sourceText.toLowerCase();
 
-  let activityType = "social";
+  // No match means we DON'T KNOW - not "social". A "Pride Cup" or a junior
+  // matchplay night is not a social hit just because nothing else matched
+  // (spec sections 11 and 27: missing is better than fabricated).
+  let activityType: string | null = null;
   if (/round.?robin/.test(text)) activityType = "round-robin";
   else if (/americano/.test(text)) activityType = "americano";
   else if (/mexicano/.test(text)) activityType = "mexicano";
@@ -68,9 +71,15 @@ export function normaliseFormatText(sourceText: string): NormalisedFormat {
   else if (/social/.test(text)) activityType = "social";
 
   let gameFormat: NormalisedFormat["gameFormat"] = null;
-  if (/mixed doubles/.test(text)) gameFormat = "mixed";
-  else if (/doubles/.test(text)) gameFormat = "doubles";
-  else if (/singles/.test(text)) gameFormat = "singles";
+  const mentionsSingles = /singles/.test(text);
+  const mentionsDoubles = /doubles/.test(text);
+  // "Singles and Doubles play" / "singles or mixed doubles" names BOTH -
+  // recording either one alone would misstate the activity, so it stays
+  // null. Only an unambiguous single format is set.
+  if (mentionsSingles && mentionsDoubles) gameFormat = null;
+  else if (/mixed doubles/.test(text)) gameFormat = "mixed";
+  else if (mentionsDoubles) gameFormat = "doubles";
+  else if (mentionsSingles) gameFormat = "singles";
 
   return { activityType, gameFormat };
 }
@@ -164,6 +173,10 @@ export function resolveRegistrationUrl(raw: string | null | undefined, pageUrl: 
   try {
     const url = new URL(raw.trim(), pageUrl);
     if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    // "http://name@host" is a mangled email address (a real pilot page has
+    // one as a button link) and also the classic look-alike-link trick -
+    // never a registration link.
+    if (url.username || url.password) return null;
     return url.toString();
   } catch {
     return null;

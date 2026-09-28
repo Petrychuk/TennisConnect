@@ -9,7 +9,10 @@ import { ActivityStatus } from "./ActivityStatus";
 import type { PublicSessionCard as PublicSessionCardData } from "@shared/schema";
 
 function formatLabel(type: string): string {
-  return SESSION_TYPE_OPTIONS.find((t) => t.key === type)?.label ?? type;
+  const known = SESSION_TYPE_OPTIONS.find((t) => t.key === type)?.label;
+  if (known) return known;
+  // Externally discovered types not in the option list ("cardio-tennis").
+  return type.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function isMultiDay(startAt: string, endAt: string | null, timeZone: string): boolean {
@@ -88,8 +91,10 @@ export function PlaySessionCard({
         </h3>
 
         <div className="flex flex-wrap gap-1.5">
-          <Badge variant="secondary" className="text-xs" data-testid={`play-session-card-${session.id}-format`}>{formatLabel(session.type)}</Badge>
-          <Badge variant="outline" className="text-xs" data-testid={`play-session-card-${session.id}-level`}>{session.skillLevel ?? "All Levels"}</Badge>
+          {session.type && (
+            <Badge variant="secondary" className="text-xs" data-testid={`play-session-card-${session.id}-format`}>{formatLabel(session.type)}</Badge>
+          )}
+          <Badge variant="outline" className="text-xs" data-testid={`play-session-card-${session.id}-level`}>{session.skillLevel ?? (session.sourceType === "EXTERNAL" ? "Level not stated" : "All Levels")}</Badge>
           {session.courtsCount != null && <Badge variant="outline" className="text-xs">{session.courtsCount} courts</Badge>}
         </div>
 

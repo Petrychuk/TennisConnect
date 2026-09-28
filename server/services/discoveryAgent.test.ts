@@ -497,5 +497,28 @@ test("flag reasons are plain English and empty for a clean discovery", () => {
   assert.ok(reasons.some((r) => r.includes("time zone")));
 });
 
+// --- ambiguity / unknown formats (found on real pilot pages) ---
+
+test("a format nothing recognises is null, not 'social'", () => {
+  assert.equal(normaliseFormatText("2026 Pride Cup").activityType, null);
+  assert.equal(normaliseFormatText("Growing the Game: Women and Girl's Tennis").activityType, null);
+});
+
+test("a page naming BOTH singles and doubles doesn't get either one", () => {
+  assert.equal(normaliseFormatText("Singles and Doubles play as well as coaching").gameFormat, null);
+  assert.equal(normaliseFormatText("Play singles or mixed doubles").gameFormat, null);
+});
+
+test("an unambiguous single format is still set", () => {
+  assert.equal(normaliseFormatText("Saturday social doubles").gameFormat, "doubles");
+  assert.equal(normaliseFormatText("Thursday singles fixtures").gameFormat, "singles");
+  assert.equal(normaliseFormatText("Mixed doubles night").gameFormat, "mixed");
+});
+
+test("a mangled 'http://name@host' link (an email address used as a URL) is never a registration link", () => {
+  assert.equal(resolveRegistrationUrl("http://qldtcproshop@tennis.com.au", "https://club.com.au/"), null);
+  assert.equal(resolveRegistrationUrl("https://user:pw@evil.example/", "https://club.com.au/"), null);
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

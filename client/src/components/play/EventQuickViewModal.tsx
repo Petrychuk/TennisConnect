@@ -22,7 +22,10 @@ import { ActivityStatus } from "./ActivityStatus";
 import { getPlaySessionById, joinSession, leaveSession } from "@/lib/api/play";
 
 function formatLabel(type: string): string {
-  return SESSION_TYPE_OPTIONS.find((t) => t.key === type)?.label ?? type;
+  const known = SESSION_TYPE_OPTIONS.find((t) => t.key === type)?.label;
+  if (known) return known;
+  // Externally discovered types not in the option list ("cardio-tennis").
+  return type.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function initials(name: string): string {
@@ -217,11 +220,13 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
                     <MapPin className="w-4 h-4 shrink-0" /> <span className="truncate">{session.location}</span>
                   </p>
                 )}
-                <p className="flex items-center gap-2" data-testid="event-modal-format">
-                  🎾 {formatLabel(session.type)}
-                </p>
+                {session.type && (
+                  <p className="flex items-center gap-2" data-testid="event-modal-format">
+                    🎾 {formatLabel(session.type)}
+                  </p>
+                )}
                 <p className="flex items-center gap-2" data-testid="event-modal-level">
-                  🎯 {session.skillLevel ?? "All Levels"}
+                  🎯 {session.skillLevel ?? (session.sourceType === "EXTERNAL" ? "Level not stated" : "All Levels")}
                 </p>
                 <p className="flex items-center gap-2" data-testid="event-modal-players">
                   <Users className="w-4 h-4 shrink-0" />
