@@ -198,6 +198,9 @@ export const discoverySources = pgTable("discovery_sources", {
   sourceType: text("source_type").notNull(), // CLUB | COMMUNITY | ORGANISER | TOURNAMENT_PLATFORM | TENNIS_ORGANISATION | PUBLIC_EVENT_PAGE | OTHER
   country: text("country").default("Australia").notNull(),
   state: text("state"), // NSW | VIC | QLD | WA | SA | TAS | ACT | NT - null means the source itself spans multiple states
+  // Optional - lets a run be targeted at "Melbourne / VIC" or "Perth / WA"
+  // (spec section 22) without hard-coding any city list.
+  city: text("city"),
   enabled: boolean("enabled").default(true).notNull(),
   discoveryMethod: text("discovery_method").notNull(), // how the Agent should approach this source - kept as free text for V1 rather than a fixed enum, since methods will diverge as more source shapes get added
   lastScanAt: timestamp("last_scan_at", { withTimezone: true }),
@@ -206,6 +209,15 @@ export const discoverySources = pgTable("discovery_sources", {
   // discoveries actually get approved vs rejected as junk/duplicates -
   // not populated automatically in V1, an admin field for now.
   reliabilityScore: integer("reliability_score").default(50).notNull(),
+  // Extra pages of the SAME source the Agent should read alongside
+  // baseUrl (e.g. a club's separate "Social tennis" and "Competitions"
+  // pages). Explicitly listed by an admin, never followed automatically -
+  // this is a controlled list, not a crawler (spec section 4).
+  extraUrls: json("extra_urls").$type<string[]>().default([]),
+  // sha256 of each page's extracted text at its last successful scan,
+  // keyed by URL. An unchanged page is never sent to the model again
+  // (spec section 29: "do not repeatedly process unchanged pages").
+  pageHashes: json("page_hashes").$type<Record<string, string>>().default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -325,6 +337,12 @@ export const discoveryRuns = pgTable("discovery_runs", {
   sourcesScanned: integer("sources_scanned").default(0).notNull(),
   pagesChecked: integer("pages_checked").default(0).notNull(),
   eventsDiscovered: integer("events_discovered").default(0).notNull(),
+  // Passed validation (spec section 24's "Valid") - counted in dry runs
+  // too, where nothing is actually created.
+  eventsValid: integer("events_valid").default(0).notNull(),
+  // Started life flagged for a human look (low confidence, possible
+  // duplicate, unknown time zone, unparseable recurrence).
+  eventsNeedingReview: integer("events_needing_review").default(0).notNull(),
   eventsCreated: integer("events_created").default(0).notNull(),
   eventsUpdated: integer("events_updated").default(0).notNull(),
   duplicatesDetected: integer("duplicates_detected").default(0).notNull(),

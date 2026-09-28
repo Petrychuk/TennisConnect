@@ -150,3 +150,126 @@ export function validateActivityDates(input: {
 
   return { valid: true };
 }
+
+/**
+ * Turns a registration link pulled from an external page into a URL that
+ * is safe to render as a player-facing <a href>, or null (spec sections
+ * 19 and 26: "do not fabricate registration links", "invalid
+ * registration URL"). Relative links ("/book") are resolved against the
+ * page they were found on. Only http(s) survives - a scraped
+ * "javascript:..." or "data:..." value must never reach a link.
+ */
+export function resolveRegistrationUrl(raw: string | null | undefined, pageUrl: string): string | null {
+  if (!raw || !raw.trim()) return null;
+  try {
+    const url = new URL(raw.trim(), pageUrl);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+const STATE_NAMES: Record<string, string> = {
+  "new south wales": "NSW",
+  victoria: "VIC",
+  queensland: "QLD",
+  "western australia": "WA",
+  "south australia": "SA",
+  tasmania: "TAS",
+  "australian capital territory": "ACT",
+  "northern territory": "NT",
+};
+
+/**
+ * "Victoria", "vic", "V.I.C" -> "VIC". Returns null for anything that
+ * isn't one of the eight Australian states/territories, rather than
+ * passing an unrecognised string through - an unknown state means an
+ * unknown time zone, which must surface for review, not be guessed.
+ */
+export function normaliseAustralianState(text: string | null | undefined): string | null {
+  if (!text) return null;
+  const t = text.trim().toLowerCase().replace(/\./g, "");
+  if (STATE_NAMES[t]) return STATE_NAMES[t];
+  const upper = t.toUpperCase();
+  return AU_STATE_TIMEZONES[upper] ? upper : null;
+}
+
+/**
+ * Guard for any URL the Agent will fetch server-side (a source's pages).
+ * Sources are admin-configured, but a fetch made from the server must
+ * never be aimable at the server's own network: only http(s), and never
+ * localhost, private/link-local ranges, or the cloud metadata address.
+ * (Redirect targets are re-checked by the caller against the final URL;
+ * DNS-level tricks aren't covered - this is a sensible floor for an
+ * admin-only feature, not a full SSRF defence.)
+ */
+export function isSafeExternalUrl(raw: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || host.endsWith(".internal")) return false;
+  if (host === "::1" || host === "::" || host.startsWith("fe80:") || host.startsWith("fc") || host.startsWith("fd")) return false;
+  const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  if (v4) {
+    const [a, b] = [Number(v4[1]), Number(v4[2])];
+    if (a === 0 || a === 10 || a === 127) return false;
+    if (a === 169 && b === 254) return false; // link-local, incl. 169.254.169.254 metadata
+    if (a === 172 && b >= 16 && b <= 31) return false;
+    if (a === 192 && b === 168) return false;
+    if (a === 100 && b >= 64 && b <= 127) return false; // carrier-grade NAT
+  }
+  return true;
+}
+
+export interface DiscoveredDatesInput {
+  startDate: string | null;
+  endDate: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  isRecurring: boolean;
+  timeZone: string | null;
+  now?: Date;
+}
+
+/**
+ * Date validation for a freshly extracted activity (spec section 8).
+ * A one-off needs a real, not-yet-past start date. A recurring session
+ * legitimately has NO fixed date ("every Thursday"), and any start date
+ * it does carry is just when the season began - so being in the past is
+ * fine; what matters is that the series hasn't ENDED and the times make
+ * sense.
+ */
+export function validateDiscoveredDates(input: DiscoveredDatesInput): DateValidationResult {
+  const now = input.now ?? new Date();
+  if (!input.isRecurring) {
+    return validateActivityDates({
+      startDate: input.startDate,
+      endDate: input.endDate,
+      startTime: input.startTime,
+      endTime: input.endTime,
+      timeZone: input.timeZone,
+      now,
+    });
+  }
+
+  const ymd = /^\d{4}-\d{2}-\d{2}$/;
+  if (input.startDate && !ymd.test(input.startDate)) return { valid: false, reason: "invalid_date" };
+  if (input.endDate && !ymd.test(input.endDate)) return { valid: false, reason: "invalid_date" };
+  if (input.startDate && input.endDate && input.endDate < input.startDate) return { valid: false, reason: "end_before_start" };
+  if (input.endDate) {
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: input.timeZone ?? "Australia/Perth" }).format(now);
+    if (input.endDate < today) return { valid: false, reason: "already_expired" };
+  }
+  if (input.startTime && input.endTime) {
+    if (!/^\d{2}:\d{2}$/.test(input.startTime) || !/^\d{2}:\d{2}$/.test(input.endTime) || input.endTime <= input.startTime) {
+      return { valid: false, reason: "invalid_time_range" };
+    }
+  }
+  return { valid: true };
+}
