@@ -336,6 +336,89 @@ missing them, breaking the first insert/select that touched them.
 
 ---
 
+## Task 5 - TC Discovery Agent (external activities)
+
+Goal: players discover tennis that was never created inside TennisConnect, without a second
+recommendation system. Pipeline: **admin-configured source pages -> fetch -> AI extraction ->
+deterministic normalise/validate -> duplicate check -> admin review -> `external_activities` ->
+the SAME Play list / Recommendation Engine / Smart Search.**
+
+### Principle: the model extracts, code decides
+The model (Claude Haiku, `callExtractionLLM`) only turns page text into structured *wording*
+("every Thursday 7-9pm", "intermediate players", "$15") and short evidence quotes. Everything
+that matters is a pure, unit-tested function: level/format mapping, state -> time zone, date
+validation, recurrence, duplicate scoring, freshness decisions, queue tabs, Play visibility.
+`Extract, don't invent`: a missing field stays `null`; a UTR is never made up.
+
+### Files
+| File | Role |
+|---|---|
+| `discoveryExtraction.ts` | Prompt, schema (up to 20 activities per page), tolerant per-item parsing, the one model call |
+| `discoveryNormalization.ts` | Level/format mapping, `AU_STATE_TIMEZONES`, state names, registration-URL safety, source-URL (SSRF) guard, date validation (one-off vs recurring) |
+| `discoveryOccurrences.ts` | Recurrence parsing, bounded occurrence generation, "has it ended", occurrence ids |
+| `discoveryDuplicateDetection.ts` | Weighted duplicate confidence (title/venue/date-or-weekday/time/organiser/URL) |
+| `discoveryFreshness.ts` | What happens when an event is seen again / missing / its source is down |
+| `discoveryQueue.ts` | Which of the 5 admin tabs an item is in; why a new item was flagged |
+| `discoveryOrchestration.ts` | Sequencing only - fetch, hash, extract, match, persist. Not unit-testable (network + API key) |
+| `discoveryScheduler.ts` | Opt-in periodic recheck |
+| `routes/adminDiscovery.ts` | Sources CRUD, queue actions, whitelisted edit, background run + status |
+| `client/.../admin-discovery.tsx`, `discovery-sources-panel.tsx` | Review queue + Source Registry, inside the Admin hub |
+
+### Sources are a controlled list (spec 3-4, 23)
+A source = a main page plus up to 5 extra pages an admin lists explicitly. The Agent reads
+only those; it never follows links. Fetches are guarded (`isSafeExternalUrl`: http(s) only,
+no localhost/private ranges/cloud-metadata address; redirect targets re-checked). Runs are
+targetable by source, state, or city.
+
+### Recurring sessions (spec 7)
+Stored **once** as a pattern (`recurrenceFrequency` + `recurrenceDayOfWeek` + times). Play
+expands the next 28 days (max 8) on read, each occurrence with id `<id>~<YYYY-MM-DD>` that
+resolves back to the one row. Only what is certain is generated: weekly with one named day,
+and fortnightly when a start date anchors the "on" week. Monthly ("first Saturday"), two-day
+patterns ("Tuesdays and Thursdays") and un-anchored fortnightly are **not** guessed - they
+start in Needs Review with the reason shown.
+
+### Freshness policy (spec 14)
+| Situation | Result |
+|---|---|
+| Seen again, unchanged | `lastCheckedAt` refreshed; back to ACTIVE |
+| Seen again, key fields changed, **approved** | back to PENDING as CHANGED with the diff shown - leaves Play until re-approved |
+| Seen again, changed, still pending | just kept current |
+| Missing from a page that WAS read | NEEDS_REVIEW; an approved event stays visible (not assumed cancelled) |
+| Page unreachable | SOURCE_UNAVAILABLE; nothing hidden over a possible outage |
+| Source says cancelled | CANCELLED (leaves Play) |
+| Date passed | EXPIRED (leaves Play), swept at the start of each real run and by the scheduler |
+| Admin Reject / Duplicate | never overturned by a re-scan |
+
+Re-runs recognise "the same event" (same page + title + date, or weekday for recurring), so
+scanning twice no longer creates duplicate Pending rows.
+
+### Cost control (spec 29)
+Visible text only, capped at 12,000 characters; a page whose text hash is unchanged since its
+last real scan is not sent to the model again (dry runs always extract, so trying a source
+out shows real results). Only sources an admin already ran for real are ever rechecked
+automatically.
+
+### Admin queue (spec 16-17)
+Tabs: Pending, Needs Review, Approved, Rejected, Archived (expired/cancelled). Counts and
+lists share one classifier so they can't disagree. Approving clears any suspected-duplicate
+link (otherwise a false positive would be approved yet hidden). Edits are whitelisted and
+re-derive time zone/coordinates when the place changes. Runs are background jobs (`POST /run`
+-> 202; the UI polls `GET /runs/:id`); one run at a time.
+
+### In Play (spec 18-21)
+External activities appear only while `APPROVED` and not EXPIRED/CANCELLED. Card: "Found by
+TennisConnect - <source>". Quick View: source, last checked, **View original** (verified
+registration link, else the source page) - never "Join". `getPublicSessionById` resolves
+external and occurrence ids (previously the modal could not load an external card at all).
+Location search matches suburb/city/state/venue/address. Because they come through
+`getPublicSessions`, the Recommendation Engine and Smart Search needed no changes.
+
+### Geocoding for national data
+"Richmond" exists in VIC, NSW, QLD and TAS, so external venues are geocoded only as
+`<suburb>, <state>, Australia` (Australia-restricted). With no known state -> no coordinates
+(never a guess) and the item is flagged for review.
+
 ## Data model summary (all new columns/tables this cycle)
 
 | Table | New columns |
@@ -346,6 +429,7 @@ missing them, breaking the first insert/select that touched them.
 | `clubs` | `latitude`, `longitude` |
 | `messages` | (pre-existing `messageType`/`actionStatus` — `"play_invite"` is a new *value*, not a new column) |
 | `geocode_cache` (new table) | `location` (PK), `latitude`, `longitude`, `source`, `created_at` |
+| `discovery_sources`, `external_activities`, `discovery_runs` (new tables, migrations 0029-0030) | Source registry (incl. `extra_urls`, `page_hashes`, `city`), external activities (recurrence, evidence, review/discovery status, duplicate links, coordinates), per-run counters |
 
 Every new player_profiles/sessions/coach_profiles/clubs column is nullable — no backfill
 required, no existing row breaks.
@@ -353,6 +437,28 @@ required, no existing row breaks.
 ---
 
 ## Known gaps (honest, not hidden)
+
+**Discovery Agent**
+- **Never run against a real page or model from the build environment** (no network there).
+  Every decision is unit-tested; the fetch + extraction + persist sequence is not. The first
+  real dry run on a real source is the true test.
+- **Static HTML only** - a site that loads its events with JavaScript will look empty to the
+  Agent. Prefer sources whose events are in the page source.
+- **Only the first 12,000 characters of a page's text are read** (and hashed) - a very long
+  page loses its tail.
+- **Monthly / multi-day / un-anchored fortnightly patterns aren't turned into dates** - they
+  go to Needs Review with the reason shown.
+- **Prices are whole dollars**; a changed source title is treated as a new event (the old one
+  is flagged as missing).
+- **Duplicate pre-filter matches suburb text**, so the same venue spelled two ways can be
+  missed by the automatic check (an admin still sees both).
+- **`reliabilityScore` is stored but not used yet**; sources can be paused but not deleted.
+- **The 5-10 source multi-state pilot (spec 23) still needs real source URLs chosen** - that
+  is a decision about real websites, not something code can make.
+
+**Play (still open from before)**
+- **Native TennisConnect sessions have no coordinates** - session creation never geocodes, so
+  the distance signal only works for external activities and player-to-player matching.
 
 - **No real geocoding data yet at scale** — the curated table covers a handful of common
   Sydney locations; Nominatim covers everything else *once someone saves that location for
@@ -374,6 +480,10 @@ required, no existing row breaks.
   status, and player match card all were.
 
 ## Testing
+
+**Discovery Agent unit tests** (added since the counts below): `discoveryAgent.test.ts` (62),
+`discoveryOccurrences.test.ts` (32), `discoveryFreshness.test.ts` (22), `lib/zonedTime.test.ts` (4)
+- 120 more, for **187 automated tests across the whole Play/AI feature set**.
 
 - **Automated, unit-level:** `server/services/recommendationEngine.test.ts` (27 tests),
   `playerMatchEngine.test.ts` (27 tests), `smartSearchEngine.test.ts` (13 tests) — 67 total,

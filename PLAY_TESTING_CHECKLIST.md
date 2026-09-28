@@ -195,6 +195,48 @@ unclear/garbled text (safe fallback expected)
 - [ ] play_player_invite_accepted / _declined fire only for play_invite-type messages
 - [ ] looking_to_play_enabled / _disabled fire from the profile toggle
 
+## 19. Discovery Agent (Admin -> Discovery)
+
+Needs the migrations 0029 and 0030 applied and, for real extraction, `ANTHROPIC_API_KEY`.
+Do the DRY RUN steps first - they write nothing.
+
+**Sources tab**
+- [ ] Add a source (name, main page, type, state). It appears in the list as "Never scanned".
+- [ ] Try adding `http://localhost/x` or `file:///etc/passwd` - it is refused.
+- [ ] Add up to 5 "Additional pages" (one per line); the card shows "+N more pages".
+- [ ] The Enabled switch pauses/resumes the source.
+
+**Dry run**
+- [ ] Sources tab -> Run on one source, "Dry run" ticked. It shows "Running...", then a summary
+      (sources, pages, potential events, valid, duplicates, needs review, rejected) and any
+      problems. Nothing appears in the queue.
+- [ ] A source with a broken URL reports a problem but the run still completes.
+
+**Real run + review queue**
+- [ ] Untick Dry run on ONE trusted source. Items appear in Pending (counts on the tabs match).
+- [ ] Run the same source again straight away: no duplicate rows appear; unchanged pages are
+      skipped ("Last checked" moves).
+- [ ] An item that was flagged shows "Why it's here: ..." in plain English.
+- [ ] Edit an item (date, state, level, price, link). A bad link (`javascript:...`) or a bad
+      date is refused with a clear message. Changing the state updates the time zone.
+- [ ] Approve / Reject / Duplicate move the item to the right tab and the counts update.
+
+**In Play**
+- [ ] An approved item appears in /play labelled "Found by TennisConnect", with a match score
+      like any other activity.
+- [ ] Click it: the Quick View LOADS (source, last checked, "View original"), and there is NO
+      "Join Session" button - even when signed out.
+- [ ] A recurring session ("every Thursday") appears as several upcoming dates, each opening
+      its own Quick View.
+- [ ] Smart Search "social doubles Sunday morning around <a city you added>" can return it.
+- [ ] Rejected / pending / expired items never appear.
+
+**Freshness**
+- [ ] Change something material on a test source page (price/time), re-run: the approved item
+      moves to Needs Review as "Changed at source" with the diff, and leaves Play until
+      re-approved.
+- [ ] Remove an event from a test page, re-run: it goes to Needs Review but stays in Play.
+
 ## If something fails
 
 Note which checklist item, what you expected vs what you saw, and ideally a screenshot -
