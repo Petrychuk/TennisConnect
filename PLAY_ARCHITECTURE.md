@@ -364,6 +364,15 @@ validation, recurrence, duplicate scoring, freshness decisions, queue tabs, Play
 | `routes/adminDiscovery.ts` | Sources CRUD, queue actions, whitelisted edit, background run + status |
 | `client/.../admin-discovery.tsx`, `discovery-sources-panel.tsx` | Review queue + Source Registry, inside the Admin hub |
 
+### V1 pilot: 3 sources, 3 states, static HTML only
+Tennis Victoria *What's On* (VIC, event listing), Strathfield Sports Club *Saturday Social*
+(NSW, single event page), Queensland Tennis Centre *Social Tennis* (QLD, recurring program).
+`npm run seed:discovery-pilot` adds them in development; in staging/production add the same
+three from Admin -> Discovery -> Sources. No browser rendering: a page that builds its events
+with JavaScript is detected (`assessPage`), skipped WITHOUT calling the model, and reported in
+the run's Problems list as *Unsupported ... needs JavaScript rendering*. Nothing is
+auto-published; every discovery lands in Pending.
+
 ### Sources are a controlled list (spec 3-4, 23)
 A source = a main page plus up to 5 extra pages an admin lists explicitly. The Agent reads
 only those; it never follows links. Fetches are guarded (`isSafeExternalUrl`: http(s) only,
@@ -394,7 +403,12 @@ Re-runs recognise "the same event" (same page + title + date, or weekday for rec
 scanning twice no longer creates duplicate Pending rows.
 
 ### Cost control (spec 29)
-Visible text only, capped at 12,000 characters; a page whose text hash is unchanged since its
+`discoveryPageContent.ts` isolates the page's main content (`<main>`, else `<article>`, else a
+role/id content region, else the body minus header/nav/footer) BEFORE the 12,000-character
+budget is applied, so a mega-menu can't crowd the events out (Tennis Victoria's menu alone is
+larger than the budget). A short slice of the footer is appended for the street address, and
+links whose text reads like "Sign Up"/"Book"/"Register" keep their address so a real
+`registrationUrl` can be returned. A page whose extracted-text hash is unchanged since its
 last real scan is not sent to the model again (dry runs always extract, so trying a source
 out shows real results). Only sources an admin already ran for real are ever rechecked
 automatically.
@@ -442,10 +456,17 @@ required, no existing row breaks.
 - **Never run against a real page or model from the build environment** (no network there).
   Every decision is unit-tested; the fetch + extraction + persist sequence is not. The first
   real dry run on a real source is the true test.
-- **Static HTML only** - a site that loads its events with JavaScript will look empty to the
-  Agent. Prefer sources whose events are in the page source.
-- **Only the first 12,000 characters of a page's text are read** (and hashed) - a very long
-  page loses its tail.
+- **Static HTML only** - a JavaScript-built page is detected and skipped (logged as
+  unsupported), not rendered. Playwright rendering is a later, separate decision.
+- **The main-content extractor is regex-based, not a browser** - it handles the common
+  layouts (`<main>`/`<article>`/content div) but an unusual theme can still let some
+  navigation through or cut content. Only the first 12,000 characters of MAIN content are read
+  (and hashed).
+- **A one-off event that says only "begins Monday 14 September" is stored as a one-off**, so
+  once that date passes it is rejected as expired even if the program actually continues weekly.
+- **"Around Melbourne" text search matches suburb/city/state/venue text**, and a state body's
+  events usually carry a suburb ("Chadstone") but no city - distance (coordinates) covers those,
+  the text match doesn't.
 - **Monthly / multi-day / un-anchored fortnightly patterns aren't turned into dates** - they
   go to Needs Review with the reason shown.
 - **Prices are whole dollars**; a changed source title is treated as a new event (the old one
@@ -481,9 +502,11 @@ required, no existing row breaks.
 
 ## Testing
 
-**Discovery Agent unit tests** (added since the counts below): `discoveryAgent.test.ts` (62),
-`discoveryOccurrences.test.ts` (32), `discoveryFreshness.test.ts` (22), `lib/zonedTime.test.ts` (4)
-- 120 more, for **187 automated tests across the whole Play/AI feature set**.
+**Discovery Agent unit tests** (added since the counts below): `discoveryAgent.test.ts` (66),
+`discoveryOccurrences.test.ts` (32), `discoveryFreshness.test.ts` (22),
+`discoveryPageContent.test.ts` (18), `discoveryPilot.test.ts` (16 - the three pilot sources through
+the real post-model pipeline, model output simulated), `lib/zonedTime.test.ts` (4) - 158
+more, for **225 automated tests across the whole Play/AI feature set**.
 
 - **Automated, unit-level:** `server/services/recommendationEngine.test.ts` (27 tests),
   `playerMatchEngine.test.ts` (27 tests), `smartSearchEngine.test.ts` (13 tests) — 67 total,

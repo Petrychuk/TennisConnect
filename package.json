@@ -21,7 +21,8 @@
     "seed:live": "cross-env NODE_ENV=development tsx server/seeds/liveSessionSeed.ts",
     "seed:live:reset": "cross-env NODE_ENV=development tsx server/seeds/liveSessionSeed.ts --reset",
     "seed:test-players": "cross-env NODE_ENV=development tsx server/seeds/testPlayersSeed.ts",
-    "seed:test-players:reset": "cross-env NODE_ENV=development tsx server/seeds/testPlayersSeed.ts --reset"
+    "seed:test-players:reset": "cross-env NODE_ENV=development tsx server/seeds/testPlayersSeed.ts --reset",
+    "seed:discovery-pilot": "cross-env NODE_ENV=development tsx server/seeds/discoveryPilotSeed.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

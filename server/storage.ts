@@ -3170,7 +3170,9 @@ export class DatabaseStorage implements IStorage {
       return {
         id: recurring ? makeOccurrenceId(activity.id, date) : activity.id,
         title: activity.title,
-        type: activity.activityType ?? "social",
+        // Empty when the source's wording matched no known format - the card
+        // then shows no format badge rather than an invented "Social Hit".
+        type: activity.activityType ?? "",
         // External activities carry no TennisConnect registration data to
         // derive a real status from; the CTA is "View original" (spec
         // section 19), not a TennisConnect join flow with its own

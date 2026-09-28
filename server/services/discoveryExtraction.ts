@@ -66,7 +66,7 @@ export function buildExtractionPrompt(sourceText: string, sourceUrl: string): { 
 
 Return { "activities": [] } if the page describes no tennis activity a recreational player could join (news, coaching bios, court hire prices, etc.).
 
-One entry per distinct activity. A session that repeats ("every Thursday 7-9pm") is ONE entry with recurrenceText set - never split it into individual dates.
+One entry per distinct activity. A session that repeats ("every Thursday 7-9pm") is ONE entry with recurrenceText set - never split it into individual dates. If one page describes several programs (a Tuesday session and a Sunday session), each is its own entry, and its recurrenceText and times must be the wording for THAT entry only, not the whole page's ("every Tuesday 7-10pm", not "every Tuesday and Sunday").
 
 Each <activity> has exactly these fields:
 {
@@ -74,7 +74,7 @@ Each <activity> has exactly these fields:
   "description": string | null,
   "activityTypeText": string | null (the source's own words for what kind of activity this is, e.g. "social tennis", "round robin" - do not map this to TennisConnect's own taxonomy, just extract the source's wording),
   "gameFormatText": string | null (only if the source explicitly says singles/doubles/mixed),
-  "startDate": string | null (YYYY-MM-DD, only if a specific date is stated or unambiguously derivable - for a recurring session with no specific next date, leave this null and use recurrenceText instead),
+  "startDate": string | null (YYYY-MM-DD, only if a specific date AND its year are stated or unambiguously derivable from the page - e.g. a "September 2026" heading above "Saturday 12 September". If the year isn't on the page, leave it null. For a recurring session with no specific next date, leave this null and use recurrenceText instead),
   "endDate": string | null (YYYY-MM-DD),
   "startTime": string | null (HH:MM, 24-hour),
   "endTime": string | null (HH:MM, 24-hour),
@@ -86,7 +86,7 @@ Each <activity> has exactly these fields:
   "state": string | null (NSW/VIC/QLD/WA/SA/TAS/ACT/NT if determinable),
   "postcode": string | null,
   "levelText": string | null (the source's own wording, e.g. "Intermediate players" - do not map this to a TennisConnect level, and NEVER invent a specific UTR number if one isn't stated),
-  "price": number | null (a plain number in whole dollars, only if a specific price is stated - never invent one),
+  "price": number | null (a plain number in whole dollars, only if a specific price is stated - never invent one. If members and non-members pay different amounts, report the non-member / casual / visitor price and quote both in evidence; if the activity is stated to be free, use 0),
   "currency": string | null (e.g. "AUD" - default AUD only if a dollar sign with no other currency is present and the source is clearly Australian; otherwise null),
   "organiserName": string | null,
   "registrationUrl": string | null (only if an actual URL is present in the source text - never fabricate one),

@@ -2,18 +2,18 @@ import { createHash } from "node:crypto";
 import { storage } from "../storage";
 import { callExtractionLLM, classifyConfidence, type ExtractedActivity } from "./discoveryExtraction";
 import {
-  normaliseLevelText,
-  normaliseFormatText,
   normaliseAustralianState,
   resolveTimeZoneForState,
   resolveRegistrationUrl,
   validateDiscoveredDates,
   isSafeExternalUrl,
 } from "./discoveryNormalization";
+import { assessPage } from "./discoveryPageContent";
+import { buildActivityRecord } from "./discoveryRecord";
 import { computeDuplicateConfidence, DUPLICATE_REVIEW_THRESHOLD, type DuplicateCandidate } from "./discoveryDuplicateDetection";
 import { resolveAustralianVenueCoordinates } from "./geocodingService";
 import { initialDiscoveryStatus, initialFlagReasons } from "./discoveryQueue";
-import { parseRecurrenceText, toLocalDateTime, isActivityFinished } from "./discoveryOccurrences";
+import { toLocalDateTime, isActivityFinished } from "./discoveryOccurrences";
 import {
   isSameSourceEvent,
   diffTrackedFields,
@@ -38,27 +38,9 @@ import {
 type ExternalActivityRow = Awaited<ReturnType<typeof storage.getExternalActivitiesForSourcePage>>[number];
 type SourceRow = Awaited<ReturnType<typeof storage.getDiscoverySources>>[number];
 
-const MAX_PAGE_TEXT_CHARS = 12_000; // cost control (spec section 29): visible text only, capped
 const MAX_PAGES_PER_SOURCE = 6;
 const MAX_HTML_BYTES = 5_000_000;
 const SCAN_INTERVAL_DAYS = 7; // how long after a real scan a source counts as due for a recheck
-
-/** Strips tags/scripts/styles down to visible text - a real HTML parser
-    would do better, but this needs no new dependency and is good enough
-    for "give the model the page's content, not its markup". */
-function stripHtmlToText(html: string): string {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
-    .replace(/<!--[\s\S]*?-->/g, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, MAX_PAGE_TEXT_CHARS);
-}
 
 async function fetchPage(url: string): Promise<string> {
   if (!isSafeExternalUrl(url)) throw new Error("URL is not allowed");
@@ -216,8 +198,16 @@ async function scanPage(
   const html = await fetchPage(pageUrl);
   summary.pagesChecked++;
 
-  const pageText = stripHtmlToText(html);
-  if (!pageText) return;
+  // Main readable content only (menus/footers/scripts don't spend the
+  // 12,000-character budget), or a logged skip if the page needs
+  // JavaScript to show its events - V1 doesn't render pages (spec 29).
+  const assessment = assessPage(html);
+  if (!assessment.supported) {
+    console.log(JSON.stringify({ event: "discovery_page_unsupported", sourceId: source.id, pageUrl, reason: assessment.reason }));
+    summary.errors.push({ sourceId: source.id, sourceName: source.name, error: `${assessment.reason} - ${pageUrl}` });
+    return; // not a fetch failure: nothing is flagged, nothing is sent to the model
+  }
+  const pageText = assessment.text;
   const hash = sha256(pageText);
 
   const existingRows = await storage.getExternalActivitiesForSourcePage(source.id, pageUrl);
@@ -280,13 +270,9 @@ async function processActivity(
   summary: DiscoveryRunSummary
 ): Promise<void> {
   // --- normalise (deterministic - the model only extracted wording) ---
-  const state = normaliseAustralianState(extracted.state) ?? normaliseAustralianState(source.state);
-  const timeZone = resolveTimeZoneForState(state);
-  const recurrence = parseRecurrenceText(extracted.recurrenceText);
-  const { activityType, gameFormat } = normaliseFormatText(
-    [extracted.activityTypeText, extracted.gameFormatText, extracted.title].filter(Boolean).join(" ")
-  );
-  const registrationUrl = resolveRegistrationUrl(extracted.registrationUrl, pageUrl);
+  const built = buildActivityRecord(extracted, { sourceState: source.state, sourceCity: source.city, pageUrl });
+  const { record, recurrence } = built;
+  const { state, timeZone, registrationUrl } = record;
   const identity = {
     title: extracted.title,
     startDate: extracted.startDate,
@@ -296,34 +282,6 @@ async function processActivity(
   // Is this the same event we already found on this page last time?
   const match = existingRows.find((r) => !seenIds.has(r.id) && isSameSourceEvent(r, identity));
   if (match) seenIds.add(match.id);
-
-  const record = {
-    title: extracted.title,
-    description: extracted.description,
-    activityType,
-    gameFormat,
-    startDate: extracted.startDate,
-    endDate: extracted.endDate,
-    startTime: extracted.startTime,
-    endTime: extracted.endTime,
-    recurrenceFrequency: recurrence?.frequency ?? null,
-    recurrenceDayOfWeek: recurrence?.dayOfWeek ?? null,
-    venueName: extracted.venueName,
-    address: extracted.address,
-    suburb: extracted.suburb,
-    city: extracted.city,
-    state,
-    postcode: extracted.postcode,
-    timeZone,
-    originalLevelText: extracted.levelText,
-    normalisedLevel: normaliseLevelText(extracted.levelText),
-    // The column is whole dollars; a stated $12.50 rounds rather than
-    // failing the insert.
-    price: extracted.price != null ? Math.round(extracted.price) : null,
-    currency: extracted.currency ?? "AUD",
-    organiserName: extracted.organiserName,
-    registrationUrl,
-  };
 
   // --- cancelled by the source ---
   if (extracted.cancelled === true) {
@@ -414,9 +372,7 @@ async function processActivity(
     confidence,
     isPossibleDuplicate,
     timeZoneKnown: !!timeZone,
-    // A fortnightly pattern is only placeable when the source gave an
-    // anchor date to count from.
-    recurrenceUnderstood: !recurrence || (recurrence.understood && (recurrence.frequency !== "FORTNIGHTLY" || !!extracted.startDate)),
+    recurrenceUnderstood: built.recurrenceUnderstood,
   };
   const status = initialDiscoveryStatus(flagInput);
   if (status === "NEEDS_REVIEW") summary.eventsNeedingReview++;
