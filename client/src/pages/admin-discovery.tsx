@@ -19,6 +19,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DiscoverySourcesPanel, type DiscoverySourceRow } from "@/components/admin/discovery-sources-panel";
 
 // [PLAY][AI] TC Discovery Agent, sections 16-17 - the Admin Discovery
 // Queue, living inside the Admin hub shell (same sidebar/header/mobile
@@ -30,13 +32,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 // Recommendation Engine's job, afterwards). Approve makes an event
 // ELIGIBLE for Play; it doesn't guarantee anyone is shown it.
 
-type Tab = "PENDING" | "NEEDS_REVIEW" | "APPROVED" | "REJECTED";
+type Tab = "PENDING" | "NEEDS_REVIEW" | "APPROVED" | "REJECTED" | "ARCHIVED";
 
 const TABS: { value: Tab; label: string }[] = [
   { value: "PENDING", label: "Pending" },
   { value: "APPROVED", label: "Approved" },
   { value: "NEEDS_REVIEW", label: "Needs Review" },
   { value: "REJECTED", label: "Rejected" },
+  { value: "ARCHIVED", label: "Archived" },
 ];
 
 const EMPTY_STATES: Record<Tab, { title: string; hint: string }> = {
@@ -55,6 +58,10 @@ const EMPTY_STATES: Record<Tab, { title: string; hint: string }> = {
   REJECTED: {
     title: "No rejected activities.",
     hint: "Rejected activities and duplicates are kept here for reference.",
+  },
+  ARCHIVED: {
+    title: "Nothing archived yet.",
+    hint: "Activities that have finished, or that the source says were cancelled, are kept here.",
   },
 };
 
@@ -83,7 +90,38 @@ interface ExternalActivityRow {
   discoveryStatus: string;
   duplicateConfidence: number | null;
   lastCheckedAt: string;
+  registrationUrl: string | null;
+  // Internal notes from the Agent: why an item was flagged (_flag), what
+  // changed since it was approved (_changes), plus source quotes.
+  extractionEvidence: Record<string, string> | null;
 }
+
+interface RunSummary {
+  id: string;
+  isDryRun: boolean;
+  completedAt: string | null;
+  sourcesScanned: number;
+  pagesChecked: number;
+  eventsDiscovered: number;
+  eventsValid: number;
+  eventsNeedingReview: number;
+  eventsCreated: number;
+  eventsUpdated: number;
+  duplicatesDetected: number;
+  validationFailures: number;
+  errors: { sourceId: string; sourceName: string; error: string }[];
+}
+
+const STATUS_BADGES: Record<string, string> = {
+  CHANGED: "Changed at source",
+  SOURCE_UNAVAILABLE: "Source unavailable",
+  EXPIRED: "Expired",
+  CANCELLED: "Cancelled",
+};
+
+const AU_STATES = ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"];
+const LEVELS = ["Beginner", "Intermediate", "Advanced", "Pro"];
+const NONE = "__none__";
 
 async function api(path: string, options?: RequestInit) {
   const res = await fetch(`/api/admin/discovery${path}`, {
@@ -133,6 +171,7 @@ export default function AdminDiscoveryPage() {
     ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null, isAdmin: user.isAdmin ?? false }
     : mockOrganiser;
 
+  const [view, setView] = useState<"queue" | "sources">("queue");
   const [tab, setTab] = useState<Tab>("PENDING");
   const [counts, setCounts] = useState<Record<Tab, number> | null>(null);
   const [items, setItems] = useState<ExternalActivityRow[]>([]);
@@ -140,10 +179,12 @@ export default function AdminDiscoveryPage() {
   const [editing, setEditing] = useState<ExternalActivityRow | null>(null);
   const [editDraft, setEditDraft] = useState<Partial<ExternalActivityRow>>({});
   const [runOpen, setRunOpen] = useState(false);
+  const [runTarget, setRunTarget] = useState<DiscoverySourceRow | null>(null);
   const [running, setRunning] = useState(false);
-  const [runSummary, setRunSummary] = useState<Record<string, number> | null>(null);
+  const [runSummary, setRunSummary] = useState<RunSummary | null>(null);
   const [runIsDryRun, setRunIsDryRun] = useState(true);
   const [runState, setRunState] = useState("");
+  const [runCity, setRunCity] = useState("");
 
   const loadCounts = () => {
     if (!isAdmin) return;
@@ -151,7 +192,7 @@ export default function AdminDiscoveryPage() {
   };
 
   const load = () => {
-    if (!isAdmin) return;
+    if (!isAdmin || view !== "queue") return;
     setLoading(true);
     api(`/activities?status=${tab}`)
       .then(setItems)
@@ -159,7 +200,7 @@ export default function AdminDiscoveryPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(load, [tab, isAdmin]);
+  useEffect(load, [tab, isAdmin, view]);
   useEffect(loadCounts, [isAdmin]);
 
   const act = async (id: string, action: "approve" | "reject" | "mark-duplicate") => {
@@ -173,33 +214,78 @@ export default function AdminDiscoveryPage() {
     }
   };
 
+  const openEdit = (item: ExternalActivityRow) => {
+    setEditing(item);
+    setEditDraft({ ...item });
+  };
+
   const saveEdit = async () => {
     if (!editing) return;
+    // Only the fields this form edits - the server whitelists them too.
+    const payload = {
+      title: editDraft.title,
+      startDate: editDraft.startDate ?? null,
+      startTime: editDraft.startTime ?? null,
+      endTime: editDraft.endTime ?? null,
+      suburb: editDraft.suburb ?? null,
+      state: editDraft.state ?? null,
+      normalisedLevel: editDraft.normalisedLevel ?? null,
+      price: editDraft.price ?? null,
+      registrationUrl: editDraft.registrationUrl ?? null,
+    };
     try {
-      const updated = await api(`/activities/${editing.id}`, { method: "PUT", body: JSON.stringify(editDraft) });
+      const updated = await api(`/activities/${editing.id}`, { method: "PUT", body: JSON.stringify(payload) });
       setItems((prev) => prev.map((i) => (i.id === editing.id ? { ...i, ...updated } : i)));
       setEditing(null);
       toast({ title: "Saved" });
     } catch {
-      toast({ variant: "destructive", title: "Couldn't save" });
+      toast({
+        variant: "destructive",
+        title: "Couldn't save",
+        description: "Check the date (YYYY-MM-DD), times (HH:MM) and that the link starts with http(s)://",
+      });
     }
   };
 
+  const openRun = (source: DiscoverySourceRow | null) => {
+    setRunTarget(source);
+    setRunSummary(null);
+    setRunState("");
+    setRunCity("");
+    setRunOpen(true);
+  };
+
+  // A run is a background job (it can take minutes): start it, then
+  // poll its row until it reports completion.
   const runDiscovery = async () => {
     setRunning(true);
     setRunSummary(null);
     try {
-      const result = await api("/run", {
+      const { id } = await api("/run", {
         method: "POST",
-        body: JSON.stringify({ isDryRun: runIsDryRun, targetState: runState || undefined }),
+        body: JSON.stringify({
+          isDryRun: runIsDryRun,
+          targetSourceId: runTarget?.id,
+          targetState: runTarget ? undefined : runState || undefined,
+          targetCity: runTarget ? undefined : runCity.trim() || undefined,
+        }),
       });
-      setRunSummary(result);
-      if (!runIsDryRun) {
-        load();
-        loadCounts();
+      const deadline = Date.now() + 15 * 60 * 1000;
+      while (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 2000));
+        const run: RunSummary = await api(`/runs/${id}`);
+        if (run.completedAt) {
+          setRunSummary(run);
+          if (!run.isDryRun) {
+            load();
+            loadCounts();
+          }
+          return;
+        }
       }
-    } catch {
-      toast({ variant: "destructive", title: "Run failed" });
+      toast({ title: "Still running", description: "This is taking a while - check back on the Sources tab shortly." });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: err?.message || "Run failed" });
     } finally {
       setRunning(false);
     }
@@ -217,6 +303,8 @@ export default function AdminDiscoveryPage() {
       </div>
     );
   }
+
+  const isFinal = (i: ExternalActivityRow) => i.discoveryStatus === "EXPIRED" || i.discoveryStatus === "CANCELLED";
 
   return (
     <>
@@ -243,7 +331,6 @@ export default function AdminDiscoveryPage() {
         </aside>
 
         <main id="main-content" className="flex-1 min-w-0 pb-16 md:pb-0">
-          {/* Compact bar - tablet & mobile, same pattern as the rest of the hub */}
           <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
             <Sheet>
               <SheetTrigger asChild>
@@ -277,7 +364,7 @@ export default function AdminDiscoveryPage() {
                 </p>
               </div>
               <Button
-                onClick={() => setRunOpen(true)}
+                onClick={() => openRun(null)}
                 className="bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
                 data-testid="discovery-run-button"
               >
@@ -285,108 +372,137 @@ export default function AdminDiscoveryPage() {
               </Button>
             </div>
 
-            <div className="flex gap-2 mb-6 overflow-x-auto pb-1" data-testid="discovery-tabs">
-              {TABS.map((t) => (
-                <Button
-                  key={t.value}
-                  variant={tab === t.value ? "default" : "outline"}
-                  size="sm"
-                  className="rounded-full shrink-0"
-                  onClick={() => setTab(t.value)}
-                  data-testid={`discovery-tab-${t.value.toLowerCase()}`}
+            <div className="flex gap-6 border-b border-border mb-5" data-testid="discovery-views">
+              {(["queue", "sources"] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setView(v)}
+                  className={cn(
+                    "pb-2 -mb-px text-sm font-medium border-b-2 cursor-pointer",
+                    view === v ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+                  )}
+                  data-testid={`discovery-view-${v}`}
                 >
-                  {t.label}
-                  {counts && <span className="ml-1.5 opacity-70">{counts[t.value]}</span>}
-                </Button>
+                  {v === "queue" ? "Review queue" : "Sources"}
+                </button>
               ))}
             </div>
 
-            {loading ? (
-              <div className="space-y-3 max-w-4xl">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-36 w-full rounded-xl" />
-                ))}
-              </div>
-            ) : items.length === 0 ? (
-              <div className="py-20 text-center max-w-md mx-auto" data-testid="discovery-empty">
-                <p className="font-medium">{EMPTY_STATES[tab].title}</p>
-                <p className="text-sm text-muted-foreground mt-1">{EMPTY_STATES[tab].hint}</p>
-              </div>
+            {view === "sources" ? (
+              <DiscoverySourcesPanel onRunSource={openRun} />
             ) : (
-              <div className="space-y-3 max-w-4xl" data-testid="discovery-queue-list">
-                {items.map((item) => {
-                  const where = [item.venueName ?? item.suburb, item.state].filter(Boolean).join(" · ");
-                  const detected = [
-                    item.activityType && humanise(item.activityType),
-                    item.gameFormat && humanise(item.gameFormat),
-                    item.normalisedLevel ?? item.originalLevelText,
-                    item.price != null && `$${item.price}`,
-                  ].filter(Boolean);
-                  return (
-                    <Card key={item.id} className="border-0 shadow-sm bg-muted/40" data-testid={`discovery-item-${item.id}`}>
-                      <CardContent className="py-4 space-y-2">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="font-semibold">{item.title}</p>
-                            <p className="text-sm text-muted-foreground">{where || "Location unknown"}</p>
-                          </div>
-                          <div className="flex flex-wrap justify-end gap-1.5 shrink-0">
-                            {item.reviewStatus === "DUPLICATE" && <Badge variant="outline">Duplicate</Badge>}
-                            {item.duplicateConfidence != null && item.reviewStatus !== "DUPLICATE" && (
-                              <Badge variant="outline" className="text-amber-600 border-amber-300">
-                                {item.duplicateConfidence}% possible duplicate
-                              </Badge>
+              <>
+                <div className="flex gap-2 mb-6 overflow-x-auto pb-1" data-testid="discovery-tabs">
+                  {TABS.map((t) => (
+                    <Button
+                      key={t.value}
+                      variant={tab === t.value ? "default" : "outline"}
+                      size="sm"
+                      className="rounded-full shrink-0"
+                      onClick={() => setTab(t.value)}
+                      data-testid={`discovery-tab-${t.value.toLowerCase()}`}
+                    >
+                      {t.label}
+                      {counts && <span className="ml-1.5 opacity-70">{counts[t.value]}</span>}
+                    </Button>
+                  ))}
+                </div>
+
+                {loading ? (
+                  <div className="space-y-3 max-w-4xl">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <Skeleton key={i} className="h-36 w-full rounded-xl" />
+                    ))}
+                  </div>
+                ) : items.length === 0 ? (
+                  <div className="py-20 text-center max-w-md mx-auto" data-testid="discovery-empty">
+                    <p className="font-medium">{EMPTY_STATES[tab].title}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{EMPTY_STATES[tab].hint}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-w-4xl" data-testid="discovery-queue-list">
+                    {items.map((item) => {
+                      const where = [item.venueName ?? item.suburb, item.state].filter(Boolean).join(" · ");
+                      const detected = [
+                        item.activityType && humanise(item.activityType),
+                        item.gameFormat && humanise(item.gameFormat),
+                        item.normalisedLevel ?? item.originalLevelText,
+                        item.price != null && `$${item.price}`,
+                      ].filter(Boolean);
+                      const flag = item.extractionEvidence?._flag;
+                      const changed = item.extractionEvidence?._changes;
+                      const statusBadge = STATUS_BADGES[item.discoveryStatus];
+                      return (
+                        <Card key={item.id} className="border-0 shadow-sm bg-muted/40" data-testid={`discovery-item-${item.id}`}>
+                          <CardContent className="py-4 space-y-2">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="font-semibold">{item.title}</p>
+                                <p className="text-sm text-muted-foreground">{where || "Location unknown"}</p>
+                              </div>
+                              <div className="flex flex-wrap justify-end gap-1.5 shrink-0">
+                                {statusBadge && <Badge variant="outline">{statusBadge}</Badge>}
+                                {item.reviewStatus === "DUPLICATE" && <Badge variant="outline">Duplicate</Badge>}
+                                {item.duplicateConfidence != null && item.reviewStatus !== "DUPLICATE" && (
+                                  <Badge variant="outline" className="text-amber-600 border-amber-300">
+                                    {item.duplicateConfidence}% possible duplicate
+                                  </Badge>
+                                )}
+                                <Badge variant="outline">{item.confidence}</Badge>
+                              </div>
+                            </div>
+
+                            <p className="text-sm">{formatWhen(item)}</p>
+                            {detected.length > 0 && <p className="text-sm text-muted-foreground">{detected.join(" · ")}</p>}
+
+                            {changed && (
+                              <p className="text-xs text-amber-700 dark:text-amber-400" data-testid={`discovery-item-${item.id}-changes`}>
+                                Changed since it was approved: {changed}
+                              </p>
                             )}
-                            <Badge variant="outline">{item.confidence}</Badge>
-                          </div>
-                        </div>
+                            {flag && (
+                              <p className="text-xs text-amber-700 dark:text-amber-400" data-testid={`discovery-item-${item.id}-flag`}>
+                                Why it's here: {flag}
+                              </p>
+                            )}
 
-                        <p className="text-sm">{formatWhen(item)}</p>
-                        {detected.length > 0 && <p className="text-sm text-muted-foreground">{detected.join(" · ")}</p>}
+                            <p className="text-xs text-muted-foreground">
+                              Source: <span className="text-foreground">{item.sourceName}</span> · Last checked:{" "}
+                              {formatLastChecked(item.lastCheckedAt)}
+                            </p>
 
-                        <p className="text-xs text-muted-foreground">
-                          Source: <span className="text-foreground">{item.sourceName}</span> · Last checked:{" "}
-                          {formatLastChecked(item.lastCheckedAt)}
-                        </p>
-
-                        <div className="flex flex-wrap gap-2 pt-2">
-                          <Button variant="outline" size="sm" asChild>
-                            <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> View Source
-                            </a>
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setEditing(item);
-                              setEditDraft(item);
-                            }}
-                            data-testid={`discovery-item-${item.id}-edit`}
-                          >
-                            <Pencil className="w-3.5 h-3.5 mr-1.5" /> Edit
-                          </Button>
-                          {(item.reviewStatus !== "APPROVED" || item.discoveryStatus === "NEEDS_REVIEW") && (
-                            <Button size="sm" onClick={() => act(item.id, "approve")} data-testid={`discovery-item-${item.id}-approve`}>
-                              <Check className="w-3.5 h-3.5 mr-1.5" /> Approve
-                            </Button>
-                          )}
-                          {item.reviewStatus !== "REJECTED" && item.reviewStatus !== "DUPLICATE" && (
-                            <Button variant="outline" size="sm" onClick={() => act(item.id, "reject")} data-testid={`discovery-item-${item.id}-reject`}>
-                              <X className="w-3.5 h-3.5 mr-1.5" /> Reject
-                            </Button>
-                          )}
-                          {item.reviewStatus !== "DUPLICATE" && item.reviewStatus !== "REJECTED" && (
-                            <Button variant="ghost" size="sm" onClick={() => act(item.id, "mark-duplicate")} data-testid={`discovery-item-${item.id}-duplicate`}>
-                              <Copy className="w-3.5 h-3.5 mr-1.5" /> Duplicate
-                            </Button>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
+                            <div className="flex flex-wrap gap-2 pt-2">
+                              <Button variant="outline" size="sm" asChild>
+                                <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> View Source
+                                </a>
+                              </Button>
+                              <Button variant="outline" size="sm" onClick={() => openEdit(item)} data-testid={`discovery-item-${item.id}-edit`}>
+                                <Pencil className="w-3.5 h-3.5 mr-1.5" /> Edit
+                              </Button>
+                              {!isFinal(item) && (item.reviewStatus !== "APPROVED" || item.discoveryStatus !== "ACTIVE") && (
+                                <Button size="sm" onClick={() => act(item.id, "approve")} data-testid={`discovery-item-${item.id}-approve`}>
+                                  <Check className="w-3.5 h-3.5 mr-1.5" /> Approve
+                                </Button>
+                              )}
+                              {!isFinal(item) && item.reviewStatus !== "REJECTED" && item.reviewStatus !== "DUPLICATE" && (
+                                <Button variant="outline" size="sm" onClick={() => act(item.id, "reject")} data-testid={`discovery-item-${item.id}-reject`}>
+                                  <X className="w-3.5 h-3.5 mr-1.5" /> Reject
+                                </Button>
+                              )}
+                              {!isFinal(item) && item.reviewStatus !== "DUPLICATE" && item.reviewStatus !== "REJECTED" && (
+                                <Button variant="ghost" size="sm" onClick={() => act(item.id, "mark-duplicate")} data-testid={`discovery-item-${item.id}-duplicate`}>
+                                  <Copy className="w-3.5 h-3.5 mr-1.5" /> Duplicate
+                                </Button>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </main>
@@ -418,16 +534,58 @@ export default function AdminDiscoveryPage() {
                 <Input value={editDraft.endTime ?? ""} onChange={(e) => setEditDraft((d) => ({ ...d, endTime: e.target.value }))} />
               </div>
             </div>
-            <div>
-              <Label>Suburb</Label>
-              <Input value={editDraft.suburb ?? ""} onChange={(e) => setEditDraft((d) => ({ ...d, suburb: e.target.value }))} />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Suburb</Label>
+                <Input value={editDraft.suburb ?? ""} onChange={(e) => setEditDraft((d) => ({ ...d, suburb: e.target.value }))} />
+              </div>
+              <div>
+                <Label>State</Label>
+                <Select
+                  value={editDraft.state ?? NONE}
+                  onValueChange={(v) => setEditDraft((d) => ({ ...d, state: v === NONE ? null : v }))}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>Unknown</SelectItem>
+                    {AU_STATES.map((st) => (
+                      <SelectItem key={st} value={st}>{st}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Level</Label>
+                <Select
+                  value={editDraft.normalisedLevel ?? NONE}
+                  onValueChange={(v) => setEditDraft((d) => ({ ...d, normalisedLevel: v === NONE ? null : v }))}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>Not stated</SelectItem>
+                    {LEVELS.map((l) => (
+                      <SelectItem key={l} value={l}>{l}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Price ($ AUD)</Label>
+                <Input
+                  type="number"
+                  value={editDraft.price ?? ""}
+                  onChange={(e) => setEditDraft((d) => ({ ...d, price: e.target.value ? Number(e.target.value) : null }))}
+                />
+              </div>
             </div>
             <div>
-              <Label>Price ($ AUD)</Label>
+              <Label>Registration link</Label>
               <Input
-                type="number"
-                value={editDraft.price ?? ""}
-                onChange={(e) => setEditDraft((d) => ({ ...d, price: e.target.value ? Number(e.target.value) : null }))}
+                value={editDraft.registrationUrl ?? ""}
+                onChange={(e) => setEditDraft((d) => ({ ...d, registrationUrl: e.target.value }))}
+                placeholder="https://..."
               />
             </div>
           </div>
@@ -439,28 +597,52 @@ export default function AdminDiscoveryPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={runOpen} onOpenChange={setRunOpen}>
+      <Dialog open={runOpen} onOpenChange={(open) => !running && setRunOpen(open)}>
         <DialogContent data-testid="discovery-run-modal">
           <DialogHeader>
-            <DialogTitle>Run Discovery</DialogTitle>
+            <DialogTitle>{runTarget ? `Run: ${runTarget.name}` : "Run Discovery"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={runIsDryRun} onChange={(e) => setRunIsDryRun(e.target.checked)} />
+              <input type="checkbox" checked={runIsDryRun} disabled={running} onChange={(e) => setRunIsDryRun(e.target.checked)} />
               Dry run (discover and extract, but don't publish anything)
             </label>
-            <div>
-              <Label>Limit to state (optional)</Label>
-              <Input placeholder="e.g. NSW" value={runState} onChange={(e) => setRunState(e.target.value.toUpperCase())} />
-            </div>
+            {!runTarget && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>State (optional)</Label>
+                  <Input placeholder="e.g. VIC" value={runState} onChange={(e) => setRunState(e.target.value.toUpperCase())} />
+                </div>
+                <div>
+                  <Label>City (optional)</Label>
+                  <Input placeholder="e.g. Melbourne" value={runCity} onChange={(e) => setRunCity(e.target.value)} />
+                </div>
+              </div>
+            )}
             {runSummary && (
               <div className="rounded-lg bg-muted/40 p-3 text-sm space-y-1" data-testid="discovery-run-summary">
+                <p className="font-medium">{runSummary.isDryRun ? "Dry run - nothing was published" : "Run complete"}</p>
                 <p>Sources scanned: {runSummary.sourcesScanned}</p>
                 <p>Pages checked: {runSummary.pagesChecked}</p>
-                <p>Events discovered: {runSummary.eventsDiscovered}</p>
-                <p>Events created: {runSummary.eventsCreated}</p>
-                <p>Duplicates detected: {runSummary.duplicatesDetected}</p>
-                <p>Validation failures: {runSummary.validationFailures}</p>
+                <p>Potential events: {runSummary.eventsDiscovered}</p>
+                <p>Valid: {runSummary.eventsValid}</p>
+                <p>Potential duplicates: {runSummary.duplicatesDetected}</p>
+                <p>Needs review: {runSummary.eventsNeedingReview}</p>
+                <p>Rejected by validation: {runSummary.validationFailures}</p>
+                <p>{runSummary.isDryRun ? "Would be created" : "Created"}: {runSummary.eventsCreated}</p>
+                <p>{runSummary.isDryRun ? "Would be updated" : "Updated"}: {runSummary.eventsUpdated}</p>
+                {runSummary.errors?.length > 0 && (
+                  <div className="pt-1">
+                    <p className="font-medium text-destructive">Problems ({runSummary.errors.length})</p>
+                    <ul className="list-disc pl-5 text-xs text-muted-foreground">
+                      {runSummary.errors.map((e, i) => (
+                        <li key={i}>
+                          {e.sourceName}: {e.error}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
           </div>
