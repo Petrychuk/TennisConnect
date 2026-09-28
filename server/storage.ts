@@ -94,6 +94,7 @@ import {
 } from "@shared/schema";
 import { db, pool } from "./db";
 import { zonedTimeToUtc } from "./lib/zonedTime";
+import { classifyQueueTab, type QueueTab } from "./services/discoveryQueue";
 import { eq, desc, and, or, asc, sql, lte, ne, gte, ilike, inArray, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { supabaseAdmin } from "./supabaseAdmin";
@@ -204,6 +205,7 @@ export interface IStorage {
   getExternalActivitiesForDuplicateCheck(filters: { suburb?: string | null; startDate?: string | null }): Promise<(typeof externalActivities.$inferSelect)[]>;
   getPublicSessionsForDuplicateCheck(filters: { location?: string | null; startDate?: string | null }): Promise<{ id: string; title: string; location: string | null; startAt: string }[]>;
   getExternalActivitiesForReview(status: string): Promise<(typeof externalActivities.$inferSelect)[]>;
+  getExternalActivityCounts(): Promise<Record<QueueTab, number>>;
   reviewExternalActivity(id: string, data: Partial<typeof externalActivities.$inferInsert>): Promise<typeof externalActivities.$inferSelect | undefined>;
   updateExternalActivity(id: string, data: Partial<typeof externalActivities.$inferInsert>): Promise<typeof externalActivities.$inferSelect | undefined>;
   createDiscoveryRun(data: Partial<typeof discoveryRuns.$inferInsert>): Promise<typeof discoveryRuns.$inferSelect>;
@@ -1023,13 +1025,24 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async getExternalActivitiesForReview(status: string) {
-    // "NEEDS_REVIEW" is a discoveryStatus value (freshness needing a
-    // recheck), every other tab (PENDING/APPROVED/REJECTED/DUPLICATE)
-    // is a reviewStatus value (the human decision) - both land in the
-    // same admin queue view, just filtered on a different column.
-    const column = status === "NEEDS_REVIEW" ? externalActivities.discoveryStatus : externalActivities.reviewStatus;
-    return await db.select().from(externalActivities).where(eq(column, status));
+  // Tab membership comes from classifyQueueTab (server/services/
+  // discoveryQueue.ts) for BOTH this list and the counts below, so a
+  // tab's number can never disagree with what opening it shows. V1
+  // volume (a handful of pilot sources) makes filtering in JS fine;
+  // if this table ever grows into the tens of thousands, that's the
+  // moment to push the same rules into SQL.
+  async getExternalActivitiesForReview(tab: string) {
+    const rows = await db.select().from(externalActivities).orderBy(desc(externalActivities.discoveredAt));
+    return rows.filter((r) => classifyQueueTab(r.reviewStatus, r.discoveryStatus) === tab);
+  }
+
+  async getExternalActivityCounts(): Promise<Record<QueueTab, number>> {
+    const rows = await db
+      .select({ reviewStatus: externalActivities.reviewStatus, discoveryStatus: externalActivities.discoveryStatus })
+      .from(externalActivities);
+    const counts: Record<QueueTab, number> = { PENDING: 0, APPROVED: 0, REJECTED: 0, NEEDS_REVIEW: 0 };
+    for (const r of rows) counts[classifyQueueTab(r.reviewStatus, r.discoveryStatus)]++;
+    return counts;
   }
 
   async reviewExternalActivity(id: string, data: Partial<typeof externalActivities.$inferInsert>) {
