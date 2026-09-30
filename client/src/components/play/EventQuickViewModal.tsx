@@ -234,9 +234,14 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
                     ? `${session.registeredCount} / ${session.maxParticipants} players`
                     : `${session.registeredCount} players`}
                 </p>
-                {session.price && (
-                  <p className="flex items-center gap-2" data-testid="event-modal-price">
-                    <DollarSign className="w-4 h-4 shrink-0" /> {session.price}
+                {(session.priceLabel || session.price) && (
+                  <p className="flex items-start gap-2" data-testid="event-modal-price">
+                    <DollarSign className="w-4 h-4 shrink-0 mt-0.5" />{" "}
+                    <span className="flex flex-col">
+                      {(session.priceLabel ? session.priceLabel.split(" · ") : [session.price]).map((line, i) => (
+                        <span key={i}>{line}</span>
+                      ))}
+                    </span>
                   </p>
                 )}
               </div>

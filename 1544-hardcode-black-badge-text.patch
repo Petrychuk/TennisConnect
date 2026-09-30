@@ -1,0 +1,94 @@
+From 3dd07f46e1c30f339334d835c6599c8ea070e839 Mon Sep 17 00:00:00 2001
+From: TennisConnect Dev <dev@tennisconnect.local>
+Date: Wed, 30 Sep 2026 04:53:06 +0000
+Subject: [PATCH] [BUG][UI] Hardcode black text on both unread-count badges -
+ the theme-token fix still rendered white in production
+
+Follow-up to e5befe1: that fix (text-primary-foreground, the token dark
+mode itself pairs with bg-primary for exactly this contrast problem) was
+confirmed by the user to still render white-on-lime in both spots after
+a confirmed fresh Railway deploy and a hard refresh - in the header bell
+AND in the sidebar's own Messages badge, which was believed already
+correct (it forces .dark on itself, and running the project's own
+cn()/twMerge against the exact class list confirms text-primary-foreground
+does correctly win the merge and should resolve to a dark color per
+index.css's .dark block).
+
+Given live behaviour disagreed with what the CSS is supposed to produce,
+this stops trying to route through the theme's --primary-foreground
+token and hardcodes text-black directly on both badges instead - a
+literal color no cascade/inheritance/token-resolution question can
+undermine. Both are tiny, permanently-lime badges (bg-primary, no
+dark:/light: variants of their own) where "always black text" is exactly
+what was asked for and is unconditionally correct regardless of
+light/dark theme.
+
+NOT DONE: the underlying question of WHY text-primary-foreground didn't
+resolve as the CSS says it should in the live deployment is left
+unresolved - possibly a Railway/CDN build-cache layer serving an older
+CSS bundle despite the app code being current, possibly something about
+this project's Tailwind v4 @theme inline indirection not behaving the
+way plain custom-property inheritance would predict. Worth a look if the
+same class of bug (a token expected to flip in dark mode not doing so in
+production) shows up somewhere else - a hardcoded color side-steps it
+here but doesn't explain it.
+---
+ .../organiser/dashboard/dashboard-header.tsx   | 18 +++++++++---------
+ .../organiser/ui/organiser-sidebar.tsx         | 12 +++++++++++-
+ 2 files changed, 20 insertions(+), 10 deletions(-)
+
+diff --git a/client/src/components/organiser/dashboard/dashboard-header.tsx b/client/src/components/organiser/dashboard/dashboard-header.tsx
+index cf79686..a9ce968 100644
+--- a/client/src/components/organiser/dashboard/dashboard-header.tsx
++++ b/client/src/components/organiser/dashboard/dashboard-header.tsx
+@@ -80,15 +80,15 @@ export function DashboardHeader({ organiser, profileHref, onCreateSession }: Das
+             <Bell className="w-4 h-4" />
+             {hasUnread && (
+               <Badge
+-                // Badge's default variant uses text-foreground for contrast
+-                // against bg-primary's lime - correct in light mode
+-                // (--foreground is near-black there), but in dark mode
+-                // --foreground flips to near-white: lime background, white
+-                // text, unreadable. text-primary-foreground is the color
+-                // dark mode itself pairs with --primary for exactly this -
+-                // same fix, same reasoning, as organiser-sidebar.tsx's own
+-                // unread badge.
+-                className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 justify-center text-[10px] text-primary-foreground"
++                // NOTE: text-primary-foreground was tried here first (the
++                // color dark mode's own tokens pair with --primary) but
++                // still rendered white in production after a confirmed
++                // fresh deploy and hard refresh - so this badge is always
++                // small text on the bright lime --primary background,
++                // and needs to just always be black text, full stop,
++                // rather than depend on a theme token resolving the way
++                // the CSS says it should.
++                className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 justify-center text-[10px] text-black"
+               >
+                 {unreadCount > 9 ? "9+" : unreadCount}
+               </Badge>
+diff --git a/client/src/components/organiser/ui/organiser-sidebar.tsx b/client/src/components/organiser/ui/organiser-sidebar.tsx
+index f167f48..92d50c9 100644
+--- a/client/src/components/organiser/ui/organiser-sidebar.tsx
++++ b/client/src/components/organiser/ui/organiser-sidebar.tsx
+@@ -100,7 +100,17 @@ function NavList({ items, collapsed, location, badgeCounts }: { items: NavItem[]
+             <Icon className="w-4 h-4 shrink-0" />
+             <span className="flex-1">{item.label}</span>
+             {badgeCount > 0 && (
+-              <Badge className="h-5 min-w-5 px-1.5 justify-center" data-testid={`organiser-sidebar-nav-${item.key}-badge`}>
++              // NOTE: text-primary-foreground was tried here (the color
++              // dark mode's own tokens pair with --primary, which this
++              // permanently-dark sidebar is scoped into) but still
++              // rendered white on this lime badge in production after a
++              // confirmed fresh deploy and hard refresh - so this just
++              // hardcodes black text rather than depending on a theme
++              // token resolving the way the CSS says it should.
++              <Badge
++                className="h-5 min-w-5 px-1.5 justify-center text-black"
++                data-testid={`organiser-sidebar-nav-${item.key}-badge`}
++              >
+                 {badgeCount > 9 ? "9+" : badgeCount}
+               </Badge>
+             )}
+-- 
+2.43.0
+

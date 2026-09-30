@@ -176,6 +176,7 @@ const editActivitySchema = z
     postcode: optText(10),
     normalisedLevel: z.preprocess(blankToNull, z.enum(["Beginner", "Intermediate", "Advanced", "Pro"]).nullable()),
     price: z.preprocess(blankToNull, z.number().int().min(0).max(10000).nullable()),
+    priceLabel: optText(200),
     organiserName: optText(200),
     // A link players will click - must survive the same http(s)-only
     // check the Agent applies to extracted links.

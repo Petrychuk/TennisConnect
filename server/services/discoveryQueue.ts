@@ -45,6 +45,8 @@ export interface InitialFlagInput {
   isPossibleDuplicate: boolean;
   timeZoneKnown?: boolean;
   recurrenceUnderstood?: boolean;
+  /** The source's price wording couldn't be reduced to one honest number. */
+  priceUnclear?: boolean;
 }
 
 /**
@@ -57,6 +59,7 @@ export function initialFlagReasons(input: InitialFlagInput): string[] {
   if (input.isPossibleDuplicate) reasons.push("Possible duplicate of an existing activity");
   if (input.timeZoneKnown === false) reasons.push("State unknown, so the time zone couldn't be determined");
   if (input.recurrenceUnderstood === false) reasons.push("Repeat pattern couldn't be turned into dates");
+  if (input.priceUnclear === true) reasons.push("Price is unclear - check the source's wording");
   return reasons;
 }
 

@@ -10,6 +10,15 @@ import { z } from "zod";
 /** Upper bound on activities taken from one page - a cost/abuse guard. */
 export const MAX_ACTIVITIES_PER_PAGE = 20;
 
+/**
+ * Part of every page's cache key (see discoveryOrchestration). Bump it
+ * whenever the prompt, or the rules that interpret the model's answer,
+ * change - otherwise an unchanged page is never re-extracted and stale
+ * results (e.g. a wrong price) would live on. Version 2: price is now
+ * derived from the source's wording (priceText), not asked of the model.
+ */
+export const EXTRACTION_VERSION = 2;
+
 export const extractedActivitySchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().max(2000).nullable(),
@@ -34,6 +43,11 @@ export const extractedActivitySchema = z.object({
   levelText: z.string().max(100).nullable(), // original wording only - normaliseLevelText does the mapping
 
   price: z.number().min(0).max(10000).nullable(),
+
+  // The source's own price wording, verbatim, INCLUDING conditions ("FREE for
+  // members. $20 for non-members"). The amount and label are derived from
+  // this by discoveryPrice.ts - the model is not trusted to pick a number.
+  priceText: z.string().max(400).nullable().optional(),
   currency: z.string().max(10).nullable(),
 
   organiserName: z.string().max(200).nullable(),
@@ -86,7 +100,8 @@ Each <activity> has exactly these fields:
   "state": string | null (NSW/VIC/QLD/WA/SA/TAS/ACT/NT if determinable),
   "postcode": string | null,
   "levelText": string | null (the source's own wording, e.g. "Intermediate players" - do not map this to a TennisConnect level, and NEVER invent a specific UTR number if one isn't stated),
-  "price": number | null (a plain number in whole dollars, only if a specific price is stated - never invent one. If members and non-members pay different amounts, report the non-member / casual / visitor price and quote both in evidence; if the activity is stated to be free, use 0),
+  "priceText": string | null (EVERY statement of price for THIS activity, copied word-for-word from the page, including free / member / non-member wording - e.g. "FREE for SSC tennis members. $20 pp applicable to non-tennis members each week." Do not summarise, do not choose between prices, do not drop a condition. null if the page states no price for this activity),
+  "price": null (always null - the price is worked out from priceText by our own code; do not fill this in),
   "currency": string | null (e.g. "AUD" - default AUD only if a dollar sign with no other currency is present and the source is clearly Australian; otherwise null),
   "organiserName": string | null,
   "registrationUrl": string | null (only if an actual URL is present in the source text - never fabricate one),

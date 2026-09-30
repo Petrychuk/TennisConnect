@@ -84,6 +84,7 @@ interface ExternalActivityRow {
   normalisedLevel: string | null;
   originalLevelText: string | null;
   price: number | null;
+  priceLabel: string | null;
   currency: string;
   confidence: "HIGH" | "MEDIUM" | "LOW";
   reviewStatus: string;
@@ -231,6 +232,7 @@ export default function AdminDiscoveryPage() {
       state: editDraft.state ?? null,
       normalisedLevel: editDraft.normalisedLevel ?? null,
       price: editDraft.price ?? null,
+      priceLabel: editDraft.priceLabel ?? null,
       registrationUrl: editDraft.registrationUrl ?? null,
     };
     try {
@@ -427,11 +429,14 @@ export default function AdminDiscoveryPage() {
                         item.activityType && humanise(item.activityType),
                         item.gameFormat && humanise(item.gameFormat),
                         item.normalisedLevel ?? item.originalLevelText,
-                        item.price != null && `$${item.price}`,
+                        item.priceLabel ?? (item.price != null ? (item.price === 0 ? "Free" : `$${item.price}`) : null),
                       ].filter(Boolean);
                       const flag = item.extractionEvidence?._flag;
                       const changed = item.extractionEvidence?._changes;
                       const statusBadge = STATUS_BADGES[item.discoveryStatus];
+                      // The source's own wording behind each extracted field (price,
+                      // recurrence, ...) - lets an admin check the Agent against the page.
+                      const evidenceEntries = Object.entries(item.extractionEvidence ?? {}).filter(([k]) => !k.startsWith("_"));
                       return (
                         <Card key={item.id} className="border-0 shadow-sm bg-muted/40" data-testid={`discovery-item-${item.id}`}>
                           <CardContent className="py-4 space-y-2">
@@ -455,6 +460,23 @@ export default function AdminDiscoveryPage() {
                             <p className="text-sm">{formatWhen(item)}</p>
                             {detected.length > 0 && <p className="text-sm text-muted-foreground">{detected.join(" · ")}</p>}
 
+                            {(evidenceEntries.length > 0 || item.originalLevelText) && (
+                              <details className="text-xs text-muted-foreground" data-testid={`discovery-item-${item.id}-wording`}>
+                                <summary className="cursor-pointer">Source wording</summary>
+                                <ul className="mt-1 space-y-0.5">
+                                  {evidenceEntries.map(([k, v]) => (
+                                    <li key={k}>
+                                      <span className="font-medium">{k}:</span> {v}
+                                    </li>
+                                  ))}
+                                  {item.originalLevelText && (
+                                    <li>
+                                      <span className="font-medium">level:</span> {item.originalLevelText}
+                                    </li>
+                                  )}
+                                </ul>
+                              </details>
+                            )}
                             {changed && (
                               <p className="text-xs text-amber-700 dark:text-amber-400" data-testid={`discovery-item-${item.id}-changes`}>
                                 Changed since it was approved: {changed}
@@ -579,6 +601,14 @@ export default function AdminDiscoveryPage() {
                   onChange={(e) => setEditDraft((d) => ({ ...d, price: e.target.value ? Number(e.target.value) : null }))}
                 />
               </div>
+            </div>
+            <div>
+              <Label>Price label (shown to players)</Label>
+              <Input
+                value={editDraft.priceLabel ?? ""}
+                onChange={(e) => setEditDraft((d) => ({ ...d, priceLabel: e.target.value }))}
+                placeholder="e.g. Free for members · $20 for non-members"
+              />
             </div>
             <div>
               <Label>Registration link</Label>

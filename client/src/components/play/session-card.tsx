@@ -100,6 +100,12 @@ export function PlaySessionCard({
 
         <p className="text-sm text-muted-foreground">{formatWhen(session)}</p>
 
+        {session.priceSummary && (
+          <p className="text-sm text-muted-foreground" data-testid={`play-session-card-${session.id}-price`}>
+            {session.priceSummary}
+          </p>
+        )}
+
         {session.location && (
           <p className="text-sm text-muted-foreground flex items-center gap-1.5">
             <MapPin className="w-3.5 h-3.5 shrink-0" />
