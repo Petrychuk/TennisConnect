@@ -116,6 +116,42 @@ test("prompt explicitly forbids inventing a numeric level", () => {
   assert.ok(system.toLowerCase().includes("never invent a specific utr"));
 });
 
+// --- [BUG][PLAY][AI] regression: the model must never guess "today" ---
+
+test("prompt states the exact date and weekday it was given, so the model isn't left to guess 'today'", () => {
+  const fixedNow = new Date("2026-09-30T02:00:00Z"); // a Wednesday
+  const { system } = buildSmartSearchPrompt("anything this weekend", undefined, fixedNow);
+  assert.ok(system.includes("2026-09-30"), "the real date must be stated verbatim");
+  assert.ok(system.includes("Wednesday"), "the real weekday must be stated, not left implicit");
+});
+
+test("a different given date produces a different stated date - it's not a hardcoded string", () => {
+  const { system: forJan } = buildSmartSearchPrompt("tonight", undefined, new Date("2027-01-15T00:00:00Z"));
+  assert.ok(forJan.includes("2027-01-15"));
+  assert.ok(forJan.includes("Friday"));
+});
+
+test("with no date given, the prompt uses the REAL current date, not a fixed/fallback one", () => {
+  const before = new Date();
+  const { system } = buildSmartSearchPrompt("doubles this weekend");
+  const after = new Date();
+  // The stated date must fall within [before, after] - proving it's read
+  // from a real clock at call time, not a stale or hardcoded value.
+  const stated = /Today's date is (\d{4}-\d{2}-\d{2})/.exec(system)?.[1];
+  assert.ok(stated, "the prompt must state a date in YYYY-MM-DD form");
+  const statedMs = new Date(`${stated}T00:00:00Z`).getTime();
+  const beforeDay = new Date(before.toISOString().slice(0, 10) + "T00:00:00Z").getTime();
+  const afterDay = new Date(after.toISOString().slice(0, 10) + "T00:00:00Z").getTime();
+  assert.ok(statedMs >= beforeDay - 86_400_000 && statedMs <= afterDay + 86_400_000, `stated date ${stated} is not near the real current date`);
+});
+
+test("the instruction to resolve relative terms against the stated date is explicit, not just the date sitting there unexplained", () => {
+  const { system } = buildSmartSearchPrompt("tonight", undefined, new Date("2026-09-30T00:00:00Z"));
+  const lower = system.toLowerCase();
+  assert.ok(lower.includes("resolve every relative date term"));
+  assert.ok(lower.includes("tonight") && lower.includes("this weekend"));
+});
+
 test("matchesTimeOfDay correctly buckets morning/afternoon/evening in a given time zone, not the server's own", () => {
   // 8am Sydney time on a date where the server (likely UTC) would see
   // a completely different hour if it used its own local time instead
