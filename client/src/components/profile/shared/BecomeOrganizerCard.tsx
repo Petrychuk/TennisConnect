@@ -7,6 +7,7 @@ import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import type { OrganizerStatusData } from "@/hooks/use-organizer-status";
+import { resolveOrganizerCardView } from "@/lib/organizer-status";
 
 interface BecomeOrganizerCardProps {
   status: OrganizerStatusData;
@@ -51,6 +52,8 @@ export function BecomeOrganizerCard({ status, onChange }: BecomeOrganizerCardPro
     }
   }
 
+  const view = resolveOrganizerCardView(status);
+
   return (
     <Card data-testid="become-organizer-card">
       <CardHeader>
@@ -60,7 +63,7 @@ export function BecomeOrganizerCard({ status, onChange }: BecomeOrganizerCardPro
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {status.isOrganizer ? (
+        {view.kind === "approved" ? (
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
             <div className="flex items-center gap-2 text-sm" data-testid="organizer-status-approved">
               <CheckCircle2 className="w-4 h-4 text-primary" />
@@ -70,13 +73,13 @@ export function BecomeOrganizerCard({ status, onChange }: BecomeOrganizerCardPro
               <Link href="/organiser">Open Organiser Hub</Link>
             </Button>
           </div>
-        ) : status.request?.status === "pending" ? (
+        ) : view.kind === "pending" ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="organizer-request-pending">
             <Clock className="w-4 h-4" />
             Your organiser request is awaiting review.
             <Badge variant="secondary">Pending</Badge>
           </div>
-        ) : status.request?.status === "rejected" ? (
+        ) : view.kind === "rejected" ? (
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
             <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="organizer-request-rejected">
               <XCircle className="w-4 h-4" />
@@ -93,7 +96,7 @@ export function BecomeOrganizerCard({ status, onChange }: BecomeOrganizerCardPro
               Request Again
             </Button>
           </div>
-        ) : status.request?.status === "revoked" ? (
+        ) : view.kind === "revoked" ? (
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
             <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="organizer-request-revoked">
               <XCircle className="w-4 h-4" />
