@@ -1,43 +1,70 @@
-import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "wouter";
-import { CalendarDays, MapPin, ArrowRight, Users } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { formatInTimeZone } from "@/lib/timezone";
+import { useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
+import { CalendarDays, ArrowRight, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PlaySessionCard } from "@/components/play/session-card";
+import { EventQuickViewModal } from "@/components/play/EventQuickViewModal";
+import { getPlaySessions } from "@/lib/api/play";
+import { resolveDateFilterRange } from "@/lib/play-status";
 
-interface WeekSession {
-  id: string;
-  title: string;
-  type: string;
-  location: string | null;
-  timeZone: string;
-  startAt: string;
-  organizationName: string;
-  organizationSlug: string;
-  maxParticipants: number | null;
-  spotsLeft: number | null;
-  registeredCount: number;
-}
-
-// Renders nothing until there is at least one published session in the next
-// 7 days, so the homepage stays clean before any Organizer has gone live.
+// Spec ([PLAY] section 15, "Homepage Integration"): "Do not build
+// another independent session discovery system on Home. Homepage can
+// reuse the same published Play data." This replaces the previous
+// home-play-this-week.tsx, which fetched its own separate endpoint,
+// used its own card markup, and linked to the organisation page
+// instead of opening the Event Quick View Modal - none of which
+// matched Play itself. Now: same getPlaySessions() call Play's own
+// page uses, same PlaySessionCard, same modal, just capped to a
+// homepage-sized preview.
 export function PlayThisWeek() {
-  const [sessions, setSessions] = useState<WeekSession[] | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const { from, to } = resolveDateFilterRange("this_week", "");
 
-  useEffect(() => {
-    fetch("/api/organizer/sessions/this-week")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => setSessions(Array.isArray(data) ? data : []))
-      .catch(() => setSessions([]));
-  }, []);
+  const sessionsQuery = useQuery({
+    queryKey: ["/api/play/sessions", "home-this-week", from?.toISOString(), to?.toISOString()],
+    queryFn: () => getPlaySessions({ dateFrom: from?.toISOString(), dateTo: to?.toISOString() }),
+  });
+  const sessions = (sessionsQuery.data ?? []).slice(0, 4);
 
-  if (!sessions || sessions.length === 0) return null;
+  if (sessionsQuery.isLoading) {
+    return (
+      <section className="py-24 px-4" data-testid="play-this-week-section">
+        <div className="container mx-auto max-w-4xl space-y-4">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-40 w-full rounded-2xl" />
+        </div>
+      </section>
+    );
+  }
+
+  // Compact fallback instead of a large empty block (spec: homepage
+  // should never show "a large empty Live block" when there's
+  // nothing to show) - a short line pointing at Play itself, not a
+  // whole empty section.
+  if (sessions.length === 0) {
+    return (
+      <section className="py-16 px-4" data-testid="play-this-week-empty">
+        <div className="container mx-auto max-w-4xl text-center space-y-3">
+          <Sparkles className="w-6 h-6 text-muted-foreground mx-auto" />
+          <p className="text-muted-foreground">
+            New games are coming soon - check{" "}
+            <Link href="/play" className="text-primary font-medium underline underline-offset-2">
+              Play
+            </Link>{" "}
+            for what's available now.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="py-24 px-4" id="play-this-week" data-testid="play-this-week-section">
-      <div className="container mx-auto">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
+      <div className="container mx-auto max-w-4xl">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4">
           <div>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -58,67 +85,32 @@ export function PlayThisWeek() {
               Play This Week
             </motion.h2>
           </div>
+          <Button asChild variant="outline" data-testid="play-this-week-explore-all">
+            <Link href="/play">
+              Explore all <ArrowRight className="w-4 h-4 ml-1.5" />
+            </Link>
+          </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {sessions.slice(0, 6).map((session, index) => {
-            const isFull = session.spotsLeft !== null && session.spotsLeft <= 0;
-            return (
-              <motion.div
-                key={session.id}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <Link href={`/organisations/${session.organizationSlug}`}>
-                  <Card
-                    className="h-full cursor-pointer hover:shadow-lg transition-all duration-300"
-                    data-testid={`play-this-week-card-${session.id}`}
-                  >
-                    <CardContent className="p-5 space-y-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-bold text-lg line-clamp-1">{session.title}</h3>
-                        <Badge variant="secondary" className="capitalize shrink-0">
-                          {session.type.replace("-", " ")}
-                        </Badge>
-                      </div>
-                      <div className="text-sm text-muted-foreground space-y-1">
-                        <div className="flex items-center gap-2">
-                          <CalendarDays className="w-4 h-4" />
-                          {formatInTimeZone(session.startAt, session.timeZone, {
-                            weekday: "short",
-                            day: "numeric",
-                            month: "short",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </div>
-                        {session.location && (
-                          <div className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4" />
-                            {session.location}
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2">
-                          <Users className="w-4 h-4" />
-                          {isFull ? "Waiting list open" : "Spots available"}
-                        </div>
-                      </div>
-                      <div className="text-xs text-muted-foreground pt-2 border-t flex items-center justify-between">
-                        <span>by {session.organizationName}</span>
-                        <span className="font-bold text-primary flex items-center gap-1">
-                          Join <ArrowRight className="w-3 h-3" />
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              </motion.div>
-            );
-          })}
+        <div className="space-y-4">
+          {sessions.map((session, index) => (
+            <motion.div
+              key={session.id}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: index * 0.08 }}
+            >
+              <PlaySessionCard session={session} onView={() => setSelectedSessionId(session.id)} />
+            </motion.div>
+          ))}
         </div>
       </div>
+
+      <EventQuickViewModal
+        sessionId={selectedSessionId}
+        onOpenChange={(open) => !open && setSelectedSessionId(null)}
+      />
     </section>
   );
 }

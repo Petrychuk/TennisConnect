@@ -79,7 +79,17 @@ export function DashboardHeader({ organiser, profileHref, onCreateSession }: Das
           <Link href="/organiser/messages">
             <Bell className="w-4 h-4" />
             {hasUnread && (
-              <Badge className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 justify-center text-[10px]">
+              <Badge
+                // NOTE: text-primary-foreground was tried here first (the
+                // color dark mode's own tokens pair with --primary) but
+                // still rendered white in production after a confirmed
+                // fresh deploy and hard refresh - so this badge is always
+                // small text on the bright lime --primary background,
+                // and needs to just always be black text, full stop,
+                // rather than depend on a theme token resolving the way
+                // the CSS says it should.
+                className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 justify-center text-[10px] text-black"
+              >
                 {unreadCount > 9 ? "9+" : unreadCount}
               </Badge>
             )}

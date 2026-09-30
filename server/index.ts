@@ -33,6 +33,7 @@ import cors from "cors";
 import helmet from "helmet";
 import compression from "compression";
 import { registerRoutes } from "./routes";
+import { startDiscoveryScheduler } from "./services/discoveryScheduler";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { setupAuth } from "./auth";
@@ -282,6 +283,8 @@ app.use((req, res, next) => {
     },
     () => {
       log(`serving on port ${port}`);
+      // No-op unless DISCOVERY_SCHEDULER_ENABLED=true (see discoveryScheduler.ts).
+      startDiscoveryScheduler();
     },
   );
 })();

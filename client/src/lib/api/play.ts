@@ -28,6 +28,16 @@ export async function getPlaySessions(filters: PlayFilters): Promise<PublicSessi
   return data.sessions;
 }
 
+export interface PlayRecommendation {
+  activity: PublicSessionCard;
+  recommendation: { score: number; reasons: string[] } | null;
+}
+
+export async function getPlayRecommendations(): Promise<{ isPersonalised: boolean; recommendations: PlayRecommendation[] }> {
+  const res = await apiRequest("GET", `${BASE}/recommendations`);
+  return res.json();
+}
+
 export async function getPlaySessionById(id: string): Promise<PublicSessionDetails> {
   const res = await apiRequest("GET", `${BASE}/sessions/${id}`);
   return res.json();
@@ -40,4 +50,63 @@ export async function joinSession(sessionId: string): Promise<{ waitlisted: bool
 
 export async function leaveSession(sessionId: string): Promise<void> {
   await apiRequest("DELETE", `/api/organizer/sessions/${sessionId}/join`);
+}
+
+// [PLAY][AI] Smart Natural-Language Search - see server/routes/play.ts
+// smart-search route and server/services/smartSearchEngine.ts. This
+// always succeeds with SOME usable result (falls back to a plain text
+// search server-side) - callers don't need their own try/catch just to
+// keep the search box working if AI is unavailable.
+export interface SmartSearchResponse {
+  intent: "FIND_ACTIVITY" | "FIND_PLAYER" | "TEXT_SEARCH";
+  aiUsed: boolean;
+  message?: string; // present for FIND_PLAYER
+  resolvedFilters?: {
+    location: string | null;
+    format: string | null;
+    level: string | null;
+    gameFormat: string[] | null;
+    timeOfDay: string | null;
+    dateFrom: string | null;
+    dateTo: string | null;
+  };
+  sessions: PublicSessionCard[];
+  recommendations: ({ score: number; reasons: string[] } | null)[];
+  players: MatchedPlayer[];
+  suggestions: { label: string; resultCount: number }[];
+  analytics: { intent: string; usedAI: boolean; resultCount?: number };
+}
+
+export async function smartSearch(query: string): Promise<SmartSearchResponse> {
+  const res = await apiRequest("POST", `${BASE}/smart-search`, { query });
+  return res.json();
+}
+
+// [PLAY] Players Looking to Play
+export interface MatchedPlayer {
+  player: {
+    id: string;
+    slug: string | null;
+    name: string;
+    avatar: string | null;
+    location: string | null;
+    skillLevel: string | null;
+    lookingToPlayWhen: string | null;
+    lookingToPlayFormat: string | null;
+  };
+  score: number;
+  reasons: string[];
+  hasEnoughSignal: boolean;
+}
+
+export async function getPlayersLookingToPlay(): Promise<{ players: MatchedPlayer[]; total: number }> {
+  const res = await apiRequest("GET", `${BASE}/players-looking`);
+  return res.json();
+}
+
+export async function setLookingToPlay(
+  data: { enabled: false } | { enabled: true; when: "today" | "this_week" | "this_weekend"; format?: "singles" | "doubles" | "either" }
+): Promise<{ success: boolean; profile: any }> {
+  const res = await apiRequest("PUT", "/api/me/looking-to-play", data);
+  return res.json();
 }

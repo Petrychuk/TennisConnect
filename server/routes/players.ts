@@ -29,6 +29,13 @@ router.get("/", async (req, res) => {
         bio: row.profile.bio,
         isOrganizer: row.user.isOrganizer,
         lookingFor: row.profile.lookingFor ?? [],
+        // [PLAY] Players Looking to Play - expiry-checked here (not
+        // just the bare enabled flag) so a status the player forgot to
+        // turn off months ago never shows as active in the directory.
+        lookingToPlay:
+          !!row.profile.lookingToPlayEnabled &&
+          !!row.profile.lookingToPlayExpiresAt &&
+          new Date(row.profile.lookingToPlayExpiresAt) > new Date(),
       }));
   
     res.json({

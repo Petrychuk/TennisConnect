@@ -1,16 +1,18 @@
-import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MapPin, Users } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { formatInTimeZone } from "@/lib/timezone";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
-import { PLAY_STATUS_LABEL, PLAY_STATUS_STYLE } from "@/lib/play-status";
+import { RECOMMENDATION_REASON_TEXT } from "@/lib/play-status";
+import { ActivityStatus } from "./ActivityStatus";
 import type { PublicSessionCard as PublicSessionCardData } from "@shared/schema";
 
 function formatLabel(type: string): string {
-  return SESSION_TYPE_OPTIONS.find((t) => t.key === type)?.label ?? type;
+  const known = SESSION_TYPE_OPTIONS.find((t) => t.key === type)?.label;
+  if (known) return known;
+  // Externally discovered types not in the option list ("cardio-tennis").
+  return type.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function isMultiDay(startAt: string, endAt: string | null, timeZone: string): boolean {
@@ -38,13 +40,34 @@ function initials(name: string): string {
   return name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
 }
 
-export function PlaySessionCard({ session }: { session: PublicSessionCardData }) {
+export function PlaySessionCard({
+  session,
+  onView,
+  recommendation,
+}: {
+  session: PublicSessionCardData;
+  onView: () => void;
+  // Optional - only present when this same card is reused inside
+  // "Recommended for You" (spec: reuse ActivityCard, don't build a
+  // separate card architecture for recommendations). A normal search
+  // result never passes this.
+  recommendation?: { score: number; reasons: string[] } | null;
+}) {
   const spotsLeft = session.maxParticipants != null ? session.maxParticipants - session.registeredCount : null;
   const showAsFull = session.playStatus === "full" || session.playStatus === "waitlist";
 
   return (
     <div
-      className="rounded-2xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow flex flex-col sm:flex-row"
+      role="button"
+      tabIndex={0}
+      onClick={onView}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onView();
+        }
+      }}
+      className="rounded-2xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow flex flex-col sm:flex-row cursor-pointer"
       data-testid={`play-session-card-${session.id}`}
     >
       <div className="relative w-full sm:w-40 h-40 sm:h-auto shrink-0 bg-muted">
@@ -55,12 +78,11 @@ export function PlaySessionCard({ session }: { session: PublicSessionCardData })
             <span className="text-3xl">🎾</span>
           </div>
         )}
-        <Badge
-          className={cn("absolute top-2 left-2 text-[11px] font-semibold", PLAY_STATUS_STYLE[session.playStatus])}
+        <ActivityStatus
+          status={session.playStatus}
+          className="absolute top-2 left-2 text-[11px] font-semibold"
           data-testid={`play-session-card-${session.id}-status`}
-        >
-          {PLAY_STATUS_LABEL[session.playStatus]}
-        </Badge>
+        />
       </div>
 
       <div className="flex-1 min-w-0 p-4 flex flex-col gap-2">
@@ -69,8 +91,10 @@ export function PlaySessionCard({ session }: { session: PublicSessionCardData })
         </h3>
 
         <div className="flex flex-wrap gap-1.5">
-          <Badge variant="secondary" className="text-xs">{formatLabel(session.type)}</Badge>
-          <Badge variant="outline" className="text-xs">{session.skillLevel ?? "All Levels"}</Badge>
+          {session.type && (
+            <Badge variant="secondary" className="text-xs" data-testid={`play-session-card-${session.id}-format`}>{formatLabel(session.type)}</Badge>
+          )}
+          <Badge variant="outline" className="text-xs" data-testid={`play-session-card-${session.id}-level`}>{session.skillLevel ?? (session.sourceType === "EXTERNAL" ? "Level not stated" : "All Levels")}</Badge>
           {session.courtsCount != null && <Badge variant="outline" className="text-xs">{session.courtsCount} courts</Badge>}
         </div>
 
@@ -83,7 +107,7 @@ export function PlaySessionCard({ session }: { session: PublicSessionCardData })
           </p>
         )}
 
-        <div className="flex items-center gap-1.5 text-sm">
+        <div className="flex items-center gap-1.5 text-sm" data-testid={`play-session-card-${session.id}-players`}>
           <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
           {session.maxParticipants != null ? (
             <>
@@ -97,18 +121,46 @@ export function PlaySessionCard({ session }: { session: PublicSessionCardData })
           )}
         </div>
 
+        {recommendation && recommendation.score > 0 && (
+          <div
+            className="flex items-center gap-1.5 text-sm bg-primary/5 rounded-lg px-2.5 py-1.5 min-w-0"
+            data-testid={`play-session-card-${session.id}-match`}
+          >
+            <span className="font-bold text-primary shrink-0">{recommendation.score}% match</span>
+            <span className="text-muted-foreground text-xs truncate min-w-0">
+              · {recommendation.reasons.map((r) => RECOMMENDATION_REASON_TEXT[r] ?? r).join(" · ")}
+            </span>
+          </div>
+        )}
+
         <div className="flex items-center justify-between gap-3 mt-1 pt-2 border-t border-border/60">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0" data-testid={`play-session-card-${session.id}-organiser`}>
             <Avatar className="h-6 w-6 shrink-0">
               {session.organizationLogo && <AvatarImage src={session.organizationLogo} alt="" />}
               <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{initials(session.organizationName)}</AvatarFallback>
             </Avatar>
             <span className="text-xs text-muted-foreground truncate">
-              Organised by <span className="text-foreground font-medium">{session.organizationName}</span>
+              {session.sourceType === "EXTERNAL" ? (
+                <>
+                  <span className="text-primary font-medium">Found by TennisConnect</span> · {session.organizationName}
+                </>
+              ) : (
+                <>
+                  Organised by <span className="text-foreground font-medium">{session.organizationName}</span>
+                </>
+              )}
             </span>
           </div>
-          <Button asChild size="sm" className="shrink-0" data-testid={`play-session-card-${session.id}-view`}>
-            <Link href={`/play/${session.id}`}>View</Link>
+          <Button
+            size="sm"
+            className="shrink-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              onView();
+            }}
+            data-testid={`play-session-card-${session.id}-view`}
+          >
+            View
           </Button>
         </div>
       </div>

@@ -41,6 +41,7 @@ const RecreationPage = lazy(() => import("@/pages/recreation"));
 const RecreationDetailPage = lazy(() => import("@/pages/recreation-detail"));
 const AdminPage = lazy(() => import("@/pages/admin"));
 const AdminTravelPreviewPage = lazy(() => import("@/pages/admin-travel-preview"));
+const AdminDiscoveryPage = lazy(() => import("@/pages/admin-discovery"));
 const AdminArticlePreviewPage = lazy(() => import("@/pages/admin-article-preview"));
 const OrganiserDashboardPage = lazy(() => import("@/pages/organiser/organiser-dashboard"));
 const OrganiserSessionsPage = lazy(() => import("@/pages/organiser/sessions"));
@@ -120,6 +121,7 @@ function Router() {
         <Route path="/recreation/:slug" component={RecreationDetailPage} />
         <Route path="/admin" component={AdminPage} />
         <Route path="/admin/travel/:slug/preview" component={AdminTravelPreviewPage} />
+        <Route path="/admin/discovery" component={AdminDiscoveryPage} />
         <Route path="/admin/articles/:slug/preview" component={AdminArticlePreviewPage} />
         <Route path="/messages" component={MessagesPage} />
         <Route path="/coach/profile" component={CoachProfile} />

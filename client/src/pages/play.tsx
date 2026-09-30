@@ -1,21 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
-import { useLocation, useSearch } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useLocation, useSearch } from "wouter";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Helmet } from "react-helmet-async";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import SEO from "@/components/seo";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Pagination,
   PaginationContent,
@@ -24,39 +17,192 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { Search, MapPin, CalendarDays, X, Sparkles, Tag, BarChart3 } from "lucide-react";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Search, MapPin, X, Sparkles } from "lucide-react";
 import { PlaySessionCard } from "@/components/play/session-card";
-import { getPlaySessions } from "@/lib/api/play";
-import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
-import { PLAY_DATE_FILTER_OPTIONS, PLAY_LEVEL_OPTIONS, resolveDateFilterRange, type PlayDateFilter } from "@/lib/play-status";
+import { EventQuickViewModal } from "@/components/play/EventQuickViewModal";
+import { PlayQuickFilters } from "@/components/play/PlayQuickFilters";
+import { PlayFilters, PLAY_FILTER_ALL, PLAY_FORMAT_OPTIONS, type PlayFiltersDraft } from "@/components/play/PlayFilters";
+import { PlayNoMatches, PlayNoActivitiesYet } from "@/components/play/PlayEmptyState";
+import { AvailabilityNudge } from "@/components/play/AvailabilityNudge";
+import { getPlaySessions, getPlayRecommendations, smartSearch, getPlayersLookingToPlay, type SmartSearchResponse } from "@/lib/api/play";
+import { PlayerMatchCard } from "@/components/play/PlayerMatchCard";
+import { QuickMessageModal } from "@/components/messaging/QuickMessageModal";
+import { useAuth } from "@/lib/auth-context";
+import { PLAY_DATE_FILTER_OPTIONS, resolveDateFilterRange, type PlayDateFilter } from "@/lib/play-status";
 import playHeroDesktop from "/assets/images/play-hero-desktop.webp";
 import playHeroMobile from "/assets/images/play-hero-mobile.webp";
 
-const ALL = "all";
+const ALL = PLAY_FILTER_ALL;
 const PAGE_SIZE = 6;
 
-// "Custom Session" is an organiser-defined free-for-all format (spec:
-// "Build your own format by choosing the rules, scoring..."), not a
-// recognisable category a player would ever filter by - it's excluded
-// from Play's own Format filter for that reason, even though it's a
-// perfectly valid session type elsewhere (the organiser wizard, etc).
-const PLAY_FORMAT_OPTIONS = SESSION_TYPE_OPTIONS.filter((opt) => opt.key !== "custom");
+const COMPETITION_FORMAT_KEYS = new Set(["tournament", "league", "club-championship", "junior-event"]);
 
 export default function PlayPage() {
   const [, setLocation] = useLocation();
   const searchString = useSearch();
   const organizerId = new URLSearchParams(searchString).get("organizer") ?? undefined;
+  const { user, isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
 
   const [search, setSearch] = useState("");
+  const [smartSearchResult, setSmartSearchResult] = useState<SmartSearchResponse | null>(null);
+  const [smartSearchLoading, setSmartSearchLoading] = useState(false);
   const [location, setLocationFilter] = useState("");
   const [dateFilter, setDateFilter] = useState<PlayDateFilter>("any");
   const [customDate, setCustomDate] = useState("");
   const [format, setFormat] = useState<string>(ALL);
   const [level, setLevel] = useState<string>(ALL);
+  const [competitionsOnly, setCompetitionsOnly] = useState(false);
   const [page, setPage] = useState(1);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [draft, setDraft] = useState<PlayFiltersDraft>({
+    location: "",
+    dateFilter: "any",
+    customDate: "",
+    format: ALL,
+    level: ALL,
+  });
+
+  const appliedSmartDefaults = useRef(false);
+  const myProfileQuery = useQuery({
+    queryKey: ["/api/me/player-profile", user?.id],
+    queryFn: async () => {
+      const res = await fetch("/api/me/player-profile", { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: isAuthenticated && user?.role === "player",
+  });
+
+  useEffect(() => {
+    if (appliedSmartDefaults.current) return;
+    const profile = myProfileQuery.data;
+    if (!profile) return;
+    appliedSmartDefaults.current = true;
+
+    const defaultLocation = profile.preferredCourts?.[0] || profile.location || "";
+    if (defaultLocation) setLocationFilter(defaultLocation);
+
+    const levelMap: Record<string, string> = {
+      Beginner: "Beginner",
+      Intermediate: "Intermediate",
+      Advanced: "Advanced",
+      Pro: "Advanced",
+    };
+    const defaultLevel = levelMap[profile.skillLevel];
+    if (defaultLevel) setLevel(defaultLevel);
+  }, [myProfileQuery.data]);
 
   const { from, to } = useMemo(() => resolveDateFilterRange(dateFilter, customDate), [dateFilter, customDate]);
+
+  // "Recommended for You" (spec [PLAY] Personalised Recommendations) -
+  // only fetched for a signed-in player, and only shown while the
+  // player hasn't made an explicit request of their own (search or
+  // any filter) - spec section 10 is explicit that personalisation
+  // must never override/hide an explicit search or filter, and the
+  // simplest way to guarantee that is to not show this block at all
+  // once one is active, rather than trying to blend the two.
+  const recommendationsQuery = useQuery({
+    queryKey: ["/api/play/recommendations", user?.id],
+    queryFn: getPlayRecommendations,
+    enabled: isAuthenticated && user?.role === "player",
+  });
+
+  // [PLAY] Players Looking to Play
+  const playersLookingQuery = useQuery({
+    queryKey: ["/api/play/players-looking", user?.id],
+    queryFn: getPlayersLookingToPlay,
+    enabled: isAuthenticated && user?.role === "player",
+  });
+  const [inviteTarget, setInviteTarget] = useState<{ id: string; name: string } | null>(null);
+
+  // play_player_recommendation_impression (spec section 17) - fires
+  // once per item, first time the Players Looking to Play list has
+  // real data. Same guarded-ref pattern as the event recommendations'
+  // own impression tracking above.
+  const trackedPlayerImpressions = useRef(false);
+  useEffect(() => {
+    if (trackedPlayerImpressions.current) return;
+    const players = playersLookingQuery.data?.players;
+    if (!players || players.length === 0) return;
+    trackedPlayerImpressions.current = true;
+    players.forEach((match, position) => {
+      (window as any).gtag?.("event", "play_player_recommendation_impression", {
+        matchScore: match.hasEnoughSignal ? match.score : null,
+        position,
+        gameFormat: match.player.lookingToPlayFormat,
+      });
+    });
+  }, [playersLookingQuery.data]);
+
+  // [ANALYTICS][PLAY] Track personalised recommendation engagement -
+  // impression fires once per item, the first time the list actually
+  // has data (not on every re-render/refetch of the same data).
+  // Deliberately minimal properties (spec section 15's own list) - no
+  // player profile data goes into these events.
+  const trackedImpressions = useRef(false);
+  useEffect(() => {
+    if (trackedImpressions.current) return;
+    const recs = recommendationsQuery.data?.recommendations;
+    if (!recs || recs.length === 0) return;
+    trackedImpressions.current = true;
+    recs.forEach(({ activity, recommendation }, position) => {
+      (window as any).gtag?.("event", "play_recommendation_impression", {
+        activityId: activity.id,
+        matchScore: recommendation?.score ?? null,
+        position,
+        format: activity.type,
+      });
+    });
+  }, [recommendationsQuery.data]);
+
+  const trackRecommendationOpen = (activityId: string, score: number | undefined, position: number, format: string) => {
+    (window as any).gtag?.("event", "play_recommendation_open", {
+      activityId,
+      matchScore: score ?? null,
+      position,
+      format,
+    });
+  };
+
+  // [PLAY][AI] Smart Natural-Language Search - runs on submit (Enter),
+  // not on every keystroke, given the latency/cost of an LLM call per
+  // request. Deliberately does NOT put the raw query text into
+  // analytics (spec section 17 - it could contain personal
+  // information), only the interpreted intent and outcome.
+  const handleSmartSearch = async (query: string) => {
+    if (!query.trim()) {
+      setSmartSearchResult(null);
+      return;
+    }
+    setSmartSearchLoading(true);
+    (window as any).gtag?.("event", "play_smart_search");
+    try {
+      const result = await smartSearch(query);
+      setSmartSearchResult(result);
+      if (!result.aiUsed) {
+        (window as any).gtag?.("event", "play_smart_search_fallback");
+      } else if (result.intent !== "FIND_PLAYER" && result.sessions.length === 0) {
+        (window as any).gtag?.("event", "play_smart_search_no_results", { intent: result.intent });
+      } else {
+        (window as any).gtag?.("event", "play_smart_search_success", {
+          intent: result.intent,
+          resultCount: result.sessions.length,
+        });
+      }
+    } catch {
+      // The route itself already falls back safely server-side - a
+      // failure here means the REQUEST couldn't even be made (offline,
+      // etc). Same visible behaviour either way: clear the AI result
+      // and let the page's own normal filter-driven search keep working.
+      setSmartSearchResult(null);
+      (window as any).gtag?.("event", "play_smart_search_fallback");
+    } finally {
+      setSmartSearchLoading(false);
+    }
+  };
+
+  const clearSmartSearch = () => setSmartSearchResult(null);
 
   const sessionsQuery = useQuery({
     queryKey: ["/api/play/sessions", search, location, format, level, organizerId, from?.toISOString(), to?.toISOString()],
@@ -71,21 +217,22 @@ export default function PlayPage() {
         dateTo: to?.toISOString(),
       }),
   });
-  const sessions = sessionsQuery.data ?? [];
+  const allSessions = sessionsQuery.data ?? [];
+  const sessions = competitionsOnly
+    ? allSessions.filter((s) => COMPETITION_FORMAT_KEYS.has(s.type))
+    : allSessions;
   const organiserName = sessions.find((s) => s.organizationId === organizerId)?.organizationName;
 
-  // Any filter change invalidates whatever page the person was on -
-  // starting back at page 1 is the only choice that can't strand them
-  // on a now-empty page.
   useEffect(() => {
     setPage(1);
-  }, [search, location, format, level, dateFilter, customDate, organizerId]);
+  }, [search, location, format, level, dateFilter, customDate, organizerId, competitionsOnly]);
 
   const totalPages = Math.max(1, Math.ceil(sessions.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const visibleSessions = sessions.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  const hasActiveFilters = !!search || !!location || dateFilter !== "any" || format !== ALL || level !== ALL;
+  const hasActiveFilters =
+    !!search || !!location || dateFilter !== "any" || format !== ALL || level !== ALL || competitionsOnly;
 
   const clearFilters = () => {
     setSearch("");
@@ -94,35 +241,33 @@ export default function PlayPage() {
     setCustomDate("");
     setFormat(ALL);
     setLevel(ALL);
+    setCompetitionsOnly(false);
   };
 
   const clearOrganizerFilter = () => setLocation("/play");
 
-  // Shared between the md+ sidebar and the mobile fallback row so the
-  // two never drift out of sync with each other.
-  const formatSelect = (testIdPrefix: string) => (
-    <Select value={format} onValueChange={setFormat}>
-      <SelectTrigger data-testid={`${testIdPrefix}-format`}><SelectValue placeholder="All Formats" /></SelectTrigger>
-      <SelectContent>
-        <SelectItem value={ALL} data-testid={`${testIdPrefix}-format-all`}>All Formats</SelectItem>
-        {PLAY_FORMAT_OPTIONS.map((opt) => (
-          <SelectItem key={opt.key} value={opt.key} data-testid={`${testIdPrefix}-format-${opt.key}`}>{opt.label}</SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
+  const openFilters = () => {
+    setDraft({ location, dateFilter, customDate, format, level });
+    setFiltersOpen(true);
+  };
 
-  const levelSelect = (testIdPrefix: string) => (
-    <Select value={level} onValueChange={setLevel}>
-      <SelectTrigger data-testid={`${testIdPrefix}-level`}><SelectValue placeholder="All Levels" /></SelectTrigger>
-      <SelectContent>
-        <SelectItem value={ALL} data-testid={`${testIdPrefix}-level-all`}>All Levels</SelectItem>
-        {PLAY_LEVEL_OPTIONS.filter((l) => l !== "All Levels").map((lvl) => (
-          <SelectItem key={lvl} value={lvl} data-testid={`${testIdPrefix}-level-${lvl}`}>{lvl}</SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
+  const applyDraftFilters = () => {
+    setLocationFilter(draft.location);
+    setDateFilter(draft.dateFilter);
+    setCustomDate(draft.customDate);
+    setFormat(draft.format);
+    setLevel(draft.level);
+    setFiltersOpen(false);
+  };
+
+  const clearDraftFilters = () => {
+    setDraft({ location: "", dateFilter: "any", customDate: "", format: ALL, level: ALL });
+  };
+
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [selectedRecommendation, setSelectedRecommendation] = useState<{ score: number; reasons: string[] } | null>(null);
+  const dateFilterLabel = PLAY_DATE_FILTER_OPTIONS.find((o) => o.value === dateFilter)?.label;
+  const formatLabel = PLAY_FORMAT_OPTIONS.find((o) => o.key === format)?.label;
 
   return (
     <div className="min-h-screen bg-background font-sans" data-testid="play-page">
@@ -130,12 +275,6 @@ export default function PlayPage() {
         title="Find a Game | TennisConnect"
         description="Find tennis sessions, competitions and events near you - Social Tennis, Americano, Tournaments and more, all in one place."
       />
-      {/* The hero photo is the page's LCP element - preloaded so the
-          browser starts fetching it immediately instead of only once
-          it's discovered mid-way through parsing the DOM. Two
-          separate photos now (mobile vs sm+), so each preload is
-          scoped with `media` to the breakpoint that actually uses it -
-          otherwise every visitor would fetch both. */}
       <Helmet>
         <link rel="preload" as="image" href={playHeroMobile} media="(max-width: 639px)" />
         <link rel="preload" as="image" href={playHeroDesktop} media="(min-width: 640px)" />
@@ -143,46 +282,44 @@ export default function PlayPage() {
       <Navbar />
 
       <main id="main-content">
-        {/* Mobile only (sm:hidden below): compact photo strip up top,
-            no overlay/text on it, then the headline + search on plain
-            background - matches the original mockup exactly (a full-
-            bleed dark-overlay hero was tried for mobile and reverted -
-            see the sm+ block right after this one for that version,
-            which stays as-is for tablet/desktop). Its own photo
-            (play-hero-mobile.webp) rather than a crop of the desktop
-            one, since that source is an ultra-wide banner that has no
-            good vertical crop for a strip this short. */}
         <div className="sm:hidden">
           <img src={playHeroMobile} alt="" className="w-full h-56 object-cover" fetchPriority="high" />
           <div className="px-4 pt-5 pb-2 text-center">
             <p className="text-primary text-xs font-bold tracking-widest uppercase mb-2">Play more tennis</p>
             <h1 className="text-3xl font-display font-bold" data-testid="play-page-title-mobile">Find a Game</h1>
-            <p className="text-sm text-muted-foreground mt-2">Your next match is closer than you think.</p>
-            <div className="relative max-w-xs mx-auto mt-5">
+            <p className="text-sm text-muted-foreground mt-2">Find tennis sessions, competitions and events near you.</p>
+            <div className="relative max-w-sm mx-auto mt-5">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by session, venue or organiser..."
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  if (smartSearchResult) setSmartSearchResult(null);
+                }}
+                onKeyDown={(e) => e.key === "Enter" && handleSmartSearch(search)}
+                placeholder="What would you like to play?"
                 className="pl-10 h-11"
                 data-testid="play-page-search-input-mobile"
               />
             </div>
+            <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-2 max-w-xs mx-auto">
+              {["Doubles this weekend", "Social tennis near me", "Competition around my level"].map((example) => (
+                <button
+                  key={example}
+                  className="text-xs text-muted-foreground underline underline-offset-2"
+                  onClick={() => {
+                    setSearch(example);
+                    handleSmartSearch(example);
+                  }}
+                  data-testid={`play-search-example-mobile-${example.replace(/\s+/g, "-").toLowerCase()}`}
+                >
+                  {example}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Full-bleed hero, same convention as the rest of the site
-            (see tournaments.tsx): background photo + dark gradient +
-            centered text. Same photo on every breakpoint now (no more
-            picture/source swap) - object-position shifts per
-            breakpoint instead, keeping the branded left-hand part of
-            the photo in frame on a narrow/tall mobile screen rather
-            than centre-cropping into the plain court/sideline area on
-            the right (that stray white court line is what read as a
-            floating "stripe" on mobile). The search field sits inside
-            the hero, in its lower part, where the gradient is already
-            almost fully the page's own background colour - legible
-            regardless of which photo is behind it. */}
         <div className="hidden sm:flex relative min-h-[46vh] md:mt-10 md:min-h-[calc(46vh+50px)] items-center justify-center overflow-hidden bg-black">
           <img
             src={playHeroDesktop}
@@ -197,18 +334,37 @@ export default function PlayPage() {
               Find a Game
             </h1>
             <p className="text-sm sm:text-base text-gray-200 mt-2 max-w-xl mx-auto">
-              Your next match is closer than you think.
+              Find tennis sessions, competitions and events near you.
             </p>
 
-            <div className="relative max-w-xs mx-auto mt-5">
+            <div className="relative max-w-sm mx-auto mt-5">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by session, venue or organiser..."
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  if (smartSearchResult) setSmartSearchResult(null);
+                }}
+                onKeyDown={(e) => e.key === "Enter" && handleSmartSearch(search)}
+                placeholder="What would you like to play?"
                 className="pl-10 h-11 bg-background"
                 data-testid="play-page-search-input"
               />
+            </div>
+            <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-2">
+              {["Doubles this weekend", "Social tennis near me", "Competition around my level"].map((example) => (
+                <button
+                  key={example}
+                  className="text-xs text-gray-200 underline underline-offset-2 hover:text-white"
+                  onClick={() => {
+                    setSearch(example);
+                    handleSmartSearch(example);
+                  }}
+                  data-testid={`play-search-example-${example.replace(/\s+/g, "-").toLowerCase()}`}
+                >
+                  {example}
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -228,215 +384,354 @@ export default function PlayPage() {
             </div>
           )}
 
-          {/* Mobile-only compact filter row - the sidebar (below) is
-              md+ only. Clean 2x2: Location/Date on top, Format/Level
-              below - no field spans a row on its own. */}
-          <div className="md:hidden grid grid-cols-2 gap-2 mb-5" data-testid="play-page-filters-mobile">
-            <div className="relative">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-              <Input
-                value={location}
-                onChange={(e) => setLocationFilter(e.target.value)}
-                placeholder="Location"
-                className="pl-9"
-                data-testid="play-page-filter-location-mobile"
-              />
+          <PlayQuickFilters
+            location={location}
+            dateFilter={dateFilter}
+            competitionsOnly={competitionsOnly}
+            isAuthenticated={isAuthenticated}
+            onNearMe={() => {
+              const mine = myProfileQuery.data?.preferredCourts?.[0] || myProfileQuery.data?.location;
+              setLocationFilter(mine || location);
+            }}
+            onToggleThisWeek={() => setDateFilter((v) => (v === "this_week" ? "any" : "this_week"))}
+            onToggleThisWeekend={() => setDateFilter((v) => (v === "this_weekend" ? "any" : "this_weekend"))}
+            onToggleCompetitions={() => setCompetitionsOnly((v) => !v)}
+            onOpenFilters={openFilters}
+          />
+
+          {hasActiveFilters && (
+            <div className="flex flex-wrap items-center gap-2 mb-5" data-testid="play-page-active-chips">
+              {location && (
+                <Badge variant="secondary" className="gap-1 pr-1.5" data-testid="play-chip-location">
+                  {location}
+                  <button onClick={() => setLocationFilter("")} aria-label="Remove location filter">
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              )}
+              {dateFilter !== "any" && (
+                <Badge variant="secondary" className="gap-1 pr-1.5" data-testid="play-chip-date">
+                  {dateFilter === "custom" && customDate ? customDate : dateFilterLabel}
+                  <button onClick={() => { setDateFilter("any"); setCustomDate(""); }} aria-label="Remove date filter">
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              )}
+              {format !== ALL && (
+                <Badge variant="secondary" className="gap-1 pr-1.5" data-testid="play-chip-format">
+                  {formatLabel}
+                  <button onClick={() => setFormat(ALL)} aria-label="Remove format filter">
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              )}
+              {level !== ALL && (
+                <Badge variant="secondary" className="gap-1 pr-1.5" data-testid="play-chip-level">
+                  {level}
+                  <button onClick={() => setLevel(ALL)} aria-label="Remove level filter">
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              )}
+              {competitionsOnly && (
+                <Badge variant="secondary" className="gap-1 pr-1.5" data-testid="play-chip-competitions">
+                  Competitions
+                  <button onClick={() => setCompetitionsOnly(false)} aria-label="Remove competitions filter">
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              )}
+              <Button variant="ghost" size="sm" onClick={clearFilters} data-testid="play-page-clear-filters-chips">
+                Clear all
+              </Button>
             </div>
-            <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as PlayDateFilter)}>
-              <SelectTrigger data-testid="play-page-filter-date-mobile">
-                <CalendarDays className="w-4 h-4 mr-1.5 text-muted-foreground shrink-0" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PLAY_DATE_FILTER_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value} data-testid={`play-page-filter-date-mobile-${opt.value}`}>{opt.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {formatSelect("play-page-filter-mobile")}
-            {levelSelect("play-page-filter-mobile")}
-            {dateFilter === "custom" && (
-              <Input
-                type="date"
-                value={customDate}
-                onChange={(e) => setCustomDate(e.target.value)}
-                className="col-span-2"
-                data-testid="play-page-filter-custom-date-mobile"
+          )}
+
+          <div className="space-y-5">
+            {!smartSearchResult && !hasActiveFilters && isAuthenticated && user?.role === "player" && myProfileQuery.data && !myProfileQuery.data.availability?.length && (
+              <AvailabilityNudge
+                onSaved={() => {
+                  queryClient.invalidateQueries({ queryKey: ["/api/me/player-profile"] });
+                  queryClient.invalidateQueries({ queryKey: ["/api/play/recommendations"] });
+                }}
               />
             )}
-          </div>
 
-          <div className="flex flex-col md:flex-row gap-6">
-            {/* Main filters - side column on tablet and desktop. */}
-            <aside className="hidden md:block w-64 shrink-0" data-testid="play-page-filters-sidebar">
-              <div className="sticky top-20 space-y-5">
-                <div className="space-y-1.5">
-                  <Label htmlFor="play-sidebar-location" className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                    <MapPin className="w-3.5 h-3.5" /> Location
-                  </Label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                    <Input
-                      id="play-sidebar-location"
-                      value={location}
-                      onChange={(e) => setLocationFilter(e.target.value)}
-                      placeholder="Suburb, city or venue..."
-                      className="pl-9"
-                      data-testid="play-page-filter-location"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                    <CalendarDays className="w-3.5 h-3.5" /> Date
+            {!smartSearchResult && !hasActiveFilters && isAuthenticated && user?.role === "player" && recommendationsQuery.data && recommendationsQuery.data.recommendations.length > 0 && (
+              <div className="space-y-3" data-testid="play-recommendations-section">
+                <div>
+                  <h2 className="font-display font-bold text-lg flex items-center gap-1.5" data-testid="play-recommendations-heading">
+                    {recommendationsQuery.data.isPersonalised ? (
+                      <>✨ Recommended for You</>
+                    ) : (
+                      <>Popular near you</>
+                    )}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {recommendationsQuery.data.isPersonalised
+                      ? "Games that match your level, location and tennis preferences."
+                      : "Tennis happening near you - add your preferences for better matches."}
                   </p>
-                  <RadioGroup
-                    value={dateFilter}
-                    onValueChange={(v) => setDateFilter(v as PlayDateFilter)}
-                    className="gap-1.5"
-                    data-testid="play-page-filter-date"
-                  >
-                    {PLAY_DATE_FILTER_OPTIONS.map((opt) => (
-                      <label key={opt.value} className="flex items-center gap-2 text-sm cursor-pointer">
-                        <RadioGroupItem value={opt.value} data-testid={`play-page-filter-date-${opt.value}`} />
-                        {opt.label}
-                      </label>
-                    ))}
-                  </RadioGroup>
-                  {dateFilter === "custom" && (
-                    <Input
-                      type="date"
-                      value={customDate}
-                      onChange={(e) => setCustomDate(e.target.value)}
-                      className="mt-1.5"
-                      data-testid="play-page-filter-custom-date"
+                </div>
+                <div className="space-y-4">
+                  {recommendationsQuery.data.recommendations.map(({ activity, recommendation }, position) => (
+                    <PlaySessionCard
+                      key={activity.id}
+                      session={activity}
+                      recommendation={recommendation}
+                      onView={() => {
+                        setSelectedSessionId(activity.id);
+                        setSelectedRecommendation(recommendation);
+                        trackRecommendationOpen(activity.id, recommendation?.score, position, activity.type);
+                      }}
                     />
-                  )}
+                  ))}
                 </div>
+              </div>
+            )}
 
-                <div className="space-y-1.5">
-                  <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                    <Tag className="w-3.5 h-3.5" /> Format
-                  </Label>
-                  {formatSelect("play-page-filter")}
+            {!smartSearchResult && !hasActiveFilters && isAuthenticated && user?.role === "player" && playersLookingQuery.data && playersLookingQuery.data.players.length > 0 && (
+              <div className="space-y-3" data-testid="play-players-looking-section">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="font-display font-bold text-lg" data-testid="play-players-looking-heading">
+                      👥 Players Looking to Play
+                    </h2>
+                    <p className="text-sm text-muted-foreground">Find players near you who are ready for a game.</p>
+                  </div>
+                  <Link href="/players?lookingToPlay=true" className="text-sm text-primary font-medium shrink-0" data-testid="play-see-all-players">
+                    See all players →
+                  </Link>
                 </div>
-
-                <div className="space-y-1.5">
-                  <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                    <BarChart3 className="w-3.5 h-3.5" /> Level
-                  </Label>
-                  {levelSelect("play-page-filter")}
+                <div className="space-y-3">
+                  {playersLookingQuery.data.players.map((match) => (
+                    <PlayerMatchCard
+                      key={match.player.id}
+                      match={match}
+                      onInvite={() => setInviteTarget({ id: match.player.id, name: match.player.name })}
+                    />
+                  ))}
                 </div>
+              </div>
+            )}
 
-                {hasActiveFilters && (
-                  <Button variant="outline" size="sm" className="w-full" onClick={clearFilters} data-testid="play-page-clear-filters-sidebar">
-                    Clear all filters
-                  </Button>
+            {smartSearchLoading && (
+              <div className="space-y-4" data-testid="play-smart-search-loading">
+                {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-40 w-full rounded-2xl" />)}
+              </div>
+            )}
+
+            {!smartSearchLoading && smartSearchResult && (
+              <div className="space-y-4" data-testid="play-smart-search-result">
+                {!smartSearchResult.aiUsed && (
+                  <p className="text-sm text-muted-foreground" data-testid="play-smart-search-fallback-note">
+                    We couldn't understand all of that, so we're showing results for "{search}".
+                  </p>
+                )}
+
+                {smartSearchResult.intent === "FIND_PLAYER" ? (
+                  smartSearchResult.players.length > 0 ? (
+                    <div className="space-y-3">
+                      <p className="text-sm font-medium">Players matching your search</p>
+                      {smartSearchResult.players.map((match) => (
+                        <PlayerMatchCard
+                          key={match.player.id}
+                          match={match}
+                          onInvite={() => setInviteTarget({ id: match.player.id, name: match.player.name })}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center text-center gap-2 py-16" data-testid="play-smart-search-find-player">
+                      <Sparkles className="w-8 h-8 text-muted-foreground" />
+                      <p className="font-semibold">{smartSearchResult.message}</p>
+                    </div>
+                  )
+                ) : (
+                  <>
+                    {smartSearchResult.aiUsed && smartSearchResult.resolvedFilters && (
+                      <div className="flex flex-wrap items-center gap-2" data-testid="play-smart-search-chips">
+                        <span className="text-xs text-muted-foreground">Showing matches for:</span>
+                        {[
+                          smartSearchResult.resolvedFilters.location,
+                          smartSearchResult.resolvedFilters.format,
+                          smartSearchResult.resolvedFilters.level,
+                          smartSearchResult.resolvedFilters.timeOfDay,
+                          ...(smartSearchResult.resolvedFilters.gameFormat ?? []),
+                        ]
+                          .filter(Boolean)
+                          .map((label, i) => (
+                            <Badge key={i} variant="secondary">{label}</Badge>
+                          ))}
+                        <Button variant="ghost" size="sm" onClick={clearSmartSearch} data-testid="play-smart-search-clear">
+                          <X className="w-3.5 h-3.5 mr-1" /> Clear
+                        </Button>
+                      </div>
+                    )}
+
+                    {smartSearchResult.sessions.length === 0 ? (
+                      <div className="flex flex-col items-center text-center gap-3 py-12" data-testid="play-smart-search-no-results">
+                        <Search className="w-8 h-8 text-muted-foreground" />
+                        <p className="font-semibold">No exact matches</p>
+                        {smartSearchResult.suggestions.length > 0 && (
+                          <div className="flex flex-wrap justify-center gap-2 mt-1">
+                            {smartSearchResult.suggestions.map((s) => (
+                              <Button
+                                key={s.label}
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleSmartSearch(s.label)}
+                                data-testid={`play-smart-search-suggestion-${s.label.replace(/\s+/g, "-").toLowerCase()}`}
+                              >
+                                {s.label}
+                              </Button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {smartSearchResult.sessions.map((s, i) => (
+                          <PlaySessionCard
+                            key={s.id}
+                            session={s}
+                            recommendation={smartSearchResult.recommendations[i]}
+                            onView={() => {
+                              setSelectedSessionId(s.id);
+                              setSelectedRecommendation(smartSearchResult.recommendations[i]);
+                            }}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
-            </aside>
+            )}
 
-            <div className="flex-1 min-w-0 space-y-5">
-              {sessionsQuery.isLoading ? (
-                <div className="space-y-4" data-testid="play-page-loading">
-                  {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-40 w-full rounded-2xl" />)}
-                </div>
-              ) : sessions.length === 0 ? (
-                hasActiveFilters || organizerId ? (
-                  <div className="flex flex-col items-center text-center gap-3 py-16" data-testid="play-page-no-matches">
-                    <Search className="w-8 h-8 text-muted-foreground" />
-                    <div>
-                      <p className="font-semibold">No games found</p>
-                      <p className="text-sm text-muted-foreground mt-1">Try changing your date, location or level.</p>
-                    </div>
-                    {hasActiveFilters && (
-                      <Button variant="outline" onClick={clearFilters} data-testid="play-page-clear-filters">
-                        Clear filters
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center text-center gap-3 py-16" data-testid="play-page-empty">
-                    <Sparkles className="w-8 h-8 text-muted-foreground" />
-                    <div>
-                      <p className="font-semibold">New games are coming soon</p>
-                      <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-                        TennisConnect organisers are adding new sessions and events.
-                      </p>
-                    </div>
-                  </div>
-                )
+            {!smartSearchResult && (sessionsQuery.isLoading ? (
+              <div className="space-y-4" data-testid="play-page-loading">
+                {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-40 w-full rounded-2xl" />)}
+              </div>
+            ) : sessions.length === 0 ? (
+              hasActiveFilters || organizerId ? (
+                <PlayNoMatches hasActiveFilters={hasActiveFilters} onClearFilters={clearFilters} />
               ) : (
-                <>
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground" data-testid="play-page-results-count">
-                      {sessions.length} session{sessions.length === 1 ? "" : "s"} found
-                    </p>
-                    {hasActiveFilters && (
-                      <Button variant="ghost" size="sm" className="md:hidden" onClick={clearFilters} data-testid="play-page-clear-filters-mobile">
-                        Clear filters
-                      </Button>
-                    )}
-                  </div>
-                  <div className="space-y-4" data-testid="play-page-results">
-                    {visibleSessions.map((session) => (
-                      <PlaySessionCard key={session.id} session={session} />
-                    ))}
-                  </div>
+                <PlayNoActivitiesYet />
+              )
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground" data-testid="play-page-results-count">
+                  {sessions.length} session{sessions.length === 1 ? "" : "s"} found
+                </p>
+                <div className="space-y-4" data-testid="play-page-results">
+                  {visibleSessions.map((session) => (
+                    <PlaySessionCard
+                      key={session.id}
+                      session={session}
+                      onView={() => {
+                        setSelectedSessionId(session.id);
+                        setSelectedRecommendation(null);
+                      }}
+                    />
+                  ))}
+                </div>
 
-                  {totalPages > 1 && (
-                    <Pagination data-testid="play-page-pagination">
-                      <PaginationContent>
-                        <PaginationItem>
-                          <PaginationPrevious
+                {totalPages > 1 && (
+                  <Pagination data-testid="play-page-pagination">
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (currentPage > 1) setPage(currentPage - 1);
+                          }}
+                          className={currentPage === 1 ? "pointer-events-none opacity-50" : undefined}
+                          data-testid="play-page-pagination-previous"
+                        />
+                      </PaginationItem>
+                      {Array.from({ length: totalPages }).map((_, i) => (
+                        <PaginationItem key={i}>
+                          <PaginationLink
                             href="#"
+                            isActive={currentPage === i + 1}
                             onClick={(e) => {
                               e.preventDefault();
-                              if (currentPage > 1) setPage(currentPage - 1);
+                              setPage(i + 1);
                             }}
-                            className={currentPage === 1 ? "pointer-events-none opacity-50" : undefined}
-                            data-testid="play-page-pagination-previous"
-                          />
+                            data-testid={`play-page-pagination-${i + 1}`}
+                          >
+                            {i + 1}
+                          </PaginationLink>
                         </PaginationItem>
-                        {Array.from({ length: totalPages }).map((_, i) => (
-                          <PaginationItem key={i}>
-                            <PaginationLink
-                              href="#"
-                              isActive={currentPage === i + 1}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                setPage(i + 1);
-                              }}
-                              data-testid={`play-page-pagination-${i + 1}`}
-                            >
-                              {i + 1}
-                            </PaginationLink>
-                          </PaginationItem>
-                        ))}
-                        <PaginationItem>
-                          <PaginationNext
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              if (currentPage < totalPages) setPage(currentPage + 1);
-                            }}
-                            className={currentPage === totalPages ? "pointer-events-none opacity-50" : undefined}
-                            data-testid="play-page-pagination-next"
-                          />
-                        </PaginationItem>
-                      </PaginationContent>
-                    </Pagination>
-                  )}
-                </>
-              )}
-            </div>
+                      ))}
+                      <PaginationItem>
+                        <PaginationNext
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (currentPage < totalPages) setPage(currentPage + 1);
+                          }}
+                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : undefined}
+                          data-testid="play-page-pagination-next"
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                )}
+              </>
+            ))}
           </div>
         </div>
       </main>
 
+      <PlayFilters
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        draft={draft}
+        onDraftChange={setDraft}
+        onClear={clearDraftFilters}
+        onApply={applyDraftFilters}
+      />
+
       <Footer />
+
+      <EventQuickViewModal        sessionId={selectedSessionId}
+        recommendation={selectedRecommendation}
+        onJoinSuccess={(id) => {
+          if (selectedRecommendation) {
+            const activity = recommendationsQuery.data?.recommendations.find((r) => r.activity.id === id)?.activity;
+            (window as any).gtag?.("event", "play_recommendation_join", {
+              activityId: id,
+              matchScore: selectedRecommendation.score,
+              format: activity?.type ?? null,
+            });
+          }
+        }}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedSessionId(null);
+            setSelectedRecommendation(null);
+          }
+        }}
+      />
+
+      {/* [PLAY] Invite to Play - spec section 10: "use existing
+          messaging functionality where possible" rather than a
+          separate booking flow. Prefilled with a friendly default the
+          player can edit before sending, same modal used elsewhere in
+          the app for a quick message. */}
+      {inviteTarget && (
+        <QuickMessageModal
+          open={!!inviteTarget}
+          onOpenChange={(open) => !open && setInviteTarget(null)}
+          recipient={{ id: inviteTarget.id, name: inviteTarget.name, type: "player" }}
+          title={`Invite ${inviteTarget.name.split(" ")[0]} to play 🎾`}
+          defaultMessage={`Hi ${inviteTarget.name.split(" ")[0]}, want to play sometime soon?`}
+          messageType="play_invite"
+        />
+      )}
     </div>
   );
 }
-
