@@ -88,3 +88,19 @@ export function resolveDateFilterRange(filter: PlayDateFilter, customDate?: stri
 // "no restriction" option, not a real skillLevel value stored on a
 // session.
 export const PLAY_LEVEL_OPTIONS = ["All Levels", "Beginner", "Intermediate", "Advanced"] as const;
+
+// Translates the recommendation engine's symbolic reason codes
+// (server/services/recommendationEngine.ts) into short, player-facing
+// sentences - the spec is explicit that the UI must never show
+// technical scoring language ("Location weighting contributed 18%"),
+// only plain reasons like "Only 6 km away".
+export const RECOMMENDATION_REASON_TEXT: Record<string, string> = {
+  SIMILAR_LEVEL: "Similar level",
+  CLOSE_LEVEL: "Close to your level",
+  MATCHING_AVAILABILITY: "Matches your availability",
+  NEARBY: "Near your preferred area",
+  PREFERRED_FORMAT: "Your preferred format",
+  PREFERRED_STYLE: "Matches your play style",
+  LOOKING_FOR_COMPETITIONS: "You're looking for competitions",
+  LOOKING_FOR_DOUBLES: "You prefer doubles",
+};

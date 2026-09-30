@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "../db";
 import { articles, travelPackages, recreationServices, tournaments } from "@shared/schema";
 import { eq, desc, and, ne } from "drizzle-orm";
+import { resolveCoordinates } from "../services/geocodingService";
 import {
   insertArticleSchema,
   insertTravelPackageSchema,
@@ -434,9 +435,21 @@ router.post("/admin/clubs",
           errors: result.error.flatten(),
         });
       }
+
+      // Same shared geocoding service - a new club with a suburb/
+      // address gets coordinates right from creation, not only on a
+      // later edit.
+      const clubCreateData: typeof result.data & { latitude?: number | null; longitude?: number | null } = { ...result.data };
+      const newClubLocationToResolve = clubCreateData.suburb || clubCreateData.address;
+      const newClubCoords = await resolveCoordinates(newClubLocationToResolve);
+      if (newClubCoords) {
+        clubCreateData.latitude = newClubCoords.latitude;
+        clubCreateData.longitude = newClubCoords.longitude;
+      }
+
       const club =
         await storage.createClub(
-          result.data
+          clubCreateData
         );
 
       res.status(201).json(club);
@@ -463,10 +476,22 @@ router.put("/admin/clubs/:id",
           errors: result.error.flatten(),
         });
       }
+
+      // Same shared geocoding service used for player/coach profiles
+      // (server/services/geocodingService.ts) - never overwrites
+      // coordinates already set some other way.
+      const clubUpdateData: typeof result.data & { latitude?: number | null; longitude?: number | null } = { ...result.data };
+      const clubLocationToResolve = clubUpdateData.suburb || clubUpdateData.address;
+      const clubCoords = await resolveCoordinates(clubLocationToResolve);
+      if (clubCoords) {
+        clubUpdateData.latitude = clubCoords.latitude;
+        clubUpdateData.longitude = clubCoords.longitude;
+      }
+
       const club =
         await storage.updateClub(
           req.params.id,
-          result.data
+          clubUpdateData
         );
       res.json(club);
 

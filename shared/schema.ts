@@ -171,6 +171,187 @@ export const tournaments = pgTable("tournaments", {
 });
 
 // Player profiles
+// [Geocoding] Shared location -> coordinates cache, used by players,
+// coaches, clubs/organisations, and sessions alike - one place any of
+// them can check before ever calling an external geocoder, and where
+// a fresh external lookup gets saved so it's never looked up twice.
+export const geocodeCache = pgTable("geocode_cache", {
+  // The trimmed, lowercased location string IS the key - no separate
+  // id needed, and it's exactly what every caller already has on hand.
+  location: varchar("location").primaryKey(),
+  latitude: real("latitude").notNull(),
+  longitude: real("longitude").notNull(),
+  // "curated" (server/lib/knownLocationCoordinates.ts's small hand-
+  // checked table) or "nominatim" (the real external geocoder).
+  source: text("source").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// [PLAY][AI] TC Discovery Agent - Australia-wide external activity
+// discovery, sections 3-4. Sources are only ever configured/approved
+// by an admin (no unrestricted crawling) - this is the allowlist that
+// scopes what the Agent is even permitted to look at.
+export const discoverySources = pgTable("discovery_sources", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  baseUrl: text("base_url").notNull(),
+  sourceType: text("source_type").notNull(), // CLUB | COMMUNITY | ORGANISER | TOURNAMENT_PLATFORM | TENNIS_ORGANISATION | PUBLIC_EVENT_PAGE | OTHER
+  country: text("country").default("Australia").notNull(),
+  state: text("state"), // NSW | VIC | QLD | WA | SA | TAS | ACT | NT - null means the source itself spans multiple states
+  // Optional - lets a run be targeted at "Melbourne / VIC" or "Perth / WA"
+  // (spec section 22) without hard-coding any city list.
+  city: text("city"),
+  enabled: boolean("enabled").default(true).notNull(),
+  discoveryMethod: text("discovery_method").notNull(), // how the Agent should approach this source - kept as free text for V1 rather than a fixed enum, since methods will diverge as more source shapes get added
+  lastScanAt: timestamp("last_scan_at", { withTimezone: true }),
+  nextScanAt: timestamp("next_scan_at", { withTimezone: true }),
+  // 0-100, adjusted over time based on how many of this source's
+  // discoveries actually get approved vs rejected as junk/duplicates -
+  // not populated automatically in V1, an admin field for now.
+  reliabilityScore: integer("reliability_score").default(50).notNull(),
+  // Extra pages of the SAME source the Agent should read alongside
+  // baseUrl (e.g. a club's separate "Social tennis" and "Competitions"
+  // pages). Explicitly listed by an admin, never followed automatically -
+  // this is a controlled list, not a crawler (spec section 4).
+  extraUrls: json("extra_urls").$type<string[]>().default([]),
+  // sha256 of each page's extracted text at its last successful scan,
+  // keyed by URL. An unchanged page is never sent to the model again
+  // (spec section 29: "do not repeatedly process unchanged pages").
+  pageHashes: json("page_hashes").$type<Record<string, string>>().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// [PLAY][AI] TC Discovery Agent, section 6 - the Standard External
+// Activity Model. Deliberately mirrors PublicSessionCard's own field
+// set (shared/schema.ts) wherever the concepts overlap, since the
+// whole point (spec section 20) is that this feeds the SAME
+// Recommendation Engine without a parallel data shape to reconcile.
+export const externalActivities = pgTable("external_activities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sourceId: varchar("source_id").notNull().references(() => discoverySources.id),
+
+  title: text("title").notNull(),
+  description: text("description"),
+
+  // Free text on purpose, same reasoning as tennisSessions.type - new
+  // activity types shouldn't need a migration.
+  activityType: text("activity_type"),
+  gameFormat: text("game_format"), // singles | doubles | mixed | null
+
+  startDate: text("start_date"), // YYYY-MM-DD, in the venue's own local calendar date
+  endDate: text("end_date"),
+  startTime: text("start_time"), // HH:MM, venue-local wall clock
+  endTime: text("end_time"),
+  // Recurrence stored separately from a generated list of future
+  // occurrences (spec section 7) - frequency/dayOfWeek/startTime/
+  // endTime describe the PATTERN; Play's own existing occurrence
+  // generation (however it already handles a recurring TennisConnect
+  // session) is what turns a pattern into "next Thursday, the one
+  // after that, ..." rather than this table ever storing an unbounded
+  // list of future rows.
+  recurrenceFrequency: text("recurrence_frequency"), // WEEKLY | FORTNIGHTLY | MONTHLY | null (one-off)
+  recurrenceDayOfWeek: text("recurrence_day_of_week"), // MONDAY..SUNDAY | null
+
+  venueName: text("venue_name"),
+  address: text("address"),
+  suburb: text("suburb"),
+  city: text("city"),
+  state: text("state"),
+  postcode: text("postcode"),
+  country: text("country").default("Australia").notNull(),
+  latitude: real("latitude"),
+  longitude: real("longitude"),
+  // The venue's own IANA zone (spec section 8 - "do not assume all
+  // Australian events use Sydney time"), resolved from state/city at
+  // extraction time, same convention as tennisSessions.timeZone.
+  timeZone: text("time_zone"),
+
+  // Kept alongside each other on purpose (spec section 10) - the
+  // original text is what an admin needs to sanity-check the mapping,
+  // normalisedLevel is what the Recommendation Engine actually reads.
+  originalLevelText: text("original_level_text"),
+  normalisedLevel: text("normalised_level"), // Beginner | Intermediate | Advanced | Pro | null
+
+  price: integer("price"), // whole-dollar AUD; null when not stated - never invented
+  currency: text("currency").default("AUD").notNull(),
+
+  organiserName: text("organiser_name"),
+  registrationUrl: text("registration_url"),
+
+  sourceName: text("source_name").notNull(),
+  sourceUrl: text("source_url").notNull(),
+  discoveredAt: timestamp("discovered_at", { withTimezone: true }).defaultNow().notNull(),
+  lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }).defaultNow().notNull(),
+
+  // ACTIVE | CHANGED | EXPIRED | SOURCE_UNAVAILABLE | NEEDS_REVIEW | CANCELLED
+  // (spec section 14) - freshness/lifecycle, separate from reviewStatus
+  // below (an admin can approve a NEEDS_REVIEW item once they've
+  // checked it, at which point discoveryStatus moves back to ACTIVE).
+  discoveryStatus: text("discovery_status").default("NEEDS_REVIEW").notNull(),
+
+  // HIGH | MEDIUM | LOW (spec section 15) - an internal operational
+  // signal for admins/reliability scoring, never shown to a player.
+  confidence: text("confidence").notNull(),
+
+  // PENDING | APPROVED | REJECTED | DUPLICATE (spec section 16/17) -
+  // the human-review gate. Nothing with reviewStatus != APPROVED is
+  // ever eligible for /play, regardless of discoveryStatus.
+  reviewStatus: text("review_status").default("PENDING").notNull(),
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+
+  // Set when reviewStatus = DUPLICATE - points at whichever record
+  // (another external_activities row, or a real tennisSessions row)
+  // this was judged to duplicate. Nullable rather than a strict FK to
+  // one table, since a duplicate could point at either.
+  duplicateOfExternalId: varchar("duplicate_of_external_id"),
+  duplicateOfSessionId: varchar("duplicate_of_session_id").references(() => tennisSessions.id),
+  // 0-100 - how confident the duplicate-detection scoring was (spec
+  // section 12), kept even after a human decision, for later tuning.
+  duplicateConfidence: integer("duplicate_confidence"),
+
+  // Best-effort provenance for the fields an admin is most likely to
+  // question later (spec section 28) - JSON keyed by field name, e.g.
+  // { "price": "extracted from \"$15 visitors\" in paragraph 2" }.
+  // Never shown to players; purely an admin/debugging aid.
+  extractionEvidence: json("extraction_evidence").$type<Record<string, string>>().default({}),
+});
+
+// [PLAY][AI] TC Discovery Agent, section 25 - one row per discovery
+// run (whether DRY RUN or a real commit), for exactly the kind of
+// "something wrong showed up in Play, which run caused it" question
+// spec section 25 anticipates.
+export const discoveryRuns = pgTable("discovery_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  isDryRun: boolean("is_dry_run").default(true).notNull(),
+  // What this run was scoped to (spec section 22) - null fields mean
+  // "no filter on this dimension", e.g. state="NSW" with country/city/
+  // sourceId all null means "every NSW source".
+  targetCountry: text("target_country"),
+  targetState: text("target_state"),
+  targetCity: text("target_city"),
+  targetSourceId: varchar("target_source_id").references(() => discoverySources.id),
+
+  sourcesScanned: integer("sources_scanned").default(0).notNull(),
+  pagesChecked: integer("pages_checked").default(0).notNull(),
+  eventsDiscovered: integer("events_discovered").default(0).notNull(),
+  // Passed validation (spec section 24's "Valid") - counted in dry runs
+  // too, where nothing is actually created.
+  eventsValid: integer("events_valid").default(0).notNull(),
+  // Started life flagged for a human look (low confidence, possible
+  // duplicate, unknown time zone, unparseable recurrence).
+  eventsNeedingReview: integer("events_needing_review").default(0).notNull(),
+  eventsCreated: integer("events_created").default(0).notNull(),
+  eventsUpdated: integer("events_updated").default(0).notNull(),
+  duplicatesDetected: integer("duplicates_detected").default(0).notNull(),
+  validationFailures: integer("validation_failures").default(0).notNull(),
+  // One entry per failure (spec section 26 - one broken source must
+  // never stop the whole run) - { sourceId, sourceName, error }[].
+  errors: json("errors").$type<{ sourceId: string; sourceName: string; error: string }[]>().default([]),
+});
+
 export const playerProfiles = pgTable("player_profiles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
@@ -196,10 +377,26 @@ export const playerProfiles = pgTable("player_profiles", {
   availability: json("availability").$type<string[]>().default([]),
   playRadiusKm: integer("play_radius_km"),
   courtSurfacePreference: text("court_surface_preference"),
+  // Nullable, same story as sessions.latitude/longitude above - no
+  // geocoding or manual-entry UI wired up yet. playRadiusKm already
+  // exists; this is the other half real distance matching needs.
+  latitude: real("latitude"),
+  longitude: real("longitude"),
   // Header/stats-row additions - the redesign's "stats block" needs
   // these instead of tournament counts. Both optional/self-declared.
   playingHand: text("playing_hand"),
   availabilityStatus: text("availability_status"),
+  // "Looking to Play" (spec [PLAY] Players Looking to Play, section 2/3):
+  // a simple, self-expiring status - never a persistent "always on"
+  // flag. lookingToPlayExpiresAt is computed server-side from
+  // lookingToPlayWhen at the moment the player turns it on (today ->
+  // end of day, this_week -> +7 days, this_weekend -> after the
+  // weekend) - a player past their own expiresAt is treated as OFF
+  // everywhere, without needing a cron job to flip the boolean.
+  lookingToPlayEnabled: boolean("looking_to_play_enabled").default(false),
+  lookingToPlayWhen: text("looking_to_play_when"), // today | this_week | this_weekend
+  lookingToPlayFormat: text("looking_to_play_format"), // singles | doubles | either
+  lookingToPlayExpiresAt: timestamp("looking_to_play_expires_at", { withTimezone: true }),
   // Profile gallery (distinct from the single cover/avatar images).
   photos: json("photos").$type<string[]>().default([]),
 });
@@ -217,6 +414,10 @@ export const coachProfiles = pgTable("coach_profiles", {
   certificationDetails: text("certification_details"),
   location: text("location").notNull(),
   locations: json("locations").$type<string[]>().default([]),
+  // Nullable - filled in by the shared geocoding service, same as
+  // player_profiles/sessions/organizations.
+  latitude: real("latitude"),
+  longitude: real("longitude"),
   bio: text("bio"),
   rating: real("rating"),
   reviews: integer("reviews").default(0),
@@ -315,6 +516,11 @@ export const clubs = pgTable("clubs", {
   state: text("state"),
   suburb: text("suburb"),
   address: text("address"),
+  // Nullable - filled in by the shared geocoding service (server/
+  // services/geocodingService.ts) when suburb/location/address is set,
+  // same as player_profiles/sessions.
+  latitude: real("latitude"),
+  longitude: real("longitude"),
   googleMapsUrl: text("google_maps_url"),
   hasMultipleLocations: boolean("has_multiple_locations")
   .default(false),
@@ -526,6 +732,14 @@ export const tennisSessions = pgTable("sessions", {
   type: text("type").default("social").notNull(),
   status: text("status").default("draft").notNull(), // draft | published | cancelled | live | completed
   location: text("location"),
+  // Nullable - populated by geocoding the location text or manual
+  // entry (neither is wired up yet - see [PLAY] Add radius-based
+  // distance matching). Used by the recommendation engine's distance
+  // signal only when both this AND the player's own coordinates are
+  // set; otherwise distance is excluded from the match score entirely
+  // rather than faking a value.
+  latitude: real("latitude"),
+  longitude: real("longitude"),
   // IANA zone the VENUE is in (e.g. "Australia/Sydney") - not the
   // organizer's or any viewer's own timezone. A session's advertised
   // time is a property of where it physically happens: "6:30pm" at a
@@ -1067,6 +1281,8 @@ export type PublicSessionCard = {
   endAt: string | null;
   timeZone: string;
   location: string | null;
+  latitude: number | null;
+  longitude: number | null;
   skillLevel: string | null;
   courtsCount: number | null;
   maxParticipants: number | null;
@@ -1076,6 +1292,15 @@ export type PublicSessionCard = {
   organizationName: string;
   organizationSlug: string;
   organizationLogo: string | null;
+  // [PLAY][AI] TC Discovery Agent, sections 6/13/18-19 - "TENNISCONNECT"
+  // for a real, native session (the only value this ever was before
+  // the Discovery Agent existed); "EXTERNAL" for an admin-approved
+  // discovered activity. Only EXTERNAL cards populate the three fields
+  // below - source transparency (spec section 18) and the "View
+  // original" CTA instead of Join (spec section 19) both key off this.
+  sourceType: "TENNISCONNECT" | "EXTERNAL";
+  externalSourceUrl?: string | null;
+  externalLastCheckedAt?: string | null;
 };
 
 export type PublicSessionDetails = PublicSessionCard & {

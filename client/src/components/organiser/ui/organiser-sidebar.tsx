@@ -17,6 +17,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ShieldCheck,
+  Compass,
   Building2,
   Plane,
   FileText,
@@ -56,6 +57,7 @@ const ADMIN_NAV_ITEMS: NavItem[] = [
   { key: "admin-travel", label: "Travel Packages", icon: Plane, href: "/admin?tab=travel" },
   { key: "admin-articles", label: "Articles", icon: FileText, href: "/admin?tab=articles" },
   { key: "admin-recreation", label: "Recreation Services", icon: Heart, href: "/admin?tab=recreation" },
+  { key: "admin-discovery", label: "Discovery", icon: Compass, href: "/admin/discovery" },
 ];
 
 interface OrganiserSidebarProps {
@@ -98,7 +100,17 @@ function NavList({ items, collapsed, location, badgeCounts }: { items: NavItem[]
             <Icon className="w-4 h-4 shrink-0" />
             <span className="flex-1">{item.label}</span>
             {badgeCount > 0 && (
-              <Badge className="h-5 min-w-5 px-1.5 justify-center" data-testid={`organiser-sidebar-nav-${item.key}-badge`}>
+              // NOTE: text-primary-foreground was tried here (the color
+              // dark mode's own tokens pair with --primary, which this
+              // permanently-dark sidebar is scoped into) but still
+              // rendered white on this lime badge in production after a
+              // confirmed fresh deploy and hard refresh - so this just
+              // hardcodes black text rather than depending on a theme
+              // token resolving the way the CSS says it should.
+              <Badge
+                className="h-5 min-w-5 px-1.5 justify-center text-black"
+                data-testid={`organiser-sidebar-nav-${item.key}-badge`}
+              >
                 {badgeCount > 9 ? "9+" : badgeCount}
               </Badge>
             )}

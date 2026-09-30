@@ -9,7 +9,10 @@ import uploadMediaRouter from "./routes/uploadMedia";
 import profileTournamentHistoryRouter from "./routes/profileTournamentHistory";
 import profileMarketplace from "./routes/profileMarketplace";
 import playerPhotos from "./routes/playerPhotos";
+import { computeLookingToPlayExpiry } from "./services/playerMatchEngine";
+import { resolveCoordinates } from "./services/geocodingService";
 import contentRouter from "./routes/adminContent";
+import adminDiscoveryRouter from "./routes/adminDiscovery";
 import passport from "passport";
 import { requireAuth, requireAdmin } from "./requireAuth";
 import supportRoutes from "./routes/supportRoutes";
@@ -176,6 +179,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/api/profile/marketplace", profileMarketplace);
   app.use("/api/me/player-profile/photos", playerPhotos);
   app.use("/api", contentRouter);
+  app.use("/api/admin/discovery", adminDiscoveryRouter);
   app.use("/", sitemapRoutes);
   app.use("/api/players", playersRouter);
   app.use("/api/coaches", coachesRouter);
@@ -1037,15 +1041,84 @@ export async function registerRoutes(app: Express): Promise<void> {
 
         // ✅ 2. Обновляем профиль (только разрешённые поля - см.
         // playerProfileUpdateSchema)
+        //
+        // Auto-fill lat/lng via the shared geocoding service (server/
+        // services/geocodingService.ts) when the player's location or
+        // first preferred area doesn't already have coordinates - the
+        // curated table and shared DB cache are checked first (no
+        // network), only reaching out to the real external geocoder
+        // when neither already has it, and caching that result for
+        // every future caller (any player, coach, or club with the
+        // same location string). Never overwrites coordinates the
+        // player might already have some other way.
+        const updateData: typeof parsed.data & { latitude?: number; longitude?: number } = { ...parsed.data };
+        const locationToResolve = updateData.location || updateData.preferredCourts?.[0];
+        const resolvedCoords = await resolveCoordinates(locationToResolve);
+        if (resolvedCoords) {
+          updateData.latitude = resolvedCoords.latitude;
+          updateData.longitude = resolvedCoords.longitude;
+        }
+
         const profile = await storage.updatePlayerProfileByUserId(
           userId,
-          parsed.data
+          updateData
         );
 
         res.json({ success: true, profile });
       } catch (err) {
         console.error("Update profile error:", err);
         res.status(500).json({ message: "Failed to update profile" });
+      }
+    }
+  );
+
+  // PUT /api/me/looking-to-play - [PLAY] Players Looking to Play,
+  // section 2/3. Deliberately its own small endpoint rather than one
+  // more field on the general profile PUT above - the expiry
+  // calculation is server-side and specific to this one status, and
+  // this route needs to accept {enabled: false} as a complete request
+  // on its own (turning it off doesn't require re-sending when/format).
+  app.put(
+    "/api/me/looking-to-play",
+    requireAuth,
+    requireRole("player"),
+    async (req, res) => {
+      try {
+        const schema = z.object({
+          enabled: z.boolean(),
+          when: z.enum(["today", "this_week", "this_weekend"]).optional(),
+          format: z.enum(["singles", "doubles", "either"]).optional(),
+        });
+        const parsed = schema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({ message: "Invalid request", errors: parsed.error });
+        }
+
+        const userId = req.user!.id;
+
+        if (!parsed.data.enabled) {
+          const profile = await storage.updatePlayerProfileByUserId(userId, {
+            lookingToPlayEnabled: false,
+          });
+          return res.json({ success: true, profile });
+        }
+
+        if (!parsed.data.when) {
+          return res.status(400).json({ message: "when is required to turn Looking to Play on" });
+        }
+
+        const expiresAt = computeLookingToPlayExpiry(parsed.data.when, new Date());
+        const profile = await storage.updatePlayerProfileByUserId(userId, {
+          lookingToPlayEnabled: true,
+          lookingToPlayWhen: parsed.data.when,
+          lookingToPlayFormat: parsed.data.format ?? "either",
+          lookingToPlayExpiresAt: expiresAt,
+        });
+
+        res.json({ success: true, profile });
+      } catch (err) {
+        console.error("Update looking-to-play error:", err);
+        res.status(500).json({ message: "Failed to update status" });
       }
     }
   );
@@ -1084,9 +1157,21 @@ export async function registerRoutes(app: Express): Promise<void> {
   
         // обновляем профиль коуча (только разрешённые поля - см.
         // coachProfileUpdateSchema; rating/reviews сюда намеренно не входят)
+        //
+        // Same shared geocoding service used for player profiles - see
+        // server/services/geocodingService.ts. Never overwrites
+        // coordinates the coach might already have some other way.
+        const coachUpdateData: typeof parsed.data & { latitude?: number; longitude?: number } = { ...parsed.data };
+        const coachLocationToResolve = coachUpdateData.location || coachUpdateData.locations?.[0];
+        const coachCoords = await resolveCoordinates(coachLocationToResolve);
+        if (coachCoords) {
+          coachUpdateData.latitude = coachCoords.latitude;
+          coachUpdateData.longitude = coachCoords.longitude;
+        }
+
         const profile = await storage.updateCoachProfileByUserId(
           userId,
-          parsed.data
+          coachUpdateData
         );
   
         // возвращаем свежие данные
@@ -1473,6 +1558,17 @@ export async function registerRoutes(app: Express): Promise<void> {
         subject: z.string().optional(),
         phone: z.string().optional(),
         content: z.string().min(1, "Message is required"),
+        // [PLAY] Invite to Play (spec section 10/11) - the ONLY
+        // messageType a regular sender may self-assign through this
+        // public endpoint. community_invite/session_invite are never
+        // accepted here - those grant real access (org membership,
+        // session registration) and are only ever created internally
+        // by an organiser action (see organizer.ts), never by a
+        // player's own request body. play_invite has no such side
+        // effect on accept/decline beyond flipping this message's own
+        // status (see /api/messages/:id/accept|decline below), so
+        // there's nothing unsafe about letting the sender set it.
+        messageType: z.literal("play_invite").optional(),
       });
 
       const result = messageSchema.safeParse(req.body);
@@ -1517,6 +1613,9 @@ export async function registerRoutes(app: Express): Promise<void> {
         senderName: req.user!.name,
         senderEmail: req.user!.email,
         senderPhone: result.data.phone,
+
+        messageType: result.data.messageType,
+        actionStatus: result.data.messageType ? "pending" : undefined,
       });
 
       res.json(message);
@@ -1580,6 +1679,11 @@ export async function registerRoutes(app: Express): Promise<void> {
         }
         await storage.acceptInvitedRegistration(message.relatedSessionId, req.user!.id);
       }
+      // play_invite (spec section 12) has no side effect to perform
+      // here at all - "do not require the players to create an
+      // official TennisConnect Session just to arrange a casual hit."
+      // Accepting is just the status flip below; the two players
+      // continue arranging details in the conversation itself.
 
       const updated = await storage.updateMessageActionStatus(message.id, "accepted");
       res.json(updated);
@@ -1609,6 +1713,8 @@ export async function registerRoutes(app: Express): Promise<void> {
         }
         await storage.cancelRegistration(message.relatedSessionId, req.user!.id);
       }
+      // play_invite: same as accept above, nothing else to undo -
+      // declining is just the status flip.
 
       const updated = await storage.updateMessageActionStatus(message.id, "declined");
       res.json(updated);
