@@ -42,6 +42,7 @@ export const TRACKED_FIELDS = [
   "venueName",
   "suburb",
   "price",
+  "priceLabel",
   "registrationUrl",
 ] as const;
 export type TrackedField = (typeof TRACKED_FIELDS)[number];

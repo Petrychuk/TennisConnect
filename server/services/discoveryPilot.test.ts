@@ -44,7 +44,7 @@ function act(over: Partial<ExtractedActivity> & { title: string }): ExtractedAct
     description: null, activityTypeText: null, gameFormatText: null,
     startDate: null, endDate: null, startTime: null, endTime: null, recurrenceText: null,
     venueName: null, address: null, suburb: null, city: null, state: null, postcode: null,
-    levelText: null, price: null, currency: null, organiserName: null, registrationUrl: null,
+    levelText: null, price: null, priceText: null, currency: null, organiserName: null, registrationUrl: null,
     cancelled: null, evidence: null,
     ...over,
   };
@@ -76,9 +76,9 @@ const VIC = { state: "VIC", city: null, url: "https://www.tennis.com.au/vic/even
 const vic = run(VIC, {
   activities: [
     act({ title: "Cardio Tennis", activityTypeText: "Cardio Tennis", startDate: "2026-09-14", startTime: "09:30", venueName: "Chadstone Tennis Club", suburb: "Chadstone" }),
-    act({ title: "2026 Pride Cup", gameFormatText: "Singles and Doubles", startDate: "2026-09-12", startTime: "14:00", endTime: "16:00", venueName: "Keon Park Tennis Club", price: 0 }),
+    act({ title: "2026 Pride Cup", gameFormatText: "Singles and Doubles", startDate: "2026-09-12", startTime: "14:00", endTime: "16:00", venueName: "Keon Park Tennis Club", priceText: "Free entry and afternoon tea provided." }),
     act({ title: "Friday Night Smash", activityTypeText: "weekly in-house junior matchplay program", recurrenceText: "Every Friday night", venueName: "Eaglemont Tennis Club", suburb: "Eaglemont" }),
-    act({ title: "Growing the Game: Women and Girl's Tennis", startDate: "2026-10-10", startTime: "10:30", endTime: "12:30", venueName: "Fawkner Tennis Club", price: 0, registrationUrl: "https://www.trybooking.com/au/event/1637610" }),
+    act({ title: "Growing the Game: Women and Girl's Tennis", startDate: "2026-10-10", startTime: "10:30", endTime: "12:30", venueName: "Fawkner Tennis Club", priceText: "This free 10 week program is free and inclusive to any women and girls", registrationUrl: "https://www.trybooking.com/au/event/1637610" }),
   ],
 });
 const byTitle = <T extends { extracted: ExtractedActivity }>(rows: T[], title: string) => rows.find((r) => r.extracted.title === title)!;
@@ -133,20 +133,21 @@ test("VIC: an unrecognised format is null; a junior program is recognised; singl
 // ---------------------------------------------------------------
 const NSW = { state: "NSW", city: "Sydney", url: "https://strathfieldsportsclub.com.au/events/saturday-social-2026-08-01/" };
 const signUp = "https://forms.clickup.com/3462635/f/39nfb-10456/4ESND28R7B9YLV3GAV?Comment:%20Beginners%206:30pm%20Session%20OR%20Competitive%208pm%20Session=xxxxx";
+const STRATHFIELD_PRICE = "FREE for SSC tennis members. $20 pp applicable to non-tennis members each week.";
 const nsw = run(NSW, {
   activities: [
     act({
       title: "Saturday Social - Beginners", activityTypeText: "Saturday Social", gameFormatText: "doubles",
       recurrenceText: "every Saturday", startDate: "2026-08-01", startTime: "18:30", endTime: "20:00",
       venueName: "Strathfield Sports Club", address: "4a Lyons Street", suburb: "Strathfield", state: "NSW", postcode: "2135",
-      levelText: "Beginners Social", price: 20, currency: "AUD", registrationUrl: signUp,
+      levelText: "Beginners Social", priceText: STRATHFIELD_PRICE, currency: "AUD", registrationUrl: signUp,
       evidence: { price: "$20 pp applicable to non-tennis members each week", recurrence: "play a social game of doubles every Saturday" },
     }),
     act({
       title: "Saturday Social - Competitive/Advanced", activityTypeText: "Saturday Social", gameFormatText: "doubles",
       recurrenceText: "every Saturday", startDate: "2026-08-01", startTime: "20:00", endTime: "21:30",
       venueName: "Strathfield Sports Club", address: "4a Lyons Street", suburb: "Strathfield", state: "NSW", postcode: "2135",
-      levelText: "Competitive/Advanced Social", price: 20, currency: "AUD", registrationUrl: signUp,
+      levelText: "Competitive/Advanced Social", priceText: STRATHFIELD_PRICE, currency: "AUD", registrationUrl: signUp,
     }),
   ],
 });
@@ -193,13 +194,13 @@ const qld = run(QLD, {
       title: "Tuesday Night Social Tennis", activityTypeText: "Social Tennis", gameFormatText: "doubles",
       recurrenceText: "every Tuesday 7:00pm - 10:00pm", startTime: "19:00", endTime: "22:00",
       venueName: "Queensland Tennis Centre", suburb: "Tennyson", state: "QLD", postcode: "4105",
-      levelText: "all standards", price: 24, currency: "AUD",
+      levelText: "all standards", priceText: "Member Rates: $20/session. Non-Member Rates: $24/session", currency: "AUD",
       evidence: { price: "Casual Players: $24.00", startTime: "7:00pm - 10:00pm" },
     }),
     act({
       title: "Sunday Afternoon Social Tennis", activityTypeText: "Social Tennis", gameFormatText: "singles or mixed doubles",
       recurrenceText: "every Sunday 3:00pm - 6:00pm", startTime: "15:00", endTime: "18:00",
-      venueName: "Queensland Tennis Centre", levelText: "all standards", price: 24, currency: "AUD",
+      venueName: "Queensland Tennis Centre", levelText: "all standards", priceText: "Member Rates: $20/session. Non-Member Rates: $24/session", currency: "AUD",
     }),
   ],
 });
@@ -238,6 +239,37 @@ test("QLD: if the model copies the page-wide 'every Tuesday and Sunday' into ONE
 });
 
 // ---------------------------------------------------------------
+// ---------------------------------------------------------------
+// Pricing: conditional prices are kept, never collapsed to $0
+// ---------------------------------------------------------------
+test("NSW: 'FREE for members. $20 for non-members' is stored as $20 with BOTH prices in the label - never $0", () => {
+  for (const e of nsw) {
+    assert.equal(e.record.price, 20);
+    assert.equal(e.record.priceLabel, "Free for SSC tennis members · $20 per week for non-members");
+    assert.equal(e.record.currency, "AUD");
+  }
+});
+
+test("QLD: member and non-member rates are both kept; the numeric price is the non-member one", () => {
+  for (const e of qld) {
+    assert.equal(e.record.price, 24);
+    assert.equal(e.record.priceLabel, "$20 per session for members · $24 per session for non-members");
+  }
+});
+
+test("VIC: an explicitly free event is 0/'Free'; an event with no price stated is null - not 0", () => {
+  assert.equal(byTitle(vic, "Growing the Game: Women and Girl's Tennis").record.price, 0);
+  assert.equal(byTitle(vic, "Growing the Game: Women and Girl's Tennis").record.priceLabel, "Free");
+  assert.equal(byTitle(vic, "Friday Night Smash").record.price, null);
+  assert.equal(byTitle(vic, "Friday Night Smash").record.priceLabel, null);
+});
+
+test("a model that returns a bare price number with no wording behind it is not trusted", () => {
+  const [e] = run(NSW, { activities: [act({ title: "Saturday Social", price: 0 })] });
+  assert.equal(e.record.price, null); // NOT 0
+  assert.ok(e.priceReview);
+});
+
 // Pilot success criteria, summarised
 // ---------------------------------------------------------------
 test("PILOT: 3 sources, 3 states, real activities structured, recurring recognised, nothing auto-published", () => {

@@ -96,6 +96,7 @@ import { db, pool } from "./db";
 import { zonedTimeToUtc } from "./lib/zonedTime";
 import { classifyQueueTab, type QueueTab } from "./services/discoveryQueue";
 import { expandOccurrences, makeOccurrenceId, parseOccurrenceId } from "./services/discoveryOccurrences";
+import { summariseLabelForCard } from "./services/discoveryPrice";
 import { resolveRegistrationUrl } from "./services/discoveryNormalization";
 import { eq, desc, and, or, asc, sql, lte, ne, gte, ilike, inArray, isNull, isNotNull, notInArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -3196,6 +3197,8 @@ export class DatabaseStorage implements IStorage {
         sourceType: "EXTERNAL" as const,
         externalSourceUrl: linkOut,
         externalLastCheckedAt: lastChecked,
+        priceSummary: summariseLabelForCard(activity.priceLabel, activity.price),
+        priceLabel: activity.priceLabel,
       };
     });
   }
@@ -3229,7 +3232,7 @@ export class DatabaseStorage implements IStorage {
       description: activity.description,
       matchMode: "",
       scoringFormat: "",
-      price: activity.price != null ? String(activity.price) : null,
+      price: activity.price != null ? (activity.price === 0 ? "Free" : String(activity.price)) : null,
       currency: activity.currency,
       waitingListEnabled: false,
       registrationOpensAt: null,

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { storage } from "../storage";
-import { callExtractionLLM, classifyConfidence, type ExtractedActivity } from "./discoveryExtraction";
+import { callExtractionLLM, classifyConfidence, EXTRACTION_VERSION, type ExtractedActivity } from "./discoveryExtraction";
 import {
   normaliseAustralianState,
   resolveTimeZoneForState,
@@ -208,7 +208,10 @@ async function scanPage(
     return; // not a fetch failure: nothing is flagged, nothing is sent to the model
   }
   const pageText = assessment.text;
-  const hash = sha256(pageText);
+  // The extraction version is part of the cache key: when the prompt or the
+  // rules that interpret it change, pages are re-extracted even though their
+  // text hasn't.
+  const hash = sha256(`v${EXTRACTION_VERSION}\n${pageText}`);
 
   const existingRows = await storage.getExternalActivitiesForSourcePage(source.id, pageUrl);
 
@@ -256,6 +259,7 @@ function trackedFromRow(row: ExternalActivityRow) {
     venueName: row.venueName,
     suburb: row.suburb,
     price: row.price,
+    priceLabel: row.priceLabel,
     registrationUrl: row.registrationUrl,
   };
 }
@@ -307,6 +311,9 @@ async function processActivity(
 
   const evidence: Record<string, string> = { ...(extracted.evidence ?? {}) };
   if (extracted.recurrenceText) evidence.recurrence = extracted.recurrenceText;
+  // The source's own price wording - so an admin can see exactly what the
+  // price and label were derived from.
+  if (built.priceWording) evidence.price = built.priceWording;
 
   // --- seen before: re-scan (spec section 14) ---
   if (match) {
@@ -373,6 +380,7 @@ async function processActivity(
     isPossibleDuplicate,
     timeZoneKnown: !!timeZone,
     recurrenceUnderstood: built.recurrenceUnderstood,
+    priceUnclear: !!built.priceReview,
   };
   const status = initialDiscoveryStatus(flagInput);
   if (status === "NEEDS_REVIEW") summary.eventsNeedingReview++;

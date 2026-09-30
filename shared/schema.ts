@@ -273,6 +273,11 @@ export const externalActivities = pgTable("external_activities", {
   normalisedLevel: text("normalised_level"), // Beginner | Intermediate | Advanced | Pro | null
 
   price: integer("price"), // whole-dollar AUD; null when not stated - never invented
+  // Display value for price, and the source of truth for what players see.
+  // Keeps member / non-member pricing ("Free for SSC tennis members · $20 per
+  // week for non-members"). `price` above is the general / non-member amount,
+  // for filtering and sorting only - never a member-only figure.
+  priceLabel: text("price_label"),
   currency: text("currency").default("AUD").notNull(),
 
   organiserName: text("organiser_name"),
@@ -1301,6 +1306,10 @@ export type PublicSessionCard = {
   sourceType: "TENNISCONNECT" | "EXTERNAL";
   externalSourceUrl?: string | null;
   externalLastCheckedAt?: string | null;
+  // Only populated for EXTERNAL cards. priceSummary is the compact card form
+  // ("$20 · Free for members"); priceLabel is the full text for Quick View.
+  priceSummary?: string | null;
+  priceLabel?: string | null;
 };
 
 export type PublicSessionDetails = PublicSessionCard & {
