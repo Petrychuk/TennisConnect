@@ -79,7 +79,17 @@ export function DashboardHeader({ organiser, profileHref, onCreateSession }: Das
           <Link href="/organiser/messages">
             <Bell className="w-4 h-4" />
             {hasUnread && (
-              <Badge className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 justify-center text-[10px]">
+              <Badge
+                // Badge's default variant uses text-foreground for contrast
+                // against bg-primary's lime - correct in light mode
+                // (--foreground is near-black there), but in dark mode
+                // --foreground flips to near-white: lime background, white
+                // text, unreadable. text-primary-foreground is the color
+                // dark mode itself pairs with --primary for exactly this -
+                // same fix, same reasoning, as organiser-sidebar.tsx's own
+                // unread badge.
+                className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 justify-center text-[10px] text-primary-foreground"
+              >
                 {unreadCount > 9 ? "9+" : unreadCount}
               </Badge>
             )}
