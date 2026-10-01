@@ -92,6 +92,11 @@ interface ExternalActivityRow {
   duplicateConfidence: number | null;
   lastCheckedAt: string;
   registrationUrl: string | null;
+  // [PLAY][AI] Partner Events
+  sourceType: "EXTERNAL" | "PARTNER";
+  registrationType: "INTERNAL" | "EXTERNAL" | null;
+  partnerId: string | null;
+  partnerName: string | null;
   // Internal notes from the Agent: why an item was flagged (_flag), what
   // changed since it was approved (_changes), plus source quotes.
   extractionEvidence: Record<string, string> | null;
@@ -187,6 +192,18 @@ export default function AdminDiscoveryPage() {
   const [runState, setRunState] = useState("");
   const [runCity, setRunCity] = useState("");
 
+  // [PLAY][AI] Partner Events - confirm-in-place (the primary path: an
+  // existing Discovery find becomes an official partner) and the
+  // fallback creation form (when there's no existing row to upgrade).
+  const [confirming, setConfirming] = useState<ExternalActivityRow | null>(null);
+  const [confirmPartnerId, setConfirmPartnerId] = useState("");
+  const [confirmPartnerName, setConfirmPartnerName] = useState("");
+  const [savingConfirm, setSavingConfirm] = useState(false);
+
+  const [newPartnerOpen, setNewPartnerOpen] = useState(false);
+  const [newPartnerDraft, setNewPartnerDraft] = useState<Record<string, string>>({});
+  const [savingNewPartner, setSavingNewPartner] = useState(false);
+
   const loadCounts = () => {
     if (!isAdmin) return;
     api("/counts").then(setCounts).catch(() => {});
@@ -246,6 +263,79 @@ export default function AdminDiscoveryPage() {
         title: "Couldn't save",
         description: "Check the date (YYYY-MM-DD), times (HH:MM) and that the link starts with http(s)://",
       });
+    }
+  };
+
+  const openConfirmPartner = (item: ExternalActivityRow) => {
+    setConfirming(item);
+    setConfirmPartnerId("");
+    setConfirmPartnerName(item.partnerName ?? item.sourceName);
+  };
+
+  const saveConfirmPartner = async () => {
+    if (!confirming) return;
+    setSavingConfirm(true);
+    try {
+      const updated = await api(`/activities/${confirming.id}/confirm-partner`, {
+        method: "POST",
+        body: JSON.stringify({ partnerId: confirmPartnerId.trim() || null, partnerName: confirmPartnerName.trim() }),
+      });
+      setItems((prev) => prev.map((i) => (i.id === confirming.id ? { ...i, ...updated } : i)));
+      setConfirming(null);
+      toast({ title: "Confirmed as an official TennisConnect partner" });
+    } catch {
+      toast({ variant: "destructive", title: "Couldn't confirm", description: "Check the partner name, and the partner ID if you entered one." });
+    } finally {
+      setSavingConfirm(false);
+    }
+  };
+
+  const openNewPartnerEvent = () => {
+    setNewPartnerDraft({});
+    setNewPartnerOpen(true);
+  };
+
+  const saveNewPartnerEvent = async () => {
+    const d = newPartnerDraft;
+    setSavingNewPartner(true);
+    try {
+      const payload = {
+        title: d.title?.trim(),
+        description: null,
+        activityType: d.activityType?.trim() || null,
+        gameFormat: null,
+        startDate: d.startDate?.trim() || null,
+        endDate: null,
+        startTime: d.startTime?.trim() || null,
+        endTime: d.endTime?.trim() || null,
+        recurrenceFrequency: d.recurrenceFrequency?.trim() || null,
+        recurrenceDayOfWeek: d.recurrenceDayOfWeek?.trim() || null,
+        venueName: d.venueName?.trim() || null,
+        address: null,
+        suburb: d.suburb?.trim() || null,
+        city: d.city?.trim() || null,
+        state: d.state?.trim() || null,
+        postcode: null,
+        normalisedLevel: d.normalisedLevel?.trim() || null,
+        price: d.price?.trim() ? Number(d.price) : null,
+        priceLabel: d.priceLabel?.trim() || null,
+        registrationUrl: d.registrationUrl?.trim(),
+        partnerId: d.partnerId?.trim() || null,
+        partnerName: d.partnerName?.trim(),
+      };
+      const created = await api("/partner-events", { method: "POST", body: JSON.stringify(payload) });
+      setNewPartnerOpen(false);
+      loadCounts();
+      if (tab === "PENDING") setItems((prev) => [created, ...prev]);
+      toast({ title: "Partner Event created", description: "It's in Pending - approve it to make it eligible for Play." });
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Couldn't create the Partner Event",
+        description: "Check the title, partner name, state, and that the registration link starts with http(s)://",
+      });
+    } finally {
+      setSavingNewPartner(false);
     }
   };
 
@@ -365,13 +455,23 @@ export default function AdminDiscoveryPage() {
                   Review and manage tennis activities discovered across Australia.
                 </p>
               </div>
-              <Button
-                onClick={() => openRun(null)}
-                className="bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
-                data-testid="discovery-run-button"
-              >
-                <Play className="w-4 h-4 mr-2" /> Run Discovery
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={openNewPartnerEvent}
+                  className="rounded-full px-6 cursor-pointer"
+                  data-testid="new-partner-event-button"
+                >
+                  <ShieldCheck className="w-4 h-4 mr-2" /> New Partner Event
+                </Button>
+                <Button
+                  onClick={() => openRun(null)}
+                  className="bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
+                  data-testid="discovery-run-button"
+                >
+                  <Play className="w-4 h-4 mr-2" /> Run Discovery
+                </Button>
+              </div>
             </div>
 
             <div className="flex gap-6 border-b border-border mb-5" data-testid="discovery-views">
@@ -446,6 +546,11 @@ export default function AdminDiscoveryPage() {
                                 <p className="text-sm text-muted-foreground">{where || "Location unknown"}</p>
                               </div>
                               <div className="flex flex-wrap justify-end gap-1.5 shrink-0">
+                                {item.sourceType === "PARTNER" && (
+                                  <Badge className="bg-primary text-black" data-testid={`discovery-item-${item.id}-partner-badge`}>
+                                    <ShieldCheck className="w-3 h-3 mr-1" /> Partner
+                                  </Badge>
+                                )}
                                 {statusBadge && <Badge variant="outline">{statusBadge}</Badge>}
                                 {item.reviewStatus === "DUPLICATE" && <Badge variant="outline">Duplicate</Badge>}
                                 {item.duplicateConfidence != null && item.reviewStatus !== "DUPLICATE" && (
@@ -515,6 +620,11 @@ export default function AdminDiscoveryPage() {
                               {!isFinal(item) && item.reviewStatus !== "DUPLICATE" && item.reviewStatus !== "REJECTED" && (
                                 <Button variant="ghost" size="sm" onClick={() => act(item.id, "mark-duplicate")} data-testid={`discovery-item-${item.id}-duplicate`}>
                                   <Copy className="w-3.5 h-3.5 mr-1.5" /> Duplicate
+                                </Button>
+                              )}
+                              {item.sourceType !== "PARTNER" && item.reviewStatus !== "DUPLICATE" && item.reviewStatus !== "REJECTED" && (
+                                <Button variant="outline" size="sm" onClick={() => openConfirmPartner(item)} data-testid={`discovery-item-${item.id}-confirm-partner`}>
+                                  <ShieldCheck className="w-3.5 h-3.5 mr-1.5" /> Confirm as Partner
                                 </Button>
                               )}
                             </div>
@@ -622,6 +732,184 @@ export default function AdminDiscoveryPage() {
           <DialogFooter>
             <Button onClick={saveEdit} data-testid="discovery-edit-save">
               Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!confirming} onOpenChange={(open) => !savingConfirm && !open && setConfirming(null)}>
+        <DialogContent data-testid="confirm-partner-modal">
+          <DialogHeader>
+            <DialogTitle>Confirm as official partner</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Upgrades <span className="font-medium text-foreground">{confirming?.title}</span> in place - it stays the
+            same event (nothing is duplicated), it just now shows the Partner badge instead of "Found by TennisConnect".
+          </p>
+          <div className="space-y-3">
+            <div>
+              <Label>Partner name</Label>
+              <Input value={confirmPartnerName} onChange={(e) => setConfirmPartnerName(e.target.value)} placeholder="e.g. Strathfield Sports Club" />
+            </div>
+            <div>
+              <Label>Partner organisation ID (optional)</Label>
+              <Input
+                value={confirmPartnerId}
+                onChange={(e) => setConfirmPartnerId(e.target.value)}
+                placeholder="Leave blank if they're not a registered TennisConnect organisation yet"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={saveConfirmPartner} disabled={savingConfirm || !confirmPartnerName.trim()} data-testid="confirm-partner-save">
+              {savingConfirm ? "Confirming..." : "Confirm Partner"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={newPartnerOpen} onOpenChange={(open) => !savingNewPartner && setNewPartnerOpen(open)}>
+        <DialogContent data-testid="new-partner-event-modal" className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>New Partner Event</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            For an official partner's event Discovery hasn't found on its own. If Discovery already found this event,
+            use "Confirm as Partner" on that item instead - don't create a second one here.
+          </p>
+          <div className="space-y-3">
+            <div>
+              <Label>Title</Label>
+              <Input value={newPartnerDraft.title ?? ""} onChange={(e) => setNewPartnerDraft((d) => ({ ...d, title: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Partner name</Label>
+                <Input value={newPartnerDraft.partnerName ?? ""} onChange={(e) => setNewPartnerDraft((d) => ({ ...d, partnerName: e.target.value }))} />
+              </div>
+              <div>
+                <Label>Partner organisation ID (optional)</Label>
+                <Input
+                  value={newPartnerDraft.partnerId ?? ""}
+                  onChange={(e) => setNewPartnerDraft((d) => ({ ...d, partnerId: e.target.value }))}
+                  placeholder="Leave blank if not yet registered"
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Registration link (required - where players register)</Label>
+              <Input
+                value={newPartnerDraft.registrationUrl ?? ""}
+                onChange={(e) => setNewPartnerDraft((d) => ({ ...d, registrationUrl: e.target.value }))}
+                placeholder="https://..."
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Start date (YYYY-MM-DD, optional for a recurring session)</Label>
+                <Input value={newPartnerDraft.startDate ?? ""} onChange={(e) => setNewPartnerDraft((d) => ({ ...d, startDate: e.target.value }))} />
+              </div>
+              <div>
+                <Label>Venue</Label>
+                <Input value={newPartnerDraft.venueName ?? ""} onChange={(e) => setNewPartnerDraft((d) => ({ ...d, venueName: e.target.value }))} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Start time (HH:MM)</Label>
+                <Input value={newPartnerDraft.startTime ?? ""} onChange={(e) => setNewPartnerDraft((d) => ({ ...d, startTime: e.target.value }))} />
+              </div>
+              <div>
+                <Label>End time (HH:MM)</Label>
+                <Input value={newPartnerDraft.endTime ?? ""} onChange={(e) => setNewPartnerDraft((d) => ({ ...d, endTime: e.target.value }))} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Repeats (optional)</Label>
+                <Select
+                  value={newPartnerDraft.recurrenceFrequency ?? "__none__"}
+                  onValueChange={(v) => setNewPartnerDraft((d) => ({ ...d, recurrenceFrequency: v === "__none__" ? "" : v }))}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">One-off</SelectItem>
+                    <SelectItem value="WEEKLY">Weekly</SelectItem>
+                    <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Day of week (if repeating)</Label>
+                <Select
+                  value={newPartnerDraft.recurrenceDayOfWeek ?? "__none__"}
+                  onValueChange={(v) => setNewPartnerDraft((d) => ({ ...d, recurrenceDayOfWeek: v === "__none__" ? "" : v }))}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">-</SelectItem>
+                    {["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"].map((d) => (
+                      <SelectItem key={d} value={d}>{humanise(d)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label>Suburb</Label>
+                <Input value={newPartnerDraft.suburb ?? ""} onChange={(e) => setNewPartnerDraft((d) => ({ ...d, suburb: e.target.value }))} />
+              </div>
+              <div>
+                <Label>City</Label>
+                <Input value={newPartnerDraft.city ?? ""} onChange={(e) => setNewPartnerDraft((d) => ({ ...d, city: e.target.value }))} />
+              </div>
+              <div>
+                <Label>State</Label>
+                <Select value={newPartnerDraft.state ?? "__none__"} onValueChange={(v) => setNewPartnerDraft((d) => ({ ...d, state: v === "__none__" ? "" : v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">-</SelectItem>
+                    {AU_STATES.map((st) => (
+                      <SelectItem key={st} value={st}>{st}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Level</Label>
+                <Select
+                  value={newPartnerDraft.normalisedLevel ?? "__none__"}
+                  onValueChange={(v) => setNewPartnerDraft((d) => ({ ...d, normalisedLevel: v === "__none__" ? "" : v }))}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Not stated</SelectItem>
+                    {LEVELS.map((l) => (
+                      <SelectItem key={l} value={l}>{l}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Price label (shown to players)</Label>
+                <Input
+                  value={newPartnerDraft.priceLabel ?? ""}
+                  onChange={(e) => setNewPartnerDraft((d) => ({ ...d, priceLabel: e.target.value }))}
+                  placeholder="e.g. $20 per session"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={saveNewPartnerEvent}
+              disabled={savingNewPartner || !newPartnerDraft.title?.trim() || !newPartnerDraft.partnerName?.trim() || !newPartnerDraft.registrationUrl?.trim()}
+              data-testid="new-partner-event-save"
+            >
+              {savingNewPartner ? "Creating..." : "Create Partner Event"}
             </Button>
           </DialogFooter>
         </DialogContent>
