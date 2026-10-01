@@ -254,6 +254,39 @@ Do the DRY RUN steps first - they write nothing.
       re-approved.
 - [ ] Remove an event from a test page, re-run: it goes to Needs Review but stays in Play.
 
+## 20. Partner Events (Admin -> Discovery)
+
+Needs migration 0032 applied.
+
+**Primary path - confirm an existing Discovery find**
+- [ ] On an EXTERNAL item (not yet Partner), click "Confirm as Partner", enter a partner name
+      (leave partner ID blank for an unregistered club), save.
+- [ ] The item now shows a "Partner" badge, and it's still the SAME item (no second row, counts
+      on the tabs don't change by one extra).
+- [ ] If it was already Approved and visible in Play, it still is - now with "TennisConnect
+      Partner ✓" and "Register on partner website ↗" instead of "Found by TennisConnect" /
+      "View original ↗".
+- [ ] If it was Pending, it stays Pending - Approve is still a separate step.
+
+**Fallback path - create from scratch**
+- [ ] "+ New Partner Event": fill in title, partner name, a registration link, a day/time -
+      save. It lands in Pending with a Partner badge.
+- [ ] Leave the registration link blank: rejected with a clear error (this path requires one).
+- [ ] Enter a partner organisation ID that doesn't exist: rejected, not silently ignored.
+
+**Dedup priority (TENNISCONNECT -> PARTNER -> EXTERNAL)**
+- [ ] Create a new Partner Event that duplicates an existing approved EXTERNAL item (same
+      title/venue/time) - it should show a "possible duplicate" badge pointing at that item.
+- [ ] Approve it: the OLD EXTERNAL item moves to Rejected/Duplicate on its own, and only the
+      Partner Event shows in Play - never both.
+- [ ] Approving an ordinary Partner Event that ISN'T a duplicate of anything touches no other
+      item.
+
+**Internal registration (a partner already registered as a TC organiser)**
+- [ ] That organiser creates a session the normal way (nothing different here).
+- [ ] An admin can mark that session as an official Partner Event; it still shows a normal Join
+      button (internal registration), with the Partner badge in place of "Organised by X".
+
 ## If something fails
 
 Note which checklist item, what you expected vs what you saw, and ideally a screenshot -
