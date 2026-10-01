@@ -205,6 +205,16 @@ export interface IStorage {
   createDiscoverySource(data: Partial<typeof discoverySources.$inferInsert>): Promise<typeof discoverySources.$inferSelect>;
   updateDiscoverySource(id: string, data: Partial<typeof discoverySources.$inferInsert>): Promise<typeof discoverySources.$inferSelect | undefined>;
   createExternalActivity(record: Partial<typeof externalActivities.$inferInsert>): Promise<typeof externalActivities.$inferSelect | undefined>;
+  createPartnerEvent(input: {
+    title: string; description: string | null; activityType: string | null;
+    gameFormat: "singles" | "doubles" | "mixed" | null;
+    startDate: string | null; endDate: string | null; startTime: string | null; endTime: string | null;
+    recurrenceFrequency: "WEEKLY" | "FORTNIGHTLY" | "MONTHLY" | null; recurrenceDayOfWeek: string | null;
+    venueName: string | null; address: string | null; suburb: string | null; city: string | null;
+    state: string | null; postcode: string | null; normalisedLevel: string | null;
+    price: number | null; priceLabel: string | null; registrationUrl: string;
+    partnerId: string | null; partnerName: string; createdBy: string;
+  }): Promise<typeof externalActivities.$inferSelect | undefined>;
   getExternalActivitiesForDuplicateCheck(filters: { suburb?: string | null; startDate?: string | null; excludeSourceUrl?: string }): Promise<(typeof externalActivities.$inferSelect)[]>;
   getExternalActivityById(id: string): Promise<typeof externalActivities.$inferSelect | undefined>;
   getPublicSessionsForDuplicateCheck(filters: { location?: string | null; startDate?: string | null }): Promise<{ id: string; title: string; location: string | null; startAt: string; timeZone: string }[]>;
@@ -1011,6 +1021,120 @@ export class DatabaseStorage implements IStorage {
 
   async createExternalActivity(record: Partial<typeof externalActivities.$inferInsert>) {
     const [created] = await db.insert(externalActivities).values(record as typeof externalActivities.$inferInsert).returning();
+    return created;
+  }
+
+  // [PLAY][AI] Partner Events - the admin entry point for a Partner Event
+  // that registers externally (or isn't yet a registered TC organisation
+  // at all); see partnerEvents.ts for why this is the right table for
+  // that case and tennisSessions.isPartnerEvent for the other one. Reuses
+  // the Discovery Agent's own normalisation/geocoding/duplicate-detection
+  // building blocks rather than reimplementing them - this is admin-
+  // entered data, not AI-extracted, so there's no extraction/validation
+  // step to run, only the parts that are genuinely shared.
+  async createPartnerEvent(input: {
+    title: string;
+    description: string | null;
+    activityType: string | null;
+    gameFormat: "singles" | "doubles" | "mixed" | null;
+    startDate: string | null;
+    endDate: string | null;
+    startTime: string | null;
+    endTime: string | null;
+    recurrenceFrequency: "WEEKLY" | "FORTNIGHTLY" | "MONTHLY" | null;
+    recurrenceDayOfWeek: string | null;
+    venueName: string | null;
+    address: string | null;
+    suburb: string | null;
+    city: string | null;
+    state: string | null;
+    postcode: string | null;
+    normalisedLevel: string | null;
+    price: number | null;
+    priceLabel: string | null;
+    /** Required - this is the external/no-TC-registration path precisely
+        because there's somewhere else to register. A partner who wants no
+        link at all, or wants TC to run registration, uses tennisSessions
+        with isPartnerEvent instead. */
+    registrationUrl: string;
+    /** An existing TC organisation, when the partner is already
+        registered - lets the card link through to their real profile. */
+    partnerId: string | null;
+    /** Always required - the authoritative name shown on the badge,
+        whether or not partnerId is set. */
+    partnerName: string;
+    createdBy: string;
+  }) {
+    const { resolveTimeZoneForState } = await import("./services/discoveryNormalization");
+    const { resolveAustralianVenueCoordinates } = await import("./services/geocodingService");
+    const { computeDuplicateConfidence, DUPLICATE_REVIEW_THRESHOLD } = await import("./services/discoveryDuplicateDetection");
+    const { toLocalDateTime } = await import("./services/discoveryOccurrences");
+
+    const timeZone = resolveTimeZoneForState(input.state);
+    const coords = await resolveAustralianVenueCoordinates({ suburb: input.suburb, city: input.city, state: input.state });
+
+    const candidate = {
+      title: input.title,
+      venueName: input.venueName,
+      suburb: input.suburb,
+      startDate: input.startDate,
+      startTime: input.startTime,
+      recurrenceDayOfWeek: input.recurrenceDayOfWeek,
+      registrationUrl: input.registrationUrl,
+    };
+    const otherExternal = await this.getExternalActivitiesForDuplicateCheck({
+      suburb: input.suburb,
+      startDate: input.startDate,
+    });
+    const tcSessions = await this.getPublicSessionsForDuplicateCheck({
+      location: input.suburb ?? input.venueName,
+      startDate: input.startDate,
+    });
+
+    let best: { confidence: number; externalId?: string; sessionId?: string } | null = null;
+    for (const other of otherExternal) {
+      const score = computeDuplicateConfidence(candidate, other);
+      if (!best || score > best.confidence) best = { confidence: score, externalId: other.id };
+    }
+    for (const session of tcSessions) {
+      const local = toLocalDateTime(new Date(session.startAt), session.timeZone);
+      const score = computeDuplicateConfidence(candidate, {
+        title: session.title,
+        venueName: session.location,
+        startDate: local.date,
+        startTime: local.time,
+      });
+      if (!best || score > best.confidence) best = { confidence: score, sessionId: session.id };
+    }
+    const isPossibleDuplicate = !!best && best.confidence >= DUPLICATE_REVIEW_THRESHOLD;
+
+    const safeRegistrationUrl = resolveRegistrationUrl(input.registrationUrl, "https://tennisconnect.com.au/");
+    if (!safeRegistrationUrl) throw new Error("registrationUrl must be a valid http(s) link");
+
+    const created = await this.createExternalActivity({
+      ...input,
+      registrationUrl: safeRegistrationUrl,
+      sourceType: "PARTNER",
+      registrationType: "EXTERNAL",
+      sourceId: null,
+      sourceName: input.partnerName,
+      sourceUrl: safeRegistrationUrl,
+      timeZone,
+      latitude: coords?.latitude ?? null,
+      longitude: coords?.longitude ?? null,
+      currency: "AUD",
+      confidence: "HIGH", // admin-entered, not AI-extracted - never in question
+      // PENDING either way: spec says admin can "create" and separately
+      // "confirm" a Partner Event - re-using the existing Approve action
+      // (adminDiscovery.ts) as the confirm step, same as any Discovery
+      // find, rather than a second bespoke endpoint.
+      discoveryStatus: isPossibleDuplicate ? "NEEDS_REVIEW" : "ACTIVE",
+      reviewStatus: "PENDING",
+      duplicateOfExternalId: isPossibleDuplicate ? best!.externalId ?? null : null,
+      duplicateOfSessionId: isPossibleDuplicate ? best!.sessionId ?? null : null,
+      duplicateConfidence: isPossibleDuplicate ? best!.confidence : null,
+      extractionEvidence: input.partnerId ? { _note: "Linked to a registered TennisConnect organisation." } : null,
+    });
     return created;
   }
 
@@ -3132,9 +3256,10 @@ export class DatabaseStorage implements IStorage {
       organizationName: organization.name,
       organizationSlug: organization.slug,
       organizationLogo: organization.logo,
-      sourceType: "TENNISCONNECT",
+      sourceType: session.isPartnerEvent ? "PARTNER" : "TENNISCONNECT",
       externalSourceUrl: null,
       externalLastCheckedAt: null,
+      partnerName: null, // a tennisSessions-backed Partner Event already has the real org's name in organizationName
     };
   }
 
@@ -3160,6 +3285,7 @@ export class DatabaseStorage implements IStorage {
     // most conservative zone instead of this one.
     const zone = activity.timeZone ?? "Australia/Sydney";
     const recurring = !!activity.recurrenceFrequency;
+    const isPartner = activity.sourceType === "PARTNER";
     // Where "View original" sends the player: a verified registration
     // link when the source gave one, otherwise the page it was found on.
     const linkOut = resolveRegistrationUrl(activity.registrationUrl, activity.sourceUrl) ?? activity.sourceUrl;
@@ -3191,12 +3317,13 @@ export class DatabaseStorage implements IStorage {
         registeredCount: 0,
         coverImage: null,
         organizationId: "",
-        organizationName: activity.organiserName || activity.sourceName,
+        organizationName: isPartner ? activity.partnerName || activity.sourceName : activity.organiserName || activity.sourceName,
         organizationSlug: "",
         organizationLogo: null,
-        sourceType: "EXTERNAL" as const,
+        sourceType: isPartner ? ("PARTNER" as const) : ("EXTERNAL" as const),
         externalSourceUrl: linkOut,
         externalLastCheckedAt: lastChecked,
+        partnerName: isPartner ? activity.partnerName ?? activity.sourceName : null,
         priceSummary: summariseLabelForCard(activity.priceLabel, activity.price),
         priceLabel: activity.priceLabel,
       };
@@ -3350,7 +3477,7 @@ export class DatabaseStorage implements IStorage {
       if (filters.search) {
         const q = filters.search.trim().toLowerCase();
         externalRows = externalRows.filter((r) =>
-          [r.title, r.venueName, r.suburb, r.city, r.state, r.organiserName, r.sourceName].some((f) =>
+          [r.title, r.venueName, r.suburb, r.city, r.state, r.organiserName, r.sourceName, r.partnerName].some((f) =>
             (f ?? "").toLowerCase().includes(q)
           )
         );

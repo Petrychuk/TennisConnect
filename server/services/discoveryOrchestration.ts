@@ -404,8 +404,8 @@ async function processActivity(
     // decision; a suspected duplicate shows in Needs Review with its
     // confidence badge (spec section 12: flag for review, don't delete).
     reviewStatus: "PENDING",
-    duplicateOfExternalId: best?.externalId ?? null,
-    duplicateOfSessionId: best?.sessionId ?? null,
+    duplicateOfExternalId: isPossibleDuplicate ? best!.externalId ?? null : null,
+    duplicateOfSessionId: isPossibleDuplicate ? best!.sessionId ?? null : null,
     duplicateConfidence: isPossibleDuplicate ? best!.confidence : null,
     extractionEvidence: evidence,
   });
