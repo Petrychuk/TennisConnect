@@ -461,20 +461,41 @@ logic (`resolveDuplicateWinner`), re-exporting the shared pieces so nothing impo
 path needed to change. The signal that decides Join vs. an outbound link is NOT sourceType
 directly - it's whether `externalSourceUrl` is populated, since a `PARTNER` card can be either.
 
-### The primary path: upgrade, don't duplicate
+### Two paths in, never a second record for the same event
 A club Discovery already found can become a partner - confirming it must upgrade the SAME
 row (`POST /activities/:id/confirm-partner`: `EXTERNAL -> PARTNER` in place, review status
-untouched), never create a second row for the same real event. `POST /partner-events` (admin
-creates from scratch) is the fallback for when there's no existing Discovery row to upgrade -
-it reuses Discovery's own geocoding/timezone/duplicate-check building blocks rather than
-reimplementing them, and requires `registrationUrl` (this path exists specifically because
-there's somewhere else to register - no link at all means use the internal-registration path
-instead). If the fallback path's own duplicate check finds a likely match against an existing
-lower-priority row, approving the Partner Event automatically retires that row (`reviewStatus:
-DUPLICATE`) - approving IS the human confirmation that the partner event is the authoritative
-one. The further step (`PARTNER -> TENNISCONNECT`, once a partner moves full management into
-TC) has no automation in V1 - the existing "Mark Duplicate" action already accepts a real
-session id, so an admin who notices this happened can resolve it by hand.
+untouched), never create a second row for the same real event.
+
+When there's no existing Discovery row to upgrade, the admin imports the partner's event by
+URL (`POST /partner-events/import`) rather than typing every field by hand - reusing the
+EXACT SAME fetch -> `assessPage` -> `callExtractionLLM` -> `buildActivityRecord` ->
+`validateDiscoveredDates` pipeline Discovery's own orchestrator uses, just creating the result
+as `sourceType: PARTNER` instead of `EXTERNAL`. This replaced an earlier all-fields manual
+creation form (`storage.createPartnerEvent`, still present and still used internally by the
+import path to persist its result, see below) after review: "do not create a duplicate
+extraction system." Manual field entry survives only as the existing Edit dialog's fallback -
+for completing a stub row the pipeline couldn't fully read, never as the primary way in.
+
+Before creating anything, the import checks for a duplicate TWICE: an exact `sourceUrl` match
+against existing rows (checked before spending a model call on it at all - the strongest
+possible signal), then, once something is extracted, the SAME duplicate-confidence check
+Discovery itself runs against both other external activities and real TC sessions. Either way,
+if a likely match already exists and isn't already a confirmed Partner, the import creates
+NOTHING and offers Confirm as Partner on the existing row instead - exactly the brief's "if
+the URL/event already exists as EXTERNAL, offer Confirm as Partner instead of creating another
+record." If the page can't be fetched, needs JavaScript, or the model finds nothing on it, the
+import still creates ONE stub row (partner name + source URL only, `NEEDS_REVIEW`) rather than
+a bare error - "missing information is better than fabricated information" applies to this
+path exactly as it does to AI extraction itself, and the admin completes it via Edit.
+
+If the fallback path's own duplicate check finds a likely match against an existing
+lower-priority row anyway (a page describing several activities, say, where only one turns
+out to be a duplicate), approving the Partner Event automatically retires that row
+(`reviewStatus: DUPLICATE`) - approving IS the human confirmation that the partner event is
+the authoritative one. The further step (`PARTNER -> TENNISCONNECT`, once a partner moves
+full management into TC) has no automation in V1 - the existing "Mark Duplicate" action
+already accepts a real session id, so an admin who notices this happened can resolve it by
+hand.
 
 ### A real bug this caught
 Writing `partnerEvents.test.ts` caught a pre-existing bug in the Discovery orchestrator:
@@ -514,9 +535,18 @@ required, no existing row breaks.
 - **No admin picker for `partnerId`** - it's a plain text field for an organisation's id today;
   typing the wrong id fails validation (the server checks it's a real organisation) but there's
   no lookup/autocomplete yet.
+- **Import is one page, one request** - a page describing several activities imports all of
+  them, but there's no bulk "import this whole source" the way a Discovery Source scans
+  multiple pages on a schedule; each partner event is imported one URL at a time, by hand.
+- **The duplicate-before-create check excludes an exact-URL match against this run's OWN
+  previous import** only in the sense that there isn't one yet (nothing dedupes against a row
+  the SAME import call is about to create) - re-running an import on a page that previously
+  produced several activities will re-run the duplicate check per activity against what's
+  already in the database, not against its own sibling rows from the same call, but since each
+  activity has a distinct title/time this hasn't been observed to double up in testing.
 - **Not exercised in a browser** - built and verified via `tsc`/the test suite, same honest
-  caveat as the rest of this document; the admin UI additions (Confirm as Partner / New Partner
-  Event dialogs) haven't been clicked through in a real browser from this build environment.
+  caveat as the rest of this document; the admin UI (Confirm as Partner / Add Partner Event
+  import dialogs) hasn't been clicked through in a real browser from this build environment.
 - Explicitly out of scope per the task brief, not oversights: a dedicated Partner entity/table,
   a Partner self-service portal, subscriptions, staff permissions, API sync with a partner's
   own site.
@@ -580,10 +610,13 @@ required, no existing row breaks.
 **Organiser Request / Partner Events / Play plumbing**: `organizerRequests.test.ts` (7, real
 router + real HTTP), `organizerGrantDirect.test.ts` (5), `organizer-status.test.ts` (15, client-
 side pure resolver), `partnerEvents.test.ts` (13, dedup priority + CTA/badge logic) +
-`routes/partnerEvents.test.ts` (8, real router + real HTTP, both Partner Events paths),
-`getPublicSessionsZeroNative.test.ts` (3).
+`routes/partnerEvents.test.ts` (8, real router + real HTTP, confirm-in-place + the retired
+all-fields create endpoint) + `partnerImport.test.ts` (6, pure URL-import decisions) +
+`routes/partnerEventImport.test.ts` (11, real router + real HTTP + the real Discovery
+fetch/extract/normalise/validate pipeline, with only the network fetch and the model call
+injected), `getPublicSessionsZeroNative.test.ts` (3).
 
-All told, **337 automated tests across the whole Play/AI feature set** (19 test files), tsc clean.
+All told, **366 automated tests across the whole Play/AI feature set** (21 test files), tsc clean.
 
 - **Automated, unit-level:** `server/services/recommendationEngine.test.ts` (27 tests),
   `playerMatchEngine.test.ts` (27 tests), `smartSearchEngine.test.ts` (13 tests) — 67 total,

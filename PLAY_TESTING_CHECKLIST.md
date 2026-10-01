@@ -268,17 +268,32 @@ Needs migration 0032 applied.
       "View original ↗".
 - [ ] If it was Pending, it stays Pending - Approve is still a separate step.
 
-**Fallback path - create from scratch**
-- [ ] "+ New Partner Event": fill in title, partner name, a registration link, a day/time -
-      save. It lands in Pending with a Partner badge.
-- [ ] Leave the registration link blank: rejected with a clear error (this path requires one).
+**Fallback path - import from a URL (no existing Discovery row to upgrade)**
+- [ ] "+ New Partner Event" (now "Add Partner Event"): paste a real tennis club's event/social-
+      tennis page URL + a partner name -> Import Event.
+- [ ] A real event is extracted (title, date/time, venue, level, price where the page states
+      them) and lands in Pending with a Partner badge - no large form to fill in by hand.
+- [ ] A page describing several activities (e.g. a club's "Social Tennis" page listing more
+      than one session) imports one Pending row per activity.
+- [ ] Importing a URL that's an exact match for an item already in Discovery offers "Confirm as
+      Partner" instead of creating a second record - confirming it from there upgrades the
+      existing item in place.
+- [ ] A different URL whose extracted details clearly match an existing item (same
+      title/venue/time) gets the same offer, not a silent duplicate.
+- [ ] A broken link, a page needing JavaScript, or a page with nothing recognisable as an event
+      still creates ONE item (Needs Review, partner name + link only) instead of a dead-end
+      error - open it and use Edit to fill in the rest by hand (manual entry is the fallback
+      WITHIN this flow, not a separate creation form).
+- [ ] A localhost/private-network URL is rejected outright (same guard as Discovery sources).
 - [ ] Enter a partner organisation ID that doesn't exist: rejected, not silently ignored.
 
 **Dedup priority (TENNISCONNECT -> PARTNER -> EXTERNAL)**
-- [ ] Create a new Partner Event that duplicates an existing approved EXTERNAL item (same
-      title/venue/time) - it should show a "possible duplicate" badge pointing at that item.
-- [ ] Approve it: the OLD EXTERNAL item moves to Rejected/Duplicate on its own, and only the
-      Partner Event shows in Play - never both.
+- [ ] Import a URL whose extracted details duplicate an existing approved EXTERNAL item that
+      ISN'T an exact URL match - confirming it as Partner from the offer above should mean only
+      ONE item exists afterwards, not two.
+- [ ] If a duplicate slips through anyway (e.g. two activities on one imported page, one of
+      which happens to match something else) and gets approved as Partner, the OLD EXTERNAL
+      item moves to Rejected/Duplicate on its own - never both showing in Play.
 - [ ] Approving an ordinary Partner Event that ISN'T a duplicate of anything touches no other
       item.
 
