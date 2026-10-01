@@ -7,6 +7,7 @@ import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
 import { RECOMMENDATION_REASON_TEXT } from "@/lib/play-status";
 import { ActivityStatus } from "./ActivityStatus";
 import type { PublicSessionCard as PublicSessionCardData } from "@shared/schema";
+import { resolvePartnerBadge } from "@shared/partnerEvents";
 
 function formatLabel(type: string): string {
   const known = SESSION_TYPE_OPTIONS.find((t) => t.key === type)?.label;
@@ -94,7 +95,7 @@ export function PlaySessionCard({
           {session.type && (
             <Badge variant="secondary" className="text-xs" data-testid={`play-session-card-${session.id}-format`}>{formatLabel(session.type)}</Badge>
           )}
-          <Badge variant="outline" className="text-xs" data-testid={`play-session-card-${session.id}-level`}>{session.skillLevel ?? (session.sourceType === "EXTERNAL" ? "Level not stated" : "All Levels")}</Badge>
+          <Badge variant="outline" className="text-xs" data-testid={`play-session-card-${session.id}-level`}>{session.skillLevel ?? (session.externalSourceUrl ? "Level not stated" : "All Levels")}</Badge>
           {session.courtsCount != null && <Badge variant="outline" className="text-xs">{session.courtsCount} courts</Badge>}
         </div>
 
@@ -146,15 +147,21 @@ export function PlaySessionCard({
               <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{initials(session.organizationName)}</AvatarFallback>
             </Avatar>
             <span className="text-xs text-muted-foreground truncate">
-              {session.sourceType === "EXTERNAL" ? (
-                <>
-                  <span className="text-primary font-medium">Found by TennisConnect</span> · {session.organizationName}
-                </>
-              ) : (
-                <>
-                  Organised by <span className="text-foreground font-medium">{session.organizationName}</span>
-                </>
-              )}
+              {(() => {
+                const badge = resolvePartnerBadge({ sourceType: session.sourceType, name: session.partnerName ?? session.organizationName });
+                if (!badge.label) {
+                  return (
+                    <>
+                      Organised by <span className="text-foreground font-medium">{session.organizationName}</span>
+                    </>
+                  );
+                }
+                return (
+                  <>
+                    <span className="text-primary font-medium">{badge.label === "Partner" ? "TennisConnect Partner ✓" : badge.label}</span> · {badge.name}
+                  </>
+                );
+              })()}
             </span>
           </div>
           <Button
