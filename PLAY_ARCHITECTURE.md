@@ -433,6 +433,58 @@ Location search matches suburb/city/state/venue/address. Because they come throu
 `<suburb>, <state>, Australia` (Australia-restricted). With no known state -> no coordinates
 (never a guess) and the item is flagged for review.
 
+## Task 6 — Partner Events
+
+Goal: a third tier between TENNISCONNECT and EXTERNAL - a club/organiser officially
+confirmed as a TennisConnect partner, whose event may still register on their own site.
+Priority: `TENNISCONNECT -> PARTNER -> EXTERNAL`.
+
+### No new table, no new Partner entity
+Two schema facts settled this before any code was written: `tennisSessions.organizationId`
+is `NOT NULL` (an unregistered partner has nowhere to point it), and `registrations.sessionId`
+only ever references `tennisSessions` (real internal Join only exists there). So:
+- **Internal registration, partner already a registered TC organisation** -> an ordinary
+  `tennisSessions` row with a new `isPartnerEvent` flag. Nothing else changes - Join,
+  capacity, registrations, Match Score, Smart Search already all work.
+- **External registration, or not yet a registered TC organisation** -> `external_activities`
+  gets `sourceType = PARTNER` (alongside the pre-existing implicit `EXTERNAL`), plus
+  `partnerId` (nullable - set once they're a real `organizations` row), `partnerName`
+  (always set - the authoritative, admin-confirmed name, distinct from `organiserName` which
+  is AI-extracted for plain Discovery rows), and an explicit `registrationType` column
+  (`INTERNAL | EXTERNAL`, always `EXTERNAL` for a row stored here, by construction).
+
+`PublicSessionCard.sourceType` is three-way (`TENNISCONNECT | PARTNER | EXTERNAL`) regardless
+of which table backs the card - callers never need to know which one it came from.
+`shared/partnerEvents.ts` holds the client+server-shared display logic (`resolveRegistrationCta`,
+`resolvePartnerBadge`); `server/services/partnerEvents.ts` holds the server-only dedup-priority
+logic (`resolveDuplicateWinner`), re-exporting the shared pieces so nothing importing the old
+path needed to change. The signal that decides Join vs. an outbound link is NOT sourceType
+directly - it's whether `externalSourceUrl` is populated, since a `PARTNER` card can be either.
+
+### The primary path: upgrade, don't duplicate
+A club Discovery already found can become a partner - confirming it must upgrade the SAME
+row (`POST /activities/:id/confirm-partner`: `EXTERNAL -> PARTNER` in place, review status
+untouched), never create a second row for the same real event. `POST /partner-events` (admin
+creates from scratch) is the fallback for when there's no existing Discovery row to upgrade -
+it reuses Discovery's own geocoding/timezone/duplicate-check building blocks rather than
+reimplementing them, and requires `registrationUrl` (this path exists specifically because
+there's somewhere else to register - no link at all means use the internal-registration path
+instead). If the fallback path's own duplicate check finds a likely match against an existing
+lower-priority row, approving the Partner Event automatically retires that row (`reviewStatus:
+DUPLICATE`) - approving IS the human confirmation that the partner event is the authoritative
+one. The further step (`PARTNER -> TENNISCONNECT`, once a partner moves full management into
+TC) has no automation in V1 - the existing "Mark Duplicate" action already accepts a real
+session id, so an admin who notices this happened can resolve it by hand.
+
+### A real bug this caught
+Writing `partnerEvents.test.ts` caught a pre-existing bug in the Discovery orchestrator:
+`duplicateOfExternalId`/`duplicateOfSessionId` were set to whatever candidate scored highest
+in a duplicate check, even at confidence 0, as long as any other row existed at all - only
+`duplicateConfidence` correctly checked the review threshold. Harmless while nothing acted on
+the link itself, but the new auto-retire-on-approve logic would have retired unrelated rows on
+that bogus link. Fixed in both `discoveryOrchestration.ts` and `storage.ts`: the link is now
+only set when `isPossibleDuplicate` is true, matching `duplicateConfidence`'s existing logic.
+
 ## Data model summary (all new columns/tables this cycle)
 
 | Table | New columns |
@@ -444,6 +496,8 @@ Location search matches suburb/city/state/venue/address. Because they come throu
 | `messages` | (pre-existing `messageType`/`actionStatus` — `"play_invite"` is a new *value*, not a new column) |
 | `geocode_cache` (new table) | `location` (PK), `latitude`, `longitude`, `source`, `created_at` |
 | `discovery_sources`, `external_activities`, `discovery_runs` (new tables, migrations 0029-0030) | Source registry (incl. `extra_urls`, `page_hashes`, `city`), external activities (recurrence, evidence, review/discovery status, duplicate links, coordinates), per-run counters |
+| `external_activities` (migrations 0031-0032) | `price_label`; `source_type` (`EXTERNAL \| PARTNER`), `partner_id`, `partner_name`, `registration_type` (`INTERNAL \| EXTERNAL`); `source_id` relaxed to nullable (an admin-created Partner Event has no Discovery Source) |
+| `sessions` (migration 0032) | `is_partner_event` - an ordinary session an admin has confirmed as an official partner event |
 
 Every new player_profiles/sessions/coach_profiles/clubs column is nullable — no backfill
 required, no existing row breaks.
@@ -451,6 +505,21 @@ required, no existing row breaks.
 ---
 
 ## Known gaps (honest, not hidden)
+
+**Partner Events**
+- **No automatic `PARTNER -> TENNISCONNECT` detection.** If a partner later creates a real
+  session themselves, nothing notices the old Partner Event row is now superseded - an admin
+  has to spot it and use the existing "Mark Duplicate" action by hand (it already accepts a
+  real session id, so no new mechanism was needed, just no automatic trigger for it).
+- **No admin picker for `partnerId`** - it's a plain text field for an organisation's id today;
+  typing the wrong id fails validation (the server checks it's a real organisation) but there's
+  no lookup/autocomplete yet.
+- **Not exercised in a browser** - built and verified via `tsc`/the test suite, same honest
+  caveat as the rest of this document; the admin UI additions (Confirm as Partner / New Partner
+  Event dialogs) haven't been clicked through in a real browser from this build environment.
+- Explicitly out of scope per the task brief, not oversights: a dedicated Partner entity/table,
+  a Partner self-service portal, subscriptions, staff permissions, API sync with a partner's
+  own site.
 
 **Discovery Agent**
 - **Never run against a real page or model from the build environment** (no network there).
@@ -502,11 +571,19 @@ required, no existing row breaks.
 
 ## Testing
 
-**Discovery Agent unit tests** (added since the counts below): `discoveryAgent.test.ts` (66),
-`discoveryOccurrences.test.ts` (32), `discoveryFreshness.test.ts` (22),
-`discoveryPageContent.test.ts` (18), `discoveryPilot.test.ts` (16 - the three pilot sources through
-the real post-model pipeline, model output simulated), `lib/zonedTime.test.ts` (4) - 158
-more, for **225 automated tests across the whole Play/AI feature set**.
+**Discovery Agent unit tests**: `discoveryAgent.test.ts` (66), `discoveryOccurrences.test.ts` (35),
+`discoveryFreshness.test.ts` (22), `discoveryPageContent.test.ts` (18), `discoveryPilot.test.ts`
+(20 - the three pilot sources through the real post-model pipeline, model output simulated),
+`discoveryPrice.test.ts` (25), `discoveryRecurringEligibility.test.ts` (9),
+`lib/zonedTime.test.ts` + `lib/zonedTimeDst.test.ts` (12).
+
+**Organiser Request / Partner Events / Play plumbing**: `organizerRequests.test.ts` (7, real
+router + real HTTP), `organizerGrantDirect.test.ts` (5), `organizer-status.test.ts` (15, client-
+side pure resolver), `partnerEvents.test.ts` (13, dedup priority + CTA/badge logic) +
+`routes/partnerEvents.test.ts` (8, real router + real HTTP, both Partner Events paths),
+`getPublicSessionsZeroNative.test.ts` (3).
+
+All told, **337 automated tests across the whole Play/AI feature set** (19 test files), tsc clean.
 
 - **Automated, unit-level:** `server/services/recommendationEngine.test.ts` (27 tests),
   `playerMatchEngine.test.ts` (27 tests), `smartSearchEngine.test.ts` (13 tests) — 67 total,
