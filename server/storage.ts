@@ -215,6 +215,13 @@ export interface IStorage {
     price: number | null; priceLabel: string | null; registrationUrl: string;
     partnerId: string | null; partnerName: string; createdBy: string;
   }): Promise<typeof externalActivities.$inferSelect | undefined>;
+  importPartnerEventFromUrl(
+    input: { url: string; partnerId: string | null; partnerName: string; createdBy: string },
+    deps?: { fetchPage?: (url: string) => Promise<string>; callExtractionLLM?: (sourceText: string, sourceUrl: string) => Promise<any> }
+  ): Promise<
+    | { kind: "duplicate"; existingId: string; existingTitle: string; reason: "same-url" | "high-confidence-match" }
+    | { kind: "created"; activities: (typeof externalActivities.$inferSelect)[]; stub: boolean; reason?: string }
+  >;
   getExternalActivitiesForDuplicateCheck(filters: { suburb?: string | null; startDate?: string | null; excludeSourceUrl?: string }): Promise<(typeof externalActivities.$inferSelect)[]>;
   getExternalActivityById(id: string): Promise<typeof externalActivities.$inferSelect | undefined>;
   getPublicSessionsForDuplicateCheck(filters: { location?: string | null; startDate?: string | null }): Promise<{ id: string; title: string; location: string | null; startAt: string; timeZone: string }[]>;
@@ -1032,6 +1039,49 @@ export class DatabaseStorage implements IStorage {
   // building blocks rather than reimplementing them - this is admin-
   // entered data, not AI-extracted, so there's no extraction/validation
   // step to run, only the parts that are genuinely shared.
+  // Shared by createPartnerEvent and importPartnerEventFromUrl - scores
+  // a candidate activity against both other external_activities rows and
+  // real TC sessions, exactly as the Discovery orchestrator does for its
+  // own finds (spec section 12).
+  private async findBestDuplicateMatch(candidate: {
+    title: string;
+    venueName: string | null;
+    suburb: string | null;
+    startDate: string | null;
+    startTime: string | null;
+    recurrenceDayOfWeek: string | null;
+    registrationUrl?: string | null;
+  }): Promise<{ confidence: number; externalId?: string; sessionId?: string } | null> {
+    const { computeDuplicateConfidence } = await import("./services/discoveryDuplicateDetection");
+    const { toLocalDateTime } = await import("./services/discoveryOccurrences");
+
+    const otherExternal = await this.getExternalActivitiesForDuplicateCheck({
+      suburb: candidate.suburb,
+      startDate: candidate.startDate,
+    });
+    const tcSessions = await this.getPublicSessionsForDuplicateCheck({
+      location: candidate.suburb ?? candidate.venueName,
+      startDate: candidate.startDate,
+    });
+
+    let best: { confidence: number; externalId?: string; sessionId?: string } | null = null;
+    for (const other of otherExternal) {
+      const score = computeDuplicateConfidence(candidate, other);
+      if (!best || score > best.confidence) best = { confidence: score, externalId: other.id };
+    }
+    for (const session of tcSessions) {
+      const local = toLocalDateTime(new Date(session.startAt), session.timeZone);
+      const score = computeDuplicateConfidence(candidate, {
+        title: session.title,
+        venueName: session.location,
+        startDate: local.date,
+        startTime: local.time,
+      });
+      if (!best || score > best.confidence) best = { confidence: score, sessionId: session.id };
+    }
+    return best;
+  }
+
   async createPartnerEvent(input: {
     title: string;
     description: string | null;
@@ -1067,13 +1117,12 @@ export class DatabaseStorage implements IStorage {
   }) {
     const { resolveTimeZoneForState } = await import("./services/discoveryNormalization");
     const { resolveAustralianVenueCoordinates } = await import("./services/geocodingService");
-    const { computeDuplicateConfidence, DUPLICATE_REVIEW_THRESHOLD } = await import("./services/discoveryDuplicateDetection");
-    const { toLocalDateTime } = await import("./services/discoveryOccurrences");
+    const { DUPLICATE_REVIEW_THRESHOLD } = await import("./services/discoveryDuplicateDetection");
 
     const timeZone = resolveTimeZoneForState(input.state);
     const coords = await resolveAustralianVenueCoordinates({ suburb: input.suburb, city: input.city, state: input.state });
 
-    const candidate = {
+    const best = await this.findBestDuplicateMatch({
       title: input.title,
       venueName: input.venueName,
       suburb: input.suburb,
@@ -1081,31 +1130,7 @@ export class DatabaseStorage implements IStorage {
       startTime: input.startTime,
       recurrenceDayOfWeek: input.recurrenceDayOfWeek,
       registrationUrl: input.registrationUrl,
-    };
-    const otherExternal = await this.getExternalActivitiesForDuplicateCheck({
-      suburb: input.suburb,
-      startDate: input.startDate,
     });
-    const tcSessions = await this.getPublicSessionsForDuplicateCheck({
-      location: input.suburb ?? input.venueName,
-      startDate: input.startDate,
-    });
-
-    let best: { confidence: number; externalId?: string; sessionId?: string } | null = null;
-    for (const other of otherExternal) {
-      const score = computeDuplicateConfidence(candidate, other);
-      if (!best || score > best.confidence) best = { confidence: score, externalId: other.id };
-    }
-    for (const session of tcSessions) {
-      const local = toLocalDateTime(new Date(session.startAt), session.timeZone);
-      const score = computeDuplicateConfidence(candidate, {
-        title: session.title,
-        venueName: session.location,
-        startDate: local.date,
-        startTime: local.time,
-      });
-      if (!best || score > best.confidence) best = { confidence: score, sessionId: session.id };
-    }
     const isPossibleDuplicate = !!best && best.confidence >= DUPLICATE_REVIEW_THRESHOLD;
 
     const safeRegistrationUrl = resolveRegistrationUrl(input.registrationUrl, "https://tennisconnect.com.au/");
@@ -1136,6 +1161,169 @@ export class DatabaseStorage implements IStorage {
       extractionEvidence: input.partnerId ? { _note: "Linked to a registered TennisConnect organisation." } : null,
     });
     return created;
+  }
+
+  // [PLAY][AI] Partner Events - THE primary creation path per review:
+  // "do not create a duplicate extraction system - reuse the existing
+  // Discovery fetch/extract/normalise/validate pipeline." An admin
+  // supplies a URL + partner name; everything else is extracted exactly
+  // the way Discovery extracts an ordinary find, just pre-labelled
+  // PARTNER. createPartnerEvent (above) becomes the fallback this calls
+  // into once real data is in hand - manual field entry survives only
+  // as the Edit dialog's own fallback, never as a second creation form.
+  async importPartnerEventFromUrl(
+    input: {
+      url: string;
+      partnerId: string | null;
+      partnerName: string;
+      createdBy: string;
+    },
+    deps?: {
+      fetchPage?: (url: string) => Promise<string>;
+      callExtractionLLM?: (sourceText: string, sourceUrl: string) => Promise<Awaited<ReturnType<typeof import("./services/discoveryExtraction").callExtractionLLM>>>;
+    }
+  ): Promise<
+    | { kind: "duplicate"; existingId: string; existingTitle: string; reason: "same-url" | "high-confidence-match" }
+    | { kind: "created"; activities: (typeof externalActivities.$inferSelect)[]; stub: boolean; reason?: string }
+  > {
+    const { isSafeExternalUrl } = await import("./services/discoveryNormalization");
+    const { fetchPage: realFetchPage } = await import("./services/discoveryOrchestration");
+    const { assessPage } = await import("./services/discoveryPageContent");
+    const { callExtractionLLM: realCallExtractionLLM, classifyConfidence } = await import("./services/discoveryExtraction");
+    const fetchPage = deps?.fetchPage ?? realFetchPage;
+    const callExtractionLLM = deps?.callExtractionLLM ?? realCallExtractionLLM;
+    const { buildActivityRecord } = await import("./services/discoveryRecord");
+    const { validateDiscoveredDates } = await import("./services/discoveryNormalization");
+    const { initialDiscoveryStatus, initialFlagReasons } = await import("./services/discoveryQueue");
+    const { resolveAustralianVenueCoordinates } = await import("./services/geocodingService");
+    const { DUPLICATE_REVIEW_THRESHOLD } = await import("./services/discoveryDuplicateDetection");
+    const { findExactUrlDuplicate, decideStubReason } = await import("./services/partnerImport");
+
+    if (!isSafeExternalUrl(input.url)) throw new Error("That URL can't be fetched (must be a public http(s) page)");
+
+    // Exact-URL duplicate check FIRST - the strongest possible signal,
+    // checked before spending a model call on anything.
+    const existingByUrl = await this.getExternalActivitiesForDuplicateCheck({});
+    const exactMatch = findExactUrlDuplicate(
+      input.url,
+      existingByUrl.map((r) => ({ id: r.id, title: r.title, sourceUrl: r.sourceUrl }))
+    );
+    if (exactMatch) {
+      const full = await this.getExternalActivityById(exactMatch.id);
+      if (full && full.sourceType !== "PARTNER") {
+        return { kind: "duplicate", existingId: exactMatch.id, existingTitle: exactMatch.title, reason: "same-url" };
+      }
+    }
+
+    let html: string | null = null;
+    let fetchError: string | undefined;
+    try {
+      html = await fetchPage(input.url);
+    } catch (err: any) {
+      fetchError = err?.message ?? "fetch failed";
+    }
+
+    const assessment = html ? assessPage(html) : null;
+    const extraction = assessment?.supported ? await callExtractionLLM(assessment.text, input.url) : null;
+
+    const makeStub = async (reason: string) => {
+      const created = await this.createExternalActivity({
+        title: `Partner event from ${new URL(input.url).hostname}`,
+        sourceType: "PARTNER",
+        registrationType: "EXTERNAL",
+        sourceId: null,
+        sourceName: input.partnerName,
+        sourceUrl: input.url,
+        registrationUrl: input.url,
+        partnerId: input.partnerId,
+        partnerName: input.partnerName,
+        currency: "AUD",
+        confidence: "LOW",
+        discoveryStatus: "NEEDS_REVIEW",
+        reviewStatus: "PENDING",
+        extractionEvidence: { _flag: reason },
+      });
+      return { kind: "created" as const, activities: created ? [created] : [], stub: true, reason };
+    };
+
+    if (!html || !assessment?.supported || !extraction || extraction.activities.length === 0) {
+      const reason = decideStubReason({ fetchFailed: !html, fetchError });
+      return makeStub(!html || !assessment?.supported ? reason : "No event details could be automatically extracted from this page - fill them in yourself.");
+    }
+
+    const created: (typeof externalActivities.$inferSelect)[] = [];
+    for (const extracted of extraction.activities) {
+      const built = buildActivityRecord(extracted, { sourceState: null, sourceCity: null, pageUrl: input.url });
+      const dateCheck = validateDiscoveredDates({
+        startDate: extracted.startDate,
+        endDate: extracted.endDate,
+        startTime: extracted.startTime,
+        endTime: extracted.endTime,
+        isRecurring: !!built.recurrence,
+        timeZone: built.record.timeZone,
+      });
+      if (!dateCheck.valid) continue; // skip an unusable entry rather than fail the whole import
+
+      const best = await this.findBestDuplicateMatch({
+        title: built.record.title,
+        venueName: built.record.venueName,
+        suburb: built.record.suburb,
+        startDate: built.record.startDate,
+        startTime: built.record.startTime,
+        recurrenceDayOfWeek: built.record.recurrenceDayOfWeek,
+      });
+      const isPossibleDuplicate = !!best && best.confidence >= DUPLICATE_REVIEW_THRESHOLD;
+
+      // A single clearly-the-same-event match on the FIRST (and typically
+      // only) extracted activity is offered as Confirm as Partner instead
+      // of created - exactly the brief's "If the URL/event already exists
+      // as EXTERNAL, offer Confirm as Partner instead of creating another
+      // record." A page describing several activities that happens to
+      // also flag ONE of them as a duplicate still imports the rest -
+      // stopping the whole batch over one match would be worse.
+      if (isPossibleDuplicate && best!.externalId && extraction.activities.length === 1) {
+        const existing = await this.getExternalActivityById(best!.externalId);
+        if (existing && existing.sourceType !== "PARTNER") {
+          return { kind: "duplicate", existingId: existing.id, existingTitle: existing.title, reason: "high-confidence-match" };
+        }
+      }
+
+      const coords = await resolveAustralianVenueCoordinates({ suburb: built.record.suburb, city: built.record.city, state: built.record.state });
+      const evidence: Record<string, string> = { ...(extracted.evidence ?? {}) };
+      if (extracted.recurrenceText) evidence.recurrence = extracted.recurrenceText;
+      if (built.priceWording) evidence.price = built.priceWording;
+
+      const row = await this.createExternalActivity({
+        ...built.record,
+        sourceType: "PARTNER",
+        registrationType: "EXTERNAL",
+        sourceId: null,
+        sourceName: input.partnerName,
+        sourceUrl: input.url,
+        partnerId: input.partnerId,
+        partnerName: input.partnerName,
+        latitude: coords?.latitude ?? null,
+        longitude: coords?.longitude ?? null,
+        confidence: classifyConfidence(extracted),
+        discoveryStatus: initialDiscoveryStatus({
+          confidence: classifyConfidence(extracted),
+          isPossibleDuplicate,
+          timeZoneKnown: !!built.record.timeZone,
+          recurrenceUnderstood: built.recurrenceUnderstood,
+        }),
+        reviewStatus: "PENDING",
+        duplicateOfExternalId: isPossibleDuplicate ? best!.externalId ?? null : null,
+        duplicateOfSessionId: isPossibleDuplicate ? best!.sessionId ?? null : null,
+        duplicateConfidence: isPossibleDuplicate ? best!.confidence : null,
+        extractionEvidence: evidence,
+      });
+      if (row) created.push(row);
+    }
+
+    if (created.length === 0) {
+      return makeStub("The page's dates didn't look valid, so nothing could be imported automatically - fill them in yourself.");
+    }
+    return { kind: "created", activities: created, stub: false };
   }
 
   // Candidates a newly discovered activity might duplicate: items from

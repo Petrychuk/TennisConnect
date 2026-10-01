@@ -288,6 +288,39 @@ router.post("/activities/:id/confirm-partner", async (req, res, next) => {
   }
 });
 
+// [PLAY][AI] Partner Events - THE primary creation flow (replaces the
+// earlier all-fields manual form per review: a partner's event, when
+// Discovery hasn't found it, is imported from its URL through the SAME
+// fetch/extract/normalise/validate pipeline Discovery itself uses -
+// never a second, hand-typed path). POST /partner-events (below) still
+// exists for createPartnerEvent's own internal use and as a documented
+// fallback, but the admin UI no longer offers it as a form.
+const importPartnerEventSchema = z.object({
+  url: z.string().trim().url(),
+  partnerId: z.preprocess(blankToNull, z.string().nullable()).default(null),
+  partnerName: z.string().trim().min(1).max(200),
+});
+
+router.post("/partner-events/import", async (req, res, next) => {
+  try {
+    const parsed = importPartnerEventSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: "Invalid input", errors: parsed.error.flatten() });
+
+    if (parsed.data.partnerId) {
+      const org = await storage.getOrganizationById(parsed.data.partnerId);
+      if (!org) return res.status(400).json({ message: "partnerId does not match an existing organisation" });
+    }
+
+    const result = await storage.importPartnerEventFromUrl({ ...parsed.data, createdBy: req.user!.id });
+    res.status(result.kind === "duplicate" ? 200 : 201).json(result);
+  } catch (error: any) {
+    if (error?.message?.includes("public http(s) page")) {
+      return res.status(400).json({ message: error.message });
+    }
+    next(error);
+  }
+});
+
 router.post("/partner-events", async (req, res, next) => {
   try {
     const parsed = createPartnerEventSchema.safeParse(req.body);
