@@ -478,3 +478,19 @@ Code:
 ✓ Clean Architecture
 
 These standards should always be preserved.
+
+---
+
+# Git Commit Authorship
+
+For every Git commit in this repository:
+
+- Always use the Git identity configured in this repository.
+- Never override the Git author or committer.
+- Never use `git commit --author`.
+- Never set `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`,
+  `GIT_COMMITTER_NAME`, or `GIT_COMMITTER_EMAIL`.
+- Never use Claude, Cursor, Emergent, TennisConnect Dev,
+  or any automated identity as the author or committer.
+- Never add AI tools or agents as `Co-Authored-By`.
+- Before committing, use the existing repository Git identity.
