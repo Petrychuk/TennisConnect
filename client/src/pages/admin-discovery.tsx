@@ -200,9 +200,15 @@ export default function AdminDiscoveryPage() {
   const [confirmPartnerName, setConfirmPartnerName] = useState("");
   const [savingConfirm, setSavingConfirm] = useState(false);
 
-  const [newPartnerOpen, setNewPartnerOpen] = useState(false);
-  const [newPartnerDraft, setNewPartnerDraft] = useState<Record<string, string>>({});
-  const [savingNewPartner, setSavingNewPartner] = useState(false);
+  // [PLAY][AI] Partner Events - URL-first import, replacing the earlier
+  // all-fields form: a partner's URL + their name is all that's asked
+  // for up front; the existing Discovery pipeline extracts the rest.
+  const [importOpen, setImportOpen] = useState(false);
+  const [importUrl, setImportUrl] = useState("");
+  const [importPartnerId, setImportPartnerId] = useState("");
+  const [importPartnerName, setImportPartnerName] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importDuplicate, setImportDuplicate] = useState<{ existingId: string; existingTitle: string } | null>(null);
 
   const loadCounts = () => {
     if (!isAdmin) return;
@@ -290,52 +296,64 @@ export default function AdminDiscoveryPage() {
     }
   };
 
-  const openNewPartnerEvent = () => {
-    setNewPartnerDraft({});
-    setNewPartnerOpen(true);
+  const openImportPartnerEvent = () => {
+    setImportUrl("");
+    setImportPartnerId("");
+    setImportPartnerName("");
+    setImportDuplicate(null);
+    setImportOpen(true);
   };
 
-  const saveNewPartnerEvent = async () => {
-    const d = newPartnerDraft;
-    setSavingNewPartner(true);
+  const runImport = async () => {
+    setImporting(true);
+    setImportDuplicate(null);
     try {
-      const payload = {
-        title: d.title?.trim(),
-        description: null,
-        activityType: d.activityType?.trim() || null,
-        gameFormat: null,
-        startDate: d.startDate?.trim() || null,
-        endDate: null,
-        startTime: d.startTime?.trim() || null,
-        endTime: d.endTime?.trim() || null,
-        recurrenceFrequency: d.recurrenceFrequency?.trim() || null,
-        recurrenceDayOfWeek: d.recurrenceDayOfWeek?.trim() || null,
-        venueName: d.venueName?.trim() || null,
-        address: null,
-        suburb: d.suburb?.trim() || null,
-        city: d.city?.trim() || null,
-        state: d.state?.trim() || null,
-        postcode: null,
-        normalisedLevel: d.normalisedLevel?.trim() || null,
-        price: d.price?.trim() ? Number(d.price) : null,
-        priceLabel: d.priceLabel?.trim() || null,
-        registrationUrl: d.registrationUrl?.trim(),
-        partnerId: d.partnerId?.trim() || null,
-        partnerName: d.partnerName?.trim(),
-      };
-      const created = await api("/partner-events", { method: "POST", body: JSON.stringify(payload) });
-      setNewPartnerOpen(false);
+      const result = await api("/partner-events/import", {
+        method: "POST",
+        body: JSON.stringify({ url: importUrl.trim(), partnerId: importPartnerId.trim() || null, partnerName: importPartnerName.trim() }),
+      });
+      if (result.kind === "duplicate") {
+        // The brief's key rule: an existing Discovery find for the same
+        // event gets Confirm as Partner, never a second record.
+        setImportDuplicate({ existingId: result.existingId, existingTitle: result.existingTitle });
+        return;
+      }
+      setImportOpen(false);
       loadCounts();
-      if (tab === "PENDING") setItems((prev) => [created, ...prev]);
-      toast({ title: "Partner Event created", description: "It's in Pending - approve it to make it eligible for Play." });
-    } catch (err: any) {
+      if (tab === "PENDING") setItems((prev) => [...result.activities, ...prev]);
+      toast({
+        title: result.stub ? "Imported - needs review" : `Imported ${result.activities.length} event${result.activities.length === 1 ? "" : "s"}`,
+        description: result.stub
+          ? "Couldn't read full details automatically - open it and fill in what's missing."
+          : "It's in Pending - approve it to make it eligible for Play.",
+      });
+    } catch {
       toast({
         variant: "destructive",
-        title: "Couldn't create the Partner Event",
-        description: "Check the title, partner name, state, and that the registration link starts with http(s)://",
+        title: "Couldn't import",
+        description: "Check the URL (must start with http(s)://, and not point at a private address) and that a partner name was entered.",
       });
     } finally {
-      setSavingNewPartner(false);
+      setImporting(false);
+    }
+  };
+
+  const confirmDuplicateAsPartner = async () => {
+    if (!importDuplicate) return;
+    setImporting(true);
+    try {
+      const updated = await api(`/activities/${importDuplicate.existingId}/confirm-partner`, {
+        method: "POST",
+        body: JSON.stringify({ partnerId: importPartnerId.trim() || null, partnerName: importPartnerName.trim() }),
+      });
+      setItems((prev) => prev.map((i) => (i.id === importDuplicate.existingId ? { ...i, ...updated } : i)));
+      setImportOpen(false);
+      setImportDuplicate(null);
+      toast({ title: "Confirmed as an official TennisConnect partner" });
+    } catch {
+      toast({ variant: "destructive", title: "Couldn't confirm" });
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -458,7 +476,7 @@ export default function AdminDiscoveryPage() {
               <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  onClick={openNewPartnerEvent}
+                  onClick={openImportPartnerEvent}
                   className="rounded-full px-6 cursor-pointer"
                   data-testid="new-partner-event-button"
                 >
@@ -768,152 +786,75 @@ export default function AdminDiscoveryPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={newPartnerOpen} onOpenChange={(open) => !savingNewPartner && setNewPartnerOpen(open)}>
-        <DialogContent data-testid="new-partner-event-modal" className="max-h-[85vh] overflow-y-auto">
+      <Dialog open={importOpen} onOpenChange={(open) => !importing && setImportOpen(open)}>
+        <DialogContent data-testid="new-partner-event-modal">
           <DialogHeader>
-            <DialogTitle>New Partner Event</DialogTitle>
+            <DialogTitle>Add Partner Event</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            For an official partner's event Discovery hasn't found on its own. If Discovery already found this event,
-            use "Confirm as Partner" on that item instead - don't create a second one here.
+            For an official partner's event Discovery hasn't found on its own - paste its page and we'll extract
+            the details the same way Discovery does. If Discovery already found this event, use "Confirm as Partner"
+            on that item instead of importing it again here.
           </p>
-          <div className="space-y-3">
-            <div>
-              <Label>Title</Label>
-              <Input value={newPartnerDraft.title ?? ""} onChange={(e) => setNewPartnerDraft((d) => ({ ...d, title: e.target.value }))} />
+
+          {importDuplicate ? (
+            <div className="space-y-3" data-testid="import-duplicate-offer">
+              <p className="text-sm rounded-lg bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 p-3">
+                This looks like it matches an item already in Discovery:{" "}
+                <span className="font-medium">{importDuplicate.existingTitle}</span>. Confirm that one as the
+                partner instead of creating a second record for the same event.
+              </p>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setImportDuplicate(null)} disabled={importing}>
+                  Back
+                </Button>
+                <Button onClick={confirmDuplicateAsPartner} disabled={importing} data-testid="confirm-duplicate-as-partner">
+                  {importing ? "Confirming..." : "Confirm as Partner"}
+                </Button>
+              </DialogFooter>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Partner name</Label>
-                <Input value={newPartnerDraft.partnerName ?? ""} onChange={(e) => setNewPartnerDraft((d) => ({ ...d, partnerName: e.target.value }))} />
+          ) : (
+            <>
+              <div className="space-y-3">
+                <div>
+                  <Label>Partner event URL</Label>
+                  <Input
+                    value={importUrl}
+                    onChange={(e) => setImportUrl(e.target.value)}
+                    placeholder="https://club.com/events/social-tennis"
+                  />
+                </div>
+                <div>
+                  <Label>Partner name</Label>
+                  <Input
+                    value={importPartnerName}
+                    onChange={(e) => setImportPartnerName(e.target.value)}
+                    placeholder="e.g. Manly Lawn Tennis Club"
+                  />
+                </div>
+                <div>
+                  <Label>Partner organisation ID (optional)</Label>
+                  <Input
+                    value={importPartnerId}
+                    onChange={(e) => setImportPartnerId(e.target.value)}
+                    placeholder="Leave blank if they're not a registered TennisConnect organisation yet"
+                  />
+                </div>
               </div>
-              <div>
-                <Label>Partner organisation ID (optional)</Label>
-                <Input
-                  value={newPartnerDraft.partnerId ?? ""}
-                  onChange={(e) => setNewPartnerDraft((d) => ({ ...d, partnerId: e.target.value }))}
-                  placeholder="Leave blank if not yet registered"
-                />
-              </div>
-            </div>
-            <div>
-              <Label>Registration link (required - where players register)</Label>
-              <Input
-                value={newPartnerDraft.registrationUrl ?? ""}
-                onChange={(e) => setNewPartnerDraft((d) => ({ ...d, registrationUrl: e.target.value }))}
-                placeholder="https://..."
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Start date (YYYY-MM-DD, optional for a recurring session)</Label>
-                <Input value={newPartnerDraft.startDate ?? ""} onChange={(e) => setNewPartnerDraft((d) => ({ ...d, startDate: e.target.value }))} />
-              </div>
-              <div>
-                <Label>Venue</Label>
-                <Input value={newPartnerDraft.venueName ?? ""} onChange={(e) => setNewPartnerDraft((d) => ({ ...d, venueName: e.target.value }))} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Start time (HH:MM)</Label>
-                <Input value={newPartnerDraft.startTime ?? ""} onChange={(e) => setNewPartnerDraft((d) => ({ ...d, startTime: e.target.value }))} />
-              </div>
-              <div>
-                <Label>End time (HH:MM)</Label>
-                <Input value={newPartnerDraft.endTime ?? ""} onChange={(e) => setNewPartnerDraft((d) => ({ ...d, endTime: e.target.value }))} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Repeats (optional)</Label>
-                <Select
-                  value={newPartnerDraft.recurrenceFrequency ?? "__none__"}
-                  onValueChange={(v) => setNewPartnerDraft((d) => ({ ...d, recurrenceFrequency: v === "__none__" ? "" : v }))}
+              <DialogFooter>
+                <Button
+                  onClick={runImport}
+                  disabled={importing || !importUrl.trim() || !importPartnerName.trim()}
+                  data-testid="import-partner-event-save"
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">One-off</SelectItem>
-                    <SelectItem value="WEEKLY">Weekly</SelectItem>
-                    <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Day of week (if repeating)</Label>
-                <Select
-                  value={newPartnerDraft.recurrenceDayOfWeek ?? "__none__"}
-                  onValueChange={(v) => setNewPartnerDraft((d) => ({ ...d, recurrenceDayOfWeek: v === "__none__" ? "" : v }))}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">-</SelectItem>
-                    {["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"].map((d) => (
-                      <SelectItem key={d} value={d}>{humanise(d)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <Label>Suburb</Label>
-                <Input value={newPartnerDraft.suburb ?? ""} onChange={(e) => setNewPartnerDraft((d) => ({ ...d, suburb: e.target.value }))} />
-              </div>
-              <div>
-                <Label>City</Label>
-                <Input value={newPartnerDraft.city ?? ""} onChange={(e) => setNewPartnerDraft((d) => ({ ...d, city: e.target.value }))} />
-              </div>
-              <div>
-                <Label>State</Label>
-                <Select value={newPartnerDraft.state ?? "__none__"} onValueChange={(v) => setNewPartnerDraft((d) => ({ ...d, state: v === "__none__" ? "" : v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">-</SelectItem>
-                    {AU_STATES.map((st) => (
-                      <SelectItem key={st} value={st}>{st}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Level</Label>
-                <Select
-                  value={newPartnerDraft.normalisedLevel ?? "__none__"}
-                  onValueChange={(v) => setNewPartnerDraft((d) => ({ ...d, normalisedLevel: v === "__none__" ? "" : v }))}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Not stated</SelectItem>
-                    {LEVELS.map((l) => (
-                      <SelectItem key={l} value={l}>{l}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Price label (shown to players)</Label>
-                <Input
-                  value={newPartnerDraft.priceLabel ?? ""}
-                  onChange={(e) => setNewPartnerDraft((d) => ({ ...d, priceLabel: e.target.value }))}
-                  placeholder="e.g. $20 per session"
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              onClick={saveNewPartnerEvent}
-              disabled={savingNewPartner || !newPartnerDraft.title?.trim() || !newPartnerDraft.partnerName?.trim() || !newPartnerDraft.registrationUrl?.trim()}
-              data-testid="new-partner-event-save"
-            >
-              {savingNewPartner ? "Creating..." : "Create Partner Event"}
-            </Button>
-          </DialogFooter>
+                  {importing ? "Importing..." : "Import Event"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
+
 
       <Dialog open={runOpen} onOpenChange={(open) => !running && setRunOpen(open)}>
         <DialogContent data-testid="discovery-run-modal">
