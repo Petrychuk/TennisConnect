@@ -18,6 +18,7 @@ import { useLocation } from "wouter";
 import { formatInTimeZone } from "@/lib/timezone";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
 import { RECOMMENDATION_REASON_TEXT } from "@/lib/play-status";
+import { resolveRegistrationCta, resolvePartnerBadge } from "@shared/partnerEvents";
 import { ActivityStatus } from "./ActivityStatus";
 import { getPlaySessionById, joinSession, leaveSession } from "@/lib/api/play";
 
@@ -101,15 +102,18 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
   const joinLabel = isCompetition ? "Join Competition" : "Join Session";
 
   if (session) {
-    if (session.sourceType === "EXTERNAL") {
-      // [PLAY][AI] TC Discovery Agent, section 19 - external activities
-      // never show Join/Register (no TennisConnect registration
-      // integration exists for them), regardless of sign-in state -
-      // this is a link out, not an action TennisConnect can fulfil.
+    if (session.externalSourceUrl) {
+      // [PLAY][AI] TC Discovery Agent section 19 / Partner Events - a
+      // row with an external registration link never shows Join (no
+      // TennisConnect registration integration exists for it), regardless
+      // of sign-in state - this is a link out, not an action TC can
+      // fulfil. Wording differs: a Partner row says whose site it's
+      // going to; a plain Discovery find says "View original".
+      const cta = resolveRegistrationCta({ sourceType: session.sourceType, externalUrl: session.externalSourceUrl });
       actionButton = (
         <Button className="w-full" asChild data-testid="event-modal-view-original">
-          <a href={session.externalSourceUrl ?? "#"} target="_blank" rel="noopener noreferrer">
-            View original <ExternalLink className="w-4 h-4 ml-1.5" />
+          <a href={cta.url ?? "#"} target="_blank" rel="noopener noreferrer">
+            {cta.label} <ExternalLink className="w-4 h-4 ml-1.5" />
           </a>
         </Button>
       );
@@ -182,11 +186,11 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
             <DialogHeader>
               <DialogTitle data-testid="event-modal-title">{session.title}</DialogTitle>
               <DialogDescription>
-                {session.sourceType === "EXTERNAL" ? (
-                  <span className="text-primary font-medium">Found by TennisConnect</span>
-                ) : (
-                  session.organizationName
-                )}
+                {(() => {
+                  const badge = resolvePartnerBadge({ sourceType: session.sourceType, name: session.partnerName ?? session.organizationName });
+                  if (!badge.label) return session.organizationName;
+                  return <span className="text-primary font-medium">{badge.label === "Partner" ? "TennisConnect Partner ✓" : badge.label}</span>;
+                })()}
               </DialogDescription>
             </DialogHeader>
 
@@ -226,7 +230,7 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
                   </p>
                 )}
                 <p className="flex items-center gap-2" data-testid="event-modal-level">
-                  🎯 {session.skillLevel ?? (session.sourceType === "EXTERNAL" ? "Level not stated" : "All Levels")}
+                  🎯 {session.skillLevel ?? (session.externalSourceUrl ? "Level not stated" : "All Levels")}
                 </p>
                 <p className="flex items-center gap-2" data-testid="event-modal-players">
                   <Users className="w-4 h-4 shrink-0" />
@@ -253,10 +257,10 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
                 </div>
               )}
 
-              {session.sourceType === "EXTERNAL" ? (
+              {session.externalSourceUrl ? (
                 <div className="pt-2 border-t border-border/60 space-y-0.5" data-testid="event-modal-source-info">
                   <p className="text-sm">
-                    Source: <span className="font-medium">{session.organizationName}</span>
+                    Source: <span className="font-medium">{session.partnerName ?? session.organizationName}</span>
                   </p>
                   {session.externalLastCheckedAt && (
                     <p className="text-xs text-muted-foreground">
@@ -271,7 +275,15 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
                     <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{initials(session.organizationName)}</AvatarFallback>
                   </Avatar>
                   <span className="text-sm text-muted-foreground">
-                    Organised by <span className="text-foreground font-medium">{session.organizationName}</span>
+                    {session.sourceType === "PARTNER" ? (
+                      <>
+                        <span className="text-primary font-medium">TennisConnect Partner ✓</span> · {session.organizationName}
+                      </>
+                    ) : (
+                      <>
+                        Organised by <span className="text-foreground font-medium">{session.organizationName}</span>
+                      </>
+                    )}
                   </span>
                 </div>
               )}
