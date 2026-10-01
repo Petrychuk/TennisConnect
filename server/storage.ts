@@ -3279,19 +3279,29 @@ export class DatabaseStorage implements IStorage {
       .where(and(...conditions))
       .orderBy(asc(tennisSessions.startAt));
 
-    if (rows.length === 0) return [];
+    // [BUG][PLAY][DISCOVERY] This used to `return []` here whenever there
+    // were no native sessions - a harmless-looking optimisation to skip
+    // the registration-count query below when there's nothing to count.
+    // But the external-activities merge (spec section 20) lives further
+    // down in this same function, so that early return also skipped
+    // EVERY approved external activity whenever there happened to be zero
+    // native sessions - exactly staging's actual state (0 published
+    // sessions, 2 approved external activities), which made /play show
+    // nothing at all despite Discovery working correctly end to end.
+    let cards: PublicSessionCard[] = [];
+    if (rows.length > 0) {
+      const sessionIds = rows.map((r) => r.session.id);
+      const countRows = await db
+        .select({ sessionId: registrations.sessionId, count: sql<number>`count(*)` })
+        .from(registrations)
+        .where(and(inArray(registrations.sessionId, sessionIds), ne(registrations.status, "cancelled")))
+        .groupBy(registrations.sessionId);
+      const countBySession = new Map(countRows.map((r) => [r.sessionId, Number(r.count)]));
 
-    const sessionIds = rows.map((r) => r.session.id);
-    const countRows = await db
-      .select({ sessionId: registrations.sessionId, count: sql<number>`count(*)` })
-      .from(registrations)
-      .where(and(inArray(registrations.sessionId, sessionIds), ne(registrations.status, "cancelled")))
-      .groupBy(registrations.sessionId);
-    const countBySession = new Map(countRows.map((r) => [r.sessionId, Number(r.count)]));
-
-    let cards = rows.map(({ session, organization }) =>
-      this.toPublicSessionCard(session, organization, countBySession.get(session.id) ?? 0)
-    );
+      cards = rows.map(({ session, organization }) =>
+        this.toPublicSessionCard(session, organization, countBySession.get(session.id) ?? 0)
+      );
+    }
 
     if (filters.search) {
       const q = filters.search.trim().toLowerCase();
