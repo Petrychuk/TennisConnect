@@ -183,6 +183,14 @@ export function Footer() {
                   Players
                 </Link>
               </li>
+              <li>
+                <Link
+                  href="/play"
+                  className="hover:text-primary transition-colors"
+                >
+                  Pulse
+                </Link>
+              </li>
 
               <li>
                 <Link
@@ -198,7 +206,7 @@ export function Footer() {
                   href="/clubs"
                   className="hover:text-primary transition-colors"
                 >
-                  Club Communities
+                  Clubhouse
                 </Link>
               </li>
 
@@ -224,7 +232,7 @@ export function Footer() {
                   href="/travels"
                   className="hover:text-primary transition-colors"
                 >
-                  Travel
+                  Escapes
                 </Link>
               </li>
 
@@ -241,7 +249,7 @@ export function Footer() {
                   href="/articles"
                   className="hover:text-primary transition-colors"
                 >
-                  Tennis IQ
+                  Journal
                 </Link>
               </li>
             </ul>

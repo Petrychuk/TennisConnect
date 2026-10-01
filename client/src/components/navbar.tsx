@@ -115,12 +115,13 @@ export function Navbar() {
 
   const navLinks = [
     { name: "Players", href: "/players", icon: Users },
+    { name: "Pulse", href: "/play", icon: PlayIcon },
     { name: "Coaches", href: "/coaches", icon: Award },
-    { name: "Play", href: "/play", icon: PlayIcon },
+    
     /* { name: "Tournaments", href: "/tournaments" }, */
-    { name: "Club Communities", href: "/clubs", icon: Building2 },
-    { name: "Travels", href: "/travels", icon: Plane },
-    { name: "Tennis IQ", href: "/articles", icon: BookOpen },
+    { name: "Clubhouse", href: "/clubs", icon: Building2 },
+    { name: "Escapes", href: "/travels", icon: Plane },
+    { name: "Journal", href: "/articles", icon: BookOpen },
     /* { name: "Recreation", href: "/recreation" },
     { name: "Marketplace", href: "/marketplace" }, 
     { name: "Shop", href: "https://shop.tennisconnect.com.au", external: true }, */
