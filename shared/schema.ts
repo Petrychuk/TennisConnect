@@ -228,7 +228,45 @@ export const discoverySources = pgTable("discovery_sources", {
 // Recommendation Engine without a parallel data shape to reconcile.
 export const externalActivities = pgTable("external_activities", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  sourceId: varchar("source_id").notNull().references(() => discoverySources.id),
+  // Nullable - a Partner Event an admin enters directly (spec: "Admin can
+  // create/confirm Partner Event") has no Discovery Source behind it at
+  // all. Always set for a Discovery-found row.
+  sourceId: varchar("source_id").references(() => discoverySources.id),
+
+  // [PLAY][AI] Partner Events - "EXTERNAL" (the only value before Partner
+  // Events existed) for anything the Discovery Agent found on its own;
+  // "PARTNER" for an activity an admin created/confirmed on behalf of an
+  // official TennisConnect partner. Everything else about this row
+  // (review/discovery status, freshness, how it reaches Play) works
+  // identically for both - only the player-facing badge/CTA and the
+  // dedup priority (spec: TENNISCONNECT -> PARTNER -> EXTERNAL) key off
+  // this column.
+  sourceType: text("source_type").default("EXTERNAL").notNull(), // EXTERNAL | PARTNER
+
+  // Only meaningful when sourceType = PARTNER. Set when the partner is
+  // ALREADY a registered TennisConnect organisation - lets Play link
+  // through to their real org profile, and lets a future "resync name"
+  // admin action re-read it from organizations.name. Null for a partner
+  // not yet registered in TC; partnerName (below) still carries their
+  // name either way, so the Partner badge and attribution never depend
+  // on whether this is set.
+  partnerId: varchar("partner_id").references(() => organizations.id),
+  // Only meaningful when sourceType = PARTNER. Admin-entered (or
+  // snapshotted from organizations.name when partnerId is set), distinct
+  // from organiserName below which is AI-extracted and may be unreliable -
+  // partnerName is the authoritative, human-confirmed partner identity
+  // the Partner badge and attribution actually display.
+  partnerName: text("partner_name"),
+  // [PLAY][AI] Partner Events - explicit, not left to be inferred from
+  // whether registrationUrl happens to be set. Only meaningful when
+  // sourceType = PARTNER (null for a plain Discovery EXTERNAL row - that
+  // concept doesn't exist for those). A row stored in external_activities
+  // is always EXTERNAL here in practice today (true internal TC
+  // registration needs the registrations table, which only ever
+  // references tennisSessions - see tennisSessions.isPartnerEvent for
+  // that case) - this column exists so that fact is a stated value on
+  // the row itself, not something a reader has to re-derive.
+  registrationType: text("registration_type"), // INTERNAL | EXTERNAL | null
 
   title: text("title").notNull(),
   description: text("description"),
@@ -755,6 +793,17 @@ export const tennisSessions = pgTable("sessions", {
   // conversion this powers, and step2-date-registration.tsx for the
   // wizard's city picker that sets it.
   timeZone: text("time_zone").default("Australia/Sydney").notNull(),
+  // [PLAY][AI] Partner Events, spec section "Goal: official events from
+  // clubs/organisers/communities/partners" - a Partner Event where the
+  // partner IS a registered TennisConnect organisation and wants TC to
+  // run registration just reuses this table and the existing Join flow
+  // unchanged (registrations, waitlist, participant counts all already
+  // work). This flag only controls the Partner badge and the admin-side
+  // "Partner Events" view; it changes nothing else about how the session
+  // behaves. False for every session an organiser creates for themselves
+  // (the overwhelming majority) - only an admin confirming an official
+  // partner relationship sets this true.
+  isPartnerEvent: boolean("is_partner_event").default(false).notNull(),
   // withTimezone: true (-> Postgres timestamptz) is load-bearing, not
   // cosmetic. A plain `timestamp` column discards any offset on the way
   // in - node-postgres's serializer always appends one (based on the
@@ -1303,9 +1352,22 @@ export type PublicSessionCard = {
   // discovered activity. Only EXTERNAL cards populate the three fields
   // below - source transparency (spec section 18) and the "View
   // original" CTA instead of Join (spec section 19) both key off this.
-  sourceType: "TENNISCONNECT" | "EXTERNAL";
+  // [PLAY][AI] Partner Events - "PARTNER" covers BOTH a confirmed partner
+  // using TC's own Join flow (a tennisSessions row with isPartnerEvent)
+  // and one with external/no-TC registration (an external_activities row
+  // with sourceType=PARTNER). Which registration mode applies is NOT
+  // this field - it's whether externalSourceUrl is populated (below):
+  // a PARTNER card with no externalSourceUrl registers internally
+  // exactly like a TENNISCONNECT card; one WITH externalSourceUrl shows
+  // "Register on partner website" exactly like an EXTERNAL card does.
+  sourceType: "TENNISCONNECT" | "EXTERNAL" | "PARTNER";
   externalSourceUrl?: string | null;
   externalLastCheckedAt?: string | null;
+  // Only for sourceType=PARTNER: the partner's name, for the badge and
+  // attribution line (spec: "Partner badge in Play"). Null for a
+  // tennisSessions-backed Partner Event, which already has the real
+  // organisation's name in organizationName.
+  partnerName?: string | null;
   // Only populated for EXTERNAL cards. priceSummary is the compact card form
   // ("$20 · Free for members"); priceLabel is the full text for Quick View.
   priceSummary?: string | null;
