@@ -93,6 +93,10 @@ router.get("/activities", async (req, res, next) => {
 
 router.post("/activities/:id/approve", async (req, res, next) => {
   try {
+    // Read before approving: the approve call itself clears
+    // duplicateOfExternalId (see below), so this is the only chance to
+    // see what it pointed at.
+    const before = await storage.getExternalActivityById(req.params.id);
     const updated = await storage.reviewExternalActivity(req.params.id, {
       reviewStatus: "APPROVED",
       discoveryStatus: "ACTIVE",
@@ -106,6 +110,27 @@ router.post("/activities/:id/approve", async (req, res, next) => {
       duplicateConfidence: null,
     });
     if (!updated) return res.status(404).json({ message: "Not found" });
+
+    // [PLAY][AI] Partner Events - approving a Partner Event that was
+    // flagged as a likely duplicate of an existing (lower-priority)
+    // EXTERNAL find retires that other row automatically: the admin
+    // approving IS the confirmation that this is the real, authoritative
+    // version (spec: TENNISCONNECT -> PARTNER -> EXTERNAL), so Play
+    // should never end up showing both. reviewStatus DUPLICATE is the
+    // same status "Mark Duplicate" already sets by hand - this just
+    // saves the admin that second click in the one case where the
+    // ordering is already known for certain.
+    if (before?.sourceType === "PARTNER" && before.duplicateOfExternalId) {
+      const other = await storage.getExternalActivityById(before.duplicateOfExternalId);
+      if (other && other.sourceType !== "PARTNER" && other.reviewStatus !== "REJECTED" && other.reviewStatus !== "DUPLICATE") {
+        await storage.reviewExternalActivity(other.id, {
+          reviewStatus: "DUPLICATE",
+          reviewedBy: req.user!.id,
+          duplicateOfExternalId: updated.id,
+        });
+      }
+    }
+
     res.json(updated);
   } catch (error) {
     next(error);
@@ -186,6 +211,100 @@ const editActivitySchema = z
     ),
   })
   .partial();
+
+// [PLAY][AI] Partner Events - admin-entered, so every field an admin
+// would need to state up front is REQUIRED here (unlike editActivitySchema,
+// which is .partial() for patching an existing AI-extracted row).
+// registrationUrl is mandatory - see createPartnerEvent's own comment on
+// why: this is specifically the external/no-TC-registration path.
+const createPartnerEventSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  description: optText(2000),
+  activityType: optText(50),
+  gameFormat: z.preprocess(blankToNull, z.enum(["singles", "doubles", "mixed"]).nullable()).default(null),
+  startDate: optDate,
+  endDate: optDate,
+  startTime: optTime,
+  endTime: optTime,
+  recurrenceFrequency: z.preprocess(blankToNull, z.enum(["WEEKLY", "FORTNIGHTLY", "MONTHLY"]).nullable()).default(null),
+  recurrenceDayOfWeek: z.preprocess(
+    blankToNull,
+    z.enum(["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]).nullable()
+  ).default(null),
+  venueName: optText(200),
+  address: optText(300),
+  suburb: optText(100),
+  city: optText(100),
+  state: z.preprocess(blankToNull, z.enum(AU_STATES).nullable()).default(null),
+  postcode: optText(10),
+  normalisedLevel: z.preprocess(blankToNull, z.enum(["Beginner", "Intermediate", "Advanced", "Pro"]).nullable()).default(null),
+  price: z.preprocess(blankToNull, z.number().int().min(0).max(10000).nullable()).default(null),
+  priceLabel: optText(200),
+  registrationUrl: z.string().trim().max(500).refine((v) => resolveRegistrationUrl(v, "https://invalid.example/") !== null, "Must be an http(s) link"),
+  // Set when the partner is an existing TC club/organiser - validated
+  // against a real row below rather than trusted blindly from the client.
+  partnerId: z.preprocess(blankToNull, z.string().nullable()).default(null),
+  // Always required - even when partnerId is set, this is what's shown;
+  // the form pre-fills it from the chosen organisation but an admin can
+  // still override it (e.g. a shorter display name).
+  partnerName: z.string().trim().min(1).max(200),
+});
+
+// [PLAY][AI] Partner Events - THE primary path: a club Discovery already
+// found becomes an official partner. Upgrades the SAME row in place
+// (sourceType EXTERNAL -> PARTNER) rather than creating a second row for
+// the same real event - "Strathfield becomes a partner" must never
+// produce both an EXTERNAL and a PARTNER card for the identical Saturday
+// Social. Review/discovery status are left exactly as they were: an
+// already-APPROVED row stays visible in Play, just now shows the Partner
+// badge instead of "Found by TennisConnect"; a PENDING one still needs
+// the ordinary Approve action afterwards. createPartnerEvent (above) is
+// the FALLBACK for when there's no existing Discovery row to upgrade.
+const confirmPartnerSchema = z.object({
+  partnerId: z.preprocess(blankToNull, z.string().nullable()).default(null),
+  partnerName: z.string().trim().min(1).max(200),
+});
+
+router.post("/activities/:id/confirm-partner", async (req, res, next) => {
+  try {
+    const parsed = confirmPartnerSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: "Invalid input", errors: parsed.error.flatten() });
+
+    if (parsed.data.partnerId) {
+      const org = await storage.getOrganizationById(parsed.data.partnerId);
+      if (!org) return res.status(400).json({ message: "partnerId does not match an existing organisation" });
+    }
+
+    const updated = await storage.updateExternalActivity(req.params.id, {
+      sourceType: "PARTNER",
+      registrationType: "EXTERNAL",
+      partnerId: parsed.data.partnerId,
+      partnerName: parsed.data.partnerName,
+    });
+    if (!updated) return res.status(404).json({ message: "Not found" });
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/partner-events", async (req, res, next) => {
+  try {
+    const parsed = createPartnerEventSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid input", errors: parsed.error.flatten() });
+    }
+    const { partnerId, ...rest } = parsed.data;
+    if (partnerId) {
+      const org = await storage.getOrganizationById(partnerId);
+      if (!org) return res.status(400).json({ message: "partnerId does not match an existing organisation" });
+    }
+    const created = await storage.createPartnerEvent({ ...rest, partnerId, createdBy: req.user!.id });
+    res.status(201).json(created);
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.put("/activities/:id", async (req, res, next) => {
   try {

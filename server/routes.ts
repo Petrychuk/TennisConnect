@@ -981,6 +981,40 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
     );
 
+    // [PLAY][AI] Partner Events - the internal-registration path: a
+    // partner already registered as a TC organiser creates sessions the
+    // normal way (nothing new needed there - Join/capacity/registrations
+    // all already work), and an admin just confirms the existing session
+    // as an official partner event. Reuses updateSession rather than a
+    // bespoke method - isPartnerEvent is just another session field.
+    app.patch("/api/admin/sessions/:id/confirm-partner",
+      requireAdmin,
+      async (req, res, next) => {
+        try {
+          const session = await storage.getSessionById(req.params.id);
+          if (!session) return res.status(404).json({ message: "Session not found" });
+          const updated = await storage.updateSession(req.params.id, { isPartnerEvent: true });
+          res.json(updated);
+        } catch (error) {
+          next(error);
+        }
+      }
+    );
+
+    app.patch("/api/admin/sessions/:id/revoke-partner",
+      requireAdmin,
+      async (req, res, next) => {
+        try {
+          const session = await storage.getSessionById(req.params.id);
+          if (!session) return res.status(404).json({ message: "Session not found" });
+          const updated = await storage.updateSession(req.params.id, { isPartnerEvent: false });
+          res.json(updated);
+        } catch (error) {
+          next(error);
+        }
+      }
+    );
+
     // Admin revokes organizer access — the user keeps their player/coach
     // profile, they just lose the ability to create/manage Sessions.
     app.patch("/api/admin/users/:id/revoke-organizer",
