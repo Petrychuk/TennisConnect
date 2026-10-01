@@ -42,7 +42,7 @@ const MAX_PAGES_PER_SOURCE = 6;
 const MAX_HTML_BYTES = 5_000_000;
 const SCAN_INTERVAL_DAYS = 7; // how long after a real scan a source counts as due for a recheck
 
-async function fetchPage(url: string): Promise<string> {
+export async function fetchPage(url: string): Promise<string> {
   if (!isSafeExternalUrl(url)) throw new Error("URL is not allowed");
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10_000);
