@@ -100,6 +100,7 @@ import { summariseLabelForCard } from "./services/discoveryPrice";
 import { resolveRegistrationUrl } from "./services/discoveryNormalization";
 import { eq, desc, and, or, asc, sql, lte, ne, gte, ilike, inArray, isNull, isNotNull, notInArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { locationTerms, softLevelValues } from "./services/playFilters";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { planRound, computeLeaderboard, type PastMatch } from "./services/liveEngine";
 
@@ -3315,7 +3316,7 @@ export class DatabaseStorage implements IStorage {
         courtsCount: null,
         maxParticipants: null,
         registeredCount: 0,
-        coverImage: null,
+        coverImage: activity.imageUrl ?? null,
         organizationId: "",
         organizationName: isPartner ? activity.partnerName || activity.sourceName : activity.organiserName || activity.sourceName,
         organizationSlug: "",
@@ -3393,9 +3394,16 @@ export class DatabaseStorage implements IStorage {
       eq(tennisSessions.visibility, "public"),
     ];
     if (filters.format) conditions.push(eq(tennisSessions.type, filters.format));
-    if (filters.level) conditions.push(eq(tennisSessions.skillLevel, filters.level));
+    // Soft level rule (services/playFilters.ts): also sessions open to all levels
+    // and sessions that state no level - never hide what the player could join.
+    if (filters.level) {
+      conditions.push(or(inArray(tennisSessions.skillLevel, softLevelValues(filters.level)), isNull(tennisSessions.skillLevel))!);
+    }
     if (filters.organizationId) conditions.push(eq(tennisSessions.organizationId, filters.organizationId));
-    if (filters.location) conditions.push(ilike(tennisSessions.location, `%${filters.location}%`));
+    const locTerms = locationTerms(filters.location);
+    if (locTerms.length > 0) {
+      conditions.push(or(...locTerms.map((t) => ilike(tennisSessions.location, `%${t}%`)))!);
+    }
     if (filters.dateFrom) conditions.push(gte(tennisSessions.startAt, filters.dateFrom));
     if (filters.dateTo) conditions.push(lte(tennisSessions.startAt, filters.dateTo));
 
@@ -3458,19 +3466,25 @@ export class DatabaseStorage implements IStorage {
       if (filters.location) {
         // A player can mean a suburb, a city, a state or a venue
         // ("around Melbourne", "VIC", "Moore Park").
-        const like = `%${filters.location}%`;
         externalConditions.push(
           or(
-            ilike(externalActivities.suburb, like),
-            ilike(externalActivities.city, like),
-            ilike(externalActivities.state, like),
-            ilike(externalActivities.venueName, like),
-            ilike(externalActivities.address, like)
+            ...locTerms.flatMap((t) => {
+              const like = `%${t}%`;
+              return [
+                ilike(externalActivities.suburb, like),
+                ilike(externalActivities.city, like),
+                ilike(externalActivities.state, like),
+                ilike(externalActivities.venueName, like),
+                ilike(externalActivities.address, like),
+              ];
+            })
           )!
         );
       }
       if (filters.format) externalConditions.push(eq(externalActivities.activityType, filters.format));
-      if (filters.level) externalConditions.push(eq(externalActivities.normalisedLevel, filters.level));
+      if (filters.level) {
+        externalConditions.push(or(eq(externalActivities.normalisedLevel, filters.level), isNull(externalActivities.normalisedLevel))!);
+      }
 
       let externalRows = await db.select().from(externalActivities).where(and(...externalConditions));
 

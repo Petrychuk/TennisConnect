@@ -316,6 +316,8 @@ export const externalActivities = pgTable("external_activities", {
   // week for non-members"). `price` above is the general / non-member amount,
   // for filtering and sorting only - never a member-only figure.
   priceLabel: text("price_label"),
+  // Link to the source page's share image (og:image) - a link, never a copy.
+  imageUrl: text("image_url"),
   currency: text("currency").default("AUD").notNull(),
 
   organiserName: text("organiser_name"),

@@ -64,6 +64,9 @@ export default function PlayPage() {
   });
 
   const appliedSmartDefaults = useRef(false);
+  // What was pre-filled from the player's profile (so the page can say so, and
+  // so those filters don't count as something the player asked for themselves).
+  const [profileDefaults, setProfileDefaults] = useState<{ location: string | null; level: string | null } | null>(null);
   const myProfileQuery = useQuery({
     queryKey: ["/api/me/player-profile", user?.id],
     queryFn: async () => {
@@ -80,7 +83,8 @@ export default function PlayPage() {
     if (!profile) return;
     appliedSmartDefaults.current = true;
 
-    const defaultLocation = profile.preferredCourts?.[0] || profile.location || "";
+    // The area first: one preferred court would narrow the list to a single venue.
+    const defaultLocation = profile.location || profile.preferredCourts?.[0] || "";
     if (defaultLocation) setLocationFilter(defaultLocation);
 
     const levelMap: Record<string, string> = {
@@ -91,6 +95,7 @@ export default function PlayPage() {
     };
     const defaultLevel = levelMap[profile.skillLevel];
     if (defaultLevel) setLevel(defaultLevel);
+    setProfileDefaults({ location: defaultLocation || null, level: defaultLevel ?? null });
   }, [myProfileQuery.data]);
 
   const { from, to } = useMemo(() => resolveDateFilterRange(dateFilter, customDate), [dateFilter, customDate]);
@@ -233,6 +238,24 @@ export default function PlayPage() {
 
   const hasActiveFilters =
     !!search || !!location || dateFilter !== "any" || format !== ALL || level !== ALL || competitionsOnly;
+
+  // Filters the player chose themselves. Profile-filled ones still in place
+  // don't count, so "Recommended for You" stays visible for a signed-in player.
+  const locationIsProfileDefault = !!profileDefaults && !!location && location === profileDefaults.location;
+  const levelIsProfileDefault = !!profileDefaults && level !== ALL && level === profileDefaults.level;
+  const explicitFiltersActive =
+    !!search ||
+    (!!location && !locationIsProfileDefault) ||
+    dateFilter !== "any" ||
+    format !== ALL ||
+    (level !== ALL && !levelIsProfileDefault) ||
+    competitionsOnly;
+
+  const showEverything = () => {
+    setLocationFilter("");
+    setLevel(ALL);
+    setProfileDefaults(null);
+  };
 
   const clearFilters = () => {
     setSearch("");
@@ -399,6 +422,24 @@ export default function PlayPage() {
             onOpenFilters={openFilters}
           />
 
+          {profileDefaults &&
+            !smartSearchResult &&
+            ((!!location && location === profileDefaults.location) || (level !== ALL && level === profileDefaults.level)) && (
+              <div
+                className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3 text-sm text-muted-foreground"
+                data-testid="play-profile-defaults-note"
+              >
+                <Sparkles className="w-4 h-4 text-primary shrink-0" />
+                <span>Tailored to your profile. Sessions open to all levels are included.</span>
+                <button type="button" className="underline underline-offset-2" onClick={showEverything} data-testid="play-profile-defaults-reset">
+                  Show everything
+                </button>
+                <Link href="/player/profile" className="underline underline-offset-2" data-testid="play-profile-defaults-edit">
+                  Edit profile
+                </Link>
+              </div>
+            )}
+
           {hasActiveFilters && (
             <div className="flex flex-wrap items-center gap-2 mb-5" data-testid="play-page-active-chips">
               {location && (
@@ -448,7 +489,7 @@ export default function PlayPage() {
           )}
 
           <div className="space-y-5">
-            {!smartSearchResult && !hasActiveFilters && isAuthenticated && user?.role === "player" && myProfileQuery.data && !myProfileQuery.data.availability?.length && (
+            {!smartSearchResult && !explicitFiltersActive && isAuthenticated && user?.role === "player" && myProfileQuery.data && !myProfileQuery.data.availability?.length && (
               <AvailabilityNudge
                 onSaved={() => {
                   queryClient.invalidateQueries({ queryKey: ["/api/me/player-profile"] });
@@ -457,7 +498,7 @@ export default function PlayPage() {
               />
             )}
 
-            {!smartSearchResult && !hasActiveFilters && isAuthenticated && user?.role === "player" && recommendationsQuery.data && recommendationsQuery.data.recommendations.length > 0 && (
+            {!smartSearchResult && !explicitFiltersActive && isAuthenticated && user?.role === "player" && recommendationsQuery.data && recommendationsQuery.data.recommendations.length > 0 && (
               <div className="space-y-3" data-testid="play-recommendations-section">
                 <div>
                   <h2 className="font-display font-bold text-lg flex items-center gap-1.5" data-testid="play-recommendations-heading">
@@ -473,7 +514,7 @@ export default function PlayPage() {
                       : "Tennis happening near you - add your preferences for better matches."}
                   </p>
                 </div>
-                <div className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                   {recommendationsQuery.data.recommendations.map(({ activity, recommendation }, position) => (
                     <PlaySessionCard
                       key={activity.id}
@@ -490,7 +531,7 @@ export default function PlayPage() {
               </div>
             )}
 
-            {!smartSearchResult && !hasActiveFilters && isAuthenticated && user?.role === "player" && playersLookingQuery.data && playersLookingQuery.data.players.length > 0 && (
+            {!smartSearchResult && !explicitFiltersActive && isAuthenticated && user?.role === "player" && playersLookingQuery.data && playersLookingQuery.data.players.length > 0 && (
               <div className="space-y-3" data-testid="play-players-looking-section">
                 <div className="flex items-center justify-between">
                   <div>
@@ -590,7 +631,7 @@ export default function PlayPage() {
                         )}
                       </div>
                     ) : (
-                      <div className="space-y-4">
+                      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                         {smartSearchResult.sessions.map((s, i) => (
                           <PlaySessionCard
                             key={s.id}
@@ -624,7 +665,7 @@ export default function PlayPage() {
                 <p className="text-sm text-muted-foreground" data-testid="play-page-results-count">
                   {sessions.length} session{sessions.length === 1 ? "" : "s"} found
                 </p>
-                <div className="space-y-4" data-testid="play-page-results">
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" data-testid="play-page-results">
                   {visibleSessions.map((session) => (
                     <PlaySessionCard
                       key={session.id}
