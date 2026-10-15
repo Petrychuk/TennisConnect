@@ -4,6 +4,7 @@ import { requireAdmin } from "../requireAuth";
 import { storage } from "../storage";
 import { runDiscovery, isDiscoveryRunning } from "../services/discoveryOrchestration";
 import { isSafeExternalUrl, resolveRegistrationUrl, resolveTimeZoneForState } from "../services/discoveryNormalization";
+import { resolveImageUrl } from "../services/discoveryImage";
 import { isValidYmd } from "../services/discoveryOccurrences";
 import { resolveAustralianVenueCoordinates } from "../services/geocodingService";
 
@@ -202,6 +203,11 @@ const editActivitySchema = z
     normalisedLevel: z.preprocess(blankToNull, z.enum(["Beginner", "Intermediate", "Advanced", "Pro"]).nullable()),
     price: z.preprocess(blankToNull, z.number().int().min(0).max(10000).nullable()),
     priceLabel: optText(200),
+    // Picture shown on the card - an http(s) link only.
+    imageUrl: z.preprocess(
+      blankToNull,
+      z.string().max(500).refine((v) => resolveImageUrl(v, "https://invalid.example/") !== null, "Must be an http(s) image link").nullable()
+    ),
     organiserName: optText(200),
     // A link players will click - must survive the same http(s)-only
     // check the Agent applies to extracted links.

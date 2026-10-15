@@ -9,6 +9,7 @@ import {
   isSafeExternalUrl,
 } from "./discoveryNormalization";
 import { assessPage } from "./discoveryPageContent";
+import { extractPageImage } from "./discoveryImage";
 import { buildActivityRecord } from "./discoveryRecord";
 import { computeDuplicateConfidence, DUPLICATE_REVIEW_THRESHOLD, type DuplicateCandidate } from "./discoveryDuplicateDetection";
 import { resolveAustralianVenueCoordinates } from "./geocodingService";
@@ -214,6 +215,10 @@ async function scanPage(
   const hash = sha256(`v${EXTRACTION_VERSION}\n${pageText}`);
 
   const existingRows = await storage.getExternalActivitiesForSourcePage(source.id, pageUrl);
+  // The page's own picture. Done before the unchanged-page early return below so
+  // already-known events get their image without another model call.
+  const pageImage = extractPageImage(html, pageUrl);
+  if (!options.isDryRun) await backfillPageImage(existingRows, pageImage);
 
   // Cost control (spec section 29): a page whose text hasn't changed
   // since its last real scan isn't sent to the model again - everything
@@ -241,8 +246,23 @@ async function scanPage(
   }
 
   if (!options.isDryRun) {
+    // Events created just now (not in existingRows) get the page image too.
+    await backfillPageImage(await storage.getExternalActivitiesForSourcePage(source.id, pageUrl), pageImage);
     await markMissing(existingRows, seenIds);
     hashes[pageUrl] = hash;
+  }
+}
+
+/**
+ * Saves the page's picture on its events. Only fills a MISSING image, so an
+ * image an admin set by hand is never overwritten, and a page that stops
+ * publishing one doesn't blank what we already have.
+ */
+async function backfillPageImage(rows: ExternalActivityRow[], imageUrl: string | null): Promise<void> {
+  if (!imageUrl) return;
+  for (const row of rows) {
+    if (row.imageUrl) continue;
+    await storage.updateExternalActivity(row.id, { imageUrl });
   }
 }
 
