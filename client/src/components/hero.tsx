@@ -48,7 +48,7 @@ export function Hero() {
                 leading-[1.1]
                 mb-6
                 drop-shadow-xl">
-              Everything You Need for  <br />
+              <span className="bg-[rgba(0,0,0,0.3)] rounded-xl py-0.5 box-decoration-clone [box-shadow:-12px_0_0_rgba(0,0,0,0.3),12px_0_0_rgba(0,0,0,0.3)]">Everything You Need for</span><br />
               <span className="text-primary relative inline-block bg-black/40 sm:bg-transparent backdrop-blur-sm sm:backdrop-blur-none rounded-lg px-2 py-0.5 sm:px-0 sm:py-0">
               Your Tennis Journey
                 <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary/50" viewBox="0 0 100 10" preserveAspectRatio="none">

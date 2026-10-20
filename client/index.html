@@ -22,6 +22,19 @@
         l.href = "/assets/images/tennis_main.jpg";
         l.fetchPriority = "high";
         document.head.appendChild(l);
+      } else if (location.pathname === "/play") {
+        // Same two images /play preloads from React (Helmet) - but that runs
+        // only after the JS bundle, too late to be the LCP request.
+        [["/assets/images/play-hero-mobile.webp", "(max-width: 639px)"],
+         ["/assets/images/play-hero-desktop.webp", "(min-width: 640px)"]].forEach(function (p) {
+          var pl = document.createElement("link");
+          pl.rel = "preload";
+          pl.as = "image";
+          pl.href = p[0];
+          pl.media = p[1];
+          pl.fetchPriority = "high";
+          document.head.appendChild(pl);
+        });
       }
     </script>
    <!-- Google Analytics + Consent Mode -->
@@ -116,7 +129,19 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     
     <!-- Syne for headers (modern, fashionable), Inter for UI -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Syne:wght@400;500;600;700;800&display=swap">
+    <script>
+      /* tc-fonts-v2: the stylesheet is added from script, NOT via an onload=""
+         attribute - the site's CSP (helmet default script-src-attr 'none')
+         blocks inline event handlers, which would leave the fonts unapplied. */
+      (function () {
+        var l = document.createElement("link");
+        l.rel = "stylesheet";
+        l.href = "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Syne:wght@400;500;600;700;800&display=swap";
+        document.head.appendChild(l);
+      })();
+    </script>
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Syne:wght@400;500;600;700;800&display=swap"></noscript>
   </head>
   <body>
     <!-- Pure HTML/CSS placeholder, shown for the brief window between the
