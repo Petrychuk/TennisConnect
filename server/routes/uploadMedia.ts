@@ -72,6 +72,7 @@ router.post(
         .from("media")
         .upload(filePath, req.file.buffer, {
           contentType: detectedType,
+          cacheControl: "2592000",
           upsert: true,
         });
 

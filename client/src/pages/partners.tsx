@@ -12,7 +12,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { AppPagination } from "@/components/shared/AppPagination";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { MapPin, Search, MessageCircle, User, Activity, Send, Camera, Trophy, SlidersHorizontal, Target } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RacketIcon } from "@/components/ui/racket-icon";
+import { MapPin, Search, MessageCircle, User, Activity, Send, Camera, Trophy, SlidersHorizontal, Target, Filter, X } from "lucide-react";
 import { PARTNERS_DATA } from "@/lib/dummy-data";
 import { motion } from "framer-motion";
 import { Link, useSearch } from "wouter";
@@ -183,7 +185,7 @@ export default function PartnersPage() {
           setLoading(true);
     
           const res = await fetch(
-            `/api/players?page=${page}&limit=20`
+            `/api/players?page=${page}&limit=20${filterLookingToPlay ? "&lookingToPlay=true" : ""}`
           );
     
           if (!res.ok) {
@@ -194,7 +196,7 @@ export default function PartnersPage() {
     
           setPagination(data.pagination);
     
-          if (data.players.length > 0) {
+          if (data.players.length > 0 || filterLookingToPlay) {
             setPartners(normalizeApiPlayers(data.players));
           } else {
             setPartners(normalizeDemoPartners());
@@ -216,7 +218,22 @@ export default function PartnersPage() {
       }
     
       fetchPartners();
-    }, [page]);
+    }, [page, filterLookingToPlay]);
+
+  const toggleLookingToPlay = () => {
+    setFilterLookingToPlay((v) => !v);
+    setPage(1);
+  };
+  const clearFilters = () => {
+    setFilterLevel("");
+    if (filterLookingToPlay) {
+      setFilterLookingToPlay(false);
+      setPage(1);
+    }
+  };
+  const activeFiltersCount = filterLookingToPlay ? 1 : 0;
+  const hasActiveFilters = activeFiltersCount > 0 || !!filterLevel;
+  const LEVELS = ["Beginner", "Intermediate", "Advanced", "Professional"];
 
   const filteredPartners = partners.filter((partner) => {
     const search = searchTerm.toLowerCase();
@@ -359,77 +376,100 @@ export default function PartnersPage() {
           </div>
         </div>
 
-        {/* Filter Bar (desktop) — floats over the tail of the photo instead
-            of a solid block below it */}
-        <div className="hidden md:block relative z-20 pb-5 md:pb-10">
-          <div className="container mx-auto px-2 mt-0 mb-3 md:mb-6">
-            <div
-              className="
-                bg-card/50
-                backdrop-blur-md
-                border border-border/40
-                shadow-lg
-                rounded-2xl
-                p-2.5 md:p-4
-              "
-            >
-              <div className="flex flex-col md:flex-row gap-2 md:gap-4 items-center justify-between">
+        {/* Filter Bar (desktop/tablet) — same layout as Coaches: floats over the tail of the photo */}
+        <div className="hidden md:block container mx-auto px-2 mt-5 relative z-20 pb-5 md:pb-10">
+          <div className="bg-card/50
+            backdrop-blur-sm
+            border border-border/40
+            shadow-lg
+            rounded-2xl
+            p-2.5 md:p-4 lg:p-4
+            flex flex-col md:flex-row
+            gap-3 md:gap-4
+            items-center
+            justify-between">
+            <div className="relative w-full md:w-[280px] lg:w-[380px] xl:w-[450px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
+              <Input
+                data-testid="players-search-input"
+                placeholder="Search by name or location..."
+                className="pl-10
+                  h-11 md:h-12
+                  text-sm md:text-base
+                  bg-background
+                  w-full
+                  rounded-xl"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
 
-                <div className="relative w-full md:w-80 lg:w-96 group">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground" />
+            <div className="flex flex-row md:flex-row w-full md:w-auto gap-2">
+                <Select value={filterLevel || "all"} onValueChange={(v) => setFilterLevel(v === "all" ? "" : v)}>
+                  <SelectTrigger aria-label="Filter by level" className="w-full flex-1 min-w-0 sm:w-full md:w-[180px] lg:w-[190px] h-11 md:h-12 bg-background cursor-pointer" data-testid="players-level-filter-trigger">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Activity className="w-4 h-4 text-primary shrink-0" />
+                      <SelectValue placeholder="Level" className="flex-1 min-w-0 truncate" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" className="cursor-pointer">All levels</SelectItem>
+                    {LEVELS.map((level) => (
+                      <SelectItem key={level} value={level} className="cursor-pointer" data-testid={`players-level-${level}`}>{level}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-                  <Input
-                    data-testid="players-search-input"
-                    placeholder="Search by name or location..."
-                    className="
-                      pl-9 md:pl-10
-                      h-9 md:h-11
-                      text-sm
-                      rounded-xl
-                      bg-background
-                    "
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={`h-11 md:h-12 w-auto px-3 md:px-4 shrink-0 bg-background cursor-pointer ${activeFiltersCount > 0 ? 'border-primary text-primary' : ''}`}>
+                      <Filter className="w-5 h-5 mr-2" />
+                      Filters
+                      {activeFiltersCount > 0 && (
+                        <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center rounded-full bg-primary text-foreground text-[10px]">
+                          {activeFiltersCount}
+                        </Badge>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-96 p-6 space-y-6" align="end">
+                    <div className="space-y-4">
+                      <p className="font-bold leading-none">Availability</p>
+                      <Button
+                        type="button"
+                        variant={filterLookingToPlay ? "default" : "outline"}
+                        aria-pressed={filterLookingToPlay}
+                        onClick={toggleLookingToPlay}
+                        className="w-full justify-start cursor-pointer"
+                        data-testid="players-filter-looking-to-play"
+                      >
+                        <RacketIcon className="w-4 h-4 mr-2" />
+                        Looking to Play
+                      </Button>
+                    </div>
+                    {hasActiveFilters && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={clearFilters}
+                        className="w-full text-muted-foreground hover:text-destructive cursor-pointer"
+                      >
+                        Clear all filters
+                      </Button>
+                    )}
+                  </PopoverContent>
+                </Popover>
 
-                <div className="flex w-full md:w-auto gap-1.5 md:gap-2 overflow-x-auto scrollbar-hide">
-                  {["Beginner", "Intermediate", "Advanced", "Professional"].map((level) => (
-                    <button
-                      key={level}
-                      onClick={() =>
-                        setFilterLevel(filterLevel === level ? "" : level)
-                      }
-                      className={`
-                        h-8 md:h-11
-                        px-3 md:px-4
-                        rounded-full
-                        text-xs md:text-sm
-                        font-medium
-                        whitespace-nowrap
-                        transition-all
-                        border
-                        cursor-pointer
-                        ${
-                          filterLevel === level
-                            ? "bg-primary text-foreground border-primary"
-                            : "bg-background border-input hover:border-primary/50"
-                        }
-                      `}
-                    >
-                      {level}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => setFilterLookingToPlay((v) => !v)}
-                    className={`h-8 md:h-11 px-3 md:px-4 rounded-full text-xs md:text-sm font-medium whitespace-nowrap transition-all border cursor-pointer ${filterLookingToPlay ? "bg-primary text-foreground border-primary" : "bg-background border-input hover:border-primary/50"}`}
-                    data-testid="players-filter-looking-to-play"
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    onClick={clearFilters}
+                    className="h-12 hidden md:flex text-muted-foreground hover:text-destructive cursor-pointer"
                   >
-                    🟢 Looking to Play
-                  </button>
-                </div>
-
-              </div>
+                    <X className="w-4 h-4 mr-2" />
+                    Clear
+                  </Button>
+                )}
             </div>
           </div>
         </div>
@@ -453,57 +493,75 @@ export default function PartnersPage() {
         </div>
       </div>
 
-      {/* Filter Bar (mobile) — sits below the hero photo instead of
-          floating over it */}
-      <div className="md:hidden relative z-20 bg-background pt-4 pb-2">
-        <div className="container mx-auto px-4">
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-              <Input
-                data-testid="players-search-input-mobile"
-                placeholder="Search by name or location..."
-                className="pl-9 h-11 text-sm rounded-xl bg-secondary/50 border-transparent focus:border-primary"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <Popover open={levelPopoverOpen} onOpenChange={setLevelPopoverOpen}>
-              <PopoverTrigger asChild>
-                <button
-                  className={`shrink-0 h-11 w-11 flex items-center justify-center rounded-xl border cursor-pointer transition-all ${
-                    filterLevel
-                      ? "bg-primary text-foreground border-primary"
-                      : "bg-secondary/50 border-input"
-                  }`}
-                  aria-label="Filter by level"
-                  data-testid="players-level-filter-trigger"
-                >
-                  <SlidersHorizontal className="w-4 h-4" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-48 p-2">
-                <div className="flex flex-col gap-1">
-                  {["Beginner", "Intermediate", "Advanced", "Professional"].map((level) => (
-                    <button
-                      key={level}
-                      onClick={() => {
-                        setFilterLevel(filterLevel === level ? "" : level);
-                        setLevelPopoverOpen(false);
-                      }}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium text-left transition-all cursor-pointer ${
-                        filterLevel === level
-                          ? "bg-primary text-foreground"
-                          : "hover:bg-secondary"
-                      }`}
-                      data-testid={`players-level-mobile-${level}`}
-                    >
-                      {level}
-                    </button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
+{/* Filter Bar (mobile) — same layout as Coaches: sits below the hero photo */}
+      <div className="md:hidden relative z-20 bg-background pt-2 pb-2">
+        <div className="container mx-auto px-4 space-y-2">
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <Input
+              data-testid="players-search-input-mobile"
+              placeholder="Search by name or location..."
+              className="pl-10 h-11 text-sm bg-secondary/50 border-transparent focus:border-primary w-full rounded-xl"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <div className="flex w-full gap-2">
+                <Select value={filterLevel || "all"} onValueChange={(v) => setFilterLevel(v === "all" ? "" : v)}>
+                  <SelectTrigger aria-label="Filter by level" className="flex-1 min-w-0 h-11 bg-secondary/50 border-transparent cursor-pointer overflow-hidden" data-testid="players-level-filter-trigger">
+                    <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+                      <Activity className="w-4 h-4 text-primary shrink-0" />
+                      <SelectValue placeholder="Level" className="block max-w-[140px] truncate" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" className="cursor-pointer">All levels</SelectItem>
+                    {LEVELS.map((level) => (
+                      <SelectItem key={level} value={level} className="cursor-pointer" data-testid={`players-level-${level}`}>{level}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={`h-11 w-auto px-3 shrink-0 bg-secondary/50 border-transparent cursor-pointer ${activeFiltersCount > 0 ? 'border-primary text-primary' : ''}`}>
+                      <Filter className="w-4 h-4 mr-1.5" />
+                      Filters
+                      {activeFiltersCount > 0 && (
+                        <Badge variant="secondary" className="ml-1.5 h-5 w-5 p-0 flex items-center justify-center rounded-full bg-primary text-foreground text-[10px]">
+                          {activeFiltersCount}
+                        </Badge>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-72 p-4 space-y-5" align="end">
+                    <div className="space-y-4">
+                      <p className="font-bold leading-none">Availability</p>
+                      <Button
+                        type="button"
+                        variant={filterLookingToPlay ? "default" : "outline"}
+                        aria-pressed={filterLookingToPlay}
+                        onClick={toggleLookingToPlay}
+                        className="w-full justify-start cursor-pointer"
+                        data-testid="players-filter-looking-to-play"
+                      >
+                        <RacketIcon className="w-4 h-4 mr-2" />
+                        Looking to Play
+                      </Button>
+                    </div>
+                    {hasActiveFilters && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={clearFilters}
+                        className="w-full text-muted-foreground hover:text-destructive cursor-pointer"
+                      >
+                        Clear all filters
+                      </Button>
+                    )}
+                  </PopoverContent>
+                </Popover>
           </div>
         </div>
       </div>

@@ -95,14 +95,17 @@ export default function TravelPage() {
 
       <main id="main-content">
       <div className="relative overflow-hidden">
-        <img
-          src={travelHero}
-          alt="Tennis travel"
-          fetchPriority="high"
-          loading="eager"
-          decoding="async"
-          className="absolute inset-0 w-full h-full object-cover z-0 scale-125 md:scale-100"
-        />
+        <picture>
+          <source media="(max-width: 639px)" srcSet="/assets/images/hurbord_tennis-mobile.webp" />
+          <img
+            src={travelHero}
+            alt="Tennis travel"
+            fetchPriority="high"
+            loading="eager"
+            decoding="async"
+            className="absolute inset-0 w-full h-full object-cover z-0 scale-125 md:scale-100"
+          />
+        </picture>
         <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100% z-10" />
 
         <div className="relative min-h-[28vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-start">
@@ -253,7 +256,7 @@ export default function TravelPage() {
                       )}
                       <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent" />
                       <div className="absolute bottom-3 left-4 right-4 text-white">
-                        <h3 className="font-bold text-xl mb-1 line-clamp-1">{p.title}</h3>
+                        <h2 className="font-bold text-xl mb-1 line-clamp-1">{p.title}</h2>
                         <div className="flex items-center gap-1 text-sm opacity-90">
                           <MapPin className="w-3 h-3" /> {p.destination}
                         </div>

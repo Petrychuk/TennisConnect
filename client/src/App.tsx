@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { ScrollToTop } from "@/components/scroll-to-top";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/lib/auth-context";
-import { Loader2 } from "lucide-react";
+import { TennisLoader } from "@/components/ui/tennisLoader";
 import Home from "@/pages/home";
 import NotFound from "@/pages/not-found";
 import { ChunkErrorBoundary } from "@/components/chunk-error-boundary";
@@ -75,7 +75,7 @@ const Error500Page = lazy(() => import("@/pages/error-500"));
 function RouteFallback() {
   return (
     <div className="min-h-[60vh] flex items-center justify-center" data-testid="route-loading-fallback">
-      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      <TennisLoader text="" />
     </div>
   );
 }

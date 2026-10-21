@@ -134,6 +134,8 @@ export function HomeClubs() {
                     {club.image && (
                       <img
                         src={club.image}
+                        loading="lazy"
+                        decoding="async"
                         alt={club.name}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                       />

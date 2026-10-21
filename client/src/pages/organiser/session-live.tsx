@@ -1,3 +1,4 @@
+import { ConnectWord } from "@/components/ui/brandBall";
 import { useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -228,7 +229,7 @@ export default function OrganiserSessionLivePage() {
           <div className="dark flex flex-col h-full w-full bg-background text-foreground">
             <div className="px-5 pt-6 pb-4">
               <Link href="/" className="text-lg font-display font-bold flex items-center gap-1">
-                Tennis<span className="text-primary">Connect</span>
+                Tennis<span className="text-primary"><ConnectWord /></span>
                 <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1" />
               </Link>
               <p className="text-[11px] font-semibold tracking-widest text-muted-foreground mt-3">LIVE SESSION</p>

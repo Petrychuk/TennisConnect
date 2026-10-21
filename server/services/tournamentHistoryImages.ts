@@ -62,6 +62,7 @@ export async function addPhoto({
     .from("media")
     .upload(path, file.buffer, {
       contentType: detectedType,
+      cacheControl: "31536000",
       upsert: false,
     });
 

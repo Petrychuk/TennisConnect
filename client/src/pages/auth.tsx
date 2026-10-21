@@ -1,3 +1,4 @@
+import { ConnectWord } from "@/components/ui/brandBall";
 import { useState, useEffect } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { useForm } from "react-hook-form";
@@ -292,7 +293,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
             <div className="text-center lg:text-left">
             <h1 className="text-3xl md:text-4xl font-display font-bold mb-2">
               Tennis
-              <span className="text-[hsl(var(--tennis-ball))] [text-shadow:0_1px_3px_rgba(0,0,0,0.45)]">Connect</span>
+              <span className="text-[hsl(var(--tennis-ball))] [text-shadow:0_1px_3px_rgba(0,0,0,0.45)]"><ConnectWord /></span>
               <span className="inline-block w-2 h-2 ml-1 rounded-full bg-[hsl(var(--tennis-ball))] animate-pulse" />
             </h1>
               <p className="text-muted-foreground">

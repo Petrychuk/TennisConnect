@@ -1,3 +1,4 @@
+import { ConnectWord } from "@/components/ui/brandBall";
 import { useState } from "react";
 import { Link } from "wouter";
 import {
@@ -74,9 +75,7 @@ export function Footer() {
            <div className="flex flex-col items-center text-center gap-3">
               <h3 className="text-2xl font-display font-bold flex items-center gap-1">
                 Tennis
-                <span className="text-[hsl(var(--tennis-ball))]">
-                  Connect
-                </span>
+                <span className="text-[hsl(var(--tennis-ball))]"><ConnectWord /></span>
                 <div className="w-2 h-2 rounded-full bg-[hsl(var(--tennis-ball))] mt-1 animate-pulse" />
               </h3>
 

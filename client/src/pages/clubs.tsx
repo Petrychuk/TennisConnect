@@ -319,14 +319,17 @@ export default function ClubsPage() {
         {/* Intro / Hero Section — shares one photo backdrop with the
             filter bar below, same treatment as Partners/Coaches */}
         <div className="relative overflow-hidden">
-          <img
-            src="/assets/images/Dashboard_club.webp"
-            alt="Tennis club"
-            fetchPriority="high"
-            loading="eager"
-            decoding="async"
-            className="absolute inset-0 w-full h-full object-cover z-0 scale-125 md:scale-100"
-          />
+          <picture>
+            <source media="(max-width: 639px)" srcSet="/assets/images/Dashboard_club-mobile.webp" />
+            <img
+              src="/assets/images/Dashboard_club.webp"
+              alt="Tennis club"
+              fetchPriority="high"
+              loading="eager"
+              decoding="async"
+              className="absolute inset-0 w-full h-full object-cover z-0 scale-125 md:scale-100"
+            />
+          </picture>
           <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100% z-10" />
 
           <div className="relative min-h-[28vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-start">

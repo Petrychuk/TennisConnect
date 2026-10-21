@@ -55,6 +55,7 @@ router.post("/", requireAuth, requireRole("player"), upload.single("file"), asyn
       .from("media")
       .upload(filePath, req.file.buffer, {
         contentType: detectedType,
+        cacheControl: "31536000",
         upsert: false,
       });
 

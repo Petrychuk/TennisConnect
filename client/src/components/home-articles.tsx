@@ -101,6 +101,8 @@ export function HomeArticles() {
                   <div className="relative aspect-4/3 overflow-hidden bg-secondary/50">
                     <img
                       src={article.coverImage}
+                      loading="lazy"
+                      decoding="async"
                       alt={article.title}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                     />

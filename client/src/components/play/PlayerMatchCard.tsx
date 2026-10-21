@@ -1,3 +1,4 @@
+import { RacketIcon } from "@/components/ui/racket-icon";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,7 +49,7 @@ export function PlayerMatchCard({
             </span>
           )}
           <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
-            🟢 Looking to play
+            <RacketIcon className="w-3.5 h-3.5" /> Looking to play
           </span>
         </div>
 

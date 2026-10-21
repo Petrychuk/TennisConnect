@@ -1,3 +1,4 @@
+import { ConnectWord } from "@/components/ui/brandBall";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { getAdminSessions } from "@/lib/api/organizer-sessions";
@@ -200,7 +201,7 @@ export function OrganiserSidebarNav({ organiser, profileHref, className, collaps
         <div className="flex items-center justify-between gap-2">
           {!collapsed && (
             <Link href="/" className="text-xl font-display font-bold flex items-center gap-1" data-testid="organiser-sidebar-logo">
-              Tennis<span className="text-primary">Connect</span>
+              Tennis<span className="text-primary"><ConnectWord /></span>
               <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1" />
             </Link>
           )}
