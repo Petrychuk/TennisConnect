@@ -81,39 +81,51 @@ jobs:
     name: E2E tests (Playwright)
     runs-on: ubuntu-latest
     needs: [typecheck]
+
+    env:
+      DATABASE_URL: postgresql://tennisconnect_test:test_password@localhost:5432/tennisconnect_test
+      SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: tennisconnect_test
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: tennisconnect_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tennisconnect_test -d tennisconnect_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+
       - run: npm ci
+
       - run: npx playwright install --with-deps chromium
 
       - name: Push schema to the test database
         run: npm run db:push
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: Start the app
         run: npm run dev &
         env:
           NODE_ENV: development
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
 
       - name: Wait for the app to be ready
         run: npx wait-on http://localhost:5000 --timeout 60000
 
-      # Every @smoke-tagged test across every suite (organiser hub,
-      # play, security) - see individual spec files for what each one
-      # covers. Full (non-smoke) regression is intentionally NOT run
-      # on every push - it's slower and belongs on a schedule or before
-      # a release, not blocking every commit.
       - name: Run smoke tests
         run: npx playwright test --grep @smoke
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - uses: actions/upload-artifact@v4
         if: failure()
