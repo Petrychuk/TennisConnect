@@ -1,3 +1,4 @@
+import { OrganiserBarLogo } from "@/components/organiser/ui/organiser-bar-logo";
 import { useEffect, useState } from "react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Menu, ShieldCheck, ExternalLink, Check, X, Copy, Pencil, Play } from "lucide-react";
@@ -428,7 +429,7 @@ export default function AdminDiscoveryPage() {
         <aside
           className={cn(
             "hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200",
-            sidebarCollapsed ? "xl:w-20" : "xl:w-64"
+            sidebarCollapsed ? "xl:w-20" : "xl:w-72"
           )}
         >
           <OrganiserSidebarNav
@@ -453,8 +454,8 @@ export default function AdminDiscoveryPage() {
                 <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} />
               </SheetContent>
             </Sheet>
-            <div className="w-9 h-9 md:hidden" aria-hidden="true" />
-            <div className="flex items-center gap-1.5 font-display font-bold">Admin</div>
+            <OrganiserBarLogo />
+            <div className="hidden md:flex mr-auto items-center gap-1.5 font-display font-bold">Admin</div>
             <div className="flex items-center gap-1">
               <NotificationBell testId="organiser-header-bell-mobile" />
             </div>

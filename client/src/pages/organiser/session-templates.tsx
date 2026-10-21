@@ -1,3 +1,4 @@
+import { OrganiserBarLogo } from "@/components/organiser/ui/organiser-bar-logo";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -210,7 +211,7 @@ export default function OrganiserSessionTemplatesPage() {
         noIndex
       />
 
-      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-64")}>
+      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-72")}>
         <OrganiserSidebarNav
           organiser={organiser}
           profileHref={profileHref}
@@ -233,8 +234,8 @@ export default function OrganiserSessionTemplatesPage() {
               <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} />
             </SheetContent>
           </Sheet>
-          <div className="w-9 h-9 md:hidden" aria-hidden="true" />
-          <div className="flex items-center gap-1.5 font-display font-bold">Templates</div>
+          <OrganiserBarLogo />
+          <div className="hidden md:flex mr-auto items-center gap-1.5 font-display font-bold">Templates</div>
           <div className="flex items-center gap-1">
             <NotificationBell testId="organiser-header-bell-mobile" />
           </div>

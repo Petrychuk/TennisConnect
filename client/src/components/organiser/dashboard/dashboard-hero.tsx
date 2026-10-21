@@ -28,13 +28,13 @@ function greeting() {
 function StatCard({ stat }: { stat: StatStripItem }) {
   const Icon = STAT_ICON[stat.key] ?? Users;
   const body = (
-    <CardContent className="p-4 flex items-center gap-3">
-      <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+    <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+      <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
         <Icon className="w-4 h-4" />
       </div>
       <div className="min-w-0">
         <p className="text-lg font-bold leading-tight truncate">{stat.value}</p>
-        <p className="text-xs text-muted-foreground truncate">{stat.label}</p>
+        <p className="text-xs text-muted-foreground leading-tight sm:truncate">{stat.label}</p>
         <p className="text-[11px] text-muted-foreground/70 truncate">{stat.sublabel}</p>
       </div>
     </CardContent>
@@ -45,8 +45,8 @@ function StatCard({ stat }: { stat: StatStripItem }) {
   // plain, non-interactive card rather than a link to nowhere.
   if (stat.href) {
     return (
-      <Link href={stat.href} data-testid={`organiser-stat-strip-${stat.key}`}>
-        <Card className="shadow-sm hover:shadow-md hover:border-primary/40 transition-all cursor-pointer">
+      <Link href={stat.href} className="block h-full" data-testid={`organiser-stat-strip-${stat.key}`}>
+        <Card className="h-full shadow-sm hover:shadow-md hover:border-primary/40 transition-all cursor-pointer">
           {body}
         </Card>
       </Link>
@@ -54,7 +54,7 @@ function StatCard({ stat }: { stat: StatStripItem }) {
   }
 
   return (
-    <Card className="shadow-sm hover:shadow-md transition-shadow" data-testid={`organiser-stat-strip-${stat.key}`}>
+    <Card className="h-full shadow-sm hover:shadow-md transition-shadow" data-testid={`organiser-stat-strip-${stat.key}`}>
       {body}
     </Card>
   );
@@ -86,7 +86,7 @@ export function DashboardHero({ organiser, stats }: DashboardHeroProps) {
         <Carousel opts={{ loop: true, align: "start" }} data-testid="organiser-stat-strip-carousel">
           <CarouselContent className="-ml-3">
             {stats.map((stat) => (
-              <CarouselItem key={stat.key} className="pl-3 basis-[70%]">
+              <CarouselItem key={stat.key} className="pl-3 basis-[44%]">
                 <StatCard stat={stat} />
               </CarouselItem>
             ))}

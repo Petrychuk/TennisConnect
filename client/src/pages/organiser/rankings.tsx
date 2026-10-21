@@ -1,3 +1,4 @@
+import { OrganiserBarLogo } from "@/components/organiser/ui/organiser-bar-logo";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -275,7 +276,7 @@ export default function OrganiserRankingsPage() {
     <div className="min-h-screen flex bg-background" data-testid="organiser-rankings-page">
       <SEO title="Rankings | Organiser Hub | TennisConnect" description="Track player standings and results across seasons and session series." noIndex />
 
-      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-64")}>
+      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-72")}>
         <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} className="w-full" collapsed={sidebarCollapsed} onToggleCollapsed={() => setSidebarCollapsed((v) => !v)} />
       </aside>
 
@@ -292,8 +293,8 @@ export default function OrganiserRankingsPage() {
               <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} />
             </SheetContent>
           </Sheet>
-          <div className="w-9 h-9 md:hidden" aria-hidden="true" />
-          <div className="font-display font-bold">Rankings</div>
+          <OrganiserBarLogo />
+          <div className="hidden md:block mr-auto font-display font-bold">Rankings</div>
           <div className="flex items-center gap-1"><NotificationBell testId="organiser-header-bell-mobile" /></div>
         </div>
 

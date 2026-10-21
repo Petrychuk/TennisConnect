@@ -6,7 +6,7 @@ const BALL_O_SRC = "data:image/webp;base64,UklGRkQRAABXRUJQVlA4WAoAAAAQAAAAfwAAf
 
 export function ConnectWord() {
   return (
-    <>
+    <span className="whitespace-nowrap">
       C
       <img
         src={BALL_O_SRC}
@@ -18,6 +18,6 @@ export function ConnectWord() {
         className="inline-block h-[0.7em] w-[0.7em] mx-[0.02em] align-[-0.04em] [filter:drop-shadow(0_1px_2px_rgba(0,0,0,0.35))]"
       />
       nnect
-    </>
+    </span>
   );
 }

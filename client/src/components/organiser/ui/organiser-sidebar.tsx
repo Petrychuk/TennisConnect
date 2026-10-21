@@ -200,7 +200,7 @@ export function OrganiserSidebarNav({ organiser, profileHref, className, collaps
       <div className={cn("pt-6", collapsed ? "px-3" : "px-5")}>
         <div className="flex items-center justify-between gap-2">
           {!collapsed && (
-            <Link href="/" className="text-xl font-display font-bold flex items-center gap-1" data-testid="organiser-sidebar-logo">
+            <Link href="/" className="text-xl font-display font-bold flex items-center gap-1 whitespace-nowrap min-w-0" data-testid="organiser-sidebar-logo">
               Tennis<span className="text-primary"><ConnectWord /></span>
               <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1" />
             </Link>
