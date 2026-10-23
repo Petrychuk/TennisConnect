@@ -127,12 +127,21 @@ jobs:
         run: npm run db:push
 
       - name: Start the app
-        run: npm run dev &
+        run: |
+          nohup npm run dev > /tmp/tennisconnect-server.log 2>&1 &
+          echo $! > /tmp/tennisconnect-server.pid
         env:
           NODE_ENV: development
 
       - name: Wait for the app to be ready
-        run: npx wait-on http://localhost:3000 --timeout 60000
+        run: |
+          if ! npx wait-on http://localhost:3000 --timeout 60000; then
+            echo "=== Server startup logs ==="
+            cat /tmp/tennisconnect-server.log || true
+            echo "=== Server process ==="
+            ps aux | grep -E 'tsx|server/index' || true
+            exit 1
+          fi
 
       - name: Run smoke tests
         run: npx playwright test --grep @smoke
