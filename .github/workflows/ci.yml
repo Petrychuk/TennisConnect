@@ -23,6 +23,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      # Playwright environment guard (TEST_ENV / BASE_URL / /api/health /
+      # Production allowlist). No browser, no network, no database.
+      - run: npm run test:e2e:guard
 
   dependency-audit:
     name: Dependency vulnerability scan
@@ -86,6 +89,12 @@ jobs:
     env:
       DATABASE_URL: postgresql://tennisconnect_test:test_password@localhost:5432/tennisconnect_test
       SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+      # Environment guard (tests/safety/environment-guard.ts): the run is
+      # refused unless the server's GET /api/health reports a DB_ENV that
+      # matches TEST_ENV. DB_ENV=test marks this throwaway Postgres.
+      TEST_ENV: local
+      BASE_URL: http://localhost:3000
+      DB_ENV: test
 
     services:
       postgres:

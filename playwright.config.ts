@@ -1,5 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 import 'dotenv/config';
+import {
+  PROD_SAFE_GREP,
+  productionTestMatch,
+  resolveTarget,
+} from './tests/safety/environment-guard';
 
 /**
  * Read environment variables from file.
@@ -8,15 +13,42 @@ import 'dotenv/config';
 // import path from 'path';
 // dotenv.config({ path: path.resolve(__dirname, '.env') });
 
+/*
+  TARGET ENVIRONMENT - see tests/safety/environment-guard.ts.
+
+  TEST_ENV=local       loopback BASE_URL (default http://localhost:3000), full suite
+  TEST_ENV=staging     BASE_URL = staging (https), full suite
+  TEST_ENV=production  BASE_URL = production (https), ONLY the explicit
+                       PROD_SAFE_ALLOWLIST (@prod-safe) - never @smoke,
+                       never the full suite.
+
+  resolveTarget() throws here (before anything runs or is listed) on an
+  invalid / inconsistent TEST_ENV + BASE_URL, or if the removed ALLOW_PROD
+  bypass is still set. tests/global-setup.ts then verifies the live server
+  via GET /api/health and refuses to run if it can't confirm the target.
+*/
+const target = resolveTarget(process.env);
+const isProduction = target.testEnv === 'production';
+
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
 
   timeout: 60000,
-  
+
   testDir: './tests',
-  /* Refuses to run against PRODUCTION unless it's the @smoke suite.
+  /* Production: only files in PROD_SAFE_ALLOWLIST can even be loaded, and
+     only @prod-safe titles are selected. This is not just a grep filter:
+     passing a different --grep or a file path on the CLI cannot reach a
+     file outside the allowlist. */
+  ...(isProduction
+    ? {
+        testMatch: productionTestMatch(),
+        grep: PROD_SAFE_GREP,
+      }
+    : {}),
+  /* Fails closed unless the live server confirms TEST_ENV.
      See tests/global-setup.ts. */
   globalSetup: './tests/global-setup.ts',
   /* Run tests in files in parallel */
@@ -41,12 +73,16 @@ export default defineConfig({
   workers: process.env.CI ? 1 : 1,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
+  /* Recorded in the HTML report so every run shows where it ran. */
+  metadata: {
+    testEnv: target.testEnv,
+    target: target.origin,
+  },
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
-  
+
   use: {
-    // Points at STAGING by default in real usage — set BASE_URL explicitly.
-    // Never point this at PROD except for the @smoke suite (see tests/smoke/).
-    baseURL: process.env.BASE_URL || 'http://localhost:3000',
+    // Validated by resolveTarget() above - never set baseURL anywhere else.
+    baseURL: target.baseURL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -78,7 +114,7 @@ export default defineConfig({
       name: 'iPhone 16',
      use: { ...devices['iPhone 16'] },
     }, */
-    
+
     /* Test against tablet viewports. */
     /* {
       name: 'iPad Pro',
