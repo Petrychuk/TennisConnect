@@ -120,6 +120,45 @@ jobs:
       # data, the Staging-only seed gate and the seeder against an in-memory
       # store. No database, no credentials, no network - nothing is seeded.
       - run: npm run test:staging-fixtures
+      # Stage 3: organisation/user cascade coverage against the schema,
+      # Staging-only rate-limit exemption (real express-rate-limit), run
+      # cleanup client/CLI/teardown. No database, no network, no secrets.
+      - run: npm run test:cleanup
+
+  db-integration:
+    name: Database integration (throwaway Postgres)
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    # A disposable postgres:16 container on the runner - never Staging or
+    # Production (server/test-support/pgTestDb.ts refuses any non-loopback
+    # host). Tables come from shared/schema.ts; each test file uses its own
+    # schema and drops it afterwards.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tc_it
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      E2E_TEST_PG_URL: postgres://postgres:postgres@127.0.0.1:5432/tc_it
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # Organisation deletion (seasons, series, templates, session updates)
+      # and the run-scoped E2E cleanup against real foreign keys.
+      - run: npm run test:db-integration
 
   # ---------------------------------------------------------------------
   # Read-only smoke tests against the REAL Railway Staging environment.

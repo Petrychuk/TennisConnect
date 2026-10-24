@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { dismissCookieBanner } from '../helpers/auth';
+import { uniqueTestEmail } from '../fixtures/test-users';
 
 export const SECURITY_PAYLOADS = [
     "'",
@@ -30,7 +31,7 @@ test.describe('Registration Security', () => {
   
         await page.fill(
           '#reg-email',
-          `test${Date.now()}@mail.com`
+          uniqueTestEmail('sec-name')
         );
   
         await page.fill(

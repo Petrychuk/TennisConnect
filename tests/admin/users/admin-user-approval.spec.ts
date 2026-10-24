@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { registerPlayer, login } from '../../helpers/auth';
 import { TEST_USERS } from '../../fixtures/test-users';
+import { expectRunOwned } from '../../fixtures/run-id';
 
 /* ADMIN-001 New User Queue
 
@@ -13,6 +14,8 @@ test('ADMIN-001 New User Queue - Approve Pending Player', async ({ page }) => {
   // ---------- Test data ----------
 
   const player = await registerPlayer(page);
+  // Admin action on an account: it must belong to this run.
+  expectRunOwned(player.email);
 
   // ---------- Login ----------
 

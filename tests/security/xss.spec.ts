@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { dismissCookieBanner } from '../helpers/auth';
+import { uniqueTestEmail } from '../fixtures/test-users';
 
 test('SEC-002 XSS', async ({ page }) => {
 
@@ -15,7 +16,7 @@ test('SEC-002 XSS', async ({ page }) => {
   
     await page.fill(
       '#reg-email',
-      'xss@test.com'
+      uniqueTestEmail('sec002')
     );
   
     await page.fill(

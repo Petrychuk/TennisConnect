@@ -1,14 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { login } from '../helpers/auth';
-import { TEST_USERS } from '../fixtures/test-users';
+import { signInAsNewPlayer } from '../helpers/accounts';
 
 test('PROFILE-003 Edit Player Profile', async ({ page }) => {
   // ---------- Login ----------
-  await login(
-    page,
-    TEST_USERS.player.email,
-    TEST_USERS.player.password
-  );
+  // Own run-owned account: the shared Stage 2 player must never be modified.
+  await signInAsNewPlayer(page);
 
   // ---------- Verify login ----------
   await expect(page).toHaveURL(/\/player\/.+/);

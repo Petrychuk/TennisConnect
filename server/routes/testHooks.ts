@@ -36,6 +36,28 @@ import { buildHealthPayload } from "../lib/health";
 import { stripeKeyMode } from "../lib/stripeMode";
 import { capturedEmails, resolveEmailTransport } from "../services/emailCapture";
 import { createTestHooksRouter } from "./testHooksRouter";
+import { db } from "../db";
+import { supabaseAdmin } from "../supabaseAdmin";
+import { applyRunCleanup, listRunResidue, listRunStorage, planRunCleanup } from "../services/e2eRunCleanup";
+import { supabaseRunStorage } from "../services/e2eRunStorage";
+
+/**
+ * File deletion during run cleanup is a write to whichever Supabase project
+ * SUPABASE_URL points at. Enabled only by E2E_STORAGE_CLEANUP=enabled, set
+ * on Staging once it is verified not to share Production's storage project.
+ * Read on every request, like the rest of the hook configuration.
+ */
+function storageCleanupEnabled(): boolean {
+  return process.env.E2E_STORAGE_CLEANUP === "enabled";
+}
+
+function storageHost(): string | null {
+  try {
+    return process.env.SUPABASE_URL ? new URL(process.env.SUPABASE_URL).hostname : null;
+  } catch {
+    return null;
+  }
+}
 
 export default createTestHooksRouter({
   storage,
@@ -58,5 +80,25 @@ export default createTestHooksRouter({
     }),
     stripeMode: stripeKeyMode(process.env.STRIPE_SECRET_KEY),
     stripeWebhookConfigured: !!process.env.STRIPE_WEBHOOK_SECRET,
+    storageHost: storageHost(),
   }),
+  // Stage 3 run-scoped cleanup - only reachable through the gated router
+  // above (dev/staging, secret, X-E2E-Run-Id; never Production).
+  runCleanup: {
+    async plan(runId) {
+      const plan = await planRunCleanup(db, runId);
+      const storageCleanup = storageCleanupEnabled() ? "enabled" : "disabled";
+      if (plan.refusals.length > 0 || plan.users.length === 0) return { ...plan, storageFiles: 0, storageCleanup };
+      try {
+        // Listing is read-only - allowed even while file deletion is disabled.
+        const files = await listRunStorage(supabaseRunStorage(supabaseAdmin), plan);
+        return { ...plan, storageFiles: files.length, storageCleanup };
+      } catch (error) {
+        return { ...plan, storageFiles: null, storageCleanup, storageError: error instanceof Error ? error.message : String(error) };
+      }
+    },
+    apply: (runId) =>
+      applyRunCleanup(db, runId, supabaseRunStorage(supabaseAdmin), { removeFiles: storageCleanupEnabled() }),
+    residue: () => listRunResidue(db),
+  },
 });

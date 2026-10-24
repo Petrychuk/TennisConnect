@@ -1,5 +1,15 @@
 import { expect, Page } from '@playwright/test';
 import { login, logout } from './auth';
+import { expectRunOwned } from '../fixtures/run-id';
+
+// Admin actions below only ever target an account created by this run.
+async function expectRunOwnedUserId(page: Page, userId: string) {
+  const res = await page.request.get('/api/admin/users');
+  expect(res.ok(), 'admin users list').toBeTruthy();
+  const target = ((await res.json()) as { id: string; email: string }[]).find(user => user.id === userId);
+  if (!target) throw new Error(`admin action target ${userId} not found`);
+  expectRunOwned(target.email);
+}
 
 // ---------- Send via the profile's "Message" quick-message modal
 // (player-profile.tsx's redesign - Contact tab was removed for player
@@ -97,6 +107,7 @@ export async function grantOrganizerAccess(
   adminPassword: string,
   organiserEmail: string
 ) {
+  expectRunOwned(organiserEmail);
   await login(page, adminEmail, adminPassword);
   await page.goto('/admin');
   await page.getByTestId('organiser-sidebar-nav-admin-users').click();
@@ -132,6 +143,7 @@ export async function hideUserAsAdmin(
   userId: string
 ) {
   await login(page, adminEmail, adminPassword);
+  await expectRunOwnedUserId(page, userId);
   await page.goto('/admin');
   await page.getByTestId('organiser-sidebar-nav-admin-users').click();
 
@@ -160,6 +172,7 @@ export async function approveUser(
   userId: string
 ) {
   await login(page, adminEmail, adminPassword);
+  await expectRunOwnedUserId(page, userId);
   await page.goto('/admin');
   await page.getByTestId('organiser-sidebar-nav-admin-users').click();
 

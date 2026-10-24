@@ -28,6 +28,7 @@ import supportRouter from "./routes/support";
 import testHooksRouter from "./routes/testHooks";
 import { shouldFlagRegistrationAsTestUser } from "./lib/testHookSecurity";
 import { publicAppUrl } from "./lib/appUrl";
+import { e2eRunRateLimitSkip } from "./lib/e2eRateLimit";
 import { buildHealthPayload } from "./lib/health";
 
 import {
@@ -60,18 +61,25 @@ import sitemapRoutes from "./routes/sitemapRoutes";
 // Brute-force / abuse protection for auth endpoints. Login gets the
 // tightest window since it's the classic credential-stuffing target;
 // register/forgot-password get a looser one mainly to stop spam/enum.
+
 // Base URL for links in emails - a known site for this environment, never
 // the raw (caller-controlled) Origin header. See server/lib/appUrl.ts.
 function emailLinkBase(req: Request): string {
   return publicAppUrl({ origin: req.headers.origin, dbEnv: process.env.DB_ENV, configured: process.env.APP_URL });
 }
 
+//
+// skip: on Staging ONLY, requests for temporary E2E run accounts
+// (e2e-run-<runId>-...@tennisconnect.test) are not counted, so a CI
+// regression run from one IP is not throttled. Production, the permanent
+// e2e-* accounts and everyone else stay limited - see server/lib/e2eRateLimit.ts.
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   limit: 10,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many login attempts. Please try again later." },
+  skip: e2eRunRateLimitSkip(),
 });
 
 const authActionLimiter = rateLimit({
@@ -80,6 +88,7 @@ const authActionLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many requests. Please try again later." },
+  skip: e2eRunRateLimitSkip(),
 });
 
 // Tighter than authActionLimiter on purpose - "resend" is the one auth

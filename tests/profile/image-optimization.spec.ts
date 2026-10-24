@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
+import { signInAsNewCoach, signInAsNewPlayer } from '../helpers/accounts';
+import { skipUnlessUploadsAllowed } from '../helpers/staging-gates';
 import path from 'path';
 import fs from 'fs';
-import { login } from '../helpers/auth';
-import { TEST_USERS } from '../fixtures/test-users';
 
 /*
   IMAGE OPTIMISATION - regression coverage for resizeImage() actually
@@ -30,7 +30,9 @@ test('IMG-001 Avatar Upload Is Resized/Compressed Before It Reaches The Network'
 
   // ---------- Login ----------
 
-  await login(page, TEST_USERS.player.email, TEST_USERS.player.password);
+  skipUnlessUploadsAllowed();
+  // Own run-owned account: the shared Stage 2 player must never be modified.
+  await signInAsNewPlayer(page);
   await expect(page).toHaveURL(/\/player\/.+/);
 
   // ---------- Upload ----------
@@ -90,7 +92,9 @@ test('IMG-002 Cover Upload Is Resized/Compressed Before It Reaches The Network',
 
   // ---------- Login ----------
 
-  await login(page, TEST_USERS.coach.email, TEST_USERS.coach.password);
+  skipUnlessUploadsAllowed();
+  // Own run-owned account: the shared Stage 2 coach must never be modified.
+  await signInAsNewCoach(page);
   await expect(page).toHaveURL(/\/coach\/.+/);
 
   // ---------- Upload ----------

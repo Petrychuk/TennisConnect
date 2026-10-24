@@ -1,15 +1,13 @@
 import { test, expect } from '@playwright/test';
+import { signInAsNewCoach } from '../helpers/accounts';
+import { skipUnlessUploadsAllowed } from '../helpers/staging-gates';
 import path from 'path';
-import { login } from '../helpers/auth';
-import { TEST_USERS } from '../fixtures/test-users';
 
 test('PROFILE-006 Upload Coach Cover', async ({ page }) => {
     // ---------- Login ----------
-    await login(
-      page,
-      TEST_USERS.coach.email,
-      TEST_USERS.coach.password
-    );
+    skipUnlessUploadsAllowed();
+    // Own run-owned account: the shared Stage 2 coach must never be modified.
+    await signInAsNewCoach(page);
   
     // ---------- Verify login ----------
     await expect(page).toHaveURL(/\/coach\/.+/);

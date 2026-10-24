@@ -10,10 +10,10 @@ Built in reviewable stages. This document grows with each stage.
 | Stage | Scope | Status |
 |---|---|---|
 | 1 | Email capture, Stripe test-mode safeguards, regression preflight | Merged |
-| 2 | Dedicated test accounts and deterministic fixtures | In review (seed not yet run) |
-| 3 | Run-scoped cleanup and recovery | Planned |
-| 4 | Test audit and migration of the 192 existing tests | Planned |
-| 5 | Manual full-regression workflow | Planned |
+| 2 | Dedicated test accounts and deterministic fixtures | Merged (seed not yet run) |
+| 3 | Run-scoped cleanup, organisation delete fix, rate-limit exemption, test migration, phase allowlists | In review (not deployed, nothing run on Staging) |
+| 4 | Execute the phases on Staging (after approval) | Planned |
+| 5 | Manual full-regression workflow (promote the draft) | Planned |
 
 ## Stage 1 — safety foundations
 
@@ -257,3 +257,113 @@ directory, `*storageState*.json` / `*storage-state*.json` / `*auth-state*.json`,
 those paths are ignored. It also fails if any tracked file is such a file,
 contains Playwright storage state, or holds a real-looking
 `postgres://user:password@host` string. This complements the gitleaks job.
+
+## Stage 3 — run-scoped cleanup and execution preparation
+
+Plan and per-test inventory: `docs/testing/stage3-execution-plan.md`,
+`docs/testing/stage3-test-inventory.csv`. The phased workflow is still a
+draft (`docs/testing/drafts/staging-e2e.yml.draft`). Nothing in this stage
+has been deployed or run against Staging.
+
+### Organisation deletion fix
+
+`server/lib/organizationCascade.ts` is the one organisation cascade (admin
+"Delete Organization", account deletion, run cleanup). It now also removes
+seasons, series, session templates and session update posts, and detaches
+discovery activities that reference the organisation or its sessions -
+before, any of those made the delete fail on a foreign key.
+`server/lib/userCascade.ts` holds the account-row deletion (moved unchanged
+from `storage.deleteUserAccounts()`, plus `external_activities.reviewed_by`).
+`organizationCascade.test.ts` reads the real schema and fails if a foreign
+key into these tables is not handled.
+
+### Run cleanup (`POST /api/test-hooks/cleanup-run`)
+
+- Gated like every test hook (development/Staging only, secret header) and
+  always needs `X-E2E-Run-Id`. **Dry run by default**; deleting needs
+  `{ "apply": true, "confirmRunId": "<same id>" }`.
+- Deletes only users that are `isTestUser` with an
+  `e2e-run-<runId>-…@tennisconnect.test` address of exactly that run, their
+  organisations (full cascade) and their account rows. Stage 2 baseline and
+  fixture accounts, other runs, legacy test users and real users never match.
+- **Refuses (409, nothing deleted)** when anyone outside the run is involved:
+  registrations, memberships or messages from real users or other runs;
+  rows run users created in organisations the run does not own; or outside
+  rows that point at the run's data (another organisation's series or
+  sessions, tournament history, messages, discovery activities, matches).
+  The shared Stage 2 accounts may take part in a run's data.
+- One transaction that re-checks the plan; aborts if the run's users change
+  (e.g. the run is still going).
+- **Uploaded files** under `players|coaches|sessions|marketplace/<runUserId>/`
+  are deleted only when the server has `E2E_STORAGE_CLEANUP=enabled` (set on
+  Staging after verifying it does not share Production's storage project).
+  Without it files are only listed, and cleanup refuses while a run still
+  has files - nothing is orphaned and no storage write happens.
+- `POST /api/test-hooks/run-residue` (read-only) lists run ids that still
+  own users, so each can be cleaned explicitly by id. There is no wildcard.
+
+```bash
+npm run e2e:cleanup-run -- --run-id=<id>                    # dry run
+npm run e2e:cleanup-run -- --run-id=<id> --apply --verify   # delete, then require 0 left
+npm run e2e:cleanup-run -- --residue                        # runs that left data
+```
+
+Playwright's global teardown reports the run's leftovers after every run and
+deletes them only with `E2E_CLEANUP_ON_TEARDOWN=1` (set by the phase runner
+for writing phases).
+
+### Rate limits
+
+On Staging only (`DB_ENV=staging`), login / register / forgot-password
+requests for **run-owned** addresses are not counted by the per-IP limiters,
+so a CI run from one IP is not throttled (`server/lib/e2eRateLimit.ts`).
+Production, the permanent `e2e-*` accounts and everyone else keep the 10 / 20
+per 15 minutes limits; the per-account lockout still applies to everyone.
+
+### Accounts in tests
+
+- `TEST_USERS` (`tests/fixtures/test-users.ts`) are the Stage 2 baseline
+  accounts. `login()` reuses one cached API session per worker for them (no
+  password typed, no extra login request); `logout()` clears that context's
+  cookies instead of ending the shared session. `{ ui: true }` keeps the
+  real form for tests of the login itself (AUTH-SMOKE-001).
+- Tests that change an account use their own run-owned one
+  (`signInAsNewPlayer/Coach`, `tests/helpers/accounts.ts`); every new
+  address comes from `uniqueTestEmail()`.
+- Admin actions assert that every target belongs to the run
+  (`expectRunOwned()`); ADMIN-009 (targets the admin's own account) is local only.
+- Upload tests skip on Staging unless `E2E_STORAGE_ISOLATION_VERIFIED=1`;
+  Stripe tests skip unless `E2E_ENABLE_STRIPE_TESTS=1`.
+- Removed: `example.spec.ts` (playwright.dev), `profile/test-auth.spec.ts`
+  (logged in as `player@test.com`), `setup/*.setup.spec.ts` (unused legacy
+  storage state).
+
+### Phases
+
+`tests/safety/staging-phases.ts` puts every test in exactly one place:
+the read-only sets (Phase A), `auth-readonly`, `mutating-core`,
+`hub-msg-admin`, `security-last`, `stripe` (opt-in), or local-only.
+`staging-phases.unit.ts` lists every test through Playwright and fails on
+anything unclassified, duplicated, or selected by the wrong phase.
+
+```bash
+E2E_PHASE=<phase> E2E_RUN_ID=<id> npm run test:e2e:staging:phase:ci   # 1 worker, no retries, traces off
+```
+
+### Configuration (names only)
+
+| Name | Where | Purpose |
+|---|---|---|
+| `E2E_STORAGE_CLEANUP` | Railway Staging, **only after** verifying storage isolation | `enabled` lets run cleanup delete run users' files |
+| `E2E_STORAGE_ISOLATION_VERIFIED` | Workflow / repository variable | `1` lets upload tests run on Staging |
+| `E2E_ENABLE_STRIPE_TESTS` | Workflow input | `1` enables the Stripe phase (test mode only) |
+| `E2E_CLEANUP_ON_TEARDOWN` | Set by the phase runner | `1` = teardown deletes the run's data |
+| `E2E_TEST_PG_URL` | Local / CI only | Loopback Postgres for database integration tests |
+
+### Local checks
+
+```bash
+npm run test:cleanup          # cascade coverage, rate-limit exemption, cleanup client/CLI/teardown
+E2E_TEST_PG_URL=postgres://postgres@127.0.0.1:5432/tc_it npm run test:db-integration   # real Postgres (loopback only)
+npm run test:e2e:guard        # now includes the phase allowlists
+```

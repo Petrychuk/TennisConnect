@@ -56,6 +56,9 @@ export default defineConfig({
   /* Fails closed unless the live server confirms TEST_ENV.
      See tests/global-setup.ts. */
   globalSetup: './tests/global-setup.ts',
+  // Stage 3: reports this run's leftover data; deletes it only with
+  // E2E_CLEANUP_ON_TEARDOWN=1 (tests/global-teardown.ts).
+  globalTeardown: './tests/global-teardown.ts',
   /* Run tests in files in parallel */
   fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */

