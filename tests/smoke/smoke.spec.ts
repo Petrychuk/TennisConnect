@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { login, logout, dismissCookieBanner } from '../helpers/auth';
+import { getFirstListedCoachPath } from '../helpers/profile';
 import { TEST_USERS } from '../fixtures/test-users';
 
 /*
@@ -125,11 +126,18 @@ test('@smoke MSG-SMOKE-001 Guest cannot access messages', async ({ page }) => {
 
 test('@smoke MSG-SMOKE-002 Guest contact form redirects to sign in', async ({ page }) => {
 
+  // ---------- Test data (any listed coach - guest, read-only) ----------
+
+  const coachPath = await getFirstListedCoachPath(page);
+
   // ---------- Open page ----------
 
-  await page.goto(`/coach/${TEST_USERS.coach.slug}?tab=contact`);
+  await page.goto(`${coachPath}?tab=contact`);
   await dismissCookieBanner(page);
-  await page.getByTestId('contact-tab').click();
+
+  const contactTab = page.getByTestId('contact-tab');
+  await expect(contactTab).toBeVisible();
+  await contactTab.click();
 
   // ---------- Verify ----------
 
