@@ -1,5 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { dismissCookieBanner, logout, completeVerification } from '../helpers/auth';
+import { uniqueTestEmail } from '../fixtures/test-users';
 
 // Alternates upper/lower on the local part only, domain left as-is -
 // deliberately not just .toUpperCase()/.toLowerCase() on the whole
@@ -32,7 +33,7 @@ async function registerWithEmail(page: Page, name: string, email: string, passwo
 
 test('AUTH-011 Register - a duplicate email is rejected regardless of casing', async ({ page }) => {
   const timestamp = Date.now();
-  const email = `test_case_${timestamp}@tennisconnect.test`;
+  const email = uniqueTestEmail('case');
   const password = 'Test123456!';
 
   await page.goto('/auth');
@@ -67,7 +68,7 @@ test('AUTH-011 Register - a duplicate email is rejected regardless of casing', a
 
 test('AUTH-012 Login succeeds with a different email casing than used at registration', async ({ page }) => {
   const timestamp = Date.now();
-  const email = mixedCaseEmail(`test_case_login_${timestamp}@tennisconnect.test`);
+  const email = mixedCaseEmail(uniqueTestEmail('case-login'));
   const password = 'Test123456!';
 
   await page.goto('/auth');
@@ -113,7 +114,7 @@ test('AUTH-012 Login succeeds with a different email casing than used at registr
 
 test('AUTH-013 Registered email is stored lowercase regardless of the casing typed', async ({ page }) => {
   const timestamp = Date.now();
-  const email = mixedCaseEmail(`test_case_storage_${timestamp}@tennisconnect.test`);
+  const email = mixedCaseEmail(uniqueTestEmail('case-storage'));
   const password = 'Test123456!';
 
   await page.goto('/auth');

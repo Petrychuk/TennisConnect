@@ -1,6 +1,8 @@
-import { expect, Page } from '@playwright/test';
+import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { generateTestUser } from '../fixtures/test-users';
 import { postTestHook } from './test-hooks';
+import { baselineIdentity, classifyEmail, BASELINE_IDENTITIES, type BaselineRole } from '../../server/seeds/e2e/identities';
+import { baselineSessionState, forgetBaselineSession, sessionCookies } from './e2e-auth';
 
 // ---------- Cookie consent ----------
 
@@ -137,11 +139,63 @@ export async function completeVerification(page: Page, email: string) {
   ]);
 }
 
+// Contexts whose session came from the worker's cached baseline login -
+// logout() clears their cookies instead of ending the shared server session.
+const cachedSessionContexts = new WeakSet<BrowserContext>();
+
+export interface LoginOptions {
+  /**
+   * Type the password into the login form even for a permanent Stage 2
+   * account. Only for tests of the login form itself - each one counts
+   * against the 10-per-15-minutes login limit.
+   */
+  ui?: boolean;
+}
+
+function baselineRoleFor(email: string): BaselineRole | undefined {
+  if (classifyEmail(email).kind !== 'baseline') return undefined;
+  const normalised = email.trim().toLowerCase();
+  return BASELINE_IDENTITIES.find(identity => identity.email === normalised)?.role;
+}
+
+/**
+ * Signs in as a permanent Stage 2 account by reusing this worker's cached
+ * API session (tests/helpers/e2e-auth.ts) - no password typed, no extra
+ * login request per test. Re-logs in once if the server ended the session.
+ */
+async function loginWithCachedSession(page: Page, role: BaselineRole) {
+  const info = test.info();
+  const identity = baselineIdentity(role);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const statePath = await baselineSessionState(role, info);
+    await page.context().addCookies(sessionCookies(statePath));
+    const me = await page.request.get('/api/auth/me', { failOnStatusCode: false });
+    const body = me.ok() ? await me.json().catch(() => null) : null;
+    if (body?.authenticated && String(body.email).toLowerCase() === identity.email) {
+      cachedSessionContexts.add(page.context());
+      // Where the real login redirects: the account's own profile.
+      await page.goto(`/${identity.userRole}/${identity.slug}`);
+      await dismissCookieBanner(page);
+      await expect(page.getByTestId('profile-menu')).toBeVisible({ timeout: 15000 });
+      return;
+    }
+    forgetBaselineSession(role, info.workerIndex);
+  }
+  throw new Error(`[e2e-auth] could not restore a session for ${identity.email}. Has the Staging seed been run?`);
+}
+
 export async function login(
   page: Page,
   email: string,
-  password: string
+  password: string,
+  options: LoginOptions = {}
 ) {
+  const role = baselineRoleFor(email);
+  if (role && !options.ui) {
+    await loginWithCachedSession(page, role);
+    return;
+  }
+
   await page.goto('/auth');
   await dismissCookieBanner(page);
 
@@ -171,6 +225,16 @@ export async function login(
 }
 
 export async function logout(page: Page) {
+  // A cached Stage 2 session is shared by the worker's other tests: sign
+  // this context out locally instead of ending the session on the server.
+  if (cachedSessionContexts.has(page.context())) {
+    cachedSessionContexts.delete(page.context());
+    await page.context().clearCookies();
+    await page.goto('/');
+    await expect(page).toHaveURL('/');
+    return;
+  }
+
   await page.getByTestId('profile-menu').click();
 
   await page.getByTestId('logout-btn').click();

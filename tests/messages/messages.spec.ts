@@ -282,11 +282,25 @@ test('MSG-005 Player → Player Message', async ({ page }) => {
 
 });
 
-test('MSG-006 Coach → Player Message', async ({ page }) => {
+test('MSG-006 Coach → Player Message', async ({ page, browser }) => {
 
   // ---------- Test data ----------
 
   const content = `Great session today! ${Date.now()}`;
+
+  // The recipient is a run-owned player, so the run's cleanup removes this
+  // conversation. (Shared coach -> shared player left a message nothing
+  // owned and nothing could ever clean up.)
+  const recipientContext = await browser.newContext();
+  let recipientSlug: string;
+  try {
+    const recipientPage = await recipientContext.newPage();
+    await registerPlayer(recipientPage);
+    await completePlayerProfile(recipientPage);
+    recipientSlug = (await (await recipientPage.request.get('/api/auth/me')).json()).slug;
+  } finally {
+    await recipientContext.close();
+  }
 
   // ---------- Login ----------
 
@@ -296,7 +310,7 @@ test('MSG-006 Coach → Player Message', async ({ page }) => {
 
   const response = await sendPlayerProfileMessage(
     page,
-    `/player/${TEST_USERS.player.slug}`,
+    `/player/${recipientSlug}`,
     { subject: 'Session follow-up', message: content }
   );
 

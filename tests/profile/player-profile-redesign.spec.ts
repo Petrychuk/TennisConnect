@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { skipUnlessUploadsAllowed } from '../helpers/staging-gates';
 import { registerPlayer } from '../helpers/auth';
 import { completePlayerProfile } from '../helpers/profile';
 
@@ -39,6 +40,8 @@ test.describe('Player profile redesign', () => {
   });
 
   test('@smoke PROFILE-RD-002 Owner can upload a real photo to their gallery', async ({ page }) => {
+    // Uploads write to Supabase Storage: off on Staging until isolation is verified.
+    skipUnlessUploadsAllowed();
     await registerPlayer(page);
     await completePlayerProfile(page);
 

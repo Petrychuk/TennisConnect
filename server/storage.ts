@@ -93,6 +93,8 @@ import {
   type ActivityFeedItem,
 } from "@shared/schema";
 import { db, pool } from "./db";
+import { cascadeDeleteOrganizations as cascadeDeleteOrganizationsShared } from "./lib/organizationCascade";
+import { deleteUserRows } from "./lib/userCascade";
 import { zonedTimeToUtc } from "./lib/zonedTime";
 import { classifyQueueTab, type QueueTab } from "./services/discoveryQueue";
 import { expandOccurrences, makeOccurrenceId, parseOccurrenceId } from "./services/discoveryOccurrences";
@@ -709,41 +711,9 @@ export class DatabaseStorage implements IStorage {
           await this.cascadeDeleteOrganizations(tx, emptyOrgIdsToCascade);
         }
 
-        await tx
-          .delete(messages)
-          .where(or(inArray(messages.senderUserId, allowedIds), inArray(messages.recipientId, allowedIds)));
-
-        await tx.delete(tournamentHistory).where(inArray(tournamentHistory.userId, allowedIds));
-        await tx.delete(marketplaceItems).where(inArray(marketplaceItems.userId, allowedIds));
-        await tx.delete(playerProfiles).where(inArray(playerProfiles.userId, allowedIds));
-        await tx.delete(coachProfiles).where(inArray(coachProfiles.userId, allowedIds));
-
-        await tx.delete(organizerRequests).where(inArray(organizerRequests.userId, allowedIds));
-        await tx
-          .update(organizerRequests)
-          .set({ reviewedBy: null })
-          .where(inArray(organizerRequests.reviewedBy, allowedIds));
-
-        await tx.delete(organizationMembers).where(inArray(organizationMembers.userId, allowedIds));
-        await tx.delete(registrations).where(inArray(registrations.userId, allowedIds));
-        await tx.delete(clubFollows).where(inArray(clubFollows.userId, allowedIds));
-        await tx.delete(clubFavorites).where(inArray(clubFavorites.userId, allowedIds));
-        await tx.delete(communityMemberships).where(inArray(communityMemberships.userId, allowedIds));
-
-        await tx.update(matches).set({ reportedBy: null }).where(inArray(matches.reportedBy, allowedIds));
-        await tx.update(matches).set({ confirmedBy: null }).where(inArray(matches.confirmedBy, allowedIds));
-
-        await tx
-          .update(tennisSessions)
-          .set({ reviewedBy: null })
-          .where(inArray(tennisSessions.reviewedBy, allowedIds));
-
-        await tx.update(payments).set({ userId: null }).where(inArray(payments.userId, allowedIds));
-
-        await tx.delete(passwordResetTokens).where(inArray(passwordResetTokens.userId, allowedIds));
-        await tx.delete(emailVerificationTokens).where(inArray(emailVerificationTokens.userId, allowedIds));
-
-        await tx.delete(users).where(inArray(users.id, allowedIds));
+        // Same statements as before, now shared with the E2E run cleanup
+        // (server/lib/userCascade.ts), plus external_activities.reviewed_by.
+        await deleteUserRows(tx, allowedIds);
       });
     } catch (error) {
       // The whole batch transaction rolled back - none of allowedIds
@@ -4199,39 +4169,15 @@ export class DatabaseStorage implements IStorage {
   // call needs to run inside the SAME transaction as the user deletion,
   // not a separate one, while this method's own public entry point
   // below opens its own.
+  // The cascade itself lives in server/lib/organizationCascade.ts (shared
+  // with the E2E run cleanup) - it also covers seasons, series, session
+  // templates and session update posts, whose foreign keys used to make
+  // deleting such an organisation fail.
   private async cascadeDeleteOrganizations(
     qb: typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0],
     orgIds: string[]
   ): Promise<void> {
-    if (orgIds.length === 0) return;
-
-    const sessionRows = await qb
-      .select({ id: tennisSessions.id })
-      .from(tennisSessions)
-      .where(inArray(tennisSessions.organizationId, orgIds));
-    const sessionIds = sessionRows.map((r) => r.id);
-
-    if (sessionIds.length > 0) {
-      await qb.update(tournamentHistory).set({ sessionId: null }).where(inArray(tournamentHistory.sessionId, sessionIds));
-      await qb.update(messages).set({ relatedSessionId: null }).where(inArray(messages.relatedSessionId, sessionIds));
-      // A division session's parentSessionId could point at a session
-      // in this batch (the tournament "container") - nulled first so
-      // deleting the sessions themselves below never trips over a
-      // self-referencing FK, regardless of delete order.
-      await qb.update(tennisSessions).set({ parentSessionId: null }).where(inArray(tennisSessions.parentSessionId, sessionIds));
-
-      await qb.delete(matches).where(inArray(matches.sessionId, sessionIds));
-      await qb.delete(sessionRounds).where(inArray(sessionRounds.sessionId, sessionIds));
-      await qb.delete(registrations).where(inArray(registrations.sessionId, sessionIds));
-
-      await qb.delete(tennisSessions).where(inArray(tennisSessions.id, sessionIds));
-    }
-
-    await qb.update(messages).set({ relatedOrganizationId: null }).where(inArray(messages.relatedOrganizationId, orgIds));
-    await qb.delete(communityMemberships).where(inArray(communityMemberships.organizationId, orgIds));
-    await qb.delete(organizationMembers).where(inArray(organizationMembers.organizationId, orgIds));
-
-    await qb.delete(organizations).where(inArray(organizations.id, orgIds));
+    await cascadeDeleteOrganizationsShared(qb, orgIds);
   }
 
   async deleteOrganizationCascade(orgId: string): Promise<void> {

@@ -77,10 +77,13 @@ test('@smoke AUTH-SMOKE-001 Login and logout with seeded player', async ({ page 
 
   // ---------- Login ----------
 
+  // { ui: true }: this test is about the real login form and logout, so it
+  // types the password instead of reusing the worker's cached session.
   await login(
     page,
     TEST_USERS.player.email,
-    TEST_USERS.player.password
+    TEST_USERS.player.password,
+    { ui: true }
   );
 
   // ---------- Verify login ----------

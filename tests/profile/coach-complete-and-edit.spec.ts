@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { registerCoach, login } from '../helpers/auth';
-import { TEST_USERS } from '../fixtures/test-users';
+import { signInAsNewCoach } from '../helpers/accounts';
+import { registerCoach } from '../helpers/auth';
 
 test('PROFILE-009 Complete Coach Profile - success with Country/Certified/Training Locations', async ({ page }) => {
   await registerCoach(page);
@@ -105,7 +105,8 @@ test('PROFILE-011 Complete Coach Profile - Save Profile is dimmed until the form
 });
 
 test('PROFILE-012 Edit Coach Profile - update Country and Certified after onboarding', async ({ page }) => {
-  await login(page, TEST_USERS.coach.email, TEST_USERS.coach.password);
+  // Own run-owned account: the shared Stage 2 coach must never be modified.
+  await signInAsNewCoach(page);
 
   await expect(page).toHaveURL(/\/coach\/.+/);
 
