@@ -12,6 +12,8 @@
 //        RESEND_API_KEY=re_xxxxxxxx
 //        RESEND_FROM_EMAIL="TennisConnect <no-reply@yourverifieddomain.com>"
 
+import { capturedEmails, resolveEmailTransport } from "./emailCapture";
+
 const RESEND_API_URL = "https://api.resend.com/emails";
 
 // Same wordmark as the navbar (client/src/components/navbar.tsx:
@@ -50,6 +52,19 @@ async function sendEmail(params: {
   html: string;
   text: string;
 }): Promise<SendEmailResult> {
+  // Staging captures every email instead of delivering it - see
+  // server/services/emailCapture.ts. Production always delivers.
+  const transport = resolveEmailTransport({
+    dbEnv: process.env.DB_ENV,
+    configured: process.env.EMAIL_TRANSPORT,
+  });
+  if (transport === "capture") {
+    capturedEmails.add(params);
+    // Subject only - no recipient, links or tokens in the logs.
+    console.log(`📭 Email captured, not sent (capture transport): "${params.subject}"`);
+    return { ok: true };
+  }
+
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM_EMAIL;
 

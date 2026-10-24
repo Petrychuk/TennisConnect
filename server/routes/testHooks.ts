@@ -32,6 +32,9 @@ import { issueVerificationToken } from "../services/emailVerification";
 import { hashPassword } from "../auth";
 import { env } from "../env";
 import { TEST_HOOK_SECRET_ENV } from "../lib/testHookSecurity";
+import { buildHealthPayload } from "../lib/health";
+import { stripeKeyMode } from "../lib/stripeMode";
+import { capturedEmails, resolveEmailTransport } from "../services/emailCapture";
 import { createTestHooksRouter } from "./testHooksRouter";
 
 export default createTestHooksRouter({
@@ -42,5 +45,18 @@ export default createTestHooksRouter({
     nodeEnv: process.env.NODE_ENV,
     dbEnv: env.DB_ENV,
     secret: process.env[TEST_HOOK_SECRET_ENV],
+  }),
+  capturedEmails,
+  getPreflight: () => ({
+    dbEnv: env.DB_ENV,
+    commit:
+      buildHealthPayload({ dbEnv: env.DB_ENV, railwayGitCommitSha: process.env.RAILWAY_GIT_COMMIT_SHA })
+        .commit ?? null,
+    emailTransport: resolveEmailTransport({
+      dbEnv: process.env.DB_ENV,
+      configured: process.env.EMAIL_TRANSPORT,
+    }),
+    stripeMode: stripeKeyMode(process.env.STRIPE_SECRET_KEY),
+    stripeWebhookConfigured: !!process.env.STRIPE_WEBHOOK_SECRET,
   }),
 });

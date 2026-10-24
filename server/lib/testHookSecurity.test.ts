@@ -178,6 +178,11 @@ async function main() {
     assert.equal(isReservedTestEmail("x@evil-tennisconnect.test"), false);
     assert.equal(isReservedTestEmail("tennisconnect.test@gmail.com"), false);
     assert.equal(isReservedTestEmail(undefined), false);
+    assert.equal(isReservedTestEmail("real.person@gmail.com,p1@tennisconnect.test"), false);
+    assert.equal(isReservedTestEmail("a@gmail.com; b@tennisconnect.test"), false);
+    assert.equal(isReservedTestEmail("Real <x@tennisconnect.test>"), false);
+    assert.equal(isReservedTestEmail("a b@tennisconnect.test"), false);
+    assert.equal(isReservedTestEmail("@tennisconnect.test"), false);
   });
 
   await test("registrations are flagged isTestUser only on dev/staging and only for the reserved domain", () => {
