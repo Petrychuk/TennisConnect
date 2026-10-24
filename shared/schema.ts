@@ -1825,7 +1825,9 @@ export const insertUserSchema = createInsertSchema(users)
     password: z.string().min(8, "Password must be at least 8 characters"),
     name: z.string().min(2, "Name must be at least 2 characters"),
     role: z.enum(["player", "coach"], {
-      errorMap: () => ({ message: "Role must be 'player' or 'coach'" }),
+      // Zod 4: `errorMap` was replaced by `error`. Same message for every
+      // failure (missing, wrong type, or not one of the two values).
+      error: () => "Role must be 'player' or 'coach'",
     }),
   });
 
