@@ -26,6 +26,8 @@ import playRouter from "./routes/play";
 import weatherRouter from "./routes/weather";
 import supportRouter from "./routes/support";
 import testHooksRouter from "./routes/testHooks";
+import { shouldFlagRegistrationAsTestUser } from "./lib/testHookSecurity";
+import { buildHealthPayload } from "./lib/health";
 
 import {
   insertUserSchema,
@@ -189,10 +191,11 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/api/weather", weatherRouter);
   app.use("/api/support", supportRouter);
 
-  // Guarded internally per-request (see server/routes/testHooks.ts) -
-  // mounted unconditionally here so it's reachable on staging, which
-  // runs the same NODE_ENV=production build as prod and can't be told
-  // apart from it by that alone.
+  // Guarded internally per-request (see server/routes/testHooks.ts:
+  // environment + X-E2E-Test-Secret + test-data checks) - mounted
+  // unconditionally here so it's reachable on staging, which runs the
+  // same NODE_ENV=production build as prod and can't be told apart from
+  // it by that alone.
   app.use("/api/test-hooks", testHooksRouter);
 
   // TC Live dev simulator backend - only exists in development, never
@@ -265,6 +268,15 @@ export async function registerRoutes(app: Express): Promise<void> {
         // this endpoint is explicitly unverified.
         emailVerified: false,
         emailVerifiedAt: null,
+        // Playwright registrations (reserved @tennisconnect.test domain)
+        // are flagged as test accounts on development/staging only -
+        // never on production. Only isTestUser accounts can receive a
+        // token from /api/test-hooks/issue-verification-token. Not
+        // client-controllable: insertUserSchema doesn't accept it.
+        isTestUser: shouldFlagRegistrationAsTestUser(parsed.data.email, {
+          nodeEnv: process.env.NODE_ENV,
+          dbEnv: env.DB_ENV,
+        }),
       });
 
       // 🔑 AUTO-CREATE PROFILE
@@ -978,6 +990,40 @@ export async function registerRoutes(app: Express): Promise<void> {
         }
 
         res.json(omitPassword(user));
+      }
+    );
+
+    // [PLAY][AI] Partner Events - the internal-registration path: a
+    // partner already registered as a TC organiser creates sessions the
+    // normal way (nothing new needed there - Join/capacity/registrations
+    // all already work), and an admin just confirms the existing session
+    // as an official partner event. Reuses updateSession rather than a
+    // bespoke method - isPartnerEvent is just another session field.
+    app.patch("/api/admin/sessions/:id/confirm-partner",
+      requireAdmin,
+      async (req, res, next) => {
+        try {
+          const session = await storage.getSessionById(req.params.id);
+          if (!session) return res.status(404).json({ message: "Session not found" });
+          const updated = await storage.updateSession(req.params.id, { isPartnerEvent: true });
+          res.json(updated);
+        } catch (error) {
+          next(error);
+        }
+      }
+    );
+
+    app.patch("/api/admin/sessions/:id/revoke-partner",
+      requireAdmin,
+      async (req, res, next) => {
+        try {
+          const session = await storage.getSessionById(req.params.id);
+          if (!session) return res.status(404).json({ message: "Session not found" });
+          const updated = await storage.updateSession(req.params.id, { isPartnerEvent: false });
+          res.json(updated);
+        } catch (error) {
+          next(error);
+        }
       }
     );
 
@@ -1898,10 +1944,16 @@ export async function registerRoutes(app: Express): Promise<void> {
   // ===== STATS HOMEPAGE ROUTES =====
   // Public, deliberately minimal - lets tests/global-setup.ts (and any
   // monitoring) ask "which database is this instance actually talking
-  // to" without exposing the connection string itself. Never add
-  // anything secret to this response.
+  // to" without exposing the connection string itself, and lets CI check
+  // which commit a non-production instance runs (server/lib/health.ts).
+  // Never add anything secret to this response.
   app.get("/api/health", (_req, res) => {
-    res.json({ dbEnv: env.DB_ENV });
+    res.json(
+      buildHealthPayload({
+        dbEnv: env.DB_ENV,
+        railwayGitCommitSha: process.env.RAILWAY_GIT_COMMIT_SHA,
+      })
+    );
   });
 
   app.get("/api/stats", async (_req, res) => {

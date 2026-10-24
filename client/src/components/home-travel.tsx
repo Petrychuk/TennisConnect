@@ -108,6 +108,8 @@ export function HomeTravel() {
                   <div className="relative aspect-4/3 overflow-hidden bg-secondary/50">
                     <img
                       src={pkg.coverImage}
+                      loading="lazy"
+                      decoding="async"
                       alt={pkg.title}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                     />

@@ -1,4 +1,4 @@
-import { Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 
 export async function completeCoachProfile(page: Page) {
   await page.getByTestId('input-title')
@@ -62,4 +62,30 @@ export async function completePlayerProfile(page: Page) {
     page.waitForURL(/\/player\/.+/, { timeout: 30_000 }),
     page.getByTestId('button-save').click(),
   ]);
+}
+
+// ---------- Public coach lookup ----------
+
+// Returns the profile path (/coach/<slug>) of the first coach listed in
+// the public directory, without opening it. Guest-only and read-only.
+// Used by guest contact-flow tests instead of a fixed seeded slug, so
+// they don't depend on one particular account existing on the target
+// environment (the old `coach-playwright` slug 404s on Staging, and the
+// coach page then redirects to /coaches). Fails - never skips - when
+// the directory is empty, since that is itself a broken environment.
+export async function getFirstListedCoachPath(page: Page): Promise<string> {
+  await page.goto('/coaches');
+
+  const firstCard = page.locator('[data-testid^="coach-card-"]').first();
+  await expect(
+    firstCard,
+    'No coach is listed in /coaches on this environment - the guest contact-flow test needs at least one.'
+  ).toBeVisible();
+
+  const profileLink = firstCard.getByRole('link', { name: /view profile/i });
+  const href = await profileLink.getAttribute('href');
+
+  expect(href, 'First coach card has no profile link').toMatch(/^\/coach\/[^/?#]+$/);
+
+  return href!;
 }

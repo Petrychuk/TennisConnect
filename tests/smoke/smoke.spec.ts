@@ -1,9 +1,16 @@
 import { test, expect } from '@playwright/test';
 import { login, logout, dismissCookieBanner } from '../helpers/auth';
+import { getFirstListedCoachPath } from '../helpers/profile';
 import { TEST_USERS } from '../fixtures/test-users';
 
 /*
-  SMOKE SUITE — safe to run against PROD.
+  SMOKE SUITE — LOCAL / STAGING ONLY. Not for Production.
+
+  @smoke is a quick-signal tag, not a safety guarantee: across tests/ it
+  includes registration (REG-001/REG-002) and authenticated flows. On
+  Production only the dedicated @prod-safe allowlist runs
+  (tests/prod-safe/, tests/safety/environment-guard.ts) - @smoke is
+  refused there.
 
   Rules for anything in this file:
   - No registration (registerPlayer/registerCoach) - never create new users.
@@ -12,12 +19,13 @@ import { TEST_USERS } from '../fixtures/test-users';
     already-seeded TEST_USERS.
 
   Run with:
-    npx playwright test --grep @smoke
+    npm run test:e2e:smoke                       (local)
+    BASE_URL=https://<staging host> npm run test:e2e:staging:smoke
 
   Everything else in tests/ (registration, profile edit, uploads, admin
   CRUD, access/security payloads) is destructive/data-creating and should
   only run against STAGING, e.g.:
-    BASE_URL=https://staging.tennisconnect.example npm run test:e2e
+    BASE_URL=https://<staging host> npm run test:e2e:staging
 */
 
 test('@smoke HOME-001 Homepage loads', async ({ page }) => {
@@ -91,9 +99,8 @@ test('@smoke AUTH-SMOKE-001 Login and logout with seeded player', async ({ page 
 
 /*
   Messaging smoke checks — read-only only. A real "send message" test
-  writes a row to the prod DB every run, which is exactly what
-  tests/global-setup.ts exists to block outside @smoke. So these 5 prove
-  the messaging system is alive on prod without ever calling
+  writes a row to the DB every run. So these 5 prove
+  the messaging system is alive without ever calling
   POST /api/messages or /api/messages/reply. Full send/reply/delete
   flows (MSG-001..015) stay staging-only in tests/messages/messages.spec.ts.
 */
@@ -119,11 +126,18 @@ test('@smoke MSG-SMOKE-001 Guest cannot access messages', async ({ page }) => {
 
 test('@smoke MSG-SMOKE-002 Guest contact form redirects to sign in', async ({ page }) => {
 
+  // ---------- Test data (any listed coach - guest, read-only) ----------
+
+  const coachPath = await getFirstListedCoachPath(page);
+
   // ---------- Open page ----------
 
-  await page.goto(`/coach/${TEST_USERS.coach.slug}?tab=contact`);
+  await page.goto(`${coachPath}?tab=contact`);
   await dismissCookieBanner(page);
-  await page.getByTestId('contact-tab').click();
+
+  const contactTab = page.getByTestId('contact-tab');
+  await expect(contactTab).toBeVisible();
+  await contactTab.click();
 
   // ---------- Verify ----------
 

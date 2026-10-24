@@ -1,3 +1,4 @@
+import { ConnectWord } from "@/components/ui/brandBall";
 import { useState } from "react";
 import { Link } from "wouter";
 import {
@@ -74,9 +75,7 @@ export function Footer() {
            <div className="flex flex-col items-center text-center gap-3">
               <h3 className="text-2xl font-display font-bold flex items-center gap-1">
                 Tennis
-                <span className="text-[hsl(var(--tennis-ball))]">
-                  Connect
-                </span>
+                <span className="text-[hsl(var(--tennis-ball))]"><ConnectWord /></span>
                 <div className="w-2 h-2 rounded-full bg-[hsl(var(--tennis-ball))] mt-1 animate-pulse" />
               </h3>
 
@@ -183,6 +182,14 @@ export function Footer() {
                   Players
                 </Link>
               </li>
+              <li>
+                <Link
+                  href="/play"
+                  className="hover:text-primary transition-colors"
+                >
+                  Pulse
+                </Link>
+              </li>
 
               <li>
                 <Link
@@ -198,7 +205,7 @@ export function Footer() {
                   href="/clubs"
                   className="hover:text-primary transition-colors"
                 >
-                  Club Communities
+                  Clubhouse
                 </Link>
               </li>
 
@@ -224,7 +231,7 @@ export function Footer() {
                   href="/travels"
                   className="hover:text-primary transition-colors"
                 >
-                  Travel
+                  Escapes
                 </Link>
               </li>
 
@@ -241,7 +248,7 @@ export function Footer() {
                   href="/articles"
                   className="hover:text-primary transition-colors"
                 >
-                  Tennis IQ
+                  Journal
                 </Link>
               </li>
             </ul>

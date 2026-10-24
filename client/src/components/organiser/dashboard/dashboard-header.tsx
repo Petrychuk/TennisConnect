@@ -1,3 +1,4 @@
+import { OrganiserBarLogo } from "@/components/organiser/ui/organiser-bar-logo";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -44,9 +45,9 @@ export function DashboardHeader({ organiser, profileHref, onCreateSession }: Das
         {/* Mobile has no hamburger — the bottom nav bar already covers
             navigation there — but keeps the same-width empty spacer so the
             title below doesn't jump around between breakpoints. */}
-        <div className="w-9 h-9 md:hidden" aria-hidden="true" />
+        <OrganiserBarLogo />
 
-        <div className="flex items-center gap-1.5 font-display font-bold">
+        <div className="hidden md:flex mr-auto items-center gap-1.5 font-display font-bold">
           <Trophy className="w-4 h-4 text-primary" />
           Organiser Hub
         </div>

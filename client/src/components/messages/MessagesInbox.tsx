@@ -299,7 +299,7 @@ export function MessagesInbox() {
       toast({
         variant: "destructive",
         title: "Validation error",
-        description: result.error.errors[0].message,
+        description: result.error.issues[0].message,
       });
     
       return;

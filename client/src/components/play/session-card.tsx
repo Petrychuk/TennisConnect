@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -7,6 +8,7 @@ import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
 import { RECOMMENDATION_REASON_TEXT } from "@/lib/play-status";
 import { ActivityStatus } from "./ActivityStatus";
 import type { PublicSessionCard as PublicSessionCardData } from "@shared/schema";
+import { resolvePartnerBadge } from "@shared/partnerEvents";
 
 function formatLabel(type: string): string {
   const known = SESSION_TYPE_OPTIONS.find((t) => t.key === type)?.label;
@@ -34,6 +36,75 @@ function formatWhen(session: PublicSessionCardData): string {
   if (!endAt) return `${date} · ${startTime}`;
   const endTime = formatInTimeZone(endAt, timeZone, { hour: "numeric", minute: "2-digit" });
   return `${date} · ${startTime} – ${endTime}`;
+}
+
+// Gradient + emoji fallback for sessions with no cover photo (all
+// Discovery-found ones), keyed by session type so the grid still has
+// visual rhythm instead of a row of identical grey tiles.
+const PLACEHOLDER_BY_TYPE: Record<string, { gradient: string; emoji: string }> = {
+  social: { gradient: "from-lime-200 to-emerald-300", emoji: "🎾" },
+  "social-tennis": { gradient: "from-lime-200 to-emerald-300", emoji: "🎾" },
+  americano: { gradient: "from-sky-200 to-blue-300", emoji: "🔄" },
+  tournament: { gradient: "from-violet-200 to-fuchsia-300", emoji: "🏆" },
+  competition: { gradient: "from-violet-200 to-fuchsia-300", emoji: "🏆" },
+  coaching: { gradient: "from-amber-200 to-orange-300", emoji: "🎓" },
+  clinic: { gradient: "from-amber-200 to-orange-300", emoji: "🎓" },
+  junior: { gradient: "from-cyan-200 to-teal-300", emoji: "⭐" },
+};
+const DEFAULT_PLACEHOLDER = { gradient: "from-emerald-100 to-emerald-300", emoji: "🎾" };
+
+function placeholderFor(type: string | null | undefined) {
+  if (!type) return DEFAULT_PLACEHOLDER;
+  const key = type.toLowerCase();
+  const hit = Object.keys(PLACEHOLDER_BY_TYPE).find((k) => key.includes(k));
+  return hit ? PLACEHOLDER_BY_TYPE[hit] : DEFAULT_PLACEHOLDER;
+}
+
+function typeKeyFor(type: string | null | undefined): string | null {
+  if (!type) return null;
+  const key = type.toLowerCase();
+  return Object.keys(PLACEHOLDER_BY_TYPE).find((k) => key.includes(k)) ?? null;
+}
+
+// Picture priority: 1) the event's own image (native cover photo, or the
+// source / partner's share image for a discovered event), 2) a TennisConnect
+// photo for the event type at /images/play/<type>.jpg (optional - skipped
+// when the file doesn't exist), 3) the coloured placeholder. A source image
+// that fails to load (blocked hotlink, deleted file) just moves down the list.
+function CardImage({ session }: { session: PublicSessionCardData }) {
+  const typeKey = typeKeyFor(session.type);
+  const candidates = [session.coverImage, typeKey ? `/images/play/${typeKey}.jpg` : null].filter(
+    (c): c is string => !!c
+  );
+  const [failed, setFailed] = useState(0);
+  const src = candidates[failed];
+  if (!src) {
+    const ph = placeholderFor(session.type);
+    return (
+      <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${ph.gradient}`} aria-hidden="true">
+        <span className="text-5xl drop-shadow-sm">{ph.emoji}</span>
+      </div>
+    );
+  }
+  const fromSource = src === session.coverImage && session.sourceType !== "TENNISCONNECT";
+  return (
+    <>
+      <img
+        key={src}
+        src={src}
+        alt=""
+        className="w-full h-full object-cover"
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        onError={() => setFailed((n) => n + 1)}
+      />
+      {fromSource && (
+        <span className="absolute bottom-1.5 right-2 max-w-[70%] truncate text-[10px] text-white bg-black/45 rounded px-1.5 py-0.5">
+          Image: {session.organizationName}
+        </span>
+      )}
+    </>
+  );
 }
 
 function initials(name: string): string {
@@ -67,17 +138,11 @@ export function PlaySessionCard({
           onView();
         }
       }}
-      className="rounded-2xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow flex flex-col sm:flex-row cursor-pointer"
+      className="rounded-2xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow flex flex-col h-full cursor-pointer"
       data-testid={`play-session-card-${session.id}`}
     >
-      <div className="relative w-full sm:w-40 h-40 sm:h-auto shrink-0 bg-muted">
-        {session.coverImage ? (
-          <img src={session.coverImage} alt="" className="w-full h-full object-cover" loading="lazy" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/15 to-primary/5">
-            <span className="text-3xl">🎾</span>
-          </div>
-        )}
+      <div className="relative w-full aspect-[16/9] shrink-0 bg-muted overflow-hidden">
+        <CardImage session={session} />
         <ActivityStatus
           status={session.playStatus}
           className="absolute top-2 left-2 text-[11px] font-semibold"
@@ -94,11 +159,17 @@ export function PlaySessionCard({
           {session.type && (
             <Badge variant="secondary" className="text-xs" data-testid={`play-session-card-${session.id}-format`}>{formatLabel(session.type)}</Badge>
           )}
-          <Badge variant="outline" className="text-xs" data-testid={`play-session-card-${session.id}-level`}>{session.skillLevel ?? (session.sourceType === "EXTERNAL" ? "Level not stated" : "All Levels")}</Badge>
+          <Badge variant="outline" className="text-xs" data-testid={`play-session-card-${session.id}-level`}>{session.skillLevel ?? (session.externalSourceUrl ? "Level not stated" : "All Levels")}</Badge>
           {session.courtsCount != null && <Badge variant="outline" className="text-xs">{session.courtsCount} courts</Badge>}
         </div>
 
         <p className="text-sm text-muted-foreground">{formatWhen(session)}</p>
+
+        {session.priceSummary && (
+          <p className="text-sm text-muted-foreground" data-testid={`play-session-card-${session.id}-price`}>
+            {session.priceSummary}
+          </p>
+        )}
 
         {session.location && (
           <p className="text-sm text-muted-foreground flex items-center gap-1.5">
@@ -140,15 +211,21 @@ export function PlaySessionCard({
               <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{initials(session.organizationName)}</AvatarFallback>
             </Avatar>
             <span className="text-xs text-muted-foreground truncate">
-              {session.sourceType === "EXTERNAL" ? (
-                <>
-                  <span className="text-primary font-medium">Found by TennisConnect</span> · {session.organizationName}
-                </>
-              ) : (
-                <>
-                  Organised by <span className="text-foreground font-medium">{session.organizationName}</span>
-                </>
-              )}
+              {(() => {
+                const badge = resolvePartnerBadge({ sourceType: session.sourceType, name: session.partnerName ?? session.organizationName });
+                if (!badge.label) {
+                  return (
+                    <>
+                      Organised by <span className="text-foreground font-medium">{session.organizationName}</span>
+                    </>
+                  );
+                }
+                return (
+                  <>
+                    <span className="text-primary font-medium">{badge.label === "Partner" ? "TennisConnect Partner ✓" : badge.label}</span> · {badge.name}
+                  </>
+                );
+              })()}
             </span>
           </div>
           <Button

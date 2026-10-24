@@ -266,7 +266,7 @@ export function OrganiserDashboard() {
       {/* Persistent sidebar — true desktop only (xl+). Tablet, in either
           orientation, gets the collapsible hamburger version instead
           (see DashboardHeader) so it doesn't cramp the content grid. */}
-      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-64")}>
+      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-72")}>
         <OrganiserSidebarNav
           organiser={organiser}
           profileHref={profileHref}

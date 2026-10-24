@@ -11,7 +11,19 @@ router.get("/", async (req, res) => {
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
   
-    const rows = await storage.getAllPlayers();
+    const allRows = await storage.getAllPlayers();
+    // ?lookingToPlay=true -> only players whose status is switched on AND not
+    // expired, applied BEFORE pagination so every page is correct.
+    const onlyLooking = req.query.lookingToPlay === "true";
+    const nowTs = Date.now();
+    const rows = onlyLooking
+      ? allRows.filter(
+          (r) =>
+            !!r.profile.lookingToPlayEnabled &&
+            !!r.profile.lookingToPlayExpiresAt &&
+            new Date(r.profile.lookingToPlayExpiresAt).getTime() > nowTs,
+        )
+      : allRows;
   
     const total = rows.length;
     const offset = (page - 1) * limit;

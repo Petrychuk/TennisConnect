@@ -2,6 +2,7 @@ import { Router } from "express";
 import type Stripe from "stripe";
 import { z } from "zod";
 import { stripe, isStripeConfigured } from "../lib/stripe";
+import { isLiveEventOutsideProduction, stripeCheckoutBlockedReason } from "../lib/stripeMode";
 import { storage } from "../storage";
 
 const router = Router();
@@ -34,6 +35,18 @@ router.post("/create-checkout-session", async (req, res, next) => {
     if (!isStripeConfigured()) {
       return res.status(503).json({
         message: "Support payments aren't set up yet - check back soon.",
+      });
+    }
+
+    // Test mode only outside Production - see server/lib/stripeMode.ts.
+    const blockedReason = stripeCheckoutBlockedReason({
+      dbEnv: process.env.DB_ENV,
+      secretKey: process.env.STRIPE_SECRET_KEY,
+    });
+    if (blockedReason) {
+      console.error(`[stripe] checkout blocked: ${blockedReason}`);
+      return res.status(503).json({
+        message: "Support payments are unavailable in this environment.",
       });
     }
 
@@ -163,6 +176,12 @@ router.post("/webhook", async (req, res) => {
   } catch (err: any) {
     console.error("[stripe webhook] signature verification failed:", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // A live-mode event must never mark a payment paid outside Production.
+  if (isLiveEventOutsideProduction({ dbEnv: process.env.DB_ENV, livemode: event.livemode })) {
+    console.error(`[stripe webhook] rejected live-mode event ${event.id} on a non-production instance`);
+    return res.status(400).send("Live-mode events are not accepted in this environment");
   }
 
   if (event.type === "checkout.session.completed") {

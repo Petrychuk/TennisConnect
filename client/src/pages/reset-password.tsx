@@ -57,7 +57,7 @@ export default function ResetPasswordPage() {
       toast({
         variant: "destructive",
         title: "Validation Error",
-        description: validation.error.errors[0].message,
+        description: validation.error.issues[0].message,
       });
     
       return;

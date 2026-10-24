@@ -1,3 +1,4 @@
+import { ConnectWord } from "@/components/ui/brandBall";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
@@ -115,12 +116,13 @@ export function Navbar() {
 
   const navLinks = [
     { name: "Players", href: "/players", icon: Users },
+    { name: "Pulse", href: "/play", icon: PlayIcon },
     { name: "Coaches", href: "/coaches", icon: Award },
-    { name: "Play", href: "/play", icon: PlayIcon },
+    
     /* { name: "Tournaments", href: "/tournaments" }, */
-    { name: "Club Communities", href: "/clubs", icon: Building2 },
-    { name: "Travels", href: "/travels", icon: Plane },
-    { name: "Tennis IQ", href: "/articles", icon: BookOpen },
+    { name: "Clubhouse", href: "/clubs", icon: Building2 },
+    { name: "Escapes", href: "/travels", icon: Plane },
+    { name: "Journal", href: "/articles", icon: BookOpen },
     /* { name: "Recreation", href: "/recreation" },
     { name: "Marketplace", href: "/marketplace" }, 
     { name: "Shop", href: "https://shop.tennisconnect.com.au", external: true }, */
@@ -134,7 +136,7 @@ export function Navbar() {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="text-2xl font-display font-bold flex items-center gap-1 cursor-pointer" data-testid="navbar-logo-link">
-          Tennis<span className="text-[hsl(var(--tennis-ball))] [text-shadow:0_1px_3px_rgba(0,0,0,0.45)]">Connect</span>
+          Tennis<span className="text-[hsl(var(--tennis-ball))] [text-shadow:0_1px_3px_rgba(0,0,0,0.45)]"><ConnectWord /></span>
           <div className="w-2 h-2 rounded-full bg-[hsl(var(--tennis-ball))] mt-1 animate-pulse" />
         </Link>
 

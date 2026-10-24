@@ -1,3 +1,4 @@
+import { OrganiserBarLogo } from "@/components/organiser/ui/organiser-bar-logo";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
@@ -393,7 +394,7 @@ export default function AdminPage() {
       toast({
         title: "Validation Error",
         description:
-          validation?.error?.errors?.[0]?.message ||
+          validation?.error?.issues?.[0]?.message ||
           "Invalid form data",
         variant: "destructive",
       });
@@ -722,7 +723,7 @@ export default function AdminPage() {
         noIndex
       />
       <div className="min-h-screen flex bg-background" data-testid="admin-page">
-        <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-64")}>
+        <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-72")}>
           <OrganiserSidebarNav
             organiser={organiser}
             profileHref={profileHref}
@@ -747,8 +748,8 @@ export default function AdminPage() {
                 <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} />
               </SheetContent>
             </Sheet>
-            <div className="w-9 h-9 md:hidden" aria-hidden="true" />
-            <div className="flex items-center gap-1.5 font-display font-bold">Admin</div>
+            <OrganiserBarLogo />
+            <div className="hidden md:flex mr-auto items-center gap-1.5 font-display font-bold">Admin</div>
             <div className="flex items-center gap-1">
               <NotificationBell testId="organiser-header-bell-mobile" />
             </div>

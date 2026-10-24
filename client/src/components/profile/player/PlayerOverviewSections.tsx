@@ -1,3 +1,4 @@
+import { RacketIcon } from "@/components/ui/racket-icon";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -811,7 +812,7 @@ export function LookingToPlayCard({
       <Card data-testid="looking-to-play-card" className="border-0 shadow-sm bg-muted/40">
         <CardContent className="py-4 flex items-center justify-between gap-3">
           <div>
-            <p className="font-medium flex items-center gap-1.5">🟢 Looking to Play</p>
+            <p className="font-medium flex items-center gap-1.5"><RacketIcon className="w-4 h-4" /> Looking to Play</p>
             <p className="text-sm text-muted-foreground">
               {[whenLabel, formatLabel].filter(Boolean).join(" · ")}
             </p>

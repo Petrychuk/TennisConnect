@@ -2,7 +2,10 @@ import { z } from "zod";
 
 export const registerSchema = z.object({
   role: z.enum(["player", "coach"], {
-    required_error: "Please select a role",
+    // Zod 4: `required_error` was removed. Same behaviour - this message
+    // only when the role is missing; any other invalid value keeps Zod's
+    // default enum message (returning undefined falls through to it).
+    error: (issue) => (issue.input === undefined ? "Please select a role" : undefined),
   }),
 
   name: z

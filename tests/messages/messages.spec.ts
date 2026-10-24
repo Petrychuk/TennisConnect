@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { registerPlayer, login, logout } from '../helpers/auth';
-import { completePlayerProfile } from '../helpers/profile';
+import { registerPlayer, login, logout, dismissCookieBanner } from '../helpers/auth';
+import { completePlayerProfile, getFirstListedCoachPath } from '../helpers/profile';
 import { sendContactMessage, sendPlayerProfileMessage, getMyUserId, approveUser } from '../helpers/messages';
 import { TEST_USERS } from '../fixtures/test-users';
 
@@ -519,19 +519,33 @@ test('MSG-011 Empty Message Validation', async ({ page }) => {
 
 test('MSG-012 Unauthorized User Redirect', async ({ page }) => {
 
-  // ---------- Open page (guest views a coach's Contact tab) ----------
+  // ---------- Test data (any listed coach - guest, read-only) ----------
 
-  await page.goto(`/coach/${TEST_USERS.coach.slug}?tab=contact`);
-  await page.getByTestId('contact-tab').click();
+  const coachPath = await getFirstListedCoachPath(page);
+
+  // ---------- Open page (guest views that coach's Contact tab) ----------
+
+  await page.goto(`${coachPath}?tab=contact`);
+  await dismissCookieBanner(page);
+
+  const contactTab = page.getByTestId('contact-tab');
+  await expect(contactTab).toBeVisible();
+  await contactTab.click();
 
   // ---------- Verify ----------
 
   const signInCard = page.getByTestId('coach-contact-signed-out');
+  const signInLink = page.getByTestId('coach-contact-sign-in');
+
   await expect(signInCard).toBeVisible();
+  await expect(signInLink).toHaveAttribute(
+    'href',
+    `/auth?returnTo=${encodeURIComponent(`${coachPath}?tab=contact`)}`
+  );
 
   // ---------- Actions ----------
 
-  await page.getByTestId('coach-contact-sign-in').click();
+  await signInLink.click();
 
   // ---------- Final verification ----------
 

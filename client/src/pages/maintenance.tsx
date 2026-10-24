@@ -1,3 +1,4 @@
+import { ConnectWord } from "@/components/ui/brandBall";
 import { Facebook, Instagram, Sparkle, ArrowLeft } from "lucide-react";
 import { TikTokIcon } from "@/components/icons/TikTokIcon";
 //import { ThreadsIcon } from "@/components/icons/ThreadsIcon";
@@ -47,7 +48,7 @@ export default function Maintenance() {
             className="flex w-fit items-center gap-1 font-display text-xl font-bold sm:text-2xl cursor-pointer"
           >
             Tennis
-            <span className="text-[hsl(var(--tennis-ball))]">Connect</span>
+            <span className="text-[hsl(var(--tennis-ball))]"><ConnectWord /></span>
             <div className="mt-1 h-2 w-2 rounded-full bg-[hsl(var(--tennis-ball))] animate-pulse" />
           </Link>
 

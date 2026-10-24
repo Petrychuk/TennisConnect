@@ -1,15 +1,11 @@
-import { Loader2Icon } from "lucide-react"
+import { TennisBallSpinner } from "@/components/ui/tennisLoader"
 
-import { cn } from "@/lib/utils"
-
-function Spinner({ className, ...props }: React.ComponentProps<"svg">) {
+// Single app-wide spinner = the bouncing tennis ball.
+function Spinner({ className }: { className?: string }) {
   return (
-    <Loader2Icon
-      role="status"
-      aria-label="Loading"
-      className={cn("size-4 animate-spin", className)}
-      {...props}
-    />
+    <span role="status" aria-label="Loading" className="inline-flex">
+      <TennisBallSpinner className={className} />
+    </span>
   )
 }
 

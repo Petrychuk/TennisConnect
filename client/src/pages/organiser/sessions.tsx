@@ -1,3 +1,4 @@
+import { OrganiserBarLogo } from "@/components/organiser/ui/organiser-bar-logo";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -177,7 +178,7 @@ export default function OrganiserSessionsPage() {
         noIndex
       />
 
-      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-64")}>
+      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-72")}>
         <OrganiserSidebarNav
           organiser={organiser}
           profileHref={profileHref}
@@ -207,9 +208,9 @@ export default function OrganiserSessionsPage() {
               <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} />
             </SheetContent>
           </Sheet>
-          <div className="w-9 h-9 md:hidden" aria-hidden="true" />
+          <OrganiserBarLogo />
 
-          <div className="flex items-center gap-1.5 font-display font-bold">
+          <div className="hidden md:flex mr-auto items-center gap-1.5 font-display font-bold">
             Sessions
           </div>
 

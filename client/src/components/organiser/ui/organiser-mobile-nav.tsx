@@ -1,11 +1,16 @@
 import { Link, useLocation } from "wouter";
 import { Home, CalendarDays, Users, CalendarRange, MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { useAuth } from "@/lib/auth-context";
+import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
+import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar";
 
 const ITEMS = [
   { key: "home", label: "Home", icon: Home, href: "/organiser" },
   { key: "sessions", label: "Sessions", icon: CalendarDays, href: "/organiser/sessions" },
-  { key: "seasons", label: "Seasons & Series", icon: CalendarRange },
+  { key: "seasons", label: "Seasons", icon: CalendarRange, href: "/organiser/seasons" },
   { key: "players", label: "Players", icon: Users, href: "/organiser/players" },
   { key: "more", label: "More", icon: MoreHorizontal },
 ];
@@ -16,8 +21,15 @@ const ITEMS = [
 // still a placeholder until those pages exist.
 export function OrganiserMobileNav() {
   const [location] = useLocation();
+  const { user } = useAuth();
+  const [moreOpen, setMoreOpen] = useState(false);
+  // Close the menu once a page has been picked.
+  useEffect(() => { setMoreOpen(false); }, [location]);
+  const profileHref = user ? `/${user.role}/${user.slug}` : "/";
+  const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null, isAdmin: user.isAdmin ?? false } : mockOrganiser;
 
   return (
+    <>
     <nav
       className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border flex items-stretch justify-around px-1 pb-[env(safe-area-inset-bottom)] md:hidden"
       data-testid="organiser-mobile-nav"
@@ -38,8 +50,8 @@ export function OrganiserMobileNav() {
         );
 
         const sharedClasses = cn(
-          "flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium",
-          isActive ? "text-primary" : item.href ? "text-muted-foreground" : "text-muted-foreground opacity-60"
+          "flex flex-1 min-w-0 flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium whitespace-nowrap",
+          isActive || (item.key === "more" && moreOpen) ? "text-primary" : "text-muted-foreground"
         );
 
         if (item.href) {
@@ -51,11 +63,25 @@ export function OrganiserMobileNav() {
         }
 
         return (
-          <div key={item.key} className={sharedClasses} data-testid={`organiser-mobile-nav-${item.key}`} title="Coming soon">
+          <button
+            key={item.key}
+            type="button"
+            onClick={() => setMoreOpen(true)}
+            className={sharedClasses}
+            data-testid={`organiser-mobile-nav-${item.key}`}
+            aria-label="Open full menu"
+          >
             {content}
-          </div>
+          </button>
         );
       })}
     </nav>
+    <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+      <SheetContent side="left" className="p-0 w-72">
+        <SheetTitle className="sr-only">Organiser Hub navigation</SheetTitle>
+        <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} />
+      </SheetContent>
+    </Sheet>
+    </>
   );
 }

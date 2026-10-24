@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { storage } from "../storage";
-import { callExtractionLLM, classifyConfidence, type ExtractedActivity } from "./discoveryExtraction";
+import { callExtractionLLM, classifyConfidence, EXTRACTION_VERSION, type ExtractedActivity } from "./discoveryExtraction";
 import {
   normaliseAustralianState,
   resolveTimeZoneForState,
@@ -9,6 +9,7 @@ import {
   isSafeExternalUrl,
 } from "./discoveryNormalization";
 import { assessPage } from "./discoveryPageContent";
+import { extractPageImage } from "./discoveryImage";
 import { buildActivityRecord } from "./discoveryRecord";
 import { computeDuplicateConfidence, DUPLICATE_REVIEW_THRESHOLD, type DuplicateCandidate } from "./discoveryDuplicateDetection";
 import { resolveAustralianVenueCoordinates } from "./geocodingService";
@@ -42,7 +43,7 @@ const MAX_PAGES_PER_SOURCE = 6;
 const MAX_HTML_BYTES = 5_000_000;
 const SCAN_INTERVAL_DAYS = 7; // how long after a real scan a source counts as due for a recheck
 
-async function fetchPage(url: string): Promise<string> {
+export async function fetchPage(url: string): Promise<string> {
   if (!isSafeExternalUrl(url)) throw new Error("URL is not allowed");
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10_000);
@@ -208,9 +209,16 @@ async function scanPage(
     return; // not a fetch failure: nothing is flagged, nothing is sent to the model
   }
   const pageText = assessment.text;
-  const hash = sha256(pageText);
+  // The extraction version is part of the cache key: when the prompt or the
+  // rules that interpret it change, pages are re-extracted even though their
+  // text hasn't.
+  const hash = sha256(`v${EXTRACTION_VERSION}\n${pageText}`);
 
   const existingRows = await storage.getExternalActivitiesForSourcePage(source.id, pageUrl);
+  // The page's own picture. Done before the unchanged-page early return below so
+  // already-known events get their image without another model call.
+  const pageImage = extractPageImage(html, pageUrl);
+  if (!options.isDryRun) await backfillPageImage(existingRows, pageImage);
 
   // Cost control (spec section 29): a page whose text hasn't changed
   // since its last real scan isn't sent to the model again - everything
@@ -238,8 +246,23 @@ async function scanPage(
   }
 
   if (!options.isDryRun) {
+    // Events created just now (not in existingRows) get the page image too.
+    await backfillPageImage(await storage.getExternalActivitiesForSourcePage(source.id, pageUrl), pageImage);
     await markMissing(existingRows, seenIds);
     hashes[pageUrl] = hash;
+  }
+}
+
+/**
+ * Saves the page's picture on its events. Only fills a MISSING image, so an
+ * image an admin set by hand is never overwritten, and a page that stops
+ * publishing one doesn't blank what we already have.
+ */
+async function backfillPageImage(rows: ExternalActivityRow[], imageUrl: string | null): Promise<void> {
+  if (!imageUrl) return;
+  for (const row of rows) {
+    if (row.imageUrl) continue;
+    await storage.updateExternalActivity(row.id, { imageUrl });
   }
 }
 
@@ -256,6 +279,7 @@ function trackedFromRow(row: ExternalActivityRow) {
     venueName: row.venueName,
     suburb: row.suburb,
     price: row.price,
+    priceLabel: row.priceLabel,
     registrationUrl: row.registrationUrl,
   };
 }
@@ -307,6 +331,9 @@ async function processActivity(
 
   const evidence: Record<string, string> = { ...(extracted.evidence ?? {}) };
   if (extracted.recurrenceText) evidence.recurrence = extracted.recurrenceText;
+  // The source's own price wording - so an admin can see exactly what the
+  // price and label were derived from.
+  if (built.priceWording) evidence.price = built.priceWording;
 
   // --- seen before: re-scan (spec section 14) ---
   if (match) {
@@ -373,6 +400,7 @@ async function processActivity(
     isPossibleDuplicate,
     timeZoneKnown: !!timeZone,
     recurrenceUnderstood: built.recurrenceUnderstood,
+    priceUnclear: !!built.priceReview,
   };
   const status = initialDiscoveryStatus(flagInput);
   if (status === "NEEDS_REVIEW") summary.eventsNeedingReview++;
@@ -396,8 +424,8 @@ async function processActivity(
     // decision; a suspected duplicate shows in Needs Review with its
     // confidence badge (spec section 12: flag for review, don't delete).
     reviewStatus: "PENDING",
-    duplicateOfExternalId: best?.externalId ?? null,
-    duplicateOfSessionId: best?.sessionId ?? null,
+    duplicateOfExternalId: isPossibleDuplicate ? best!.externalId ?? null : null,
+    duplicateOfSessionId: isPossibleDuplicate ? best!.sessionId ?? null : null,
     duplicateConfidence: isPossibleDuplicate ? best!.confidence : null,
     extractionEvidence: evidence,
   });

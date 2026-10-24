@@ -88,6 +88,10 @@ access/
 
 security/
 
+prod-safe/
+
+safety/
+
 helpers/
 
 fixtures/
@@ -472,6 +476,42 @@ When generating Playwright tests:
 - Keep tests deterministic.
 - Never use arbitrary timeouts.
 - Generate production-ready automation.
+
+---
+
+# Environments
+
+Every run targets one explicit environment:
+
+TEST_ENV=local | staging | production
+
+- local: loopback BASE_URL, full suite
+- staging: staging BASE_URL, full suite
+- production: ONLY the @prod-safe allowlist
+
+The run is refused unless GET /api/health on BASE_URL reports a matching DB_ENV.
+
+Never add an ALLOW_PROD-style bypass.
+
+Never point BASE_URL at Production for anything except npm run test:e2e:prod-safe.
+
+---
+
+# Production-Safe Tests
+
+Production tests live in
+
+tests/prod-safe/
+
+Rules
+
+- Read-only only: public pages and GET requests
+- No registration, login, form submits, uploads, admin actions or deletes
+- Title: @prod-safe PROD-SAFE-001 Description
+- Import test and expect from ../fixtures/prod-safe (it blocks write requests)
+- Add every new test id to PROD_SAFE_ALLOWLIST in tests/safety/environment-guard.ts
+
+@smoke is NOT production-safe. Never tag a test @prod-safe just to run it on Production.
 
 ---
 

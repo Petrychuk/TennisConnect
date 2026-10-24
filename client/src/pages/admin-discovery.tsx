@@ -1,3 +1,4 @@
+import { OrganiserBarLogo } from "@/components/organiser/ui/organiser-bar-logo";
 import { useEffect, useState } from "react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Menu, ShieldCheck, ExternalLink, Check, X, Copy, Pencil, Play } from "lucide-react";
@@ -84,6 +85,7 @@ interface ExternalActivityRow {
   normalisedLevel: string | null;
   originalLevelText: string | null;
   price: number | null;
+  priceLabel: string | null;
   currency: string;
   confidence: "HIGH" | "MEDIUM" | "LOW";
   reviewStatus: string;
@@ -91,6 +93,11 @@ interface ExternalActivityRow {
   duplicateConfidence: number | null;
   lastCheckedAt: string;
   registrationUrl: string | null;
+  // [PLAY][AI] Partner Events
+  sourceType: "EXTERNAL" | "PARTNER";
+  registrationType: "INTERNAL" | "EXTERNAL" | null;
+  partnerId: string | null;
+  partnerName: string | null;
   // Internal notes from the Agent: why an item was flagged (_flag), what
   // changed since it was approved (_changes), plus source quotes.
   extractionEvidence: Record<string, string> | null;
@@ -186,6 +193,24 @@ export default function AdminDiscoveryPage() {
   const [runState, setRunState] = useState("");
   const [runCity, setRunCity] = useState("");
 
+  // [PLAY][AI] Partner Events - confirm-in-place (the primary path: an
+  // existing Discovery find becomes an official partner) and the
+  // fallback creation form (when there's no existing row to upgrade).
+  const [confirming, setConfirming] = useState<ExternalActivityRow | null>(null);
+  const [confirmPartnerId, setConfirmPartnerId] = useState("");
+  const [confirmPartnerName, setConfirmPartnerName] = useState("");
+  const [savingConfirm, setSavingConfirm] = useState(false);
+
+  // [PLAY][AI] Partner Events - URL-first import, replacing the earlier
+  // all-fields form: a partner's URL + their name is all that's asked
+  // for up front; the existing Discovery pipeline extracts the rest.
+  const [importOpen, setImportOpen] = useState(false);
+  const [importUrl, setImportUrl] = useState("");
+  const [importPartnerId, setImportPartnerId] = useState("");
+  const [importPartnerName, setImportPartnerName] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importDuplicate, setImportDuplicate] = useState<{ existingId: string; existingTitle: string } | null>(null);
+
   const loadCounts = () => {
     if (!isAdmin) return;
     api("/counts").then(setCounts).catch(() => {});
@@ -231,6 +256,7 @@ export default function AdminDiscoveryPage() {
       state: editDraft.state ?? null,
       normalisedLevel: editDraft.normalisedLevel ?? null,
       price: editDraft.price ?? null,
+      priceLabel: editDraft.priceLabel ?? null,
       registrationUrl: editDraft.registrationUrl ?? null,
     };
     try {
@@ -244,6 +270,91 @@ export default function AdminDiscoveryPage() {
         title: "Couldn't save",
         description: "Check the date (YYYY-MM-DD), times (HH:MM) and that the link starts with http(s)://",
       });
+    }
+  };
+
+  const openConfirmPartner = (item: ExternalActivityRow) => {
+    setConfirming(item);
+    setConfirmPartnerId("");
+    setConfirmPartnerName(item.partnerName ?? item.sourceName);
+  };
+
+  const saveConfirmPartner = async () => {
+    if (!confirming) return;
+    setSavingConfirm(true);
+    try {
+      const updated = await api(`/activities/${confirming.id}/confirm-partner`, {
+        method: "POST",
+        body: JSON.stringify({ partnerId: confirmPartnerId.trim() || null, partnerName: confirmPartnerName.trim() }),
+      });
+      setItems((prev) => prev.map((i) => (i.id === confirming.id ? { ...i, ...updated } : i)));
+      setConfirming(null);
+      toast({ title: "Confirmed as an official TennisConnect partner" });
+    } catch {
+      toast({ variant: "destructive", title: "Couldn't confirm", description: "Check the partner name, and the partner ID if you entered one." });
+    } finally {
+      setSavingConfirm(false);
+    }
+  };
+
+  const openImportPartnerEvent = () => {
+    setImportUrl("");
+    setImportPartnerId("");
+    setImportPartnerName("");
+    setImportDuplicate(null);
+    setImportOpen(true);
+  };
+
+  const runImport = async () => {
+    setImporting(true);
+    setImportDuplicate(null);
+    try {
+      const result = await api("/partner-events/import", {
+        method: "POST",
+        body: JSON.stringify({ url: importUrl.trim(), partnerId: importPartnerId.trim() || null, partnerName: importPartnerName.trim() }),
+      });
+      if (result.kind === "duplicate") {
+        // The brief's key rule: an existing Discovery find for the same
+        // event gets Confirm as Partner, never a second record.
+        setImportDuplicate({ existingId: result.existingId, existingTitle: result.existingTitle });
+        return;
+      }
+      setImportOpen(false);
+      loadCounts();
+      if (tab === "PENDING") setItems((prev) => [...result.activities, ...prev]);
+      toast({
+        title: result.stub ? "Imported - needs review" : `Imported ${result.activities.length} event${result.activities.length === 1 ? "" : "s"}`,
+        description: result.stub
+          ? "Couldn't read full details automatically - open it and fill in what's missing."
+          : "It's in Pending - approve it to make it eligible for Play.",
+      });
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Couldn't import",
+        description: "Check the URL (must start with http(s)://, and not point at a private address) and that a partner name was entered.",
+      });
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const confirmDuplicateAsPartner = async () => {
+    if (!importDuplicate) return;
+    setImporting(true);
+    try {
+      const updated = await api(`/activities/${importDuplicate.existingId}/confirm-partner`, {
+        method: "POST",
+        body: JSON.stringify({ partnerId: importPartnerId.trim() || null, partnerName: importPartnerName.trim() }),
+      });
+      setItems((prev) => prev.map((i) => (i.id === importDuplicate.existingId ? { ...i, ...updated } : i)));
+      setImportOpen(false);
+      setImportDuplicate(null);
+      toast({ title: "Confirmed as an official TennisConnect partner" });
+    } catch {
+      toast({ variant: "destructive", title: "Couldn't confirm" });
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -318,7 +429,7 @@ export default function AdminDiscoveryPage() {
         <aside
           className={cn(
             "hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200",
-            sidebarCollapsed ? "xl:w-20" : "xl:w-64"
+            sidebarCollapsed ? "xl:w-20" : "xl:w-72"
           )}
         >
           <OrganiserSidebarNav
@@ -343,8 +454,8 @@ export default function AdminDiscoveryPage() {
                 <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} />
               </SheetContent>
             </Sheet>
-            <div className="w-9 h-9 md:hidden" aria-hidden="true" />
-            <div className="flex items-center gap-1.5 font-display font-bold">Admin</div>
+            <OrganiserBarLogo />
+            <div className="hidden md:flex mr-auto items-center gap-1.5 font-display font-bold">Admin</div>
             <div className="flex items-center gap-1">
               <NotificationBell testId="organiser-header-bell-mobile" />
             </div>
@@ -363,13 +474,23 @@ export default function AdminDiscoveryPage() {
                   Review and manage tennis activities discovered across Australia.
                 </p>
               </div>
-              <Button
-                onClick={() => openRun(null)}
-                className="bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
-                data-testid="discovery-run-button"
-              >
-                <Play className="w-4 h-4 mr-2" /> Run Discovery
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={openImportPartnerEvent}
+                  className="rounded-full px-6 cursor-pointer"
+                  data-testid="new-partner-event-button"
+                >
+                  <ShieldCheck className="w-4 h-4 mr-2" /> New Partner Event
+                </Button>
+                <Button
+                  onClick={() => openRun(null)}
+                  className="bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
+                  data-testid="discovery-run-button"
+                >
+                  <Play className="w-4 h-4 mr-2" /> Run Discovery
+                </Button>
+              </div>
             </div>
 
             <div className="flex gap-6 border-b border-border mb-5" data-testid="discovery-views">
@@ -427,11 +548,14 @@ export default function AdminDiscoveryPage() {
                         item.activityType && humanise(item.activityType),
                         item.gameFormat && humanise(item.gameFormat),
                         item.normalisedLevel ?? item.originalLevelText,
-                        item.price != null && `$${item.price}`,
+                        item.priceLabel ?? (item.price != null ? (item.price === 0 ? "Free" : `$${item.price}`) : null),
                       ].filter(Boolean);
                       const flag = item.extractionEvidence?._flag;
                       const changed = item.extractionEvidence?._changes;
                       const statusBadge = STATUS_BADGES[item.discoveryStatus];
+                      // The source's own wording behind each extracted field (price,
+                      // recurrence, ...) - lets an admin check the Agent against the page.
+                      const evidenceEntries = Object.entries(item.extractionEvidence ?? {}).filter(([k]) => !k.startsWith("_"));
                       return (
                         <Card key={item.id} className="border-0 shadow-sm bg-muted/40" data-testid={`discovery-item-${item.id}`}>
                           <CardContent className="py-4 space-y-2">
@@ -441,6 +565,11 @@ export default function AdminDiscoveryPage() {
                                 <p className="text-sm text-muted-foreground">{where || "Location unknown"}</p>
                               </div>
                               <div className="flex flex-wrap justify-end gap-1.5 shrink-0">
+                                {item.sourceType === "PARTNER" && (
+                                  <Badge className="bg-primary text-black" data-testid={`discovery-item-${item.id}-partner-badge`}>
+                                    <ShieldCheck className="w-3 h-3 mr-1" /> Partner
+                                  </Badge>
+                                )}
                                 {statusBadge && <Badge variant="outline">{statusBadge}</Badge>}
                                 {item.reviewStatus === "DUPLICATE" && <Badge variant="outline">Duplicate</Badge>}
                                 {item.duplicateConfidence != null && item.reviewStatus !== "DUPLICATE" && (
@@ -455,6 +584,23 @@ export default function AdminDiscoveryPage() {
                             <p className="text-sm">{formatWhen(item)}</p>
                             {detected.length > 0 && <p className="text-sm text-muted-foreground">{detected.join(" · ")}</p>}
 
+                            {(evidenceEntries.length > 0 || item.originalLevelText) && (
+                              <details className="text-xs text-muted-foreground" data-testid={`discovery-item-${item.id}-wording`}>
+                                <summary className="cursor-pointer">Source wording</summary>
+                                <ul className="mt-1 space-y-0.5">
+                                  {evidenceEntries.map(([k, v]) => (
+                                    <li key={k}>
+                                      <span className="font-medium">{k}:</span> {v}
+                                    </li>
+                                  ))}
+                                  {item.originalLevelText && (
+                                    <li>
+                                      <span className="font-medium">level:</span> {item.originalLevelText}
+                                    </li>
+                                  )}
+                                </ul>
+                              </details>
+                            )}
                             {changed && (
                               <p className="text-xs text-amber-700 dark:text-amber-400" data-testid={`discovery-item-${item.id}-changes`}>
                                 Changed since it was approved: {changed}
@@ -493,6 +639,11 @@ export default function AdminDiscoveryPage() {
                               {!isFinal(item) && item.reviewStatus !== "DUPLICATE" && item.reviewStatus !== "REJECTED" && (
                                 <Button variant="ghost" size="sm" onClick={() => act(item.id, "mark-duplicate")} data-testid={`discovery-item-${item.id}-duplicate`}>
                                   <Copy className="w-3.5 h-3.5 mr-1.5" /> Duplicate
+                                </Button>
+                              )}
+                              {item.sourceType !== "PARTNER" && item.reviewStatus !== "DUPLICATE" && item.reviewStatus !== "REJECTED" && (
+                                <Button variant="outline" size="sm" onClick={() => openConfirmPartner(item)} data-testid={`discovery-item-${item.id}-confirm-partner`}>
+                                  <ShieldCheck className="w-3.5 h-3.5 mr-1.5" /> Confirm as Partner
                                 </Button>
                               )}
                             </div>
@@ -581,6 +732,14 @@ export default function AdminDiscoveryPage() {
               </div>
             </div>
             <div>
+              <Label>Price label (shown to players)</Label>
+              <Input
+                value={editDraft.priceLabel ?? ""}
+                onChange={(e) => setEditDraft((d) => ({ ...d, priceLabel: e.target.value }))}
+                placeholder="e.g. Free for members · $20 for non-members"
+              />
+            </div>
+            <div>
               <Label>Registration link</Label>
               <Input
                 value={editDraft.registrationUrl ?? ""}
@@ -596,6 +755,107 @@ export default function AdminDiscoveryPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!confirming} onOpenChange={(open) => !savingConfirm && !open && setConfirming(null)}>
+        <DialogContent data-testid="confirm-partner-modal">
+          <DialogHeader>
+            <DialogTitle>Confirm as official partner</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Upgrades <span className="font-medium text-foreground">{confirming?.title}</span> in place - it stays the
+            same event (nothing is duplicated), it just now shows the Partner badge instead of "Found by TennisConnect".
+          </p>
+          <div className="space-y-3">
+            <div>
+              <Label>Partner name</Label>
+              <Input value={confirmPartnerName} onChange={(e) => setConfirmPartnerName(e.target.value)} placeholder="e.g. Strathfield Sports Club" />
+            </div>
+            <div>
+              <Label>Partner organisation ID (optional)</Label>
+              <Input
+                value={confirmPartnerId}
+                onChange={(e) => setConfirmPartnerId(e.target.value)}
+                placeholder="Leave blank if they're not a registered TennisConnect organisation yet"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={saveConfirmPartner} disabled={savingConfirm || !confirmPartnerName.trim()} data-testid="confirm-partner-save">
+              {savingConfirm ? "Confirming..." : "Confirm Partner"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={importOpen} onOpenChange={(open) => !importing && setImportOpen(open)}>
+        <DialogContent data-testid="new-partner-event-modal">
+          <DialogHeader>
+            <DialogTitle>Add Partner Event</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            For an official partner's event Discovery hasn't found on its own - paste its page and we'll extract
+            the details the same way Discovery does. If Discovery already found this event, use "Confirm as Partner"
+            on that item instead of importing it again here.
+          </p>
+
+          {importDuplicate ? (
+            <div className="space-y-3" data-testid="import-duplicate-offer">
+              <p className="text-sm rounded-lg bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 p-3">
+                This looks like it matches an item already in Discovery:{" "}
+                <span className="font-medium">{importDuplicate.existingTitle}</span>. Confirm that one as the
+                partner instead of creating a second record for the same event.
+              </p>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setImportDuplicate(null)} disabled={importing}>
+                  Back
+                </Button>
+                <Button onClick={confirmDuplicateAsPartner} disabled={importing} data-testid="confirm-duplicate-as-partner">
+                  {importing ? "Confirming..." : "Confirm as Partner"}
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-3">
+                <div>
+                  <Label>Partner event URL</Label>
+                  <Input
+                    value={importUrl}
+                    onChange={(e) => setImportUrl(e.target.value)}
+                    placeholder="https://club.com/events/social-tennis"
+                  />
+                </div>
+                <div>
+                  <Label>Partner name</Label>
+                  <Input
+                    value={importPartnerName}
+                    onChange={(e) => setImportPartnerName(e.target.value)}
+                    placeholder="e.g. Manly Lawn Tennis Club"
+                  />
+                </div>
+                <div>
+                  <Label>Partner organisation ID (optional)</Label>
+                  <Input
+                    value={importPartnerId}
+                    onChange={(e) => setImportPartnerId(e.target.value)}
+                    placeholder="Leave blank if they're not a registered TennisConnect organisation yet"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  onClick={runImport}
+                  disabled={importing || !importUrl.trim() || !importPartnerName.trim()}
+                  data-testid="import-partner-event-save"
+                >
+                  {importing ? "Importing..." : "Import Event"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
 
       <Dialog open={runOpen} onOpenChange={(open) => !running && setRunOpen(open)}>
         <DialogContent data-testid="discovery-run-modal">

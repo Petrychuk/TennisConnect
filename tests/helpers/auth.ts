@@ -1,5 +1,6 @@
 import { expect, Page } from '@playwright/test';
 import { generateTestUser } from '../fixtures/test-users';
+import { postTestHook } from './test-hooks';
 
 // ---------- Cookie consent ----------
 
@@ -108,25 +109,16 @@ export async function registerCoach(page: Page) {
 // Stands in for "open the verification email and click the link".
 // /api/test-hooks/issue-verification-token (server/routes/testHooks.ts)
 // is a 404 outside development/staging (checked against DB_ENV, not
-// NODE_ENV - see that file's own comment for why), so this only ever
-// works against the environments this suite is meant to run in at all
-// (tests/global-setup.ts already refuses a real-prod run outright).
+// NODE_ENV - see that file's own comment for why), requires
+// E2E_TEST_HOOK_SECRET (sent by postTestHook, never via the browser),
+// and only issues tokens for isTestUser accounts - i.e. accounts
+// registered on the reserved @tennisconnect.test domain, which the
+// server flags as test users on development/staging only.
 // Everything past this point - hitting /verify-email, the backend
 // verifying the token and creating the session, the redirect - is the
 // same real flow a person clicking the emailed link goes through.
 export async function completeVerification(page: Page, email: string) {
-  const response = await page.request.post('/api/test-hooks/issue-verification-token', {
-    data: { email },
-  });
-
-  if (!response.ok()) {
-    throw new Error(
-      `completeVerification(): test hook returned ${response.status()} for ${email} - ` +
-      `is the server running with NODE_ENV=development, or DB_ENV=staging?`
-    );
-  }
-
-  const { token } = await response.json();
+  const { token } = await postTestHook<{ token: string }>('issue-verification-token', { email });
 
   // Waits for the actual GET /api/auth/verify-email response, not just
   // for page.goto() to resolve - that only guarantees the initial HTML/

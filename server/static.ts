@@ -29,6 +29,19 @@ export function serveStatic(app: Express) {
     }),
   );
 
+  // /.well-known/* is for machine-read files (security.txt, ai-catalog.json,
+  // ...). express.static above ignores dot-folders, so without this the
+  // catch-all below answered them with index.html - HTML where a crawler or
+  // Lighthouse expects JSON/text. Serve a real file from
+  // client/public/.well-known/ if one is added later, else a plain 404.
+  app.use(
+    "/.well-known",
+    express.static(path.join(distPath, ".well-known"), { dotfiles: "allow", index: false }),
+  );
+  app.use("/.well-known", (_req, res) => {
+    res.status(404).type("text/plain").send("Not found");
+  });
+
   // fall through to index.html if the file doesn't exist
   app.use("*", (_req, res) => {
     res.setHeader("Cache-Control", "no-cache");

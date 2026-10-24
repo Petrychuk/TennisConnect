@@ -60,8 +60,25 @@ const SUPPORTED_ACTIVITY_TYPES = [
  * unit-tested without a live API call - the actual network request
  * lives in the route, not here.
  */
-export function buildSmartSearchPrompt(query: string, player?: SmartSearchPlayerContext): { system: string; user: string } {
-  const system = `You convert a tennis player's natural-language search into structured JSON matching this exact shape - return ONLY the JSON object, no prose, no markdown fences:
+export function buildSmartSearchPrompt(
+  query: string,
+  player?: SmartSearchPlayerContext,
+  now: Date = new Date()
+): { system: string; user: string } {
+  // [BUG][PLAY][AI] The model has no live clock and no reason to know
+  // the real date - left to guess, it resolves "tonight"/"this weekend"
+  // against a date from its own training data instead of today, which
+  // silently sent every relative-date query for a real 2026 date search
+  // to January 2025. Every OTHER "resolve a fact" spot in this app (the
+  // Discovery Agent especially) treats the model's job as extracting
+  // wording, never computing an absolute date itself - this is that same
+  // principle, applied here: ground truth is handed to the model instead
+  // of asked of it.
+  const todayLine = `Today's date is ${now.toISOString().slice(0, 10)} (${now.toLocaleDateString("en-AU", { weekday: "long" })}). Resolve every relative date term ("tonight", "this weekend", "Thursday", "next week") against this real date - never a date you might otherwise assume.`;
+
+  const system = `${todayLine}
+
+You convert a tennis player's natural-language search into structured JSON matching this exact shape - return ONLY the JSON object, no prose, no markdown fences:
 
 {
   "intent": "FIND_ACTIVITY" | "FIND_PLAYER" | "TEXT_SEARCH",

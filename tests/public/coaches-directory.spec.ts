@@ -55,7 +55,7 @@ test('PUBLIC-003 Coaches directory pagination navigates to next page', async ({ 
 
   // Only relevant when there is more than one page of coaches.
   if (!(await nextButton.isVisible().catch(() => false))) {
-    test.skip();
+    test.skip(true, 'Needs more than 16 listed coaches on this environment (16 per page).');
   }
 
   await expect(nextButton).toBeEnabled();

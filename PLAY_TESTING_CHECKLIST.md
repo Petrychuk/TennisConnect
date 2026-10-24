@@ -254,6 +254,54 @@ Do the DRY RUN steps first - they write nothing.
       re-approved.
 - [ ] Remove an event from a test page, re-run: it goes to Needs Review but stays in Play.
 
+## 20. Partner Events (Admin -> Discovery)
+
+Needs migration 0032 applied.
+
+**Primary path - confirm an existing Discovery find**
+- [ ] On an EXTERNAL item (not yet Partner), click "Confirm as Partner", enter a partner name
+      (leave partner ID blank for an unregistered club), save.
+- [ ] The item now shows a "Partner" badge, and it's still the SAME item (no second row, counts
+      on the tabs don't change by one extra).
+- [ ] If it was already Approved and visible in Play, it still is - now with "TennisConnect
+      Partner ✓" and "Register on partner website ↗" instead of "Found by TennisConnect" /
+      "View original ↗".
+- [ ] If it was Pending, it stays Pending - Approve is still a separate step.
+
+**Fallback path - import from a URL (no existing Discovery row to upgrade)**
+- [ ] "+ New Partner Event" (now "Add Partner Event"): paste a real tennis club's event/social-
+      tennis page URL + a partner name -> Import Event.
+- [ ] A real event is extracted (title, date/time, venue, level, price where the page states
+      them) and lands in Pending with a Partner badge - no large form to fill in by hand.
+- [ ] A page describing several activities (e.g. a club's "Social Tennis" page listing more
+      than one session) imports one Pending row per activity.
+- [ ] Importing a URL that's an exact match for an item already in Discovery offers "Confirm as
+      Partner" instead of creating a second record - confirming it from there upgrades the
+      existing item in place.
+- [ ] A different URL whose extracted details clearly match an existing item (same
+      title/venue/time) gets the same offer, not a silent duplicate.
+- [ ] A broken link, a page needing JavaScript, or a page with nothing recognisable as an event
+      still creates ONE item (Needs Review, partner name + link only) instead of a dead-end
+      error - open it and use Edit to fill in the rest by hand (manual entry is the fallback
+      WITHIN this flow, not a separate creation form).
+- [ ] A localhost/private-network URL is rejected outright (same guard as Discovery sources).
+- [ ] Enter a partner organisation ID that doesn't exist: rejected, not silently ignored.
+
+**Dedup priority (TENNISCONNECT -> PARTNER -> EXTERNAL)**
+- [ ] Import a URL whose extracted details duplicate an existing approved EXTERNAL item that
+      ISN'T an exact URL match - confirming it as Partner from the offer above should mean only
+      ONE item exists afterwards, not two.
+- [ ] If a duplicate slips through anyway (e.g. two activities on one imported page, one of
+      which happens to match something else) and gets approved as Partner, the OLD EXTERNAL
+      item moves to Rejected/Duplicate on its own - never both showing in Play.
+- [ ] Approving an ordinary Partner Event that ISN'T a duplicate of anything touches no other
+      item.
+
+**Internal registration (a partner already registered as a TC organiser)**
+- [ ] That organiser creates a session the normal way (nothing different here).
+- [ ] An admin can mark that session as an official Partner Event; it still shows a normal Join
+      button (internal registration), with the Partner badge in place of "Organised by X".
+
 ## If something fails
 
 Note which checklist item, what you expected vs what you saw, and ideally a screenshot -

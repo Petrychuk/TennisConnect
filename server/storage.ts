@@ -96,9 +96,11 @@ import { db, pool } from "./db";
 import { zonedTimeToUtc } from "./lib/zonedTime";
 import { classifyQueueTab, type QueueTab } from "./services/discoveryQueue";
 import { expandOccurrences, makeOccurrenceId, parseOccurrenceId } from "./services/discoveryOccurrences";
+import { summariseLabelForCard } from "./services/discoveryPrice";
 import { resolveRegistrationUrl } from "./services/discoveryNormalization";
 import { eq, desc, and, or, asc, sql, lte, ne, gte, ilike, inArray, isNull, isNotNull, notInArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { locationTerms, softLevelValues } from "./services/playFilters";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { planRound, computeLeaderboard, type PastMatch } from "./services/liveEngine";
 
@@ -160,7 +162,7 @@ export interface IStorage {
   getAdminUsers(): Promise<User[]>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(
-    user: InsertUser & Partial<Pick<User, "emailVerified" | "emailVerifiedAt">>
+    user: InsertUser & Partial<Pick<User, "emailVerified" | "emailVerifiedAt" | "isTestUser">>
   ): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User>;
   updateUserPassword(id: string, hashedPassword: string): Promise<void>;
@@ -204,6 +206,23 @@ export interface IStorage {
   createDiscoverySource(data: Partial<typeof discoverySources.$inferInsert>): Promise<typeof discoverySources.$inferSelect>;
   updateDiscoverySource(id: string, data: Partial<typeof discoverySources.$inferInsert>): Promise<typeof discoverySources.$inferSelect | undefined>;
   createExternalActivity(record: Partial<typeof externalActivities.$inferInsert>): Promise<typeof externalActivities.$inferSelect | undefined>;
+  createPartnerEvent(input: {
+    title: string; description: string | null; activityType: string | null;
+    gameFormat: "singles" | "doubles" | "mixed" | null;
+    startDate: string | null; endDate: string | null; startTime: string | null; endTime: string | null;
+    recurrenceFrequency: "WEEKLY" | "FORTNIGHTLY" | "MONTHLY" | null; recurrenceDayOfWeek: string | null;
+    venueName: string | null; address: string | null; suburb: string | null; city: string | null;
+    state: string | null; postcode: string | null; normalisedLevel: string | null;
+    price: number | null; priceLabel: string | null; registrationUrl: string;
+    partnerId: string | null; partnerName: string; createdBy: string;
+  }): Promise<typeof externalActivities.$inferSelect | undefined>;
+  importPartnerEventFromUrl(
+    input: { url: string; partnerId: string | null; partnerName: string; createdBy: string },
+    deps?: { fetchPage?: (url: string) => Promise<string>; callExtractionLLM?: (sourceText: string, sourceUrl: string) => Promise<any> }
+  ): Promise<
+    | { kind: "duplicate"; existingId: string; existingTitle: string; reason: "same-url" | "high-confidence-match" }
+    | { kind: "created"; activities: (typeof externalActivities.$inferSelect)[]; stub: boolean; reason?: string }
+  >;
   getExternalActivitiesForDuplicateCheck(filters: { suburb?: string | null; startDate?: string | null; excludeSourceUrl?: string }): Promise<(typeof externalActivities.$inferSelect)[]>;
   getExternalActivityById(id: string): Promise<typeof externalActivities.$inferSelect | undefined>;
   getPublicSessionsForDuplicateCheck(filters: { location?: string | null; startDate?: string | null }): Promise<{ id: string; title: string; location: string | null; startAt: string; timeZone: string }[]>;
@@ -516,7 +535,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(
-    insertUser: InsertUser & Partial<Pick<User, "emailVerified" | "emailVerifiedAt">>
+    insertUser: InsertUser & Partial<Pick<User, "emailVerified" | "emailVerifiedAt" | "isTestUser">>
   ): Promise<User> {
       const slug = insertUser.slug
         ? insertUser.slug
@@ -1011,6 +1030,301 @@ export class DatabaseStorage implements IStorage {
   async createExternalActivity(record: Partial<typeof externalActivities.$inferInsert>) {
     const [created] = await db.insert(externalActivities).values(record as typeof externalActivities.$inferInsert).returning();
     return created;
+  }
+
+  // [PLAY][AI] Partner Events - the admin entry point for a Partner Event
+  // that registers externally (or isn't yet a registered TC organisation
+  // at all); see partnerEvents.ts for why this is the right table for
+  // that case and tennisSessions.isPartnerEvent for the other one. Reuses
+  // the Discovery Agent's own normalisation/geocoding/duplicate-detection
+  // building blocks rather than reimplementing them - this is admin-
+  // entered data, not AI-extracted, so there's no extraction/validation
+  // step to run, only the parts that are genuinely shared.
+  // Shared by createPartnerEvent and importPartnerEventFromUrl - scores
+  // a candidate activity against both other external_activities rows and
+  // real TC sessions, exactly as the Discovery orchestrator does for its
+  // own finds (spec section 12).
+  private async findBestDuplicateMatch(candidate: {
+    title: string;
+    venueName: string | null;
+    suburb: string | null;
+    startDate: string | null;
+    startTime: string | null;
+    recurrenceDayOfWeek: string | null;
+    registrationUrl?: string | null;
+  }): Promise<{ confidence: number; externalId?: string; sessionId?: string } | null> {
+    const { computeDuplicateConfidence } = await import("./services/discoveryDuplicateDetection");
+    const { toLocalDateTime } = await import("./services/discoveryOccurrences");
+
+    const otherExternal = await this.getExternalActivitiesForDuplicateCheck({
+      suburb: candidate.suburb,
+      startDate: candidate.startDate,
+    });
+    const tcSessions = await this.getPublicSessionsForDuplicateCheck({
+      location: candidate.suburb ?? candidate.venueName,
+      startDate: candidate.startDate,
+    });
+
+    let best: { confidence: number; externalId?: string; sessionId?: string } | null = null;
+    for (const other of otherExternal) {
+      const score = computeDuplicateConfidence(candidate, other);
+      if (!best || score > best.confidence) best = { confidence: score, externalId: other.id };
+    }
+    for (const session of tcSessions) {
+      const local = toLocalDateTime(new Date(session.startAt), session.timeZone);
+      const score = computeDuplicateConfidence(candidate, {
+        title: session.title,
+        venueName: session.location,
+        startDate: local.date,
+        startTime: local.time,
+      });
+      if (!best || score > best.confidence) best = { confidence: score, sessionId: session.id };
+    }
+    return best;
+  }
+
+  async createPartnerEvent(input: {
+    title: string;
+    description: string | null;
+    activityType: string | null;
+    gameFormat: "singles" | "doubles" | "mixed" | null;
+    startDate: string | null;
+    endDate: string | null;
+    startTime: string | null;
+    endTime: string | null;
+    recurrenceFrequency: "WEEKLY" | "FORTNIGHTLY" | "MONTHLY" | null;
+    recurrenceDayOfWeek: string | null;
+    venueName: string | null;
+    address: string | null;
+    suburb: string | null;
+    city: string | null;
+    state: string | null;
+    postcode: string | null;
+    normalisedLevel: string | null;
+    price: number | null;
+    priceLabel: string | null;
+    /** Required - this is the external/no-TC-registration path precisely
+        because there's somewhere else to register. A partner who wants no
+        link at all, or wants TC to run registration, uses tennisSessions
+        with isPartnerEvent instead. */
+    registrationUrl: string;
+    /** An existing TC organisation, when the partner is already
+        registered - lets the card link through to their real profile. */
+    partnerId: string | null;
+    /** Always required - the authoritative name shown on the badge,
+        whether or not partnerId is set. */
+    partnerName: string;
+    createdBy: string;
+  }) {
+    const { resolveTimeZoneForState } = await import("./services/discoveryNormalization");
+    const { resolveAustralianVenueCoordinates } = await import("./services/geocodingService");
+    const { DUPLICATE_REVIEW_THRESHOLD } = await import("./services/discoveryDuplicateDetection");
+
+    const timeZone = resolveTimeZoneForState(input.state);
+    const coords = await resolveAustralianVenueCoordinates({ suburb: input.suburb, city: input.city, state: input.state });
+
+    const best = await this.findBestDuplicateMatch({
+      title: input.title,
+      venueName: input.venueName,
+      suburb: input.suburb,
+      startDate: input.startDate,
+      startTime: input.startTime,
+      recurrenceDayOfWeek: input.recurrenceDayOfWeek,
+      registrationUrl: input.registrationUrl,
+    });
+    const isPossibleDuplicate = !!best && best.confidence >= DUPLICATE_REVIEW_THRESHOLD;
+
+    const safeRegistrationUrl = resolveRegistrationUrl(input.registrationUrl, "https://tennisconnect.com.au/");
+    if (!safeRegistrationUrl) throw new Error("registrationUrl must be a valid http(s) link");
+
+    const created = await this.createExternalActivity({
+      ...input,
+      registrationUrl: safeRegistrationUrl,
+      sourceType: "PARTNER",
+      registrationType: "EXTERNAL",
+      sourceId: null,
+      sourceName: input.partnerName,
+      sourceUrl: safeRegistrationUrl,
+      timeZone,
+      latitude: coords?.latitude ?? null,
+      longitude: coords?.longitude ?? null,
+      currency: "AUD",
+      confidence: "HIGH", // admin-entered, not AI-extracted - never in question
+      // PENDING either way: spec says admin can "create" and separately
+      // "confirm" a Partner Event - re-using the existing Approve action
+      // (adminDiscovery.ts) as the confirm step, same as any Discovery
+      // find, rather than a second bespoke endpoint.
+      discoveryStatus: isPossibleDuplicate ? "NEEDS_REVIEW" : "ACTIVE",
+      reviewStatus: "PENDING",
+      duplicateOfExternalId: isPossibleDuplicate ? best!.externalId ?? null : null,
+      duplicateOfSessionId: isPossibleDuplicate ? best!.sessionId ?? null : null,
+      duplicateConfidence: isPossibleDuplicate ? best!.confidence : null,
+      extractionEvidence: input.partnerId ? { _note: "Linked to a registered TennisConnect organisation." } : null,
+    });
+    return created;
+  }
+
+  // [PLAY][AI] Partner Events - THE primary creation path per review:
+  // "do not create a duplicate extraction system - reuse the existing
+  // Discovery fetch/extract/normalise/validate pipeline." An admin
+  // supplies a URL + partner name; everything else is extracted exactly
+  // the way Discovery extracts an ordinary find, just pre-labelled
+  // PARTNER. createPartnerEvent (above) becomes the fallback this calls
+  // into once real data is in hand - manual field entry survives only
+  // as the Edit dialog's own fallback, never as a second creation form.
+  async importPartnerEventFromUrl(
+    input: {
+      url: string;
+      partnerId: string | null;
+      partnerName: string;
+      createdBy: string;
+    },
+    deps?: {
+      fetchPage?: (url: string) => Promise<string>;
+      callExtractionLLM?: (sourceText: string, sourceUrl: string) => Promise<Awaited<ReturnType<typeof import("./services/discoveryExtraction").callExtractionLLM>>>;
+    }
+  ): Promise<
+    | { kind: "duplicate"; existingId: string; existingTitle: string; reason: "same-url" | "high-confidence-match" }
+    | { kind: "created"; activities: (typeof externalActivities.$inferSelect)[]; stub: boolean; reason?: string }
+  > {
+    const { isSafeExternalUrl } = await import("./services/discoveryNormalization");
+    const { fetchPage: realFetchPage } = await import("./services/discoveryOrchestration");
+    const { assessPage } = await import("./services/discoveryPageContent");
+    const { callExtractionLLM: realCallExtractionLLM, classifyConfidence } = await import("./services/discoveryExtraction");
+    const fetchPage = deps?.fetchPage ?? realFetchPage;
+    const callExtractionLLM = deps?.callExtractionLLM ?? realCallExtractionLLM;
+    const { buildActivityRecord } = await import("./services/discoveryRecord");
+    const { validateDiscoveredDates } = await import("./services/discoveryNormalization");
+    const { initialDiscoveryStatus, initialFlagReasons } = await import("./services/discoveryQueue");
+    const { resolveAustralianVenueCoordinates } = await import("./services/geocodingService");
+    const { DUPLICATE_REVIEW_THRESHOLD } = await import("./services/discoveryDuplicateDetection");
+    const { findExactUrlDuplicate, decideStubReason } = await import("./services/partnerImport");
+
+    if (!isSafeExternalUrl(input.url)) throw new Error("That URL can't be fetched (must be a public http(s) page)");
+
+    // Exact-URL duplicate check FIRST - the strongest possible signal,
+    // checked before spending a model call on anything.
+    const existingByUrl = await this.getExternalActivitiesForDuplicateCheck({});
+    const exactMatch = findExactUrlDuplicate(
+      input.url,
+      existingByUrl.map((r) => ({ id: r.id, title: r.title, sourceUrl: r.sourceUrl }))
+    );
+    if (exactMatch) {
+      const full = await this.getExternalActivityById(exactMatch.id);
+      if (full && full.sourceType !== "PARTNER") {
+        return { kind: "duplicate", existingId: exactMatch.id, existingTitle: exactMatch.title, reason: "same-url" };
+      }
+    }
+
+    let html: string | null = null;
+    let fetchError: string | undefined;
+    try {
+      html = await fetchPage(input.url);
+    } catch (err: any) {
+      fetchError = err?.message ?? "fetch failed";
+    }
+
+    const assessment = html ? assessPage(html) : null;
+    const extraction = assessment?.supported ? await callExtractionLLM(assessment.text, input.url) : null;
+
+    const makeStub = async (reason: string) => {
+      const created = await this.createExternalActivity({
+        title: `Partner event from ${new URL(input.url).hostname}`,
+        sourceType: "PARTNER",
+        registrationType: "EXTERNAL",
+        sourceId: null,
+        sourceName: input.partnerName,
+        sourceUrl: input.url,
+        registrationUrl: input.url,
+        partnerId: input.partnerId,
+        partnerName: input.partnerName,
+        currency: "AUD",
+        confidence: "LOW",
+        discoveryStatus: "NEEDS_REVIEW",
+        reviewStatus: "PENDING",
+        extractionEvidence: { _flag: reason },
+      });
+      return { kind: "created" as const, activities: created ? [created] : [], stub: true, reason };
+    };
+
+    if (!html || !assessment?.supported || !extraction || extraction.activities.length === 0) {
+      const reason = decideStubReason({ fetchFailed: !html, fetchError });
+      return makeStub(!html || !assessment?.supported ? reason : "No event details could be automatically extracted from this page - fill them in yourself.");
+    }
+
+    const created: (typeof externalActivities.$inferSelect)[] = [];
+    for (const extracted of extraction.activities) {
+      const built = buildActivityRecord(extracted, { sourceState: null, sourceCity: null, pageUrl: input.url });
+      const dateCheck = validateDiscoveredDates({
+        startDate: extracted.startDate,
+        endDate: extracted.endDate,
+        startTime: extracted.startTime,
+        endTime: extracted.endTime,
+        isRecurring: !!built.recurrence,
+        timeZone: built.record.timeZone,
+      });
+      if (!dateCheck.valid) continue; // skip an unusable entry rather than fail the whole import
+
+      const best = await this.findBestDuplicateMatch({
+        title: built.record.title,
+        venueName: built.record.venueName,
+        suburb: built.record.suburb,
+        startDate: built.record.startDate,
+        startTime: built.record.startTime,
+        recurrenceDayOfWeek: built.record.recurrenceDayOfWeek,
+      });
+      const isPossibleDuplicate = !!best && best.confidence >= DUPLICATE_REVIEW_THRESHOLD;
+
+      // A single clearly-the-same-event match on the FIRST (and typically
+      // only) extracted activity is offered as Confirm as Partner instead
+      // of created - exactly the brief's "If the URL/event already exists
+      // as EXTERNAL, offer Confirm as Partner instead of creating another
+      // record." A page describing several activities that happens to
+      // also flag ONE of them as a duplicate still imports the rest -
+      // stopping the whole batch over one match would be worse.
+      if (isPossibleDuplicate && best!.externalId && extraction.activities.length === 1) {
+        const existing = await this.getExternalActivityById(best!.externalId);
+        if (existing && existing.sourceType !== "PARTNER") {
+          return { kind: "duplicate", existingId: existing.id, existingTitle: existing.title, reason: "high-confidence-match" };
+        }
+      }
+
+      const coords = await resolveAustralianVenueCoordinates({ suburb: built.record.suburb, city: built.record.city, state: built.record.state });
+      const evidence: Record<string, string> = { ...(extracted.evidence ?? {}) };
+      if (extracted.recurrenceText) evidence.recurrence = extracted.recurrenceText;
+      if (built.priceWording) evidence.price = built.priceWording;
+
+      const row = await this.createExternalActivity({
+        ...built.record,
+        sourceType: "PARTNER",
+        registrationType: "EXTERNAL",
+        sourceId: null,
+        sourceName: input.partnerName,
+        sourceUrl: input.url,
+        partnerId: input.partnerId,
+        partnerName: input.partnerName,
+        latitude: coords?.latitude ?? null,
+        longitude: coords?.longitude ?? null,
+        confidence: classifyConfidence(extracted),
+        discoveryStatus: initialDiscoveryStatus({
+          confidence: classifyConfidence(extracted),
+          isPossibleDuplicate,
+          timeZoneKnown: !!built.record.timeZone,
+          recurrenceUnderstood: built.recurrenceUnderstood,
+        }),
+        reviewStatus: "PENDING",
+        duplicateOfExternalId: isPossibleDuplicate ? best!.externalId ?? null : null,
+        duplicateOfSessionId: isPossibleDuplicate ? best!.sessionId ?? null : null,
+        duplicateConfidence: isPossibleDuplicate ? best!.confidence : null,
+        extractionEvidence: evidence,
+      });
+      if (row) created.push(row);
+    }
+
+    if (created.length === 0) {
+      return makeStub("The page's dates didn't look valid, so nothing could be imported automatically - fill them in yourself.");
+    }
+    return { kind: "created", activities: created, stub: false };
   }
 
   // Candidates a newly discovered activity might duplicate: items from
@@ -3131,9 +3445,10 @@ export class DatabaseStorage implements IStorage {
       organizationName: organization.name,
       organizationSlug: organization.slug,
       organizationLogo: organization.logo,
-      sourceType: "TENNISCONNECT",
+      sourceType: session.isPartnerEvent ? "PARTNER" : "TENNISCONNECT",
       externalSourceUrl: null,
       externalLastCheckedAt: null,
+      partnerName: null, // a tennisSessions-backed Partner Event already has the real org's name in organizationName
     };
   }
 
@@ -3159,6 +3474,7 @@ export class DatabaseStorage implements IStorage {
     // most conservative zone instead of this one.
     const zone = activity.timeZone ?? "Australia/Sydney";
     const recurring = !!activity.recurrenceFrequency;
+    const isPartner = activity.sourceType === "PARTNER";
     // Where "View original" sends the player: a verified registration
     // link when the source gave one, otherwise the page it was found on.
     const linkOut = resolveRegistrationUrl(activity.registrationUrl, activity.sourceUrl) ?? activity.sourceUrl;
@@ -3188,14 +3504,17 @@ export class DatabaseStorage implements IStorage {
         courtsCount: null,
         maxParticipants: null,
         registeredCount: 0,
-        coverImage: null,
+        coverImage: activity.imageUrl ?? null,
         organizationId: "",
-        organizationName: activity.organiserName || activity.sourceName,
+        organizationName: isPartner ? activity.partnerName || activity.sourceName : activity.organiserName || activity.sourceName,
         organizationSlug: "",
         organizationLogo: null,
-        sourceType: "EXTERNAL" as const,
+        sourceType: isPartner ? ("PARTNER" as const) : ("EXTERNAL" as const),
         externalSourceUrl: linkOut,
         externalLastCheckedAt: lastChecked,
+        partnerName: isPartner ? activity.partnerName ?? activity.sourceName : null,
+        priceSummary: summariseLabelForCard(activity.priceLabel, activity.price),
+        priceLabel: activity.priceLabel,
       };
     });
   }
@@ -3229,7 +3548,7 @@ export class DatabaseStorage implements IStorage {
       description: activity.description,
       matchMode: "",
       scoringFormat: "",
-      price: activity.price != null ? String(activity.price) : null,
+      price: activity.price != null ? (activity.price === 0 ? "Free" : String(activity.price)) : null,
       currency: activity.currency,
       waitingListEnabled: false,
       registrationOpensAt: null,
@@ -3263,9 +3582,16 @@ export class DatabaseStorage implements IStorage {
       eq(tennisSessions.visibility, "public"),
     ];
     if (filters.format) conditions.push(eq(tennisSessions.type, filters.format));
-    if (filters.level) conditions.push(eq(tennisSessions.skillLevel, filters.level));
+    // Soft level rule (services/playFilters.ts): also sessions open to all levels
+    // and sessions that state no level - never hide what the player could join.
+    if (filters.level) {
+      conditions.push(or(inArray(tennisSessions.skillLevel, softLevelValues(filters.level)), isNull(tennisSessions.skillLevel))!);
+    }
     if (filters.organizationId) conditions.push(eq(tennisSessions.organizationId, filters.organizationId));
-    if (filters.location) conditions.push(ilike(tennisSessions.location, `%${filters.location}%`));
+    const locTerms = locationTerms(filters.location);
+    if (locTerms.length > 0) {
+      conditions.push(or(...locTerms.map((t) => ilike(tennisSessions.location, `%${t}%`)))!);
+    }
     if (filters.dateFrom) conditions.push(gte(tennisSessions.startAt, filters.dateFrom));
     if (filters.dateTo) conditions.push(lte(tennisSessions.startAt, filters.dateTo));
 
@@ -3276,19 +3602,29 @@ export class DatabaseStorage implements IStorage {
       .where(and(...conditions))
       .orderBy(asc(tennisSessions.startAt));
 
-    if (rows.length === 0) return [];
+    // [BUG][PLAY][DISCOVERY] This used to `return []` here whenever there
+    // were no native sessions - a harmless-looking optimisation to skip
+    // the registration-count query below when there's nothing to count.
+    // But the external-activities merge (spec section 20) lives further
+    // down in this same function, so that early return also skipped
+    // EVERY approved external activity whenever there happened to be zero
+    // native sessions - exactly staging's actual state (0 published
+    // sessions, 2 approved external activities), which made /play show
+    // nothing at all despite Discovery working correctly end to end.
+    let cards: PublicSessionCard[] = [];
+    if (rows.length > 0) {
+      const sessionIds = rows.map((r) => r.session.id);
+      const countRows = await db
+        .select({ sessionId: registrations.sessionId, count: sql<number>`count(*)` })
+        .from(registrations)
+        .where(and(inArray(registrations.sessionId, sessionIds), ne(registrations.status, "cancelled")))
+        .groupBy(registrations.sessionId);
+      const countBySession = new Map(countRows.map((r) => [r.sessionId, Number(r.count)]));
 
-    const sessionIds = rows.map((r) => r.session.id);
-    const countRows = await db
-      .select({ sessionId: registrations.sessionId, count: sql<number>`count(*)` })
-      .from(registrations)
-      .where(and(inArray(registrations.sessionId, sessionIds), ne(registrations.status, "cancelled")))
-      .groupBy(registrations.sessionId);
-    const countBySession = new Map(countRows.map((r) => [r.sessionId, Number(r.count)]));
-
-    let cards = rows.map(({ session, organization }) =>
-      this.toPublicSessionCard(session, organization, countBySession.get(session.id) ?? 0)
-    );
+      cards = rows.map(({ session, organization }) =>
+        this.toPublicSessionCard(session, organization, countBySession.get(session.id) ?? 0)
+      );
+    }
 
     if (filters.search) {
       const q = filters.search.trim().toLowerCase();
@@ -3318,26 +3654,32 @@ export class DatabaseStorage implements IStorage {
       if (filters.location) {
         // A player can mean a suburb, a city, a state or a venue
         // ("around Melbourne", "VIC", "Moore Park").
-        const like = `%${filters.location}%`;
         externalConditions.push(
           or(
-            ilike(externalActivities.suburb, like),
-            ilike(externalActivities.city, like),
-            ilike(externalActivities.state, like),
-            ilike(externalActivities.venueName, like),
-            ilike(externalActivities.address, like)
+            ...locTerms.flatMap((t) => {
+              const like = `%${t}%`;
+              return [
+                ilike(externalActivities.suburb, like),
+                ilike(externalActivities.city, like),
+                ilike(externalActivities.state, like),
+                ilike(externalActivities.venueName, like),
+                ilike(externalActivities.address, like),
+              ];
+            })
           )!
         );
       }
       if (filters.format) externalConditions.push(eq(externalActivities.activityType, filters.format));
-      if (filters.level) externalConditions.push(eq(externalActivities.normalisedLevel, filters.level));
+      if (filters.level) {
+        externalConditions.push(or(eq(externalActivities.normalisedLevel, filters.level), isNull(externalActivities.normalisedLevel))!);
+      }
 
       let externalRows = await db.select().from(externalActivities).where(and(...externalConditions));
 
       if (filters.search) {
         const q = filters.search.trim().toLowerCase();
         externalRows = externalRows.filter((r) =>
-          [r.title, r.venueName, r.suburb, r.city, r.state, r.organiserName, r.sourceName].some((f) =>
+          [r.title, r.venueName, r.suburb, r.city, r.state, r.organiserName, r.sourceName, r.partnerName].some((f) =>
             (f ?? "").toLowerCase().includes(q)
           )
         );

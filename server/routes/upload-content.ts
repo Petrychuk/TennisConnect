@@ -133,6 +133,7 @@ router.post(
             {
               contentType:
                 detectedType,
+              cacheControl: "2592000",
               upsert: true,
             }
           );

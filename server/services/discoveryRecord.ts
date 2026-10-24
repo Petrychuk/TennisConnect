@@ -7,6 +7,7 @@ import {
   resolveRegistrationUrl,
 } from "./discoveryNormalization";
 import { parseRecurrenceText, type ParsedRecurrence } from "./discoveryOccurrences";
+import { resolvePrice } from "./discoveryPrice";
 
 // [PLAY][AI] TC Discovery Agent - everything that turns what the model
 // EXTRACTED into what the Agent STORES is deterministic and lives here
@@ -46,6 +47,8 @@ export interface BuiltRecord {
     originalLevelText: string | null;
     normalisedLevel: string | null;
     price: number | null;
+    /** Display value; keeps member / non-member pricing. */
+    priceLabel: string | null;
     currency: string;
     organiserName: string | null;
     registrationUrl: string | null;
@@ -53,11 +56,21 @@ export interface BuiltRecord {
   recurrence: ParsedRecurrence | null;
   /** True when the repeat pattern (if any) can be turned into real dates. */
   recurrenceUnderstood: boolean;
+  /** Why an admin should look at the price (null when the wording was clear). */
+  priceReview: string | null;
+  /** The source's own price wording, kept as evidence. */
+  priceWording: string | null;
 }
 
 export function buildActivityRecord(extracted: ExtractedActivity, ctx: RecordContext): BuiltRecord {
   const state = normaliseAustralianState(extracted.state) ?? normaliseAustralianState(ctx.sourceState);
   const recurrence = parseRecurrenceText(extracted.recurrenceText);
+  // Price: the model only COPIES the source's wording; the amount and the
+  // label are decided here (discoveryPrice.ts). A bare number with no
+  // wording behind it is unsupported - never trusted, and flagged.
+  const priceWording = extracted.priceText ?? extracted.evidence?.price ?? null;
+  const priced = resolvePrice(priceWording);
+  const unsupportedPrice = priceWording === null && extracted.price != null;
   // Only the source's own labels for THIS activity - never its description,
   // which routinely mentions other things ("coaching team", "doubles").
   const { activityType, gameFormat } = normaliseFormatText(
@@ -85,9 +98,10 @@ export function buildActivityRecord(extracted: ExtractedActivity, ctx: RecordCon
       timeZone: resolveTimeZoneForState(state),
       originalLevelText: extracted.levelText,
       normalisedLevel: normaliseLevelText(extracted.levelText),
-      // The column is whole dollars; a stated $12.50 rounds rather than
-      // failing the insert.
-      price: extracted.price != null ? Math.round(extracted.price) : null,
+      // numeric: what a general (non-member) player pays, or null. 0 ONLY when
+      // the source says it's free. priceLabel: what players are shown.
+      price: priced.price,
+      priceLabel: priced.label,
       currency: extracted.currency ?? "AUD",
       organiserName: extracted.organiserName,
       registrationUrl: resolveRegistrationUrl(extracted.registrationUrl, ctx.pageUrl),
@@ -97,5 +111,7 @@ export function buildActivityRecord(extracted: ExtractedActivity, ctx: RecordCon
     // anchor date to count from.
     recurrenceUnderstood:
       !recurrence || (recurrence.understood && (recurrence.frequency !== "FORTNIGHTLY" || !!extracted.startDate)),
+    priceWording,
+    priceReview: unsupportedPrice ? "A price was returned with no price wording from the page" : priced.review,
   };
 }
