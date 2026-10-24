@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+import { dismissCookieBanner } from '../helpers/auth';
 
 /*
   BACK THE RALLY — STAGING ONLY (can create real Stripe Checkout
@@ -18,6 +19,27 @@ import { test, expect } from '@playwright/test';
   Entirely guest-accessible by design (a visitor can support
   TennisConnect without an account) - none of these tests log in.
 */
+
+// ---------- Mobile entry point ----------
+
+// On mobile the header widget is desktop-only (`hidden md:inline-flex` in
+// client/src/components/navbar.tsx). The visible entry point is the same
+// BackTheRallyWidget inside the mobile menu drawer, which closes the drawer
+// and opens the same modal. No force-clicks on hidden elements.
+async function openBackTheRallyFromMobileMenu(page: Page) {
+  await dismissCookieBanner(page);
+
+  const menuButton = page.getByTestId('button-mobile-menu');
+  await expect(menuButton).toBeVisible();
+  await menuButton.click();
+
+  const drawer = page.locator('[role="dialog"]').last();
+  const drawerWidget = drawer.getByTestId('button-back-the-rally');
+  await expect(drawerWidget).toBeVisible();
+  await drawerWidget.click();
+
+  await expect(page.getByTestId('back-the-rally-modal')).toBeVisible();
+}
 
 test('SUPPORT-001 Back The Rally Widget Is Visible In The Header', async ({ page }) => {
 
@@ -234,7 +256,7 @@ test('SUPPORT-011 Selected Tier Stays Fully Opaque On Mobile (Doesn\'t Let The P
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
-  await page.locator('nav').getByTestId('button-back-the-rally').click();
+  await openBackTheRallyFromMobileMenu(page);
 
   const tenDollarTier = page.getByTestId('support-tier-keep_the_rally_going');
   await expect(tenDollarTier).toHaveAttribute('aria-checked', 'true');
@@ -307,7 +329,7 @@ test('SUPPORT-014 Heart Icon Shows In The Modal Header On Mobile Too, Not Just D
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
-  await page.locator('nav').getByTestId('button-back-the-rally').click();
+  await openBackTheRallyFromMobileMenu(page);
 
   const modal = page.getByTestId('back-the-rally-modal');
   await expect(modal).toBeVisible();

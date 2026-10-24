@@ -55,7 +55,7 @@ test('PUBLIC-007 Players directory pagination navigates to next page', async ({ 
 
   // Only relevant when there is more than one page of players.
   if (!(await nextButton.isVisible().catch(() => false))) {
-    test.skip();
+    test.skip(true, 'Needs more than 20 listed players on this environment (20 per page).');
   }
 
   await expect(nextButton).toBeEnabled();
