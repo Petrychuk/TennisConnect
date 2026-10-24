@@ -394,7 +394,7 @@ export default function AdminPage() {
       toast({
         title: "Validation Error",
         description:
-          validation?.error?.errors?.[0]?.message ||
+          validation?.error?.issues?.[0]?.message ||
           "Invalid form data",
         variant: "destructive",
       });
