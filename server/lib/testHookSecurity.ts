@@ -100,10 +100,12 @@ export function checkTestHookAccess(config: TestHookConfig, providedHeader: unkn
 
 // ---------- Test accounts ----------
 
+// Exactly one plain address on the reserved domain: no lists
+// ("a@x.com,b@tennisconnect.test"), display names, spaces or brackets.
+const RESERVED_TEST_EMAIL = /^[^\s@,;:<>()[\]"']+@tennisconnect\.test$/i;
+
 export function isReservedTestEmail(email: unknown): boolean {
-  if (typeof email !== "string") return false;
-  const at = email.lastIndexOf("@");
-  return at > 0 && email.slice(at + 1).trim().toLowerCase() === RESERVED_TEST_EMAIL_DOMAIN;
+  return typeof email === "string" && RESERVED_TEST_EMAIL.test(email.trim());
 }
 
 /**

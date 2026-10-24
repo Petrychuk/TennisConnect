@@ -23,6 +23,8 @@ import { resolveTarget } from '../safety/environment-guard';
 export const TEST_HOOK_SECRET_ENV = 'E2E_TEST_HOOK_SECRET';
 export const TEST_HOOK_SECRET_HEADER = 'X-E2E-Test-Secret';
 
+export type TestHookName = 'issue-verification-token' | 'seed-players' | 'seed-session' | 'preflight' | 'emails';
+
 export class TestHookError extends Error {
   constructor(message: string, readonly status?: number) {
     super(message);
@@ -59,7 +61,7 @@ export function testHookHeaders(env: Record<string, string | undefined> = proces
  * secret) on any non-2xx response.
  */
 export async function postTestHook<T>(
-  hook: 'issue-verification-token' | 'seed-players' | 'seed-session',
+  hook: TestHookName,
   data: unknown,
   env: Record<string, string | undefined> = process.env
 ): Promise<T> {
@@ -98,4 +100,54 @@ export async function postTestHook<T>(
   }
 
   return (await response.json()) as T;
+}
+
+// ---------- Captured emails (Staging) ----------
+
+export interface CapturedEmail {
+  id: string;
+  to: string;
+  subject: string;
+  text: string;
+  links: string[];
+  capturedAt: number;
+}
+
+/**
+ * Emails the server captured instead of sending (server/services/emailCapture.ts).
+ * Only works for @tennisconnect.test recipients - the server refuses any other.
+ */
+export async function getCapturedEmails(
+  to: string,
+  filter: { subjectContains?: string; sinceMs?: number } = {},
+  env: Record<string, string | undefined> = process.env
+): Promise<CapturedEmail[]> {
+  const { emails } = await postTestHook<{ emails: CapturedEmail[] }>('emails', { to, ...filter }, env);
+  return emails;
+}
+
+/**
+ * Polls for a captured email (newest first) until it arrives or the
+ * timeout passes. Waits on the observable condition, not a fixed sleep.
+ */
+export async function waitForCapturedEmail(
+  to: string,
+  filter: { subjectContains?: string; sinceMs?: number } = {},
+  options: { timeoutMs?: number; intervalMs?: number; env?: Record<string, string | undefined> } = {}
+): Promise<CapturedEmail> {
+  const timeoutMs = options.timeoutMs ?? 15_000;
+  const intervalMs = options.intervalMs ?? 500;
+  const deadline = Date.now() + timeoutMs;
+
+  for (;;) {
+    const [latest] = await getCapturedEmails(to, filter, options.env ?? process.env);
+    if (latest) return latest;
+    if (Date.now() + intervalMs > deadline) {
+      throw new TestHookError(
+        `No captured email for ${to}${filter.subjectContains ? ` matching "${filter.subjectContains}"` : ''} ` +
+        `within ${timeoutMs}ms. Is the target capturing email (preflight emailTransport=capture)?`
+      );
+    }
+    await new Promise(resolve => setTimeout(resolve, intervalMs));
+  }
 }

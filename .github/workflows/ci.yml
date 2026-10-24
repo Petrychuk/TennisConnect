@@ -112,6 +112,10 @@ jobs:
       # /api/test-hooks environment gate, shared secret and test-data
       # ownership. In-memory fakes - no database, no network, no secrets.
       - run: npm run test:test-hooks
+      # Staging email capture (Production always delivers), response-body
+      # log redaction and Stripe test-mode guards. Fake Resend, no network,
+      # no secrets.
+      - run: npm run test:staging-safety
 
   # ---------------------------------------------------------------------
   # Read-only smoke tests against the REAL Railway Staging environment.

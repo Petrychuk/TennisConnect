@@ -5,10 +5,13 @@
 // server/routes/testHooks.test.ts.
 import { Router, type Request, type Response, type NextFunction } from "express";
 import type { IStorage } from "../storage";
+import type { CapturedEmailStore, EmailTransport } from "../services/emailCapture";
+import type { StripeKeyMode } from "../lib/stripeMode";
 import {
   TEST_HOOK_SECRET_ENV,
   TEST_HOOK_SECRET_HEADER,
   checkTestHookAccess,
+  isReservedTestEmail,
   validateSeedSessionInput,
   type SeedLookups,
   type TestHookConfig,
@@ -31,6 +34,18 @@ export interface TestHooksDeps {
   hashPassword: (password: string) => Promise<string>;
   /** Read on every request, so a changed Railway variable is never cached stale. */
   getConfig: () => TestHookConfig;
+  /** Captured (not sent) emails - server/services/emailCapture.ts. */
+  capturedEmails: Pick<CapturedEmailStore, "query">;
+  /** Environment facts for the regression preflight. Never secret values. */
+  getPreflight: () => PreflightReport;
+}
+
+export interface PreflightReport {
+  dbEnv: string;
+  commit: string | null;
+  emailTransport: EmailTransport;
+  stripeMode: StripeKeyMode;
+  stripeWebhookConfigured: boolean;
 }
 
 let warnedNotConfigured = false;
@@ -60,6 +75,48 @@ export function createTestHooksRouter(deps: TestHooksDeps) {
   const router = Router();
 
   router.use(testHookGuard(deps.getConfig));
+
+  // Environment facts the full-regression workflow checks before running
+  // anything (tests/safety/preflight.ts). Modes and booleans only - never
+  // keys, secrets or URLs.
+  router.post("/preflight", (_req, res) => {
+    res.json(deps.getPreflight());
+  });
+
+  // Emails captured instead of sent (Staging). Only for recipients on the
+  // reserved test domain: a captured email to anyone else (e.g. a real
+  // user's password reset on Staging) is never returned, secret or not.
+  router.post("/emails", (req, res) => {
+    const { to, subjectContains, sinceMs, limit } = req.body || {};
+
+    if (!isReservedTestEmail(to)) {
+      return res.status(403).json({ message: "Captured emails can only be read for @tennisconnect.test recipients" });
+    }
+    if (subjectContains !== undefined && typeof subjectContains !== "string") {
+      return res.status(400).json({ message: "subjectContains must be a string" });
+    }
+    if (sinceMs !== undefined && (typeof sinceMs !== "number" || !Number.isFinite(sinceMs))) {
+      return res.status(400).json({ message: "sinceMs must be a number (epoch milliseconds)" });
+    }
+
+    const emails = deps.capturedEmails
+      .query({
+        to,
+        subjectContains,
+        sinceMs,
+        limit: typeof limit === "number" ? limit : undefined,
+      })
+      .map(({ id, to: recipient, subject, text, links, capturedAt }) => ({
+        id,
+        to: recipient,
+        subject,
+        text,
+        links,
+        capturedAt,
+      }));
+
+    res.json({ emails });
+  });
 
   router.post("/issue-verification-token", async (req, res, next) => {
     try {

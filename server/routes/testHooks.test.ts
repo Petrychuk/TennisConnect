@@ -15,6 +15,7 @@ import type { AddressInfo } from "node:net";
 import express from "express";
 import { createTestHooksRouter, type TestHooksDeps } from "./testHooksRouter";
 import type { TestHookConfig } from "../lib/testHookSecurity";
+import { CapturedEmailStore } from "../services/emailCapture";
 
 let passed = 0;
 let failed = 0;
@@ -94,7 +95,11 @@ function makeWorld() {
     },
   };
 
-  return { users, writes, tokensIssued, storage };
+  const emails = new CapturedEmailStore();
+  emails.add({ to: "p1@tennisconnect.test", subject: "Confirm your email", text: "Go https://staging.example/verify-email?token=abc", html: "" });
+  emails.add({ to: "real.person@gmail.com", subject: "Reset your password", text: "https://staging.example/reset?token=REAL-USER-TOKEN", html: "" });
+
+  return { users, writes, tokensIssued, storage, emails };
 }
 
 async function withServer(
@@ -110,6 +115,14 @@ async function withServer(
     },
     hashPassword: async (password) => `hashed:${password.length}`,
     getConfig: () => config,
+    capturedEmails: world.emails,
+    getPreflight: () => ({
+      dbEnv: config.dbEnv ?? "unknown",
+      commit: "a".repeat(40),
+      emailTransport: "capture",
+      stripeMode: "test",
+      stripeWebhookConfigured: true,
+    }),
   };
 
   const app = express();
@@ -155,6 +168,8 @@ const HOOK_CALLS: [string, unknown][] = [
   ["issue-verification-token", { email: "p1@tennisconnect.test" }],
   ["seed-players", { count: 2 }],
   ["seed-session", validSession()],
+  ["preflight", {}],
+  ["emails", { to: "p1@tennisconnect.test" }],
 ];
 
 // Capture everything the router logs, to prove the secret never appears.
@@ -279,6 +294,39 @@ async function main() {
       for (const text of bodies.concat(logged)) {
         assert.ok(!text.includes(SECRET), `secret leaked in: ${text.slice(0, 80)}`);
       }
+    }));
+
+  await test("preflight reports environment modes only - no secret values", () =>
+    withServer(STAGING, async (call) => {
+      const res = await call("preflight", {}, auth);
+      assert.equal(res.status, 200, res.text);
+      assert.deepEqual(Object.keys(res.json).sort(), ["commit", "dbEnv", "emailTransport", "stripeMode", "stripeWebhookConfigured"]);
+      assert.equal(res.json.emailTransport, "capture");
+      assert.ok(!res.text.includes(SECRET));
+    }));
+
+  await test("captured emails are returned for a test recipient, newest first, with links", () =>
+    withServer(STAGING, async (call) => {
+      const res = await call("emails", { to: "P1@tennisconnect.test", subjectContains: "confirm" }, auth);
+      assert.equal(res.status, 200, res.text);
+      assert.equal(res.json.emails.length, 1);
+      assert.deepEqual(res.json.emails[0].links, ["https://staging.example/verify-email?token=abc"]);
+      assert.equal(res.json.emails[0].html, undefined, "html is not returned");
+    }));
+
+  await test("captured emails to non-test recipients are never returned, even with the secret", () =>
+    withServer(STAGING, async (call) => {
+      const res = await call("emails", { to: "real.person@gmail.com" }, auth);
+      assert.equal(res.status, 403);
+      assert.ok(!res.text.includes("REAL-USER-TOKEN"));
+      const spoof = await call("emails", { to: "real.person@gmail.com,p1@tennisconnect.test" }, auth);
+      assert.equal(spoof.status, 403);
+    }));
+
+  await test("email query rejects malformed filters", () =>
+    withServer(STAGING, async (call) => {
+      assert.equal((await call("emails", { to: "p1@tennisconnect.test", sinceMs: "yesterday" }, auth)).status, 400);
+      assert.equal((await call("emails", { to: "p1@tennisconnect.test", subjectContains: 5 }, auth)).status, 400);
     }));
 
   console.log(`\n${passed} passed, ${failed} failed`);
