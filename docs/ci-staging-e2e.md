@@ -79,9 +79,12 @@ write data. They must not run until isolated test data and cleanup exist.
      (dev/staging only, secret required), hard limits, dry-run mode, and its
      own unit tests proving it cannot delete non-test data.
    - Scheduled sweeper for leftovers older than N days (same boundary).
-3. **Seeded fixtures** on Staging for login-based tests (`TEST_PLAYER_EMAIL`,
-   `TEST_COACH_EMAIL`, `TEST_ADMIN_EMAIL` + passwords) created by
-   `server/seeds/testPlayersSeed.ts`, all `isTestUser=true`.
+3. **Seeded fixtures** on Staging for login-based tests: the Stage 2
+   `e2e-*@tennisconnect.test` accounts (passwords in `E2E_*_PASSWORD`)
+   created by the operator seed `server/seeds/e2e/` (`npm run
+   e2e:seed:staging`), all `isTestUser=true`. The old `TEST_*_EMAIL`
+   variables are only honoured for `TEST_ENV=local`. Run cleanup and
+   phases: see `docs/staging-e2e-infrastructure.md` (Stage 3).
 
 ### Job layout
 

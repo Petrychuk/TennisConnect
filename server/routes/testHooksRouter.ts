@@ -8,6 +8,7 @@ import type { IStorage } from "../storage";
 import type { CapturedEmailStore, EmailTransport } from "../services/emailCapture";
 import type { StripeKeyMode } from "../lib/stripeMode";
 import { runScopedEmail } from "../seeds/e2e/identities";
+import type { RunCleanupPlan, RunCleanupResult, RunResidue } from "../services/e2eRunCleanup";
 import {
   TEST_HOOK_SECRET_ENV,
   TEST_HOOK_SECRET_HEADER,
@@ -42,6 +43,20 @@ export interface TestHooksDeps {
   capturedEmails: Pick<CapturedEmailStore, "query">;
   /** Environment facts for the regression preflight. Never secret values. */
   getPreflight: () => PreflightReport;
+  /**
+   * Stage 3 run-scoped cleanup (server/services/e2eRunCleanup.ts). Absent
+   * -> the cleanup hooks answer 501.
+   */
+  runCleanup?: RunCleanupDeps;
+}
+
+export interface RunCleanupDeps {
+  /** Read-only plan, plus how many uploaded files would be removed (null if unknown). */
+  plan(runId: string): Promise<
+    RunCleanupPlan & { storageFiles: number | null; storageCleanup: "enabled" | "disabled"; storageError?: string }
+  >;
+  apply(runId: string): Promise<RunCleanupResult>;
+  residue(): Promise<RunResidue[]>;
 }
 
 export interface PreflightReport {
@@ -50,6 +65,8 @@ export interface PreflightReport {
   emailTransport: EmailTransport;
   stripeMode: StripeKeyMode;
   stripeWebhookConfigured: boolean;
+  /** Host of the Supabase project used for uploads (not secret) - Staging must not share Production's. */
+  storageHost: string | null;
 }
 
 let warnedNotConfigured = false;
@@ -265,6 +282,62 @@ export function createTestHooksRouter(deps: TestHooksDeps) {
       }
 
       res.json({ ...session, registrationIds, matchIds });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // -------------------------------------------------------------------
+  // Stage 3 run-scoped cleanup. Always needs X-E2E-Run-Id (also locally)
+  // and acts on that run ONLY. Dry run unless the body says
+  // { apply: true, confirmRunId: <the same run id> }.
+  // -------------------------------------------------------------------
+  router.post("/cleanup-run", async (req, res, next) => {
+    try {
+      const scope = runScope(req, res);
+      if (!scope) return;
+      if (!scope.runId) {
+        return res.status(400).json({ message: "X-E2E-Run-Id is required - cleanup only ever acts on one run" });
+      }
+      if (!deps.runCleanup) {
+        return res.status(501).json({ message: "Run cleanup is not available on this server" });
+      }
+      const { apply, confirmRunId } = req.body || {};
+      if (apply !== undefined && typeof apply !== "boolean") {
+        return res.status(400).json({ message: "apply must be a boolean" });
+      }
+
+      if (apply !== true) {
+        const plan = await deps.runCleanup.plan(scope.runId);
+        return res.json({ mode: "dry-run", ...plan });
+      }
+
+      if (confirmRunId !== scope.runId) {
+        return res.status(400).json({ message: "confirmRunId must repeat X-E2E-Run-Id to delete anything" });
+      }
+      try {
+        const result = await deps.runCleanup.apply(scope.runId);
+        return res.json({ mode: "apply", ...result });
+      } catch (error) {
+        if (error instanceof Error && error.name === "RunCleanupError") {
+          const plan = (error as Error & { plan?: RunCleanupPlan }).plan;
+          return res.status(409).json({ message: error.message, refusals: plan?.refusals ?? [] });
+        }
+        throw error;
+      }
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Read-only: which run ids still own test users (e.g. a cancelled run),
+  // so each can be cleaned explicitly by id. Never a wildcard delete.
+  router.post("/run-residue", async (_req, res, next) => {
+    try {
+      if (!deps.runCleanup) {
+        return res.status(501).json({ message: "Run cleanup is not available on this server" });
+      }
+      res.json({ runs: await deps.runCleanup.residue() });
     } catch (error) {
       next(error);
     }

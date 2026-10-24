@@ -26,7 +26,14 @@ export const TEST_HOOK_SECRET_HEADER = 'X-E2E-Test-Secret';
 /** This run's token (tests/fixtures/run-id.ts). Staging requires it on record-creating hooks. */
 export const TEST_RUN_ID_HEADER = 'X-E2E-Run-Id';
 
-export type TestHookName = 'issue-verification-token' | 'seed-players' | 'seed-session' | 'preflight' | 'emails';
+export type TestHookName =
+  | 'issue-verification-token'
+  | 'seed-players'
+  | 'seed-session'
+  | 'preflight'
+  | 'emails'
+  | 'cleanup-run'
+  | 'run-residue';
 
 export class TestHookError extends Error {
   constructor(message: string, readonly status?: number) {

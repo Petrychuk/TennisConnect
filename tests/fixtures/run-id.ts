@@ -16,7 +16,7 @@
 //     another run's users (server/lib/testHookSecurity.ts, layer 4).
 // Stage 2 never deletes anything; Stage 3 cleanup will use the same token.
 
-import { generateRunId, isValidRunId, runScopedEmail } from '../../server/seeds/e2e/identities';
+import { classifyEmail, generateRunId, isOwnedByRun, isValidRunId, runScopedEmail } from '../../server/seeds/e2e/identities';
 
 export const RUN_ID_ENV = 'E2E_RUN_ID';
 
@@ -66,4 +66,26 @@ export function requireRunOwnedEmail(label: string, env: Record<string, string |
     );
   }
   return email;
+}
+
+/**
+ * Guard for destructive tests (admin delete, bulk delete): throws unless
+ * every target address belongs to THIS run - never a permanent Stage 2
+ * account, another run's user or a real user. Call it right before the
+ * delete is confirmed. Without a run token (local, outside Playwright) it
+ * still refuses anything that is not a non-permanent @tennisconnect.test
+ * test address.
+ */
+export function expectRunOwned(...emails: string[]): void {
+  if (emails.length === 0) throw new RunOwnershipError('expectRunOwned() needs at least one address');
+  const runId = currentRunId();
+  const staging = (process.env.TEST_ENV ?? '').trim().toLowerCase() === 'staging';
+  if (staging && !runId) throw new RunOwnershipError(`${RUN_ID_ENV} is missing - refusing a destructive action on Staging`);
+  for (const email of emails) {
+    const kind = classifyEmail(email).kind;
+    const owned = runId
+      ? isOwnedByRun(email, runId)
+      : kind !== 'baseline' && kind !== 'fixture' && /^[^\s@]+@tennisconnect\.test$/i.test(email.trim());
+    if (!owned) throw new RunOwnershipError(`refusing a destructive action on ${email}: it does not belong to this test run`);
+  }
 }

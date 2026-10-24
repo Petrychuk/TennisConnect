@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { dismissCookieBanner } from '../helpers/auth';
-import { generateTestUser } from '../fixtures/test-users';
+import { generateTestUser, uniqueTestEmail } from '../fixtures/test-users';
 
 /* REG-003 Register - Invalid Email Format (client-side)
 
@@ -84,7 +84,7 @@ test('REG-005 Register API - rejects short password, bad email and bad role dire
   const base = generateTestUser('player');
 
   const shortPassword = await page.request.post('/api/auth/register', {
-    data: { ...base, email: `reg005a_${Date.now()}@tennisconnect.test`, password: 'short1' },
+    data: { ...base, email: uniqueTestEmail('reg005a'), password: 'short1' },
   });
   expect(shortPassword.status()).toBe(400);
 
@@ -96,7 +96,7 @@ test('REG-005 Register API - rejects short password, bad email and bad role dire
   const badRole = await page.request.post('/api/auth/register', {
     data: {
       ...base,
-      email: `reg005b_${Date.now()}@tennisconnect.test`,
+      email: uniqueTestEmail('reg005b'),
       password: 'Test123456!',
       role: 'admin',
     },

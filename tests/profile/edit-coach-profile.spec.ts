@@ -1,14 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { login } from '../helpers/auth';
-import { TEST_USERS } from '../fixtures/test-users';
+import { signInAsNewCoach } from '../helpers/accounts';
 
 test('PROFILE-004 Edit Coach Profile', async ({ page }) => {
   // ---------- Login ----------
-  await login(
-    page,
-    TEST_USERS.coach.email,
-    TEST_USERS.coach.password
-  );
+  // Own run-owned account: the shared Stage 2 coach must never be modified.
+  await signInAsNewCoach(page);
 
   // ---------- Verify login ----------
   await expect(page).toHaveURL(/\/coach\/.+/);

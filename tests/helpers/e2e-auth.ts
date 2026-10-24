@@ -14,7 +14,7 @@
 //   one fails with the variable NAME, never a value.
 // - Refused on Production: these accounts exist only on Local/Staging.
 
-import { chmodSync, mkdirSync } from 'node:fs';
+import { chmodSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import type { APIRequestContext, Browser, BrowserContext, TestInfo } from '@playwright/test';
 import { baselineIdentity, type BaselineRole } from '../../server/seeds/e2e/identities';
@@ -89,6 +89,64 @@ export interface AuthenticatedContextOptions {
 }
 
 /**
+ * Path of a storage-state file holding a live session for `role`, logged in
+ * through the API at most once per worker (unless `fresh`). Callers either
+ * open a new context with it or add its cookies to an existing one.
+ */
+export async function baselineSessionState(
+  role: BaselineRole,
+  testInfo: Pick<TestInfo, 'workerIndex' | 'project'>,
+  options: AuthenticatedContextOptions = {}
+): Promise<string> {
+  assertE2EAuthAllowed();
+  const baseURL = testInfo.project.use.baseURL;
+  if (!baseURL) throw new E2EAuthError('no baseURL configured.');
+
+  const key = `${role}:${testInfo.workerIndex}`;
+  const cached = options.fresh ? undefined : cachedStates.get(key);
+  if (cached) return cached;
+
+  const { request } = await import('@playwright/test');
+  const api = await request.newContext({ baseURL });
+  let statePath: string;
+  try {
+    await loginViaApi(api, role);
+    // A fresh login gets its own file, so a test that logs out can never
+    // invalidate the worker's cached state.
+    statePath = storageStatePath(role, testInfo.workerIndex, options.fresh ? freshCounter++ : undefined);
+    mkdirSync(path.dirname(statePath), { recursive: true, mode: 0o700 });
+    await api.storageState({ path: statePath });
+    chmodSync(statePath, 0o600);
+  } finally {
+    await api.dispose();
+  }
+  if (!options.fresh) cachedStates.set(key, statePath);
+  return statePath;
+}
+
+/** Drops the worker's cached session for `role` (e.g. the server ended it). */
+export function forgetBaselineSession(role: BaselineRole, workerIndex: number) {
+  cachedStates.delete(`${role}:${workerIndex}`);
+}
+
+/** Session cookies from a storage-state file written by baselineSessionState(). */
+export function sessionCookies(statePath: string): StoredCookie[] {
+  const state = JSON.parse(readFileSync(statePath, 'utf8')) as { cookies?: StoredCookie[] };
+  return state.cookies ?? [];
+}
+
+export interface StoredCookie {
+  name: string;
+  value: string;
+  domain: string;
+  path: string;
+  expires: number;
+  httpOnly: boolean;
+  secure: boolean;
+  sameSite: 'Strict' | 'Lax' | 'None';
+}
+
+/**
  * A NEW browser context logged in as `role`. Caller closes it.
  *
  *   const context = await authenticatedContext(browser, 'organiser', testInfo);
@@ -100,29 +158,6 @@ export async function authenticatedContext(
   testInfo: TestInfo,
   options: AuthenticatedContextOptions = {}
 ): Promise<BrowserContext> {
-  assertE2EAuthAllowed();
-  const baseURL = testInfo.project.use.baseURL;
-  if (!baseURL) throw new E2EAuthError('no baseURL configured.');
-
-  const key = `${role}:${testInfo.workerIndex}`;
-  let statePath = options.fresh ? undefined : cachedStates.get(key);
-
-  if (!statePath) {
-    const { request } = await import('@playwright/test');
-    const api = await request.newContext({ baseURL });
-    try {
-      await loginViaApi(api, role);
-      // A fresh login gets its own file, so a test that logs out can never
-      // invalidate the worker's cached state.
-      statePath = storageStatePath(role, testInfo.workerIndex, options.fresh ? freshCounter++ : undefined);
-      mkdirSync(path.dirname(statePath), { recursive: true, mode: 0o700 });
-      await api.storageState({ path: statePath });
-      chmodSync(statePath, 0o600);
-    } finally {
-      await api.dispose();
-    }
-    if (!options.fresh) cachedStates.set(key, statePath);
-  }
-
-  return browser.newContext({ baseURL, storageState: statePath });
+  const statePath = await baselineSessionState(role, testInfo, options);
+  return browser.newContext({ baseURL: testInfo.project.use.baseURL, storageState: statePath });
 }

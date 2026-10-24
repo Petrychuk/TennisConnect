@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { dismissCookieBanner } from '../helpers/auth';
+import { uniqueTestEmail } from '../fixtures/test-users';
 
 test('AUTH-006 Forgot Password Success', async ({ page }) => {
 
@@ -9,7 +10,10 @@ test('AUTH-006 Forgot Password Success', async ({ page }) => {
     await page.getByTestId('forgot-password-link').click();
   
     await page.getByTestId('forgot-email-input')
-      .fill('player@test.com');
+      // Run-owned address that was never registered: the server answers
+      // with the same generic success, and no reset token is created for
+      // anyone (previously a hard-coded player@test.com).
+      .fill(uniqueTestEmail('forgot'));
   
     await page.getByTestId('send-reset-link-button')
       .click();

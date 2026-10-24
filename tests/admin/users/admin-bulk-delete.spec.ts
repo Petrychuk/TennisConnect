@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { registerPlayer, login } from '../../helpers/auth';
 import { TEST_USERS } from '../../fixtures/test-users';
+import { expectRunOwned } from '../../fixtures/run-id';
 
 /* ADMIN-005 Bulk Delete - selected ordinary players are all removed
 
@@ -13,6 +14,9 @@ test('ADMIN-005 Bulk delete - selected ordinary players are all removed', async 
 
   const playerA = await registerPlayer(page);
   const playerB = await registerPlayer(page);
+  // Destructive admin test: every target must belong to this run (never a
+  // permanent Stage 2 account, another run's user or a real user).
+  expectRunOwned(playerA.email, playerB.email);
 
   // ---------- Login as admin ----------
 
@@ -82,6 +86,9 @@ test('ADMIN-006 Bulk delete - an org owner in the batch is reported, not deleted
 
   const plainPlayer = await registerPlayer(page);
   const orgOwner = await registerPlayer(page);
+  // Destructive admin test: every target must belong to this run (never a
+  // permanent Stage 2 account, another run's user or a real user).
+  expectRunOwned(plainPlayer.email, orgOwner.email);
 
   await login(
     page,
