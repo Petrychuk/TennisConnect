@@ -2,6 +2,7 @@ import { Page } from '@playwright/test';
 import { registerPlayer } from './auth';
 import { grantOrganizerAccess } from './messages';
 import { TEST_USERS } from '../fixtures/test-users';
+import { postTestHook } from './test-hooks';
 
 /*
   Organiser Hub test helpers.
@@ -127,16 +128,12 @@ export interface SeededPlayer {
 // Creates `count` real, usable player accounts directly (verified,
 // approved, profile-complete) via /api/test-hooks/seed-players - for
 // tests that just need userIds for registrations/match results, not
-// full register+verify-email flows per player.
-export async function seedPlayers(page: Page, count: number): Promise<SeededPlayer[]> {
-  const res = await page.request.post('/api/test-hooks/seed-players', { data: { count } });
-  if (!res.ok()) {
-    throw new Error(
-      `seedPlayers(): /api/test-hooks/seed-players returned ${res.status()} - is the server running with ` +
-      `NODE_ENV=development or DB_ENV=staging? ${await res.text()}`
-    );
-  }
-  const { players } = await res.json();
+// full register+verify-email flows per player. Authenticated with
+// E2E_TEST_HOOK_SECRET via postTestHook (helpers/test-hooks.ts). `page`
+// is kept for call-site compatibility; the hook doesn't need the
+// browser session.
+export async function seedPlayers(_page: Page, count: number): Promise<SeededPlayer[]> {
+  const { players } = await postTestHook<{ players: SeededPlayer[] }>('seed-players', { count });
   return players;
 }
 
@@ -156,10 +153,13 @@ export interface SeededSession {
 // Creates one Session - by default already "completed" - optionally
 // under a Season/Series, with registrations (each optionally checked
 // in) and confirmed match results, in a single call via
-// /api/test-hooks/seed-session. `organizationId`/`createdBy` should be
-// the organiser fixture's own ids (see becomeOrganiser above).
+// /api/test-hooks/seed-session. `organizationId`/`createdBy` must be
+// the organiser fixture's own ids (see becomeOrganiser above): the server
+// rejects (403) a creator or participant that isn't a test user, an
+// organization not owned by the creator, and a season/series from
+// another organization.
 export async function seedSession(
-  page: Page,
+  _page: Page,
   data: {
     organizationId: string;
     createdBy: string;
@@ -175,9 +175,5 @@ export async function seedSession(
     matches?: SeededMatch[];
   }
 ): Promise<SeededSession> {
-  const res = await page.request.post('/api/test-hooks/seed-session', { data });
-  if (!res.ok()) {
-    throw new Error(`seedSession(): /api/test-hooks/seed-session returned ${res.status()} - ${await res.text()}`);
-  }
-  return res.json();
+  return postTestHook<SeededSession>('seed-session', data);
 }

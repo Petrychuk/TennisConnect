@@ -26,6 +26,7 @@ import playRouter from "./routes/play";
 import weatherRouter from "./routes/weather";
 import supportRouter from "./routes/support";
 import testHooksRouter from "./routes/testHooks";
+import { shouldFlagRegistrationAsTestUser } from "./lib/testHookSecurity";
 
 import {
   insertUserSchema,
@@ -189,10 +190,11 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/api/weather", weatherRouter);
   app.use("/api/support", supportRouter);
 
-  // Guarded internally per-request (see server/routes/testHooks.ts) -
-  // mounted unconditionally here so it's reachable on staging, which
-  // runs the same NODE_ENV=production build as prod and can't be told
-  // apart from it by that alone.
+  // Guarded internally per-request (see server/routes/testHooks.ts:
+  // environment + X-E2E-Test-Secret + test-data checks) - mounted
+  // unconditionally here so it's reachable on staging, which runs the
+  // same NODE_ENV=production build as prod and can't be told apart from
+  // it by that alone.
   app.use("/api/test-hooks", testHooksRouter);
 
   // TC Live dev simulator backend - only exists in development, never
@@ -265,6 +267,15 @@ export async function registerRoutes(app: Express): Promise<void> {
         // this endpoint is explicitly unverified.
         emailVerified: false,
         emailVerifiedAt: null,
+        // Playwright registrations (reserved @tennisconnect.test domain)
+        // are flagged as test accounts on development/staging only -
+        // never on production. Only isTestUser accounts can receive a
+        // token from /api/test-hooks/issue-verification-token. Not
+        // client-controllable: insertUserSchema doesn't accept it.
+        isTestUser: shouldFlagRegistrationAsTestUser(parsed.data.email, {
+          nodeEnv: process.env.NODE_ENV,
+          dbEnv: env.DB_ENV,
+        }),
       });
 
       // 🔑 AUTO-CREATE PROFILE

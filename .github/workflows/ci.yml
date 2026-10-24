@@ -26,6 +26,9 @@ jobs:
       # Playwright environment guard (TEST_ENV / BASE_URL / /api/health /
       # Production allowlist). No browser, no network, no database.
       - run: npm run test:e2e:guard
+      # /api/test-hooks security (environment gate, shared secret,
+      # test-data ownership). In-memory fakes - no database, no network.
+      - run: npm run test:test-hooks
 
   dependency-audit:
     name: Dependency vulnerability scan
@@ -95,6 +98,11 @@ jobs:
       TEST_ENV: local
       BASE_URL: http://localhost:3000
       DB_ENV: test
+      # Shared by the app server (checks the X-E2E-Test-Secret header) and
+      # the Playwright helpers (send it). GitHub Actions secret; it is not
+      # available to pull requests from forks, so hook-based tests fail
+      # there by design.
+      E2E_TEST_HOOK_SECRET: ${{ secrets.E2E_TEST_HOOK_SECRET }}
 
     services:
       postgres:
