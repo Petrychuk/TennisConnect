@@ -5,6 +5,7 @@ import {
   productionTestMatch,
   resolveTarget,
 } from './tests/safety/environment-guard';
+import { ensureRunId } from './tests/fixtures/run-id';
 
 /**
  * Read environment variables from file.
@@ -29,6 +30,10 @@ import {
 */
 const target = resolveTarget(process.env);
 const isProduction = target.testEnv === 'production';
+
+// One run token per Playwright run, inherited by all workers. Temporary
+// records carry it so Stage 3 cleanup can be limited to this run's data.
+ensureRunId(process.env);
 
 /**
  * See https://playwright.dev/docs/test-configuration.

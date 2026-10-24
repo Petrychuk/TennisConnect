@@ -1,4 +1,5 @@
 import { resolveTarget } from '../safety/environment-guard';
+import { currentRunId } from '../fixtures/run-id';
 
 /*
   Authenticated calls to /api/test-hooks/* (server/routes/testHooks.ts).
@@ -22,6 +23,8 @@ import { resolveTarget } from '../safety/environment-guard';
 
 export const TEST_HOOK_SECRET_ENV = 'E2E_TEST_HOOK_SECRET';
 export const TEST_HOOK_SECRET_HEADER = 'X-E2E-Test-Secret';
+/** This run's token (tests/fixtures/run-id.ts). Staging requires it on record-creating hooks. */
+export const TEST_RUN_ID_HEADER = 'X-E2E-Run-Id';
 
 export type TestHookName = 'issue-verification-token' | 'seed-players' | 'seed-session' | 'preflight' | 'emails';
 
@@ -48,10 +51,12 @@ export function getTestHookSecret(env: Record<string, string | undefined> = proc
 }
 
 export function testHookHeaders(env: Record<string, string | undefined> = process.env): Record<string, string> {
+  const runId = currentRunId(env);
   return {
     'content-type': 'application/json',
     accept: 'application/json',
     [TEST_HOOK_SECRET_HEADER]: getTestHookSecret(env),
+    ...(runId ? { [TEST_RUN_ID_HEADER]: runId } : {}),
   };
 }
 

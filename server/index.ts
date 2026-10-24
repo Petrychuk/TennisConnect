@@ -37,6 +37,7 @@ import { startDiscoveryScheduler } from "./services/discoveryScheduler";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { setupAuth } from "./auth";
+import { shouldLogResponseBody } from "./lib/responseLogging";
 
 const app = express();
 
@@ -210,8 +211,10 @@ app.use((req, res, next) => {
     let logLine =
       `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
 
-    // Keep existing response-body logging outside production only.
-    if (capturedJsonResponse && !isProduction) {
+    // Keep existing response-body logging outside production only -
+    // never for test hooks (tokens, captured emails): see
+    // server/lib/responseLogging.ts.
+    if (capturedJsonResponse && shouldLogResponseBody(path, isProduction)) {
       logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
     }
 

@@ -5,8 +5,49 @@
 // in-memory store - no network, no database, nothing is sent.
 
 import assert from "node:assert/strict";
-import { CapturedEmailStore, extractLinks, resolveEmailTransport } from "./emailCapture";
+import { CapturedEmailStore, capturedEmails, extractLinks, resolveEmailTransport } from "./emailCapture";
+import { sendDuplicateRegistrationAlertEmail, sendPasswordResetEmail, sendVerificationEmail } from "./emailService";
 import { isLiveEventOutsideProduction, stripeCheckoutBlockedReason, stripeKeyMode } from "../lib/stripeMode";
+import { shouldLogResponseBody } from "../lib/responseLogging";
+
+// ---------- Email service harness: fake Resend, captured console ----------
+
+const FAKE_KEY = `re_fake_${Math.random().toString(36).slice(2)}`;
+const RESET_TOKEN = `tok_${Math.random().toString(36).slice(2)}`;
+
+async function withEmailEnv(
+  env: { DB_ENV?: string; EMAIL_TRANSPORT?: string },
+  fn: (ctx: { fetchCalls: { url: string; body: string }[]; logs: string[] }) => Promise<void>
+) {
+  const saved = { ...process.env };
+  const savedFetch = globalThis.fetch;
+  const savedLog = console.log;
+  const savedError = console.error;
+  const fetchCalls: { url: string; body: string }[] = [];
+  const logs: string[] = [];
+
+  process.env.RESEND_API_KEY = FAKE_KEY;
+  process.env.RESEND_FROM_EMAIL = "TennisConnect <no-reply@example.invalid>";
+  delete process.env.DB_ENV;
+  delete process.env.EMAIL_TRANSPORT;
+  Object.assign(process.env, env);
+
+  globalThis.fetch = (async (url: unknown, init?: { body?: unknown }) => {
+    fetchCalls.push({ url: String(url), body: String(init?.body ?? "") });
+    return new Response(JSON.stringify({ id: "fake" }), { status: 200 });
+  }) as typeof fetch;
+  console.log = (...args: unknown[]) => { logs.push(args.map(String).join(" ")); };
+  console.error = (...args: unknown[]) => { logs.push(args.map(String).join(" ")); };
+
+  try {
+    await fn({ fetchCalls, logs });
+  } finally {
+    process.env = saved;
+    globalThis.fetch = savedFetch;
+    console.log = savedLog;
+    console.error = savedError;
+  }
+}
 
 let passed = 0;
 let failed = 0;
@@ -91,6 +132,63 @@ async function main() {
     assert.deepEqual(extractLinks("no links here"), []);
   });
 
+  // ---------- emailService end to end (fake Resend) ----------
+
+  await test("Production delivers through Resend - even with EMAIL_TRANSPORT=capture", async () => {
+    for (const configured of [undefined, "capture"]) {
+      await withEmailEnv({ DB_ENV: "production", ...(configured ? { EMAIL_TRANSPORT: configured } : {}) }, async ({ fetchCalls }) => {
+        const before = capturedEmails.size();
+        const result = await sendPasswordResetEmail("someone@example.com", `https://x/reset?token=${RESET_TOKEN}`);
+        assert.deepEqual(result, { ok: true });
+        assert.equal(fetchCalls.length, 1, String(configured));
+        assert.equal(fetchCalls[0].url, "https://api.resend.com/emails");
+        assert.equal(capturedEmails.size(), before, "nothing captured on Production");
+      });
+    }
+  });
+
+  await test("Staging never calls Resend: every email (incl. real addresses) is captured", async () => {
+    await withEmailEnv({ DB_ENV: "staging" }, async ({ fetchCalls }) => {
+      const before = capturedEmails.size();
+      assert.deepEqual(await sendVerificationEmail("e2e_x@tennisconnect.test", "https://s/verify-email?token=abc"), { ok: true });
+      assert.deepEqual(await sendPasswordResetEmail("real.person@gmail.com", `https://s/reset?token=${RESET_TOKEN}`), { ok: true });
+      assert.deepEqual(await sendDuplicateRegistrationAlertEmail("real.person@gmail.com"), { ok: true });
+      assert.equal(fetchCalls.length, 0, "Resend must not be called on Staging");
+      assert.equal(capturedEmails.size(), before + 3);
+      assert.deepEqual(capturedEmails.query({ to: "e2e_x@tennisconnect.test" })[0].links, ["https://s/verify-email?token=abc"]);
+    });
+  });
+
+  await test("capture logs neither recipient, link, token nor API key", async () => {
+    await withEmailEnv({ DB_ENV: "staging" }, async ({ logs }) => {
+      await sendPasswordResetEmail("real.person@gmail.com", `https://s/reset?token=${RESET_TOKEN}`);
+      const all = logs.join("\n");
+      assert.ok(logs.some(line => line.includes("captured, not sent")));
+      for (const secret of ["real.person@gmail.com", RESET_TOKEN, "https://s/reset", FAKE_KEY]) {
+        assert.ok(!all.includes(secret), `log leaked ${secret}`);
+      }
+    });
+  });
+
+  await test("explicit EMAIL_TRANSPORT=resend on Staging delivers (preflight then fails)", async () => {
+    await withEmailEnv({ DB_ENV: "staging", EMAIL_TRANSPORT: "resend" }, async ({ fetchCalls }) => {
+      await sendVerificationEmail("e2e_y@tennisconnect.test", "https://s/verify-email?token=def");
+      assert.equal(fetchCalls.length, 1);
+    });
+  });
+
+  // ---------- Response-body logging ----------
+
+  await test("test-hook responses are never body-logged; other API bodies unchanged", () => {
+    for (const path of ["/api/test-hooks/emails", "/api/test-hooks/issue-verification-token", "/api/test-hooks", "/API/Test-Hooks/emails"]) {
+      assert.equal(shouldLogResponseBody(path, false), false, path);
+      assert.equal(shouldLogResponseBody(path, true), false, path);
+    }
+    assert.equal(shouldLogResponseBody("/api/coaches", false), true);
+    assert.equal(shouldLogResponseBody("/api/test-hooksX", false), true);
+    assert.equal(shouldLogResponseBody("/api/coaches", true), false, "production never body-logs (unchanged)");
+  });
+
   // ---------- Stripe test mode ----------
 
   await test("key mode is recognised without ever needing the full key", () => {
@@ -129,9 +227,7 @@ async function main() {
   });
 
   console.log(`\n${passed} passed, ${failed} failed`);
-  if (failed > 0) {
-    throw new Error(`${failed} test(s) failed`);
-  }
+  if (failed > 0) process.exit(1);
 }
 
 main();
