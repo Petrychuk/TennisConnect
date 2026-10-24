@@ -27,6 +27,7 @@ import weatherRouter from "./routes/weather";
 import supportRouter from "./routes/support";
 import testHooksRouter from "./routes/testHooks";
 import { shouldFlagRegistrationAsTestUser } from "./lib/testHookSecurity";
+import { buildHealthPayload } from "./lib/health";
 
 import {
   insertUserSchema,
@@ -1943,10 +1944,16 @@ export async function registerRoutes(app: Express): Promise<void> {
   // ===== STATS HOMEPAGE ROUTES =====
   // Public, deliberately minimal - lets tests/global-setup.ts (and any
   // monitoring) ask "which database is this instance actually talking
-  // to" without exposing the connection string itself. Never add
-  // anything secret to this response.
+  // to" without exposing the connection string itself, and lets CI check
+  // which commit a non-production instance runs (server/lib/health.ts).
+  // Never add anything secret to this response.
   app.get("/api/health", (_req, res) => {
-    res.json({ dbEnv: env.DB_ENV });
+    res.json(
+      buildHealthPayload({
+        dbEnv: env.DB_ENV,
+        railwayGitCommitSha: process.env.RAILWAY_GIT_COMMIT_SHA,
+      })
+    );
   });
 
   app.get("/api/stats", async (_req, res) => {

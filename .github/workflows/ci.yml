@@ -5,15 +5,37 @@ name: CI
 # caught here, before merge, instead of being noticed in production.
 # See the security audit this came out of: "Security Testing in CI"
 # was a flat gap - there was no .github/ directory before this file.
+#
+# Pull-request CI is self-contained: no Railway, no database, no secrets.
+# Tests against the real Railway Staging environment live in the separate,
+# manually triggered `staging-smoke` job below. Full E2E against Staging is
+# not wired up yet - see docs/ci-staging-e2e.md for the planned design.
 
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: >-
+          Full 40-character commit SHA Railway Staging must be running.
+          Leave empty to use the commit of the selected branch (normally main).
+        required: false
+        default: ''
+      wait_minutes:
+        description: Minutes to wait for Railway to finish deploying that commit (0-30).
+        required: false
+        default: '10'
+
+# Least privilege for every job: read the repository, nothing else.
+permissions:
+  contents: read
 
 jobs:
   typecheck:
     name: Typecheck
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,15 +45,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
-      # Playwright environment guard (TEST_ENV / BASE_URL / /api/health /
-      # Production allowlist). No browser, no network, no database.
-      - run: npm run test:e2e:guard
-      # /api/test-hooks security (environment gate, shared secret,
-      # test-data ownership). In-memory fakes - no database, no network.
-      - run: npm run test:test-hooks
 
   dependency-audit:
     name: Dependency vulnerability scan
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -46,9 +63,9 @@ jobs:
       # would make this check something people learn to ignore.
       - run: npm audit --audit-level=high
 
-  
   secret-scan:
     name: Secret scan
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -65,62 +82,98 @@ jobs:
             --verbose \
             --exit-code 1
 
-  # ---------------------------------------------------------------------
-  # E2E / security regression tests (Playwright).
-  #
-  # NOT verified end-to-end in this environment - there was no CI setup
-  # at all before this file, so this job is a best-effort starting
-  # point, not a proven-working pipeline. Before trusting it:
-  #   1. Add repo secrets: DATABASE_URL (a real, disposable TEST
-  #      database - never point this at production or staging data),
-  #      SESSION_SECRET, and any other env vars server/env.ts requires
-  #      at boot (check that file for the full required list).
-  #   2. Confirm `npm run db:push` against that DATABASE_URL actually
-  #      produces a schema the app can run against from a clean slate.
-  #   3. Confirm the server actually becomes reachable at
-  #      http://localhost:5000 after `npm run dev` (check server/
-  #      index.ts for the real port if this doesn't match) - the sleep
-  #      below is a crude fixed wait, not a real readiness check.
-  #   4. Run this job once and read its actual output before trusting
-  #      green/red - a workflow that's never executed can look
-  #      complete while quietly failing at step 1.
-  e2e-tests:
-    name: E2E tests (Playwright)
+  e2e-guard:
+    name: Playwright environment guard
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
-    needs: [typecheck]
-
-    env:
-      DATABASE_URL: postgresql://tennisconnect_test:test_password@localhost:5432/tennisconnect_test
-      SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
-      # Environment guard (tests/safety/environment-guard.ts): the run is
-      # refused unless the server's GET /api/health reports a DB_ENV that
-      # matches TEST_ENV. DB_ENV=test marks this throwaway Postgres.
-      TEST_ENV: local
-      BASE_URL: http://localhost:3000
-      DB_ENV: test
-      # Shared by the app server (checks the X-E2E-Test-Secret header) and
-      # the Playwright helpers (send it). GitHub Actions secret; it is not
-      # available to pull requests from forks, so hook-based tests fail
-      # there by design.
-      E2E_TEST_HOOK_SECRET: ${{ secrets.E2E_TEST_HOOK_SECRET }}
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: tennisconnect_test
-          POSTGRES_PASSWORD: test_password
-          POSTGRES_DB: tennisconnect_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U tennisconnect_test -d tennisconnect_test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # TEST_ENV / BASE_URL / /api/health checks, Production allowlist,
+      # deployed-commit verification and the staging smoke selection.
+      # Uses `playwright test --list` only: no browser, no network.
+      - run: npm run test:e2e:guard
+
+  test-hooks-security:
+    name: Test-hooks security
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # /api/test-hooks environment gate, shared secret and test-data
+      # ownership. In-memory fakes - no database, no network, no secrets.
+      - run: npm run test:test-hooks
+
+  # ---------------------------------------------------------------------
+  # Read-only smoke tests against the REAL Railway Staging environment.
+  #
+  # Manual only (Actions -> CI -> Run workflow). Never runs for pull
+  # requests, so untrusted code never reaches Staging, and it uses no
+  # secrets at all: the selected tests are public, guest-only pages.
+  #
+  # Fails closed, in order:
+  #   1. expected commit must be a full SHA that is on main (Railway
+  #      Staging only deploys main);
+  #   2. Staging's /api/health must report dbEnv=staging AND exactly that
+  #      commit (waits up to wait_minutes for Railway to finish deploying);
+  #   3. Playwright's own guard re-checks BASE_URL, dbEnv and the commit.
+  # There is no Production fallback anywhere: BASE_URL is fixed below and
+  # the guard rejects Production hosts for TEST_ENV=staging.
+  # ---------------------------------------------------------------------
+  staging-smoke:
+    name: Staging smoke (Railway, read-only)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    concurrency:
+      group: staging-smoke
+      cancel-in-progress: false
+
+    env:
+      TEST_ENV: staging
+      BASE_URL: https://tennisconnect-staging.up.railway.app
+
+    steps:
+      - name: Resolve expected Staging commit
+        id: expected
+        env:
+          # Passed via env, never interpolated into the script (injection-safe).
+          INPUT_SHA: ${{ inputs.expected_sha }}
+          REF_SHA: ${{ github.sha }}
+        run: |
+          sha="${INPUT_SHA:-$REF_SHA}"
+          sha="$(printf '%s' "$sha" | tr 'A-F' 'a-f' | tr -d '[:space:]')"
+          if ! [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::expected_sha must be a full 40-character commit SHA."
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "Expected Railway Staging commit: $sha"
+
+      # Test code from the same commit Staging should be running.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.expected.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Expected commit must be on main
+        env:
+          SHA: ${{ steps.expected.outputs.sha }}
+        run: |
+          if ! git merge-base --is-ancestor "$SHA" origin/main; then
+            echo "::error::$SHA is not on main. Railway Staging deploys only from main, so it can never be running this commit."
+            exit 1
+          fi
 
       - uses: actions/setup-node@v4
         with:
@@ -129,34 +182,24 @@ jobs:
 
       - run: npm ci
 
+      - name: Verify Staging runs the expected commit (dbEnv=staging)
+        env:
+          EXPECTED_DEPLOY_SHA: ${{ steps.expected.outputs.sha }}
+          DEPLOY_WAIT_MINUTES: ${{ inputs.wait_minutes }}
+        run: npm run e2e:verify-staging-deploy
+
       - run: npx playwright install --with-deps chromium
 
-      - name: Push schema to the test database
-        run: npm run db:push
-
-      - name: Start the app
-        run: |
-          nohup npm run dev > /tmp/tennisconnect-server.log 2>&1 &
-          echo $! > /tmp/tennisconnect-server.pid
+      - name: Run selected read-only smoke tests
         env:
-          NODE_ENV: development
-
-      - name: Wait for the app to be ready
-        run: |
-          if ! npx wait-on http://localhost:3000 --timeout 60000; then
-            echo "=== Server startup logs ==="
-            cat /tmp/tennisconnect-server.log || true
-            echo "=== Server process ==="
-            ps aux | grep -E 'tsx|server/index' || true
-            exit 1
-          fi
-
-      - name: Run smoke tests
-        run: npx playwright test --grep @smoke
+          # Re-checked by tests/global-setup.ts before any test runs.
+          EXPECTED_DEPLOY_SHA: ${{ steps.expected.outputs.sha }}
+        run: npm run test:e2e:staging:smoke:ci
 
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: always()
         with:
-          name: playwright-report
+          name: staging-smoke-report
           path: playwright-report/
           retention-days: 14
+          if-no-files-found: ignore
