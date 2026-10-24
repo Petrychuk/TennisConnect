@@ -10,13 +10,17 @@ import {
   checkTestHookAccess,
   isReservedTestEmail,
   isUsableServerSecret,
+  participantInRunScope,
+  resolveRunScope,
   secretsMatch,
+  userInRunScope,
   shouldFlagRegistrationAsTestUser,
   testHooksEnvironmentAllowed,
   validateSeedSessionInput,
   type SeedLookups,
   type TestHookConfig,
 } from "./testHookSecurity";
+import { generateRunId, runScopedEmail } from "../seeds/e2e/identities";
 
 let passed = 0;
 let failed = 0;
@@ -309,6 +313,67 @@ async function main() {
     const { lookups, calls } = fakeLookups();
     await validateSeedSessionInput({ ...validSession(), status: "hacked" }, lookups);
     assert.deepEqual(calls, []);
+  });
+
+  // ---------- Run ownership (layer 4) ----------
+
+  const RUN = generateRunId(1_790_000_000_000, Buffer.from("0011223344556677", "hex"));
+  const OTHER = generateRunId(1_790_000_000_000, Buffer.from("8899aabbccddeeff", "hex"));
+
+  await test("resolveRunScope: required on Staging, optional locally, malformed always refused", () => {
+    assert.deepEqual(resolveRunScope({ dbEnv: "staging" }, RUN), { ok: true, runId: RUN });
+    assert.deepEqual(resolveRunScope({ dbEnv: undefined }, undefined), { ok: true, runId: undefined });
+    assert.deepEqual(resolveRunScope({ dbEnv: undefined }, ""), { ok: true, runId: undefined });
+    for (const missing of [undefined, "", "   "]) {
+      const scope = resolveRunScope({ dbEnv: " Staging " }, missing);
+      assert.equal(scope.ok, false, String(missing));
+    }
+    for (const bad of ["abc", `${RUN},${OTHER}`, [RUN, OTHER], RUN.toUpperCase(), `${RUN}\n`.repeat(2)]) {
+      assert.equal(resolveRunScope({ dbEnv: undefined }, bad).ok, false, String(bad));
+      assert.equal(resolveRunScope({ dbEnv: "staging" }, bad).ok, false, String(bad));
+    }
+  });
+
+  await test("userInRunScope / participantInRunScope", () => {
+    const mine = { email: runScopedEmail(RUN, "a") };
+    const theirs = { email: runScopedEmail(OTHER, "a") };
+    const fixture = { email: "e2e-fixture-coach-03@tennisconnect.test" };
+    const baseline = { email: "e2e-player@tennisconnect.test" };
+    const legacy = { email: "test_player_1_ab@tennisconnect.test" };
+    assert.equal(userInRunScope(mine, RUN), true);
+    for (const user of [theirs, fixture, baseline, legacy, { email: null }, {}]) assert.equal(userInRunScope(user, RUN), false);
+    for (const user of [mine, fixture, baseline]) assert.equal(participantInRunScope(user, RUN), true);
+    for (const user of [theirs, legacy, { email: "x@gmail.com" }]) assert.equal(participantInRunScope(user, RUN), false);
+    // No run (local): previous behaviour.
+    assert.equal(userInRunScope(legacy, undefined), true);
+    assert.equal(participantInRunScope(theirs, undefined), true);
+  });
+
+  await test("validateSeedSessionInput with a run id: creator and participants must be in scope", async () => {
+    const users = new Map([
+      ["c", { id: "c", isTestUser: true, email: runScopedEmail(RUN, "c") }],
+      ["p", { id: "p", isTestUser: true, email: runScopedEmail(RUN, "p") }],
+      ["fx", { id: "fx", isTestUser: true, email: "e2e-fixture-player-02@tennisconnect.test" }],
+      ["other", { id: "other", isTestUser: true, email: runScopedEmail(OTHER, "p") }],
+      ["oc", { id: "oc", isTestUser: true, email: runScopedEmail(OTHER, "c") }],
+    ]);
+    const lookups: SeedLookups = {
+      getUser: async (id) => users.get(id),
+      getOrganizationById: async (id) => (id === "o" ? { id, ownerId: "c" } : id === "o2" ? { id, ownerId: "oc" } : undefined),
+      getSeasonById: async () => undefined,
+      getSeriesById: async () => undefined,
+    };
+    const body = (createdBy: string, organizationId: string, ids: string[]) => ({
+      organizationId, createdBy, title: "t", startAt: "2026-10-01T09:00:00Z",
+      registrations: ids.map((userId) => ({ userId })),
+    });
+    assert.equal((await validateSeedSessionInput(body("c", "o", ["p", "fx"]), lookups, RUN)).ok, true);
+    const foreignCreator = await validateSeedSessionInput(body("oc", "o2", ["p"]), lookups, RUN);
+    assert.equal(foreignCreator.ok, false);
+    const foreignPlayer = await validateSeedSessionInput(body("c", "o", ["p", "other"]), lookups, RUN);
+    assert.ok(!foreignPlayer.ok && foreignPlayer.status === 403);
+    // Without a run id (local) the same body is accepted as before.
+    assert.equal((await validateSeedSessionInput(body("c", "o", ["p", "other"]), lookups)).ok, true);
   });
 
   console.log(`\n${passed} passed, ${failed} failed`);

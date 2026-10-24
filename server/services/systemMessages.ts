@@ -1,4 +1,5 @@
 import { storage } from "../storage";
+import { pairConversationId } from "../lib/conversationId";
 
 // Same two people always get the same thread, regardless of who sent
 // which message or what it was about - "conversation between admin
@@ -8,9 +9,8 @@ import { storage } from "../storage";
 // of message reaches them first - a session invite followed later by
 // a regular reply, or the other way round, land in one thread either
 // way instead of silently splitting into two tabs for the same person.
-export function pairConversationId(idA: string, idB: string): string {
-  return `conv-${[idA, idB].sort().join("-")}`;
-}
+// Moved unchanged to ../lib/conversationId so it can be used without storage.
+export { pairConversationId };
 
 /**
  * A message with a real sender behind it - the actual admin, organiser,

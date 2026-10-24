@@ -116,6 +116,10 @@ jobs:
       # log redaction and Stripe test-mode guards. Fake Resend, no network,
       # no secrets.
       - run: npm run test:staging-safety
+      # Stage 2 E2E fixtures: identities, run tokens, deterministic fixture
+      # data, the Staging-only seed gate and the seeder against an in-memory
+      # store. No database, no credentials, no network - nothing is seeded.
+      - run: npm run test:staging-fixtures
 
   # ---------------------------------------------------------------------
   # Read-only smoke tests against the REAL Railway Staging environment.

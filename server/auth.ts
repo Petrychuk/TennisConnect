@@ -3,29 +3,13 @@ import { Strategy as LocalStrategy } from "passport-local";
 import { type Express } from "express";
 import session from "express-session";
 import pgSession from "connect-pg-simple";
-import { scrypt, randomBytes, timingSafeEqual } from "crypto";
-import { promisify } from "util";
+import { hashPassword, comparePasswords } from "./lib/passwords";
 import { storage } from "./storage";
 import { env } from "./env";
 import { pool } from "./db";
 
-const scryptAsync = promisify(scrypt);
-
-async function hashPassword(password: string): Promise<string> {
-  const salt = randomBytes(16).toString("hex");
-  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
-  return `${buf.toString("hex")}.${salt}`;
-}
-
-async function comparePasswords(
-  supplied: string,
-  stored: string,
-): Promise<boolean> {
-  const [hashedPassword, salt] = stored.split(".");
-  const hashedPasswordBuf = Buffer.from(hashedPassword, "hex");
-  const suppliedPasswordBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
-  return timingSafeEqual(hashedPasswordBuf, suppliedPasswordBuf);
-}
+// hashPassword / comparePasswords live in ./lib/passwords (unchanged) so
+// tools can hash without importing this module; re-exported below.
 
 declare global {
   namespace Express {
