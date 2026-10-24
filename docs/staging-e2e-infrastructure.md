@@ -17,7 +17,7 @@ Built in reviewable stages. This document grows with each stage.
 
 ## Stage 1 — safety foundations
 
-### Email: captured on Staging, never delivered
+### Email: captured on Staging (except allowlisted team addresses)
 
 All outgoing email goes through `sendEmail()` in
 `server/services/emailService.ts`. The transport is decided per send by
@@ -26,7 +26,7 @@ All outgoing email goes through `sendEmail()` in
 | Environment | `EMAIL_TRANSPORT` | Result |
 |---|---|---|
 | `DB_ENV=production` | anything | Delivered through Resend (unchanged) |
-| `DB_ENV=staging` | unset | **Captured** (default) |
+| `DB_ENV=staging` | unset | **Captured** (default) - except recipients on `STAGING_EMAIL_ALLOWLIST`, which are delivered |
 | any non-production | `capture` | Captured |
 | any non-production | `resend` | Delivered (explicit opt-out) |
 | local development | unset | Delivered as before |
@@ -84,6 +84,8 @@ and exits 1, listing every problem, unless all of these hold:
 | `DB_ENV=staging` | Railway Staging | Identifies Staging (already set) |
 | `E2E_TEST_HOOK_SECRET` | Railway Staging + GitHub secret | Test-hook access (already set) |
 | `EMAIL_TRANSPORT` | Railway Staging (optional) | Leave unset (= capture). Never set on Production |
+| `STAGING_EMAIL_ALLOWLIST` | Railway Staging (optional) | Real team addresses (`anna@gmail.com`) or domains (`@tennisconnect.com.au`) that DO receive Staging email (e.g. password reset for manual testing). Never matches `@tennisconnect.test`; ignored with `EMAIL_TRANSPORT=capture` and on Production |
+| `APP_URL` | Optional | Base URL for links in emails. Unset = the known site of the environment (Staging links point at Staging); the request `Origin` is only used if it is a known site |
 | `STRIPE_SECRET_KEY` | Railway Staging | Must be a test key (`sk_test_`/`rk_test_`) |
 | `STRIPE_WEBHOOK_SECRET` | Railway Staging | Needed only for payment tests |
 | `EXPECTED_DEPLOY_SHA` | Workflow input | Commit Staging must run |

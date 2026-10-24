@@ -5,7 +5,7 @@
 // in-memory store - no network, no database, nothing is sent.
 
 import assert from "node:assert/strict";
-import { CapturedEmailStore, capturedEmails, extractLinks, resolveEmailTransport } from "./emailCapture";
+import { CapturedEmailStore, capturedEmails, extractLinks, isAllowlistedRecipient, parseEmailAllowlist, resolveEmailTransport } from "./emailCapture";
 import { sendDuplicateRegistrationAlertEmail, sendPasswordResetEmail, sendVerificationEmail } from "./emailService";
 import { isLiveEventOutsideProduction, stripeCheckoutBlockedReason, stripeKeyMode } from "../lib/stripeMode";
 import { shouldLogResponseBody } from "../lib/responseLogging";
@@ -16,7 +16,7 @@ const FAKE_KEY = `re_fake_${Math.random().toString(36).slice(2)}`;
 const RESET_TOKEN = `tok_${Math.random().toString(36).slice(2)}`;
 
 async function withEmailEnv(
-  env: { DB_ENV?: string; EMAIL_TRANSPORT?: string },
+  env: { DB_ENV?: string; EMAIL_TRANSPORT?: string; STAGING_EMAIL_ALLOWLIST?: string },
   fn: (ctx: { fetchCalls: { url: string; body: string }[]; logs: string[] }) => Promise<void>
 ) {
   const saved = { ...process.env };
@@ -30,6 +30,7 @@ async function withEmailEnv(
   process.env.RESEND_FROM_EMAIL = "TennisConnect <no-reply@example.invalid>";
   delete process.env.DB_ENV;
   delete process.env.EMAIL_TRANSPORT;
+  delete process.env.STAGING_EMAIL_ALLOWLIST;
   Object.assign(process.env, env);
 
   globalThis.fetch = (async (url: unknown, init?: { body?: unknown }) => {
@@ -89,6 +90,42 @@ async function main() {
     assert.equal(resolveEmailTransport({ dbEnv: "unknown", configured: undefined }), "resend");
     assert.equal(resolveEmailTransport({ dbEnv: undefined, configured: undefined }), "resend");
     assert.equal(resolveEmailTransport({ dbEnv: "staging", configured: "bogus" }), "capture");
+  });
+
+  // ---------- Staging allowlist (real team addresses for manual testing) ----------
+
+  const ALLOW = "anna.tester@gmail.com, @tennisconnect.com.au";
+
+  await test("Staging delivers only to allowlisted recipients; everyone else is captured", () => {
+    const t = (recipient: string) => resolveEmailTransport({ dbEnv: "staging", configured: undefined, recipient, allowlist: ALLOW });
+    assert.equal(t("anna.tester@gmail.com"), "resend");
+    assert.equal(t(" Anna.Tester@Gmail.com "), "resend", "case/padding");
+    assert.equal(t("ops@tennisconnect.com.au"), "resend", "listed domain");
+    for (const other of ["someone@gmail.com", "anna.tester@gmail.co", "x@sub.tennisconnect.com.au", "e2e-player@tennisconnect.test", "anna.tester@gmail.com,real@gmail.com", "", "not-an-email"]) {
+      assert.equal(t(other), "capture", other);
+    }
+    assert.equal(resolveEmailTransport({ dbEnv: "staging", configured: undefined, recipient: "anna.tester@gmail.com" }), "capture", "no allowlist");
+  });
+
+  await test("the allowlist can never release automated test addresses", () => {
+    const list = "@tennisconnect.test, e2e-admin@tennisconnect.test, @x.tennisconnect.test";
+    assert.deepEqual(parseEmailAllowlist(list), { addresses: new Set(), domains: new Set() });
+    assert.equal(isAllowlistedRecipient("e2e-admin@tennisconnect.test", list), false);
+    assert.equal(resolveEmailTransport({ dbEnv: "staging", configured: undefined, recipient: "e2e-run-x@tennisconnect.test", allowlist: list }), "capture");
+  });
+
+  await test("the allowlist applies on Staging only and never overrides EMAIL_TRANSPORT=capture", () => {
+    const base = { recipient: "anna.tester@gmail.com", allowlist: ALLOW };
+    assert.equal(resolveEmailTransport({ ...base, dbEnv: "staging", configured: "capture" }), "capture");
+    assert.equal(resolveEmailTransport({ ...base, dbEnv: "production", configured: undefined }), "resend", "Production unchanged");
+    assert.equal(resolveEmailTransport({ ...base, dbEnv: "unknown", configured: "capture" }), "capture");
+    assert.equal(resolveEmailTransport({ dbEnv: "staging", configured: undefined, recipient: "someone@gmail.com", allowlist: ALLOW }), "capture");
+  });
+
+  await test("malformed allowlist entries are ignored", () => {
+    const parsed = parseEmailAllowlist("*, @, gmail.com, @@x.com, a@b, ok@example.org; @good.org");
+    assert.deepEqual(Array.from(parsed.addresses), ["ok@example.org"]);
+    assert.deepEqual(Array.from(parsed.domains), ["good.org"]);
   });
 
   // ---------- Captured email store ----------
@@ -156,6 +193,23 @@ async function main() {
       assert.equal(fetchCalls.length, 0, "Resend must not be called on Staging");
       assert.equal(capturedEmails.size(), before + 3);
       assert.deepEqual(capturedEmails.query({ to: "e2e_x@tennisconnect.test" })[0].links, ["https://s/verify-email?token=abc"]);
+    });
+  });
+
+  await test("Staging + allowlist: an allowlisted password reset is delivered, others still captured", async () => {
+    await withEmailEnv({ DB_ENV: "staging", STAGING_EMAIL_ALLOWLIST: "anna.tester@gmail.com" }, async ({ fetchCalls, logs }) => {
+      const before = capturedEmails.size();
+      assert.deepEqual(await sendPasswordResetEmail("anna.tester@gmail.com", `https://s/reset?token=${RESET_TOKEN}`), { ok: true });
+      assert.equal(fetchCalls.length, 1, "allowlisted recipient goes through Resend");
+      assert.equal(JSON.parse(fetchCalls[0].body).to, "anna.tester@gmail.com");
+      assert.deepEqual(await sendPasswordResetEmail("real.person@gmail.com", `https://s/reset?token=${RESET_TOKEN}`), { ok: true });
+      assert.deepEqual(await sendVerificationEmail("e2e_z@tennisconnect.test", "https://s/verify-email?token=ghi"), { ok: true });
+      assert.equal(fetchCalls.length, 1, "nobody else reaches Resend");
+      assert.equal(capturedEmails.size(), before + 2);
+      const all = logs.join("\n");
+      for (const secret of ["anna.tester@gmail.com", "real.person@gmail.com", RESET_TOKEN, FAKE_KEY]) {
+        assert.ok(!all.includes(secret), `log leaked ${secret}`);
+      }
     });
   });
 

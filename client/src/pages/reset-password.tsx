@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Lock, CheckCircle, XCircle, Eye, EyeOff } from "lucide-react";
-import { TennisBallSpinner } from "@/components/ui/tennisLoader";
+import { TennisBallSpinner, useDelayElapsed } from "@/components/ui/tennisLoader";
 import heroImage from "/assets/images/tennis_main.jpg";
 import SEO from "@/components/seo";
 import { resetPasswordSchema } from "@/lib/validations/auth";
@@ -19,6 +19,9 @@ export default function ResetPasswordPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(true);
+  // The "Verifying reset link" spinner only appears if the check takes
+  // longer than 3s - a normal check finishes first, so nothing flashes.
+  const showSlowVerifying = useDelayElapsed();
   const [isValidToken, setIsValidToken] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   
@@ -100,11 +103,15 @@ export default function ResetPasswordPage() {
   // Loading state
   if (isVerifying) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <TennisBallSpinner className="mx-auto mb-4" />
-          <p className="text-muted-foreground">Verifying reset link...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-background" aria-busy="true" data-testid="reset-password-verifying">
+        {showSlowVerifying ? (
+          <div className="text-center">
+            <TennisBallSpinner className="mx-auto mb-4" />
+            <p className="text-muted-foreground">Verifying reset link...</p>
+          </div>
+        ) : (
+          <span className="sr-only">Verifying reset link...</span>
+        )}
       </div>
     );
   }
