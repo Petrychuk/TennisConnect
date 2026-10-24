@@ -27,6 +27,7 @@ import weatherRouter from "./routes/weather";
 import supportRouter from "./routes/support";
 import testHooksRouter from "./routes/testHooks";
 import { shouldFlagRegistrationAsTestUser } from "./lib/testHookSecurity";
+import { publicAppUrl } from "./lib/appUrl";
 import { buildHealthPayload } from "./lib/health";
 
 import {
@@ -59,6 +60,12 @@ import sitemapRoutes from "./routes/sitemapRoutes";
 // Brute-force / abuse protection for auth endpoints. Login gets the
 // tightest window since it's the classic credential-stuffing target;
 // register/forgot-password get a looser one mainly to stop spam/enum.
+// Base URL for links in emails - a known site for this environment, never
+// the raw (caller-controlled) Origin header. See server/lib/appUrl.ts.
+function emailLinkBase(req: Request): string {
+  return publicAppUrl({ origin: req.headers.origin, dbEnv: process.env.DB_ENV, configured: process.env.APP_URL });
+}
+
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   limit: 10,
@@ -316,7 +323,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       // first session gets created). Registering no longer implies
       // being signed in.
       const { token } = await issueVerificationToken(user.id);
-      const verifyUrl = `${req.headers.origin || 'https://www.tennisconnect.com.au'}/verify-email?token=${token}`;
+      const verifyUrl = `${emailLinkBase(req)}/verify-email?token=${token}`;
 
       // Fired, not awaited - same reasoning as forgot-password below:
       // a slow/stalled Resend call shouldn't hold this response open,
@@ -505,7 +512,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
 
       const { token } = await issueVerificationToken(user.id);
-      const verifyUrl = `${req.headers.origin || 'https://www.tennisconnect.com.au'}/verify-email?token=${token}`;
+      const verifyUrl = `${emailLinkBase(req)}/verify-email?token=${token}`;
 
       sendVerificationEmail(user.email, verifyUrl)
         .then((emailResult) => {
@@ -561,7 +568,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       });
 
       // Send email via Resend
-      const resetUrl = `${req.headers.origin || 'https://www.tennisconnect.com.au'}/reset-password?token=${token}`;
+      const resetUrl = `${emailLinkBase(req)}/reset-password?token=${token}`;
 
       // Fired, not awaited: the response message below is already fixed
       // regardless of whether the email actually sends (same reason the

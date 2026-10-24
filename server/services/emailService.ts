@@ -52,12 +52,19 @@ async function sendEmail(params: {
   html: string;
   text: string;
 }): Promise<SendEmailResult> {
-  // Staging captures every email instead of delivering it - see
-  // server/services/emailCapture.ts. Production always delivers.
+  // Staging captures email instead of delivering it, except to recipients
+  // on STAGING_EMAIL_ALLOWLIST - see server/services/emailCapture.ts.
+  // Production always delivers.
   const transport = resolveEmailTransport({
     dbEnv: process.env.DB_ENV,
     configured: process.env.EMAIL_TRANSPORT,
+    recipient: params.to,
+    allowlist: process.env.STAGING_EMAIL_ALLOWLIST,
   });
+  if (transport === "resend" && (process.env.DB_ENV ?? "").trim().toLowerCase() === "staging") {
+    // Subject only - no recipient, links or tokens in the logs.
+    console.log(`📨 Staging email delivered via Resend (STAGING_EMAIL_ALLOWLIST or EMAIL_TRANSPORT=resend): "${params.subject}"`);
+  }
   if (transport === "capture") {
     capturedEmails.add(params);
     // Subject only - no recipient, links or tokens in the logs.

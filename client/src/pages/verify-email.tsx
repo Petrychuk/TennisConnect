@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, CheckCircle, XCircle, Clock, Mail } from "lucide-react";
-import { TennisBallSpinner } from "@/components/ui/tennisLoader";
+import { TennisBallSpinner, useDelayElapsed } from "@/components/ui/tennisLoader";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { consumePostVerifyRedirect } from "@/lib/postVerifyRedirect";
@@ -32,6 +32,8 @@ export default function VerifyEmailPage() {
   const token = searchParams.get("token");
 
   const [state, setState] = useState<VerifyState>(token ? "verifying" : "missing");
+  // Spinner only if confirming takes longer than 3s (no flash on fast loads).
+  const showSlowVerifying = useDelayElapsed();
   const [resendEmail, setResendEmail] = useState("");
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSent, setResendSent] = useState(false);
@@ -147,13 +149,17 @@ export default function VerifyEmailPage() {
 
   if (state === "verifying") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <TennisBallSpinner />
-          <p className="text-muted-foreground mt-4" data-testid="verify-email-loading">
-            Confirming your email...
-          </p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-background" aria-busy="true">
+        {showSlowVerifying ? (
+          <div className="text-center">
+            <TennisBallSpinner />
+            <p className="text-muted-foreground mt-4" data-testid="verify-email-loading">
+              Confirming your email...
+            </p>
+          </div>
+        ) : (
+          <span className="sr-only" data-testid="verify-email-loading">Confirming your email...</span>
+        )}
       </div>
     );
   }

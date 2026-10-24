@@ -24,7 +24,7 @@
     "test:e2e:regression": "playwright test --grep-invert @smoke",
     "test:e2e:guard": "tsx --test tests/safety/environment-guard.unit.ts tests/safety/playwright-selection.unit.ts tests/safety/test-hooks-client.unit.ts tests/safety/deployed-commit.unit.ts tests/safety/staging-smoke.unit.ts tests/safety/staging-readonly.unit.ts tests/safety/preflight.unit.ts tests/safety/e2e-auth.unit.ts tests/safety/repo-secrets.unit.ts",
     "e2e:verify-staging-preflight": "cross-env TEST_ENV=staging tsx tests/safety/verify-staging-preflight.ts",
-    "test:staging-safety": "tsx server/services/emailCapture.test.ts",
+    "test:staging-safety": "tsx server/services/emailCapture.test.ts && tsx --test server/lib/appUrl.test.ts",
     "test:staging-fixtures": "tsx --test server/seeds/e2e/e2eSeed.test.ts",
     "e2e:seed:staging": "cross-env NODE_ENV=development tsx server/seeds/e2e/run.ts",
     "test:e2e:staging:readonly:ci": "cross-env TEST_ENV=staging tsx tests/safety/run-staging-readonly.ts",
