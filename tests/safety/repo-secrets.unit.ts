@@ -30,18 +30,19 @@ const tracked = git('ls-files', '-z').split('\0').filter(Boolean);
 
 test('credential, env and session-state paths are gitignored', () => {
   const mustBeIgnored = [
-    '.env', '.env.dev', '.env.staging', '.env.sync', 'staging.env',
+    '.env', '.env.dev', '.env.staging', '.env.sync', 'staging.env', '.env.e2e.staging.local',
     storageStatePath('admin', 0), storageStatePath('player', 3, 1), path.join(AUTH_STATE_DIR, 'anything.json'),
     'tests/.auth/admin.json', 'storageState.json', 'e2e-storage-state.json', 'admin-auth-state.json',
     '.pgpass', 'credentials.json', 'deploy.key', 'server.pem',
   ];
   for (const file of mustBeIgnored) assert.ok(isIgnored(file), `${file} must be gitignored`);
   assert.equal(isIgnored('.env.example'), false, '.env.example stays committable');
+  assert.equal(isIgnored('.env.e2e.staging.example'), false, '.env.e2e.staging.example stays committable');
 });
 
 test('no tracked env, auth-state or key files', () => {
   const forbidden = tracked.filter(file =>
-    /(^|\/)\.env(\.(?!example$)[^/]+)?$/.test(file) ||
+    (/(^|\/)\.env(\.(?!example$)[^/]+)?$/.test(file) && file !== '.env.e2e.staging.example') ||
     /(^|\/)\.auth\//.test(file) ||
     /storage-?state|auth-state/i.test(path.basename(file)) ||
     /\.(pem|key|pgpass)$/.test(file)

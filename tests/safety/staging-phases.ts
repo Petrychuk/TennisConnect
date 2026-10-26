@@ -187,3 +187,24 @@ export function phaseRunRequirements(env: Record<string, string | undefined>, ar
     env: phaseArg === 'auth-readonly' ? {} : { E2E_CLEANUP_ON_TEARDOWN: '1' },
   };
 }
+
+/** Per-run confirmation for phases that write (never read from .env.e2e.staging.local). */
+export const CONFIRM_WRITES_ENV = 'E2E_CONFIRM_WRITES';
+
+/**
+ * Phases other than auth-readonly create and delete (run-owned) data on
+ * Staging. They start only when this run explicitly confirms the exact
+ * phase - `--confirm-writes=<phase>` or E2E_CONFIRM_WRITES=<phase> - so a
+ * left-over "yes" can't start a different phase. auth-readonly needs none.
+ */
+export function assertWriteConfirmation(phase: StagingPhase, env: Record<string, string | undefined>, argv: readonly string[]) {
+  if (phase === 'auth-readonly') return;
+  const confirmed = argv.find(arg => arg.startsWith('--confirm-writes='))?.slice('--confirm-writes='.length) ?? env[CONFIRM_WRITES_ENV];
+  if (confirmed !== phase) {
+    throw new Error(
+      `phase "${phase}" writes test data on Staging - confirm this run explicitly with ` +
+      `--confirm-writes=${phase} (or ${CONFIRM_WRITES_ENV}=${phase}). ` +
+      (confirmed ? `Got a confirmation for "${confirmed}", which is a different phase.` : 'No confirmation was given.')
+    );
+  }
+}
