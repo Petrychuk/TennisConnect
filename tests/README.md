@@ -101,6 +101,26 @@ Exit code 0 means ready; 1 means not ready, and the failed step and what to do a
 | 5 `preflight-rules` | Staging would send real email, uses a live Stripe key, etc. | Server configuration. Tests stay blocked until it's fixed. |
 | `deadline` | The whole check took too long (it never waits indefinitely) | Re-run and check Railway. |
 
+## Which configuration a run uses
+
+Every Staging command reads `.env.e2e.staging.local`: `e2e:staging:check`, the phase and read-only runners, `npm run test:e2e:staging*` and plain `playwright test` with `TEST_ENV=staging`, and `e2e:cleanup-run`. Values set in your shell take priority. **`.env` is never read for a Staging run**; local runs (`TEST_ENV=local`) still use `.env` as before.
+
+Playwright prints where the configuration came from, as key names only. Before any test starts, global setup refuses a Staging run that is missing anything, listing what's missing:
+
+| Run | Needs |
+|---|---|
+| Reviewed read-only / smoke selections (`*:readonly:ci`, `*:smoke:ci`) | nothing extra (no hooks, no logins) |
+| One phase (`e2e:staging:auth-readonly`, `test:e2e:staging:phase:ci`) | `E2E_TEST_HOOK_SECRET`, the five `E2E_*_PASSWORD`, `EXPECTED_DEPLOY_SHA` |
+| Anything else, e.g. `npm run test:e2e:staging` (unphased, includes data-changing tests) | the same, plus `E2E_CONFIRM_WRITES=full-regression` for that run |
+
+The confirmation for an unphased run goes on the command line. It is refused if it's in the file:
+
+```powershell
+$env:E2E_CONFIRM_WRITES = 'full-regression'; npm run test:e2e:staging; Remove-Item Env:E2E_CONFIRM_WRITES
+```
+
+Prefer the reviewed phases, and run them only with the approval the Stage 3 plan requires. An unphased run creates run-owned users. Afterwards, list what was left (read-only): `npm run e2e:cleanup-run -- --residue`.
+
 ## Data-changing phases
 
 `npm run e2e:staging:check` never starts tests, and nothing starts a data-changing phase automatically. The phases are defined in `tests/safety/staging-phases.ts`. Every phase except `auth-readonly` creates (and afterwards cleans up) run-owned data on Staging, so it starts only when all of these hold:

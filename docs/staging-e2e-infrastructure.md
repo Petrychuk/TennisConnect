@@ -375,6 +375,7 @@ of exactly that phase (`--confirm-writes=<phase>` or
 | `E2E_ENABLE_STRIPE_TESTS` | Workflow input | `1` enables the Stripe phase (test mode only) |
 | `E2E_CLEANUP_ON_TEARDOWN` | Set by the phase runner | `1` = teardown deletes the run's data |
 | `E2E_CONFIRM_WRITES` | Command line / workflow, per run | Must equal the phase for any phase that writes |
+| `E2E_STAGING_SCOPE` | Set by the Staging runners | `readonly` / `smoke` / `phase:<name>`; unset = unphased run, which needs `E2E_CONFIRM_WRITES=full-regression` (see `tests/README.md`) |
 | `E2E_STAGING_CHECK_TIMEOUT_MS` | Optional, local | Per-request timeout of `e2e:staging:check` (default 10000, max 60000) |
 | `E2E_TEST_PG_URL` | Local / CI only | Loopback Postgres for database integration tests |
 

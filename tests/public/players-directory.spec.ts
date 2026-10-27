@@ -16,16 +16,23 @@ test('PUBLIC-005 Players directory lists players', async ({ page }) => {
 
 test('PUBLIC-006 Players directory search filters results', async ({ page }) => {
 
+  // The list is fetched after the page renders (GET /api/players) and the
+  // grid starts empty, so wait for the cards before counting - counting
+  // straight away read 0 and made the "no results" check meaningless.
+
   // ---------- Open page ----------
 
   await page.goto('/players');
 
   const searchInput = page.getByTestId('players-search-input');
-  await expect(searchInput).toBeVisible();
+  const cards = page.locator('[data-testid^="player-card-"]');
+  const noResults = page.getByRole('heading', { name: 'No partners found' });
 
-  const initialCount = await page
-    .locator('[data-testid^="player-card-"]')
-    .count();
+  await expect(searchInput).toBeVisible();
+  await expect(cards.first()).toBeVisible();
+
+  const initialCount = await cards.count();
+  expect(initialCount).toBeGreaterThan(0);
 
   // ---------- Actions ----------
 
@@ -33,15 +40,13 @@ test('PUBLIC-006 Players directory search filters results', async ({ page }) => 
 
   // ---------- Verify ----------
 
-  await expect(
-    page.locator('[data-testid^="player-card-"]')
-  ).toHaveCount(0);
+  await expect(cards).toHaveCount(0);
+  await expect(noResults).toBeVisible();
 
   await searchInput.fill('');
 
-  await expect(
-    page.locator('[data-testid^="player-card-"]')
-  ).toHaveCount(initialCount);
+  await expect(cards).toHaveCount(initialCount);
+  await expect(noResults).toBeHidden();
 
 });
 

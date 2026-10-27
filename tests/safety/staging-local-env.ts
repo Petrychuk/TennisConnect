@@ -66,6 +66,7 @@ export const STAGING_LOCAL_PER_RUN_KEYS: readonly string[] = [
   'E2E_ENABLE_STRIPE_TESTS',
   'E2E_CLEANUP_ON_TEARDOWN',
   'E2E_PHASE',
+  'E2E_STAGING_SCOPE',
 ];
 
 /** Server-side / database configuration - refused in the file with a specific message. */
