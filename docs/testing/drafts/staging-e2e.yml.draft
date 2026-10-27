@@ -162,6 +162,9 @@ jobs:
           EXPECTED_DEPLOY_SHA: ${{ steps.expected.outputs.sha }}
           E2E_RUN_ID: ${{ steps.run.outputs.id }}
           E2E_PHASE: ${{ inputs.phase }}
+          # The runner refuses a writing phase unless this run confirms that
+          # exact phase (the "Check confirmation" step above required STAGING).
+          E2E_CONFIRM_WRITES: ${{ inputs.phase }}
           E2E_TEST_HOOK_SECRET: ${{ secrets.E2E_TEST_HOOK_SECRET }}
           E2E_PLAYER_PASSWORD: ${{ secrets.E2E_PLAYER_PASSWORD }}
           E2E_PLAYER_2_PASSWORD: ${{ secrets.E2E_PLAYER_2_PASSWORD }}

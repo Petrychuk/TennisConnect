@@ -107,6 +107,48 @@ describe('tests/helpers/test-hooks.ts', () => {
     await assert.rejects(postTestHook('seed-players', { count: 1 }, env()), TestHookError);
   });
 
+  it('times out instead of hanging when the server never answers', async () => {
+    const silent = http.createServer(() => {
+      /* accept the request, never respond */
+    });
+    await new Promise<void>(resolve => silent.listen(0, '127.0.0.1', resolve));
+    const silentOrigin = `http://127.0.0.1:${(silent.address() as AddressInfo).port}`;
+    try {
+      const started = Date.now();
+      await assert.rejects(
+        postTestHook('preflight', {}, { ...env(), BASE_URL: silentOrigin }, { timeoutMs: 300 }),
+        (error: unknown) => {
+          assert.ok(error instanceof TestHookError);
+          assert.equal(error.kind, 'timeout');
+          assert.match(error.message, /timed out after 300ms/);
+          assert.ok(!error.message.includes(SECRET));
+          return true;
+        }
+      );
+      assert.ok(Date.now() - started < 3000);
+    } finally {
+      silent.closeAllConnections?.();
+      await new Promise<void>(resolve => silent.close(() => resolve()));
+    }
+  });
+
+  it('a refused connection is a network error, not a timeout', async () => {
+    const closed = http.createServer();
+    await new Promise<void>(resolve => closed.listen(0, '127.0.0.1', resolve));
+    const port = (closed.address() as AddressInfo).port;
+    await new Promise<void>(resolve => closed.close(() => resolve()));
+    await assert.rejects(
+      postTestHook('preflight', {}, { ...env(), BASE_URL: `http://127.0.0.1:${port}` }, { timeoutMs: 2000 }),
+      (error: unknown) => error instanceof TestHookError && error.kind === 'network' && error.status === undefined
+    );
+  });
+
+  it('labels HTTP errors and missing configuration', async () => {
+    respondWith = { status: 401, body: {} };
+    await assert.rejects(postTestHook('preflight', {}, env()), (error: unknown) => error instanceof TestHookError && error.kind === 'http');
+    assert.throws(() => getTestHookSecret({}), (error: unknown) => error instanceof TestHookError && error.kind === 'config');
+  });
+
   it('only targets the guard-validated BASE_URL', async () => {
     await assert.rejects(
       postTestHook('seed-players', { count: 1 }, { ...env(), TEST_ENV: 'local', BASE_URL: 'https://tennisconnect.com.au' }),

@@ -49,7 +49,8 @@ export function planRunCleanup(runId: string, env: Record<string, string | undef
 }
 
 export function applyRunCleanup(runId: string, env: Record<string, string | undefined> = process.env) {
-  return postTestHook<CleanupApplyResponse>('cleanup-run', { apply: true, confirmRunId: runId }, envForRun(runId, env));
+  // Applying deletes a whole run in one transaction - allow longer than a plain hook call.
+  return postTestHook<CleanupApplyResponse>('cleanup-run', { apply: true, confirmRunId: runId }, envForRun(runId, env), { timeoutMs: 120_000 });
 }
 
 export function summarisePlan(plan: CleanupPlanResponse): string {

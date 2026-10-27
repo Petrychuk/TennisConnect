@@ -77,6 +77,16 @@ and exits 1, listing every problem, unless all of these hold:
 - with `E2E_REQUIRE_PAYMENTS=1`, Stripe is `test` and a webhook secret is
   configured.
 
+From a developer machine, use **`npm run e2e:staging:check`** instead
+(`tests/safety/staging-check.ts`). It reads the untracked
+`.env.e2e.staging.local` (template: `.env.e2e.staging.example`, never `.env`),
+allows only the approved Staging URL, and runs the same checks as numbered
+steps: configuration, `/api/health` dbEnv, deployed commit, hook
+authentication, preflight rules. Every request has a timeout and the whole
+check has a deadline. Each failure is labelled (401, 404, timeout, network
+error, deployment mismatch) with what to do. Setup and everyday commands:
+[`tests/README.md`](../tests/README.md).
+
 ### Configuration (names only, never values)
 
 | Name | Where | Purpose |
@@ -347,8 +357,14 @@ the read-only sets (Phase A), `auth-readonly`, `mutating-core`,
 anything unclassified, duplicated, or selected by the wrong phase.
 
 ```bash
-E2E_PHASE=<phase> E2E_RUN_ID=<id> npm run test:e2e:staging:phase:ci   # 1 worker, no retries, traces off
+npm run e2e:staging:auth-readonly                                        # read-only phase (local)
+E2E_PHASE=<phase> E2E_RUN_ID=<id> E2E_CONFIRM_WRITES=<phase> npm run test:e2e:staging:phase:ci   # 1 worker, no retries, traces off
 ```
+
+Before Playwright starts, the runner runs the full readiness check
+(`staging-check.ts`). Phases that write also need this run's confirmation
+of exactly that phase (`--confirm-writes=<phase>` or
+`E2E_CONFIRM_WRITES=<phase>`, never taken from `.env.e2e.staging.local`).
 
 ### Configuration (names only)
 
@@ -358,6 +374,8 @@ E2E_PHASE=<phase> E2E_RUN_ID=<id> npm run test:e2e:staging:phase:ci   # 1 worker
 | `E2E_STORAGE_ISOLATION_VERIFIED` | Workflow / repository variable | `1` lets upload tests run on Staging |
 | `E2E_ENABLE_STRIPE_TESTS` | Workflow input | `1` enables the Stripe phase (test mode only) |
 | `E2E_CLEANUP_ON_TEARDOWN` | Set by the phase runner | `1` = teardown deletes the run's data |
+| `E2E_CONFIRM_WRITES` | Command line / workflow, per run | Must equal the phase for any phase that writes |
+| `E2E_STAGING_CHECK_TIMEOUT_MS` | Optional, local | Per-request timeout of `e2e:staging:check` (default 10000, max 60000) |
 | `E2E_TEST_PG_URL` | Local / CI only | Loopback Postgres for database integration tests |
 
 ### Local checks
