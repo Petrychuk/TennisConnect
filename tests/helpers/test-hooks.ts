@@ -35,11 +35,33 @@ export type TestHookName =
   | 'cleanup-run'
   | 'run-residue';
 
+/** What went wrong, so callers (e.g. the Staging check) can give targeted advice. */
+export type TestHookErrorKind = 'config' | 'timeout' | 'network' | 'http' | 'response';
+
 export class TestHookError extends Error {
-  constructor(message: string, readonly status?: number) {
+  constructor(
+    message: string,
+    readonly status?: number,
+    readonly kind: TestHookErrorKind = status === undefined ? 'config' : 'http'
+  ) {
     super(message);
     this.name = 'TestHookError';
   }
+}
+
+/** Default upper bound for one test-hook request - a call never waits forever. */
+export const TEST_HOOK_TIMEOUT_MS = 60_000;
+
+/** Minimal fetch shape postTestHook needs (Node's fetch satisfies it; unit tests stub it). */
+export type HookFetch = (
+  input: string,
+  init: { method: string; headers: Record<string, string>; body: string; redirect: 'error'; signal: AbortSignal }
+) => Promise<{ ok: boolean; status: number; text(): Promise<string> }>;
+
+export interface PostTestHookOptions {
+  /** Abort the request after this many ms (default TEST_HOOK_TIMEOUT_MS). */
+  timeoutMs?: number;
+  fetchImpl?: HookFetch;
 }
 
 export function getTestHookSecret(env: Record<string, string | undefined> = process.env): string {
@@ -75,24 +97,44 @@ export function testHookHeaders(env: Record<string, string | undefined> = proces
 export async function postTestHook<T>(
   hook: TestHookName,
   data: unknown,
-  env: Record<string, string | undefined> = process.env
+  env: Record<string, string | undefined> = process.env,
+  options: PostTestHookOptions = {}
 ): Promise<T> {
   const headers = testHookHeaders(env);
   const url = new URL(`/api/test-hooks/${hook}`, resolveTarget(env).origin).toString();
+  const timeoutMs = options.timeoutMs ?? TEST_HOOK_TIMEOUT_MS;
+  const fetchImpl: HookFetch = options.fetchImpl ?? ((input, init) => fetch(input, init));
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  let response: Response;
+  let response: Awaited<ReturnType<HookFetch>>;
+  let bodyText: string;
   try {
-    response = await fetch(url, {
+    response = await fetchImpl(url, {
       method: 'POST',
       headers,
       body: JSON.stringify(data ?? {}),
       // Never forward the secret header to wherever a redirect points.
       redirect: 'error',
+      signal: controller.signal,
     });
+    bodyText = await response.text();
   } catch (error) {
+    if (controller.signal.aborted) {
+      throw new TestHookError(
+        `POST /api/test-hooks/${hook} timed out after ${timeoutMs}ms (no complete response from the server)`,
+        undefined,
+        'timeout'
+      );
+    }
+    const cause = error instanceof Error && error.cause instanceof Error ? ` - ${error.cause.message}` : '';
     throw new TestHookError(
-      `POST /api/test-hooks/${hook} failed: ${error instanceof Error ? error.message : String(error)}`
+      `POST /api/test-hooks/${hook} failed: ${error instanceof Error ? error.message : String(error)}${cause}`,
+      undefined,
+      'network'
     );
+  } finally {
+    clearTimeout(timer);
   }
 
   if (!response.ok) {
@@ -105,13 +147,18 @@ export async function postTestHook<T>(
           : response.status === 403
             ? 'the request referenced a non-test user or data the test user does not own'
             : 'unexpected response';
+    const excerpt = bodyText.length > 300 ? `${bodyText.slice(0, 300)}...` : bodyText;
     throw new TestHookError(
-      `POST /api/test-hooks/${hook} returned ${response.status} (${hint}): ${await response.text()}`,
+      `POST /api/test-hooks/${hook} returned ${response.status} (${hint}): ${excerpt}`,
       response.status
     );
   }
 
-  return (await response.json()) as T;
+  try {
+    return JSON.parse(bodyText) as T;
+  } catch {
+    throw new TestHookError(`POST /api/test-hooks/${hook} returned ${response.status} but not valid JSON`, response.status, 'response');
+  }
 }
 
 // ---------- Captured emails (Staging) ----------
@@ -157,7 +204,9 @@ export async function waitForCapturedEmail(
     if (Date.now() + intervalMs > deadline) {
       throw new TestHookError(
         `No captured email for ${to}${filter.subjectContains ? ` matching "${filter.subjectContains}"` : ''} ` +
-        `within ${timeoutMs}ms. Is the target capturing email (preflight emailTransport=capture)?`
+        `within ${timeoutMs}ms. Is the target capturing email (preflight emailTransport=capture)?`,
+        undefined,
+        'timeout'
       );
     }
     await new Promise(resolve => setTimeout(resolve, intervalMs));
