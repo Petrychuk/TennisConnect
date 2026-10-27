@@ -63,7 +63,7 @@ async function main() {
   const result = spawnSync(process.execPath, [cli, ...stagingPhaseArgs(requirements.phase, extra)], {
     cwd: ROOT,
     stdio: 'inherit',
-    env: { ...process.env, ...requirements.env },
+    env: { ...process.env, ...requirements.env, E2E_STAGING_SCOPE: `phase:${requirements.phase}` },
   });
   process.exit(result.status ?? 1);
 }

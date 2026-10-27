@@ -16,16 +16,22 @@ test('PUBLIC-001 Coaches directory lists coaches', async ({ page }) => {
 
 test('PUBLIC-002 Coaches directory search filters results', async ({ page }) => {
 
+  // Same load race as PUBLIC-006: the grid starts empty while
+  // /api/coaches loads, so wait for the cards before counting.
+
   // ---------- Open page ----------
 
   await page.goto('/coaches');
 
   const searchInput = page.getByTestId('coaches-search-input');
-  await expect(searchInput).toBeVisible();
+  const cards = page.locator('[data-testid^="coach-card-"]');
+  const noResults = page.getByRole('heading', { name: 'No coaches found' });
 
-  const initialCount = await page
-    .locator('[data-testid^="coach-card-"]')
-    .count();
+  await expect(searchInput).toBeVisible();
+  await expect(cards.first()).toBeVisible();
+
+  const initialCount = await cards.count();
+  expect(initialCount).toBeGreaterThan(0);
 
   // ---------- Actions ----------
 
@@ -33,15 +39,13 @@ test('PUBLIC-002 Coaches directory search filters results', async ({ page }) => 
 
   // ---------- Verify ----------
 
-  await expect(
-    page.locator('[data-testid^="coach-card-"]')
-  ).toHaveCount(0);
+  await expect(cards).toHaveCount(0);
+  await expect(noResults).toBeVisible();
 
   await searchInput.fill('');
 
-  await expect(
-    page.locator('[data-testid^="coach-card-"]')
-  ).toHaveCount(initialCount);
+  await expect(cards).toHaveCount(initialCount);
+  await expect(noResults).toBeHidden();
 
 });
 

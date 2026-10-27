@@ -1,5 +1,7 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig, devices } from '@playwright/test';
-import 'dotenv/config';
+import { describeE2EEnvLoad, loadE2EEnv } from './tests/safety/load-e2e-env';
 import {
   PROD_SAFE_GREP,
   productionTestMatch,
@@ -28,6 +30,17 @@ import { ensureRunId } from './tests/fixtures/run-id';
   bypass is still set. tests/global-setup.ts then verifies the live server
   via GET /api/health and refuses to run if it can't confirm the target.
 */
+// Configuration files (tests/safety/load-e2e-env.ts): TEST_ENV=staging reads
+// ONLY .env.e2e.staging.local (never .env); local/production read .env as
+// before. Shell variables always win. Values are never printed.
+const e2eEnv = loadE2EEnv(process.env, { rootDir: path.dirname(fileURLToPath(import.meta.url)) });
+if (e2eEnv.staging && !process.env.TC_E2E_ENV_LOGGED) {
+  // Once per run (the config is re-evaluated in every worker). stderr, so
+  // machine-readable output (--list --reporter=json) stays valid.
+  console.error(describeE2EEnvLoad(e2eEnv));
+  process.env.TC_E2E_ENV_LOGGED = '1';
+}
+
 const target = resolveTarget(process.env);
 const isProduction = target.testEnv === 'production';
 

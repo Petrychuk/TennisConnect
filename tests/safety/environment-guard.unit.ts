@@ -74,6 +74,19 @@ function stubFetch(...responses: StubResponse[]): FetchLike & { calls: string[] 
 
 const health = (dbEnv: unknown): StubResponse => ({ body: JSON.stringify({ dbEnv }) });
 
+// A complete Staging run configuration (tests/safety/staging-run-config.ts):
+// global setup refuses Staging runs without it before verifying the target.
+// Generated values - never real credentials.
+const STAGING_SHA = 'd'.repeat(40);
+const STAGING_RUN_CONFIG: Record<string, string> = {
+  E2E_TEST_HOOK_SECRET: `guard-unit-${'g'.repeat(40)}`,
+  EXPECTED_DEPLOY_SHA: STAGING_SHA,
+  E2E_CONFIRM_WRITES: 'full-regression',
+  E2E_PLAYER_PASSWORD: 'unit-pw', E2E_PLAYER_2_PASSWORD: 'unit-pw', E2E_COACH_PASSWORD: 'unit-pw',
+  E2E_ORGANISER_PASSWORD: 'unit-pw', E2E_ADMIN_PASSWORD: 'unit-pw',
+};
+const stagingHealth = (): StubResponse => ({ body: JSON.stringify({ dbEnv: 'staging', commit: STAGING_SHA }) });
+
 function rejects(promise: Promise<unknown>, pattern: RegExp) {
   return assert.rejects(promise, (error: unknown) => {
     assert.ok(error instanceof EnvironmentGuardError, `expected EnvironmentGuardError, got ${error}`);
@@ -282,7 +295,7 @@ describe('tests/global-setup.ts', () => {
   }
 
   function setEnv(values: Record<string, string>) {
-    for (const key of ['TEST_ENV', 'BASE_URL', 'ALLOW_PROD', VERIFIED_TARGET_ENV_KEY]) delete process.env[key];
+    for (const key of ['TEST_ENV', 'BASE_URL', 'ALLOW_PROD', VERIFIED_TARGET_ENV_KEY, 'E2E_STAGING_SCOPE', ...Object.keys(STAGING_RUN_CONFIG)]) delete process.env[key];
     Object.assign(process.env, values);
   }
 
@@ -330,8 +343,8 @@ describe('tests/global-setup.ts', () => {
   });
 
   it('allows the full suite on confirmed staging', async () => {
-    setEnv({ TEST_ENV: 'staging', BASE_URL: STAGING });
-    globalThis.fetch = stubFetch(health('staging')) as unknown as typeof fetch;
+    setEnv({ TEST_ENV: 'staging', BASE_URL: STAGING, ...STAGING_RUN_CONFIG });
+    globalThis.fetch = stubFetch(stagingHealth()) as unknown as typeof fetch;
 
     await globalSetup(config(STAGING, { testMatch: '**/*.@(spec|test).?(c|m)[jt]s?(x)', grep: /.*/ }));
 
@@ -339,8 +352,8 @@ describe('tests/global-setup.ts', () => {
   });
 
   it('refuses a project whose baseURL differs from the verified target', async () => {
-    setEnv({ TEST_ENV: 'staging', BASE_URL: STAGING });
-    globalThis.fetch = stubFetch(health('staging')) as unknown as typeof fetch;
+    setEnv({ TEST_ENV: 'staging', BASE_URL: STAGING, ...STAGING_RUN_CONFIG });
+    globalThis.fetch = stubFetch(stagingHealth()) as unknown as typeof fetch;
 
     await rejects(globalSetup(config(PROD, { grep: /.*/ })), /targets https:\/\/tennisconnect\.com\.au/);
   });

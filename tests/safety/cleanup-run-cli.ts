@@ -8,7 +8,10 @@
 // --run-id defaults to E2E_RUN_ID. Needs TEST_ENV=staging (or local),
 // BASE_URL and E2E_TEST_HOOK_SECRET. Never a wildcard: one run per call.
 
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { resolveTarget } from './environment-guard';
+import { loadE2EEnv } from './load-e2e-env';
 import { RUN_ID_ENV } from '../fixtures/run-id';
 import { postTestHook } from '../helpers/test-hooks';
 import { applyRunCleanup, planRunCleanup, summarisePlan } from '../helpers/run-cleanup';
@@ -35,6 +38,8 @@ export function parseCleanupArgs(argv: readonly string[], env: Record<string, st
 }
 
 async function main() {
+  // Same configuration as the other Staging commands (.env.e2e.staging.local; never .env on Staging).
+  loadE2EEnv(process.env, { rootDir: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..') });
   const target = resolveTarget(process.env);
   if (target.testEnv === 'production') throw new Error('run cleanup never runs against Production');
   const args = parseCleanupArgs(process.argv.slice(2), process.env);
