@@ -71,7 +71,7 @@ import {
                   <Button
                     size="lg"
                     variant="secondary"
-                    className="font-bold text-primary h-12 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer"
+                    className="text-primary-text h-12 px-8 shadow-lg hover:shadow-xl transition-all"
                     onClick={() => {
                         window.dispatchEvent(
                           new CustomEvent("open-support-chat")
@@ -118,7 +118,7 @@ import {
                   </div>
   
                   <DialogFooter>
-                    <Button className="w-full cursor-pointer">
+                    <Button className="w-full">
                       Send Inquiry
                     </Button>
                   </DialogFooter>
@@ -132,11 +132,9 @@ import {
                     md:w-auto
                     mx-auto
                     md:mx-0
-                    rounded-xl
                     shadow-lg
                     hover:shadow-xl
                     transition-all
-                    cursor-pointer
                 "
                 onClick={() => {
                     window.dispatchEvent(

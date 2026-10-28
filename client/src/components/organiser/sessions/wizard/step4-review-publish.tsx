@@ -57,17 +57,17 @@ export function Step4ReviewPublish({ draft }: Step4ReviewPublishProps) {
             {dateObj && (
               <>
                 <span className="flex items-center gap-1.5 font-medium">
-                  <Calendar className="w-4 h-4 text-primary" />
+                  <Calendar className="w-4 h-4 text-primary-text" />
                   {formatInTimeZone(dateObj, draft.timeZone, { weekday: "short", day: "numeric", month: "short" })}
                 </span>
                 <span className="flex items-center gap-1.5 font-medium">
-                  <Clock className="w-4 h-4 text-primary" />
+                  <Clock className="w-4 h-4 text-primary-text" />
                   {draft.startTime}
                 </span>
               </>
             )}
             <span className="flex items-center gap-1.5 font-medium">
-              <MapPin className="w-4 h-4 text-primary" />
+              <MapPin className="w-4 h-4 text-primary-text" />
               {draft.venue}
             </span>
           </div>
@@ -77,7 +77,7 @@ export function Step4ReviewPublish({ draft }: Step4ReviewPublishProps) {
               const Icon = stat.icon;
               return (
                 <div key={stat.label} data-testid={`organiser-wizard-review-${stat.label.toLowerCase()}`}>
-                  <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-1.5">
+                  <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary-text flex items-center justify-center mb-1.5">
                     <Icon className="w-4 h-4" />
                   </div>
                   <p className="text-sm font-bold">{stat.value}</p>
@@ -88,7 +88,7 @@ export function Step4ReviewPublish({ draft }: Step4ReviewPublishProps) {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-border">
             <div className="flex items-center gap-2 text-sm" data-testid="organiser-wizard-review-registration">
-              <ClipboardCheck className="w-4 h-4 text-primary shrink-0" />
+              <ClipboardCheck className="w-4 h-4 text-primary-text shrink-0" />
               <div>
                 <p className="text-muted-foreground text-xs">Registration</p>
                 <p className="font-medium">
@@ -97,14 +97,14 @@ export function Step4ReviewPublish({ draft }: Step4ReviewPublishProps) {
               </div>
             </div>
             <div className="flex items-center gap-2 text-sm" data-testid="organiser-wizard-review-waiting-list">
-              <Hourglass className="w-4 h-4 text-primary shrink-0" />
+              <Hourglass className="w-4 h-4 text-primary-text shrink-0" />
               <div>
                 <p className="text-muted-foreground text-xs">Waiting List</p>
                 <p className="font-medium">{draft.waitingListEnabled ? "Enabled" : "Disabled"}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 text-sm" data-testid="organiser-wizard-review-qr">
-              <QrCode className="w-4 h-4 text-primary shrink-0" />
+              <QrCode className="w-4 h-4 text-primary-text shrink-0" />
               <div>
                 <p className="text-muted-foreground text-xs">QR Check-in</p>
                 <p className="font-medium">{draft.qrCheckIn ? "Enabled" : "Disabled"}</p>

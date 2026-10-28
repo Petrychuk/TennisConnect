@@ -60,7 +60,7 @@ export function CookieSettingsModal({
           <div className="rounded-xl border p-4">
             <div className="flex items-start justify-between gap-4">
               <div className="flex gap-3">
-                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary-text">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
                 <div>
@@ -84,7 +84,7 @@ export function CookieSettingsModal({
           <div className="rounded-xl border p-4">
             <div className="flex items-start justify-between gap-4">
               <div className="flex gap-3">
-                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary-text">
                   <BarChart3 className="w-4 h-4" />
                 </div>
                 <div>
@@ -108,7 +108,7 @@ export function CookieSettingsModal({
           <div className="rounded-xl border p-4">
             <div className="flex items-start justify-between gap-4">
               <div className="flex gap-3">
-                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary-text">
                   <Megaphone className="w-4 h-4" />
                 </div>
                 <div>
@@ -137,7 +137,7 @@ export function CookieSettingsModal({
           <div className="rounded-xl border p-4">
             <div className="flex items-start justify-between gap-4">
               <div className="flex gap-3">
-                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary-text">
                   <Settings2 className="w-4 h-4" />
                 </div>
                 <div>
@@ -165,13 +165,11 @@ export function CookieSettingsModal({
               setMarketing(false);
               setPreferences(false);
             }}
-            className="cursor-pointer"
           >
             Reject All Optional
           </Button>
           <Button
             onClick={handleSave}
-            className="bg-primary text-foreground hover:bg-primary/90 font-bold cursor-pointer"
             data-testid="cookie-settings-save-button"
           >
             Save Preferences

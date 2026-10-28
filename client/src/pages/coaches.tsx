@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import SEO from "@/components/seo";
@@ -15,22 +14,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { AppPagination } from "@/components/shared/AppPagination";
-import { Search, MapPin, Star, Filter, ArrowRight, DollarSign, X, Calendar, Trophy } from "lucide-react";
+import { MapPin, Star, ArrowRight, DollarSign, Calendar, Trophy, Wallet, Coins } from "lucide-react";
 import heroImage from "/assets/images/dashboard_coach.webp";
 
 import { COACHES_DATA } from "@/lib/dummy-data";
 import { resolveAvatarUrl, DEFAULT_AVATAR_URL, DEFAULT_AVATAR_ALT } from "@/lib/defaultAvatar";
+import { HeroBadge } from "@/components/shared/hero-badge";
+import { HeroSearch, HeroSearchFiltersButton, HeroShortcuts, type HeroShortcut } from "@/components/shared/hero-search";
+import { HeroFiltersPanel, FilterSection } from "@/components/shared/hero-filters";
 
 export default function CoachesPage() {
   const coachesSectionRef = useRef<HTMLDivElement>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [locationFilter, setLocationFilter] = useState("all");
   const [priceRange, setPriceRange] = useState([150]); // Max price
   const [minRating, setMinRating] = useState(0);
@@ -148,6 +146,73 @@ export default function CoachesPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
+  // Hero search (presentational - same state and filtering as before).
+  // Filtering is live as you type; the lime button takes you to the results.
+  const scrollToResults = () => coachesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  // Shortcuts only set values the Filters panel can already set. Rating
+  // shortcuts and the rating filter are hidden until coaches have real
+  // reviews (cards show "(0)" reviews today) - the minRating logic stays.
+  const PRICE_SHORTCUTS = [50, 70, 100];
+  const shortcutItems = (suffix = ""): HeroShortcut[] =>
+    PRICE_SHORTCUTS.map((max, i) => ({
+      key: `under-${max}`,
+      label: `Under $${max}`,
+      icon: [<Coins key="c" />, <Wallet key="w" />, <DollarSign key="d" />][i],
+      selected: priceRange[0] === max,
+      onClick: () => setPriceRange(priceRange[0] === max ? [150] : [max]),
+      testId: `coaches-shortcut-under-${max}${suffix}`,
+    }));
+  // The Filters panel (dropdown on tablet/desktop, modal on phones):
+  // location (was a select next to the search) and price.
+  const renderFiltersPanel = (suffix: string) => (
+    <HeroFiltersPanel
+      variant={suffix ? "mobile" : "desktop"}
+      open={filtersOpen}
+      onOpenChange={setFiltersOpen}
+      trigger={<HeroSearchFiltersButton activeCount={activeFiltersCount} data-testid={`coaches-filters-open${suffix}`} />}
+      onClear={clearFilters}
+      canClear={activeFiltersCount > 0}
+      contentTestId="coaches-filters-panel"
+      clearTestId={`coaches-clear-filters${suffix}`}
+      applyTestId={`coaches-filters-show-results${suffix}`}
+    >
+      <FilterSection label="Location" icon={<MapPin />}>
+        <Select value={locationFilter} onValueChange={setLocationFilter}>
+          <SelectTrigger aria-label="Filter by location" className="w-full cursor-pointer" data-testid={`coaches-location-filter${suffix}`}>
+            <SelectValue placeholder="Location" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="cursor-pointer">All Sydney</SelectItem>
+            {uniqueLocations.map((loc) => (
+              <SelectItem key={loc} value={loc} className="cursor-pointer">{loc}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FilterSection>
+
+      <FilterSection label="Price per hour" icon={<DollarSign />}>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Up to</span>
+          <span className="font-semibold">${priceRange[0]}/hr</span>
+        </div>
+        <Slider
+          defaultValue={[150]}
+          max={200}
+          step={10}
+          value={priceRange}
+          onValueChange={setPriceRange}
+          aria-label="Maximum price per hour"
+          className="cursor-pointer"
+        />
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>$0</span>
+          <span>$100</span>
+          <span>$200+</span>
+        </div>
+      </FilterSection>
+    </HeroFiltersPanel>
+  );
+
   const clearFilters = () => {
     setSearchTerm("");
     setLocationFilter("all");
@@ -206,43 +271,24 @@ export default function CoachesPage() {
                 md:object-[60%_20%]
                 scale-110 md:scale-100"
               />
+              {/* Tablet/desktop: the left half of the photo darkens towards the left edge (smooth, no hard line) so the title, intro and search stay readable. Phones keep the plain photo. */}
+              <div aria-hidden="true" className="tc-hero-left-shade absolute inset-0 hidden md:block" />
               <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100%" />
             </div>
 
-            <div className="relative min-h-[28vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-start">
+            <div className="relative min-h-[28vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center md:items-start justify-start">
             {/* Badge (mobile) — overlaps the bottom edge of the hero photo */}
             <div className="md:hidden absolute bottom-3 left-4 z-20">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/50 border border-white/20 backdrop-blur-md">
-                <span className="w-2 h-2 rounded-full bg-primary" />
-                <span className="text-[10px] font-bold tracking-wider uppercase text-white">
-                  Find Best Coach
-                </span>
-              </div>
+              <HeroBadge size="sm">Find Best Coach</HeroBadge>
             </div>
-            <div className="container mx-auto px-2 relative z-10">
+            <div className="container mx-auto px-4 relative z-10 md:pt-[104px]">
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
-                className="hidden md:block max-w-3xl
-                  pt-30
-                  md:pt-12
-                  lg:pt-0
-                  px-4
-                  md:pl-8
-                  lg:pl-0
-                  text-left
-                  md:translate-y-10
-                  lg:translate-y-2
-                  xl:translate-y-6
-                  xl:pt-20"
+                className="hidden md:block max-w-3xl text-left"
               >
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md mb-3 md:mb-6">
-                  <span className="w-2 h-2 rounded-full bg-primary" />
-                  <span className="text-[10px] sm:text-xs md:text-sm font-bold tracking-wider uppercase text-white">
-                    Find Best Coach
-                  </span>
-                </div>
+                <HeroBadge className="mb-3 md:mb-6">Find Best Coach</HeroBadge>
                 <h1 className="text-3xl
                   sm:text-4xl
                   md:text-5xl
@@ -252,7 +298,7 @@ export default function CoachesPage() {
                   leading-[0.95]
                   mb-3
                   text-white
-                  drop-shadow-md">
+                  tc-hero-text">
                 Level Up <span className="text-primary relative inline-block">Your Game<svg
                   className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40"
                   viewBox="0 0 100 10"
@@ -270,146 +316,38 @@ export default function CoachesPage() {
                 <p className="
                     text-sm
                     sm:text-base
-                    md:text-lg
-                    text-white/85
+                    md:text-[20px]
+                    text-white
                     leading-[1.2]
-                    md:leading-relaxed
+                    md:leading-[1.3]
                     max-w-xl
-                    drop-shadow-sm">
+                    tc-hero-intro">
                   Connect with certified tennis coaches in Sydney to take your game to the next level, whether you're a beginner or a tournament player.
                 </p>
+                <HeroSearch
+                  className="mt-6 max-w-3xl"
+                  value={searchTerm}
+                  onValueChange={setSearchTerm}
+                  onSubmit={scrollToResults}
+                  placeholder="Search by name or specialty..."
+                  inputTestId="coaches-search-input"
+                  submitTestId="coaches-search-submit"
+                  filters={renderFiltersPanel("")}
+                />
+                <HeroShortcuts label="Quick filters" items={shortcutItems()} className="mt-6" />
               </motion.div>
             </div>
             </div>
 
-          {/* Filter & Search Bar (desktop) - floats over the tail of the photo */}
-          <div className="hidden md:block container mx-auto px-2 mt-5 relative z-20 pb-5 md:pb-10">
-            <div className="bg-card/50
-              backdrop-blur-sm
-              border border-border/40
-              shadow-lg
-              rounded-2xl
-              p-2.5 md:p-4 lg:p-4
-              flex flex-col md:flex-row
-              gap-3 md:gap-4
-              items-center
-              justify-between">
-              <div className="relative w-full md:w-[280px] lg:w-[380px] xl:w-[450px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
-                <Input 
-                  data-testid="coaches-search-input"
-                  placeholder="Search by name or specialty..." 
-                  className="pl-10
-                    h-11 md:h-12
-                    text-sm md:text-base
-                    bg-background
-                    w-full
-                    rounded-xl"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              
-              <div className="flex flex-row md:flex-row w-full md:w-auto gap-2">
-                <Select value={locationFilter} onValueChange={setLocationFilter}>
-                  <SelectTrigger aria-label="Filter by location" className="w-full flex-1 min-w-0 sm:w-full md:w-[180px] lg:w-[190px] h-11 md:h-12 bg-background cursor-pointer">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <MapPin className="w-4 h-4 text-primary shrink-0" />
-                      <SelectValue placeholder="Location" className="flex-1 min-w-0 truncate" />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all" className="cursor-pointer">All Sydney</SelectItem>
-                    {uniqueLocations.map(loc => (
-                      <SelectItem key={loc} value={loc} className="cursor-pointer">{loc}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className={`h-11 md:h-12 w-auto px-3 md:px-4 shrink-0 bg-background cursor-pointer ${activeFiltersCount > 0 ? 'border-primary text-primary' : ''}`}>
-                      <Filter className="w-5 h-5 mr-2" />
-                      Filters
-                      {activeFiltersCount > 0 && (
-                        <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center rounded-full bg-primary text-foreground text-[10px]">
-                          {activeFiltersCount}
-                        </Badge>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-96 p-6 space-y-6" align="end">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <p className="font-bold leading-none">Price Range</p>
-                        <span className="text-sm text-muted-foreground">Up to ${priceRange[0]}/hr</span>
-                      </div>
-                      <Slider
-                        defaultValue={[150]}
-                        max={200}
-                        step={10}
-                        value={priceRange}
-                        onValueChange={setPriceRange}
-                        className="cursor-pointer"
-                      />
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>$0</span>
-                        <span>$100</span>
-                        <span>$200+</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <p className="font-bold leading-none">Minimum Rating</p>
-                      <div className="flex gap-2">
-                        {[4, 4.5, 4.8, 5].map((rating) => (
-                          <Button
-                            key={rating}
-                            variant={minRating === rating ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setMinRating(minRating === rating ? 0 : rating)}
-                            className="flex-1 cursor-pointer px-2"
-                          >
-                            {rating}+ <Star className="w-3 h-3 ml-1 fill-current" />
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {activeFiltersCount > 0 && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={clearFilters}
-                        className="w-full text-muted-foreground hover:text-destructive cursor-pointer"
-                      >
-                        Clear all filters
-                      </Button>
-                    )}
-                  </PopoverContent>
-                </Popover>
-
-                {activeFiltersCount > 0 && (
-                  <Button 
-                    variant="ghost" 
-                    onClick={clearFilters}
-                    className="h-12 hidden md:flex text-muted-foreground hover:text-destructive cursor-pointer"
-                  >
-                    <X className="w-4 h-4 mr-2" />
-                    Clear
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
+          <div className="pb-1.5 md:pb-16" />
           </section>
 
           {/* Hero text (mobile) — sits below the hero photo instead of
               overlapping it */}
-          <div className="md:hidden relative z-20 bg-background pt-4 pb-1">
+          <div className="md:hidden relative z-20 bg-background pt-2 pb-1">
             <div className="container mx-auto px-4 text-left">
-              <h1 className="text-3xl font-display font-bold mb-2 leading-[0.95] tracking-tight text-foreground">
-                Level Up <span className="text-primary relative inline-block">Your Game<svg
+              <h1 className="text-3xl font-display font-bold mb-1 leading-[0.95] tracking-tight text-foreground">
+                Level Up <span className="text-primary-text relative inline-block">Your Game<svg
                   className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40"
                   viewBox="0 0 100 10"
                   preserveAspectRatio="none"
@@ -429,105 +367,26 @@ export default function CoachesPage() {
             </div>
           </div>
 
-          {/* Filter & Search Bar (mobile) — sits below the hero photo
-              instead of floating over it */}
-          <div className="md:hidden relative z-20 bg-background pt-2 pb-2">
-            <div className="container mx-auto px-4 space-y-2">
-              <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                <Input
-                  placeholder="Search by name or specialty..."
-                  className="pl-10 h-11 text-sm bg-secondary/50 border-transparent focus:border-primary w-full rounded-xl"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-
-              <div className="flex w-full gap-2">
-                <Select value={locationFilter} onValueChange={setLocationFilter}>
-                  <SelectTrigger className="flex-1 min-w-0 h-11 bg-secondary/50 border-transparent cursor-pointer overflow-hidden">
-                    <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-                      <MapPin className="w-4 h-4 text-primary shrink-0" />
-                      <SelectValue placeholder="Location" className="block max-w-[140px] truncate" />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all" className="cursor-pointer">All Sydney</SelectItem>
-                    {uniqueLocations.map(loc => (
-                      <SelectItem key={loc} value={loc} className="cursor-pointer">{loc}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className={`h-11 w-auto px-3 shrink-0 bg-secondary/50 border-transparent cursor-pointer ${activeFiltersCount > 0 ? 'border-primary text-primary' : ''}`}>
-                      <Filter className="w-4 h-4 mr-1.5" />
-                      Filters
-                      {activeFiltersCount > 0 && (
-                        <Badge variant="secondary" className="ml-1.5 h-5 w-5 p-0 flex items-center justify-center rounded-full bg-primary text-foreground text-[10px]">
-                          {activeFiltersCount}
-                        </Badge>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-72 p-4 space-y-5" align="end">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <p className="font-bold leading-none">Price Range</p>
-                        <span className="text-sm text-muted-foreground">Up to ${priceRange[0]}/hr</span>
-                      </div>
-                      <Slider
-                        defaultValue={[150]}
-                        max={200}
-                        step={10}
-                        value={priceRange}
-                        onValueChange={setPriceRange}
-                        className="cursor-pointer"
-                      />
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>$0</span>
-                        <span>$100</span>
-                        <span>$200+</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <p className="font-bold leading-none">Minimum Rating</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        {[4, 4.5, 4.8, 5].map((rating) => (
-                          <Button
-                            key={rating}
-                            variant={minRating === rating ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setMinRating(minRating === rating ? 0 : rating)}
-                            className="cursor-pointer px-2"
-                          >
-                            {rating}+ <Star className="w-3 h-3 ml-1 fill-current" />
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {activeFiltersCount > 0 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={clearFilters}
-                        className="w-full text-muted-foreground hover:text-destructive cursor-pointer"
-                      >
-                        Clear all filters
-                      </Button>
-                    )}
-                  </PopoverContent>
-                </Popover>
-              </div>
+          {/* Search (mobile) - below the hero text, like the other pages */}
+          <div className="md:hidden relative z-20 bg-background pt-1 pb-2">
+            <div className="container mx-auto px-4">
+              <HeroSearch
+                tone="light"
+                value={searchTerm}
+                onValueChange={setSearchTerm}
+                onSubmit={scrollToResults}
+                placeholder="Search by name or specialty..."
+                inputTestId="coaches-search-input-mobile"
+                submitTestId="coaches-search-submit-mobile"
+                filters={renderFiltersPanel("-mobile")}
+              />
+              <HeroShortcuts label="Quick filters" tone="light" items={shortcutItems("-mobile")} className="mt-3" />
             </div>
           </div>
 
           {/* Coaches Grid — pulled up so the photo's fade dissolves under
               the top of the first row, matching the Partners page */}
-          <section className="relative z-30 container mx-auto px-4 md:-mt-4 pb-24 scroll-mt-24"
+          <section id="coaches-results" className="relative z-30 container mx-auto px-4 md:-mt-4 pb-24 scroll-mt-24"
             ref={coachesSectionRef}>
             {/* Visually hidden - same reasoning as partners.tsx's own
                 "Search Results" heading: gives the card titles below a
@@ -575,7 +434,7 @@ export default function CoachesPage() {
                           items-center
                           gap-1
                           shadow-sm">
-                        <Star className="w-3 h-3 text-primary fill-primary" />
+                        <Star className="w-3 h-3 text-primary-text fill-primary" />
                         {coach.rating} ({coach.reviews})
                       </div>
                       {coach.isOrganizer && (
@@ -595,7 +454,7 @@ export default function CoachesPage() {
                           <h3 className="text-base md:text-lg lg:text-xl
                             font-bold
                             font-display
-                            group-hover:text-primary
+                            group-hover:text-primary-text
                             transition-colors
 
                             line-clamp-2
@@ -608,7 +467,7 @@ export default function CoachesPage() {
 
                     <CardContent className="px-3 pb-3 space-y-1.5 md:space-y-4">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
-                        <MapPin className="w-4 h-4 text-primary shrink-0" />
+                        <MapPin className="w-4 h-4 text-primary-text shrink-0" />
                         <span className="truncate">{coach.location}</span>
                       </div>
 
@@ -634,7 +493,7 @@ export default function CoachesPage() {
                         <div className="flex flex-col">
                           <span className="text-[10px] md:text-xs text-muted-foreground">Hourly Rate</span>
                           <div className="flex items-center font-bold text-base md:text-lg">
-                            <DollarSign className="w-3 h-3 md:w-4 md:h-4 text-primary" />
+                            <DollarSign className="w-3 h-3 md:w-4 md:h-4 text-primary-text" />
                             {coach.rate}
                             <span className="text-xs md:text-sm font-normal text-muted-foreground ml-1">AUD</span>
                           </div>
@@ -671,7 +530,7 @@ export default function CoachesPage() {
 
                     <CardFooter className="px-3 pb-3 pt-0 md:px-6 md:pb-6">
                       <Link href={`/coach/${coach.slug}`}>
-                        <Button className="w-full h-9 md:h-10 text-xs md:text-sm font-bold group-hover:bg-primary group-hover:text-foreground transition-all cursor-pointer">
+                        <Button className="w-full h-9 md:h-10 text-xs md:text-sm group-hover:bg-primary group-hover:text-foreground transition-all">
                           View Profile <ArrowRight className="w-4 h-4 ml-2" />
                         </Button>
                       </Link>
@@ -688,7 +547,7 @@ export default function CoachesPage() {
                 <Button 
                   variant="link" 
                   onClick={clearFilters}
-                  className="mt-4 text-primary cursor-pointer"
+                  className="mt-4 text-primary-text"
                 >
                   Clear all filters
                 </Button>

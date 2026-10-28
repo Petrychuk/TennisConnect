@@ -202,31 +202,31 @@ function ActionCard({
         <ul className="space-y-2 mb-5 text-sm">
           {club.courtBookingAvailable && (
             <li className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-primary-text shrink-0" />
               Online booking
             </li>
           )}
           {club.hasLighting && (
             <li className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-primary-text shrink-0" />
               Night lighting available
             </li>
           )}
           {club.courtSurfaces?.[0] && (
             <li className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-primary-text shrink-0" />
               {getSurfaceLabel(club.courtSurfaces[0])} surface
             </li>
           )}
           <li className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-primary-text shrink-0" />
             {club.publicAccess ? "Public access" : "Members only"}
           </li>
         </ul>
 
         <div className="flex flex-col gap-2">
           <Button
-            className="w-full rounded-xl font-bold cursor-pointer"
+            className="w-full"
             onClick={ctaHandler}
             data-testid="club-action-primary"
           >
@@ -235,7 +235,7 @@ function ActionCard({
           <div className="flex gap-2">
             <Button
               variant="outline"
-              className="flex-1 rounded-xl font-bold cursor-pointer"
+              className="flex-1"
               onClick={onSecondaryAction}
               data-testid="club-action-secondary"
             >
@@ -245,11 +245,11 @@ function ActionCard({
               <Button
                 variant="outline"
                 size="icon"
-                className="rounded-xl shrink-0 cursor-pointer"
+                className="shrink-0"
                 asChild
                 data-testid="club-action-call"
               >
-                <a href={`tel:${club.phone}`}>
+                <a href={`tel:${club.phone}`} aria-label={`Call ${club.name}`}>
                   <Phone className="w-4 h-4" />
                 </a>
               </Button>
@@ -280,31 +280,31 @@ function ActionCard({
         <ul className="space-y-2 mb-5 text-sm">
           {club.hasCoaching && (
             <li className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-primary-text shrink-0" />
               Coaching programs
             </li>
           )}
           {club.hasCommunity && (
             <li className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-primary-text shrink-0" />
               Social tennis
             </li>
           )}
           {club.hostsCompetitions && (
             <li className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-primary-text shrink-0" />
               Tournaments & events
             </li>
           )}
           <li className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-primary-text shrink-0" />
             Member benefits
           </li>
         </ul>
 
         <div className="flex flex-col gap-2">
           <Button
-            className="w-full rounded-xl font-bold cursor-pointer"
+            className="w-full"
             onClick={ctaHandler}
             data-testid="club-action-primary"
           >
@@ -312,7 +312,7 @@ function ActionCard({
           </Button>
           <Button
             variant="outline"
-            className="w-full rounded-xl font-bold cursor-pointer"
+            className="w-full"
             onClick={onSecondaryAction}
             data-testid="club-action-secondary"
           >
@@ -377,23 +377,23 @@ function ActionCard({
         {club.services?.length > 0 ? (
           club.services.map((s: string) => (
             <li key={s} className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-primary-text shrink-0" />
               {getServiceLabel(s)}
             </li>
           ))
         ) : (
           <>
             <li className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-primary-text shrink-0" />
               {club.membershipRequired ? "Members welcome" : "All levels welcome"}
             </li>
             <li className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-primary-text shrink-0" />
               Social & friendly play
             </li>
             {club.hostsCompetitions && (
               <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                <CheckCircle2 className="w-4 h-4 text-primary-text shrink-0" />
                 Tournaments & events
               </li>
             )}
@@ -403,7 +403,7 @@ function ActionCard({
 
       <div className="flex flex-col gap-2">
         <Button
-          className="w-full rounded-xl font-bold cursor-pointer"
+          className="w-full"
           onClick={ctaHandler}
           data-testid="club-action-primary"
         >
@@ -499,14 +499,14 @@ export function ClubDetailHero({
         />
         {club.phone && (
           <Button
-            variant="outline"
+            variant="inverse"
             size="icon"
             asChild
-            className="rounded-xl shrink-0 cursor-pointer bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white"
+            className="shrink-0"
             data-testid="club-hero-call-btn"
           >
-            <a href={`tel:${club.phone}`}>
-              <Phone className="w-4 h-4" />
+            <a href={`tel:${club.phone}`} aria-label={`Call ${club.name}`}>
+              <Phone className="w-4 h-4" aria-hidden="true" />
             </a>
           </Button>
         )}
@@ -527,7 +527,7 @@ export function ClubDetailHero({
 
         {club.verified && (
           <Badge
-            className="rounded-full border-primary/20 bg-primary/10 text-primary px-3 py-1 font-semibold flex items-center gap-1.5"
+            className="rounded-full border-primary/20 bg-primary/10 text-primary-text px-3 py-1 font-semibold flex items-center gap-1.5"
           >
             <ShieldCheck className="w-3.5 h-3.5 fill-primary/20" />
             Verified {variant === "community" ? "Community" : "Club"}
@@ -537,7 +537,7 @@ export function ClubDetailHero({
 
       {rating && (
         <div className="flex items-center gap-1.5 text-sm mb-2">
-          <Star className="w-4 h-4 fill-primary text-primary" />
+          <Star className="w-4 h-4 fill-primary text-primary-text" />
           <span className="font-semibold">{rating.toFixed(1)}</span>
           <span className="text-muted-foreground">reviews</span>
         </div>
@@ -545,7 +545,7 @@ export function ClubDetailHero({
 
       {location && (
         <div className="flex items-center gap-1.5 text-muted-foreground mb-4">
-          <MapPin className="w-4 h-4 shrink-0 text-primary" />
+          <MapPin className="w-4 h-4 shrink-0 text-primary-text" />
           {club.address ? `${club.address}, ` : ""}
           {location}
         </div>
@@ -569,9 +569,9 @@ export function ClubDetailHero({
             variant="outline"
             size="icon"
             asChild
-            className="rounded-xl shrink-0 cursor-pointer"
+            className="rounded-xl shrink-0"
           >
-            <a href={`tel:${club.phone}`}>
+            <a href={`tel:${club.phone}`} aria-label={`Call ${club.name}`}>
               <Phone className="w-4 h-4" />
             </a>
           </Button>
@@ -662,7 +662,7 @@ export function ClubDetailHero({
               >
                 <span
                   className={`flex h-9 w-9 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-lg ${
-                    fact.iconBg ?? "bg-primary/10 text-primary"
+                    fact.iconBg ?? "bg-primary/10 text-primary-text"
                   }`}
                 >
                   {fact.icon}

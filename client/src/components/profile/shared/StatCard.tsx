@@ -92,7 +92,7 @@ export function StatCard({
       rounded-md
       bg-primary/10
 
-      text-primary
+      text-primary-text
 
       shrink-0
     "

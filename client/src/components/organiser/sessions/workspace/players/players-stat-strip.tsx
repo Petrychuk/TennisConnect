@@ -39,7 +39,7 @@ export function PlayersStatStrip({ session, players }: PlayersStatStripProps) {
             )}
             data-testid={`organiser-players-stat-${item.key}`}
           >
-            <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary-text flex items-center justify-center shrink-0">
               <Icon className="w-4 h-4" />
             </div>
             <div className="min-w-0">

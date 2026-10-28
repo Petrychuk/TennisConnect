@@ -19,9 +19,12 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { AdminRowActions } from "@/components/admin/AdminRowActions";
+import { ADMIN_SECTIONS } from "@/lib/adminSections";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, ShieldCheck, FileText, Plane, Heart, Trophy, Users, Building2, Eye, Globe, ExternalLink as ExternalLinkIcon, } from "lucide-react";
+import { Plus, Edit, Trash2, ShieldCheck, FileText, Plane, Heart, Users, Building2 } from "lucide-react";
 import SEO from "@/components/seo";
 import { ClubForm } from "@/components/admin/clubs/ClubForm";
 import { TravelForm } from "@/components/admin/travel/TravelForm";
@@ -480,13 +483,8 @@ export default function AdminPage() {
     }
   };
 
-  const activeLabel = isContentTab(activeTab)
-  ? RESOURCE_LABELS[activeTab]
-  : "Users";
-
-  const deleteLabel = isContentTab(activeTab)
-  ? RESOURCE_LABELS[activeTab].slice(0, -1)
-  : "User";
+  // Singular item name for dialogs: "article", "package", "club", ...
+  const itemLabel = ADMIN_SECTIONS[activeTab].createLabel?.replace(/^New /, "") ?? "user";
  
   // control to close genaral modals window by icon "X"
   const handleDialogClose = () => {
@@ -717,7 +715,7 @@ export default function AdminPage() {
   return (
     <>
       <SEO
-        title="Admin Panel | TennisConnect"
+        title={`${ADMIN_SECTIONS[activeTab].title} | Admin | TennisConnect`}
         description="Administration panel."
         canonical="/admin"
         noIndex
@@ -739,7 +737,7 @@ export default function AdminPage() {
           <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="hidden md:inline-flex" data-testid="organiser-sidebar-trigger">
+                <Button variant="ghost" size="icon" className="hidden md:inline-flex" aria-label="Open Organiser Hub menu" data-testid="organiser-sidebar-trigger">
                   <Menu className="w-5 h-5" />
                 </Button>
               </SheetTrigger>
@@ -756,25 +754,17 @@ export default function AdminPage() {
           </div>
 
         <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-[1500px] mx-auto">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl md:text-3xl font-display font-bold">Content Manager</h1>
-                <Badge className="bg-primary text-foreground">
-                  <ShieldCheck className="w-3 h-3 mr-1" /> Admin
-                </Badge>
-              </div>
-            </div>
-            {activeTab !== "users" && activeTab !== "organizer-requests" && (
-            <Button
-              onClick={openCreate}
-              className="bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
-              data-testid="admin-create-button"
-            >
-              <Plus className="w-4 h-4 mr-2" /> New {activeLabel}
-            </Button>
-            )}
-          </div>
+          {/* Titled after the sidebar item that was opened (lib/adminSections.ts). */}
+          <AdminPageHeader
+            section={activeTab}
+            actions={
+              ADMIN_SECTIONS[activeTab].createLabel && (
+                <Button onClick={openCreate} data-testid="admin-create-button">
+                  <Plus aria-hidden="true" /> {ADMIN_SECTIONS[activeTab].createLabel}
+                </Button>
+              )
+            }
+          />
 
           <Tabs
             value={activeTab}
@@ -793,28 +783,23 @@ export default function AdminPage() {
                   <p className="mb-4 text-sm text-muted-foreground">
                     Showing {filteredClubs.length} club{filteredClubs.length !== 1 ? "s" : ""}
                   </p>
-                  <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
 
                     <Input
                       placeholder="Search clubs..."
+                      aria-label="Search clubs"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       className="md:w-80"
                     />
 
-                    <div className="flex gap-3">
+                    <div className="grid grid-cols-2 gap-3 md:flex">
 
                       <select
                         value={listingFilter}
                         onChange={(e) => setListingFilter(e.target.value)}
-                        className="
-                          h-10
-                          rounded-md
-                          border
-                          bg-background
-                          px-3
-                          text-sm
-                        "
+                        aria-label="Filter by listing type"
+                        className="h-10 w-full md:w-auto rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         <option value="all">All Listings</option>
                         <option value="free">Free</option>
@@ -825,14 +810,8 @@ export default function AdminPage() {
                       <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
-                        className="
-                          h-10
-                          rounded-md
-                          border
-                          bg-background
-                          px-3
-                          text-sm
-                        "
+                        aria-label="Filter by status"
+                        className="h-10 w-full md:w-auto rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         <option value="all">All Statuses</option>
                         <option value="published">Published</option>
@@ -847,145 +826,60 @@ export default function AdminPage() {
                   <div className="rounded-xl border bg-card overflow-hidden">
 
                   <Table>
-                
                     <TableHeader>
                       <TableRow>
-                
                         <TableHead>Club</TableHead>
-                        <TableHead>Location</TableHead>
-                        <TableHead>Listing</TableHead>
-                        <TableHead>Status</TableHead>
-                
-                        <TableHead className="text-centre">
-                          Actions
-                        </TableHead>
-                
+                        <TableHead className="hidden md:table-cell">Location</TableHead>
+                        <TableHead className="hidden lg:table-cell">Listing</TableHead>
+                        <TableHead className="hidden sm:table-cell">Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
-                
                     <TableBody>
-                
                       {paginatedClubs.map((club) => (
-                
                         <TableRow key={club.id}>
-                
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium align-top">
                             {club.name}
-                          </TableCell>
-                
-                          <TableCell>
-                            {[club.suburb, club.state]
-                              .filter(Boolean)
-                              .join(", ")}
-                          </TableCell>
-                
-                          <TableCell>
-                
-                            <Badge
-                              variant={
-                                club.listingType === "premium"
-                                  ? "default"
-                                  : "secondary"
-                              }
-                            >
-                              {club.listingType}
-                            </Badge>
-                
-                          </TableCell>
-                
-                          <TableCell>
-                
-                            <Badge
-                              variant={
-                                club.status === "published"
-                                  ? "default"
-                                  : "outline"
-                              }
-                            >
-                              {club.status}
-                            </Badge>
-                
-                          </TableCell>
-                
-                          <TableCell>
-                
-                            <div className="flex justify-end gap-2">
-                
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={() => openEdit(club)}
-                                data-testid={`club-row-edit-btn-${club.id}`}
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={() => {
-                                  setPreviewClub(club);
-                                  setPreviewOpen(true);
-                                }}
-                                data-testid={`club-row-preview-btn-${club.id}`}
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-
-                              {club.listingType === "premium" &&
-                                club.slug && (
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    asChild
-                                    title="View Live Page"
-                                    data-testid={`club-row-view-live-btn-${club.id}`}
-                                  >
-                                    <a
-                                      href={`/clubs/${club.slug}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                    >
-                                      <ExternalLinkIcon className="w-4 h-4" />
-                                    </a>
-                                  </Button>
-                                )}
-                
-                              <Button
-                                size="icon"
-                                variant={
-                                  club.status === "published"
-                                    ? "default"
-                                    : "outline"
-                                }
-                                onClick={() =>
-                                  toggleClubStatus(club)
-                                }
-                                data-testid={`club-row-toggle-status-btn-${club.id}`}
-                              >
-                                <Globe className="w-4 h-4" />
-                              </Button>
-                
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={() => remove(club)}
-                                className="text-destructive"
-                                data-testid={`club-row-delete-btn-${club.id}`}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                
+                            {/* Narrow screens: the hidden columns, under the name */}
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs font-normal text-muted-foreground md:hidden">
+                              <span>{[club.suburb, club.state].filter(Boolean).join(", ")}</span>
+                              <Badge variant={club.listingType === "premium" ? "default" : "secondary"} className="lg:hidden">{club.listingType}</Badge>
+                              <Badge variant={club.status === "published" ? "default" : "outline"} className="sm:hidden">{club.status}</Badge>
                             </div>
-                
                           </TableCell>
-                
+                          <TableCell className="hidden md:table-cell">
+                            {[club.suburb, club.state].filter(Boolean).join(", ")}
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            <Badge variant={club.listingType === "premium" ? "default" : "secondary"}>{club.listingType}</Badge>
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            <Badge variant={club.status === "published" ? "default" : "outline"}>{club.status}</Badge>
+                          </TableCell>
+                          <TableCell className="align-top">
+                            <AdminRowActions
+                              itemName={club.name}
+                              published={club.status === "published"}
+                              onEdit={() => openEdit(club)}
+                              onPreview={() => {
+                                setPreviewClub(club);
+                                setPreviewOpen(true);
+                              }}
+                              liveHref={club.listingType === "premium" && club.slug ? `/clubs/${club.slug}` : undefined}
+                              onTogglePublish={() => toggleClubStatus(club)}
+                              onDelete={() => remove(club)}
+                              testIds={{
+                                edit: `club-row-edit-btn-${club.id}`,
+                                preview: `club-row-preview-btn-${club.id}`,
+                                live: `club-row-view-live-btn-${club.id}`,
+                                toggle: `club-row-toggle-status-btn-${club.id}`,
+                                delete: `club-row-delete-btn-${club.id}`,
+                              }}
+                            />
+                          </TableCell>
                         </TableRow>
-                
                       ))}
-                
                     </TableBody>
-                
                   </Table>
                 
                   
@@ -1002,28 +896,23 @@ export default function AdminPage() {
                   <p className="mb-4 text-sm text-muted-foreground">
                     Showing {filteredTravel.length} package{filteredTravel.length !== 1 ? "s" : ""}
                   </p>
-                  <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
 
                     <Input
                       placeholder="Search travel packages..."
+                      aria-label="Search travel packages"
                       value={travelSearch}
                       onChange={(e) => setTravelSearch(e.target.value)}
                       className="md:w-80"
                     />
 
-                    <div className="flex gap-3">
+                    <div className="grid grid-cols-2 gap-3 md:flex">
 
                       <select
                         value={travelStatusFilter}
                         onChange={(e) => setTravelStatusFilter(e.target.value)}
-                        className="
-                          h-10
-                          rounded-md
-                          border
-                          bg-background
-                          px-3
-                          text-sm
-                        "
+                        aria-label="Filter by status"
+                        className="h-10 w-full md:w-auto rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         <option value="all">All Statuses</option>
                         <option value="published">Published</option>
@@ -1036,103 +925,48 @@ export default function AdminPage() {
                   <div className="rounded-xl border bg-card overflow-hidden">
 
                   <Table>
-
                     <TableHeader>
                       <TableRow>
-
                         <TableHead>Package</TableHead>
-                        <TableHead>Location</TableHead>
-                        <TableHead>Status</TableHead>
-
-                        <TableHead className="text-centre">
-                          Actions
-                        </TableHead>
-
+                        <TableHead className="hidden md:table-cell">Location</TableHead>
+                        <TableHead className="hidden sm:table-cell">Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
-
                     <TableBody>
-
-                      {paginatedTravel.map((pkg) => (
-
-                        <TableRow key={pkg.id}>
-
-                          <TableCell className="font-medium">
-                            {pkg.title}
-                          </TableCell>
-
-                          <TableCell>
-                            {pkg.destination}
-                          </TableCell>
-
-                          <TableCell>
-
-                            <Badge
-                              variant={
-                                pkg.isActive ? "default" : "outline"
-                              }
-                            >
-                              {pkg.isActive ? "published" : "hidden"}
-                            </Badge>
-
-                          </TableCell>
-
-                          <TableCell>
-
-                            <div className="flex justify-end gap-2">
-
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={() => openEdit(pkg)}
-                                data-testid={`admin-edit-${pkg.id}`}
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={() =>
-                                  setLocation(`/admin/travel/${pkg.slug}/preview`)
-                                }
-                                data-testid={`admin-preview-${pkg.id}`}
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-
-                              <Button
-                                size="icon"
-                                variant={
-                                  pkg.isActive ? "default" : "outline"
-                                }
-                                onClick={() =>
-                                  toggleTravelStatus(pkg)
-                                }
-                              >
-                                <Globe className="w-4 h-4" />
-                              </Button>
-
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={() => remove(pkg)}
-                                className="text-destructive"
-                                data-testid={`admin-delete-${pkg.id}`}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-
+                      {paginatedTravel.map((row) => (
+                        <TableRow key={row.id}>
+                          <TableCell className="font-medium align-top">
+                            {row.title}
+                            {/* Narrow screens: the hidden columns, under the title */}
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs font-normal text-muted-foreground md:hidden">
+                              <span>{row.destination}</span>
+                              <Badge variant={row.isActive ? "default" : "outline"} className="sm:hidden">{row.isActive ? "published" : "hidden"}</Badge>
                             </div>
-
                           </TableCell>
-
+                          <TableCell className="hidden md:table-cell">{row.destination}</TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            <Badge variant={row.isActive ? "default" : "outline"}>{row.isActive ? "published" : "hidden"}</Badge>
+                          </TableCell>
+                          <TableCell className="align-top">
+                            <AdminRowActions
+                              itemName={row.title}
+                              published={!!row.isActive}
+                              onEdit={() => openEdit(row)}
+                              onPreview={() => setLocation(`/admin/travel/${row.slug}/preview`)}
+                              onTogglePublish={() => toggleTravelStatus(row)}
+                              onDelete={() => remove(row)}
+                              testIds={{
+                                edit: `admin-edit-${row.id}`,
+                                preview: `admin-preview-${row.id}`,
+                                toggle: `admin-toggle-status-${row.id}`,
+                                delete: `admin-delete-${row.id}`,
+                              }}
+                            />
+                          </TableCell>
                         </TableRow>
-
                       ))}
-
                     </TableBody>
-
                   </Table>
 
 
@@ -1149,28 +983,23 @@ export default function AdminPage() {
                   <p className="mb-4 text-sm text-muted-foreground">
                     Showing {filteredArticles.length} article{filteredArticles.length !== 1 ? "s" : ""}
                   </p>
-                  <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
 
                     <Input
                       placeholder="Search articles..."
+                      aria-label="Search articles"
                       value={articleSearch}
                       onChange={(e) => setArticleSearch(e.target.value)}
                       className="md:w-80"
                     />
 
-                    <div className="flex gap-3">
+                    <div className="grid grid-cols-2 gap-3 md:flex">
 
                       <select
                         value={articleCategoryFilter}
                         onChange={(e) => setArticleCategoryFilter(e.target.value)}
-                        className="
-                          h-10
-                          rounded-md
-                          border
-                          bg-background
-                          px-3
-                          text-sm
-                        "
+                        aria-label="Filter by category"
+                        className="h-10 w-full md:w-auto rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         <option value="all">All Categories</option>
                         {ARTICLE_CATEGORIES.map((c) => (
@@ -1183,14 +1012,8 @@ export default function AdminPage() {
                       <select
                         value={articleStatusFilter}
                         onChange={(e) => setArticleStatusFilter(e.target.value)}
-                        className="
-                          h-10
-                          rounded-md
-                          border
-                          bg-background
-                          px-3
-                          text-sm
-                        "
+                        aria-label="Filter by status"
+                        className="h-10 w-full md:w-auto rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         <option value="all">All Statuses</option>
                         <option value="published">Published</option>
@@ -1203,103 +1026,48 @@ export default function AdminPage() {
                   <div className="rounded-xl border bg-card overflow-hidden">
 
                   <Table>
-
                     <TableHeader>
                       <TableRow>
-
                         <TableHead>Title</TableHead>
-                        <TableHead>Category</TableHead>
-                        <TableHead>Status</TableHead>
-
-                        <TableHead className="text-centre">
-                          Actions
-                        </TableHead>
-
+                        <TableHead className="hidden md:table-cell">Category</TableHead>
+                        <TableHead className="hidden sm:table-cell">Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
-
                     <TableBody>
-
-                      {paginatedArticles.map((article) => (
-
-                        <TableRow key={article.id}>
-
-                          <TableCell className="font-medium">
-                            {article.title}
-                          </TableCell>
-
-                          <TableCell>
-                            {article.category}
-                          </TableCell>
-
-                          <TableCell>
-
-                            <Badge
-                              variant={
-                                article.isPublished ? "default" : "outline"
-                              }
-                            >
-                              {article.isPublished ? "published" : "draft"}
-                            </Badge>
-
-                          </TableCell>
-
-                          <TableCell>
-
-                            <div className="flex justify-end gap-2">
-
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={() => openEdit(article)}
-                                data-testid={`admin-edit-${article.id}`}
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={() =>
-                                  setLocation(`/admin/articles/${article.slug}/preview`)
-                                }
-                                data-testid={`admin-preview-${article.id}`}
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-
-                              <Button
-                                size="icon"
-                                variant={
-                                  article.isPublished ? "default" : "outline"
-                                }
-                                onClick={() =>
-                                  toggleArticleStatus(article)
-                                }
-                              >
-                                <Globe className="w-4 h-4" />
-                              </Button>
-
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={() => remove(article)}
-                                className="text-destructive"
-                                data-testid={`admin-delete-${article.id}`}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-
+                      {paginatedArticles.map((row) => (
+                        <TableRow key={row.id}>
+                          <TableCell className="font-medium align-top">
+                            {row.title}
+                            {/* Narrow screens: the hidden columns, under the title */}
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs font-normal text-muted-foreground md:hidden">
+                              <span>{row.category}</span>
+                              <Badge variant={row.isPublished ? "default" : "outline"} className="sm:hidden">{row.isPublished ? "published" : "draft"}</Badge>
                             </div>
-
                           </TableCell>
-
+                          <TableCell className="hidden md:table-cell">{row.category}</TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            <Badge variant={row.isPublished ? "default" : "outline"}>{row.isPublished ? "published" : "draft"}</Badge>
+                          </TableCell>
+                          <TableCell className="align-top">
+                            <AdminRowActions
+                              itemName={row.title}
+                              published={!!row.isPublished}
+                              onEdit={() => openEdit(row)}
+                              onPreview={() => setLocation(`/admin/articles/${row.slug}/preview`)}
+                              onTogglePublish={() => toggleArticleStatus(row)}
+                              onDelete={() => remove(row)}
+                              testIds={{
+                                edit: `admin-edit-${row.id}`,
+                                preview: `admin-preview-${row.id}`,
+                                toggle: `admin-toggle-status-${row.id}`,
+                                delete: `admin-delete-${row.id}`,
+                              }}
+                            />
+                          </TableCell>
                         </TableRow>
-
                       ))}
-
                     </TableBody>
-
                   </Table>
 
 
@@ -1314,9 +1082,9 @@ export default function AdminPage() {
                     ) : items.length === 0 ? (
                     <div className="text-center py-20">
                       <ActiveIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                      <h3 className="text-xl font-bold mb-2">
+                      <h2 className="text-xl font-bold mb-2">
                         No items yet
-                      </h3>
+                      </h2>
   
                       <Button
                         onClick={openCreate}
@@ -1355,7 +1123,7 @@ export default function AdminPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="flex-1 cursor-pointer"
+                              className="flex-1"
                               onClick={() => openEdit(item)}
                               data-testid={`admin-edit-${item.id}`}
                             >
@@ -1366,11 +1134,12 @@ export default function AdminPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="cursor-pointer hover:text-destructive hover:border-destructive"
+                              className="hover:text-destructive hover:border-destructive"
+                              aria-label={`Delete ${item.title || item.name}`}
                               onClick={() => remove(item)}
                               data-testid={`admin-delete-${item.id}`}
                             >
-                              <Trash2 className="w-3 h-3" />
+                              <Trash2 className="w-3 h-3" aria-hidden="true" />
                             </Button>
                           </div>
                         </CardContent>
@@ -1413,7 +1182,7 @@ export default function AdminPage() {
              onEscapeKeyDown={(e) => e.preventDefault()}
              >
             <DialogHeader>
-              <DialogTitle>{editing ? "Edit" : "Create"}{" "} {activeLabel}</DialogTitle>
+              <DialogTitle>{editing ? "Edit" : "Create"} {itemLabel}</DialogTitle>
             </DialogHeader>
             
 
@@ -1552,8 +1321,8 @@ export default function AdminPage() {
               )}
           {activeTab !== "clubs" && activeTab !== "travel" && activeTab !== "articles" && (
             <DialogFooter>
-              <Button variant="outline" onClick={() => setDialogOpen(false)} className="cursor-pointer">Cancel</Button>
-              <Button onClick={submit} className="bg-primary text-foreground cursor-pointer" data-testid="admin-save-button">
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+              <Button onClick={submit} data-testid="admin-save-button">
                 {editing ? "Update" : "Create"}
               </Button>
             </DialogFooter>
@@ -1567,7 +1336,7 @@ export default function AdminPage() {
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>
-                Delete {deleteLabel}
+                Delete {itemLabel}
                 </DialogTitle>
                 <DialogDescription>
                   Are you sure you want to delete

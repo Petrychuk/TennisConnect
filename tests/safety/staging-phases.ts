@@ -110,8 +110,20 @@ export const STAGING_PHASES: Readonly<Record<StagingPhase, readonly PhaseEntry[]
   stripe: [{ file: 'tests/support/back-the-rally.spec.ts', ids: ['SUPPORT-007', 'SUPPORT-008'] }],
 };
 
-/** Never run on Staging (ADMIN-009 targets the permanent e2e-admin account). */
-export const LOCAL_ONLY_TESTS: readonly PhaseEntry[] = [{ file: 'tests/admin/users/admin-user-delete.spec.ts', ids: ['ADMIN-009'] }];
+/**
+ * Never run on Staging:
+ * - ADMIN-009 targets the permanent e2e-admin account;
+ * - SEARCH-001..094 (hero search, guest-only and read-only - the Games
+ *   smart-search POST is answered in the browser) are new and not yet
+ *   reviewed for the Staging read-only set. Moving them there is a
+ *   reviewed decision (tests/safety/staging-readonly.ts).
+ */
+export const HERO_SEARCH_TEST_IDS: readonly string[] = Array.from({ length: 94 }, (_, i) => `SEARCH-${String(i + 1).padStart(3, '0')}`);
+
+export const LOCAL_ONLY_TESTS: readonly PhaseEntry[] = [
+  { file: 'tests/admin/users/admin-user-delete.spec.ts', ids: ['ADMIN-009'] },
+  { file: 'tests/public/hero-search.spec.ts', ids: HERO_SEARCH_TEST_IDS },
+];
 
 export function isStagingPhase(value: unknown): value is StagingPhase {
   return typeof value === 'string' && (STAGING_PHASE_ORDER as readonly string[]).includes(value);

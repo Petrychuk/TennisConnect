@@ -139,7 +139,7 @@ export function SessionCardGrid({ session, onDuplicate, onDelete, onArchive }: S
             <Metric icon={Users} value={session.registeredCount} label="Players" />
             <Metric icon={CheckCircle2} value={session.checkedInCount} label="Attended" />
             {attendancePercent !== null && (
-              <span className="font-semibold text-primary" data-testid={`organiser-session-card-grid-${session.id}-attendance`}>
+              <span className="font-semibold text-primary-text" data-testid={`organiser-session-card-grid-${session.id}-attendance`}>
                 {attendancePercent}% Attendance
               </span>
             )}
@@ -147,7 +147,7 @@ export function SessionCardGrid({ session, onDuplicate, onDelete, onArchive }: S
         ) : (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
             {bucket === "live" && session.roundCurrent && session.roundTotal && (
-              <span className="font-semibold text-primary" data-testid={`organiser-session-card-grid-${session.id}-round`}>
+              <span className="font-semibold text-primary-text" data-testid={`organiser-session-card-grid-${session.id}-round`}>
                 Round {session.roundCurrent} / {session.roundTotal}
               </span>
             )}

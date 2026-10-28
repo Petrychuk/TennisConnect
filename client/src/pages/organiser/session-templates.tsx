@@ -225,7 +225,7 @@ export default function OrganiserSessionTemplatesPage() {
         <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="hidden md:inline-flex" data-testid="organiser-sidebar-trigger">
+              <Button variant="ghost" size="icon" className="hidden md:inline-flex" aria-label="Open Organiser Hub menu" data-testid="organiser-sidebar-trigger">
                 <Menu className="w-5 h-5" />
               </Button>
             </SheetTrigger>

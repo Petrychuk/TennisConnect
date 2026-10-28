@@ -41,7 +41,7 @@ function SectionCard({ icon: Icon, title, children }: { icon: typeof CalendarDay
   return (
     <Card className="shadow-sm" data-testid={`organiser-wizard-section-${title.toLowerCase().replace(/\s+/g, "-")}`}>
       <CardHeader className="flex flex-row items-center gap-2 space-y-0">
-        <Icon className="w-4 h-4 text-primary" />
+        <Icon className="w-4 h-4 text-primary-text" />
         <CardTitle className="text-base">{title}</CardTitle>
       </CardHeader>
       <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">{children}</CardContent>
@@ -93,13 +93,13 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
   return (
     <div className="space-y-4" data-testid="organiser-wizard-step2">
       <div className="flex items-start gap-2 rounded-xl bg-primary/5 border border-primary/20 px-3 py-2.5 text-sm text-muted-foreground">
-        <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+        <Info className="w-4 h-4 text-primary-text shrink-0 mt-0.5" />
         <p>You can always edit session details later — nothing here is final.</p>
       </div>
 
       <Card className="shadow-sm" data-testid="organiser-wizard-section-cover-photo">
         <CardHeader className="flex flex-row items-center gap-2 space-y-0">
-          <ImagePlus className="w-4 h-4 text-primary" />
+          <ImagePlus className="w-4 h-4 text-primary-text" />
           <CardTitle className="text-base">Cover Photo</CardTitle>
         </CardHeader>
         <CardContent>
@@ -133,7 +133,7 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="w-full h-32 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-1.5 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+              className="w-full h-32 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-1.5 text-muted-foreground hover:border-primary/40 hover:text-primary-text transition-colors"
               data-testid="organiser-wizard-cover-photo-trigger"
             >
               <ImagePlus className="w-6 h-6" />
@@ -158,7 +158,7 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
             value={draft.seasonId ?? "none"}
             onValueChange={(v) => onChange("seasonId", v === "none" ? null : v)}
           >
-            <SelectTrigger data-testid="organiser-wizard-session-season">
+            <SelectTrigger aria-label="Season" data-testid="organiser-wizard-session-season">
               <SelectValue placeholder="No Season" />
             </SelectTrigger>
             <SelectContent>
@@ -179,7 +179,7 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
         </Field>
         <Field label="City / Timezone">
           <Select value={draft.timeZone} onValueChange={(v) => onChange("timeZone", v)}>
-            <SelectTrigger data-testid="organiser-wizard-session-timezone">
+            <SelectTrigger aria-label="City / timezone" data-testid="organiser-wizard-session-timezone">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

@@ -151,11 +151,11 @@ export function DiscoverySourcesPanel({ onRunSource }: { onRunSource: (source: D
 
   return (
     <div data-testid="discovery-sources-panel">
-      <div className="flex items-center justify-between gap-4 mb-4 max-w-4xl">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 mb-4 max-w-4xl">
         <p className="text-sm text-muted-foreground">
           The Agent only reads the pages listed here - it never follows links or searches the web on its own.
         </p>
-        <Button size="sm" onClick={openAdd} className="shrink-0" data-testid="discovery-source-add">
+        <Button onClick={openAdd} className="w-full sm:w-auto shrink-0" data-testid="discovery-source-add">
           <Plus className="w-4 h-4 mr-1.5" /> Add source
         </Button>
       </div>
@@ -191,12 +191,14 @@ export function DiscoverySourcesPanel({ onRunSource }: { onRunSource: (source: D
                         className="text-sm text-muted-foreground hover:underline inline-flex items-center gap-1 max-w-full"
                       >
                         <span className="truncate">{s.baseUrl}</span>
-                        <ExternalLink className="w-3 h-3 shrink-0" />
+                        <ExternalLink className="w-3 h-3 shrink-0" aria-hidden="true" />
+                        <span className="sr-only">(opens in a new tab)</span>
                       </a>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-xs text-muted-foreground">{s.enabled ? "Enabled" : "Paused"}</span>
                       <Switch
+                        aria-label={`${s.enabled ? "Pause" : "Enable"} ${s.name}`}
                         checked={s.enabled}
                         onCheckedChange={(v) => toggleEnabled(s, v)}
                         data-testid={`discovery-source-${s.id}-toggle`}
@@ -258,7 +260,7 @@ export function DiscoverySourcesPanel({ onRunSource }: { onRunSource: (source: D
               <div>
                 <Label>Type</Label>
                 <Select value={draft.sourceType} onValueChange={(v) => setDraft((d) => ({ ...d, sourceType: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label="Source type"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {SOURCE_TYPES.map((t) => (
                       <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
@@ -269,7 +271,7 @@ export function DiscoverySourcesPanel({ onRunSource }: { onRunSource: (source: D
               <div>
                 <Label>State</Label>
                 <Select value={draft.state} onValueChange={(v) => setDraft((d) => ({ ...d, state: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label="State"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value={NONE}>Multiple / national</SelectItem>
                     {STATES.map((st) => (

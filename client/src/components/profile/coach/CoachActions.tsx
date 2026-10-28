@@ -60,7 +60,6 @@ export function CoachActions({
             px-5
             gap-2
             text-sm
-            font-medium
           "
           data-testid="save-coach"
         >

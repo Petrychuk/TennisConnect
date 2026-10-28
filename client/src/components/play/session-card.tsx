@@ -197,7 +197,7 @@ export function PlaySessionCard({
             className="flex items-center gap-1.5 text-sm bg-primary/5 rounded-lg px-2.5 py-1.5 min-w-0"
             data-testid={`play-session-card-${session.id}-match`}
           >
-            <span className="font-bold text-primary shrink-0">{recommendation.score}% match</span>
+            <span className="font-bold text-primary-text shrink-0">{recommendation.score}% match</span>
             <span className="text-muted-foreground text-xs truncate min-w-0">
               · {recommendation.reasons.map((r) => RECOMMENDATION_REASON_TEXT[r] ?? r).join(" · ")}
             </span>
@@ -208,7 +208,7 @@ export function PlaySessionCard({
           <div className="flex items-center gap-2 min-w-0" data-testid={`play-session-card-${session.id}-organiser`}>
             <Avatar className="h-6 w-6 shrink-0">
               {session.organizationLogo && <AvatarImage src={session.organizationLogo} alt="" />}
-              <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{initials(session.organizationName)}</AvatarFallback>
+              <AvatarFallback className="text-[10px] bg-primary/10 text-primary-text">{initials(session.organizationName)}</AvatarFallback>
             </Avatar>
             <span className="text-xs text-muted-foreground truncate">
               {(() => {
@@ -222,7 +222,7 @@ export function PlaySessionCard({
                 }
                 return (
                   <>
-                    <span className="text-primary font-medium">{badge.label === "Partner" ? "TennisConnect Partner ✓" : badge.label}</span> · {badge.name}
+                    <span className="text-primary-text font-medium">{badge.label === "Partner" ? "TennisConnect Partner ✓" : badge.label}</span> · {badge.name}
                   </>
                 );
               })()}

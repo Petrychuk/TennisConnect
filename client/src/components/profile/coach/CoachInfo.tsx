@@ -242,7 +242,7 @@ export function CoachInfo({
 
                   border-primary/20
                   bg-primary/10
-                  text-primary
+                  text-primary-text
 
                   px-3
                   py-1

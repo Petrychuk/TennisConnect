@@ -245,7 +245,7 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
 
               <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
                 <div className="text-right">
-                  <div className="font-bold text-primary text-lg">{t.result}</div>
+                  <div className="font-bold text-primary-text text-lg">{t.result}</div>
                   {t.award && <div className="text-sm text-muted-foreground">{t.award}</div>}
                 </div>
                 {isOwnProfile && (
@@ -404,7 +404,7 @@ export function TournamentHistorySection({ userId, isOwnProfile }: TournamentHis
                         }
                       }}
                     >
-                      <SelectTrigger data-testid="tournament-result-select">
+                      <SelectTrigger aria-label="Result" data-testid="tournament-result-select">
                         <SelectValue placeholder="Select Result" />
                       </SelectTrigger>
                       <SelectContent>

@@ -66,7 +66,7 @@ export function BecomeOrganizerCard({ status, onChange }: BecomeOrganizerCardPro
         {view.kind === "approved" ? (
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
             <div className="flex items-center gap-2 text-sm" data-testid="organizer-status-approved">
-              <CheckCircle2 className="w-4 h-4 text-primary" />
+              <CheckCircle2 className="w-4 h-4 text-primary-text" />
               You're an approved organiser.
             </div>
             <Button asChild size="sm" data-testid="go-to-organizer-dashboard">

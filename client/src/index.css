@@ -13,6 +13,8 @@
   --color-primary: hsl(var(--primary));
   --color-primary-foreground: hsl(var(--primary-foreground));
   --color-primary-text: hsl(var(--primary-text));
+  --color-primary-hover: hsl(var(--primary-hover));
+  --color-secondary-hover: hsl(var(--secondary-hover));
   --color-secondary: hsl(var(--secondary));
   --color-secondary-foreground: hsl(var(--secondary-foreground));
   --color-muted: hsl(var(--muted));
@@ -28,6 +30,9 @@
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
+  /* The one corner radius every standard button shares (rounded-button) -
+     see components/ui/button.tsx. Change it here, nowhere else. */
+  --radius-button: 0.75rem;
   
   --font-sans: "Inter", sans-serif;
   --font-display: "Syne", sans-serif;
@@ -48,13 +53,16 @@
   --popover-foreground: 240 10% 3.9%;
   
   /* The Star: Electric Lime - Slightly Darker for better text readability */
-  --primary: 78 85% 42%; /* Darker Lime/Olive Green */
-  --primary-foreground: 0 0% 100%; /* White text on darker green */
+  /* Brand accent - the soft lime from the TennisConnect deck (#C3E254).
+     Always paired with near-black text (white on it is only ~1.5:1). */
+  --primary: 73 71% 61%;
+  --primary-foreground: 240 10% 3.9%;
 
   /* Same hue as --primary, darkened enough to read as actual text (a
      link, a small label) directly on a light background - #90C610
      itself is only ~2:1 against white, badly failing WCAG's 4.5:1 for
-     normal text no matter which of the two is foreground/background.
+     normal text no matter which of the two is foreground/background
+     (and the deck lime #C3E254 only ~1.3:1).
      --primary itself is deliberately NOT changed for this: it's also a
      button/badge *background*, paired with dark text (see button.tsx's
      "default" variant) or used decoratively, where the bright, on-
@@ -64,25 +72,36 @@
      pairs with dark button text below for the same reason, just
      inverted for a dark background. ~5.3:1 against white.
   */
-  --primary-text: 78 85% 25%;
+  --primary-text: 76 70% 26%; /* #5A7314 olive: lime text on light reads only ~1.3:1 */
+  /* Lime button hover: a step darker, still with near-black text (~8:1). */
+  --primary-hover: 73 62% 53%;
 
   --secondary: 240 5% 94%; /* Slightly darker gray */
   --secondary-foreground: 240 5% 10%;
+  --secondary-hover: 240 5% 89%;
   
   --muted: 240 5% 94%;
   --muted-foreground: 240 4% 35%; /* Darker gray for better readability */
   
-  --accent: 78 85% 92%; /* Pale lime for hover states */
+  --accent: 68 47% 90%; /* #EFF2DB pale lime for hover / active states */
   --accent-foreground: 240 5% 10%;
   
-  --destructive: 0 84% 60%;
+  /* Was 0 84% 60% (#ef4444): only ~3.8:1 with white button text and as
+     red text on white. 0 72% 45% keeps the same red at ~5.3:1. */
+  --destructive: 0 72% 45%;
   --destructive-foreground: 0 0% 98%;
 
   --border: 240 5% 90%;
   --input: 240 5% 90%;
-  --ring: 75 90% 55%; /* Lime ring */
+  /* Focus ring. Was the bright lime (75 90% 55%), which is only ~1.6:1
+     against the light background - too faint to find the keyboard focus
+     (WCAG 2.4.7 / 1.4.11 want ~3:1 for a focus indicator). Same green
+     family, dark enough to stand out: ~3.7:1 on the page background. */
+  --ring: 76 70% 30%;
   
   --tennis-ball: 75 90% 60%; /* Lighter/Brighter "Tennis Ball" color for Logo */
+  /* The logo keeps its own colours whatever the accent is. */
+  --logo-connect: 78 85% 42%;
 
   --radius: 0.75rem;
 }
@@ -98,17 +117,19 @@
   --popover: 240 10% 12%;
   --popover-foreground: 0 0% 98%;
   
-  --primary: 75 90% 55%; /* Electric Lime pops on dark */
+  --primary: 73 71% 61%; /* same soft lime - reads well on dark too */
   --primary-foreground: 240 20% 10%;
 
   /* Unlike light mode, --primary itself already reads fine as text
      directly on this dark background (~14:1) - no darkening needed
      here, just kept as its own token for the light/dark parity
      described in :root's own comment on this variable. */
-  --primary-text: 75 90% 55%;
+  --primary-text: 73 71% 61%;
+  --primary-hover: 73 62% 53%;
   
   --secondary: 240 4% 16%;
   --secondary-foreground: 0 0% 98%;
+  --secondary-hover: 240 4% 22%;
   
   --muted: 240 4% 16%;
   --muted-foreground: 240 5% 65%;
@@ -121,7 +142,8 @@
   
   --border: 240 4% 16%;
   --input: 240 4% 16%;
-  --ring: 75 90% 55%;
+  --ring: 73 71% 61%;
+  --logo-connect: 75 90% 55%;
 }
 
 @layer base {
@@ -142,11 +164,11 @@
   }
 }
 
+/* Scrollbars stay neutral and thin everywhere - a scroll indicator, not a
+   brand highlight (the lime thumb read as a long bright button). */
 .messages-scroll {
   scrollbar-width: thin;
-  scrollbar-color:
-    hsl(var(--tennis-ball))
-    transparent;
+  scrollbar-color: hsl(var(--foreground) / 0.18) transparent;
 }
 
 .messages-scroll::-webkit-scrollbar {
@@ -158,7 +180,7 @@
 }
 
 .messages-scroll::-webkit-scrollbar-thumb {
-  background: hsl(var(--tennis-ball));
+  background: hsl(var(--foreground) / 0.18);
   border-radius: 999px;
 }
 
@@ -179,13 +201,148 @@
 }
 
 .custom-chat-scroll::-webkit-scrollbar-thumb {
-  background: rgba(180, 220, 40, 0.5);
+  background: hsl(var(--foreground) / 0.18);
   border-radius: 999px;
   min-height: 60px;
 }
 
 .custom-chat-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(180, 220, 40, 0.8);
+  background: hsl(var(--foreground) / 0.32);
+}
+
+/* Hero badge ("eyebrow") - the small label above every page hero title.
+   An opaque dark pill (readable on any photo) with a lime "rally" tracer
+   that runs round its border like a ball along the court line. One shared
+   look: components/shared/hero-badge.tsx. Static border when the visitor
+   asks for reduced motion, or in browsers without @property. */
+@property --tc-badge-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.tc-hero-badge {
+  border: 2px solid transparent;
+  background:
+    linear-gradient(hsl(0 0% 7%), hsl(0 0% 7%)) padding-box,
+    conic-gradient(
+      from var(--tc-badge-angle),
+      hsl(var(--primary) / 0.3) 0deg,
+      hsl(var(--primary) / 0.3) 210deg,
+      hsl(var(--primary)) 310deg,
+      hsl(0 0% 100%) 348deg,
+      hsl(var(--primary) / 0.3) 360deg
+    ) border-box;
+  box-shadow: 0 6px 20px -6px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(0 0 0 / 0.25);
+  animation: tc-badge-rally 3.6s linear infinite;
+}
+
+/* The lime dot "bounces": a ring pings out from it, like a ball landing. */
+.tc-hero-badge-dot {
+  position: relative;
+}
+
+.tc-hero-badge-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: hsl(var(--primary));
+  animation: tc-badge-bounce 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes tc-badge-rally {
+  to {
+    --tc-badge-angle: 360deg;
+  }
+}
+
+@keyframes tc-badge-bounce {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  70%,
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tc-hero-badge {
+    animation: none;
+    --tc-badge-angle: 300deg;
+  }
+  .tc-hero-badge-dot::after {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* Hero titles and intros sit on photos: a soft two-layer shadow keeps
+   white and lime text readable on light parts of the image. */
+.tc-hero-text {
+  text-shadow:
+    0 1px 2px rgb(0 0 0 / 0.75),
+    0 2px 8px rgb(0 0 0 / 0.6),
+    0 0 32px rgb(0 0 0 / 0.5);
+}
+
+/* Tablet/desktop heroes: the photo darkens smoothly towards its left
+   edge across the left half (eased stops, no visible edge), so the white
+   title, intro and the search sit on a calm dark side. Phones don't use it. */
+.tc-hero-left-shade {
+  background: linear-gradient(
+    to right,
+    rgb(0 0 0 / 0.72) 0%,
+    rgb(0 0 0 / 0.55) 16%,
+    rgb(0 0 0 / 0.34) 30%,
+    rgb(0 0 0 / 0.16) 42%,
+    rgb(0 0 0 / 0.05) 50%,
+    rgb(0 0 0 / 0) 58%
+  );
+}
+
+/* "Connect" in the logo: lime on light backgrounds needs a dark, soft
+   shadow under the letters (not a box) to stand out. */
+.tc-brand-connect {
+  text-shadow:
+    0 1px 0 rgb(0 0 0 / 0.35),
+    0 1px 3px rgb(0 0 0 / 0.55),
+    0 2px 10px rgb(0 0 0 / 0.3);
+}
+
+.tc-brand-connect img {
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.45)) drop-shadow(0 2px 6px rgb(0 0 0 / 0.3));
+}
+
+/* The intro line under a hero title: white text over a soft, feathered
+   darkening of the photo - no box, no edges, it fades out on every side
+   (text alone on bright sky or courts disappeared, even with a shadow). */
+.tc-hero-intro {
+  position: relative;
+  isolation: isolate;
+  width: fit-content;
+  color: #fff;
+  text-shadow:
+    0 1px 2px rgb(0 0 0 / 0.6),
+    0 2px 10px rgb(0 0 0 / 0.45);
+}
+
+.tc-hero-intro::before {
+  content: "";
+  position: absolute;
+  inset: -1.25rem -2.5rem;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    closest-side,
+    rgb(0 0 0 / 0.5),
+    rgb(0 0 0 / 0.32) 55%,
+    rgb(0 0 0 / 0) 100%
+  );
+  filter: blur(6px);
 }
 
 /* Space for the fixed mobile bottom nav (Home / Messages / Profile / Notifications / More) */

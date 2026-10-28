@@ -11,8 +11,8 @@ export function OrganiserBarLogo({ className }: { className?: string }) {
       className={cn("mr-auto md:ml-2 flex shrink-0 items-center gap-1 whitespace-nowrap font-display text-lg font-bold leading-none", className)}
       data-testid="organiser-bar-logo"
     >
-      Tennis<span className="text-primary"><ConnectWord /></span>
-      <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
+      Tennis<span className="text-[hsl(var(--logo-connect))]"><ConnectWord /></span>
+      <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[hsl(var(--logo-connect))]" aria-hidden="true" />
     </Link>
   );
 }

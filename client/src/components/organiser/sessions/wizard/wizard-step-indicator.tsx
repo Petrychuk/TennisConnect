@@ -32,7 +32,7 @@ export function WizardStepIndicator({ currentStep, maxReachedStep = currentStep,
               >
                 {isDone ? <Check className="w-4 h-4" /> : step.number}
               </button>
-              <span className={cn("text-[11px] font-medium", isActive ? "text-primary" : "text-muted-foreground")}>
+              <span className={cn("text-[11px] font-medium", isActive ? "text-primary-text" : "text-muted-foreground")}>
                 {step.title.split(" ")[0]}
               </span>
             </div>

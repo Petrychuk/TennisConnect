@@ -23,7 +23,7 @@ function ToggleRow({ label, checked, onCheckedChange, testId, hint }: { label: s
         {hint && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <button type="button" className="text-muted-foreground hover:text-foreground" data-testid={`${testId}-hint`}>
+              <button type="button" aria-label={`More about ${label}`} className="text-muted-foreground hover:text-foreground rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" data-testid={`${testId}-hint`}>
                 <HelpCircle className="w-3.5 h-3.5" />
               </button>
             </TooltipTrigger>
@@ -42,7 +42,7 @@ export function Step3DetailsRules({ draft, onChange }: Step3DetailsRulesProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="shadow-sm" data-testid="organiser-wizard-format-card">
           <CardHeader className="flex flex-row items-center gap-2 space-y-0">
-            <Sliders className="w-4 h-4 text-primary" />
+            <Sliders className="w-4 h-4 text-primary-text" />
             <CardTitle className="text-base">Format</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -125,7 +125,7 @@ export function Step3DetailsRules({ draft, onChange }: Step3DetailsRulesProps) {
 
         <Card className="shadow-sm" data-testid="organiser-wizard-pairing-card">
           <CardHeader className="flex flex-row items-center gap-2 space-y-0">
-            <Users2 className="w-4 h-4 text-primary" />
+            <Users2 className="w-4 h-4 text-primary-text" />
             <div>
               <CardTitle className="text-base">Pairing</CardTitle>
               <p className="text-xs text-muted-foreground mt-0.5 font-normal">Saved to the session summary as guidance — automatic pairing isn't built yet.</p>
@@ -143,7 +143,7 @@ export function Step3DetailsRules({ draft, onChange }: Step3DetailsRulesProps) {
 
       <Card className="shadow-sm" data-testid="organiser-wizard-live-settings-card">
         <CardHeader className="flex flex-row items-center gap-2 space-y-0">
-          <Radio className="w-4 h-4 text-primary" />
+          <Radio className="w-4 h-4 text-primary-text" />
           <div>
             <CardTitle className="text-base">Live Settings</CardTitle>
             <p className="text-xs text-muted-foreground mt-0.5 font-normal">Preferences for the live session experience — set now, applied once TC Live is available.</p>
@@ -176,7 +176,7 @@ function RulesAndPoliciesCard({ draft, onChange }: Step3DetailsRulesProps) {
       <button
         type="button"
         onClick={() => setExpanded(true)}
-        className="w-full flex items-center justify-center gap-2 rounded-2xl border border-dashed border-border py-3 text-sm font-medium text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+        className="w-full flex items-center justify-center gap-2 rounded-2xl border border-dashed border-border py-3 text-sm font-medium text-muted-foreground hover:border-primary/40 hover:text-primary-text transition-colors"
         data-testid="organiser-wizard-rules-policies-expand"
       >
         <Plus className="w-4 h-4" />
@@ -189,7 +189,7 @@ function RulesAndPoliciesCard({ draft, onChange }: Step3DetailsRulesProps) {
     <Card className="shadow-sm" data-testid="organiser-wizard-rules-policies-card">
       <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
         <div className="flex items-center gap-2">
-          <ScrollText className="w-4 h-4 text-primary" />
+          <ScrollText className="w-4 h-4 text-primary-text" />
           <div>
             <CardTitle className="text-base">Rules & Policies</CardTitle>
             <p className="text-xs text-muted-foreground mt-0.5 font-normal">Optional — shown to players on the session page.</p>

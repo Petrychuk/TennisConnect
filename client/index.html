@@ -2,7 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Fallback document title. Every page sets its own through
+         components/seo.tsx (react-helmet-async); this one is what a page
+         shows while it is still loading or if it sets none - never an
+         empty title (WCAG 2.4.2). -->
+    <title>TennisConnect - Tennis players, coaches and clubs in Australia</title>
 
     <!-- Preload the homepage hero photo (the LCP element there) as early
          as possible - before the JS bundle has even downloaded, let alone
@@ -24,7 +29,7 @@
         document.head.appendChild(l);
       } else if (location.pathname === "/travels" || location.pathname === "/clubs") {
         // Hero photo = LCP. Mobile gets the small file, desktop the original.
-        var hn = location.pathname === "/clubs" ? "Dashboard_club" : "hurbord_tennis";
+        var hn = location.pathname === "/clubs" ? "Dashboard_club" : "travels-hero-cote-dazur";
         [["/assets/images/" + hn + "-mobile.webp", "(max-width: 639px)"],
          ["/assets/images/" + hn + ".webp", "(min-width: 640px)"]].forEach(function (p) {
           var pl = document.createElement("link");
@@ -38,8 +43,8 @@
       } else if (location.pathname === "/play") {
         // Same two images /play preloads from React (Helmet) - but that runs
         // only after the JS bundle, too late to be the LCP request.
-        [["/assets/images/play-hero-mobile.webp", "(max-width: 639px)"],
-         ["/assets/images/play-hero-desktop.webp", "(min-width: 640px)"]].forEach(function (p) {
+        [["/assets/images/games-hero-sydney-harbour-mobile.webp", "(max-width: 767px)"],
+         ["/assets/images/games-hero-sydney-harbour.webp", "(min-width: 768px)"]].forEach(function (p) {
           var pl = document.createElement("link");
           pl.rel = "preload";
           pl.as = "image";

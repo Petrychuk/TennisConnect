@@ -29,7 +29,7 @@ function StatCard({ stat }: { stat: StatStripItem }) {
   const Icon = STAT_ICON[stat.key] ?? Users;
   const body = (
     <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-      <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+      <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-primary/10 text-primary-text flex items-center justify-center shrink-0">
         <Icon className="w-4 h-4" />
       </div>
       <div className="min-w-0">

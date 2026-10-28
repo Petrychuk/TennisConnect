@@ -37,7 +37,7 @@ export function CookieConsentBanner({
       >
         <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
           <div className="flex gap-3 md:gap-4 flex-1">
-            <div className="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <div className="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary-text">
               <Cookie className="w-5 h-5" />
             </div>
 
@@ -45,7 +45,7 @@ export function CookieConsentBanner({
               We use cookies to improve your experience, analyze website traffic, personalize
               content, and support our marketing efforts. You can choose which cookies to allow.
               Read our{" "}
-              <Link href="/cookie-policy" className="underline hover:text-primary">
+              <Link href="/cookie-policy" className="underline hover:text-primary-text">
                 Cookie Policy
               </Link>
               .
@@ -56,7 +56,7 @@ export function CookieConsentBanner({
             <Button
               variant="outline"
               onClick={onOpenSettings}
-              className="cursor-pointer whitespace-nowrap"
+              className="whitespace-nowrap"
               data-testid="cookie-banner-settings-button"
             >
               Cookie Settings
@@ -65,7 +65,7 @@ export function CookieConsentBanner({
             <Button
               variant="outline"
               onClick={onRejectOptional}
-              className="cursor-pointer whitespace-nowrap"
+              className="whitespace-nowrap"
               data-testid="cookie-banner-reject-button"
             >
               Reject Optional
@@ -73,7 +73,7 @@ export function CookieConsentBanner({
 
             <Button
               onClick={onAcceptAll}
-              className="bg-primary text-foreground hover:bg-primary/90 font-bold cursor-pointer whitespace-nowrap"
+              className="whitespace-nowrap"
               data-testid="cookie-banner-accept-button"
             >
               Accept All

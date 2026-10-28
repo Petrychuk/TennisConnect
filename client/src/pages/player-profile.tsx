@@ -1343,7 +1343,7 @@ export default function PlayerProfile() {
                                     }
                                   }}
                                 >
-                                  <SelectTrigger data-testid="result-preset-select">
+                                  <SelectTrigger aria-label="Result" data-testid="result-preset-select">
                                     <SelectValue placeholder="Select Result" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -1568,7 +1568,7 @@ export default function PlayerProfile() {
                                 
                                 <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
                                     <div className="text-right">
-                                      <div className="font-bold text-primary text-lg">{t.result}</div>
+                                      <div className="font-bold text-primary-text text-lg">{t.result}</div>
                                       {t.award && <div className="text-sm text-muted-foreground">{t.award}</div>}
                                     </div>
                                     {isOwnProfile && (
@@ -1683,7 +1683,7 @@ export default function PlayerProfile() {
                                 value={newItem.condition} 
                                 onValueChange={(val) => setNewItem({...newItem, condition: val})}
                               >
-                                <SelectTrigger>
+                                <SelectTrigger aria-label="Condition">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -1760,7 +1760,7 @@ export default function PlayerProfile() {
                         <CardHeader>
                           <CardTitle className="flex justify-between items-start text-lg">
                             <span>{item.title}</span>
-                            <span className="text-primary">${item.price}</span>
+                            <span className="text-primary-text">${item.price}</span>
                           </CardTitle>
                         </CardHeader>
                         <CardContent>

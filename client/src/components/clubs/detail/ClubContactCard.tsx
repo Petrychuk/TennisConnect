@@ -68,7 +68,7 @@ export function ClubContactCard({
       {(hasLogo || hasSocial || hasWebsite) && (
         <div className="p-6 text-center border-b border-border/60">
           <p className="flex items-center justify-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-4">
-            <Sparkles className="w-3.5 h-3.5 text-primary" />
+            <Sparkles className="w-3.5 h-3.5 text-primary-text" />
             Your Experience Provider
           </p>
 
@@ -134,7 +134,7 @@ export function ClubContactCard({
       {hasContactDetails && (
         <div className="p-5 border-b border-border/60">
           <div className="flex items-center gap-2.5 mb-3">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary-text">
               <MessageCircle className="w-4 h-4" />
             </span>
             <h3 className="font-display font-bold">Contact</h3>
@@ -144,7 +144,7 @@ export function ClubContactCard({
             {hasPhone && (
               <a
                 href={`tel:${club.phone}`}
-                className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
+                className="flex items-center gap-2 text-sm hover:text-primary-text transition-colors"
                 data-testid="club-contact-phone"
               >
                 <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
@@ -155,7 +155,7 @@ export function ClubContactCard({
             {hasEmail && (
               <a
                 href={`mailto:${club.email}`}
-                className="flex items-center gap-2 text-sm hover:text-primary transition-colors break-all"
+                className="flex items-center gap-2 text-sm hover:text-primary-text transition-colors break-all"
                 data-testid="club-contact-email"
               >
                 <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
@@ -170,14 +170,14 @@ export function ClubContactCard({
       {showPerson && (
         <div className="p-5" data-testid="club-contact-person">
           <div className="flex items-center gap-2.5 mb-3">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary-text">
               <User className="w-4 h-4" />
             </span>
             <h3 className="font-display font-bold">{personLabel}</h3>
           </div>
 
           <div className="flex items-center gap-3 pl-[42px]">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary-text font-bold text-sm">
               {club.contactPersonName?.[0] ?? "?"}
             </div>
             <div className="min-w-0">
@@ -200,7 +200,7 @@ export function ClubContactCard({
               {club.contactPersonPhone && (
                 <a
                   href={`tel:${club.contactPersonPhone}`}
-                  className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
+                  className="flex items-center gap-2 text-sm hover:text-primary-text transition-colors"
                   data-testid="club-contact-person-phone"
                 >
                   <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
@@ -211,7 +211,7 @@ export function ClubContactCard({
               {club.contactPersonEmail && (
                 <a
                   href={`mailto:${club.contactPersonEmail}`}
-                  className="flex items-center gap-2 text-sm hover:text-primary transition-colors break-all"
+                  className="flex items-center gap-2 text-sm hover:text-primary-text transition-colors break-all"
                   data-testid="club-contact-person-email"
                 >
                   <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" />

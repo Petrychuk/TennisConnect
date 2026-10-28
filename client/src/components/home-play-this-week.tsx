@@ -51,7 +51,7 @@ export function PlayThisWeek() {
           <Sparkles className="w-6 h-6 text-muted-foreground mx-auto" />
           <p className="text-muted-foreground">
             New games are coming soon - check{" "}
-            <Link href="/play" className="text-primary font-medium underline underline-offset-2">
+            <Link href="/play" className="text-primary-text font-medium underline underline-offset-2">
               Play
             </Link>{" "}
             for what's available now.

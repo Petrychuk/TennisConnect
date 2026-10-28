@@ -31,12 +31,12 @@ export function SessionQuickStatsCard({ stats, topPlayers, extraCount = 0 }: Ses
             const DeltaIcon = stat.deltaDirection === "up" ? ArrowUp : ArrowDown;
             return (
               <div key={stat.key} className="rounded-xl border border-border p-3" data-testid={`organiser-session-quick-stat-${stat.key}`}>
-                <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-2">
+                <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary-text flex items-center justify-center mb-2">
                   <Icon className="w-4 h-4" />
                 </div>
                 <p className="text-xl font-bold">{stat.value}</p>
                 <p className="text-[11px] text-muted-foreground">{stat.label}</p>
-                <p className="text-[11px] text-primary flex items-center gap-0.5 mt-1">
+                <p className="text-[11px] text-primary-text flex items-center gap-0.5 mt-1">
                   <DeltaIcon className="w-3 h-3" />
                   {stat.deltaLabel}
                 </p>
@@ -54,7 +54,7 @@ export function SessionQuickStatsCard({ stats, topPlayers, extraCount = 0 }: Ses
                 className={cn("h-8 w-8 border-2 border-card", i > 0 && "-ml-2")}
                 data-testid={`organiser-session-top-player-${player.id}`}
               >
-                <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
+                <AvatarFallback className="bg-primary/10 text-primary-text text-xs font-bold">
                   {player.name[0]}
                 </AvatarFallback>
               </Avatar>

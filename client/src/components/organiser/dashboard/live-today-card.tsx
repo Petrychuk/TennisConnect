@@ -197,9 +197,9 @@ export function LiveTodayCard({ session, nextUpcoming, className, onEnterLive, o
         className="absolute inset-0 w-full h-full object-cover"
       />
       <div className="absolute inset-0 bg-linear-to-t from-foreground/85 via-foreground/50 to-foreground/20" />
-      <Clock className="relative w-6 h-6 text-primary" />
-      <p className="relative font-semibold text-primary">Nothing live right now</p>
-      <p className="relative text-sm text-primary/80">Your next session will show up here on the day.</p>
+      <Clock className="relative w-6 h-6 text-primary-text" />
+      <p className="relative font-semibold text-primary-text">Nothing live right now</p>
+      <p className="relative text-sm text-primary-text/80">Your next session will show up here on the day.</p>
       {nextUpcoming && (
         <button
           type="button"

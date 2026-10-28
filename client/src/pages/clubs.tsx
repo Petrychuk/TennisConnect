@@ -1,15 +1,13 @@
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/navbar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { FilterChip, FilterIcon } from "@/components/shared/filters";
 import { Footer } from "@/components/footer";
 import { ClubCard } from "@/components/clubs/ClubCard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { MapPin, Search, Filter, SlidersHorizontal, Phone, Globe, DollarSign, Trophy, ArrowRight, Building2, Star, CheckCircle, Users, GraduationCap, Trees, Handshake, X } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { MapPin, Search, Phone, Globe, DollarSign, Trophy, ArrowRight, Building2, Star, CheckCircle, Users, GraduationCap, Trees, Handshake, X } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -23,6 +21,9 @@ import SEO from "@/components/seo";
 import { PartnerCTA } from "@/components/partnerCTA";
 import { COURT_SURFACES, CLUB_SERVICES, CLUB_CATEGORIES } from "@shared/constants/clubs";
 import { getServiceLabel, getSurfaceLabel, formatLocation } from "@/lib/clubVariant";
+import { HeroBadge } from "@/components/shared/hero-badge";
+import { HeroSearch, HeroSearchFiltersButton, HeroShortcuts, type HeroShortcut } from "@/components/shared/hero-search";
+import { HeroFiltersPanel, FilterSection } from "@/components/shared/hero-filters";
 
 // Organisation Type options come from CLUB_CATEGORIES (shared with the
 // admin form), but its labels carry emoji prefixes meant for the admin
@@ -153,9 +154,8 @@ export default function ClubsPage() {
     );
   }
 
-  // Full count across every advanced criterion - used by the mobile
-  // "Filters" trigger badge, since on mobile all 5 filters live in one
-  // popover (kept together there, there's just no room to split them out).
+  // Full count across every advanced criterion - the badge on the Filters
+  // button in the search bar (all 5 filters live in that one panel).
   const activeAdvancedFiltersCount =
     (filterSurface !== "all" ? 1 : 0) +
     (filterPriceRange !== "all" ? 1 : 0) +
@@ -163,13 +163,6 @@ export default function ClubsPage() {
     (filterServices.length > 0 ? 1 : 0) +
     (filterCategory !== "all" ? 1 : 0);
 
-  // Desktop count only covers what's actually still inside the "Filters"
-  // popover there (Price + Services) - Organisation Type, Surface and
-  // Location moved out to their own visible dropdowns in the toolbar, so
-  // counting them here too would double up with those dropdowns' own
-  // active-state styling.
-  const desktopPopoverFiltersCount =
-    (filterPriceRange !== "all" ? 1 : 0) + (filterServices.length > 0 ? 1 : 0);
 
   // Locations are derived from whatever clubs actually loaded (real API
   // data or the dummy fallback), so the dropdown never shows an option
@@ -181,6 +174,148 @@ export default function ClubsPage() {
         .filter((loc): loc is string => Boolean(loc))
     )
   ).sort((a, b) => a.localeCompare(b));
+
+  // Hero search (presentational - same state and filtering as before).
+  // Filtering is live as you type; the lime button takes you to the results.
+  const scrollToResults = () =>
+    document.getElementById("clubs-results")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  // Shortcuts = the existing Organisation Type filter, one tap per type.
+  const CATEGORY_SHORT_LABELS: Record<string, string> = {
+    club: "Clubs",
+    community: "Communities",
+    academy: "Academies",
+    "public-courts": "Public Courts",
+    "tennis-centre": "Centres",
+    "social-group": "Social Groups",
+  };
+  const shortcutItems = (suffix = ""): HeroShortcut[] =>
+    CLUB_CATEGORIES.map((cat) => {
+      const { label, icon: Icon } = getCategoryDisplay(cat.value);
+      return {
+        key: cat.value,
+        label: CATEGORY_SHORT_LABELS[cat.value] ?? label,
+        icon: <Icon />,
+        selected: filterCategory === cat.value,
+        onClick: () => setFilterCategory(filterCategory === cat.value ? "all" : cat.value),
+        testId: `clubs-shortcut-${cat.value}${suffix}`,
+      };
+    });
+  // One Filters panel for every screen size (it was split between toolbar
+  // dropdowns and a popover on desktop). Test ids keep their old names:
+  // desktop without a suffix, phones with "-mobile".
+  const renderFiltersPanel = (variant: "desktop" | "mobile") => {
+    const sfx = variant === "mobile" ? "-mobile" : "";
+    const open = variant === "mobile" ? servicePopoverOpen : moreFiltersOpen;
+    const setOpen = variant === "mobile" ? setServicePopoverOpen : setMoreFiltersOpen;
+    return (
+      <HeroFiltersPanel
+        variant={variant}
+        open={open}
+        onOpenChange={setOpen}
+        trigger={
+          <HeroSearchFiltersButton
+            label="Filter clubs"
+            activeCount={activeAdvancedFiltersCount}
+            data-testid={variant === "mobile" ? "clubs-service-filter-trigger" : "clubs-more-filters-trigger"}
+          />
+        }
+        onClear={clearAllFilters}
+        canClear={hasAnyActiveFilter}
+        contentTestId={`clubs-filters-panel${sfx}`}
+        clearTestId={`clubs-clear-all-filters${sfx}`}
+        applyTestId={`clubs-filters-show-results${sfx}`}
+      >
+          <FilterSection label="Organisation Type">
+            <Select value={filterCategory} onValueChange={setFilterCategory}>
+              <SelectTrigger aria-label="Filter by club type" data-testid={`clubs-category-filter${sfx}`}>
+                <SelectValue placeholder="Any type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any type</SelectItem>
+                {CLUB_CATEGORIES.map((cat) => {
+                  const { label, icon: Icon } = getCategoryDisplay(cat.value);
+                  return (
+                    <SelectItem key={cat.value} value={cat.value}>
+                      <span className="flex items-center gap-2">
+                        <Icon className="w-4 h-4" />
+                        {label}
+                      </span>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </FilterSection>
+
+          <FilterSection label="Court Surface">
+            <Select value={filterSurface} onValueChange={setFilterSurface}>
+              <SelectTrigger aria-label="Filter by court surface" data-testid={`clubs-surface-filter${sfx}`}>
+                <SelectValue placeholder="Any surface" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any surface</SelectItem>
+                {COURT_SURFACES.map((surface) => (
+                  <SelectItem key={surface.value} value={surface.value}>
+                    {surface.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FilterSection>
+
+          <FilterSection label="Price (per hour)">
+            <Select value={filterPriceRange} onValueChange={setFilterPriceRange}>
+              <SelectTrigger aria-label="Filter by price" data-testid={`clubs-price-filter${sfx}`}>
+                <SelectValue placeholder="Any price" />
+              </SelectTrigger>
+              <SelectContent>
+                {PRICE_RANGE_OPTIONS.map((range) => (
+                  <SelectItem key={range.value} value={range.value}>
+                    {range.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FilterSection>
+
+          <FilterSection label="Location">
+            <Select value={filterLocation} onValueChange={setFilterLocation}>
+              <SelectTrigger aria-label="Filter by location" data-testid={`clubs-location-filter${sfx}`}>
+                <SelectValue placeholder="Any location" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any location</SelectItem>
+                {locationOptions.map((loc) => (
+                  <SelectItem key={loc} value={loc}>
+                    {loc}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FilterSection>
+
+          <FilterSection label="Services">
+            <div
+              className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pr-1 border border-border/50 rounded-lg p-2"
+              onWheel={(e) => e.stopPropagation()}
+              data-testid={`clubs-services-scroll-area${sfx}`}
+            >
+              {CLUB_SERVICES.map((service) => (
+                <FilterChip
+                  key={service.value}
+                  compact
+                  selected={filterServices.includes(service.value)}
+                  onClick={() => toggleFilterService(service.value)}
+                  data-testid={`clubs-service-option${sfx}-${service.value}`}
+                >
+                  {service.label}
+                </FilterChip>
+              ))}
+            </div>
+          </FilterSection>
+      </HeroFiltersPanel>
+    );
+  };
 
   function clearAllFilters() {
     setSearchTerm("");
@@ -330,31 +465,23 @@ export default function ClubsPage() {
               className="absolute inset-0 w-full h-full object-cover z-0 scale-125 md:scale-100"
             />
           </picture>
+          {/* Tablet/desktop: the left half of the photo darkens towards the left edge (smooth, no hard line) so the title, intro and search stay readable. Phones keep the plain photo. */}
+          <div aria-hidden="true" className="tc-hero-left-shade absolute inset-0 hidden md:block z-10" />
           <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100% z-10" />
 
-          <div className="relative min-h-[28vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-start">
+          <div className="relative min-h-[28vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center md:items-start justify-start">
           {/* Badge (mobile) — overlaps the bottom edge of the hero photo */}
           <div className="md:hidden absolute bottom-3 left-4 z-20">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/50 border border-white/20 backdrop-blur-md">
-              <span className="w-2 h-2 rounded-full bg-primary" />
-              <span className="text-[10px] font-bold tracking-wider uppercase text-white">
-                Places To Play
-              </span>
-            </div>
+            <HeroBadge size="sm">Places To Play</HeroBadge>
           </div>
-          <div className="relative z-20 container mx-auto px-4 text-left mt-16 md:mt-20">
+          <div className="relative z-20 container mx-auto px-4 text-left mt-16 md:mt-0 md:pt-[104px]">
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
               className="hidden md:block"
             >
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md mb-3 md:mb-6">
-                <span className="w-2 h-2 rounded-full bg-primary" />
-                <span className="text-[10px] sm:text-xs md:text-sm font-bold tracking-wider uppercase text-white">
-                  Places To Play
-                </span>
-              </div>
+              <HeroBadge className="mb-3 md:mb-6">Places To Play</HeroBadge>
                   <h1 className="text-4xl
                     sm:text-5xl
                     md:text-6xl
@@ -363,7 +490,7 @@ export default function ClubsPage() {
                     font-bold
                     tracking-tight
                     text-white
-                    drop-shadow-md">
+                    tc-hero-text">
                   Find Tennis <span className="text-primary relative inline-block">
                   Communities
                   <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none">
@@ -371,396 +498,65 @@ export default function ClubsPage() {
                   </svg>
                 </span>
               </h1>
-              <p className="text-lg md:text-xl text-white/85 max-w-2xl font-medium leading-tight md:leading-[1.3] drop-shadow-sm">
+              <p className="text-lg md:text-[20px] md:leading-[1.3] text-white max-w-2xl font-medium leading-tight tc-hero-intro">
                  Discover tennis courts, clubs, social groups, and local communities across Australia.
               </p>
+              <HeroSearch
+                className="mt-6 max-w-3xl"
+                value={searchTerm}
+                onValueChange={setSearchTerm}
+                onSubmit={scrollToResults}
+                placeholder="Search by name, court, surface, location..."
+                inputTestId="clubs-search-input"
+                submitTestId="clubs-search-submit"
+                filters={renderFiltersPanel("desktop")}
+              />
+              <HeroShortcuts label="Organisation type" items={shortcutItems()} className="mt-6" />
             </motion.div>
           </div>
           </div>
 
-        {/* Filter Bar (desktop) — floats over the tail of the photo */}
-        <div className="hidden md:block relative z-20 mt-5 pb-5 md:pb-10">
-          <div className="container mx-auto px-2 md:px-4">
-            <div className="bg-card/50 backdrop-blur-lg border border-border/40 shadow-lg rounded-2xl p-3 md:p-4">
-            <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 items-stretch lg:items-center justify-between flex-wrap">
-              <div className="relative w-full lg:w-72 xl:w-80 group">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                <Input 
-                  placeholder="Search by name, court, surface, location..." 
-                  className="pl-10 h-11 bg-background/80 border-transparent focus:border-primary focus:bg-background transition-all rounded-xl"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-
-              {/* Organisation Type / Court Surface / Location are the
-                  filters people reach for most, so they're plain visible
-                  dropdowns right in the toolbar instead of hidden inside
-                  "Filters" - each highlights itself when set. Price and
-                  Services stay inside the "Filters" popover below since
-                  they don't need to be one-click visible and Services in
-                  particular needs more room than the toolbar has. */}
-              <div className="flex flex-wrap items-center gap-2 flex-1 lg:flex-none">
-                <Select value={filterCategory} onValueChange={setFilterCategory}>
-                  <SelectTrigger
-                    className={`h-11 w-[10.5rem] rounded-xl ${filterCategory !== "all" ? "bg-popover border-primary text-primary font-medium shadow-sm" : "bg-background/80"}`}
-                    data-testid="clubs-category-filter"
-                  >
-                    <SelectValue placeholder="Any type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Any type</SelectItem>
-                    {CLUB_CATEGORIES.map((cat) => {
-                      const { label, icon: Icon } = getCategoryDisplay(cat.value);
-                      return (
-                        <SelectItem key={cat.value} value={cat.value}>
-                          <span className="flex items-center gap-2">
-                            <Icon className="w-4 h-4" />
-                            {label}
-                          </span>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-
-                <Select value={filterSurface} onValueChange={setFilterSurface}>
-                  <SelectTrigger
-                    className={`h-11 w-[9.5rem] rounded-xl ${filterSurface !== "all" ? "bg-popover border-primary text-primary font-medium shadow-sm" : "bg-background/80"}`}
-                    data-testid="clubs-surface-filter"
-                  >
-                    <SelectValue placeholder="Any surface" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Any surface</SelectItem>
-                    {COURT_SURFACES.map((surface) => (
-                      <SelectItem key={surface.value} value={surface.value}>
-                        {surface.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select value={filterLocation} onValueChange={setFilterLocation}>
-                  <SelectTrigger
-                    className={`h-11 w-[10.5rem] rounded-xl ${filterLocation !== "all" ? "bg-popover border-primary text-primary font-medium shadow-sm" : "bg-background/80"}`}
-                    data-testid="clubs-location-filter"
-                  >
-                    <SelectValue placeholder="Any location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Any location</SelectItem>
-                    {locationOptions.map((loc) => (
-                      <SelectItem key={loc} value={loc}>
-                        {loc}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Popover open={moreFiltersOpen} onOpenChange={setMoreFiltersOpen}>
-                  <PopoverTrigger asChild>
-                    <button
-                      className={`shrink-0 h-11 px-4 flex items-center gap-2 rounded-xl border text-sm font-medium cursor-pointer transition-all ${
-                        desktopPopoverFiltersCount > 0
-                          ? "bg-primary text-foreground border-primary"
-                          : "bg-background/80 border-input hover:border-primary/50"
-                      }`}
-                      data-testid="clubs-more-filters-trigger"
-                    >
-                      <SlidersHorizontal className="w-4 h-4" />
-                      Filters
-                      {desktopPopoverFiltersCount > 0 && (
-                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white/20 text-xs">
-                          {desktopPopoverFiltersCount}
-                        </span>
-                      )}
-                    </button>
-                  </PopoverTrigger>
-                  {/* Only Price + Services live here now - Organisation
-                      Type/Surface/Location moved to their own toolbar
-                      dropdowns above, so this panel stays short without
-                      needing the two-column layout it used to. `sticky` +
-                      a collision boundary keep it anchored to the trigger
-                      (rather than jumping/hiding) as the page scrolls. */}
-                  <PopoverContent
-                    align="end"
-                    sticky="always"
-                    collisionPadding={16}
-                    className="w-80 p-4 space-y-4 max-h-[80vh] overflow-y-auto"
-                  >
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Price (per hour)
-                      </Label>
-                      <Select value={filterPriceRange} onValueChange={setFilterPriceRange}>
-                        <SelectTrigger data-testid="clubs-price-filter">
-                          <SelectValue placeholder="Any price" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {PRICE_RANGE_OPTIONS.map((range) => (
-                            <SelectItem key={range.value} value={range.value}>
-                              {range.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Services
-                      </Label>
-                      <div
-                        className="flex flex-wrap gap-1.5 max-h-56 overflow-y-auto pr-1 border border-border/50 rounded-lg p-2"
-                        onWheel={(e) => e.stopPropagation()}
-                        data-testid="clubs-services-scroll-area"
-                      >
-                        {CLUB_SERVICES.map((service) => (
-                          <button
-                            key={service.value}
-                            type="button"
-                            onClick={() => toggleFilterService(service.value)}
-                            data-testid={`clubs-service-option-${service.value}`}
-                            className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer shrink-0 ${
-                              filterServices.includes(service.value)
-                                ? "bg-primary text-foreground border-primary"
-                                : "bg-background/80 hover:bg-secondary border-input hover:border-primary/50"
-                            }`}
-                          >
-                            {service.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {desktopPopoverFiltersCount > 0 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => {
-                          setFilterPriceRange("all");
-                          setFilterServices([]);
-                        }}
-                      >
-                        Reset these filters
-                      </Button>
-                    )}
-                  </PopoverContent>
-                </Popover>
-
-                {hasAnyActiveFilter && (
-                  <button
-                    onClick={clearAllFilters}
-                    className="shrink-0 h-11 px-3 flex items-center gap-1.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-all cursor-pointer"
-                    data-testid="clubs-clear-all-filters"
-                  >
-                    <X className="w-4 h-4" />
-                    Clear all
-                  </button>
-                )}
-              </div>
-            </div>
-            </div>
-          </div>
-        </div>
+        <div className="pb-1.5 md:pb-16" />
         </div>
 
         {/* Hero text (mobile) — sits below the hero photo instead of
             overlapping it */}
-        <div className="md:hidden relative z-20 bg-background pt-4 pb-1">
+        <div className="md:hidden relative z-20 bg-background pt-2 pb-1">
           <div className="container mx-auto px-4 text-left">
             <h1 className="text-3xl font-display font-bold tracking-tight text-foreground">
-              Find Tennis <span className="text-primary relative inline-block">
+              Find Tennis <span className="text-primary-text relative inline-block">
                 Communities
-                <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none">
+                <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary-text opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none">
                   <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="4" fill="none" />
                 </svg>
               </span>
             </h1>
-            <p className="text-sm text-gray-600 max-w-2xl font-medium leading-tight mt-2">
+            <p className="text-sm text-gray-600 max-w-2xl font-medium leading-tight mt-1">
               Discover tennis courts, clubs, social groups, and local communities across Australia.
             </p>
           </div>
         </div>
 
-        {/* Filter Bar (mobile) — sits below the hero photo instead of
-            floating over it */}
-        <div className="md:hidden relative z-20 bg-background pt-4 pb-2">
+        {/* Search (mobile) - below the hero text, like the other pages */}
+        <div className="md:hidden relative z-20 bg-background pt-1 pb-2">
           <div className="container mx-auto px-4">
-            <div className="flex gap-2">
-              <div className="relative flex-1 group">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by name, court, surface, location..."
-                  className="pl-10 h-11 bg-secondary/50 border-transparent focus:border-primary rounded-xl"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              <Popover open={servicePopoverOpen} onOpenChange={setServicePopoverOpen}>
-                <PopoverTrigger asChild>
-                  <button
-                    className={`shrink-0 h-11 w-11 flex items-center justify-center rounded-xl border cursor-pointer transition-all relative ${
-                      activeAdvancedFiltersCount > 0
-                        ? "bg-primary text-foreground border-primary"
-                        : "bg-secondary/50 border-input"
-                    }`}
-                    aria-label="Filter clubs"
-                    data-testid="clubs-service-filter-trigger"
-                  >
-                    <SlidersHorizontal className="w-4 h-4" />
-                    {activeAdvancedFiltersCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-primary text-foreground text-[10px] flex items-center justify-center border border-background">
-                        {activeAdvancedFiltersCount}
-                      </span>
-                    )}
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent
-                  align="end"
-                  sticky="always"
-                  collisionPadding={16}
-                  className="w-72 p-3 space-y-3 max-h-[75vh] overflow-y-auto"
-                >
-                  <div className="space-y-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Organisation Type
-                      </Label>
-                      <Select value={filterCategory} onValueChange={setFilterCategory}>
-                        <SelectTrigger
-                          className={filterCategory !== "all" ? "bg-popover border-primary text-primary font-medium shadow-sm" : undefined}
-                          data-testid="clubs-category-filter-mobile"
-                        >
-                          <SelectValue placeholder="Any type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Any type</SelectItem>
-                          {CLUB_CATEGORIES.map((cat) => {
-                            const { label, icon: Icon } = getCategoryDisplay(cat.value);
-                            return (
-                              <SelectItem key={cat.value} value={cat.value}>
-                                <span className="flex items-center gap-2">
-                                  <Icon className="w-4 h-4" />
-                                  {label}
-                                </span>
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Court Surface
-                      </Label>
-                      <Select value={filterSurface} onValueChange={setFilterSurface}>
-                        <SelectTrigger data-testid="clubs-surface-filter-mobile">
-                          <SelectValue placeholder="Any surface" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Any surface</SelectItem>
-                          {COURT_SURFACES.map((surface) => (
-                            <SelectItem key={surface.value} value={surface.value}>
-                              {surface.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Price (per hour)
-                      </Label>
-                      <Select value={filterPriceRange} onValueChange={setFilterPriceRange}>
-                        <SelectTrigger data-testid="clubs-price-filter-mobile">
-                          <SelectValue placeholder="Any price" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {PRICE_RANGE_OPTIONS.map((range) => (
-                            <SelectItem key={range.value} value={range.value}>
-                              {range.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Location
-                      </Label>
-                      <Select value={filterLocation} onValueChange={setFilterLocation}>
-                        <SelectTrigger data-testid="clubs-location-filter-mobile">
-                          <SelectValue placeholder="Any location" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Any location</SelectItem>
-                          {locationOptions.map((loc) => (
-                            <SelectItem key={loc} value={loc}>
-                              {loc}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Services
-                      </Label>
-                      <div
-                        className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto pr-1 border border-border/50 rounded-lg p-2"
-                        onWheel={(e) => e.stopPropagation()}
-                        data-testid="clubs-services-scroll-area-mobile"
-                      >
-                        {CLUB_SERVICES.map((service) => (
-                          <button
-                            key={service.value}
-                            type="button"
-                            onClick={() => toggleFilterService(service.value)}
-                            data-testid={`clubs-service-option-mobile-${service.value}`}
-                            className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer shrink-0 ${
-                              filterServices.includes(service.value)
-                                ? "bg-primary text-foreground border-primary"
-                                : "bg-background/80 hover:bg-secondary border-input hover:border-primary/50"
-                            }`}
-                          >
-                            {service.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {hasAnyActiveFilter && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full mt-3"
-                      onClick={() => {
-                        clearAllFilters();
-                        setServicePopoverOpen(false);
-                      }}
-                      data-testid="clubs-clear-all-filters-mobile"
-                    >
-                      <X className="w-4 h-4" />
-                      Clear all filters
-                    </Button>
-                  )}
-                </PopoverContent>
-              </Popover>
-            </div>
+            <HeroSearch
+              tone="light"
+              value={searchTerm}
+              onValueChange={setSearchTerm}
+              onSubmit={scrollToResults}
+              placeholder="Search name, court, surface, location..."
+              inputTestId="clubs-search-input-mobile"
+              submitTestId="clubs-search-submit-mobile"
+              filters={renderFiltersPanel("mobile")}
+            />
+            <HeroShortcuts label="Organisation type" tone="light" items={shortcutItems("-mobile")} className="mt-3" />
           </div>
         </div>
 
         {/* Clubs List Section — pulled up so the photo dissolves under
             the top of the first row */}
-        <div className="relative z-30 container mx-auto px-4 pt-4 pb-16 md:py-16 md:-mt-4">
+        <div id="clubs-results" className="relative z-30 container mx-auto px-4 pt-4 pb-16 md:py-16 md:-mt-4 scroll-mt-24">
 
         {filteredClubs.length === 0 ? (
 
@@ -794,7 +590,7 @@ export default function ClubsPage() {
                 className="mb-6 px-4 py-3 rounded-xl bg-primary/10 border border-primary/30 text-sm text-foreground flex items-center gap-2"
                 data-testid="clubs-relaxed-match-notice"
               >
-                <SlidersHorizontal className="w-4 h-4 text-primary shrink-0" />
+                <FilterIcon className="text-primary-text" />
                 <span>
                   No clubs match every selected filter - showing clubs that match at least one of them instead.
                 </span>

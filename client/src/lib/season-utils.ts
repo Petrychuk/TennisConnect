@@ -23,7 +23,7 @@ export const SEASON_STATUS_LABEL: Record<SeasonStatus, string> = {
 
 export const SEASON_STATUS_STYLE: Record<SeasonStatus, string> = {
   upcoming: "bg-secondary text-secondary-foreground",
-  active: "bg-primary/10 text-primary",
+  active: "bg-primary/20 text-primary-text",
   completed: "bg-muted text-muted-foreground",
 };
 

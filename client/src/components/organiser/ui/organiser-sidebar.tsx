@@ -25,6 +25,7 @@ import {
   Heart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ADMIN_SECTIONS } from "@/lib/adminSections";
 import type { OrganiserUser } from "@/lib/organiser-hub-mock-data";
 
 interface NavItem {
@@ -51,14 +52,16 @@ const NAV_ITEMS: NavItem[] = [
 // admin.tsx's own tab-content logic is completely unchanged, only how
 // a tab gets selected changed (sidebar click instead of a horizontal
 // Tabs click).
+// Labels come from lib/adminSections.ts - the same text is the title of
+// the page each item opens.
 const ADMIN_NAV_ITEMS: NavItem[] = [
-  { key: "admin-users", label: "Users", icon: Users, href: "/admin?tab=users" },
-  { key: "admin-organizer-requests", label: "Organiser & Sessions", icon: ShieldCheck, href: "/admin?tab=organizer-requests" },
-  { key: "admin-clubs", label: "Club Communities", icon: Building2, href: "/admin?tab=clubs" },
-  { key: "admin-travel", label: "Travel Packages", icon: Plane, href: "/admin?tab=travel" },
-  { key: "admin-articles", label: "Articles", icon: FileText, href: "/admin?tab=articles" },
-  { key: "admin-recreation", label: "Recreation Services", icon: Heart, href: "/admin?tab=recreation" },
-  { key: "admin-discovery", label: "Discovery", icon: Compass, href: "/admin/discovery" },
+  { key: "admin-users", label: ADMIN_SECTIONS.users.title, icon: Users, href: ADMIN_SECTIONS.users.href },
+  { key: "admin-organizer-requests", label: ADMIN_SECTIONS["organizer-requests"].title, icon: ShieldCheck, href: ADMIN_SECTIONS["organizer-requests"].href },
+  { key: "admin-clubs", label: ADMIN_SECTIONS.clubs.title, icon: Building2, href: ADMIN_SECTIONS.clubs.href },
+  { key: "admin-travel", label: ADMIN_SECTIONS.travel.title, icon: Plane, href: ADMIN_SECTIONS.travel.href },
+  { key: "admin-articles", label: ADMIN_SECTIONS.articles.title, icon: FileText, href: ADMIN_SECTIONS.articles.href },
+  { key: "admin-recreation", label: ADMIN_SECTIONS.recreation.title, icon: Heart, href: ADMIN_SECTIONS.recreation.href },
+  { key: "admin-discovery", label: ADMIN_SECTIONS.discovery.title, icon: Compass, href: ADMIN_SECTIONS.discovery.href },
 ];
 
 interface OrganiserSidebarProps {
@@ -201,8 +204,8 @@ export function OrganiserSidebarNav({ organiser, profileHref, className, collaps
         <div className="flex items-center justify-between gap-2">
           {!collapsed && (
             <Link href="/" className="text-xl font-display font-bold flex items-center gap-1 whitespace-nowrap min-w-0" data-testid="organiser-sidebar-logo">
-              Tennis<span className="text-primary"><ConnectWord /></span>
-              <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1" />
+              Tennis<span className="text-[hsl(var(--logo-connect))]"><ConnectWord /></span>
+              <div className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--logo-connect))] mt-1" />
             </Link>
           )}
           {onToggleCollapsed && (
@@ -235,7 +238,7 @@ export function OrganiserSidebarNav({ organiser, profileHref, className, collaps
         >
           <Avatar className="h-9 w-9 border border-border shrink-0">
             <AvatarImage src={organiser.avatar || undefined} />
-            <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
+            <AvatarFallback className="bg-primary/10 text-primary-text font-bold text-sm">
               {organiser.name[0]}
             </AvatarFallback>
           </Avatar>

@@ -11,7 +11,7 @@ export function SessionsEmptyState({ onCreateSession }: SessionsEmptyStateProps)
       className="flex flex-col items-center justify-center text-center py-16 px-4 rounded-2xl border border-dashed border-border"
       data-testid="organiser-sessions-empty-state"
     >
-      <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-4">
+      <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary-text flex items-center justify-center mb-4">
         <CalendarPlus className="w-7 h-7" />
       </div>
       <h2 className="font-display text-xl font-bold">No sessions yet</h2>

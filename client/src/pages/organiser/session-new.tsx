@@ -246,7 +246,7 @@ export default function OrganiserSessionNewPage() {
         <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="hidden md:inline-flex" data-testid="organiser-sidebar-trigger">
+              <Button variant="ghost" size="icon" className="hidden md:inline-flex" aria-label="Open Organiser Hub menu" data-testid="organiser-sidebar-trigger">
                 <Menu className="w-5 h-5" />
               </Button>
             </SheetTrigger>
@@ -264,7 +264,7 @@ export default function OrganiserSessionNewPage() {
             <Link href={profileHref}>
               <Avatar className="h-8 w-8 border border-border">
                 <AvatarImage src={organiser.avatar || undefined} />
-                <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
+                <AvatarFallback className="bg-primary/10 text-primary-text font-bold text-xs">
                   {organiser.name[0]}
                 </AvatarFallback>
               </Avatar>
@@ -353,14 +353,14 @@ export default function OrganiserSessionNewPage() {
 
               {step === 1 && (
                 <div className="rounded-2xl border border-border p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                  <Clock className="w-5 h-5 text-primary shrink-0" />
+                  <Clock className="w-5 h-5 text-primary-text shrink-0" />
                   <div className="flex-1">
                     <p className="text-sm font-semibold">You can always edit session details later</p>
                     <p className="text-xs text-muted-foreground">All settings can be changed before you start the live session.</p>
                   </div>
                   <button
                     type="button"
-                    className="text-sm font-medium text-primary flex items-center gap-1 shrink-0"
+                    className="text-sm font-medium text-primary-text flex items-center gap-1 shrink-0"
                     onClick={() => toast({ title: "Example sessions isn't wired up yet" })}
                     data-testid="organiser-wizard-view-examples"
                   >

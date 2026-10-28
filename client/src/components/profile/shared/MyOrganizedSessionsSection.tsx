@@ -50,7 +50,7 @@ function extractCancellationPolicy(description?: string | null): string | null {
 const OWNER_STATUS_BADGE: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
   pending_review: "bg-secondary text-secondary-foreground",
-  published: "bg-primary/10 text-primary",
+  published: "bg-primary/20 text-primary-text",
   rejected: "bg-destructive/10 text-destructive",
   cancelled: "bg-destructive/10 text-destructive",
   live: "bg-primary text-foreground",
@@ -76,7 +76,7 @@ const GUEST_STATUS_LABEL: Record<GuestBucket, string> = {
 };
 
 const GUEST_STATUS_BADGE: Record<GuestBucket, string> = {
-  open: "bg-primary/10 text-primary",
+  open: "bg-primary/20 text-primary-text",
   waitlist: "bg-secondary text-secondary-foreground",
   closed: "bg-muted text-muted-foreground",
 };
@@ -339,7 +339,7 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold">{session.title}</span>
                       {myStatus === "waitlisted" && <Badge variant="secondary">Waitlisted</Badge>}
-                      {myStatus === "registered" && <Badge className="bg-primary/10 text-primary">Joined</Badge>}
+                      {myStatus === "registered" && <Badge className="bg-primary/10 text-primary-text">Joined</Badge>}
                     </div>
                     <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1">
                       <span className="flex items-center gap-1">
@@ -454,7 +454,7 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
                               divGuestBucket && <Badge className={GUEST_STATUS_BADGE[divGuestBucket]}>{GUEST_STATUS_LABEL[divGuestBucket]}</Badge>
                             )}
                             {divStatus === "waitlisted" && <Badge variant="secondary">Waitlisted</Badge>}
-                            {divStatus === "registered" && <Badge className="bg-primary/10 text-primary">Joined</Badge>}
+                            {divStatus === "registered" && <Badge className="bg-primary/10 text-primary-text">Joined</Badge>}
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             {division.description && (

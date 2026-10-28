@@ -53,15 +53,9 @@ export function AppPagination({
 
         <Button
           variant="outline"
-          size="sm"
           disabled={currentPage === 1}
           onClick={() => onPageChange(currentPage - 1)}
           data-testid="pagination-prev-button"
-          className="
-            rounded-full
-            px-4
-            h-10
-          "
         >
           <ChevronLeft className="w-4 h-4 mr-1" />
           Previous
@@ -91,7 +85,6 @@ export function AppPagination({
                 className={`
                   h-10
                   w-10
-                  rounded-full
                   transition-all
 
                   ${
@@ -110,15 +103,9 @@ export function AppPagination({
 
         <Button
           variant="outline"
-          size="sm"
           disabled={currentPage === totalPages}
           onClick={() => onPageChange(currentPage + 1)}
           data-testid="pagination-next-button"
-          className="
-            rounded-full
-            px-4
-            h-10
-          "
         >
           Next
           <ChevronRight className="w-4 h-4 ml-1" />

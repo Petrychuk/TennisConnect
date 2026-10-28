@@ -32,7 +32,7 @@ export function DashboardHeader({ organiser, profileHref, onCreateSession }: Das
               variant="ghost"
               size="icon"
               className="hidden md:inline-flex"
-              data-testid="organiser-sidebar-trigger"
+              aria-label="Open Organiser Hub menu" data-testid="organiser-sidebar-trigger"
             >
               <Menu className="w-5 h-5" />
             </Button>
@@ -48,7 +48,7 @@ export function DashboardHeader({ organiser, profileHref, onCreateSession }: Das
         <OrganiserBarLogo />
 
         <div className="hidden md:flex mr-auto items-center gap-1.5 font-display font-bold">
-          <Trophy className="w-4 h-4 text-primary" />
+          <Trophy className="w-4 h-4 text-primary-text" />
           Organiser Hub
         </div>
 
@@ -66,7 +66,7 @@ export function DashboardHeader({ organiser, profileHref, onCreateSession }: Das
           <Link href={profileHref} data-testid="organiser-header-avatar-mobile">
             <Avatar className="h-8 w-8 border border-border">
               <AvatarImage src={organiser.avatar || undefined} />
-              <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
+              <AvatarFallback className="bg-primary/10 text-primary-text font-bold text-xs">
                 {organiser.name[0]}
               </AvatarFallback>
             </Avatar>

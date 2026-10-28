@@ -23,8 +23,8 @@ import { formatInTimeZone } from "@/lib/timezone";
 
 const STATUS_BADGE: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
-  pending_review: "bg-primary/10 text-primary",
-  published: "bg-primary/10 text-primary",
+  pending_review: "bg-primary/20 text-primary-text",
+  published: "bg-primary/20 text-primary-text",
   live: "bg-primary text-foreground",
   completed: "bg-muted text-muted-foreground",
   cancelled: "bg-destructive/10 text-destructive",
@@ -94,7 +94,7 @@ export function DivisionsCard({ sessionId }: DivisionsCardProps) {
     <Card className="shadow-sm" data-testid="organiser-session-divisions-card">
       <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
         <div className="flex items-center gap-2">
-          <Layers className="w-4 h-4 text-primary" />
+          <Layers className="w-4 h-4 text-primary-text" />
           <div>
             <CardTitle asChild className="text-base"><h2>Divisions</h2></CardTitle>
             <p className="text-xs text-muted-foreground mt-0.5 font-normal">
@@ -179,7 +179,7 @@ export function DivisionsCard({ sessionId }: DivisionsCardProps) {
                   key={suggestion}
                   type="button"
                   onClick={() => setTitle(suggestion)}
-                  className="text-xs rounded-full border border-border px-2.5 py-1 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+                  className="text-xs rounded-full border border-border px-2.5 py-1 text-muted-foreground hover:border-primary/40 hover:text-primary-text transition-colors"
                   data-testid={`organiser-session-division-suggestion-${suggestion.replace(/[^a-z]/gi, "-").toLowerCase()}`}
                 >
                   {suggestion}

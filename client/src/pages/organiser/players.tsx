@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Menu, ChevronRight, UserPlus } from "lucide-react";
+import { Menu, UserPlus } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import SEO from "@/components/seo";
 
@@ -27,6 +27,8 @@ import {
 import { getMyPlayers, inviteToOrganization } from "@/lib/api/organizer-sessions";
 import { toOrgPlayers } from "@/lib/api/session-adapter";
 import { InvitePlayersDialog } from "@/components/organiser/shared/invite-players-dialog";
+import { FilterChip, FILTER_CHIP_ROW } from "@/components/shared/filters";
+import { OrganiserBreadcrumb } from "@/components/organiser/ui/organiser-breadcrumb";
 
 type MobileFilter = "all" | "active" | "returning";
 
@@ -141,7 +143,7 @@ export default function OrganiserPlayersPage() {
         <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="hidden md:inline-flex" data-testid="organiser-sidebar-trigger">
+              <Button variant="ghost" size="icon" className="hidden md:inline-flex" aria-label="Open Organiser Hub menu" data-testid="organiser-sidebar-trigger">
                 <Menu className="w-5 h-5" />
               </Button>
             </SheetTrigger>
@@ -159,7 +161,7 @@ export default function OrganiserPlayersPage() {
             <Link href={profileHref}>
               <Avatar className="h-8 w-8 border border-border">
                 <AvatarImage src={organiser.avatar || undefined} />
-                <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
+                <AvatarFallback className="bg-primary/10 text-primary-text font-bold text-xs">
                   {organiser.name[0]}
                 </AvatarFallback>
               </Avatar>
@@ -168,13 +170,7 @@ export default function OrganiserPlayersPage() {
         </div>
 
         <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-          <div className="flex items-center gap-1.5 text-sm" data-testid="organiser-players-page-breadcrumb">
-            <Link href="/organiser" className="text-primary-text hover:underline">
-              Home
-            </Link>
-            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-            <span className="text-muted-foreground">Players</span>
-          </div>
+          <OrganiserBreadcrumb current="Players" testId="organiser-players-page-breadcrumb" />
 
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
@@ -247,25 +243,20 @@ export default function OrganiserPlayersPage() {
           {/* Mobile */}
           <div className="md:hidden space-y-6">
             <PlayersToolbar search={search} onSearchChange={setSearch} status={statusFilter} onStatusChange={setStatusFilter} level={levelFilter} onLevelChange={setLevelFilter} />
-            <div className="flex items-center gap-2" data-testid="organiser-players-page-mobile-filters">
+            <div className={FILTER_CHIP_ROW} role="group" aria-label="Player status" data-testid="organiser-players-page-mobile-filters">
               {([
                 ["all", `All (${playersSummary.totalPlayers})`],
                 ["active", `Active (${playersSummary.activeThisSeason})`],
                 ["returning", `Returning (${playersSummary.returningPlayers})`],
               ] as [MobileFilter, string][]).map(([key, label]) => (
-                <button
+                <FilterChip
                   key={key}
-                  type="button"
+                  selected={mobileFilter === key}
                   onClick={() => setMobileFilter(key)}
-                  className={
-                    mobileFilter === key
-                      ? "px-4 py-1.5 rounded-xl bg-primary text-foreground text-sm font-medium"
-                      : "px-4 py-1.5 rounded-xl border border-border text-sm font-medium text-muted-foreground"
-                  }
                   data-testid={`organiser-players-page-mobile-filter-${key}`}
                 >
                   {label}
-                </button>
+                </FilterChip>
               ))}
             </div>
             {mobileFiltered.length === 0 ? (

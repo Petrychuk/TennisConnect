@@ -9,7 +9,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Search, CalendarDays, SlidersHorizontal, List, LayoutGrid } from "lucide-react";
+import { Search, CalendarDays, List, LayoutGrid } from "lucide-react";
+import { FilterTrigger } from "@/components/shared/filters";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
 
 export type SessionsViewMode = "grid" | "list" | "calendar";
@@ -68,7 +69,7 @@ export function SessionFiltersBar({
 
       <div className="hidden md:flex gap-2">
         <Select value={venue} onValueChange={onVenueChange}>
-          <SelectTrigger className="w-40" data-testid="organiser-sessions-venue-filter">
+          <SelectTrigger aria-label="Filter by venue" className="w-40" data-testid="organiser-sessions-venue-filter">
             <SelectValue placeholder="All Venues" />
           </SelectTrigger>
           <SelectContent>
@@ -82,7 +83,7 @@ export function SessionFiltersBar({
         </Select>
 
         <Select value={format} onValueChange={onFormatChange}>
-          <SelectTrigger className="w-40" data-testid="organiser-sessions-format-filter">
+          <SelectTrigger aria-label="Filter by format" className="w-40" data-testid="organiser-sessions-format-filter">
             <SelectValue placeholder="All Formats" />
           </SelectTrigger>
           <SelectContent>
@@ -137,12 +138,12 @@ export function SessionFiltersBar({
         </div>
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="icon" className="relative" data-testid="organiser-sessions-filters-button">
-              <SlidersHorizontal className="w-4 h-4" />
-              {hasDateFilter && (
-                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-primary" data-testid="organiser-sessions-filters-active-dot" />
-              )}
-            </Button>
+            <FilterTrigger
+              iconOnly
+              label="More filters"
+              activeCount={hasDateFilter ? 1 : 0}
+              data-testid="organiser-sessions-filters-button"
+            />
           </PopoverTrigger>
           <PopoverContent align="end" className="w-64 space-y-3" data-testid="organiser-sessions-more-filters">
             <div className="space-y-1.5">

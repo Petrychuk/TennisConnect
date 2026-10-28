@@ -51,7 +51,7 @@ export function HomeRecreation() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary border border-primary/20 mb-4"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary-text border border-primary/20 mb-4"
             >
               <Heart className="w-4 h-4" />
               <span className="text-xs font-bold uppercase tracking-wider">Recover & Recharge</span>
@@ -64,7 +64,7 @@ export function HomeRecreation() {
               transition={{ delay: 0.1 }}
               className="text-3xl md:text-5xl font-display font-bold"
             >
-              Recovery, Wellness & <span className="text-primary">Performance.</span>
+              Recovery, Wellness & <span className="text-primary-text">Performance.</span>
             </motion.h2>
 
             <motion.p
@@ -86,7 +86,7 @@ export function HomeRecreation() {
           >
             <Link href="/recreation" className="hidden md:block">
               <Button
-                className="flex gap-2 bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
+                className="flex gap-2 px-6"
                 data-testid="recreation-view-all-button"
               >
                 Start Recovery <ArrowRight className="w-4 h-4" />
@@ -162,7 +162,7 @@ export function HomeRecreation() {
           className="mt-8 md:hidden"
         >
           <Link href="/recreation">
-            <Button className="w-full gap-2 bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full cursor-pointer">
+            <Button className="w-full gap-2">
               All Services <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>

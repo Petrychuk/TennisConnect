@@ -520,7 +520,7 @@ export default function CompleteProfilePage() {
 
                   <Button
                     type="submit"
-                    className={cn("w-full sm:w-1/3 sm:mx-auto flex items-center justify-center rounded-full transition-opacity", !playerForm.formState.isValid && "opacity-50 hover:opacity-60")}
+                    className={cn("w-full sm:w-1/3 sm:mx-auto flex items-center justify-center transition-opacity", !playerForm.formState.isValid && "opacity-50 hover:opacity-60")}
                     disabled={isLoading}
                     data-testid="button-save"
                   >
@@ -682,7 +682,7 @@ export default function CompleteProfilePage() {
 
                   <Button
                     type="submit"
-                    className={cn("w-full sm:w-1/3 sm:mx-auto flex items-center justify-center rounded-full transition-opacity", !coachForm.formState.isValid && "opacity-50 hover:opacity-60")}
+                    className={cn("w-full sm:w-1/3 sm:mx-auto flex items-center justify-center transition-opacity", !coachForm.formState.isValid && "opacity-50 hover:opacity-60")}
                     disabled={isLoading}
                     data-testid="button-save"
                   >

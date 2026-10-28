@@ -62,11 +62,12 @@ export default function RecreationDetailPage() {
   if (notFound) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
+        <SEO title="Service not found | TennisConnect" description="This recreation service could not be found." noIndex />
         <Navbar />
         <main id="main-content" className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-3xl font-bold mb-4">Service not found</h1>
-            <Link href="/recreation"><Button className="bg-primary text-foreground">Back</Button></Link>
+            <Link href="/recreation"><Button>Back</Button></Link>
           </div>
         </main>
         <Footer />
@@ -76,27 +77,21 @@ export default function RecreationDetailPage() {
   if (!svc) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading…</div>
+        <SEO title="Recreation | TennisConnect" description="Tennis recovery and wellness services in Australia." />
+        <div className="animate-pulse text-muted-foreground" role="status">Loading…</div>
       </div>
     );
   }
 
   return (
     <> 
-      {/* <SEO   ! not done yet
-          title={`${service.title} | TennisConnect`}
-          description={
-            service.description ||
-            "Tennis recreation service in Australia."
-          }
-          canonical={`/recreation/${service.slug}`}
-          tags={[
-            "tennis",
-            "recreation",
-            "sports",
-            "Australia",
-          ]}
-        /> */}
+      <SEO
+        title={`${svc.name} | TennisConnect`}
+        description={svc.description || "Tennis recovery and wellness service in Australia."}
+        canonical={`/recreation/${svc.slug}`}
+        image={svc.coverImage || undefined}
+        tags={["tennis", "recreation", svc.type, "Australia"]}
+      />
       <div className="min-h-screen bg-background font-sans">
         <Navbar />
 
@@ -116,7 +111,7 @@ export default function RecreationDetailPage() {
         </div>
 
         <div className="container mx-auto px-4 py-12">
-          <Link href="/recreation"><Button variant="ghost" className="mb-6 gap-2 cursor-pointer"><ArrowLeft className="w-4 h-4" /> All Services</Button></Link>
+          <Link href="/recreation"><Button variant="ghost" className="mb-6 gap-2"><ArrowLeft className="w-4 h-4" /> All Services</Button></Link>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
             <div className="lg:col-span-2">
@@ -129,7 +124,7 @@ export default function RecreationDetailPage() {
                   <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {svc.benefits.map((b) => (
                       <li key={b} className="flex items-start gap-2">
-                        <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                        <CheckCircle2 className="w-5 h-5 text-primary-text mt-0.5 shrink-0" />
                         <span>{b}</span>
                       </li>
                     ))}
@@ -163,20 +158,20 @@ export default function RecreationDetailPage() {
                   {svc.phone && (
                     <div className="flex justify-between">
                       <span className="text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" /> Phone</span>
-                      <a href={`tel:${svc.phone}`} className="font-bold hover:text-primary">{svc.phone}</a>
+                      <a href={`tel:${svc.phone}`} className="font-bold hover:text-primary-text">{svc.phone}</a>
                     </div>
                   )}
                   {svc.email && (
                     <div className="flex justify-between gap-2">
                       <span className="text-muted-foreground flex items-center gap-1 shrink-0"><Mail className="w-3 h-3" /> Email</span>
-                      <a href={`mailto:${svc.email}`} className="font-bold hover:text-primary text-right truncate">{svc.email}</a>
+                      <a href={`mailto:${svc.email}`} className="font-bold hover:text-primary-text text-right truncate">{svc.email}</a>
                     </div>
                   )}
                 </div>
 
                 <Button
                   onClick={handleBook}
-                  className="w-full bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full cursor-pointer"
+                  className="w-full"
                   data-testid="recreation-book-button"
                 >
                   Book Session

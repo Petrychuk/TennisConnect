@@ -1,10 +1,15 @@
 import { ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface TravelBookingButtonProps {
   text?: string;
   url?: string;
 }
 
+// The retreat's booking CTA - the shared lime button (button.tsx), large.
+// It used to be its own pill with white text on lime (~2:1 contrast) and a
+// "shine" animation; the button system now owns its shape, colours and
+// states like every other primary action.
 export function TravelBookingButton({
   text = "Book Now",
   url,
@@ -16,96 +21,13 @@ export function TravelBookingButton({
   };
 
   return (
-    <button
-      onClick={handleClick}
-      disabled={!url}
-      className="
-        group
-        relative
-        w-full
-
-        rounded-full
-
-        bg-primary
-        text-primary-foreground
-
-        font-semibold
-        text-sm
-        md:text-base
-
-        py-3.5
-        px-5
-
-        shadow-lg
-        hover:shadow-xl
-
-        hover:-translate-y-0.5
-        active:translate-y-0
-
-        transition-all
-        duration-300
-
-        disabled:opacity-50
-        disabled:cursor-not-allowed
-
-        cursor-pointer
-      "
-    >
-      <span
-        className="
-          flex
-          items-center
-          justify-center
-          gap-2
-        "
-      >
-        {text}
-
-        <ExternalLink
-          className="
-            w-4
-            h-4
-
-            transition-transform
-            duration-300
-
-            group-hover:translate-x-1
-            group-hover:-translate-y-1
-          "
-        />
-      </span>
-
-      {/* shine effect */}
-
-      <span
-        className="
-          absolute
-          inset-0
-          rounded-full
-          overflow-hidden
-          pointer-events-none
-        "
-      >
-        <span
-          className="
-            absolute
-            top-0
-            -left-[120%]
-
-            h-full
-            w-10
-
-            rotate-12
-
-            bg-white/20
-
-            transition-all
-            duration-700
-
-            group-hover:left-[120%]
-          "
-        />
-      </span>
-    </button>
+    <Button size="lg" onClick={handleClick} disabled={!url} className="group w-full shadow-md hover:shadow-lg">
+      {text}
+      <ExternalLink
+        aria-hidden="true"
+        className="transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 motion-reduce:transition-none"
+      />
+      <span className="sr-only">(opens the provider's site in a new tab)</span>
+    </Button>
   );
 }

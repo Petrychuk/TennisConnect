@@ -32,14 +32,14 @@ interface PlayersTableProps {
 }
 
 const LEVEL_BADGE_STYLE: Record<SessionPlayer["levelLabel"], string> = {
-  Advanced: "bg-primary/10 text-primary",
+  Advanced: "bg-primary/20 text-primary-text",
   Intermediate: "bg-secondary text-secondary-foreground",
   Beginner: "bg-secondary text-secondary-foreground",
   Social: "bg-muted text-muted-foreground",
 };
 
 const STATUS_BADGE_STYLE: Record<SessionPlayer["status"], string> = {
-  registered: "bg-primary/10 text-primary",
+  registered: "bg-primary/20 text-primary-text",
   waiting: "bg-muted text-muted-foreground",
   cancelled: "bg-destructive/10 text-destructive",
   invited: "bg-accent text-accent-foreground",
@@ -96,13 +96,13 @@ export function PlayersTable({ players, onCheckIn, onRemove, onMoveToWaiting, on
                 <div className="flex items-center gap-2.5">
                   <Avatar className="h-8 w-8 border border-border">
                     <AvatarImage src={player.avatar ?? undefined} alt={player.name} />
-                    <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
+                    <AvatarFallback className="bg-primary/10 text-primary-text text-xs font-bold">
                       {player.name[0]}
                     </AvatarFallback>
                   </Avatar>
                   <span className="font-medium">{player.name}</span>
                   {player.isReal && (
-                    <Badge className="bg-primary/10 text-primary" data-testid={`organiser-players-row-${player.id}-real`}>
+                    <Badge className="bg-primary/10 text-primary-text" data-testid={`organiser-players-row-${player.id}-real`}>
                       Real
                     </Badge>
                   )}
@@ -138,7 +138,7 @@ export function PlayersTable({ players, onCheckIn, onRemove, onMoveToWaiting, on
                 {player.status !== "registered" ? (
                   "—"
                 ) : player.checkedIn && player.checkInTime ? (
-                  <span className="flex items-center gap-1 text-primary font-medium">
+                  <span className="flex items-center gap-1 text-primary-text font-medium">
                     <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                     {formatInTimeZone(player.checkInTime, timeZone, { hour: "numeric", minute: "2-digit" })}
                   </span>
@@ -161,8 +161,8 @@ export function PlayersTable({ players, onCheckIn, onRemove, onMoveToWaiting, on
               <TableCell className="text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" data-testid={`organiser-players-row-${player.id}-menu`}>
-                      <MoreHorizontal className="w-4 h-4" />
+                    <Button variant="ghost" size="icon" aria-label="More actions" data-testid={`organiser-players-row-${player.id}-menu`}>
+                      <MoreHorizontal aria-hidden="true" className="w-4 h-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">

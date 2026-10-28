@@ -111,7 +111,7 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
       // going to; a plain Discovery find says "View original".
       const cta = resolveRegistrationCta({ sourceType: session.sourceType, externalUrl: session.externalSourceUrl });
       actionButton = (
-        <Button className="w-full" asChild data-testid="event-modal-view-original">
+        <Button className="mx-auto flex w-fit min-w-44 px-8" asChild data-testid="event-modal-view-original">
           <a href={cta.url ?? "#"} target="_blank" rel="noopener noreferrer">
             {cta.label} <ExternalLink className="w-4 h-4 ml-1.5" />
           </a>
@@ -119,7 +119,7 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
       );
     } else if (!isAuthenticated) {
       actionButton = (
-        <Button className="w-full" onClick={() => setLocation("/auth")} data-testid="event-modal-signin">
+        <Button className="mx-auto flex w-fit min-w-44 px-8" onClick={() => setLocation("/auth")} data-testid="event-modal-signin">
           Sign in to Register
         </Button>
       );
@@ -146,18 +146,18 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
         </div>
       );
     } else if (session.playStatus === "closed") {
-      actionButton = <Button className="w-full" disabled data-testid="event-modal-closed">Registration Closed</Button>;
+      actionButton = <Button className="mx-auto flex w-fit min-w-44 px-8" disabled data-testid="event-modal-closed">Registration Closed</Button>;
     } else if (session.playStatus === "full") {
-      actionButton = <Button className="w-full" disabled data-testid="event-modal-full">Full</Button>;
+      actionButton = <Button className="mx-auto flex w-fit min-w-44 px-8" disabled data-testid="event-modal-full">Full</Button>;
     } else if (session.playStatus === "waitlist") {
       actionButton = (
-        <Button className="w-full" onClick={() => joinMutation.mutate()} disabled={joinMutation.isPending} data-testid="event-modal-join-waitlist">
+        <Button className="mx-auto flex w-fit min-w-44 px-8" onClick={() => joinMutation.mutate()} disabled={joinMutation.isPending} data-testid="event-modal-join-waitlist">
           {joinMutation.isPending ? "Joining..." : "Join Waiting List"}
         </Button>
       );
     } else {
       actionButton = (
-        <Button className="w-full" onClick={() => joinMutation.mutate()} disabled={joinMutation.isPending} data-testid="event-modal-join">
+        <Button className="mx-auto flex w-fit min-w-44 px-8" onClick={() => joinMutation.mutate()} disabled={joinMutation.isPending} data-testid="event-modal-join">
           {joinMutation.isPending ? "Joining..." : joinLabel}
         </Button>
       );
@@ -189,7 +189,7 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
                 {(() => {
                   const badge = resolvePartnerBadge({ sourceType: session.sourceType, name: session.partnerName ?? session.organizationName });
                   if (!badge.label) return session.organizationName;
-                  return <span className="text-primary font-medium">{badge.label === "Partner" ? "TennisConnect Partner ✓" : badge.label}</span>;
+                  return <span className="text-primary-text font-medium">{badge.label === "Partner" ? "TennisConnect Partner ✓" : badge.label}</span>;
                 })()}
               </DialogDescription>
             </DialogHeader>
@@ -197,7 +197,7 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
             <div className="space-y-3">
               {recommendation && recommendation.score > 0 && (
                 <div className="bg-primary/5 rounded-lg px-3 py-2 text-sm" data-testid="event-modal-recommendation-banner">
-                  <span className="font-semibold text-primary">✨ Great match for you</span>
+                  <span className="font-semibold text-primary-text">✨ Great match for you</span>
                   <span className="text-muted-foreground">
                     {" · "}
                     {recommendation.reasons.map((r) => RECOMMENDATION_REASON_TEXT[r] ?? r).join(" · ")}
@@ -272,12 +272,12 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
                 <div className="flex items-center gap-2 pt-2 border-t border-border/60" data-testid="event-modal-organiser">
                   <Avatar className="h-7 w-7 shrink-0">
                     {session.organizationLogo && <AvatarImage src={session.organizationLogo} alt="" />}
-                    <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{initials(session.organizationName)}</AvatarFallback>
+                    <AvatarFallback className="text-[10px] bg-primary/10 text-primary-text">{initials(session.organizationName)}</AvatarFallback>
                   </Avatar>
                   <span className="text-sm text-muted-foreground">
                     {session.sourceType === "PARTNER" ? (
                       <>
-                        <span className="text-primary font-medium">TennisConnect Partner ✓</span> · {session.organizationName}
+                        <span className="text-primary-text font-medium">TennisConnect Partner ✓</span> · {session.organizationName}
                       </>
                     ) : (
                       <>
@@ -289,7 +289,7 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
               )}
             </div>
 
-            <div className="pt-2">{actionButton}</div>
+            <div className="flex justify-center pt-2">{actionButton}</div>
           </>
         )}
       </DialogContent>

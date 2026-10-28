@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Button } from "@/components/ui/button";
+import { FilterIcon } from "@/components/shared/filters";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -9,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, MapPin, ShoppingBag, Filter, SlidersHorizontal, ArrowUpDown } from "lucide-react";
+import { Search, MapPin, ShoppingBag, ArrowUpDown } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +21,7 @@ import heroBg from "/assets/images/elegant_dark_tennis_equipment_display_backgro
 
 import { Link } from "wouter";
 import { User, ShieldCheck } from "lucide-react";
+import { HeroBadge } from "@/components/shared/hero-badge";
 
 export default function MarketplacePage() {
   const { user } = useAuth();
@@ -132,13 +134,8 @@ export default function MarketplacePage() {
                     </div>
                     
                     <div className="container mx-auto px-4 relative z-10 text-left">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md mb-6">
-                            <span className="w-2 h-2 rounded-full bg-primary" />
-                            <span className="text-xs sm:text-sm font-bold tracking-wider uppercase text-white">
-                                Official Marketplace
-                            </span>
-                        </div>
-                        <h1 className="text-5xl md:text-7xl font-display font-bold mb-6 tracking-tight text-white drop-shadow-md">
+                        <HeroBadge className="mb-6">Official Marketplace</HeroBadge>
+                        <h1 className="text-5xl md:text-7xl font-display font-bold mb-6 tracking-tight text-white tc-hero-text">
                             Tennis <span className="text-primary relative inline-block">
                                 Gear Exchange
                                 <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-50" viewBox="0 0 100 10" preserveAspectRatio="none">
@@ -146,7 +143,7 @@ export default function MarketplacePage() {
                                 </svg>
                             </span>
                         </h1>
-                        <p className="text-xl md:text-2xl text-white/85 max-w-2xl leading-relaxed font-medium drop-shadow-sm">
+                        <p className="text-xl md:text-2xl text-white max-w-2xl leading-relaxed font-medium tc-hero-intro">
                             The trusted place for Sydney's tennis community to buy, sell, and trade pre-loved equipment.
                         </p>
                     </div>
@@ -166,9 +163,9 @@ export default function MarketplacePage() {
                         </div>
                         <div className="flex gap-2 w-full md:w-auto">
                             <Select defaultValue="all">
-                                <SelectTrigger className="w-[180px]">
+                                <SelectTrigger aria-label="Filter by category" className="w-[180px]">
                                     <div className="flex items-center gap-2">
-                                        <Filter className="w-4 h-4" />
+                                        <FilterIcon />
                                         <SelectValue placeholder="Category" />
                                     </div>
                                 </SelectTrigger>
@@ -189,6 +186,9 @@ export default function MarketplacePage() {
 
                 {/* Grid */}
                 <div className="container mx-auto px-4">
+                    {/* Visually hidden section heading: the item titles below are
+                        h3s and need an h2 parent after the page's h1. */}
+                    <h2 className="sr-only">Listings</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                         {filteredItems.map((item, index) => (
                             <motion.div
@@ -239,10 +239,10 @@ export default function MarketplacePage() {
                                         
                                         <div className="mt-auto pt-4 border-t border-border/50 flex items-center justify-between text-xs text-muted-foreground">
                                             <Link href={item.seller_type === 'coach' ? `/coach/${item.seller_id}` : `#`}>
-                                                <div className="flex items-center gap-2 hover:text-primary transition-colors cursor-pointer group/seller">
+                                                <div className="flex items-center gap-2 hover:text-primary-text transition-colors cursor-pointer group/seller">
                                                     {item.seller_type === 'coach' ? (
                                                         <div className="bg-primary/10 p-1 rounded-full">
-                                                            <ShieldCheck className="w-3 h-3 text-primary" />
+                                                            <ShieldCheck className="w-3 h-3 text-primary-text" />
                                                         </div>
                                                     ) : (
                                                         <div className="bg-muted p-1 rounded-full">
@@ -256,7 +256,7 @@ export default function MarketplacePage() {
                                     </CardContent>
                                     <CardFooter className="p-4 pt-0">
                                         <Button 
-                                            className="w-full font-bold gap-2 group-hover:bg-primary group-hover:text-foreground transition-colors"
+                                            className="w-full gap-2 group-hover:bg-primary group-hover:text-foreground transition-colors"
                                             onClick={() => {
                                                 setSelectedItem(item);
                                                 setIsBuyModalOpen(true);
@@ -302,7 +302,7 @@ export default function MarketplacePage() {
                             />
                             <div>
                                 <p className="font-bold">{selectedItem?.title || selectedItem?.name}</p>
-                                <p className="text-primary font-bold">${selectedItem?.price}</p>
+                                <p className="text-primary-text font-bold">${selectedItem?.price}</p>
                             </div>
                         </div>
 
@@ -343,7 +343,7 @@ export default function MarketplacePage() {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsBuyModalOpen(false)}>Cancel</Button>
-                        <Button onClick={handleBuyRequest} className="font-bold bg-primary text-foreground">Send Request</Button>
+                        <Button onClick={handleBuyRequest}>Send Request</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

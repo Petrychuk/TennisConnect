@@ -45,6 +45,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      # Button system / header / accessibility guards and retreat
+      # archive + ordering rules. Source files only - no browser, no network.
+      - run: npm run test:ui
 
   dependency-audit:
     name: Dependency vulnerability scan

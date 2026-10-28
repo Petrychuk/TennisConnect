@@ -282,7 +282,7 @@ export function ArticleDetailContent({
 
         {/* CTA */}
         <div className="my-14 p-8 md:p-10 bg-linear-to-br from-primary/10 to-primary/5 rounded-3xl text-center">
-          <BookOpen className="w-10 h-10 mx-auto text-primary mb-3" />
+          <BookOpen className="w-10 h-10 mx-auto text-primary-text mb-3" />
           <h2 className="text-2xl font-display font-bold mb-2">
             More tennis wisdom
           </h2>
@@ -290,7 +290,7 @@ export function ArticleDetailContent({
             Explore our full library of articles.
           </p>
           <Link href="/articles">
-            <Button className="bg-primary text-foreground border-primary hover:bg-primary/90 rounded-full font-bold px-6 cursor-pointer">
+            <Button className="px-6">
               Browse All Articles
             </Button>
           </Link>
@@ -325,7 +325,7 @@ export function ArticleDetailContent({
                       />
                     </div>
                     <div className="p-4">
-                      <h3 className="font-bold mb-1.5 line-clamp-2 group-hover:text-primary transition-colors">
+                      <h3 className="font-bold mb-1.5 line-clamp-2 group-hover:text-primary-text transition-colors">
                         {a.title}
                       </h3>
                       <p className="text-xs text-muted-foreground flex items-center gap-1.5">

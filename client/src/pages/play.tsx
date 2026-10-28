@@ -5,7 +5,6 @@ import { Helmet } from "react-helmet-async";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import SEO from "@/components/seo";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,7 +20,7 @@ import { Search, MapPin, X, Sparkles } from "lucide-react";
 import { PlaySessionCard } from "@/components/play/session-card";
 import { EventQuickViewModal } from "@/components/play/EventQuickViewModal";
 import { PlayQuickFilters } from "@/components/play/PlayQuickFilters";
-import { PlayFilters, PLAY_FILTER_ALL, PLAY_FORMAT_OPTIONS, type PlayFiltersDraft } from "@/components/play/PlayFilters";
+import { PlayFilterFields, PLAY_FILTER_ALL, PLAY_FORMAT_OPTIONS, type PlayFiltersDraft } from "@/components/play/PlayFilters";
 import { PlayNoMatches, PlayNoActivitiesYet } from "@/components/play/PlayEmptyState";
 import { AvailabilityNudge } from "@/components/play/AvailabilityNudge";
 import { getPlaySessions, getPlayRecommendations, smartSearch, getPlayersLookingToPlay, type SmartSearchResponse } from "@/lib/api/play";
@@ -29,8 +28,14 @@ import { PlayerMatchCard } from "@/components/play/PlayerMatchCard";
 import { QuickMessageModal } from "@/components/messaging/QuickMessageModal";
 import { useAuth } from "@/lib/auth-context";
 import { PLAY_DATE_FILTER_OPTIONS, resolveDateFilterRange, type PlayDateFilter } from "@/lib/play-status";
-import playHeroDesktop from "/assets/images/play-hero-desktop.webp";
-import playHeroMobile from "/assets/images/play-hero-mobile.webp";
+import playHeroDesktop from "/assets/images/games-hero-sydney-harbour.webp";
+import playHeroMobile from "/assets/images/games-hero-sydney-harbour-mobile.webp";
+import { HeroBadge } from "@/components/shared/hero-badge";
+import { HeroSearch, HeroSearchFiltersButton } from "@/components/shared/hero-search";
+import { HeroFiltersPanel } from "@/components/shared/hero-filters";
+
+/** Example smart searches shown under the search box. */
+const EXAMPLES = ["Doubles this weekend", "Social tennis near me", "Competition around my level"];
 
 const ALL = PLAY_FILTER_ALL;
 const PAGE_SIZE = 6;
@@ -292,6 +297,52 @@ export default function PlayPage() {
   const dateFilterLabel = PLAY_DATE_FILTER_OPTIONS.find((o) => o.value === dateFilter)?.label;
   const formatLabel = PLAY_FORMAT_OPTIONS.find((o) => o.key === format)?.label;
 
+  // Hero search: typing keeps the normal filter-driven list in sync and
+  // drops a stale AI answer; the lime button / Enter runs the smart search.
+  const onSearchChange = (value: string) => {
+    setSearch(value);
+    if (smartSearchResult) setSmartSearchResult(null);
+  };
+  const runExample = (example: string) => {
+    setSearch(example);
+    handleSmartSearch(example);
+  };
+  // Filters set in the Filters dialog (shown as a badge on its button).
+  const panelFiltersCount =
+    (location ? 1 : 0) + (dateFilter !== "any" ? 1 : 0) + (format !== ALL ? 1 : 0) + (level !== ALL ? 1 : 0);
+  // The Filters panel (dropdown on tablet/desktop, modal on phones). It
+  // edits a draft; "Show results" applies it, as the old dialog did.
+  const renderFiltersPanel = (variant: "desktop" | "mobile", triggerTestId: string) => (
+    <HeroFiltersPanel
+      variant={variant}
+      open={filtersOpen}
+      onOpenChange={(next) => (next ? openFilters() : setFiltersOpen(false))}
+      trigger={<HeroSearchFiltersButton activeCount={panelFiltersCount} data-testid={triggerTestId} />}
+      onClear={clearDraftFilters}
+      onApply={applyDraftFilters}
+      contentTestId="play-filters-dialog"
+      clearTestId="play-filters-clear-all"
+      applyTestId="play-filters-show-results"
+    >
+      <PlayFilterFields draft={draft} onDraftChange={setDraft} idSuffix={variant === "mobile" ? "-mobile" : ""} />
+    </HeroFiltersPanel>
+  );
+  const quickFilterProps = {
+    location,
+    dateFilter,
+    format,
+    competitionsOnly,
+    isAuthenticated,
+    onNearMe: () => {
+      const mine = myProfileQuery.data?.preferredCourts?.[0] || myProfileQuery.data?.location;
+      setLocationFilter(mine || location);
+    },
+    onToggleThisWeek: () => setDateFilter((v) => (v === "this_week" ? "any" : "this_week")),
+    onToggleThisWeekend: () => setDateFilter((v) => (v === "this_weekend" ? "any" : "this_weekend")),
+    onToggleSocial: () => setFormat((v) => (v === "social" ? ALL : "social")),
+    onToggleCompetitions: () => setCompetitionsOnly((v) => !v),
+  };
+
   return (
     <div className="min-h-screen bg-background font-sans" data-testid="play-page">
       <SEO
@@ -299,96 +350,145 @@ export default function PlayPage() {
         description="Find tennis sessions, competitions and events near you - Social Tennis, Americano, Tournaments and more, all in one place."
       />
       <Helmet>
-        <link rel="preload" as="image" href={playHeroMobile} media="(max-width: 639px)" />
-        <link rel="preload" as="image" href={playHeroDesktop} media="(min-width: 640px)" />
+        <link rel="preload" as="image" href={playHeroMobile} media="(max-width: 767px)" />
+        <link rel="preload" as="image" href={playHeroDesktop} media="(min-width: 768px)" />
       </Helmet>
       <Navbar />
 
       <main id="main-content">
-        <div className="sm:hidden">
-          <img src={playHeroMobile} alt="" className="w-full h-56 object-cover" fetchPriority="high" />
-          <div className="px-4 pt-5 pb-2 text-center">
-            <p className="text-primary text-xs font-bold tracking-widest uppercase mb-2">Play more tennis</p>
-            <h1 className="text-3xl font-display font-bold" data-testid="play-page-title-mobile">Find a Game</h1>
-            <p className="text-sm text-muted-foreground mt-2">Find tennis sessions, competitions and events near you.</p>
-            <div className="relative max-w-sm mx-auto mt-5">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  if (smartSearchResult) setSmartSearchResult(null);
-                }}
-                onKeyDown={(e) => e.key === "Enter" && handleSmartSearch(search)}
-                placeholder="What would you like to play?"
-                className="pl-10 h-11"
-                data-testid="play-page-search-input-mobile"
-              />
+        {/* Hero - same structure as Players, Coaches, Clubs, Travels and
+            Articles: one photo that fades into the page, the HeroBadge,
+            a title with the key word in lime, the intro on its plate and
+            the search pill with the quick-filter icons under it. Phones get
+            the photo with the badge on its bottom edge, then the title and
+            search below it. */}
+        <div className="relative overflow-hidden">
+          <picture>
+            <source media="(max-width: 767px)" srcSet={playHeroMobile} />
+            <img
+              src={playHeroDesktop}
+              alt=""
+              fetchPriority="high"
+              loading="eager"
+              decoding="async"
+              className="absolute inset-0 w-full h-full object-cover object-[50%_40%] z-0"
+            />
+          </picture>
+          {/* Tablet/desktop: the left half of the photo darkens towards the left edge (smooth, no hard line) so the title, intro and search stay readable. Phones keep the plain photo. */}
+          <div aria-hidden="true" className="tc-hero-left-shade absolute inset-0 hidden md:block z-10" />
+          <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100% z-10" />
+
+          <div className="relative min-h-[28vh] md:min-h-[32vh] lg:min-h-[36vh] flex items-center md:items-start justify-start">
+            {/* Badge (mobile) - overlaps the bottom edge of the hero photo */}
+            <div className="md:hidden absolute bottom-3 left-4 z-20">
+              <HeroBadge size="sm">Play more tennis</HeroBadge>
             </div>
-            <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-2 max-w-xs mx-auto">
-              {["Doubles this weekend", "Social tennis near me", "Competition around my level"].map((example) => (
+            <div className="relative z-20 container mx-auto px-4 text-left mt-24 md:mt-0 md:pt-[104px]">
+              <div className="hidden md:block">
+                <HeroBadge className="mb-6">Play more tennis</HeroBadge>
+                <h1
+                  className="text-4xl sm:text-5xl md:text-6xl xl:text-7xl font-display font-bold mb-4 tracking-tight text-white tc-hero-text"
+                  data-testid="play-page-title"
+                >
+                  Find a{" "}
+                  <span className="relative inline-block text-primary">
+                    Game
+                    <svg
+                      className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40"
+                      viewBox="0 0 100 10"
+                      preserveAspectRatio="none"
+                      aria-hidden="true"
+                    >
+                      <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" />
+                    </svg>
+                  </span>
+                </h1>
+                <p className="text-lg md:text-[20px] md:leading-[1.3] text-white max-w-2xl font-medium tc-hero-intro">
+                  Find tennis sessions, competitions and events near you.
+                </p>
+                <HeroSearch
+                  className="mt-6 max-w-3xl"
+                  value={search}
+                  onValueChange={onSearchChange}
+                  onSubmit={() => handleSmartSearch(search)}
+                  busy={smartSearchLoading}
+                  placeholder="Search tournaments, social tennis, sessions and more..."
+                  label="What would you like to play?"
+                  inputTestId="play-page-search-input"
+                  submitTestId="play-page-search-submit"
+                  filters={renderFiltersPanel("desktop", "play-quick-filter-open")}
+                />
+                {/* "Try" examples: small dark glass pills - plain white
+                    links disappeared on the bright photo. */}
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                  <span className="font-semibold text-white tc-hero-text">Try:</span>
+                  {EXAMPLES.map((example) => (
+                    <button
+                      key={example}
+                      type="button"
+                      className="rounded-full bg-black/55 px-3 py-1 font-medium text-white ring-1 ring-white/20 backdrop-blur-md transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      onClick={() => runExample(example)}
+                      data-testid={`play-search-example-${example.replace(/\s+/g, "-").toLowerCase()}`}
+                    >
+                      {example}
+                    </button>
+                  ))}
+                </div>
+                <PlayQuickFilters {...quickFilterProps} className="mt-6" />
+              </div>
+            </div>
+          </div>
+
+          <div className="pb-1.5 md:pb-16" />
+        </div>
+
+        {/* Hero text (mobile) - sits below the hero photo instead of overlapping it */}
+        <div className="md:hidden relative z-20 bg-background pt-2 pb-1">
+          <div className="container mx-auto px-4 text-left">
+            <h1 className="text-3xl font-display font-bold mb-1 tracking-tight text-foreground" data-testid="play-page-title-mobile">
+              Find a{" "}
+              <span className="text-primary-text relative inline-block">
+                Game
+                <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary-text opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+                  <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="4" fill="none" />
+                </svg>
+              </span>
+            </h1>
+            <p className="text-sm text-muted-foreground max-w-2xl font-medium leading-snug">
+              Find tennis sessions, competitions and events near you.
+            </p>
+          </div>
+        </div>
+
+        {/* Search (mobile) - below the hero text, like the other pages */}
+        <div className="md:hidden relative z-20 bg-background pt-1 pb-2">
+          <div className="container mx-auto px-4">
+            <HeroSearch
+              tone="light"
+              value={search}
+              onValueChange={onSearchChange}
+              onSubmit={() => handleSmartSearch(search)}
+              busy={smartSearchLoading}
+              placeholder="Tournaments, social tennis, sessions..."
+              label="What would you like to play?"
+              inputTestId="play-page-search-input-mobile"
+              submitTestId="play-page-search-submit-mobile"
+              filters={renderFiltersPanel("mobile", "play-quick-filter-open-mobile")}
+            />
+            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 px-1">
+              {EXAMPLES.map((example) => (
                 <button
                   key={example}
+                  type="button"
                   className="text-xs text-muted-foreground underline underline-offset-2"
-                  onClick={() => {
-                    setSearch(example);
-                    handleSmartSearch(example);
-                  }}
+                  onClick={() => runExample(example)}
                   data-testid={`play-search-example-mobile-${example.replace(/\s+/g, "-").toLowerCase()}`}
                 >
                   {example}
                 </button>
               ))}
             </div>
-          </div>
-        </div>
-
-        <div className="hidden sm:flex relative min-h-[46vh] md:mt-10 md:min-h-[calc(46vh+50px)] items-center justify-center overflow-hidden bg-black">
-          <img
-            src={playHeroDesktop}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover"
-            fetchPriority="high"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-background" />
-          <div className="relative z-10 container mx-auto px-4 text-center mt-[106px] sm:mt-[114px]">
-            <p className="text-primary text-xs sm:text-sm font-bold tracking-widest uppercase mb-2">Play more tennis</p>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-white" data-testid="play-page-title">
-              Find a Game
-            </h1>
-            <p className="text-sm sm:text-base text-gray-200 mt-2 max-w-xl mx-auto">
-              Find tennis sessions, competitions and events near you.
-            </p>
-
-            <div className="relative max-w-sm mx-auto mt-5">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  if (smartSearchResult) setSmartSearchResult(null);
-                }}
-                onKeyDown={(e) => e.key === "Enter" && handleSmartSearch(search)}
-                placeholder="What would you like to play?"
-                className="pl-10 h-11 bg-background"
-                data-testid="play-page-search-input"
-              />
-            </div>
-            <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-2">
-              {["Doubles this weekend", "Social tennis near me", "Competition around my level"].map((example) => (
-                <button
-                  key={example}
-                  className="text-xs text-gray-200 underline underline-offset-2 hover:text-white"
-                  onClick={() => {
-                    setSearch(example);
-                    handleSmartSearch(example);
-                  }}
-                  data-testid={`play-search-example-${example.replace(/\s+/g, "-").toLowerCase()}`}
-                >
-                  {example}
-                </button>
-              ))}
-            </div>
+            <PlayQuickFilters {...quickFilterProps} tone="light" testIdSuffix="-mobile" className="mt-3" />
           </div>
         </div>
 
@@ -407,20 +507,6 @@ export default function PlayPage() {
             </div>
           )}
 
-          <PlayQuickFilters
-            location={location}
-            dateFilter={dateFilter}
-            competitionsOnly={competitionsOnly}
-            isAuthenticated={isAuthenticated}
-            onNearMe={() => {
-              const mine = myProfileQuery.data?.preferredCourts?.[0] || myProfileQuery.data?.location;
-              setLocationFilter(mine || location);
-            }}
-            onToggleThisWeek={() => setDateFilter((v) => (v === "this_week" ? "any" : "this_week"))}
-            onToggleThisWeekend={() => setDateFilter((v) => (v === "this_weekend" ? "any" : "this_weekend"))}
-            onToggleCompetitions={() => setCompetitionsOnly((v) => !v)}
-            onOpenFilters={openFilters}
-          />
 
           {profileDefaults &&
             !smartSearchResult &&
@@ -429,7 +515,7 @@ export default function PlayPage() {
                 className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3 text-sm text-muted-foreground"
                 data-testid="play-profile-defaults-note"
               >
-                <Sparkles className="w-4 h-4 text-primary shrink-0" />
+                <Sparkles className="w-4 h-4 text-primary-text shrink-0" />
                 <span>Tailored to your profile. Sessions open to all levels are included.</span>
                 <button type="button" className="underline underline-offset-2" onClick={showEverything} data-testid="play-profile-defaults-reset">
                   Show everything
@@ -540,7 +626,7 @@ export default function PlayPage() {
                     </h2>
                     <p className="text-sm text-muted-foreground">Find players near you who are ready for a game.</p>
                   </div>
-                  <Link href="/players?lookingToPlay=true" className="text-sm text-primary font-medium shrink-0" data-testid="play-see-all-players">
+                  <Link href="/players?lookingToPlay=true" className="text-sm text-primary-text font-medium shrink-0" data-testid="play-see-all-players">
                     See all players →
                   </Link>
                 </div>
@@ -727,14 +813,6 @@ export default function PlayPage() {
         </div>
       </main>
 
-      <PlayFilters
-        open={filtersOpen}
-        onOpenChange={setFiltersOpen}
-        draft={draft}
-        onDraftChange={setDraft}
-        onClear={clearDraftFilters}
-        onApply={applyDraftFilters}
-      />
 
       <Footer />
 

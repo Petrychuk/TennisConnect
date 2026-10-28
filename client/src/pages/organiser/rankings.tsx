@@ -68,6 +68,7 @@ import {
   getPlayerRecentForm,
 } from "@/lib/api/organizer-rankings";
 import type { SeriesStandingRow } from "@shared/schema";
+import { OrganiserBreadcrumb } from "@/components/organiser/ui/organiser-breadcrumb";
 
 const ALL_SESSIONS = "all";
 
@@ -107,7 +108,7 @@ function PodiumCard({ pos, player }: { pos: number; player: SeriesStandingRow })
     <div className={cn("flex-1 min-w-[9rem] flex items-center gap-3 rounded-2xl border p-3", bg)} data-testid={`organiser-rankings-podium-${pos}`}>
       <div className="relative shrink-0">
         <Avatar className="h-11 w-11 border border-border">
-          <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">{initials(player.userName)}</AvatarFallback>
+          <AvatarFallback className="bg-primary/10 text-primary-text font-bold text-sm">{initials(player.userName)}</AvatarFallback>
         </Avatar>
         <span className={cn("absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center", RANK_STYLE[pos])}>{medalIcon}</span>
       </div>
@@ -284,7 +285,7 @@ export default function OrganiserRankingsPage() {
         <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="hidden md:inline-flex" data-testid="organiser-sidebar-trigger">
+              <Button variant="ghost" size="icon" className="hidden md:inline-flex" aria-label="Open Organiser Hub menu" data-testid="organiser-sidebar-trigger">
                 <Menu className="w-5 h-5" />
               </Button>
             </SheetTrigger>
@@ -299,6 +300,8 @@ export default function OrganiserRankingsPage() {
         </div>
 
         <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+          <OrganiserBreadcrumb current="Rankings" testId="organiser-rankings-page-breadcrumb" />
+
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <h1 className="font-display text-2xl sm:text-3xl font-bold">Rankings</h1>
@@ -341,7 +344,7 @@ export default function OrganiserRankingsPage() {
                       <div className="space-y-1.5">
                         <label className="text-sm font-medium text-muted-foreground">Season</label>
                         <Select value={seasonId} onValueChange={setSeasonId}>
-                          <SelectTrigger data-testid="organiser-rankings-filter-season"><SelectValue /></SelectTrigger>
+                          <SelectTrigger aria-label="Season" data-testid="organiser-rankings-filter-season"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             {seasons.map((s) => (
                               <SelectItem key={s.id} value={s.id} data-testid={`organiser-rankings-filter-season-${s.id}`}>{s.name}</SelectItem>
@@ -352,7 +355,7 @@ export default function OrganiserRankingsPage() {
                       <div className="space-y-1.5">
                         <label className="text-sm font-medium text-muted-foreground">Series</label>
                         <Select value={seriesId} onValueChange={setSeriesId} disabled={seriesList.length === 0}>
-                          <SelectTrigger data-testid="organiser-rankings-filter-series"><SelectValue placeholder={seriesQuery.isLoading ? "Loading..." : "No series yet"} /></SelectTrigger>
+                          <SelectTrigger aria-label="Series" data-testid="organiser-rankings-filter-series"><SelectValue placeholder={seriesQuery.isLoading ? "Loading..." : "No series yet"} /></SelectTrigger>
                           <SelectContent>
                             {seriesList.map((s) => (
                               <SelectItem key={s.id} value={s.id} data-testid={`organiser-rankings-filter-series-${s.id}`}>{s.name}</SelectItem>
@@ -363,7 +366,7 @@ export default function OrganiserRankingsPage() {
                       <div className="space-y-1.5">
                         <label className="text-sm font-medium text-muted-foreground">Session</label>
                         <Select value={sessionId} onValueChange={setSessionId} disabled={!series}>
-                          <SelectTrigger data-testid="organiser-rankings-filter-session"><SelectValue /></SelectTrigger>
+                          <SelectTrigger aria-label="Session" data-testid="organiser-rankings-filter-session"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value={ALL_SESSIONS} data-testid="organiser-rankings-filter-session-all">All Sessions</SelectItem>
                             {seriesSessions.map((s) => (
@@ -393,7 +396,7 @@ export default function OrganiserRankingsPage() {
                         <Card data-testid="organiser-rankings-context-card">
                           <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-start gap-4">
                             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                              <Trophy className="w-6 h-6 text-primary" />
+                              <Trophy className="w-6 h-6 text-primary-text" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <h2 className="font-display font-bold text-lg" data-testid="organiser-rankings-context-title">{series.name}</h2>
@@ -474,7 +477,7 @@ export default function OrganiserRankingsPage() {
                                       <TableCell><RankBadge pos={i + 1} /></TableCell>
                                       <TableCell>
                                         <div className="flex items-center gap-2.5 min-w-0">
-                                          <Avatar className="h-8 w-8 border border-border shrink-0"><AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">{initials(player.userName)}</AvatarFallback></Avatar>
+                                          <Avatar className="h-8 w-8 border border-border shrink-0"><AvatarFallback className="bg-primary/10 text-primary-text text-xs font-bold">{initials(player.userName)}</AvatarFallback></Avatar>
                                           <span className="font-medium truncate">{player.userName}</span>
                                         </div>
                                       </TableCell>
@@ -518,7 +521,7 @@ export default function OrganiserRankingsPage() {
                                     <TableCell><RankBadge pos={i + 1} /></TableCell>
                                     <TableCell>
                                       <div className="flex items-center gap-2.5 min-w-0">
-                                        <Avatar className="h-8 w-8 border border-border shrink-0"><AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">{initials(row.userName)}</AvatarFallback></Avatar>
+                                        <Avatar className="h-8 w-8 border border-border shrink-0"><AvatarFallback className="bg-primary/10 text-primary-text text-xs font-bold">{initials(row.userName)}</AvatarFallback></Avatar>
                                         <span className="font-medium truncate">{row.userName}</span>
                                       </div>
                                     </TableCell>
@@ -541,7 +544,7 @@ export default function OrganiserRankingsPage() {
                         <CardContent className="p-4 space-y-3">
                           <div className="flex items-center justify-between">
                             <h3 className="font-semibold text-sm">Series sessions</h3>
-                            <button type="button" className="text-xs font-medium text-primary flex items-center gap-0.5" onClick={() => setAttachSessionsOpen(true)} data-testid="organiser-rankings-sidebar-attach">
+                            <button type="button" className="text-xs font-medium text-primary-text flex items-center gap-0.5" onClick={() => setAttachSessionsOpen(true)} data-testid="organiser-rankings-sidebar-attach">
                               <Plus className="w-3 h-3" /> Attach
                             </button>
                           </div>
@@ -582,7 +585,7 @@ export default function OrganiserRankingsPage() {
                           <CardContent className="p-4 space-y-3">
                             <div className="flex items-center justify-between">
                               <h3 className="font-semibold text-sm">Season info</h3>
-                              <Link href={`/organiser/seasons/${season.id}`} className="text-xs font-medium text-primary flex items-center gap-0.5" data-testid="organiser-rankings-sidebar-view-season">
+                              <Link href={`/organiser/seasons/${season.id}`} className="text-xs font-medium text-primary-text flex items-center gap-0.5" data-testid="organiser-rankings-sidebar-view-season">
                                 View season <ChevronRight className="w-3 h-3" />
                               </Link>
                             </div>
@@ -601,9 +604,9 @@ export default function OrganiserRankingsPage() {
 
                       <Card className="border-primary/30 bg-primary/5">
                         <CardContent className="p-4 space-y-2">
-                          <div className="flex items-center gap-2 font-semibold text-sm"><Trophy className="w-4 h-4 text-primary" />About rankings</div>
+                          <div className="flex items-center gap-2 font-semibold text-sm"><Trophy className="w-4 h-4 text-primary-text" />About rankings</div>
                           <p className="text-sm text-muted-foreground">This ranking shows accumulated points from all completed, confirmed sessions in the selected series. Each series has its own independent ranking within the season.</p>
-                          <button type="button" className="text-sm font-medium text-primary flex items-center gap-0.5" onClick={() => setHowItWorksOpen(true)} data-testid="organiser-rankings-sidebar-learn-more">
+                          <button type="button" className="text-sm font-medium text-primary-text flex items-center gap-0.5" onClick={() => setHowItWorksOpen(true)} data-testid="organiser-rankings-sidebar-learn-more">
                             Learn more <ChevronRight className="w-3.5 h-3.5" />
                           </button>
                         </CardContent>
@@ -660,7 +663,7 @@ export default function OrganiserRankingsPage() {
           {detailsPlayer && series && (
             <div className="pt-6 space-y-6">
               <div className="flex items-center gap-3">
-                <Avatar className="h-14 w-14 border border-border"><AvatarFallback className="bg-primary/10 text-primary font-bold">{initials(detailsPlayer.userName)}</AvatarFallback></Avatar>
+                <Avatar className="h-14 w-14 border border-border"><AvatarFallback className="bg-primary/10 text-primary-text font-bold">{initials(detailsPlayer.userName)}</AvatarFallback></Avatar>
                 <div>
                   <h3 className="font-display font-bold text-lg" data-testid="organiser-rankings-player-details-name">{detailsPlayer.userName}</h3>
                   <p className="text-sm text-muted-foreground">#{detailsPos} — {series.name}</p>

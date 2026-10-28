@@ -878,7 +878,7 @@ export default function CoachProfile() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <Card>
                             <CardContent className="p-6 flex items-center gap-4">
-                              <div className="p-3 rounded-full bg-primary/10 text-primary">
+                              <div className="p-3 rounded-full bg-primary/10 text-primary-text">
                                 <Trophy className="w-6 h-6" />
                               </div>
                               <div>
@@ -1060,8 +1060,8 @@ export default function CoachProfile() {
                             onClick={() => document.getElementById('photo-upload')?.click()}
                             className="aspect-square rounded-xl border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 hover:bg-primary/5 transition-colors flex flex-col items-center justify-center cursor-pointer group"
                           >
-                            <Plus className="w-8 h-8 text-muted-foreground group-hover:text-primary mb-2" />
-                            <span className="text-sm font-medium text-muted-foreground group-hover:text-primary">Add Photo/Video</span>
+                            <Plus className="w-8 h-8 text-muted-foreground group-hover:text-primary-text mb-2" />
+                            <span className="text-sm font-medium text-muted-foreground group-hover:text-primary-text">Add Photo/Video</span>
                           </div>
                         )}
                         
@@ -1104,7 +1104,7 @@ export default function CoachProfile() {
                       <Card>
                         <CardHeader>
                           <CardTitle className="flex items-center gap-2">
-                            <Calendar className="w-5 h-5 text-primary" />
+                            <Calendar className="w-5 h-5 text-primary-text" />
                             Weekly Schedule
                           </CardTitle>
                         </CardHeader>
@@ -1184,7 +1184,7 @@ export default function CoachProfile() {
                       <Card>
                         <CardHeader>
                           <CardTitle className="flex items-center gap-2">
-                            <MapPin className="w-5 h-5 text-primary" />
+                            <MapPin className="w-5 h-5 text-primary-text" />
                             Available Locations
                           </CardTitle>
                         </CardHeader>
@@ -1230,7 +1230,7 @@ export default function CoachProfile() {
                                             "cursor-pointer px-3 py-1.5 transition-all border-2", 
                                             isSelected 
                                               ? "bg-primary text-foreground border-primary hover:bg-primary/90" 
-                                              : "bg-muted/30 border-muted-foreground/10 text-muted-foreground hover:border-primary/50 hover:text-primary hover:bg-primary/5"
+                                              : "bg-muted/30 border-muted-foreground/10 text-muted-foreground hover:border-primary/50 hover:text-primary-text hover:bg-primary/5"
                                           )}
                                           onClick={() => {
                                             if (isSelected) {
@@ -1312,7 +1312,7 @@ export default function CoachProfile() {
                       <Card>
                         <CardHeader className="flex flex-row items-center justify-between">
                           <CardTitle className="flex items-center gap-2">
-                            <Users className="w-5 h-5 text-primary" />
+                            <Users className="w-5 h-5 text-primary-text" />
                             My Students
                           </CardTitle>
                           {isEditing && (
@@ -1380,7 +1380,7 @@ export default function CoachProfile() {
                       <Card>
                         <CardHeader className="flex flex-row items-center justify-between">
                           <CardTitle className="flex items-center gap-2">
-                            <ShoppingBag className="w-5 h-5 text-primary" />
+                            <ShoppingBag className="w-5 h-5 text-primary-text" />
                             My Items for Sale
                           </CardTitle>
                           {isEditing && marketplaceItems.length < 3 && (
@@ -1402,7 +1402,7 @@ export default function CoachProfile() {
                                     : "This coach hasn't listed any items for sale yet. Check back later!"}
                                 </p>
                                 {isEditing && (
-                                  <Button className="font-bold" onClick={() => setIsItemModalOpen(true)}>List Your First Item</Button>
+                                  <Button onClick={() => setIsItemModalOpen(true)}>List Your First Item</Button>
                                 )}
                               </div>
                           ) : (
@@ -1432,7 +1432,7 @@ export default function CoachProfile() {
                                           <div className="p-4 flex flex-col grow">
                                               <div className="flex justify-between items-start mb-2">
                                                   <h3 className="font-bold text-lg leading-tight line-clamp-2">{item.title}</h3>
-                                                  <span className="font-bold text-lg text-primary whitespace-nowrap ml-2">${item.price}</span>
+                                                  <span className="font-bold text-lg text-primary-text whitespace-nowrap ml-2">${item.price}</span>
                                               </div>
                                               <div className="flex items-center gap-1 text-xs text-muted-foreground mb-3">
                                                   <MapPin className="w-3 h-3" /> {item.location || profile.location}
@@ -1440,7 +1440,7 @@ export default function CoachProfile() {
                                               <p className="text-sm text-muted-foreground line-clamp-2 mb-4 grow">
                                                   {item.description}
                                               </p>
-                                              <Button className="w-full font-bold mt-auto" onClick={() => {
+                                              <Button className="w-full mt-auto" onClick={() => {
                                                   setSelectedBuyItem(item);
                                                   setIsBuyModalOpen(true);
                                                   // Pre-fill user data if logged in
@@ -1459,7 +1459,7 @@ export default function CoachProfile() {
                                         className="border-2 border-dashed border-muted rounded-xl flex flex-col items-center justify-center p-6 text-center cursor-pointer hover:bg-muted/10 hover:border-primary/50 transition-colors min-h-[300px]"
                                         onClick={() => setIsItemModalOpen(true)}
                                       >
-                                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-3">
+                                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary-text mb-3">
                                               <Plus className="w-6 h-6" />
                                           </div>
                                           <h3 className="font-bold">Add Another Item</h3>
@@ -1506,7 +1506,7 @@ export default function CoachProfile() {
                                             value={newItem.condition} 
                                             onValueChange={(val) => setNewItem({...newItem, condition: val})}
                                           >
-                                              <SelectTrigger>
+                                              <SelectTrigger aria-label="Condition">
                                                   <SelectValue />
                                               </SelectTrigger>
                                               <SelectContent>
@@ -1576,7 +1576,7 @@ export default function CoachProfile() {
                               </div>
                               <DialogFooter>
                                   <Button variant="outline" onClick={() => setIsItemModalOpen(false)}>Cancel</Button>
-                                  <Button onClick={handleAddItem} className="font-bold">List Item</Button>
+                                  <Button onClick={handleAddItem}>List Item</Button>
                               </DialogFooter>
                           </DialogContent>
                       </Dialog>
@@ -1595,7 +1595,7 @@ export default function CoachProfile() {
                                       <img src={selectedBuyItem?.photos?.[0] || racketImg} alt={selectedBuyItem?.name || "Item for sale"} className="w-16 h-16 rounded object-cover bg-muted" />
                                       <div>
                                           <p className="font-bold">{selectedBuyItem?.name}</p>
-                                          <p className="text-primary font-bold">${selectedBuyItem?.price}</p>
+                                          <p className="text-primary-text font-bold">${selectedBuyItem?.price}</p>
                                       </div>
                                   </div>
 
@@ -1639,7 +1639,6 @@ export default function CoachProfile() {
                                   <Button onClick={() =>
                                         selectedBuyItem && handleBuyRequest(selectedBuyItem.id)
                                       }
-                                    className="font-bold bg-primary text-foreground"
                                   >
                                     Send Request
                                   </Button>
@@ -1669,7 +1668,7 @@ export default function CoachProfile() {
                         <CardHeader>
                           <CardTitle asChild className="flex items-center gap-2">
                             <h2>
-                              <MessageCircle className="w-5 h-5 text-primary" />
+                              <MessageCircle className="w-5 h-5 text-primary-text" />
                               Get in Touch
                             </h2>
                           </CardTitle>
@@ -1677,7 +1676,7 @@ export default function CoachProfile() {
                         <CardContent className="space-y-6">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="flex items-center gap-3 p-4 rounded-lg bg-primary/5 border border-primary/10">
-                              <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-primary shadow-sm">
+                              <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-primary-text shadow-sm">
                                 <Phone className="w-5 h-5" />
                               </div>
                               <div>
@@ -1687,7 +1686,7 @@ export default function CoachProfile() {
                                 ) : (
                                   <Button 
                                     variant="link" 
-                                    className="font-bold text-lg p-0 h-auto text-primary"
+                                    className="text-lg p-0 h-auto text-primary-text"
                                     onClick={() => setShowCoachPhone(true)}
                                     disabled={!profile.phone}
                                   >
@@ -1697,7 +1696,7 @@ export default function CoachProfile() {
                               </div>
                             </div>
                             <div className="flex items-center gap-3 p-4 rounded-lg bg-primary/5 border border-primary/10">
-                              <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-primary shadow-sm">
+                              <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-primary-text shadow-sm">
                                 <Mail className="w-5 h-5" />
                               </div>
                               <div>
@@ -1707,7 +1706,7 @@ export default function CoachProfile() {
                                 ) : (
                                   <Button 
                                     variant="link" 
-                                    className="font-bold text-lg p-0 h-auto text-primary"
+                                    className="text-lg p-0 h-auto text-primary-text"
                                     onClick={() => setShowCoachEmail(true)}
                                     disabled={!profile.email}
                                   >

@@ -129,7 +129,7 @@ export default function ResetPasswordPage() {
             This password reset link is invalid or has expired. Please request a new one.
           </p>
           <Link href="/auth" >
-            <Button className="w-2/3 mx-auto flex items-center justify-center rounded-full bg-primary text-foreground border-primary">
+            <Button className="mx-auto flex w-fit min-w-44 px-8 items-center justify-center">
               Back to Sign In
             </Button>
           </Link>
@@ -151,7 +151,7 @@ export default function ResetPasswordPage() {
             Your password has been successfully reset. Redirecting to sign in...
           </p>
           <Link href="/auth">
-            <Button className="w-2/3 mx-auto flex items-center justify-center rounded-full bg-primary text-foreground border-primary">
+            <Button className="mx-auto flex w-fit min-w-44 px-8 items-center justify-center">
               Sign In Now
             </Button>
           </Link>
@@ -178,7 +178,7 @@ export default function ResetPasswordPage() {
             </Link>
 
             <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-6">
-              <Lock className="w-6 h-6 text-primary" />
+              <Lock className="w-6 h-6 text-primary-text" />
             </div>
 
             <h1 className="text-3xl font-display font-bold mb-2">
@@ -256,8 +256,8 @@ export default function ResetPasswordPage() {
               </div>
 
               <Button
-                type="submit"
-                className="w-2/3 mx-auto flex items-center justify-center bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full h-12"
+                size="lg" type="submit"
+                className="mx-auto flex w-fit min-w-44 px-8 items-center justify-center"
                 disabled={isLoading}
                 data-testid="reset-password-button"
               >

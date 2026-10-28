@@ -52,7 +52,7 @@ export function TravelHero({
           {/* Back button */}
           <div className="pt-6">
               <Link href="/travels">
-                <Button variant="ghost" className="mb-6 text-white gap-2 cursor-pointer">
+                <Button variant="ghost" className="mb-6 text-white gap-2">
                   <ArrowLeft className="w-4 h-4" /> All Packages
                 </Button>
               </Link>

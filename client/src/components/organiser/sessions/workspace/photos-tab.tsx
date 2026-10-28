@@ -9,7 +9,7 @@ export function PhotosTab() {
       className="flex flex-col items-center justify-center text-center py-16 px-4 rounded-2xl border border-dashed border-border"
       data-testid="organiser-session-photos-tab"
     >
-      <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-4">
+      <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary-text flex items-center justify-center mb-4">
         <ImageIcon className="w-7 h-7" />
       </div>
       <h3 className="font-display text-lg font-bold">No photos yet</h3>

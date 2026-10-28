@@ -85,7 +85,7 @@ export function UpcomingSessionsCard({ sessions, className, onCreateSession, onM
                       {session.maxParticipants ? ` / ${session.maxParticipants} players` : " players"}
                       {spotsLeft ? ` · ${spotsLeft}` : ""}
                     </p>
-                    <p className={cn("text-xs font-medium", isFullOrWaiting ? "text-destructive" : "text-primary")}>
+                    <p className={cn("text-xs font-medium", isFullOrWaiting ? "text-destructive" : "text-primary-text")}>
                       {sessionStatusLabel(session)}
                     </p>
                   </Link>

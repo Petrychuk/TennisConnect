@@ -58,7 +58,7 @@ export function HeaderClockWeather() {
       <span className="opacity-40">/</span>
       <span>Sydney</span>
       {weather && WeatherIcon && (
-        <span className="flex items-center gap-1 text-primary font-semibold" data-testid="header-weather-temp">
+        <span className="flex items-center gap-1 text-primary-text font-semibold" data-testid="header-weather-temp">
           <WeatherIcon className="w-3.5 h-3.5" />
           {weather.temperature}°C
         </span>

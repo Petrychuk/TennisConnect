@@ -51,6 +51,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { NAV_LINK_ACTIVE, NAV_LINK_BASE, NAV_LINK_IDLE } from "@/components/navLinkStyles";
 
 // Prefix matching (location.startsWith(href)) is not enough on its
 // own - "/player/emily-carter".startsWith("/play") is true, which
@@ -116,13 +117,13 @@ export function Navbar() {
 
   const navLinks = [
     { name: "Players", href: "/players", icon: Users },
-    { name: "Pulse", href: "/play", icon: PlayIcon },
+    { name: "Games", href: "/play", icon: PlayIcon },
     { name: "Coaches", href: "/coaches", icon: Award },
     
     /* { name: "Tournaments", href: "/tournaments" }, */
-    { name: "Clubhouse", href: "/clubs", icon: Building2 },
-    { name: "Escapes", href: "/travels", icon: Plane },
-    { name: "Journal", href: "/articles", icon: BookOpen },
+    { name: "Clubs", href: "/clubs", icon: Building2 },
+    { name: "Travels", href: "/travels", icon: Plane },
+    { name: "Articles", href: "/articles", icon: BookOpen },
     /* { name: "Recreation", href: "/recreation" },
     { name: "Marketplace", href: "/marketplace" }, 
     { name: "Shop", href: "https://shop.tennisconnect.com.au", external: true }, */
@@ -132,16 +133,19 @@ export function Navbar() {
 
   return (
     <>
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/40">
+    {/* bg-background/95 (was /80): dark page content scrolling under a more
+        transparent bar made the header text read grey - links need a
+        stable, light background to keep their contrast. */}
+    <nav aria-label="Main" className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border/60">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="text-2xl font-display font-bold flex items-center gap-1 cursor-pointer" data-testid="navbar-logo-link">
-          Tennis<span className="text-[hsl(var(--tennis-ball))] [text-shadow:0_1px_3px_rgba(0,0,0,0.45)]"><ConnectWord /></span>
+          Tennis<span className="text-[hsl(var(--tennis-ball))]"><ConnectWord /></span>
           <div className="w-2 h-2 rounded-full bg-[hsl(var(--tennis-ball))] mt-1 animate-pulse" />
         </Link>
 
         {/* Desktop Nav */}
-        <div className="hidden xl:flex items-center gap-8">
+        <div className="hidden xl:flex items-center gap-6 2xl:gap-8">
           {navLinks.map((link) => (
            /*  link.external ? (
               <a
@@ -167,15 +171,12 @@ export function Navbar() {
               <Link
               key={link.name}
               href={link.href}
-              className={`text-sm font-medium transition-colors cursor-pointer relative ${
-                isNavActive(location, link.href)
-                  ? "text-primary font-bold"
-                  : "hover:text-lime-600"
-              }`}
+              aria-current={isNavActive(location, link.href) ? "page" : undefined}
+              className={cn(NAV_LINK_BASE, isNavActive(location, link.href) ? NAV_LINK_ACTIVE : NAV_LINK_IDLE)}
             >
               {link.name}
               {isNavActive(location, link.href) && (
-                <span className="absolute -bottom-1.5 left-0 right-0 h-0.5 rounded-full bg-primary" />
+                <span aria-hidden="true" className="absolute -bottom-1 left-1 right-1 h-0.5 rounded-full bg-primary-text" />
               )}
             </Link>  
           ))}
@@ -193,7 +194,7 @@ export function Navbar() {
           {isAuthenticated ? (
             <div className="hidden xl:flex items-center gap-2">
               <Link href={profileHref}>
-                <Button variant="ghost" className="font-bold hover:text-lime-600 gap-2 cursor-pointer">
+                <Button variant="ghost" className="hover:text-primary-text gap-2">
                   <User className="w-4 h-4" />
                   {user?.name || "My Profile"}
                 </Button>
@@ -206,7 +207,7 @@ export function Navbar() {
                     key={user?.avatar} 
                     className="h-9 w-9 cursor-pointer border-2 border-primary/20 hover:border-primary transition-colors">
                     <AvatarImage src={user?.avatar || undefined} />
-                    <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                    <AvatarFallback className="bg-primary/10 text-primary-text font-bold">
                       {user?.name?.[0] || "U"}
                     </AvatarFallback>
                   </Avatar>
@@ -273,7 +274,7 @@ export function Navbar() {
 
               {/* Notifications Bell — now after the avatar */}
               <Link href="/messages">
-                <Button variant="ghost" size="icon" className="relative cursor-pointer" data-testid="button-notifications">
+                <Button variant="ghost" size="icon" className="relative" data-testid="button-notifications">
                   <Bell className="w-5 h-5" />
                   {unreadCount > 0 && (
                     <Badge 
@@ -288,7 +289,7 @@ export function Navbar() {
             </div>
           ) : (
             <Link href="/auth" className="hidden xl:inline-flex">
-              <Button className="bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer">
+              <Button className="px-6">
                 Sign In
               </Button>
             </Link>
@@ -309,7 +310,7 @@ export function Navbar() {
                    <div className="flex items-center gap-3 pb-6" data-testid="drawer-user-summary">
                      <Avatar key={user?.avatar} className="h-11 w-11 border-2 border-primary/20">
                         <AvatarImage src={user?.avatar || undefined} />
-                        <AvatarFallback className="bg-primary/10 text-primary font-bold">{user?.name?.[0] || "U"}</AvatarFallback>
+                        <AvatarFallback className="bg-primary/10 text-primary-text font-bold">{user?.name?.[0] || "U"}</AvatarFallback>
                      </Avatar>
                      <div>
                        <p className="font-bold leading-tight">{user?.name}</p>
@@ -326,9 +327,10 @@ export function Navbar() {
                         key={link.name}
                         href={link.href}
                         data-testid={`drawer-link-${link.name.toLowerCase().replace(/\s+/g, "-")}`}
-                        className={`group flex items-center gap-3 rounded-xl pl-1 pr-1.5 py-3 text-base font-medium transition-colors cursor-pointer ${
+                        aria-current={active ? "page" : undefined}
+                        className={`group flex items-center gap-3 rounded-xl pl-1 pr-1.5 py-3 text-base font-semibold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                           active
-                            ? "bg-primary/10 text-primary"
+                            ? "bg-primary/10 text-primary-text"
                             : "text-foreground hover:bg-muted"
                         }`}
                         onClick={() => setIsOpen(false)}
@@ -337,7 +339,7 @@ export function Navbar() {
                           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors ${
                             active
                               ? "bg-primary text-foreground"
-                              : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
+                              : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary-text"
                           }`}
                         >
                           <Icon className="w-4 h-4" />
@@ -351,7 +353,7 @@ export function Navbar() {
 
                 {!isAuthenticated && (
                   <Link href="/auth" onClick={() => setIsOpen(false)}>
-                    <Button className="w-full mt-4 bg-primary text-foreground border-primary font-bold rounded-full cursor-pointer">
+                    <Button className="w-full mt-4">
                       Sign In
                     </Button>
                   </Link>
@@ -514,8 +516,9 @@ export function Navbar() {
           <Link
             href="/"
             data-testid="mobile-bottomnav-home"
+            aria-current={location === "/" ? "page" : undefined}
             className={`flex flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${
-              location === "/" ? "text-primary" : "text-muted-foreground"
+              location === "/" ? "text-primary-text" : "text-muted-foreground"
             }`}
           >
             <Home className={`w-5 h-5 ${location === "/" ? "fill-primary/15" : ""}`} />
@@ -525,19 +528,21 @@ export function Navbar() {
           <Link
             href="/play"
             data-testid="mobile-bottomnav-play"
+            aria-current={isNavActive(location, "/play") ? "page" : undefined}
             className={`flex flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${
-              isNavActive(location, "/play") ? "text-primary" : "text-muted-foreground"
+              isNavActive(location, "/play") ? "text-primary-text" : "text-muted-foreground"
             }`}
           >
             <PlayIcon className={`w-5 h-5 ${isNavActive(location, "/play") ? "fill-primary/15" : ""}`} />
-            Play
+            Games
           </Link>
 
           <Link
             href="/messages"
             data-testid="mobile-bottomnav-messages"
+            aria-current={location === "/messages" ? "page" : undefined}
             className={`relative flex flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${
-              location === "/messages" ? "text-primary" : "text-muted-foreground"
+              location === "/messages" ? "text-primary-text" : "text-muted-foreground"
             }`}
           >
             <span className="relative">
@@ -557,8 +562,9 @@ export function Navbar() {
           <Link
             href={profileHref}
             data-testid="mobile-bottomnav-profile"
+            aria-current={location === profileHref ? "page" : undefined}
             className={`flex flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${
-              location === profileHref ? "text-primary" : "text-muted-foreground"
+              location === profileHref ? "text-primary-text" : "text-muted-foreground"
             }`}
           >
             <UserCircle className={`w-5 h-5 ${location === profileHref ? "fill-primary/15" : ""}`} />
@@ -569,8 +575,9 @@ export function Navbar() {
             <Link
               href="/organiser"
               data-testid="mobile-bottomnav-organiser-hub"
+            aria-current={location === "/organiser" ? "page" : undefined}
               className={`flex flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${
-                location === "/organiser" ? "text-primary" : "text-muted-foreground"
+                location === "/organiser" ? "text-primary-text" : "text-muted-foreground"
               }`}
             >
               <Trophy className={`w-5 h-5 ${location === "/organiser" ? "fill-primary/15" : ""}`} />
@@ -599,7 +606,7 @@ export function Navbar() {
         <div className="flex items-center gap-3 pb-4 pt-2">
           <Avatar key={user?.avatar} className="h-11 w-11 border-2 border-primary/20">
             <AvatarImage src={user?.avatar || undefined} />
-            <AvatarFallback className="bg-primary/10 text-primary font-bold">
+            <AvatarFallback className="bg-primary/10 text-primary-text font-bold">
               {user?.name?.[0] || "U"}
             </AvatarFallback>
           </Avatar>

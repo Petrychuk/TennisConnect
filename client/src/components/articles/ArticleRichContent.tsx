@@ -18,7 +18,7 @@ function Inline({ text }: { text: string }) {
               href={t.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary underline underline-offset-2 hover:no-underline"
+              className="text-primary-text underline underline-offset-2 hover:no-underline"
             >
               {t.text}
             </a>
@@ -63,7 +63,7 @@ function Block({ block }: { block: ArticleContentBlock }) {
     case "numberedHeading":
       return (
         <h2 className="font-display font-bold text-xl md:text-2xl mt-10 mb-4 first:mt-0 flex items-baseline gap-2">
-          <span className="text-primary shrink-0">{block.number}.</span>
+          <span className="text-primary-text shrink-0">{block.number}.</span>
           <span>
             <Inline text={block.text} />
           </span>
@@ -82,7 +82,7 @@ function Block({ block }: { block: ArticleContentBlock }) {
 
     case "ul":
       return (
-        <ul className="my-2.5 sm:my-3 space-y-1 sm:space-y-1.5 list-disc pl-5 sm:pl-6 marker:text-primary">
+        <ul className="my-2.5 sm:my-3 space-y-1 sm:space-y-1.5 list-disc pl-5 sm:pl-6 marker:text-primary-text">
           {block.items.map((item, i) => (
             <li key={i} className="leading-relaxed">
               <Inline text={item} />
@@ -93,7 +93,7 @@ function Block({ block }: { block: ArticleContentBlock }) {
 
     case "ol":
       return (
-        <ol className="my-2.5 sm:my-3 space-y-1 sm:space-y-1.5 list-decimal pl-5 sm:pl-6 marker:text-primary marker:font-semibold">
+        <ol className="my-2.5 sm:my-3 space-y-1 sm:space-y-1.5 list-decimal pl-5 sm:pl-6 marker:text-primary-text marker:font-semibold">
           {block.items.map((item, i) => (
             <li key={i} className="leading-relaxed">
               <Inline text={item} />
