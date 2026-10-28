@@ -42,11 +42,11 @@ export function HomeTravel() {
     s ? new Date(s).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" }) : "TBA";
 
   return (
-    <section className="py-24 bg-linear-to-b from-secondary/20 to-background relative overflow-hidden" id="travel">
+    <section className="py-10 md:py-24 bg-linear-to-b from-secondary/20 to-background relative overflow-hidden" id="travel">
       <div className="absolute -top-40 right-0 w-[500px] h-[500px] bg-primary/10 rounded-full blur-3xl pointer-events-none" />
 
       <div className="container mx-auto px-4 relative z-10">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-[30px] md:mb-12 gap-4 md:gap-6">
           <div>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -63,7 +63,7 @@ export function HomeTravel() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="text-3xl md:text-5xl font-display font-bold"
+              className="text-[26px] md:text-5xl font-display font-bold"
             >
               Train. Travel. <span className="text-primary-text">Transform.</span>
             </motion.h2>

@@ -168,6 +168,13 @@ async function loginWithCachedSession(page: Page, role: BaselineRole) {
   const identity = baselineIdentity(role);
   for (let attempt = 0; attempt < 2; attempt++) {
     const statePath = await baselineSessionState(role, info);
+    // Switching accounts: drop the previous account's session cookie first.
+    // Adding the cached cookie on top of a browser-set one (e.g. right after
+    // registerPlayer()) can leave two session cookies with different
+    // attributes; the API check below then saw the admin while the page's
+    // own requests still sent the player's, and /admin showed "Admin Access
+    // Required" (ADMIN-001/005/007 in the 28 Oct Staging run).
+    await page.context().clearCookies();
     await page.context().addCookies(sessionCookies(statePath));
     const me = await page.request.get('/api/auth/me', { failOnStatusCode: false });
     const body = me.ok() ? await me.json().catch(() => null) : null;
@@ -211,10 +218,19 @@ export async function login(
     page.getByTestId('login-button').click(),
   ]);
 
-  // дождаться окончания редиректа
-  await expect(page).toHaveURL(/\/player\/.+|\/coach\/.+/, {
+  // Wait for the post-login redirect. An account that never finished its
+  // profile is sent to /complete-profile instead of its own profile page
+  // (that's AUTH-014's whole point) - accounts made by registerPlayer()
+  // without completePlayerProfile() are exactly that, so both are a
+  // successful login here (MSG-002 used to time out on this).
+  await expect(page).toHaveURL(/\/player\/.+|\/coach\/.+|\/complete-profile/, {
     timeout: 15000,
   });
+
+  if (/\/complete-profile/.test(new URL(page.url()).pathname)) {
+    await expect(page.getByTestId('complete-profile-logout')).toBeVisible({ timeout: 15000 });
+    return;
+  }
 
   // дождаться появления меню пользователя
   await expect(
@@ -235,9 +251,21 @@ export async function logout(page: Page) {
     return;
   }
 
-  await page.getByTestId('profile-menu').click();
+  // /complete-profile (where registerPlayer()/registerCoach() leave a new
+  // account) has no site header, so there is no profile menu to open -
+  // it has its own Sign out button instead. Waiting on whichever of the
+  // two appears, rather than only the profile menu, is what used to time
+  // out after 60 s in MSG-016/115/116, AUTH-012 and AUTH-014.
+  const profileMenu = page.getByTestId('profile-menu');
+  const completeProfileLogout = page.getByTestId('complete-profile-logout');
+  await expect(profileMenu.or(completeProfileLogout).first()).toBeVisible({ timeout: 15000 });
 
-  await page.getByTestId('logout-btn').click();
+  if (await completeProfileLogout.isVisible()) {
+    await completeProfileLogout.click();
+  } else {
+    await profileMenu.click();
+    await page.getByTestId('logout-btn').click();
+  }
 
   await expect(page).toHaveURL('/');
 }

@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import SEO from "@/components/seo";
 import { HeroBadge } from "@/components/shared/hero-badge";
 import { HeroSearch, HeroShortcuts, type HeroShortcut } from "@/components/shared/hero-search";
+import { DelayedTennisLoader } from "@/components/ui/tennisLoader";
+import { HeroPhoto } from "@/components/shared/hero-photo";
 
 interface Article {
   id: string;
@@ -37,6 +39,8 @@ function getInitialCategory(): string {
 export default function ArticlesPage() {
   const [items, setItems] = useState<Article[]>([]);
   const [search, setSearch] = useState("");
+  // false until /api/articles answers, so the empty state never shows mid-load.
+  const [loaded, setLoaded] = useState(false);
   const [category, setCategory] = useState(getInitialCategory);
 
   useEffect(() => {
@@ -44,7 +48,8 @@ export default function ArticlesPage() {
     fetch("/api/articles", { credentials: "include" })
       .then((r) => r.json())
       .then(setItems)
-      .catch(() => setItems([]));
+      .catch(() => setItems([]))
+      .finally(() => setLoaded(true));
   }, []);
 
   const filtered = items.filter((a) => {
@@ -97,12 +102,9 @@ export default function ArticlesPage() {
         <main id="main-content">
         {/* Hero — shares one photo backdrop with the filter bar below */}
         <div className="relative overflow-hidden">
-          <img
-            src="/assets/images/Dashboard_articles.webp"
+          <HeroPhoto
+            hero="articles"
             alt="Tennis articles"
-            fetchPriority="high"
-            loading="eager"
-            decoding="async"
             className="absolute inset-0 w-full h-full object-cover z-0 scale-125 md:scale-100"
           />
           {/* Tablet/desktop: the left half of the photo darkens towards the left edge (smooth, no hard line) so the title, intro and search stay readable. Phones keep the plain photo. */}
@@ -201,7 +203,9 @@ export default function ArticlesPage() {
 
         {/* Grid — pulled up so the photo dissolves under the top row */}
         <div id="articles-results" className="relative z-30 container mx-auto px-4 pt-6 pb-12 md:py-12 md:-mt-4 scroll-mt-24">
-          {filtered.length === 0 ? (
+          {!loaded ? (
+            <DelayedTennisLoader text="Loading articles…" />
+          ) : filtered.length === 0 ? (
             <div className="text-center py-20">
               <BookOpen className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-xl font-bold mb-2">No articles found</h3>

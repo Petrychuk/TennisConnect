@@ -24,6 +24,8 @@ import { getServiceLabel, getSurfaceLabel, formatLocation } from "@/lib/clubVari
 import { HeroBadge } from "@/components/shared/hero-badge";
 import { HeroSearch, HeroSearchFiltersButton, HeroShortcuts, type HeroShortcut } from "@/components/shared/hero-search";
 import { HeroFiltersPanel, FilterSection } from "@/components/shared/hero-filters";
+import { DelayedTennisLoader } from "@/components/ui/tennisLoader";
+import { HeroPhoto } from "@/components/shared/hero-photo";
 
 // Organisation Type options come from CLUB_CATEGORIES (shared with the
 // admin form), but its labels carry emoji prefixes meant for the admin
@@ -454,17 +456,11 @@ export default function ClubsPage() {
         {/* Intro / Hero Section — shares one photo backdrop with the
             filter bar below, same treatment as Partners/Coaches */}
         <div className="relative overflow-hidden">
-          <picture>
-            <source media="(max-width: 639px)" srcSet="/assets/images/Dashboard_club-mobile.webp" />
-            <img
-              src="/assets/images/Dashboard_club.webp"
-              alt="Tennis club"
-              fetchPriority="high"
-              loading="eager"
-              decoding="async"
-              className="absolute inset-0 w-full h-full object-cover z-0 scale-125 md:scale-100"
-            />
-          </picture>
+          <HeroPhoto
+            hero="clubs"
+            alt="Tennis club"
+            className="absolute inset-0 w-full h-full object-cover z-0 scale-125 md:scale-100"
+          />
           {/* Tablet/desktop: the left half of the photo darkens towards the left edge (smooth, no hard line) so the title, intro and search stay readable. Phones keep the plain photo. */}
           <div aria-hidden="true" className="tc-hero-left-shade absolute inset-0 hidden md:block z-10" />
           <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100% z-10" />
@@ -558,7 +554,9 @@ export default function ClubsPage() {
             the top of the first row */}
         <div id="clubs-results" className="relative z-30 container mx-auto px-4 pt-4 pb-16 md:py-16 md:-mt-4 scroll-mt-24">
 
-        {filteredClubs.length === 0 ? (
+        {loading && filteredClubs.length === 0 ? (
+          <DelayedTennisLoader text="Loading clubs…" />
+        ) : filteredClubs.length === 0 ? (
 
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="inline-flex p-5 rounded-full bg-muted mb-5">

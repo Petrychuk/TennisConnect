@@ -30,11 +30,11 @@ export function HomeArticles() {
   if (!items.length) return null;
 
   return (
-    <section className="py-24 bg-background relative overflow-hidden" id="articles">
+    <section className="py-10 md:py-24 bg-background relative overflow-hidden" id="articles">
       <div className="absolute top-40 -left-20 w-[400px] h-[400px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
 
       <div className="container mx-auto px-4 relative z-10">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-[30px] md:mb-12 gap-4 md:gap-6">
           <div>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -51,7 +51,7 @@ export function HomeArticles() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="text-3xl md:text-5xl font-display font-bold"
+              className="text-[26px] md:text-5xl font-display font-bold"
             >
               Your Tennis <span className="text-primary-text">Knowledge Hub</span>
             </motion.h2>

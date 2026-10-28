@@ -64,7 +64,7 @@ export function MySessionsSection({ isOwnProfile, isAuthenticated, sessionTypes,
       <Card data-testid="my-sessions-signed-out" className="border-0 shadow-sm bg-muted/40">
         <CardContent className="py-10 text-center space-y-3">
           <p className="text-muted-foreground">Sign in to see the sessions you've joined.</p>
-          <Button asChild size="sm" data-testid="my-sessions-sign-in">
+          <Button asChild className="min-w-[150px]" data-testid="my-sessions-sign-in">
             <Link href="/auth">
               <LogIn className="w-4 h-4 mr-2" />
               Sign In

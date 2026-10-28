@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Helmet } from "react-helmet-async";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import SEO from "@/components/seo";
@@ -28,11 +27,10 @@ import { PlayerMatchCard } from "@/components/play/PlayerMatchCard";
 import { QuickMessageModal } from "@/components/messaging/QuickMessageModal";
 import { useAuth } from "@/lib/auth-context";
 import { PLAY_DATE_FILTER_OPTIONS, resolveDateFilterRange, type PlayDateFilter } from "@/lib/play-status";
-import playHeroDesktop from "/assets/images/games-hero-sydney-harbour.webp";
-import playHeroMobile from "/assets/images/games-hero-sydney-harbour-mobile.webp";
 import { HeroBadge } from "@/components/shared/hero-badge";
 import { HeroSearch, HeroSearchFiltersButton } from "@/components/shared/hero-search";
 import { HeroFiltersPanel } from "@/components/shared/hero-filters";
+import { HeroPhoto } from "@/components/shared/hero-photo";
 
 /** Example smart searches shown under the search box. */
 const EXAMPLES = ["Doubles this weekend", "Social tennis near me", "Competition around my level"];
@@ -349,10 +347,7 @@ export default function PlayPage() {
         title="Find a Game | TennisConnect"
         description="Find tennis sessions, competitions and events near you - Social Tennis, Americano, Tournaments and more, all in one place."
       />
-      <Helmet>
-        <link rel="preload" as="image" href={playHeroMobile} media="(max-width: 767px)" />
-        <link rel="preload" as="image" href={playHeroDesktop} media="(min-width: 768px)" />
-      </Helmet>
+      {/* The hero photo is preloaded by client/index.html (before the JS bundle). */}
       <Navbar />
 
       <main id="main-content">
@@ -363,17 +358,7 @@ export default function PlayPage() {
             the photo with the badge on its bottom edge, then the title and
             search below it. */}
         <div className="relative overflow-hidden">
-          <picture>
-            <source media="(max-width: 767px)" srcSet={playHeroMobile} />
-            <img
-              src={playHeroDesktop}
-              alt=""
-              fetchPriority="high"
-              loading="eager"
-              decoding="async"
-              className="absolute inset-0 w-full h-full object-cover object-[50%_40%] z-0"
-            />
-          </picture>
+          <HeroPhoto hero="games" alt="" className="absolute inset-0 w-full h-full object-cover object-[50%_40%] z-0" />
           {/* Tablet/desktop: the left half of the photo darkens towards the left edge (smooth, no hard line) so the title, intro and search stay readable. Phones keep the plain photo. */}
           <div aria-hidden="true" className="tc-hero-left-shade absolute inset-0 hidden md:block z-10" />
           <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100% z-10" />

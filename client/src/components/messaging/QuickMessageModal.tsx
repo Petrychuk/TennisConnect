@@ -129,8 +129,9 @@ export function QuickMessageModal({
               data-testid="input-quick-message"
             />
           </div>
+          {/* Sized to its text like the sign-in / sign-up buttons, not full width - also on phones. */}
           <Button
-            className="w-full"
+            className="mx-auto flex w-fit min-w-44 px-8"
             onClick={handleSend}
             disabled={sending || !messageText.trim()}
             data-testid="button-send-quick-message"

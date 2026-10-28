@@ -59,9 +59,14 @@ export async function becomeOrganiser(page: Page, organizationName?: string): Pr
   const me = await meRes.json();
 
   const name = organizationName ?? `Playwright Club ${Date.now()}`;
-  const orgRes = await page.request.post('/api/organizations', { data: { name } });
+  const orgRes = await page.request.post('/api/organizer/organizations', { data: { name } });
   if (!orgRes.ok()) {
-    throw new Error(`becomeOrganiser(): POST /api/organizations returned ${orgRes.status()} - ${await orgRes.text()}`);
+    throw new Error(`becomeOrganiser(): POST /api/organizer/organizations returned ${orgRes.status()} - ${await orgRes.text()}`);
+  }
+  // ok() was 2xx - still make sure it's the API answering, not the SPA
+  // fallback (that's how the wrong path above went unnoticed).
+  if (!(orgRes.headers()['content-type'] ?? '').includes('application/json')) {
+    throw new Error(`becomeOrganiser(): POST /api/organizer/organizations did not return JSON (${orgRes.headers()['content-type']})`);
   }
   const organization = await orgRes.json();
 

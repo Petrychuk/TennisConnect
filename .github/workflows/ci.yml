@@ -48,6 +48,7 @@ jobs:
       # Button system / header / accessibility guards and retreat
       # archive + ordering rules. Source files only - no browser, no network.
       - run: npm run test:ui
+      - run: npm run test:server-unit
 
   dependency-audit:
     name: Dependency vulnerability scan

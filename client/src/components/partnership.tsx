@@ -23,7 +23,7 @@ const partnerBenefits = [
 
 export function Partnership() {
   return (
-    <section className="py-24 bg-linear-to-br from-black via-gray-900 to-black text-white relative overflow-hidden" id="partnership">
+    <section className="py-10 md:py-24 bg-linear-to-br from-black via-gray-900 to-black text-white relative overflow-hidden" id="partnership">
       <div className="absolute inset-0 opacity-10" 
            style={{ backgroundImage: 'radial-gradient(#DFFF00 1px, transparent 1px)', backgroundSize: '30px 30px' }}>
       </div>
@@ -41,7 +41,7 @@ export function Partnership() {
               <span className="text-sm font-bold uppercase tracking-wider">Partnership</span>
             </div>
             
-            <h2 className="text-3xl md:text-5xl font-display font-bold mb-6 leading-tight">
+            <h2 className="text-[26px] md:text-5xl font-display font-bold mb-6 leading-tight">
               Let's Grow <span className="text-primary">Tennis Together</span>
             </h2>
             
