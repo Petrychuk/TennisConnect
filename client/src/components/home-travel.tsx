@@ -5,6 +5,8 @@ import { Plane, ArrowRight, MapPin, Calendar, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { isRetreatArchived, sortRetreatsForDisplay } from "@/lib/travelStatus";
+import { RetreatArchivedBadge } from "@/components/travel/RetreatStatusBadge";
 
 interface TravelPackage {
   id: string;
@@ -19,6 +21,7 @@ interface TravelPackage {
   startDate: string | null;
   spotsLeft: number;
   isFeatured: boolean;
+  isActive?: boolean;
 }
 
 export function HomeTravel() {
@@ -27,7 +30,9 @@ export function HomeTravel() {
   useEffect(() => {
     fetch("/api/travel", { credentials: "include" })
       .then((r) => r.json())
-      .then((data) => setItems((data || []).slice(0, 3)))
+      // Sort before taking three: upcoming retreats first, so an ended one
+      // never takes the first slot while upcoming ones exist.
+      .then((data) => setItems(sortRetreatsForDisplay<TravelPackage>(data || []).slice(0, 3)))
       .catch(() => setItems([]));
   }, []);
 
@@ -47,7 +52,7 @@ export function HomeTravel() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary border border-primary/20 mb-4"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary-text border border-primary/20 mb-4"
             >
               <Plane className="w-4 h-4" />
               <span className="text-xs font-bold uppercase tracking-wider">Tennis Travel</span>
@@ -60,7 +65,7 @@ export function HomeTravel() {
               transition={{ delay: 0.1 }}
               className="text-3xl md:text-5xl font-display font-bold"
             >
-              Train. Travel. <span className="text-primary">Transform.</span>
+              Train. Travel. <span className="text-primary-text">Transform.</span>
             </motion.h2>
 
             <motion.p
@@ -82,7 +87,7 @@ export function HomeTravel() {
           >
             <Link href="/travels" className="hidden md:block">
               <Button
-                className="flex gap-2 bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
+                className="flex gap-2 px-6"
                 data-testid="travel-view-all-button"
               >
                 Discover Retreats <ArrowRight className="w-4 h-4" />
@@ -114,13 +119,17 @@ export function HomeTravel() {
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                     />
 
-                    {pkg.isFeatured && (
+                    {isRetreatArchived(pkg) ? (
+                      <div className="absolute top-3 left-3">
+                        <RetreatArchivedBadge />
+                      </div>
+                    ) : pkg.isFeatured && (
                       <div className="absolute top-3 left-3">
                         <Badge className="bg-primary text-foreground font-bold border-none">Featured</Badge>
                       </div>
                     )}
 
-                    {pkg.spotsLeft > 0 && pkg.spotsLeft <= 5 && (
+                    {!isRetreatArchived(pkg) && pkg.spotsLeft > 0 && pkg.spotsLeft <= 5 && (
                       <div className="absolute top-3 right-3">
                         <Badge className="bg-red-500 text-white border-none">Only {pkg.spotsLeft} left</Badge>
                       </div>
@@ -168,7 +177,7 @@ export function HomeTravel() {
           className="mt-8 md:hidden flex justify-center"
         >
           <Link href="/travels" className="w-2/3">
-            <Button className="w-full gap-2 bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full cursor-pointer">
+            <Button className="w-full gap-2">
               Browse Packages <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>

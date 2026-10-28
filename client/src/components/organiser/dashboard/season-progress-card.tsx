@@ -60,7 +60,7 @@ export function SeasonProgressCard({
                     {entry.rank}
                   </span>
                   <Avatar className="h-6 w-6 border border-border">
-                    <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-bold">
+                    <AvatarFallback className="bg-primary/10 text-primary-text text-[10px] font-bold">
                       {entry.name[0]}
                     </AvatarFallback>
                   </Avatar>

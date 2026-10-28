@@ -288,7 +288,7 @@ export function PlayingPreferencesCard({
       <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {rows.map((row) => (
           <div key={row.label} className="flex items-start gap-2">
-            <span className="text-primary mt-0.5">{row.icon}</span>
+            <span className="text-primary-text mt-0.5">{row.icon}</span>
             <div>
               <p className="text-xs text-muted-foreground">{row.label}</p>
               <p className="font-medium">{row.value}</p>
@@ -483,7 +483,7 @@ export function PhotosCard({
         ))}
         {isOwner && (
           <button
-            className="aspect-square rounded-lg border-2 border-dashed flex flex-col items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+            className="aspect-square rounded-lg border-2 border-dashed flex flex-col items-center justify-center text-muted-foreground hover:border-primary hover:text-primary-text transition-colors"
             onClick={onAddPhoto}
             data-testid="add-photo-button"
           >
@@ -595,7 +595,7 @@ export function GoodMatchCard({
       <Card data-testid="good-match-card" className="border-0 shadow-sm bg-primary/5">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
-            <Sparkles className="w-5 h-5 text-primary" /> Good match for you?
+            <Sparkles className="w-5 h-5 text-primary-text" /> Good match for you?
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -614,12 +614,12 @@ export function GoodMatchCard({
     <Card data-testid="good-match-card" className="border-0 shadow-sm bg-primary/5">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
-          <Sparkles className="w-5 h-5 text-primary" /> Good match for you!
+          <Sparkles className="w-5 h-5 text-primary-text" /> Good match for you!
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center gap-4">
-          <div className="text-4xl font-bold text-primary" data-testid="good-match-percent">
+          <div className="text-4xl font-bold text-primary-text" data-testid="good-match-percent">
             {percent}%
           </div>
           <div>
@@ -724,7 +724,7 @@ export function LatestActivityCard({ items }: { items: ActivityItem[] }) {
       <CardContent className="space-y-3">
         {items.slice(0, 3).map((item, i) => (
           <div key={i} className="flex items-center gap-3 text-sm" data-testid={`activity-item-${i}`}>
-            <span className="text-primary">{iconFor(item.icon)}</span>
+            <span className="text-primary-text">{iconFor(item.icon)}</span>
             <div>
               <p className="font-medium">{item.label}</p>
               <p className="text-xs text-muted-foreground">{item.date}</p>

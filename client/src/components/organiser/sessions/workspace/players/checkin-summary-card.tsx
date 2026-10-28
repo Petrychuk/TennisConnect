@@ -49,7 +49,7 @@ export function CheckInSummaryCard({ players, className }: CheckInSummaryCardPro
 
         <div className="space-y-2 text-sm">
           <div className="flex items-center gap-2" data-testid="organiser-checkin-summary-checkedin">
-            <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-primary-text shrink-0" />
             <span>{checkedIn} Checked In ({percent}%)</span>
           </div>
           <div className="flex items-center gap-2" data-testid="organiser-checkin-summary-not-checkedin">

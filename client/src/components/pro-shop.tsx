@@ -61,7 +61,7 @@ export function ProShop() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary border border-primary/20 mb-4"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary-text border border-primary/20 mb-4"
             >
               <Sparkles className="w-4 h-4" />
               <span className="text-xs font-bold uppercase tracking-wider">TENNIS SHOP</span>
@@ -74,7 +74,7 @@ export function ProShop() {
               transition={{ delay: 0.1 }}
               className="text-3xl md:text-5xl font-display font-bold"
             >
-              The Tennis <span className="text-primary">Vault</span>
+              The Tennis <span className="text-primary-text">Vault</span>
             </motion.h2>
             
             <motion.p
@@ -96,7 +96,7 @@ export function ProShop() {
           >
             <Button 
               onClick={handleShopClick}
-              className="hidden md:flex gap-2 bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
+              className="hidden md:flex gap-2 px-6"
               data-testid="shop-visit-button"
             >
               Visit Shop <ExternalLink className="w-4 h-4" />
@@ -149,7 +149,7 @@ export function ProShop() {
                   <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                     {product.category}
                   </p>
-                  <h3 className="font-bold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-1">
+                  <h3 className="font-bold text-lg mb-2 group-hover:text-primary-text transition-colors line-clamp-1">
                     {product.title}
                   </h3>
                   <div className="flex items-center gap-2">
@@ -175,7 +175,7 @@ export function ProShop() {
         >
           <Button 
             onClick={handleShopClick}
-            className="w-full gap-2 bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full cursor-pointer"
+            className="w-full gap-2"
           >
             Visit Shop <ExternalLink className="w-4 h-4" />
           </Button>

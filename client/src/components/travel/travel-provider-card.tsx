@@ -51,7 +51,7 @@ export function TravelProviderCard({
             mb-4
           "
         >
-          <Globe className="h-8 w-8 text-primary" />
+          <Globe className="h-8 w-8 text-primary-text" />
         </div>
       )}
 
@@ -72,7 +72,7 @@ export function TravelProviderCard({
             inline-flex
             items-center
             gap-2
-            text-primary
+            text-primary-text
             font-medium
             hover:underline
           "

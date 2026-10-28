@@ -6,6 +6,7 @@ import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface ClubSaveButtonProps {
   clubId: string;
@@ -100,13 +101,15 @@ export function ClubSaveButton({
         type="button"
         onClick={() => toggleSaved()}
         disabled={loading}
-        className={`rounded-full font-bold gap-1.5 cursor-pointer ${
-          saved
-            ? light
-              ? "bg-white/15 text-white border border-white/30 hover:bg-white/25"
-              : "bg-primary/10 text-primary border border-primary/20 hover:bg-primary/15"
-            : "bg-primary text-foreground hover:bg-primary/90"
-        } ${className ?? ""}`}
+        aria-pressed={saved}
+        // Saved = a quieter state of the same button: inverse on photos,
+        // pale lime with dark-green text on light pages.
+        variant={saved ? (light ? "inverse" : "outline") : "default"}
+        className={cn(
+          "gap-1.5",
+          saved && !light && "bg-accent text-primary-text border-primary-text/30 hover:bg-accent",
+          className,
+        )}
         data-testid="club-save-btn"
       >
         {loading ? (

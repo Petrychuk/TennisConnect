@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Button } from "@/components/ui/button";
+import { FilterChip, FILTER_CHIP_ROW } from "@/components/shared/filters";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,6 +13,7 @@ import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import SEO from "@/components/seo";
+import { cn } from "@/lib/utils";
 
 interface DBTournament {
   id: string;
@@ -129,22 +131,22 @@ export default function TournamentsPage() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="text-center p-3 bg-secondary/50 rounded-lg">
-              <DollarSign className="w-5 h-5 mx-auto mb-1 text-primary" />
+              <DollarSign className="w-5 h-5 mx-auto mb-1 text-primary-text" />
               <p className="font-bold">{tournament.price} AUD</p>
               <p className="text-xs text-muted-foreground">Entry Fee</p>
             </div>
             <div className="text-center p-3 bg-secondary/50 rounded-lg">
-              <Trophy className="w-5 h-5 mx-auto mb-1 text-primary" />
+              <Trophy className="w-5 h-5 mx-auto mb-1 text-primary-text" />
               <p className="font-bold">{tournament.prizePool || "—"}</p>
               <p className="text-xs text-muted-foreground">Prize Pool</p>
             </div>
             <div className="text-center p-3 bg-secondary/50 rounded-lg">
-              <Users className="w-5 h-5 mx-auto mb-1 text-primary" />
+              <Users className="w-5 h-5 mx-auto mb-1 text-primary-text" />
               <p className="font-bold">{tournament.currentParticipants}/{tournament.maxParticipants}</p>
               <p className="text-xs text-muted-foreground">Participants</p>
             </div>
             <div className="text-center p-3 bg-secondary/50 rounded-lg">
-              <Clock className="w-5 h-5 mx-auto mb-1 text-primary" />
+              <Clock className="w-5 h-5 mx-auto mb-1 text-primary-text" />
               <p className="font-bold">{(tournament.categories || []).length}</p>
               <p className="text-xs text-muted-foreground">Categories</p>
             </div>
@@ -179,7 +181,7 @@ export default function TournamentsPage() {
           <div className="flex flex-col sm:flex-row gap-3">
             {!isPast && (
               <Button
-                className="flex-1 bg-primary text-foreground hover:bg-primary/90 font-bold cursor-pointer"
+                className="flex-1"
                 onClick={() => {
                   setSelectedTournament(tournament);
                   setRegisterModalOpen(true);
@@ -191,7 +193,7 @@ export default function TournamentsPage() {
             )}
             <Button
               variant="outline"
-              className="flex-1 cursor-pointer"
+              className="flex-1"
               onClick={() => setSelectedTournament(tournament)}
               data-testid={`tournament-details-${tournament.slug}`}
             >
@@ -259,24 +261,20 @@ export default function TournamentsPage() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
+              <div className={cn(FILTER_CHIP_ROW, "w-full md:w-auto")} role="group" aria-label="Level">
                 {[
                   { value: "", label: "All Levels" },
                   { value: "Beginner", label: "Beginner" },
                   { value: "Intermediate", label: "Intermediate" },
                   { value: "Advanced", label: "Advanced" },
                 ].map((level) => (
-                  <button
+                  <FilterChip
                     key={level.value}
+                    selected={filterLevel === level.value}
                     onClick={() => setFilterLevel(filterLevel === level.value ? "" : level.value)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border cursor-pointer ${
-                      filterLevel === level.value
-                        ? "bg-primary text-foreground border-primary"
-                        : "bg-background hover:bg-secondary border-input"
-                    }`}
                   >
                     {level.label}
-                  </button>
+                  </FilterChip>
                 ))}
               </div>
             </div>
@@ -291,6 +289,8 @@ export default function TournamentsPage() {
             </TabsList>
 
             <TabsContent value="upcoming">
+              {/* Visually hidden section headings: tournament titles are h3s. */}
+              <h2 className="sr-only">Upcoming tournaments</h2>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {filterTournaments(upcomingTournaments).map((t) => (<TournamentCard key={t.id} tournament={t} />))}
               </div>
@@ -304,6 +304,7 @@ export default function TournamentsPage() {
             </TabsContent>
 
             <TabsContent value="past">
+              <h2 className="sr-only">Past tournaments</h2>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {filterTournaments(pastTournaments).map((t) => (<TournamentCard key={t.id} tournament={t} isPast />))}
               </div>
@@ -349,8 +350,8 @@ export default function TournamentsPage() {
             )}
 
             <DialogFooter className="flex-col sm:flex-row gap-2">
-              <Button variant="outline" onClick={() => setRegisterModalOpen(false)} className="cursor-pointer">Cancel</Button>
-              <Button onClick={handleRegister} className="bg-primary text-foreground cursor-pointer">Confirm Registration</Button>
+              <Button variant="outline" onClick={() => setRegisterModalOpen(false)}>Cancel</Button>
+              <Button onClick={handleRegister}>Confirm Registration</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -368,22 +369,22 @@ export default function TournamentsPage() {
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                    <Calendar className="w-5 h-5 mx-auto mb-1 text-primary" />
+                    <Calendar className="w-5 h-5 mx-auto mb-1 text-primary-text" />
                     <p className="font-bold text-sm">{formatDate(selectedTournament.startDate)}</p>
                     <p className="text-xs text-muted-foreground">Start Date</p>
                   </div>
                   <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                    <DollarSign className="w-5 h-5 mx-auto mb-1 text-primary" />
+                    <DollarSign className="w-5 h-5 mx-auto mb-1 text-primary-text" />
                     <p className="font-bold">{selectedTournament.price} AUD</p>
                     <p className="text-xs text-muted-foreground">Entry Fee</p>
                   </div>
                   <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                    <Trophy className="w-5 h-5 mx-auto mb-1 text-primary" />
+                    <Trophy className="w-5 h-5 mx-auto mb-1 text-primary-text" />
                     <p className="font-bold">{selectedTournament.prizePool || "—"}</p>
                     <p className="text-xs text-muted-foreground">Prizes</p>
                   </div>
                   <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                    <Users className="w-5 h-5 mx-auto mb-1 text-primary" />
+                    <Users className="w-5 h-5 mx-auto mb-1 text-primary-text" />
                     <p className="font-bold">{selectedTournament.currentParticipants}/{selectedTournament.maxParticipants}</p>
                     <p className="text-xs text-muted-foreground">Participants</p>
                   </div>
@@ -393,15 +394,15 @@ export default function TournamentsPage() {
                   <h4 className="font-bold mb-3">Organiser</h4>
                   <p className="font-medium">{selectedTournament.organizer}</p>
                   <div className="mt-2 space-y-2 text-sm">
-                    {selectedTournament.phone && <p className="flex items-center gap-2"><Phone className="w-4 h-4 text-muted-foreground" /><a href={`tel:${selectedTournament.phone}`} className="hover:text-primary">{selectedTournament.phone}</a></p>}
-                    {selectedTournament.email && <p className="flex items-center gap-2"><Mail className="w-4 h-4 text-muted-foreground" /><a href={`mailto:${selectedTournament.email}`} className="hover:text-primary">{selectedTournament.email}</a></p>}
-                    {selectedTournament.website && <p className="flex items-center gap-2"><Globe className="w-4 h-4 text-muted-foreground" /><a href={selectedTournament.website} target="_blank" className="hover:text-primary">{selectedTournament.website}</a></p>}
+                    {selectedTournament.phone && <p className="flex items-center gap-2"><Phone className="w-4 h-4 text-muted-foreground" /><a href={`tel:${selectedTournament.phone}`} className="hover:text-primary-text">{selectedTournament.phone}</a></p>}
+                    {selectedTournament.email && <p className="flex items-center gap-2"><Mail className="w-4 h-4 text-muted-foreground" /><a href={`mailto:${selectedTournament.email}`} className="hover:text-primary-text">{selectedTournament.email}</a></p>}
+                    {selectedTournament.website && <p className="flex items-center gap-2"><Globe className="w-4 h-4 text-muted-foreground" /><a href={selectedTournament.website} target="_blank" className="hover:text-primary-text">{selectedTournament.website}</a></p>}
                     {selectedTournament.address && <p className="flex items-center gap-2"><MapPin className="w-4 h-4 text-muted-foreground" />{selectedTournament.address}</p>}
                   </div>
                 </div>
 
                 {selectedTournament.status === "upcoming" && (
-                  <Button className="w-full bg-primary text-foreground font-bold cursor-pointer" onClick={() => setRegisterModalOpen(true)}>
+                  <Button className="w-full" onClick={() => setRegisterModalOpen(true)}>
                     Register for Tournament
                   </Button>
                 )}

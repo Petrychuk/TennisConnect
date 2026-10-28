@@ -141,7 +141,7 @@ export function MarkdownToolbar({
           type="button"
           variant="ghost"
           size="icon"
-          className="h-8 w-8 cursor-pointer"
+          className="h-8 w-8"
           title={tool.label}
           onClick={() => runTool(tool)}
           data-testid={`markdown-toolbar-${tool.label.toLowerCase().replace(/\s+/g, "-")}`}

@@ -23,7 +23,7 @@ function formatTime(time?: string): string {
 }
 
 const SESSION_ICON_BG = [
-  "bg-primary/10 text-primary",
+  "bg-primary/20 text-primary-text",
   "bg-orange-500/10 text-orange-600",
   "bg-pink-500/10 text-pink-600",
   "bg-sky-500/10 text-sky-600",

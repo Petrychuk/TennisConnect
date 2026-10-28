@@ -16,7 +16,7 @@ export function ReadyForLiveBar({ readiness }: ReadyForLiveBarProps) {
           <span className={cn("w-2 h-2 rounded-full", isReady ? "bg-primary" : "bg-muted-foreground")} />
           Ready for Live
         </div>
-        <span className={cn("text-sm font-bold", isReady ? "text-primary" : "text-muted-foreground")} data-testid="organiser-registration-ready-percent">
+        <span className={cn("text-sm font-bold", isReady ? "text-primary-text" : "text-muted-foreground")} data-testid="organiser-registration-ready-percent">
           {readiness.percent}% Ready
         </span>
       </div>
@@ -24,7 +24,7 @@ export function ReadyForLiveBar({ readiness }: ReadyForLiveBarProps) {
         {readiness.items.map((item) => (
           <span
             key={item.id}
-            className={cn("flex items-center gap-1.5", item.status === "ready" ? "text-primary" : "text-muted-foreground")}
+            className={cn("flex items-center gap-1.5", item.status === "ready" ? "text-primary-text" : "text-muted-foreground")}
             data-testid={`organiser-registration-ready-item-${item.id}`}
           >
             {item.status === "ready" ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5 text-destructive/80" />}

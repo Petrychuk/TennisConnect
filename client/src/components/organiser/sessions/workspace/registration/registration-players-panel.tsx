@@ -29,7 +29,7 @@ const STATUS_LABEL: Record<SessionPlayer["status"], string> = {
 };
 
 const STATUS_STYLE: Record<SessionPlayer["status"], string> = {
-  registered: "bg-primary/10 text-primary",
+  registered: "bg-primary/20 text-primary-text",
   waiting: "bg-secondary text-secondary-foreground",
   cancelled: "bg-destructive/10 text-destructive",
   invited: "bg-accent text-accent-foreground",
@@ -43,7 +43,7 @@ const PAYMENT_LABEL: Record<NonNullable<SessionPlayer["paymentStatus"]>, string>
 };
 
 const PAYMENT_STYLE: Record<NonNullable<SessionPlayer["paymentStatus"]>, string> = {
-  paid: "bg-primary/10 text-primary",
+  paid: "bg-primary/20 text-primary-text",
   pending: "bg-destructive/10 text-destructive",
   guest: "bg-muted text-muted-foreground",
 };
@@ -140,8 +140,8 @@ export function RegistrationPlayersPanel({ players, onOpenPlayerActions, showDet
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" data-testid={`organiser-registration-player-${player.id}-menu`}>
-                    <MoreHorizontal className="w-4 h-4" />
+                  <Button variant="ghost" size="icon" aria-label="More actions" className="h-7 w-7 shrink-0" data-testid={`organiser-registration-player-${player.id}-menu`}>
+                    <MoreHorizontal aria-hidden="true" className="w-4 h-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">

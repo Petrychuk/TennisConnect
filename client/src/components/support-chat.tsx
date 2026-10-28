@@ -133,7 +133,7 @@ export function SupportChat() {
             transition={{ duration: 0.2 }}
             className="mb-4 pointer-events-auto origin-bottom-right"
           >
-            <Card className="w-[350px] md:w-[380px] shadow-2xl border-primary/20 overflow-hidden">
+            <Card className="w-[min(350px,calc(100vw-2rem))] md:w-[380px] shadow-2xl border-primary/20 overflow-hidden">
               <CardHeader className="bg-primary p-4 flex flex-row items-center justify-between space-y-0">
                 <div className="flex items-center gap-3">
                   <div className="relative">
@@ -144,8 +144,9 @@ export function SupportChat() {
                     <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-2 border-primary rounded-full"></span>
                   </div>
                   <div>
-                    <CardTitle className="text-primary-foreground text-base">TennisConnect Support</CardTitle>
-                    <p className="text-primary-foreground/80 text-xs flex items-center gap-1">
+                    {/* Near-black on the lime header: white text there is only ~2:1. */}
+                    <CardTitle className="text-foreground text-base">TennisConnect Support</CardTitle>
+                    <p className="text-foreground/80 text-xs flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
                       Online Now
                     </p>
@@ -154,16 +155,18 @@ export function SupportChat() {
                 <div className="flex items-center gap-1">
                   <Button 
                     variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8 text-primary-foreground/80 hover:text-white hover:bg-primary-foreground/10 rounded-full"
+                    size="icon-sm"
+                    aria-label="Minimise support chat"
+                    className="text-foreground/80 hover:text-foreground hover:bg-foreground/10"
                     onClick={() => setIsMinimized(true)}
                   >
                     <Minus className="h-4 w-4" />
                   </Button>
                   <Button 
                     variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8 text-primary-foreground/80 hover:text-white hover:bg-primary-foreground/10 rounded-full"
+                    size="icon-sm"
+                    aria-label="Close support chat"
+                    className="text-foreground/80 hover:text-foreground hover:bg-foreground/10"
                     onClick={() => setIsOpen(false)}
                   >
                     <X className="h-4 w-4" />
@@ -190,7 +193,7 @@ export function SupportChat() {
                                 className="w-full justify-start gap-3"
                                 onClick={() => setSelectedCategory(category.label)}
                               >
-                                <Icon className="h-4 w-4 text-primary" />
+                                <Icon className="h-4 w-4 text-primary-text" aria-hidden="true" />
                                 {category.label}
                               </Button>
                             );
@@ -358,8 +361,8 @@ export function SupportChat() {
               setIsOpen(true);
               setIsMinimized(false);
             }}
-            size="lg"
-            className="h-[52px] w-[52px] md:h-14 md:w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 text-foreground transition-all duration-300 hover:scale-105"
+            size="icon"
+            className="h-[52px] w-[52px] md:h-14 md:w-14 rounded-full shadow-xl transition-all duration-300 hover:scale-105"
           >
             <MessageCircle className="md:hidden" style={{ width: 24, height: 24 }} />
             <MessageCircle className="hidden md:block" style={{ width: 28, height: 28 }} />

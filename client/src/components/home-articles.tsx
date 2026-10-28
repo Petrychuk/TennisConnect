@@ -40,7 +40,7 @@ export function HomeArticles() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary border border-primary/20 mb-4"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary-text border border-primary/20 mb-4"
             >
               <BookOpen className="w-4 h-4" />
               <span className="text-xs font-bold uppercase tracking-wider">TENNIS IQ</span>
@@ -53,7 +53,7 @@ export function HomeArticles() {
               transition={{ delay: 0.1 }}
               className="text-3xl md:text-5xl font-display font-bold"
             >
-              Your Tennis <span className="text-primary">Knowledge Hub</span>
+              Your Tennis <span className="text-primary-text">Knowledge Hub</span>
             </motion.h2>
 
             <motion.p
@@ -75,7 +75,7 @@ export function HomeArticles() {
           >
             <Link href="/articles" className="hidden md:block">
               <Button
-                className="flex gap-2 bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
+                className="flex gap-2 px-6"
                 data-testid="articles-view-all-button"
               >
                 Explore Articles <ArrowRight className="w-4 h-4" />
@@ -113,7 +113,7 @@ export function HomeArticles() {
                   </div>
 
                   <CardContent className="p-5">
-                    <h3 className="font-bold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2 min-h-[3.5rem]">
+                    <h3 className="font-bold text-lg mb-2 group-hover:text-primary-text transition-colors line-clamp-2 min-h-[3.5rem]">
                       {article.title}
                     </h3>
                     <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
@@ -139,7 +139,7 @@ export function HomeArticles() {
           className="mt-8 md:hidden flex justify-center"
         >
           <Link href="/articles" className="w-2/3">
-            <Button className="w-full gap-2 bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full cursor-pointer">
+            <Button className="w-full gap-2">
               All Articles <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>

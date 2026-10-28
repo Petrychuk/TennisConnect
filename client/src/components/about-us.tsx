@@ -82,7 +82,7 @@ export function AboutUs() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary border border-primary/20 mb-6">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary-text border border-primary/20 mb-6">
               <Target className="w-4 h-4" />
               <span className="text-xs font-bold uppercase tracking-wider">
                 OUR STORY
@@ -90,7 +90,7 @@ export function AboutUs() {
             </div>
             
             <h2 className="text-[1.8125rem] md:text-5xl font-display font-bold mb-6 leading-tight">
-              TennisConnect — Your Gateway to <span className="text-primary">Tennis</span>
+              TennisConnect — Your Gateway to <span className="text-primary-text">Tennis</span>
             </h2>
             
             <p className="text-muted-foreground text-lg leading-relaxed mb-8">
@@ -119,7 +119,7 @@ export function AboutUs() {
                 className="bg-card border rounded-2xl p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
               >
                 <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
-                  <value.icon className="w-6 h-6 text-primary" />
+                  <value.icon className="w-6 h-6 text-primary-text" />
                 </div>
                 <h3 className="font-bold text-lg mb-2">{value.title}</h3>
                 <p className="text-sm text-muted-foreground">{value.description}</p>
@@ -137,7 +137,7 @@ export function AboutUs() {
         >
           {statsCards.map((stat) => (
             <div key={stat.label} className="text-center p-6 rounded-2xl bg-primary/10 border border-primary/10">
-              <div className="text-4xl md:text-5xl font-display font-bold text-primary mb-2">
+              <div className="text-4xl md:text-5xl font-display font-bold text-primary-text mb-2">
                 {stat.number}
               </div>
               <div className="text-muted-foreground font-medium">{stat.label}</div>

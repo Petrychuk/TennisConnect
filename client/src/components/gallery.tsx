@@ -85,7 +85,7 @@ export function Gallery() {
       <div className="container mx-auto px-4">
         <div className="mb-12 text-center md:text-left">
           <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">
-           The Tennis <span className="text-primary">Lifestyle</span>
+           The Tennis <span className="text-primary-text">Lifestyle</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl">
             Real moments from the TennisConnect community on and off the court.

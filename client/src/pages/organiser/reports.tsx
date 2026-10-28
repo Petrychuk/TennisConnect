@@ -51,6 +51,7 @@ import { getSeasons } from "@/lib/api/organizer-sessions";
 import { getSeriesForSeason } from "@/lib/api/organizer-rankings";
 import { getReportsData } from "@/lib/api/organizer-reports";
 import type { ReportsPeriod } from "@shared/schema";
+import { OrganiserBreadcrumb } from "@/components/organiser/ui/organiser-breadcrumb";
 
 const PERIOD_OPTIONS: { value: ReportsPeriod; label: string }[] = [
   { value: "this_season", label: "This Season" },
@@ -235,7 +236,7 @@ export default function OrganiserReportsPage() {
         <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="hidden md:inline-flex" data-testid="organiser-sidebar-trigger">
+              <Button variant="ghost" size="icon" className="hidden md:inline-flex" aria-label="Open Organiser Hub menu" data-testid="organiser-sidebar-trigger">
                 <Menu className="w-5 h-5" />
               </Button>
             </SheetTrigger>
@@ -250,6 +251,8 @@ export default function OrganiserReportsPage() {
         </div>
 
         <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+          <OrganiserBreadcrumb current="Reports" testId="organiser-reports-page-breadcrumb" />
+
           <div>
             <h1 className="font-display text-2xl sm:text-3xl font-bold">Reports</h1>
             <p className="text-muted-foreground mt-1">Understand participation and attendance across your sessions.</p>
@@ -259,7 +262,7 @@ export default function OrganiserReportsPage() {
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-muted-foreground">Period</label>
               <Select value={period} onValueChange={(v) => setPeriod(v as ReportsPeriod)}>
-                <SelectTrigger data-testid="organiser-reports-filter-period"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Reporting period" data-testid="organiser-reports-filter-period"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {PERIOD_OPTIONS.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value} data-testid={`organiser-reports-filter-period-${opt.value}`}>{opt.label}</SelectItem>
@@ -270,7 +273,7 @@ export default function OrganiserReportsPage() {
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-muted-foreground">Season</label>
               <Select value={seasonId} onValueChange={setSeasonId} disabled={!seasonAware || seasons.length === 0}>
-                <SelectTrigger data-testid="organiser-reports-filter-season"><SelectValue placeholder="No seasons yet" /></SelectTrigger>
+                <SelectTrigger aria-label="Season" data-testid="organiser-reports-filter-season"><SelectValue placeholder="No seasons yet" /></SelectTrigger>
                 <SelectContent>
                   {seasons.map((s) => (
                     <SelectItem key={s.id} value={s.id} data-testid={`organiser-reports-filter-season-${s.id}`}>{s.name} ({formatSeasonPeriod(s)})</SelectItem>
@@ -281,7 +284,7 @@ export default function OrganiserReportsPage() {
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-muted-foreground">Series</label>
               <Select value={seriesId ?? "all"} onValueChange={(v) => setSeriesId(v === "all" ? undefined : v)} disabled={!seasonId}>
-                <SelectTrigger data-testid="organiser-reports-filter-series"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Series" data-testid="organiser-reports-filter-series"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all" data-testid="organiser-reports-filter-series-all">All Series</SelectItem>
                   {seriesList.map((s) => (
@@ -308,7 +311,7 @@ export default function OrganiserReportsPage() {
             <button
               type="button"
               onClick={() => setSeriesId(undefined)}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-primary"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-text"
               data-testid="organiser-reports-clear-series"
             >
               <X className="w-3.5 h-3.5" />
@@ -491,7 +494,7 @@ export default function OrganiserReportsPage() {
                   <CardContent className="p-4 sm:p-5">
                     <div className="flex items-center justify-between mb-1">
                       <h2 className="font-display font-bold text-lg">Player Activity</h2>
-                      <Link href="/organiser/players" className="text-sm font-medium text-primary flex items-center gap-0.5 shrink-0" data-testid="organiser-reports-view-all-players">
+                      <Link href="/organiser/players" className="text-sm font-medium text-primary-text flex items-center gap-0.5 shrink-0" data-testid="organiser-reports-view-all-players">
                         View all players <ChevronRight className="w-3.5 h-3.5" />
                       </Link>
                     </div>
@@ -520,7 +523,7 @@ export default function OrganiserReportsPage() {
                               >
                                 <TableCell>
                                   <div className="flex items-center gap-2.5 min-w-0">
-                                    <Avatar className="h-8 w-8 border border-border shrink-0"><AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">{initials(row.userName)}</AvatarFallback></Avatar>
+                                    <Avatar className="h-8 w-8 border border-border shrink-0"><AvatarFallback className="bg-primary/10 text-primary-text text-xs font-bold">{initials(row.userName)}</AvatarFallback></Avatar>
                                     <span className="font-medium truncate">{row.userName}</span>
                                   </div>
                                 </TableCell>

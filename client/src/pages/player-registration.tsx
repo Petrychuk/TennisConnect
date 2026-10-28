@@ -79,7 +79,7 @@ export default function PlayerRegistration() {
         {/* Left Side - Form */}
         <main id="main-content" className="w-full lg:w-1/2 flex flex-col p-8 md:p-12 lg:p-16 justify-center bg-background relative z-10">
           <Link href="/">
-            <a className="absolute top-8 left-8 md:left-12 flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors">
+            <a className="absolute top-8 left-8 md:left-12 flex items-center gap-2 text-muted-foreground hover:text-primary-text transition-colors">
               <ArrowLeft className="w-4 h-4" />
               Back to Home
             </a>
@@ -88,7 +88,7 @@ export default function PlayerRegistration() {
           <div className="max-w-md w-full mx-auto space-y-8">
             <div className="text-center lg:text-left">
               <h1 className="text-3xl md:text-4xl font-display font-bold mb-2">
-                Join as a <span className="text-primary">Player</span>
+                Join as a <span className="text-primary-text">Player</span>
               </h1>
               <p className="text-muted-foreground">
                 Find partners, connect with coaches, and improve your game.
@@ -145,13 +145,13 @@ export default function PlayerRegistration() {
                 )}
               </div>
 
-              <Button type="submit" className="w-full font-bold bg-primary text-foreground hover:bg-primary/90" disabled={isLoading}>
+              <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading && <TennisBallSpinner className="mr-2" />}
                 Create Player Account
               </Button>
               
               <p className="text-xs text-center text-muted-foreground mt-4">
-                Already have an account? <Link href="/auth"><a className="underline hover:text-primary">Sign in</a></Link>
+                Already have an account? <Link href="/auth"><a className="underline hover:text-primary-text">Sign in</a></Link>
               </p>
             </form>
           </div>

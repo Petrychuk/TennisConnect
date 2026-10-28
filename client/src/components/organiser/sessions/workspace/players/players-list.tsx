@@ -26,7 +26,7 @@ interface PlayersListProps {
 }
 
 const LEVEL_BADGE_STYLE: Record<SessionPlayer["levelLabel"], string> = {
-  Advanced: "bg-primary/10 text-primary",
+  Advanced: "bg-primary/20 text-primary-text",
   Intermediate: "bg-secondary text-secondary-foreground",
   Beginner: "bg-secondary text-secondary-foreground",
   Social: "bg-muted text-muted-foreground",
@@ -44,7 +44,7 @@ export function PlayersList({ players, onCheckIn, onRemove, onMoveToWaiting, onV
           <CardContent className="p-3 flex items-center gap-3">
             <Avatar className="h-9 w-9 border border-border">
               <AvatarImage src={player.avatar ?? undefined} alt={player.name} />
-              <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
+              <AvatarFallback className="bg-primary/10 text-primary-text text-xs font-bold">
                 {player.name[0]}
               </AvatarFallback>
             </Avatar>
@@ -52,7 +52,7 @@ export function PlayersList({ players, onCheckIn, onRemove, onMoveToWaiting, onV
               <div className="font-medium text-sm truncate flex items-center gap-1.5">
                 {player.name}
                 {player.isReal && (
-                  <Badge className="bg-primary/10 text-primary" data-testid={`organiser-players-list-item-${player.id}-real`}>
+                  <Badge className="bg-primary/10 text-primary-text" data-testid={`organiser-players-list-item-${player.id}-real`}>
                     Real
                   </Badge>
                 )}
@@ -65,7 +65,7 @@ export function PlayersList({ players, onCheckIn, onRemove, onMoveToWaiting, onV
 
             {player.status === "registered" &&
               (player.checkedIn && player.checkInTime ? (
-                <span className="flex items-center gap-1 text-primary text-xs font-medium shrink-0">
+                <span className="flex items-center gap-1 text-primary-text text-xs font-medium shrink-0">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                   {formatInTimeZone(player.checkInTime, timeZone, { hour: "numeric", minute: "2-digit" })}
                 </span>
@@ -77,8 +77,8 @@ export function PlayersList({ players, onCheckIn, onRemove, onMoveToWaiting, onV
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="shrink-0" data-testid={`organiser-players-list-item-${player.id}-menu`}>
-                  <MoreHorizontal className="w-4 h-4" />
+                <Button variant="ghost" size="icon" aria-label="More actions" className="shrink-0" data-testid={`organiser-players-list-item-${player.id}-menu`}>
+                  <MoreHorizontal aria-hidden="true" className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">

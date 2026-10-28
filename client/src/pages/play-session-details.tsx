@@ -223,7 +223,7 @@ export default function PlaySessionDetailsPage() {
               <div className="flex items-center gap-3 min-w-0">
                 <Avatar className="h-10 w-10 shrink-0">
                   {session.organizationLogo && <AvatarImage src={session.organizationLogo} alt="" />}
-                  <AvatarFallback className="bg-primary/10 text-primary font-bold">{initials(session.organizationName)}</AvatarFallback>
+                  <AvatarFallback className="bg-primary/10 text-primary-text font-bold">{initials(session.organizationName)}</AvatarFallback>
                 </Avatar>
                 <span className="font-medium truncate">{session.organizationName}</span>
               </div>

@@ -118,7 +118,7 @@ const buttonClass =
         transition-all
         duration-300
         h-auto
-        xl:h-[500px]
+        xl:min-h-[500px]
         "
       >
 
@@ -229,7 +229,7 @@ const buttonClass =
             flex
             items-center
             gap-2
-            text-primary
+            text-primary-text
             font-bold
             mb-2
             text-sm
@@ -260,7 +260,7 @@ const buttonClass =
                 min-h-[32px]
                 md:min-h-[44px]
                 mb-2
-                hover:text-primary
+                hover:text-primary-text
                 transition-colors
                 cursor-pointer
             "
@@ -346,8 +346,7 @@ const buttonClass =
             flex
             flex-wrap
             gap-1.5
-            h-[56px]
-            overflow-hidden
+            min-h-[56px]
             "
             data-testid="club-card-services"
         >
@@ -358,7 +357,7 @@ const buttonClass =
                 key={service}
                 variant="secondary"
                 className="
-                h-6
+                min-h-6
                 px-2
                 text-[11px]
                 "
@@ -400,7 +399,7 @@ const buttonClass =
         w-5 h-5
         rounded-full
         bg-primary/10
-        text-primary
+        text-primary-text
         flex
         items-center
         justify-center
@@ -449,7 +448,7 @@ const buttonClass =
       shrink-0
       rounded-full
       bg-primary/10
-      text-primary
+      text-primary-text
       flex
       items-center
       justify-center
@@ -510,8 +509,6 @@ const buttonClass =
                 md:h-12
                 text-sm
                 md:text-base
-                font-bold
-                rounded-xl
             "
             asChild
             data-testid="club-card-call-btn"
@@ -535,8 +532,6 @@ const buttonClass =
                 md:h-12
                 text-sm
                 md:text-base
-                font-bold
-                rounded-xl
                 hover:bg-secondary/50
             `}
             asChild

@@ -22,6 +22,8 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DiscoverySourcesPanel, type DiscoverySourceRow } from "@/components/admin/discovery-sources-panel";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { FilterChip, FILTER_CHIP_ROW } from "@/components/shared/filters";
 
 // [PLAY][AI] TC Discovery Agent, sections 16-17 - the Admin Discovery
 // Queue, living inside the Admin hub shell (same sidebar/header/mobile
@@ -445,7 +447,7 @@ export default function AdminDiscoveryPage() {
           <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="hidden md:inline-flex" data-testid="organiser-sidebar-trigger">
+                <Button variant="ghost" size="icon" className="hidden md:inline-flex" aria-label="Open Organiser Hub menu" data-testid="organiser-sidebar-trigger">
                   <Menu className="w-5 h-5" />
                 </Button>
               </SheetTrigger>
@@ -462,45 +464,33 @@ export default function AdminDiscoveryPage() {
           </div>
 
           <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-[1500px] mx-auto">
-            <div className="flex flex-col md:flex-row md:items-end justify-between mb-6 gap-4">
-              <div>
-                <div className="flex items-center gap-3">
-                  <h1 className="text-2xl md:text-3xl font-display font-bold">Australian Tennis Discovery</h1>
-                  <Badge className="bg-primary text-foreground">
-                    <ShieldCheck className="w-3 h-3 mr-1" /> Admin
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Review and manage tennis activities discovered across Australia.
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={openImportPartnerEvent}
-                  className="rounded-full px-6 cursor-pointer"
-                  data-testid="new-partner-event-button"
-                >
-                  <ShieldCheck className="w-4 h-4 mr-2" /> New Partner Event
-                </Button>
-                <Button
-                  onClick={() => openRun(null)}
-                  className="bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
-                  data-testid="discovery-run-button"
-                >
-                  <Play className="w-4 h-4 mr-2" /> Run Discovery
-                </Button>
-              </div>
-            </div>
+            <AdminPageHeader
+              section="discovery"
+              actions={
+                <>
+                  <Button variant="outline" onClick={openImportPartnerEvent} data-testid="new-partner-event-button">
+                    <ShieldCheck aria-hidden="true" /> New Partner Event
+                  </Button>
+                  <Button onClick={() => openRun(null)} data-testid="discovery-run-button">
+                    <Play aria-hidden="true" /> Run Discovery
+                  </Button>
+                </>
+              }
+            />
 
-            <div className="flex gap-6 border-b border-border mb-5" data-testid="discovery-views">
+            {/* Section tabs - same underline style as the header's active link:
+                dark-green bar + bold label, and real tab semantics. */}
+            <div className="flex gap-6 border-b border-border mb-5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Discovery views" data-testid="discovery-views">
               {(["queue", "sources"] as const).map((v) => (
                 <button
                   key={v}
+                  type="button"
+                  role="tab"
+                  aria-selected={view === v}
                   onClick={() => setView(v)}
                   className={cn(
-                    "pb-2 -mb-px text-sm font-medium border-b-2 cursor-pointer",
-                    view === v ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+                    "shrink-0 pb-2.5 pt-1 -mb-px text-sm border-b-2 cursor-pointer rounded-t-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    view === v ? "border-primary-text font-bold text-primary-text" : "border-transparent font-semibold text-foreground hover:text-primary-text"
                   )}
                   data-testid={`discovery-view-${v}`}
                 >
@@ -513,19 +503,21 @@ export default function AdminDiscoveryPage() {
               <DiscoverySourcesPanel onRunSource={openRun} />
             ) : (
               <>
-                <div className="flex gap-2 mb-6 overflow-x-auto pb-1" data-testid="discovery-tabs">
+                <div className={cn(FILTER_CHIP_ROW, "mb-6")} role="group" aria-label="Review status" data-testid="discovery-tabs">
                   {TABS.map((t) => (
-                    <Button
+                    <FilterChip
                       key={t.value}
-                      variant={tab === t.value ? "default" : "outline"}
-                      size="sm"
-                      className="rounded-full shrink-0"
+                      selected={tab === t.value}
                       onClick={() => setTab(t.value)}
                       data-testid={`discovery-tab-${t.value.toLowerCase()}`}
                     >
                       {t.label}
-                      {counts && <span className="ml-1.5 opacity-70">{counts[t.value]}</span>}
-                    </Button>
+                      {counts && (
+                        <span className="inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-foreground/10 px-1.5 text-xs font-bold tabular-nums">
+                          {counts[t.value]}
+                        </span>
+                      )}
+                    </FilterChip>
                   ))}
                 </div>
 
@@ -559,21 +551,22 @@ export default function AdminDiscoveryPage() {
                       return (
                         <Card key={item.id} className="border-0 shadow-sm bg-muted/40" data-testid={`discovery-item-${item.id}`}>
                           <CardContent className="py-4 space-y-2">
-                            <div className="flex items-start justify-between gap-3">
+                            {/* Phones: title, then badges underneath; wider: badges on the right */}
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                               <div className="min-w-0">
                                 <p className="font-semibold">{item.title}</p>
                                 <p className="text-sm text-muted-foreground">{where || "Location unknown"}</p>
                               </div>
-                              <div className="flex flex-wrap justify-end gap-1.5 shrink-0">
+                              <div className="flex flex-wrap gap-1.5 sm:justify-end sm:shrink-0 sm:max-w-[50%]">
                                 {item.sourceType === "PARTNER" && (
-                                  <Badge className="bg-primary text-black" data-testid={`discovery-item-${item.id}-partner-badge`}>
+                                  <Badge className="bg-primary text-foreground" data-testid={`discovery-item-${item.id}-partner-badge`}>
                                     <ShieldCheck className="w-3 h-3 mr-1" /> Partner
                                   </Badge>
                                 )}
                                 {statusBadge && <Badge variant="outline">{statusBadge}</Badge>}
                                 {item.reviewStatus === "DUPLICATE" && <Badge variant="outline">Duplicate</Badge>}
                                 {item.duplicateConfidence != null && item.reviewStatus !== "DUPLICATE" && (
-                                  <Badge variant="outline" className="text-amber-600 border-amber-300">
+                                  <Badge variant="outline" className="text-amber-800 border-amber-300">
                                     {item.duplicateConfidence}% possible duplicate
                                   </Badge>
                                 )}
@@ -617,7 +610,8 @@ export default function AdminDiscoveryPage() {
                               {formatLastChecked(item.lastCheckedAt)}
                             </p>
 
-                            <div className="flex flex-wrap gap-2 pt-2">
+                            {/* Phones: two equal columns of actions; wider: one wrapping row */}
+                            <div className="grid grid-cols-2 gap-2 pt-2 sm:flex sm:flex-wrap [&>*]:w-full sm:[&>*]:w-auto">
                               <Button variant="outline" size="sm" asChild>
                                 <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">
                                   <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> View Source
@@ -696,7 +690,7 @@ export default function AdminDiscoveryPage() {
                   value={editDraft.state ?? NONE}
                   onValueChange={(v) => setEditDraft((d) => ({ ...d, state: v === NONE ? null : v }))}
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label="State"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value={NONE}>Unknown</SelectItem>
                     {AU_STATES.map((st) => (
@@ -713,7 +707,7 @@ export default function AdminDiscoveryPage() {
                   value={editDraft.normalisedLevel ?? NONE}
                   onValueChange={(v) => setEditDraft((d) => ({ ...d, normalisedLevel: v === NONE ? null : v }))}
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label="Level"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value={NONE}>Not stated</SelectItem>
                     {LEVELS.map((l) => (

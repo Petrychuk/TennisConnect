@@ -242,7 +242,7 @@ export function ClubContactSection({
             }
             >
 
-            <SelectTrigger
+            <SelectTrigger aria-label="Contact person role"
                 data-testid="contact-person-role"
             >
 

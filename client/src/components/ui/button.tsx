@@ -4,51 +4,75 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+/*
+  TennisConnect button system - the one place a button's shape, size,
+  type, colours and states are defined. Used by <Button>, and through
+  buttonVariants() by anything that only needs to LOOK like a button
+  (a <Link>, an <a>, a dialog action, a popover trigger).
+
+  Rules (keep pages free of their own button styling):
+  - Shape: every button uses the shared --radius-button token
+    (rounded-button, 12px - index.css). Pages don't set rounded-*.
+  - Size: sm (32px), default (40px), lg (48px), icon (40px square),
+    icon-sm (32px square). Pages don't set their own height/padding,
+    except to stretch a button to a layout (w-full, flex-1, h-11 to
+    line up with a neighbouring input).
+  - Type: Inter semibold, slightly tracked - the same in every variant.
+  - Colour: pick a variant; don't restyle bg/text/border per page.
+      default    lime brand button, near-black text (~9.7:1)
+      secondary  neutral grey
+      outline    light surface with a border
+      ghost      no surface until hovered
+      destructive  red, white text (--destructive, ~5:1)
+      inverse    for dark sections and photos (white text, translucent)
+      link       text-only, dark brand green (--primary-text)
+  - States: hover darkens/tints, press nudges down 1px, keyboard focus
+    is a 2px --ring with an offset (visible on light and dark), disabled
+    is 50% opacity and not clickable.
+  - Brand detail: the lime button carries a thin darker baseline - a
+    "court line" (inset shadow) - which is the signature on every
+    primary action across the site, hubs and admin.
+*/
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0" +
-" hover-elevate active-elevate-2",
+  [
+    "inline-flex items-center justify-center gap-2 whitespace-nowrap",
+    "rounded-button border font-sans font-semibold tracking-[0.01em] leading-none",
+    "cursor-pointer select-none transition-[color,background-color,border-color,box-shadow,transform] duration-150 ease-out",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+    "active:translate-y-px motion-reduce:transition-none motion-reduce:active:translate-y-0",
+    "disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none",
+    "[&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  ].join(" "),
   {
     variants: {
       variant: {
+        // Lime + near-black text, never white text: --primary only gives
+        // ~2:1 against white.
         default:
-           // @replit: no hover, and add primary border
-           // text-foreground, not text-primary-foreground: --primary
-           // (#90C610) only gives ~2:1 contrast against white text -
-           // badly failing WCAG's 4.5:1 even before accounting for
-           // hover/pressed states, since text-primary-foreground is
-           // reused elsewhere in this app as "light text on a dark
-           // photo/section background" (hero banners, TC Live's dark
-           // theme, etc.) and can't be safely darkened globally without
-           // breaking those. --foreground (near-black, already the
-           // app's standard text colour) gives ~9.7:1 against this
-           // green - comfortably AA, and is exactly what .dark's own
-           // --primary-foreground already does correctly for this same
-           // button in dark mode.
-           "bg-primary text-foreground border border-primary-border",
+          "bg-primary text-foreground border-primary shadow-[inset_0_-2px_0_hsl(var(--primary-text)/0.45)] hover:bg-primary-hover hover:border-primary-hover",
         destructive:
-          "bg-destructive text-destructive-foreground shadow-sm border-destructive-border",
+          "bg-destructive text-destructive-foreground border-destructive hover:bg-destructive/90",
         outline:
-          // @replit Shows the background color of whatever card / sidebar / accent background it is inside of.
-          // Inherits the current text color. Uses shadow-xs. no shadow on active
-          // No hover state
-          " border [border-color:var(--button-outline)] shadow-xs active:shadow-none ",
+          "bg-background text-foreground border-input shadow-xs hover:bg-accent hover:border-primary-text/40 hover:text-accent-foreground",
         secondary:
-          // @replit border, no hover, no shadow, secondary border.
-          "border bg-secondary text-secondary-foreground border border-secondary-border ",
-        // @replit no hover, transparent border
-        ghost: "border border-transparent",
-        // text-primary-text, not text-primary: same ~2:1-contrast
-        // problem as the default variant above, just for green text on
-        // a light background instead of white text on a green
-        // background - see index.css's own comment on --primary-text.
-        link: "text-primary-text underline-offset-4 hover:underline",
+          "bg-secondary text-secondary-foreground border-secondary hover:bg-secondary-hover hover:border-secondary-hover",
+        ghost:
+          "bg-transparent border-transparent hover:bg-foreground/5",
+        // White text and a translucent white surface - for buttons on
+        // dark sections and photos, where the light variants would glare.
+        inverse:
+          "bg-white/10 text-white border-white/40 backdrop-blur-sm hover:bg-white/20 hover:border-white/70 focus-visible:ring-white focus-visible:ring-offset-black/40",
+        // --primary-text, not --primary: green text on a light background
+        // needs the darker brand green (~5:1) - see index.css.
+        link:
+          "border-transparent bg-transparent text-primary-text underline-offset-4 hover:underline",
       },
       size: {
-        // @replit changed sizes
-        default: "min-h-9 px-4 py-2",
-        sm: "min-h-8 rounded-md px-3 text-xs",
-        lg: "min-h-10 rounded-md px-8",
-        icon: "h-9 w-9",
+        sm: "min-h-8 px-3.5 text-sm",
+        default: "min-h-10 px-5 text-sm",
+        lg: "min-h-12 px-7 text-base",
+        icon: "h-10 w-10 p-0",
+        "icon-sm": "h-8 w-8 p-0",
       },
     },
     defaultVariants: {

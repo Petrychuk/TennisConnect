@@ -14,6 +14,8 @@ import { openCookieSettings } from "@/lib/cookieConsent";
 import { useToast } from "@/hooks/use-toast";
 import { BackTheRallyWidget } from "@/components/support/BackTheRallyWidget";
 import { BackTheRallyModal } from "@/components/support/BackTheRallyModal";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export function Footer() {
   const { toast } = useToast();
@@ -187,7 +189,7 @@ export function Footer() {
                   href="/play"
                   className="hover:text-primary transition-colors"
                 >
-                  Pulse
+                  Games
                 </Link>
               </li>
 
@@ -205,7 +207,7 @@ export function Footer() {
                   href="/clubs"
                   className="hover:text-primary transition-colors"
                 >
-                  Clubhouse
+                  Clubs
                 </Link>
               </li>
 
@@ -231,7 +233,7 @@ export function Footer() {
                   href="/travels"
                   className="hover:text-primary transition-colors"
                 >
-                  Escapes
+                  Travels
                 </Link>
               </li>
 
@@ -248,7 +250,7 @@ export function Footer() {
                   href="/articles"
                   className="hover:text-primary transition-colors"
                 >
-                  Journal
+                  Articles
                 </Link>
               </li>
             </ul>
@@ -364,29 +366,37 @@ export function Footer() {
 
           {/* Newsletter */}
           <div className="col-span-2 lg:col-span-1 md:portrait:col-span-full">
-            <h4 className="font-bold text-primary text-lg mb-6 ">Newsletter</h4>
+            <h4 className="font-bold text-primary text-lg mb-6">Newsletter</h4>
 
             <p className="text-gray-400 mb-4 text-sm">
               Get updates on tournaments, tennis events and platform news.
             </p>
 
             <form onSubmit={handleNewsletterSubmit} className="flex gap-2">
+              {/* A real label, not just a placeholder: the placeholder
+                  disappears while typing and isn't a reliable name for
+                  screen readers (WCAG 1.3.1 / 3.3.2). */}
+              <label htmlFor="footer-newsletter-email" className="sr-only">
+                Email address for the newsletter
+              </label>
               <input
+                id="footer-newsletter-email"
                 type="email"
+                autoComplete="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Your email"
                 disabled={isSubmitting}
-                className="bg-white/10 border border-white/10 rounded-lg px-4 py-2 w-full focus:ring-2 focus:ring-primary outline-none text-white placeholder:text-gray-500 disabled:opacity-60"
+                className="bg-white/10 border border-white/20 rounded-button px-4 min-h-10 w-full focus-visible:ring-2 focus-visible:ring-primary outline-none text-white placeholder:text-gray-400 disabled:opacity-60"
               />
 
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-primary text-foreground font-bold px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                className={cn(buttonVariants(), "shrink-0 focus-visible:ring-primary focus-visible:ring-offset-black")}
               >
-                {isSubmitting ? "..." : "OK"}
+                {isSubmitting ? "Subscribing…" : "Subscribe"}
               </button>
             </form>
 

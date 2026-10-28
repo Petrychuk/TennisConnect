@@ -69,7 +69,7 @@ export function AvailabilityNudge({
         data-testid="play-availability-nudge"
       >
         <div className="flex items-start gap-2 min-w-0">
-          <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+          <Sparkles className="w-4 h-4 text-primary-text shrink-0 mt-0.5" />
           <div className="min-w-0">
             <p className="text-sm font-medium">Get better recommendations</p>
             <p className="text-xs text-muted-foreground">

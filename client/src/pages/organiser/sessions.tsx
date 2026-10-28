@@ -31,6 +31,7 @@ import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
 import { getMySessions, deleteSession, archiveSession } from "@/lib/api/organizer-sessions";
 import { toSessionListItems } from "@/lib/api/session-adapter";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
+import { OrganiserBreadcrumb } from "@/components/organiser/ui/organiser-breadcrumb";
 
 export default function OrganiserSessionsPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
@@ -199,7 +200,7 @@ export default function OrganiserSessionsPage() {
         <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="hidden md:inline-flex" data-testid="organiser-sidebar-trigger">
+              <Button variant="ghost" size="icon" className="hidden md:inline-flex" aria-label="Open Organiser Hub menu" data-testid="organiser-sidebar-trigger">
                 <Menu className="w-5 h-5" />
               </Button>
             </SheetTrigger>
@@ -223,6 +224,8 @@ export default function OrganiserSessionsPage() {
         </div>
 
         <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 max-w-[1500px] mx-auto">
+          <OrganiserBreadcrumb current="Sessions" testId="organiser-sessions-page-breadcrumb" />
+
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <h1 className="font-display text-2xl sm:text-3xl font-bold">Sessions</h1>

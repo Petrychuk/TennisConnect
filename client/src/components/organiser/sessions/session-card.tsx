@@ -173,7 +173,7 @@ export function SessionCard({ session, onDuplicate, onDelete, onArchive }: Sessi
                   <Metric icon={Users} value={session.registeredCount} label="Players" testId={`organiser-session-card-${session.id}-registered`} />
                   <Metric icon={CheckCircle2} value={session.checkedInCount} label="Attended" testId={`organiser-session-card-${session.id}-checkedin`} />
                   {attendancePercent !== null && (
-                    <span className="font-semibold text-primary" data-testid={`organiser-session-card-${session.id}-attendance`}>
+                    <span className="font-semibold text-primary-text" data-testid={`organiser-session-card-${session.id}-attendance`}>
                       {attendancePercent}% Attendance
                     </span>
                   )}
@@ -181,7 +181,7 @@ export function SessionCard({ session, onDuplicate, onDelete, onArchive }: Sessi
               ) : (
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs mt-2">
                   {bucket === "live" && session.roundCurrent && session.roundTotal && (
-                    <span className="font-semibold text-primary" data-testid={`organiser-session-card-${session.id}-round`}>
+                    <span className="font-semibold text-primary-text" data-testid={`organiser-session-card-${session.id}-round`}>
                       Round {session.roundCurrent} / {session.roundTotal}
                     </span>
                   )}

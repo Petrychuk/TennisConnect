@@ -159,7 +159,7 @@ import {
                         className="
                           w-6
                           h-6
-                          text-primary
+                          text-primary-text
                         "
                       />
                     </div>

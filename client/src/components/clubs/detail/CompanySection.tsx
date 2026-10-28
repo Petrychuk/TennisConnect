@@ -24,7 +24,7 @@ export function CompanySection({
         className="rounded-2xl border bg-card p-5 md:p-6"
         data-testid="club-network-summary"
       >
-        <div className="flex items-center gap-2 text-primary mb-2">
+        <div className="flex items-center gap-2 text-primary-text mb-2">
           <Building2 className="w-5 h-5" />
           <h2 className="font-display font-bold text-xl">
             {club.numberOfLocations ?? 1} Locations

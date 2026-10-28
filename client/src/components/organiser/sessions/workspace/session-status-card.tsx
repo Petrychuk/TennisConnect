@@ -24,7 +24,7 @@ export function SessionStatusCard({ session, onEdit, showEditButton = true }: Se
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-start gap-3 text-sm" data-testid="organiser-session-status-registration">
-          <div className="w-7 h-7 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
+          <div className="w-7 h-7 rounded-xl bg-primary/10 text-primary-text flex items-center justify-center shrink-0 mt-0.5">
             <ClipboardCheck className="w-3.5 h-3.5" />
           </div>
           <div className="min-w-0 flex-1">
@@ -35,14 +35,14 @@ export function SessionStatusCard({ session, onEdit, showEditButton = true }: Se
             <Progress value={(session.registeredCount / capacity) * 100} className="h-1.5 mt-1.5" />
           </div>
           {session.registeredCount >= capacity ? (
-            <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <CheckCircle2 className="w-4 h-4 text-primary-text shrink-0 mt-0.5" />
           ) : (
             <Circle className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
           )}
         </div>
 
         <div className="flex items-start gap-3 text-sm" data-testid="organiser-session-status-checkin">
-          <div className="w-7 h-7 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
+          <div className="w-7 h-7 rounded-xl bg-primary/10 text-primary-text flex items-center justify-center shrink-0 mt-0.5">
             <UserCheck className="w-3.5 h-3.5" />
           </div>
           <div className="min-w-0 flex-1">
@@ -53,32 +53,32 @@ export function SessionStatusCard({ session, onEdit, showEditButton = true }: Se
             <Progress value={(session.checkedInCount / Math.max(session.registeredCount, 1)) * 100} className="h-1.5 mt-1.5" />
           </div>
           {detail.checkInOpen && session.checkedInCount >= session.registeredCount ? (
-            <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <CheckCircle2 className="w-4 h-4 text-primary-text shrink-0 mt-0.5" />
           ) : (
             <Circle className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
           )}
         </div>
 
         <div className="flex items-center gap-3 text-sm" data-testid="organiser-session-status-live">
-          <div className={cn("w-7 h-7 rounded-xl flex items-center justify-center shrink-0", isLive ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+          <div className={cn("w-7 h-7 rounded-xl flex items-center justify-center shrink-0", isLive ? "bg-primary/10 text-primary-text" : "bg-muted text-muted-foreground")}>
             <Play className="w-3.5 h-3.5" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-muted-foreground text-xs">Live Session</p>
-            <p className={cn("font-medium", isLive && "text-primary")}>{isLive ? "In Progress" : "Not started"}</p>
+            <p className={cn("font-medium", isLive && "text-primary-text")}>{isLive ? "In Progress" : "Not started"}</p>
           </div>
-          {isLive ? <CheckCircle2 className="w-4 h-4 text-primary shrink-0" /> : <Circle className="w-4 h-4 text-muted-foreground shrink-0" />}
+          {isLive ? <CheckCircle2 className="w-4 h-4 text-primary-text shrink-0" /> : <Circle className="w-4 h-4 text-muted-foreground shrink-0" />}
         </div>
 
         <div className="flex items-center gap-3 text-sm" data-testid="organiser-session-status-results">
-          <div className={cn("w-7 h-7 rounded-xl flex items-center justify-center shrink-0", session.status === "completed" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+          <div className={cn("w-7 h-7 rounded-xl flex items-center justify-center shrink-0", session.status === "completed" ? "bg-primary/10 text-primary-text" : "bg-muted text-muted-foreground")}>
             <Trophy className="w-3.5 h-3.5" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-muted-foreground text-xs">Results</p>
-            <p className={cn("font-medium", session.status === "completed" && "text-primary")}>{session.status === "completed" ? "Available" : "Pending"}</p>
+            <p className={cn("font-medium", session.status === "completed" && "text-primary-text")}>{session.status === "completed" ? "Available" : "Pending"}</p>
           </div>
-          {session.status === "completed" ? <CheckCircle2 className="w-4 h-4 text-primary shrink-0" /> : <Circle className="w-4 h-4 text-muted-foreground shrink-0" />}
+          {session.status === "completed" ? <CheckCircle2 className="w-4 h-4 text-primary-text shrink-0" /> : <Circle className="w-4 h-4 text-muted-foreground shrink-0" />}
         </div>
 
         {showEditButton && (

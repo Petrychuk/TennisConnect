@@ -16,7 +16,7 @@ interface WaitingListCardProps {
 }
 
 const LEVEL_BADGE_STYLE: Record<WaitingPlayer["levelLabel"], string> = {
-  Advanced: "bg-primary/10 text-primary",
+  Advanced: "bg-primary/20 text-primary-text",
   Intermediate: "bg-secondary text-secondary-foreground",
   Beginner: "bg-secondary text-secondary-foreground",
   Social: "bg-muted text-muted-foreground",
@@ -30,7 +30,7 @@ export function WaitingListCard({ players, className, timeZone }: WaitingListCar
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle asChild className="text-base"><h2>Waiting List ({players.length})</h2></CardTitle>
         {players.length > 0 && (
-          <span className="text-xs font-medium text-primary flex items-center gap-0.5 cursor-pointer" data-testid="organiser-waiting-list-view-all">
+          <span className="text-xs font-medium text-primary-text flex items-center gap-0.5 cursor-pointer" data-testid="organiser-waiting-list-view-all">
             View all waiting list
             <ChevronRight className="w-3 h-3" />
           </span>
@@ -50,7 +50,7 @@ export function WaitingListCard({ players, className, timeZone }: WaitingListCar
             >
               <Avatar className="h-8 w-8 border border-border">
                 <AvatarImage src={player.avatar ?? undefined} alt={player.name} />
-                <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
+                <AvatarFallback className="bg-primary/10 text-primary-text text-xs font-bold">
                   {player.name[0]}
                 </AvatarFallback>
               </Avatar>

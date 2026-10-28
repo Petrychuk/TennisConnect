@@ -41,7 +41,6 @@ export function PlayerActions({
             md:gap-2
 
             text-sm
-            font-medium
           "
           data-testid="hero-message-button"
         >
@@ -90,7 +89,6 @@ export function PlayerActions({
               px-5
               gap-2
               text-sm
-              font-medium
             "
             data-testid="save-profile"
           >

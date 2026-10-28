@@ -4,6 +4,7 @@ import { TikTokIcon } from "@/components/icons/TikTokIcon";
 import { Link } from "wouter";
 import SEO from "@/components/seo";
 import { useAuth } from "@/lib/auth-context";
+import { buttonVariants } from "@/components/ui/button";
 
 // Full-page "something broke server-side" screen. Used both as its own
 // route (/500, useful for a direct link or for QA to sanity-check the
@@ -67,7 +68,7 @@ export default function Error500() {
             <div className="mt-6 flex flex-col gap-3 sm:mt-7 sm:flex-row">
               <Link
                 href={profileHref}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[hsl(var(--tennis-ball))] px-5 py-3 text-sm font-bold text-black transition-transform hover:scale-[1.02] cursor-pointer"
+                className={buttonVariants({ size: "lg" })}
               >
                 <ArrowLeft className="h-4 w-4" />
                 Go back home
@@ -75,7 +76,7 @@ export default function Error500() {
 
               <button
                 onClick={() => window.location.reload()}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/5 px-5 py-3 text-sm font-bold text-white backdrop-blur-sm transition-colors hover:bg-white/10 cursor-pointer"
+                className={buttonVariants({ variant: "inverse", size: "lg" })}
               >
                 Try again
                 <RotateCw className="h-4 w-4" />

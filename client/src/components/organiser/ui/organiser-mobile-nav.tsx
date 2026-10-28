@@ -51,7 +51,7 @@ export function OrganiserMobileNav() {
 
         const sharedClasses = cn(
           "flex flex-1 min-w-0 flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium whitespace-nowrap",
-          isActive || (item.key === "more" && moreOpen) ? "text-primary" : "text-muted-foreground"
+          isActive || (item.key === "more" && moreOpen) ? "text-primary-text" : "text-muted-foreground"
         );
 
         if (item.href) {

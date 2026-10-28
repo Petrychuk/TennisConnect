@@ -66,7 +66,7 @@ export function Features() {
       <div className="container mx-auto px-4 relative z-10">
         <div className="text-center mb-16">
           <h2 className="text-[1.8125rem] md:text-5xl font-display font-bold mb-4">
-          Discover Your <span className="text-primary">Tennis World</span>
+          Discover Your <span className="text-primary-text">Tennis World</span>
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
             Whether you're looking for a playing partner, professional coach, local club, social session, tournament or your next tennis adventure, TennisConnect brings everything together in one platform.

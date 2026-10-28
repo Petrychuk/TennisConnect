@@ -94,6 +94,7 @@ export function ProfileCover({
           size="icon"
           variant="secondary"
           onClick={onEdit}
+          aria-label="Change cover photo"
           className="
             absolute
             right-4

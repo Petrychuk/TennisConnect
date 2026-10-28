@@ -229,8 +229,8 @@ export default function OrganiserSessionLivePage() {
           <div className="dark flex flex-col h-full w-full bg-background text-foreground">
             <div className="px-5 pt-6 pb-4">
               <Link href="/" className="text-lg font-display font-bold flex items-center gap-1">
-                Tennis<span className="text-primary"><ConnectWord /></span>
-                <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1" />
+                Tennis<span className="text-[hsl(var(--logo-connect))]"><ConnectWord /></span>
+                <div className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--logo-connect))] mt-1" />
               </Link>
               <p className="text-[11px] font-semibold tracking-widest text-muted-foreground mt-3">LIVE SESSION</p>
             </div>
@@ -245,7 +245,7 @@ export default function OrganiserSessionLivePage() {
                     onClick={() => setActiveTab(item.key)}
                     className={cn(
                       "w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors text-left",
-                      isActive ? "bg-primary/10 text-primary" : "text-foreground/80 hover:bg-accent/10 hover:text-foreground"
+                      isActive ? "bg-primary/10 text-primary-text" : "text-foreground/80 hover:bg-accent/10 hover:text-foreground"
                     )}
                     data-testid={`organiser-live-nav-${item.key}`}
                   >
@@ -479,7 +479,7 @@ function StatCard({ icon: Icon, label, value }: { icon: typeof Users; label: str
   return (
     <Card className="shadow-sm">
       <CardContent className="p-4 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+        <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary-text flex items-center justify-center shrink-0">
           <Icon className="w-4 h-4" />
         </div>
         <div className="min-w-0">
@@ -555,7 +555,7 @@ function CheckInPanel({
               <AvatarFallback>{r.userName?.[0] ?? "?"}</AvatarFallback>
             </Avatar>
             <span className="text-sm">{r.userName}</span>
-            {r.checkedInAt && <CheckCircle2 className="w-4 h-4 text-primary ml-auto" />}
+            {r.checkedInAt && <CheckCircle2 className="w-4 h-4 text-primary-text ml-auto" />}
           </label>
         ))}
       </CardContent>
@@ -722,7 +722,7 @@ function LeaderboardPanel({
     <Card className="shadow-sm">
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
-          <Trophy className="w-4 h-4 text-primary" /> Leaderboard
+          <Trophy className="w-4 h-4 text-primary-text" /> Leaderboard
         </CardTitle>
       </CardHeader>
       <CardContent>

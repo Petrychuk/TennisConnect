@@ -77,7 +77,7 @@ export default function TravelDetailPage() {
           <div className="text-center">
             <h1 className="text-3xl font-bold mb-4">Package not found</h1>
             <Link href="/travel">
-              <Button className="bg-primary text-primary-foreground">Back to packages</Button>
+              <Button>Back to packages</Button>
             </Link>
           </div>
         </div>
@@ -138,7 +138,7 @@ export default function TravelDetailPage() {
 
         <div className="container mx-auto px-4 py-12">
           <Link href="/travel">
-            <Button variant="ghost" className="mb-6 gap-2 cursor-pointer">
+            <Button variant="ghost" className="mb-6 gap-2">
               <ArrowLeft className="w-4 h-4" /> All Packages
             </Button>
           </Link>
@@ -154,7 +154,7 @@ export default function TravelDetailPage() {
                   <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {pkg.highlights.map((h) => (
                       <li key={h} className="flex items-start gap-2">
-                        <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                        <CheckCircle2 className="w-5 h-5 text-primary-text mt-0.5 shrink-0" />
                         <span>{h}</span>
                       </li>
                     ))}
@@ -168,7 +168,7 @@ export default function TravelDetailPage() {
                   <ul className="space-y-2">
                     {pkg.includes.map((i) => (
                       <li key={i} className="flex items-start gap-2">
-                        <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                        <CheckCircle2 className="w-5 h-5 text-primary-text mt-0.5 shrink-0" />
                         <span>{i}</span>
                       </li>
                     ))}
@@ -205,7 +205,7 @@ export default function TravelDetailPage() {
 
                 <Button
                   onClick={handleBook}
-                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-full cursor-pointer"
+                  className="w-full"
                   data-testid="travel-reserve-button"
                 >
                   Reserve My Spot

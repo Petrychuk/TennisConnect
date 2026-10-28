@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Button } from "@/components/ui/button";
+import { FilterChip } from "@/components/shared/filters";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,10 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { AppPagination } from "@/components/shared/AppPagination";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RacketIcon } from "@/components/ui/racket-icon";
-import { MapPin, Search, MessageCircle, User, Activity, Send, Camera, Trophy, SlidersHorizontal, Target, Filter, X } from "lucide-react";
+import { MapPin, MessageCircle, User, Activity, Send, Camera, Trophy, Target, X, Sprout, TrendingUp, Flame, Crown } from "lucide-react";
 import { PARTNERS_DATA } from "@/lib/dummy-data";
 import { motion } from "framer-motion";
 import { Link, useSearch } from "wouter";
@@ -22,6 +21,9 @@ import SEO from "@/components/seo";
 import { quickMessageSchema } from "@/lib/validations/messages";
 import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.webp";
 import { resolveAvatarUrl, DEFAULT_AVATAR_URL, DEFAULT_AVATAR_ALT } from "@/lib/defaultAvatar";
+import { HeroBadge } from "@/components/shared/hero-badge";
+import { HeroSearch, HeroSearchFiltersButton, HeroShortcuts, type HeroShortcut } from "@/components/shared/hero-search";
+import { HeroFiltersPanel, FilterSection } from "@/components/shared/hero-filters";
 
 interface PartnerData {
     id: string;
@@ -58,7 +60,7 @@ export default function PartnersPage() {
   const [filterLookingToPlay, setFilterLookingToPlay] = useState(
     () => new URLSearchParams(searchString).get("lookingToPlay") === "true"
   );
-  const [levelPopoverOpen, setLevelPopoverOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [partners, setPartners] = useState<PartnerData[]>([]);
   const [loading, setLoading] = useState(true);
   const [messageModalOpen, setMessageModalOpen] = useState(false);
@@ -235,6 +237,88 @@ export default function PartnersPage() {
   const hasActiveFilters = activeFiltersCount > 0 || !!filterLevel;
   const LEVELS = ["Beginner", "Intermediate", "Advanced", "Professional"];
 
+  // Hero search (presentational - same state and filtering as before).
+  // Filtering is live as you type, so the lime button just takes you to
+  // the results.
+  const scrollToResults = () => playersSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const panelFiltersCount = activeFiltersCount + (filterLevel ? 1 : 0);
+  const LEVEL_ICONS: Record<string, ReactNode> = {
+    Beginner: <Sprout />,
+    Intermediate: <TrendingUp />,
+    Advanced: <Flame />,
+    Professional: <Crown />,
+  };
+  const shortcutItems = (suffix = ""): HeroShortcut[] => [
+    {
+      key: "looking-to-play",
+      label: "Looking to Play",
+      icon: <RacketIcon />,
+      selected: filterLookingToPlay,
+      onClick: toggleLookingToPlay,
+      testId: `players-shortcut-looking-to-play${suffix}`,
+    },
+    ...LEVELS.map((level) => ({
+      key: level,
+      label: level,
+      icon: LEVEL_ICONS[level],
+      selected: filterLevel === level,
+      onClick: () => setFilterLevel((v) => (v === level ? "" : level)),
+      testId: `players-shortcut-level-${level.toLowerCase()}${suffix}`,
+    })),
+  ];
+  // The Filters panel (dropdown on tablet/desktop, modal on phones):
+  // level (was a select next to the search) and availability.
+  const renderFiltersPanel = (variant: "desktop" | "mobile") => (
+    <HeroFiltersPanel
+      variant={variant}
+      open={filtersOpen}
+      onOpenChange={setFiltersOpen}
+      trigger={
+        <HeroSearchFiltersButton
+          activeCount={panelFiltersCount}
+          data-testid={variant === "mobile" ? "players-filters-open-mobile" : "players-filters-open"}
+        />
+      }
+      onClear={clearFilters}
+      canClear={hasActiveFilters}
+      contentTestId="players-filters-panel"
+      clearTestId="players-filters-clear-all"
+      applyTestId="players-filters-show-results"
+    >
+      <FilterSection label="Level" icon={<Activity />}>
+        <div className="flex flex-wrap gap-2">
+          <FilterChip compact selected={!filterLevel} onClick={() => setFilterLevel("")} data-testid="players-level-all">
+            All levels
+          </FilterChip>
+          {LEVELS.map((level) => (
+            <FilterChip
+              key={level}
+              compact
+              selected={filterLevel === level}
+              onClick={() => setFilterLevel(level)}
+              data-testid={`players-level-${level}`}
+            >
+              {level}
+            </FilterChip>
+          ))}
+        </div>
+      </FilterSection>
+      <FilterSection label="Availability" icon={<RacketIcon />}>
+        <Button
+          type="button"
+          variant={filterLookingToPlay ? "default" : "outline"}
+          aria-pressed={filterLookingToPlay}
+          onClick={toggleLookingToPlay}
+          className="w-full justify-start"
+          data-testid="players-filter-looking-to-play"
+        >
+          <RacketIcon className="w-4 h-4 mr-2" />
+          Looking to Play
+        </Button>
+      </FilterSection>
+    </HeroFiltersPanel>
+  );
+
   const filteredPartners = partners.filter((partner) => {
     const search = searchTerm.toLowerCase();
 
@@ -336,32 +420,24 @@ export default function PartnersPage() {
         />
         {/* Light at the top (photo mostly visible), gradually settling to
             the page background well past the filter bar. */}
+        {/* Tablet/desktop: the left half of the photo darkens towards the left edge (smooth, no hard line) so the title, intro and search stay readable. Phones keep the plain photo. */}
+        <div aria-hidden="true" className="tc-hero-left-shade absolute inset-0 hidden md:block z-10" />
         <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100% z-10" />
 
-        <div className="relative min-h-[28vh] md:min-h-[32vh] lg:min-h-[36vh] flex items-end md:items-center justify-start">
+        <div className="relative min-h-[28vh] md:min-h-[32vh] lg:min-h-[36vh] flex items-end md:items-start justify-start">
           {/* Badge (mobile) — overlaps the bottom edge of the hero photo */}
           <div className="md:hidden absolute bottom-3 left-4 z-20">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/50 border border-white/20 backdrop-blur-md">
-              <span className="w-2 h-2 rounded-full bg-primary" />
-              <span className="text-[10px] font-bold tracking-wider uppercase text-white">
-                Find Best Player
-              </span>
-            </div>
+            <HeroBadge size="sm">Find Best Player</HeroBadge>
           </div>
-          <div className="relative z-20 container mx-auto px-4 text-left pb-4 md:pb-0 md:mt-20">
+          <div className="relative z-20 container mx-auto px-4 text-left pb-4 md:pb-0 md:mt-0 md:pt-[104px]">
             <motion.div 
                initial={{ opacity: 0, y: 30 }}
                animate={{ opacity: 1, y: 0 }}
                transition={{ duration: 0.8 }}
                className="hidden md:block"
             >
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md mb-3 md:mb-6">
-                <span className="w-2 h-2 rounded-full bg-primary" />
-                <span className="text-[10px] sm:text-xs md:text-sm font-bold tracking-wider uppercase text-white">
-                  Find Best Player
-                </span>
-              </div>
-              <h1 className="text-4xl sm:text-5xl md:text-6xl xl:text-7xl font-display font-bold mb-2 md:mb-6 tracking-tight text-white drop-shadow-md">
+              <HeroBadge className="mb-3 md:mb-6">Find Best Player</HeroBadge>
+              <h1 className="text-4xl sm:text-5xl md:text-6xl xl:text-7xl font-display font-bold mb-2 md:mb-6 tracking-tight text-white tc-hero-text">
                 Find Your <span className="text-primary relative inline-block">
                   Player
                   <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none">
@@ -369,120 +445,35 @@ export default function PartnersPage() {
                   </svg>
                 </span>
               </h1>
-              <p className="text-lg md:text-xl text-white/85 max-w-2xl font-medium leading-snug md:leading-relaxed drop-shadow-sm">
+              <p className="text-lg md:text-[20px] md:leading-[1.3] text-white max-w-2xl font-medium leading-snug tc-hero-intro">
                 Connect with partners for games, join local matches, and expand your tennis network.
               </p>
+              <HeroSearch
+                className="mt-6 max-w-3xl"
+                value={searchTerm}
+                onValueChange={setSearchTerm}
+                onSubmit={scrollToResults}
+                placeholder="Search by name or location..."
+                inputTestId="players-search-input"
+                submitTestId="players-search-submit"
+                filters={renderFiltersPanel("desktop")}
+              />
+              <HeroShortcuts label="Quick filters" items={shortcutItems()} className="mt-6" />
             </motion.div>
           </div>
         </div>
 
-        {/* Filter Bar (desktop/tablet) — same layout as Coaches: floats over the tail of the photo */}
-        <div className="hidden md:block container mx-auto px-2 mt-5 relative z-20 pb-5 md:pb-10">
-          <div className="bg-card/50
-            backdrop-blur-sm
-            border border-border/40
-            shadow-lg
-            rounded-2xl
-            p-2.5 md:p-4 lg:p-4
-            flex flex-col md:flex-row
-            gap-3 md:gap-4
-            items-center
-            justify-between">
-            <div className="relative w-full md:w-[280px] lg:w-[380px] xl:w-[450px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
-              <Input
-                data-testid="players-search-input"
-                placeholder="Search by name or location..."
-                className="pl-10
-                  h-11 md:h-12
-                  text-sm md:text-base
-                  bg-background
-                  w-full
-                  rounded-xl"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-
-            <div className="flex flex-row md:flex-row w-full md:w-auto gap-2">
-                <Select value={filterLevel || "all"} onValueChange={(v) => setFilterLevel(v === "all" ? "" : v)}>
-                  <SelectTrigger aria-label="Filter by level" className="w-full flex-1 min-w-0 sm:w-full md:w-[180px] lg:w-[190px] h-11 md:h-12 bg-background cursor-pointer" data-testid="players-level-filter-trigger">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Activity className="w-4 h-4 text-primary shrink-0" />
-                      <SelectValue placeholder="Level" className="flex-1 min-w-0 truncate" />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all" className="cursor-pointer">All levels</SelectItem>
-                    {LEVELS.map((level) => (
-                      <SelectItem key={level} value={level} className="cursor-pointer" data-testid={`players-level-${level}`}>{level}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className={`h-11 md:h-12 w-auto px-3 md:px-4 shrink-0 bg-background cursor-pointer ${activeFiltersCount > 0 ? 'border-primary text-primary' : ''}`}>
-                      <Filter className="w-5 h-5 mr-2" />
-                      Filters
-                      {activeFiltersCount > 0 && (
-                        <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center rounded-full bg-primary text-foreground text-[10px]">
-                          {activeFiltersCount}
-                        </Badge>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-96 p-6 space-y-6" align="end">
-                    <div className="space-y-4">
-                      <p className="font-bold leading-none">Availability</p>
-                      <Button
-                        type="button"
-                        variant={filterLookingToPlay ? "default" : "outline"}
-                        aria-pressed={filterLookingToPlay}
-                        onClick={toggleLookingToPlay}
-                        className="w-full justify-start cursor-pointer"
-                        data-testid="players-filter-looking-to-play"
-                      >
-                        <RacketIcon className="w-4 h-4 mr-2" />
-                        Looking to Play
-                      </Button>
-                    </div>
-                    {hasActiveFilters && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={clearFilters}
-                        className="w-full text-muted-foreground hover:text-destructive cursor-pointer"
-                      >
-                        Clear all filters
-                      </Button>
-                    )}
-                  </PopoverContent>
-                </Popover>
-
-                {hasActiveFilters && (
-                  <Button
-                    variant="ghost"
-                    onClick={clearFilters}
-                    className="h-12 hidden md:flex text-muted-foreground hover:text-destructive cursor-pointer"
-                  >
-                    <X className="w-4 h-4 mr-2" />
-                    Clear
-                  </Button>
-                )}
-            </div>
-          </div>
-        </div>
+        <div className="pb-1.5 md:pb-16" />
       </div>
 
       {/* Hero text (mobile) — sits below the hero photo instead of
           overlapping it */}
-      <div className="md:hidden relative z-20 bg-background pt-4 pb-1">
+      <div className="md:hidden relative z-20 bg-background pt-2 pb-1">
         <div className="container mx-auto px-4 text-left">
-          <h1 className="text-3xl font-display font-bold mb-2 tracking-tight text-foreground">
-            Find Your <span className="text-primary relative inline-block">
+          <h1 className="text-3xl font-display font-bold mb-1 tracking-tight text-foreground">
+            Find Your <span className="text-primary-text relative inline-block">
               Player
-              <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none">
+              <svg className="absolute w-full h-3 -bottom-1 left-0 text-primary-text opacity-40" viewBox="0 0 100 10" preserveAspectRatio="none">
                 <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="4" fill="none" />
               </svg>
             </span>
@@ -493,82 +484,26 @@ export default function PartnersPage() {
         </div>
       </div>
 
-{/* Filter Bar (mobile) — same layout as Coaches: sits below the hero photo */}
-      <div className="md:hidden relative z-20 bg-background pt-2 pb-2">
-        <div className="container mx-auto px-4 space-y-2">
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input
-              data-testid="players-search-input-mobile"
-              placeholder="Search by name or location..."
-              className="pl-10 h-11 text-sm bg-secondary/50 border-transparent focus:border-primary w-full rounded-xl"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-
-          <div className="flex w-full gap-2">
-                <Select value={filterLevel || "all"} onValueChange={(v) => setFilterLevel(v === "all" ? "" : v)}>
-                  <SelectTrigger aria-label="Filter by level" className="flex-1 min-w-0 h-11 bg-secondary/50 border-transparent cursor-pointer overflow-hidden" data-testid="players-level-filter-trigger">
-                    <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-                      <Activity className="w-4 h-4 text-primary shrink-0" />
-                      <SelectValue placeholder="Level" className="block max-w-[140px] truncate" />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all" className="cursor-pointer">All levels</SelectItem>
-                    {LEVELS.map((level) => (
-                      <SelectItem key={level} value={level} className="cursor-pointer" data-testid={`players-level-${level}`}>{level}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className={`h-11 w-auto px-3 shrink-0 bg-secondary/50 border-transparent cursor-pointer ${activeFiltersCount > 0 ? 'border-primary text-primary' : ''}`}>
-                      <Filter className="w-4 h-4 mr-1.5" />
-                      Filters
-                      {activeFiltersCount > 0 && (
-                        <Badge variant="secondary" className="ml-1.5 h-5 w-5 p-0 flex items-center justify-center rounded-full bg-primary text-foreground text-[10px]">
-                          {activeFiltersCount}
-                        </Badge>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-72 p-4 space-y-5" align="end">
-                    <div className="space-y-4">
-                      <p className="font-bold leading-none">Availability</p>
-                      <Button
-                        type="button"
-                        variant={filterLookingToPlay ? "default" : "outline"}
-                        aria-pressed={filterLookingToPlay}
-                        onClick={toggleLookingToPlay}
-                        className="w-full justify-start cursor-pointer"
-                        data-testid="players-filter-looking-to-play"
-                      >
-                        <RacketIcon className="w-4 h-4 mr-2" />
-                        Looking to Play
-                      </Button>
-                    </div>
-                    {hasActiveFilters && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={clearFilters}
-                        className="w-full text-muted-foreground hover:text-destructive cursor-pointer"
-                      >
-                        Clear all filters
-                      </Button>
-                    )}
-                  </PopoverContent>
-                </Popover>
-          </div>
+      {/* Search (mobile) - below the hero text, like the other pages */}
+      <div className="md:hidden relative z-20 bg-background pt-1 pb-2">
+        <div className="container mx-auto px-4">
+          <HeroSearch
+            tone="light"
+            value={searchTerm}
+            onValueChange={setSearchTerm}
+            onSubmit={scrollToResults}
+            placeholder="Search by name or location..."
+            inputTestId="players-search-input-mobile"
+            submitTestId="players-search-submit-mobile"
+            filters={renderFiltersPanel("mobile")}
+          />
+          <HeroShortcuts label="Quick filters" tone="light" items={shortcutItems("-mobile")} className="mt-3" />
         </div>
       </div>
 
       {/* Partners Grid — pulled up slightly so the photo's fade visibly
           dissolves under the top of the first card row */}
-      <div className="relative z-30 container mx-auto px-4 pt-2 pb-4 md:py-4 md:-mt-4 scroll-mt-24"
+      <div id="players-results" className="relative z-30 container mx-auto px-4 pt-2 pb-4 md:py-4 md:-mt-4 scroll-mt-24"
       ref={playersSectionRef}>
         {/* Visually hidden - this grid has no visible section heading of
             its own (the H1 above is the page title, not a section
@@ -654,7 +589,7 @@ export default function PartnersPage() {
                           ? `/${user.role}/${user.slug}`
                           : `/player/${partner.slug}`
                       }
-                      className="hover:text-primary transition-colors max-w-full"
+                      className="hover:text-primary-text transition-colors max-w-full"
                     >
                       <h3 className="text-sm md:text-lg font-bold mb-2 line-clamp-1 max-w-full">{partner.name}</h3>
                     </Link>
@@ -673,7 +608,7 @@ export default function PartnersPage() {
                         <Badge
                           key={tag}
                           variant="outline"
-                          className="text-[10px] md:text-xs bg-primary/10 text-primary border-primary/20 font-medium gap-1"
+                          className="text-[10px] md:text-xs bg-primary/10 text-primary-text border-primary/20 font-medium gap-1"
                         >
                           <Target className="w-2.5 h-2.5 md:w-3 md:h-3" />
                           {tag}
@@ -683,7 +618,7 @@ export default function PartnersPage() {
                       {partner.lookingFor.length > 1 && (
                         <Badge
                           variant="outline"
-                          className="text-[10px] md:text-xs bg-primary/10 text-primary border-primary/20 font-medium"
+                          className="text-[10px] md:text-xs bg-primary/10 text-primary-text border-primary/20 font-medium"
                           title={partner.lookingFor.slice(1).join(", ")}
                         >
                           +{partner.lookingFor.length - 1}
@@ -718,8 +653,6 @@ export default function PartnersPage() {
                         className="
                           w-full
                           h-9
-                          font-bold
-                          cursor-pointer
                         "
                       >
                         <User className="w-4 h-4" />
@@ -736,10 +669,6 @@ export default function PartnersPage() {
                       className="
                         w-full
                         h-9
-                        bg-primary
-                        text-foreground
-                        hover:bg-primary/90
-                        cursor-pointer
                       "
                       onClick={() => openMessageModal(partner)}
                       data-testid={`button-message-${partner.id}`}
@@ -846,7 +775,6 @@ export default function PartnersPage() {
             </Button>
             <Button 
               onClick={handleSendMessage} 
-              className="bg-primary text-foreground"
               disabled={sending}
               data-testid="button-send-message"
             >

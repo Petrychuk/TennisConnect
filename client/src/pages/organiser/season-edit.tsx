@@ -169,7 +169,7 @@ export default function OrganiserSeasonEditPage() {
             <div className="space-y-1.5">
               <Label>Season type / format *</Label>
               <Select value={type} onValueChange={setType}>
-                <SelectTrigger data-testid="organiser-season-edit-type"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Season type / format" data-testid="organiser-season-edit-type"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {SESSION_TYPE_OPTIONS.map((t) => (
                     <SelectItem key={t.key} value={t.key}>{t.label}</SelectItem>

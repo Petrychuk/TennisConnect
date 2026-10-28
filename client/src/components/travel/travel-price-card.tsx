@@ -57,7 +57,7 @@ import {
                 text-[11px]
                 uppercase
                 tracking-wider
-                text-primary
+                text-primary-text
                 font-semibold
                 mb-2
               "
@@ -112,7 +112,7 @@ import {
                   className="
                     w-5
                     h-5
-                    text-primary
+                    text-primary-text
                     shrink-0
                     mt-0.5
                   "
@@ -122,7 +122,7 @@ import {
                   <p
                     className="
                       text-xs
-                      text-primary
+                      text-primary-text
                       font-medium
                     "
                   >
@@ -146,7 +146,7 @@ import {
                 className="
                   w-5
                   h-5
-                  text-primary
+                  text-primary-text
                   shrink-0
                   mt-0.5
                 "
@@ -156,7 +156,7 @@ import {
                 <p
                   className="
                     text-xs
-                    text-primary
+                    text-primary-text
                     font-medium
                   "
                 >
@@ -181,7 +181,7 @@ import {
                     className="
                       w-5
                       h-5
-                      text-primary
+                      text-primary-text
                       shrink-0
                       mt-0.5
                     "
@@ -191,7 +191,7 @@ import {
                     <p
                       className="
                         text-xs
-                        text-primary
+                        text-primary-text
                         font-medium
                       "
                     >

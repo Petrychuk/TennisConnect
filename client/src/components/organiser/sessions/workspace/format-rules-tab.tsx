@@ -43,7 +43,7 @@ export function FormatRulesTab({ session }: FormatRulesTabProps) {
         return (
           <Card key={item.title} className="shadow-sm" data-testid={`organiser-session-format-${item.title.toLowerCase().replace(/\s+/g, "-")}`}>
             <CardHeader className="flex flex-row items-center gap-2 space-y-0">
-              <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+              <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary-text flex items-center justify-center">
                 <Icon className="w-4 h-4" />
               </div>
               <CardTitle asChild className="text-base"><h2>{item.title}</h2></CardTitle>

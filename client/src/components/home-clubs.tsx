@@ -100,7 +100,7 @@ export function HomeClubs() {
           >
             <Link href="/clubs" className="hidden md:block">
               <Button
-                className="flex gap-2 bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
+                className="flex gap-2 px-6"
                 data-testid="clubs-view-all-button"
               >
                 Discover Clubs <ArrowRight className="w-4 h-4" />
@@ -190,7 +190,7 @@ export function HomeClubs() {
                               </p>
                           )}
                                           </div>
-                      <span className="text-sm font-bold text-primary-text group-hover:underline">View →</span>
+                      <span className="text-sm font-bold text-primary group-hover:underline">View →</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -206,7 +206,7 @@ export function HomeClubs() {
           className="mt-8 md:hidden flex justify-center"
         >
           <Link href="/clubs" className="w-2/3">
-            <Button className="w-full gap-2 bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full cursor-pointer">
+            <Button className="w-full gap-2">
               Explore Clubs <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>

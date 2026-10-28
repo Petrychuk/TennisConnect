@@ -35,8 +35,8 @@ export function RoundsTab({ session }: RoundsTabProps) {
           <Card key={roundNumber} className={cn("shadow-sm", isCurrent && "border-primary/40")} data-testid={`organiser-session-round-${roundNumber}`}>
             <CardContent className="p-4 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                {isDone && <CheckCircle2 className="w-5 h-5 text-primary" />}
-                {isCurrent && <Play className="w-5 h-5 text-primary" />}
+                {isDone && <CheckCircle2 className="w-5 h-5 text-primary-text" />}
+                {isCurrent && <Play className="w-5 h-5 text-primary-text" />}
                 {isPending && <Hourglass className="w-5 h-5 text-muted-foreground" />}
                 <div>
                   <p className="font-semibold">Round {roundNumber}</p>

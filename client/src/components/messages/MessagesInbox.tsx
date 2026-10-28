@@ -24,7 +24,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { replySchema } from "@/lib/validations/messages";
-import { TennisBallSpinner } from "@/components/ui/tennisLoader";
+import { DelayedTennisLoader } from "@/components/ui/tennisLoader";
 
 interface Message {
   id: string;
@@ -541,7 +541,7 @@ export function MessagesInbox() {
             You need to be signed in to access your inbox.
           </p>
           <Link href="/auth">
-            <Button className="bg-primary text-foreground">
+            <Button>
               Sign In
             </Button>
           </Link>
@@ -552,9 +552,7 @@ export function MessagesInbox() {
   
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <TennisBallSpinner />
-      </div>
+      <DelayedTennisLoader text="Loading messages…" />
     );
   }
   return(
@@ -564,9 +562,9 @@ export function MessagesInbox() {
           </div>
 
           {messagesLoading ? (
-              <div className="flex items-center justify-center py-20">
-                <TennisBallSpinner />
-              </div>
+              // Same page loader as the rest of the site (full-size ball,
+              // shown after the usual short delay), not the tiny button spinner.
+              <DelayedTennisLoader text="Loading messages…" />
             ) : !selectedMessage ? (
               <Card className="max-w-md mx-auto" data-testid="messages-empty-state">
                 <CardContent className="pt-6 text-center">
@@ -597,7 +595,6 @@ export function MessagesInbox() {
                   <ScrollArea             
                     className="
                       h-[52vh]"
-                      thumbClassName="bg-primary/30 hover:bg-primary/50"
                       onWheel={(e) => e.stopPropagation()}
                     
                   >
@@ -641,7 +638,7 @@ export function MessagesInbox() {
                                     className={
                                       isUnread
                                         ? "bg-primary text-foreground"
-                                        : "bg-primary/10 text-primary"
+                                        : "bg-primary/10 text-primary-text"
                                     }
                                   >
                                     {partner.name?.[0]}
@@ -784,7 +781,6 @@ export function MessagesInbox() {
                       <CardContent className="px-1.5 pt-3 pb-3 sm:px-3 md:px-6 md:pb-6">
                       <ScrollArea
                           className="h-[42vh] sm:h-[52vh] pr-3 sm:pr-4"
-                          thumbClassName="bg-primary/30 hover:bg-primary/50"
                           type="always"
                           onWheel={(e) => e.stopPropagation()}
                         >
@@ -802,7 +798,7 @@ export function MessagesInbox() {
                                     src={withCacheBust(msg.senderAvatar)}
                                     alt={msg.senderName}
                                   />
-                                  <AvatarFallback className="bg-primary/10 text-primary text-xs sm:text-sm">
+                                  <AvatarFallback className="bg-primary/10 text-primary-text text-xs sm:text-sm">
                                     {msg.senderName?.charAt(0)?.toUpperCase()}
                                   </AvatarFallback>
                                 </Avatar>
@@ -864,7 +860,7 @@ export function MessagesInbox() {
 
                                   {msg.messageType && msg.actionStatus === "accepted" && (
                                     <div className="mt-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2" data-testid={`invitation-status-${msg.id}`}>
-                                      <p className="text-sm font-medium text-primary flex items-center gap-1.5">
+                                      <p className="text-sm font-medium text-primary-text flex items-center gap-1.5">
                                         <Check className="w-4 h-4" />
                                         {msg.messageType === "community_invite"
                                           ? "Invitation accepted"

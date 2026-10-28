@@ -126,7 +126,7 @@ export default function OrganiserSeasonNewPage() {
                   Tennis season and a League Match season can never end
                   up sharing the same ranking pool. */}
               <Select value={type} onValueChange={setType}>
-                <SelectTrigger data-testid="organiser-season-new-type"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Season type / format" data-testid="organiser-season-new-type"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {SESSION_TYPE_OPTIONS.map((t) => (
                     <SelectItem key={t.key} value={t.key}>{t.label}</SelectItem>

@@ -39,14 +39,14 @@ export function Marketplace() {
       <div className="container mx-auto px-4">
         <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary-text border border-primary/20 mb-4">
               <Tag className="w-4 h-4" />
               <span className="text-xs font-bold uppercase tracking-wider">
                 COMMUNITY MARKETPLACE
               </span>
             </div>
             <h2 className="text-3xl md:text-5xl font-display font-bold">
-             Tennis Gear <span className="text-primary">Marketplace</span>
+             Tennis Gear <span className="text-primary-text">Marketplace</span>
             </h2>
             <p className="text-muted-foreground mt-4 max-w-xl text-lg">
               Discover new and pre-owned tennis gear from the local tennis community.
@@ -54,7 +54,7 @@ export function Marketplace() {
           </div>
           <Link href="/marketplace">
             <Button
-              className="w-full gap-2 bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full cursor-pointer"
+              className="w-full gap-2"
             >
               Browse Gear <ArrowRight className="w-4 h-4" />
             </Button>
@@ -92,7 +92,7 @@ export function Marketplace() {
                 </CardContent>
                 <CardFooter className="p-4 pt-0">
                   <Link href={`/coach/${item.seller_id || item.id}`}>
-                    <Button className="w-full bg-black text-white hover:bg-gray-800 cursor-pointer">
+                    <Button variant="secondary" className="w-full">
                         View Details
                     </Button>
                   </Link>
@@ -104,7 +104,7 @@ export function Marketplace() {
         
         <div className="mt-8 md:hidden">
           <Link href="/marketplace">
-            <Button variant="outline" className="w-full gap-2 cursor-pointer">
+            <Button variant="outline" className="w-full gap-2">
                 All Listings <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>

@@ -27,7 +27,7 @@ export function PendingApprovalDialog({ open, sessionName, sessionTypeLabel }: P
   return (
     <Dialog open={open}>
       <DialogContent className="text-center" data-testid="organiser-wizard-pending-approval-dialog">
-        <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-2">
+        <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary-text flex items-center justify-center mx-auto mb-2">
           <Hourglass className="w-7 h-7" />
         </div>
         <DialogHeader className="items-center">

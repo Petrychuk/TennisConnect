@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import heroImage from "/assets/images/tennis_main.jpg";
 import { Link } from "wouter";
+import { HeroBadge } from "@/components/shared/hero-badge";
 
 export function Hero() {
   return (
@@ -31,12 +32,7 @@ export function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md mb-6">
-              <span className="w-2 h-2 rounded-full bg-primary" />
-              <span className="text-xs font-bold tracking-wider uppercase text-white">
-              NOW LIVE IN SYDNEY
-              </span>
-            </div>
+            <HeroBadge className="mb-6">NOW LIVE IN SYDNEY</HeroBadge>
             
             <h1 className="
               text-[1.75rem]
@@ -47,7 +43,7 @@ export function Hero() {
                 text-white
                 leading-[1.1]
                 mb-6
-                drop-shadow-xl">
+                tc-hero-text">
               <span className="bg-[rgba(0,0,0,0.3)] rounded-xl py-0.5 box-decoration-clone [box-shadow:-12px_0_0_rgba(0,0,0,0.3),12px_0_0_rgba(0,0,0,0.3)]">Everything You Need for</span><br />
               <span className="text-primary relative inline-block bg-black/40 sm:bg-transparent backdrop-blur-sm sm:backdrop-blur-none rounded-lg px-2 py-0.5 sm:px-0 sm:py-0">
               Your Tennis Journey
@@ -57,53 +53,26 @@ export function Hero() {
               </span> 
             </h1>
              
-            <p className="text-lg md:text-xl text-gray-200 mb-8 max-w-xl leading-relaxed drop-shadow-md">
+            <p className="text-lg md:text-xl text-white mb-8 max-w-xl mx-auto xl:mx-0 leading-relaxed tc-hero-intro">
             Bringing Australia's tennis community together — one platform for every player.
             </p>
             
             <div className="flex flex-col items-center sm:items-stretch sm:flex-row gap-4 justify-center xl:justify-start">
               <Link href="/players" className="w-2/3 sm:w-auto">
-                <Button size="lg" className="h-11
-                  sm:h-14
+                <Button size="lg" className="
+                  group
                   w-full
                   sm:w-auto
-                  bg-primary
-                  text-primary-foreground
-                  hover:bg-primary/90
-                  font-bold
-                  text-lg
-                  px-8
-                  rounded-full
-                  shadow-[0_0_20px_rgba(223,255,0,0.3)]
-                  hover:shadow-[0_0_30px_rgba(223,255,0,0.5)]
-                  transition-all
-                  duration-300
-                  group
-                  cursor-pointer">
+                  ">
                   Find a Player
                   <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
               <Link href="/coaches" className="w-2/3 sm:w-auto">
-                <Button size="lg" variant="outline" className="
+                <Button size="lg" variant="inverse" className="
+                    group
                     w-full
                     sm:w-auto
-                    bg-[rgba(163,230,53,0.08)]
-                    border-primary/30
-                    text-white
-                    hover:bg-black/90
-                    hover:border-primary/60
-                    hover:shadow-[0_0_25px_hsl(var(--tennis-ball)/0.25)]
-                    font-bold
-                    text-lg
-                    h-11
-                    sm:h-14
-                    px-8
-                    rounded-full
-                    backdrop-blur-md
-                    transition-all
-                    duration-300
-                    cursor-pointer
                   ">
                    Find a Coach
                   <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />

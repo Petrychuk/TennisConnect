@@ -125,7 +125,7 @@ export function InvitePlayersDialog({
               >
                 <Avatar className="h-9 w-9">
                   <AvatarImage src={player.avatar || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                  <AvatarFallback className="bg-primary/10 text-primary-text text-sm">
                     {player.name.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>

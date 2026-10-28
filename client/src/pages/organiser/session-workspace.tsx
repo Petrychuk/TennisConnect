@@ -330,7 +330,7 @@ export default function OrganiserSessionWorkspacePage() {
         <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="hidden md:inline-flex" data-testid="organiser-sidebar-trigger">
+              <Button variant="ghost" size="icon" className="hidden md:inline-flex" aria-label="Open Organiser Hub menu" data-testid="organiser-sidebar-trigger">
                 <Menu className="w-5 h-5" />
               </Button>
             </SheetTrigger>
@@ -348,7 +348,7 @@ export default function OrganiserSessionWorkspacePage() {
             <Link href={profileHref}>
               <Avatar className="h-8 w-8 border border-border">
                 <AvatarImage src={organiser.avatar || undefined} />
-                <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
+                <AvatarFallback className="bg-primary/10 text-primary-text font-bold text-xs">
                   {organiser.name[0]}
                 </AvatarFallback>
               </Avatar>
@@ -383,7 +383,7 @@ export default function OrganiserSessionWorkspacePage() {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="font-display text-2xl sm:text-3xl font-bold">{session.title}</h1>
-                <Badge className={bucket === "live" ? "bg-primary text-foreground" : "bg-primary/10 text-primary"}>
+                <Badge className={bucket === "live" ? "bg-primary text-foreground" : "bg-primary/10 text-primary-text"}>
                   {BUCKET_BADGE_LABEL[bucket]}
                 </Badge>
               </div>
@@ -423,7 +423,7 @@ export default function OrganiserSessionWorkspacePage() {
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon" data-testid="organiser-session-more-button">
+                  <Button variant="outline" size="icon" aria-label="More session actions" data-testid="organiser-session-more-button">
                     <MoreHorizontal className="w-4 h-4" />
                   </Button>
                 </DropdownMenuTrigger>
