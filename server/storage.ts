@@ -914,7 +914,9 @@ export class DatabaseStorage implements IStorage {
             eq(users.isApproved, true),
             eq(users.isHidden, false)
           )
-        );
+        )
+        // Stable order for the route's page slicing (see getAllCoachesWithProfiles).
+        .orderBy(desc(users.createdAt), desc(users.id));
     }
 
   // [PLAY] Players Looking to Play - same base eligibility as
@@ -950,7 +952,9 @@ export class DatabaseStorage implements IStorage {
             eq(users.isHidden, false),
             eq(playerProfiles.lookingToPlayEnabled, true)
           )
-        );
+        )
+        // Stable order for the route's page slicing (see getAllCoachesWithProfiles).
+        .orderBy(desc(users.createdAt), desc(users.id));
     }
 
   // Shared location -> coordinates cache (players/coaches/clubs/
@@ -1537,7 +1541,12 @@ export class DatabaseStorage implements IStorage {
           eq(users.isApproved, true),
           eq(users.isHidden, false)
         )
-      );
+      )
+      // Paginated by the route with slice(), so the order has to be
+      // stable: with no ORDER BY Postgres may return rows in a different
+      // order on each query, so page 2 could repeat page-1 people or skip
+      // others. Newest first, id as the tie-breaker.
+      .orderBy(desc(users.createdAt), desc(users.id));
   }
 
   async createCoachProfile(profile: InsertCoachProfile): Promise<CoachProfile> {

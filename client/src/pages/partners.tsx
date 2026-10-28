@@ -24,6 +24,8 @@ import { resolveAvatarUrl, DEFAULT_AVATAR_URL, DEFAULT_AVATAR_ALT } from "@/lib/
 import { HeroBadge } from "@/components/shared/hero-badge";
 import { HeroSearch, HeroSearchFiltersButton, HeroShortcuts, type HeroShortcut } from "@/components/shared/hero-search";
 import { HeroFiltersPanel, FilterSection } from "@/components/shared/hero-filters";
+import { DelayedTennisLoader } from "@/components/ui/tennisLoader";
+import { HeroPhoto } from "@/components/shared/hero-photo";
 
 interface PartnerData {
     id: string;
@@ -410,12 +412,9 @@ export default function PartnersPage() {
           dissolves under the top of the card grid instead of stopping
           abruptly. Same treatment on mobile (no separate mobile variant). */}
       <div className="relative overflow-hidden">
-        <img
-          src="/assets/images/dashboard_players.webp"
+        <HeroPhoto
+          hero="players"
           alt="Tennis players"
-          fetchPriority="high"
-          loading="eager"
-          decoding="async"
           className="absolute inset-0 w-full h-full object-cover z-0 scale-125 md:scale-100"
         />
         {/* Light at the top (photo mostly visible), gradually settling to
@@ -689,7 +688,8 @@ export default function PartnersPage() {
 
         </div>
 
-        {filteredPartners.length === 0 && (
+        {loading && filteredPartners.length === 0 && <DelayedTennisLoader text="Loading players…" />}
+        {!loading && filteredPartners.length === 0 && (
           <div className="text-center py-20">
              <div className="inline-flex p-4 rounded-full bg-muted mb-4">
                <User className="w-8 h-8 text-muted-foreground" />

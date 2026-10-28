@@ -9,6 +9,11 @@ import { expectRunOwned } from '../../fixtures/run-id';
 ✓ Response reports both ids under `deleted`, none under `failed` */
 
 test('ADMIN-005 Bulk delete - selected ordinary players are all removed', async ({ page }) => {
+  // Multi-account flow (2-3 fresh accounts, each registered + verified
+  // through the UI, plus an admin step). Measured 55-78 s on Staging on
+  // 28 Oct against the 60 s default - test.slow() gives it 3x, instead of
+  // raising the timeout for the whole suite.
+  test.slow();
 
   // ---------- Test data: two plain players, no org/sessions ----------
 
@@ -80,6 +85,11 @@ ADMIN-008), so this needs one to stay a genuine blocked case.
   array with the real reason, and its row still exists afterward */
 
 test('ADMIN-006 Bulk delete - an org owner in the batch is reported, not deleted', async ({ page }) => {
+  // Multi-account flow (2-3 fresh accounts, each registered + verified
+  // through the UI, plus an admin step). Measured 55-78 s on Staging on
+  // 28 Oct against the 60 s default - test.slow() gives it 3x, instead of
+  // raising the timeout for the whole suite.
+  test.slow();
 
   // ---------- Test data: one plain player, one organiser who owns an
   // organization ----------

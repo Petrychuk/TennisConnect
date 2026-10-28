@@ -7,11 +7,12 @@ import { Footer } from "@/components/footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import SEO from "@/components/seo";
-import travelHero from "/assets/images/travels-hero-cote-dazur.webp";
 import { isRetreatArchived, sortRetreatsForDisplay } from "@/lib/travelStatus";
 import { RetreatArchivedBadge } from "@/components/travel/RetreatStatusBadge";
 import { HeroBadge } from "@/components/shared/hero-badge";
 import { HeroSearch } from "@/components/shared/hero-search";
+import { DelayedTennisLoader } from "@/components/ui/tennisLoader";
+import { HeroPhoto } from "@/components/shared/hero-photo";
 
 interface TravelPackage {
   id: string;
@@ -44,13 +45,16 @@ interface TravelPackage {
 export default function TravelPage() {
   const [items, setItems] = useState<TravelPackage[]>([]);
   const [search, setSearch] = useState("");
+  // false until /api/travel answers, so the empty state never shows mid-load.
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
     fetch("/api/travel", { credentials: "include" })
       .then((r) => r.json())
       .then(setItems)
-      .catch(() => setItems([]));
+      .catch(() => setItems([]))
+      .finally(() => setLoaded(true));
   }, []);
 
   // Upcoming retreats first, ended ("Archived") ones after - see lib/travelStatus.ts.
@@ -88,17 +92,11 @@ export default function TravelPage() {
 
       <main id="main-content">
       <div className="relative overflow-hidden">
-        <picture>
-          <source media="(max-width: 639px)" srcSet="/assets/images/travels-hero-cote-dazur-mobile.webp" />
-          <img
-            src={travelHero}
-            alt="Tennis players walking down to clay courts above the Côte d'Azur"
-            fetchPriority="high"
-            loading="eager"
-            decoding="async"
-            className="absolute inset-0 w-full h-full object-cover z-0 scale-125 md:scale-100"
-          />
-        </picture>
+        <HeroPhoto
+          hero="travels"
+          alt="Tennis players walking down to clay courts above the Côte d'Azur"
+          className="absolute inset-0 w-full h-full object-cover z-0 scale-125 md:scale-100"
+        />
         {/* Tablet/desktop: the left half of the photo darkens towards the left edge (smooth, no hard line) so the title, intro and search stay readable. Phones keep the plain photo. */}
         <div aria-hidden="true" className="tc-hero-left-shade absolute inset-0 hidden md:block z-10" />
         <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100% z-10" />
@@ -192,7 +190,9 @@ export default function TravelPage() {
       </div>
 
       <div id="travel-results" className="relative z-30 container mx-auto px-4 pt-4 pb-12 md:py-12 md:-mt-4 scroll-mt-24">
-        {filtered.length === 0 ? (
+        {!loaded ? (
+          <DelayedTennisLoader text="Loading travel packages…" />
+        ) : filtered.length === 0 ? (
           <div className="text-center py-20">
             <Plane className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
             <h2 className="text-xl font-bold mb-2">No packages found</h2>

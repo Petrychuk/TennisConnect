@@ -189,3 +189,13 @@ export async function approveUser(
 
   await logout(page);
 }
+
+/**
+ * One inbox row per conversation. The rows are `message-item-<id>`
+ * buttons, but the same prefix is also used by each row's delete button
+ * (`message-item-delete-<id>`, added in the 5 Sep inbox redesign) and its
+ * unread dot (`message-item-unread-<id>`). A bare `[data-testid^="message-item-"]`
+ * therefore counted every conversation two or three times (MSG-103 saw 5
+ * for 2 conversations, MSG-108 saw 2 for 1).
+ */
+export const CONVERSATION_ROW = 'button[data-testid^="message-item-"]:not([data-testid^="message-item-delete-"])';

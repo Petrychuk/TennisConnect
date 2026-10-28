@@ -81,10 +81,10 @@ function AutoScrollCarousel({
 
 export function Gallery() {
   return (
-    <section className="py-24 bg-background" id="gallery">
+    <section className="py-10 md:py-24 bg-background" id="gallery">
       <div className="container mx-auto px-4">
-        <div className="mb-12 text-center md:text-left">
-          <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">
+        <div className="mb-[30px] md:mb-12 text-center md:text-left">
+          <h2 className="text-[26px] md:text-5xl font-display font-bold mb-4">
            The Tennis <span className="text-primary-text">Lifestyle</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl">

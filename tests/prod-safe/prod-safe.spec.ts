@@ -1,6 +1,9 @@
 import { test, expect } from '../fixtures/prod-safe';
 import { dismissCookieBanner } from '../helpers/auth';
 import { readVerifiedTarget } from '../safety/environment-guard';
+// One inbox row per conversation - the row's delete button and unread dot
+// share the message-item- prefix, so a bare prefix match over-counts.
+const CONVERSATION_ROW = 'button[data-testid^="message-item-"]:not([data-testid^="message-item-delete-"])';
 
 /*
   PROD-SAFE SUITE - the ONLY tests allowed to run against PRODUCTION.
@@ -99,7 +102,7 @@ test('@prod-safe PROD-SAFE-005 Guest is gated from messages', async ({ page }) =
   // ---------- Final verification ----------
 
   const signInPrompt = page.getByText(/sign in to view messages/i);
-  const messageItems = page.locator('[data-testid^="message-item-"]');
+  const messageItems = page.locator(CONVERSATION_ROW);
 
   await expect(signInPrompt).toBeVisible();
   await expect(messageItems).toHaveCount(0);

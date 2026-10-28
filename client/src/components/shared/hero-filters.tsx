@@ -96,6 +96,11 @@ export function HeroFiltersPanel({
     );
   }
 
+  // Desktop dropdown: never taller than the space Radix measured between the
+  // button and the edge of the window, so the "Clear all / Show results"
+  // footer always stays on screen and the fields scroll instead. With a
+  // fixed 80vh cap, a long panel (Games) opened from the hero hung below the
+  // bottom of a 800px-tall window and "Show results" could not be reached.
   return (
     <Popover open={open && isCurrent} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
@@ -104,7 +109,7 @@ export function HeroFiltersPanel({
         sticky="always"
         collisionPadding={16}
         aria-labelledby={titleId}
-        className="flex max-h-[min(36rem,80vh)] w-[min(24rem,calc(100vw-2rem))] flex-col p-0"
+        className="flex max-h-[min(36rem,var(--radix-popover-content-available-height))] w-[min(24rem,calc(100vw-2rem))] flex-col p-0"
         data-testid={contentTestId}
       >
         <div className="flex items-center justify-between border-b px-4 py-3">

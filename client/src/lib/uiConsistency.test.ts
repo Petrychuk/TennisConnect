@@ -288,3 +288,67 @@ test("v11: buttons sized to content, instant-closing menus, readable statuses, b
   assert.match(inbox, /<DelayedTennisLoader text="Loading messages…" \/>/);
   assert.doesNotMatch(inbox, /<TennisBallSpinner/);
 });
+
+test("hero photos: responsive files exist and index.html preloads exactly what HeroPhoto renders", async () => {
+  const { HERO_IMAGES } = await import("./heroImages");
+  const images = new Set(readdirSync(path.join(CLIENT, "public/assets/images")));
+  const html = readFileSync(path.join(CLIENT, "index.html"), "utf8");
+  const routes: Record<string, string> = { players: "/players", coaches: "/coaches", articles: "/articles", clubs: "/clubs", travels: "/travels", games: "/play" };
+  for (const [key, hero] of Object.entries(HERO_IMAGES)) {
+    for (const w of hero.widths) assert.ok(images.has(`${hero.base}-${w}.webp`), `${hero.base}-${w}.webp exists`);
+    const mobile = (hero as { mobile?: { file: string; maxWidth: number } }).mobile;
+    if (mobile) assert.ok(images.has(mobile.file), `${mobile.file} exists`);
+    const expected = mobile
+      ? `"${routes[key]}": ["${hero.base}", [${hero.widths.join(", ")}], "${mobile.file}", ${mobile.maxWidth}]`
+      : `"${routes[key]}": ["${hero.base}", [${hero.widths.join(", ")}]]`;
+    assert.ok(html.includes(expected), `index.html preload table has ${expected}`);
+  }
+  for (const page of ["partners", "coaches", "articles", "clubs", "travel", "play"]) {
+    const s = read(path.join(SRC, `pages/${page}.tsx`));
+    assert.match(s, /<HeroPhoto\b/, `${page}.tsx renders its hero through HeroPhoto`);
+    assert.doesNotMatch(s, /src="\/assets\/images\/(dashboard_players|Dashboard_articles|Dashboard_club)\.webp"/);
+  }
+});
+
+test("directory pages never show their empty state while the list is still loading", () => {
+  const checks: [string, RegExp][] = [
+    ["pages/coaches.tsx", /\{!loading && !loadError && filteredCoaches\.length === 0 && \(/],
+    ["pages/partners.tsx", /\{!loading && filteredPartners\.length === 0 && \(/],
+    ["pages/clubs.tsx", /loading && filteredClubs\.length === 0 \?/],
+    ["pages/travel.tsx", /\{!loaded \? \(/],
+    ["pages/articles.tsx", /\{!loaded \? \(/],
+  ];
+  for (const [file, pattern] of checks) assert.match(read(path.join(SRC, file)), pattern, file);
+});
+
+test("complete-profile: logo + Sign out header, compact responsive grid, dark-green level dots, auth-width Save", () => {
+  const s = read(path.join(SRC, "pages/complete-profile.tsx"));
+  assert.match(s, /data-testid="complete-profile-logo"/);
+  assert.match(s, /<ConnectWord \/>/);
+  assert.match(s, /data-testid="complete-profile-logout"/);
+  assert.equal((s.match(/grid gap-5 md:grid-cols-2 md:gap-4/g) ?? []).length, 2, "country + city on one row (player and coach)");
+  assert.match(s, /grid gap-2 sm:grid-cols-2" role="radiogroup"/, "skill levels 2 x 2 from tablet up");
+  assert.match(s, /i < level\.dots \? "bg-primary-text"/, "level dots use the dark green text colour");
+  assert.equal((s.match(/mx-auto flex w-fit min-w-44 px-8 items-center justify-center transition-opacity/g) ?? []).length, 2, "Save sized like the auth buttons");
+});
+
+test("message modal Send and profile Sign In buttons are sized like the auth / Message buttons", () => {
+  assert.match(read(path.join(SRC, "components/messaging/QuickMessageModal.tsx")), /className="mx-auto flex w-fit min-w-44 px-8"/);
+  for (const f of ["components/profile/shared/MySessionsSection.tsx", "components/profile/shared/MyClubsSection.tsx"]) {
+    const s = read(path.join(SRC, f));
+    assert.match(s, /<Button asChild className="min-w-\[150px\]"/, f);
+    assert.doesNotMatch(s, /<Button asChild size="sm" data-testid=[^>]*sign-in/, f);
+  }
+});
+
+test("home page on phones: 40px section padding, 26px headings, compact cards with icon + title on one line; desktop unchanged", () => {
+  for (const f of ["components/about-us.tsx", "components/features.tsx", "components/home-clubs.tsx", "components/home-travel.tsx", "components/home-articles.tsx", "components/partnership.tsx", "components/gallery.tsx", "pages/home.tsx"]) {
+    const s = read(path.join(SRC, f));
+    assert.match(s, /py-10 md:py-24/, `${f}: 40px top/bottom on phones, 96px from tablet up`);
+    assert.match(s, /text-\[26px\] md:text-5xl/, `${f}: 26px section heading on phones`);
+  }
+  const about = read(path.join(SRC, "components/about-us.tsx"));
+  assert.match(about, /mt-\[30px\] md:mt-20 grid grid-cols-2/, "stats 30px below the cards on phones");
+  assert.match(about, /flex items-center gap-2\.5 mb-2 md:block/, "value cards: icon + title in one row on phones");
+  assert.match(read(path.join(SRC, "components/features.tsx")), /flex items-center gap-3 mb-2 md:block/, "Discover cards: icon + title in one row on phones");
+});

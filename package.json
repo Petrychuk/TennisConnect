@@ -28,6 +28,7 @@
     "e2e:verify-staging-preflight": "cross-env TEST_ENV=staging tsx tests/safety/verify-staging-preflight.ts",
     "test:form-validation": "tsx --test client/src/lib/zodFormErrors.test.ts",
     "test:ui": "tsx --test client/src/lib/travelStatus.test.ts client/src/lib/uiConsistency.test.ts",
+    "test:server-unit": "tsx --test server/lib/apiNotFound.test.ts server/lib/staticCache.test.ts server/lib/coachProfileUpdate.test.ts",
     "test:staging-safety": "tsx server/services/emailCapture.test.ts && tsx --test server/lib/appUrl.test.ts",
     "test:staging-fixtures": "tsx --test server/seeds/e2e/e2eSeed.test.ts",
     "e2e:seed:staging": "cross-env NODE_ENV=development tsx server/seeds/e2e/run.ts",

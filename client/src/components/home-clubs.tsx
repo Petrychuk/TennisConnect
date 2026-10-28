@@ -52,14 +52,14 @@ export function HomeClubs() {
   }, []);
 
   return (
-    <section className="py-24 bg-black text-white relative overflow-hidden" id="tennis-club">
+    <section className="py-10 md:py-24 bg-black text-white relative overflow-hidden" id="tennis-club">
       <div
         className="absolute inset-0 opacity-10 pointer-events-none"
         style={{ backgroundImage: "radial-gradient(#DFFF00 1px, transparent 1px)", backgroundSize: "20px 20px" }}
       />
 
       <div className="container mx-auto px-4 relative z-10">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-[30px] md:mb-12 gap-4 md:gap-6">
           <div>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -76,7 +76,7 @@ export function HomeClubs() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="text-3xl md:text-5xl font-display font-bold"
+              className="text-[26px] md:text-5xl font-display font-bold"
             >
               Tennis <span className="text-primary">Clubs</span>
             </motion.h2>

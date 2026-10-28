@@ -42,6 +42,7 @@ import {
   passwordResetTokens,
 } from "@shared/schema";
 import { z } from "zod";
+import { coachProfileUpdateSchema } from "./lib/coachProfileUpdate";
 import { sendPasswordResetEmail, sendVerificationEmail, sendDuplicateRegistrationAlertEmail } from "./services/emailService";
 import { issueVerificationToken, verifyEmailToken } from "./services/emailVerification";
 import { db } from "./db";
@@ -132,24 +133,7 @@ const playerProfileUpdateSchema = z.object({
   availabilityStatus: z.string().max(50).optional(),
 });
 
-const coachProfileUpdateSchema = z.object({
-  country: z.string().max(100).optional(),
-  isCertified: z.boolean().optional(),
-  certificationDetails: z.string().max(200).optional(),
-  title: z.string().trim().min(1).max(100).optional(),
-  location: z.string().trim().min(1).max(100).optional(),
-  bio: z.string().trim().max(2000).optional(),
-  tags: z.array(z.string()).optional(),
-  photos: z.array(z.string()).optional(),
-  rate: z.string().max(50).optional(),
-  experience: z.string().max(50).optional(),
-  phone: z.string().max(30).optional(),
-  email: z.string().email().max(200).optional(),
-  locations: z.array(z.string()).optional(),
-  schedule: z.any().optional(),
-  // Deliberately NOT included: rating, reviews - those are earned
-  // (reviews left by other users), never self-reported.
-});
+// Validation for PUT /api/me/coach-profile - see server/lib/coachProfileUpdate.ts.
 
 function requireRole(role: "player" | "coach") {
   return (req: Request, res: Response, next: Function) => {

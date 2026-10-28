@@ -70,11 +70,11 @@ export default function Home() {
         {/* <HomeRecreation /> */}
         {/* <HomeTournaments variant="upcoming" /> */}
         {/* CTA Section */}
-        <section className="py-24 px-4 relative overflow-hidden">
+        <section className="py-10 md:py-24 px-4 relative overflow-hidden">
           <div className="absolute inset-0 bg-primary/10 -skew-y-3 transform origin-top-left scale-110 z-0" />
           
           <div className="container mx-auto relative z-10">
-            <div className="bg-black rounded-3xl p-8 md:p-16 text-center overflow-hidden relative">
+            <div className="bg-black rounded-3xl px-5 py-7 md:p-16 text-center overflow-hidden relative">
               {/* Background pattern */}
               <div className="absolute inset-0 opacity-20" 
                    style={{ backgroundImage: 'radial-gradient(#DFFF00 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
@@ -86,10 +86,10 @@ export default function Home() {
                 viewport={{ once: true }}
                 className="relative z-10"
               >
-                <h2 className="text-3xl md:text-5xl font-display font-bold text-white mb-6">
+                <h2 className="text-[26px] md:text-5xl font-display font-bold text-white mb-3 md:mb-6">
                 Join Sydney's Growing Tennis Community
                 </h2>
-                <p className="text-xl text-gray-300 max-w-2xl mx-auto mb-10">
+                <p className="text-base md:text-xl text-gray-300 max-w-2xl mx-auto mb-6 md:mb-10">
                  Connect with players, coaches, clubs, tournaments, and tennis experiences across Australia.
                 </p>
                 <Link href="/auth">

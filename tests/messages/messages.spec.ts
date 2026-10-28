@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { registerPlayer, login, logout, dismissCookieBanner } from '../helpers/auth';
 import { completePlayerProfile, getFirstListedCoachPath } from '../helpers/profile';
-import { sendContactMessage, sendPlayerProfileMessage, getMyUserId, approveUser } from '../helpers/messages';
+import { sendContactMessage, sendPlayerProfileMessage, getMyUserId, approveUser, CONVERSATION_ROW } from '../helpers/messages';
 import { TEST_USERS } from '../fixtures/test-users';
 
 /*
@@ -36,8 +36,10 @@ test('MSG-001 Send Message Player → Coach', async ({ page }) => {
 
   // ---------- Final verification ----------
 
+  // Exact toast title: the toast's aria-live announcer repeats the text,
+  // so a /message sent/i regex matched two elements (strict-mode error).
   await expect(
-    page.getByText(/message sent/i)
+    page.getByText('Message sent', { exact: true })
   ).toBeVisible();
 
 });
@@ -69,7 +71,7 @@ test('MSG-002 Reply Message', async ({ page }) => {
 
   await page.goto('/messages');
 
-  const conversationItem = page.locator('[data-testid^="message-item-"]', {
+  const conversationItem = page.locator(CONVERSATION_ROW, {
     hasText: player.name,
   }).first();
 
@@ -125,11 +127,17 @@ test('MSG-003 Unread Indicator Clears After Opening', async ({ page }) => {
 
   await login(page, TEST_USERS.coach.email, TEST_USERS.coach.password);
 
+  // Phone width: the inbox opens on the list there. On desktop it opens the
+  // newest conversation in the reading pane straight away (and marks it
+  // read), so a brand-new conversation's unread dot is only ever visible
+  // for a moment - this test used to race that. Phones not auto-opening the
+  // newest chat is itself the behaviour fixed on 28 Oct.
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/messages');
 
   // ---------- Verify ----------
 
-  const conversationItem = page.locator('[data-testid^="message-item-"]', {
+  const conversationItem = page.locator(CONVERSATION_ROW, {
     hasText: player.name,
   }).first();
 
@@ -139,7 +147,14 @@ test('MSG-003 Unread Indicator Clears After Opening', async ({ page }) => {
 
   // ---------- Actions (open the new conversation) ----------
 
-  await conversationItem.click();
+  // Opening it marks the conversation read - wait for that request before
+  // reloading, so the reload can't overtake it.
+  await Promise.all([
+    page.waitForResponse(
+      (r) => r.request().method() === 'PUT' && /\/api\/messages\/conversation\/[^/]+\/read$/.test(new URL(r.url()).pathname),
+    ),
+    conversationItem.click(),
+  ]);
 
   // ---------- Final verification (indicator clears) ----------
 
@@ -147,7 +162,7 @@ test('MSG-003 Unread Indicator Clears After Opening', async ({ page }) => {
 
   await expect(
     page
-      .locator('[data-testid^="message-item-"]', { hasText: player.name })
+      .locator(CONVERSATION_ROW, { hasText: player.name })
       .locator('xpath=..')
       .locator('[data-testid^="message-item-unread-"]')
   ).toHaveCount(0);
@@ -179,7 +194,10 @@ test('MSG-003b Sending To Several People Does Not Mark Them Unread In Your Own I
     { subject: 'Broadcast', message: contentToCoach }
   );
 
-  await sendContactMessage(
+  // Player profiles have no Contact tab any more (player-profile.tsx
+  // redesign) - their "Message" button opens the quick-message modal.
+  // sendContactMessage here waited 60 s for a contact-tab that doesn't exist.
+  await sendPlayerProfileMessage(
     page,
     `/player/${TEST_USERS.player.slug}`,
     { subject: 'Broadcast', message: contentToPlayer }
@@ -188,12 +206,16 @@ test('MSG-003b Sending To Several People Does Not Mark Them Unread In Your Own I
   await page.goto('/messages');
 
   // ---------- Final verification ----------
-  // None of the three conversations (welcome message + the two just
-  // sent) should show an unread indicator - the viewer authored two
-  // of them and hasn't been sent anything new in the third.
+  // Three conversations: the welcome message + the two just sent. Neither
+  // conversation the viewer started may show an unread indicator. The
+  // welcome message is a different matter - it genuinely was sent to this
+  // new account and is still unread (MSG-108), so it is excluded here.
 
-  await expect(page.locator('[data-testid^="message-item-"]')).toHaveCount(3);
-  await expect(page.locator('[data-testid^="message-item-unread-"]')).toHaveCount(0);
+  const rows = page.locator(CONVERSATION_ROW);
+  await expect(rows).toHaveCount(3);
+  const outgoing = rows.filter({ hasNotText: 'Tennis Connect' });
+  await expect(outgoing).toHaveCount(2);
+  await expect(outgoing.locator('[data-testid^="message-item-unread-"]')).toHaveCount(0);
 
 });
 
@@ -217,7 +239,7 @@ test('MSG-004 Mark Conversation as Read', async ({ page }) => {
 
   await page.goto('/messages');
 
-  const conversationItem = page.locator('[data-testid^="message-item-"]', {
+  const conversationItem = page.locator(CONVERSATION_ROW, {
     hasText: player.name,
   }).first();
 
@@ -248,7 +270,7 @@ test('MSG-004 Mark Conversation as Read', async ({ page }) => {
 
   await expect(
     page
-      .locator('[data-testid^="message-item-"]', { hasText: player.name })
+      .locator(CONVERSATION_ROW, { hasText: player.name })
       .locator('xpath=..')
   ).not.toHaveClass(/bg-muted hover:bg-muted\/80/);
 
@@ -277,7 +299,7 @@ test('MSG-005 Player → Player Message', async ({ page }) => {
   expect(response.ok()).toBeTruthy();
 
   await expect(
-    page.getByText(/message sent/i)
+    page.getByText('Message sent', { exact: true })
   ).toBeVisible();
 
 });
@@ -319,7 +341,7 @@ test('MSG-006 Coach → Player Message', async ({ page, browser }) => {
   expect(response.ok()).toBeTruthy();
 
   await expect(
-    page.getByText(/message sent/i)
+    page.getByText('Message sent', { exact: true })
   ).toBeVisible();
 
 });
@@ -374,7 +396,7 @@ test('MSG-007 Organizer → Player Message', async ({ page }) => {
   expect(response.ok()).toBeTruthy();
 
   await expect(
-    page.getByText(/message sent/i)
+    page.getByText('Message sent', { exact: true })
   ).toBeVisible();
 
 });
@@ -420,7 +442,7 @@ test('MSG-008 Conversation Ordering (Latest Message First)', async ({ browser })
   // content - playerB's conversation should sort first since their
   // message is the more recent of the two.
 
-  const firstItem = pageC.locator('[data-testid^="message-item-"]').first();
+  const firstItem = pageC.locator(CONVERSATION_ROW).first();
   await expect(firstItem).toContainText(playerB.name);
 
   await contextC.close();
@@ -447,7 +469,7 @@ test('MSG-009 Message Timestamp Display', async ({ page }) => {
   await page.goto('/messages');
 
   await page
-    .locator('[data-testid^="message-item-"]', { hasText: player.name })
+    .locator(CONVERSATION_ROW, { hasText: player.name })
     .first()
     .click();
 
@@ -472,7 +494,7 @@ test('MSG-010 Empty Conversation State', async ({ page }) => {
   await page.goto('/messages');
 
   const row = page
-    .locator('[data-testid^="message-item-"]')
+    .locator(CONVERSATION_ROW)
     .first()
     .locator('xpath=..');
 
@@ -580,7 +602,7 @@ test('MSG-013 Guest Cannot Access Messages', async ({ page }) => {
   ).toBeVisible();
 
   await expect(
-    page.locator('[data-testid^="message-item-"]')
+    page.locator(CONVERSATION_ROW)
   ).toHaveCount(0);
 
 });
@@ -609,7 +631,7 @@ test('MSG-014 Message Persists After Page Refresh', async ({ page }) => {
   await page.goto('/messages');
 
   await expect(
-    page.locator('[data-testid^="message-item-"]', { hasText: player.name })
+    page.locator(CONVERSATION_ROW, { hasText: player.name })
   ).toBeVisible();
 
   // ---------- Reload ----------
@@ -619,7 +641,7 @@ test('MSG-014 Message Persists After Page Refresh', async ({ page }) => {
   // ---------- Final verification ----------
 
   await expect(
-    page.locator('[data-testid^="message-item-"]', { hasText: player.name })
+    page.locator(CONVERSATION_ROW, { hasText: player.name })
   ).toBeVisible();
 
 });
@@ -643,7 +665,7 @@ test('MSG-015 Toast Notifications', async ({ page }) => {
   );
 
   await expect(
-    page.getByText(/message sent/i)
+    page.getByText('Message sent', { exact: true })
   ).toBeVisible();
 
   // ---------- Verify: validation-error toast ----------
@@ -729,7 +751,7 @@ test('MSG-016 Send Message Via Players Listing (Player → Player)', async ({ pa
   // ---------- Verify request ----------
 
   expect(response.ok()).toBeTruthy();
-  await expect(page.getByText(/message sent/i)).toBeVisible();
+  await expect(page.getByText('Message sent', { exact: true })).toBeVisible();
 
   // ---------- Final verification (target receives it) ----------
 
@@ -738,7 +760,7 @@ test('MSG-016 Send Message Via Players Listing (Player → Player)', async ({ pa
   await page.goto('/messages');
 
   await page
-    .locator('[data-testid^="message-item-"]', { hasText: sender.name })
+    .locator(CONVERSATION_ROW, { hasText: sender.name })
     .first()
     .click();
 

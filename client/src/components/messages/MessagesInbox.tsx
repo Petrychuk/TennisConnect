@@ -192,10 +192,16 @@ export function MessagesInbox() {
     };
   }, [isAuthenticated]);
 
+  // Desktop shows the list and a reading pane side by side, so the newest
+  // conversation opens in the pane straight away. Phones show one panel at
+  // a time and start on the list: auto-selecting there (as it used to)
+  // jumped every phone visitor straight into the newest chat - and marked
+  // it read - before they had seen their inbox at all.
   useEffect(() => {
     if (
       messages.length > 0 &&
-      selectedMessage === null
+      selectedMessage === null &&
+      window.innerWidth >= 1024
     ) {
       selectMessage(messages[0]);
     }
@@ -343,10 +349,13 @@ export function MessagesInbox() {
   
       setMessages(data);
   
-      // Первый вход на страницу
+      // Первый вход на страницу - desktop only (see the effect above):
+      // on a phone this silently opened the newest conversation in the
+      // background and marked it read while the list was on screen.
       if (
         data.length > 0 &&
-        selectedMessageRef.current === null
+        selectedMessageRef.current === null &&
+        window.innerWidth >= 1024
       ) {
         const firstMessage = data[0];
   

@@ -17,13 +17,14 @@ import {
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { AppPagination } from "@/components/shared/AppPagination";
 import { MapPin, Star, ArrowRight, DollarSign, Calendar, Trophy, Wallet, Coins } from "lucide-react";
-import heroImage from "/assets/images/dashboard_coach.webp";
 
 import { COACHES_DATA } from "@/lib/dummy-data";
 import { resolveAvatarUrl, DEFAULT_AVATAR_URL, DEFAULT_AVATAR_ALT } from "@/lib/defaultAvatar";
 import { HeroBadge } from "@/components/shared/hero-badge";
 import { HeroSearch, HeroSearchFiltersButton, HeroShortcuts, type HeroShortcut } from "@/components/shared/hero-search";
 import { HeroFiltersPanel, FilterSection } from "@/components/shared/hero-filters";
+import { DelayedTennisLoader } from "@/components/ui/tennisLoader";
+import { HeroPhoto } from "@/components/shared/hero-photo";
 
 export default function CoachesPage() {
   const coachesSectionRef = useRef<HTMLDivElement>(null);
@@ -36,6 +37,10 @@ export default function CoachesPage() {
     (typeof COACHES_DATA[number] & { isOrganizer?: boolean })[]
   >([]);
   const [loading, setLoading] = useState(true);
+  // Set when /api/coaches fails (e.g. 429 rate limit, 500), so the page says
+  // so instead of the misleading "No coaches found".
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -48,13 +53,18 @@ export default function CoachesPage() {
     async function fetchCoaches() {
       try {
         setLoading(true);
+        setLoadError(null);
   
         const res = await fetch(
           `/api/coaches?page=${page}&limit=16`
         );
   
         if (!res.ok) {
-          throw new Error("Failed to fetch coaches");
+          throw new Error(
+            res.status === 429
+              ? "Too many requests - please wait a moment and try again."
+              : `The coaches list could not be loaded (error ${res.status}).`
+          );
         }
   
         const data = await res.json();
@@ -98,6 +108,7 @@ export default function CoachesPage() {
         setCoaches(transformedCoaches);
       } catch (error) {
         console.error("Failed to fetch coaches:", error);
+        setLoadError(error instanceof Error && error.message ? error.message : "The coaches list could not be loaded.");
   
         setCoaches([]);
   
@@ -113,7 +124,7 @@ export default function CoachesPage() {
     }
   
     fetchCoaches();
-  }, [page]);
+  }, [page, reloadKey]);
 
   // Dynamically get all unique locations from coaches
   const uniqueLocations = useMemo(() => {
@@ -259,17 +270,10 @@ export default function CoachesPage() {
           <section className="relative overflow-hidden">
             {/* Background Image with Overlay */}
             <div className="absolute inset-0 z-0">
-              <img 
-                src={heroImage}
-                alt="Tennis coach" 
-                fetchPriority="high"
-                decoding="async"
-                className="w-full
-                h-full
-                object-cover
-                object-[60%_55%]
-                md:object-[60%_20%]
-                scale-110 md:scale-100"
+              <HeroPhoto
+                hero="coaches"
+                alt="Tennis coach"
+                className="w-full h-full object-cover object-[60%_55%] md:object-[60%_20%] scale-110 md:scale-100"
               />
               {/* Tablet/desktop: the left half of the photo darkens towards the left edge (smooth, no hard line) so the title, intro and search stay readable. Phones keep the plain photo. */}
               <div aria-hidden="true" className="tc-hero-left-shade absolute inset-0 hidden md:block" />
@@ -540,7 +544,19 @@ export default function CoachesPage() {
               ))}
             </div>
 
-            {filteredCoaches.length === 0 && (
+            {/* No "No coaches found" while the list is still loading - it read as
+                an empty result (and a test typing a search then saw it vanish). */}
+            {loading && filteredCoaches.length === 0 && <DelayedTennisLoader text="Loading coaches…" />}
+            {!loading && loadError && (
+              <div className="text-center py-20" role="alert" data-testid="coaches-load-error">
+                <h3 className="text-2xl font-bold mb-2">Couldn't load coaches</h3>
+                <p className="text-muted-foreground mb-4">{loadError}</p>
+                <Button variant="outline" onClick={() => setReloadKey((k) => k + 1)}>
+                  Try again
+                </Button>
+              </div>
+            )}
+            {!loading && !loadError && filteredCoaches.length === 0 && (
               <div className="text-center py-20">
                 <h3 className="text-2xl font-bold mb-2">No coaches found</h3>
                 <p className="text-muted-foreground">Try adjusting your search or filters to find more coaches.</p>

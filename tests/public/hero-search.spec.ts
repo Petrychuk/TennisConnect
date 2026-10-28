@@ -139,6 +139,18 @@ async function waitForList(cfg: PageConfig, page: Page) {
   await expect(loaded.first()).toBeVisible();
 }
 
+/**
+ * Opens a hero page and waits until the page itself has rendered (its
+ * search pill is visible). Every page but Home is a lazy route chunk; on a
+ * cold remote server that chunk alone has taken over 5 s, which used to fail
+ * the first assertion (SEARCH-060 in the 28 Oct Staging run) before the
+ * page existed. This is a readiness wait on a real element, not a sleep.
+ */
+async function openHeroPage(page: Page, path: string) {
+  await page.goto(path);
+  await expect(page.getByRole('search').filter({ visible: true })).toBeVisible({ timeout: 20_000 });
+}
+
 /** Distance from the top of the viewport to the top of `selector`. */
 const topOf = (page: Page, selector: string) =>
   page.locator(selector).evaluate((el) => Math.round(el.getBoundingClientRect().top));
@@ -159,7 +171,7 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
 
         // ---------- Open page ----------
 
-        await page.goto(cfg.path);
+        await openHeroPage(page, cfg.path);
         const { input, otherInput, submit } = ids(cfg, phone);
 
         // ---------- Verify ----------
@@ -183,7 +195,7 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
 
         // ---------- Open page ----------
 
-        await page.goto(cfg.path);
+        await openHeroPage(page, cfg.path);
         const search = page.getByTestId(ids(cfg, phone).input);
         await waitForList(cfg, page);
         const initialCount = await cfg.cards(page).count();
@@ -215,7 +227,7 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
 
           // ---------- Open page ----------
 
-          await page.goto(cfg.path);
+          await openHeroPage(page, cfg.path);
           const { input, submit } = ids(cfg, phone);
           await waitForList(cfg, page);
           const before = await topOf(page, resultsSelector);
@@ -249,7 +261,7 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
 
         // ---------- Open page ----------
 
-        await page.goto(cfg.path);
+        await openHeroPage(page, cfg.path);
         const { filters } = ids(cfg, phone);
 
         // ---------- Verify ----------
@@ -285,7 +297,7 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
 
           // ---------- Open page ----------
 
-          await page.goto(cfg.path);
+          await openHeroPage(page, cfg.path);
           const input = page.getByTestId(ids(cfg, phone).input);
           const pill = page.getByRole('search').filter({ visible: true });
 
@@ -296,9 +308,21 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
           // ---------- Verify ----------
 
           await expect(input).toBeFocused();
-          // --primary-text (78 85% 25%) = rgb(85, 118, 10). The border fades
-          // in (transition-colors), so poll until it settles.
-          await expect.poll(() => pill.evaluate((el) => getComputedStyle(el).borderTopColor)).toBe('rgb(85, 118, 10)');
+          // The outline is the --primary-text token (dark olive since the
+          // accent changed in v10). Resolve the token in the page instead of
+          // hard-coding an RGB value, so a deliberate palette change doesn't
+          // break the test - the 1px / no-ring checks below still pin the look.
+          const token = await page.evaluate(() => {
+            const probe = document.createElement('span');
+            probe.style.color = 'hsl(var(--primary-text))';
+            document.body.appendChild(probe);
+            const value = getComputedStyle(probe).color;
+            probe.remove();
+            return value;
+          });
+          expect(token).not.toBe('rgb(0, 0, 0)');
+          // The border fades in (transition-colors), so poll until it settles.
+          await expect.poll(() => pill.evaluate((el) => getComputedStyle(el).borderTopColor)).toBe(token);
           await expect.poll(() => pill.evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe('1px');
           // No thick ring around it.
           expect(await pill.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe('none');
@@ -338,7 +362,7 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
 
         // ---------- Open page ----------
 
-        await page.goto(panelCfg.path);
+        await openHeroPage(page, panelCfg.path);
         const trigger = page.getByTestId(triggerId);
         const panel = page.getByTestId(panelCfg.content);
 
@@ -391,7 +415,7 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
 
       // ---------- Open page ----------
 
-      await page.goto('/play');
+      await openHeroPage(page, '/play');
       const thisWeek = page.getByTestId(`play-quick-filter-this-week${sfx}`);
 
       // ---------- Actions ----------
@@ -429,7 +453,7 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
 
       // ---------- Open page ----------
 
-      await page.goto('/players');
+      await openHeroPage(page, '/players');
       const filters = page.getByTestId(`players-filters-open${sfx}`);
       const intermediate = page.getByTestId(`players-shortcut-level-intermediate${sfx}`);
       await expect(filters).toHaveAccessibleName('Filters');
@@ -471,7 +495,7 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
 
       // ---------- Open page ----------
 
-      await page.goto('/players');
+      await openHeroPage(page, '/players');
       const shortcut = page.getByTestId(`players-shortcut-looking-to-play${sfx}`);
       await expect(shortcut).toHaveAttribute('aria-pressed', 'false');
 
@@ -490,6 +514,11 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
       await page.getByTestId(`players-filters-open${sfx}`).click();
       await expect(page.getByTestId('players-filter-looking-to-play')).toHaveAttribute('aria-pressed', 'true');
       await page.getByTestId('players-filters-clear-all').click();
+      // Close the panel first: on phones it's a modal, and while it is open
+      // the rest of the page (the trigger included) is aria-hidden, so its
+      // accessible name reads as "".
+      await page.getByTestId('players-filters-show-results').click();
+      await expect(page.getByTestId('players-filters-panel')).toBeHidden();
 
       // ---------- Final verification ----------
 
@@ -503,7 +532,7 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
 
         // ---------- Open page ----------
 
-        await page.goto('/players');
+        await openHeroPage(page, '/players');
 
         // ---------- Verify ----------
 
@@ -523,7 +552,7 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
 
       // ---------- Open page ----------
 
-      await page.goto('/coaches');
+      await openHeroPage(page, '/coaches');
       await waitForList(PAGES[2], page);
       const filters = page.getByTestId(`coaches-filters-open${sfx}`);
       const under100 = page.getByTestId(`coaches-shortcut-under-100${sfx}`);
@@ -567,7 +596,7 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
 
       // ---------- Open page ----------
 
-      await page.goto('/coaches');
+      await openHeroPage(page, '/coaches');
 
       // ---------- Actions ----------
 
@@ -586,7 +615,7 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
 
       // ---------- Open page ----------
 
-      await page.goto('/coaches');
+      await openHeroPage(page, '/coaches');
 
       // ---------- Actions ----------
 
@@ -611,7 +640,7 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
 
       // ---------- Open page ----------
 
-      await page.goto('/clubs');
+      await openHeroPage(page, '/clubs');
       const filters = page.getByTestId(trigger);
       const shortcut = page.getByTestId(`clubs-shortcut-club${sfx}`);
       await expect(filters).toHaveAccessibleName('Filter clubs');
@@ -630,6 +659,9 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
       // ---------- Actions ----------
 
       await page.getByTestId(`clubs-clear-all-filters${sfx}`).click();
+      // Close the panel first (a modal on phones hides the trigger's name).
+      await page.getByTestId(`clubs-filters-show-results${sfx}`).click();
+      await expect(page.getByTestId(`clubs-filters-panel${sfx}`)).toBeHidden();
 
       // ---------- Final verification ----------
 
@@ -642,7 +674,7 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
 
       // ---------- Open page ----------
 
-      await page.goto('/clubs');
+      await openHeroPage(page, '/clubs');
 
       // ---------- Actions ----------
 
@@ -666,7 +698,7 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
 
       // ---------- Open page ----------
 
-      await page.goto('/articles');
+      await openHeroPage(page, '/articles');
       await waitForList(PAGES[5], page);
       const cards = PAGES[5].cards(page);
       const allCount = await cards.count();
@@ -699,7 +731,7 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
 
       // ---------- Open page ----------
 
-      await page.goto('/articles?category=Health');
+      await openHeroPage(page, '/articles?category=Health');
 
       // ---------- Verify ----------
 
@@ -745,7 +777,7 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
 
       // ---------- Open page ----------
 
-      await page.goto('/play');
+      await openHeroPage(page, '/play');
 
       // ---------- Actions ----------
 
@@ -781,7 +813,7 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
 
       // ---------- Open page ----------
 
-      await page.goto('/play');
+      await openHeroPage(page, '/play');
       const input = page.getByTestId(`play-page-search-input${sfx}`);
 
       // ---------- Actions ----------
@@ -805,7 +837,7 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
 
       // ---------- Open page ----------
 
-      await page.goto('/play');
+      await openHeroPage(page, '/play');
 
       // ---------- Actions ----------
 
@@ -822,7 +854,7 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
 
       // ---------- Open page ----------
 
-      await page.goto('/play');
+      await openHeroPage(page, '/play');
       const social = page.getByTestId(`play-quick-filter-social${sfx}`);
       await expect(social).toHaveAttribute('aria-pressed', 'false');
 
@@ -852,7 +884,7 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
 
       // ---------- Open page ----------
 
-      await page.goto('/play');
+      await openHeroPage(page, '/play');
       const thisWeek = page.getByTestId(`play-quick-filter-this-week${sfx}`);
       const tournaments = page.getByTestId(`play-quick-filter-competitions${sfx}`);
 
@@ -882,7 +914,7 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
 
       // ---------- Open page ----------
 
-      await page.goto('/play');
+      await openHeroPage(page, '/play');
 
       // ---------- Verify ----------
 
@@ -897,7 +929,7 @@ for (const [widthName, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as 
 
         // ---------- Open page ----------
 
-        await page.goto('/play');
+        await openHeroPage(page, '/play');
 
         // ---------- Verify ----------
 

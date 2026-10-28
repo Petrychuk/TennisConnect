@@ -59,21 +59,21 @@ const features = [
 
 export function Features() {
   return (
-    <section className="py-24 bg-secondary/50 relative overflow-hidden" id="features">
+    <section className="py-10 md:py-24 bg-secondary/50 relative overflow-hidden" id="features">
       {/* Decorative Elements */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
       
       <div className="container mx-auto px-4 relative z-10">
-        <div className="text-center mb-16">
-          <h2 className="text-[1.8125rem] md:text-5xl font-display font-bold mb-4">
+        <div className="text-center mb-[30px] md:mb-16">
+          <h2 className="text-[26px] md:text-5xl font-display font-bold mb-3 md:mb-4">
           Discover Your <span className="text-primary-text">Tennis World</span>
           </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
+          <p className="text-muted-foreground max-w-2xl mx-auto text-base md:text-lg">
             Whether you're looking for a playing partner, professional coach, local club, social session, tournament or your next tennis adventure, TennisConnect brings everything together in one platform.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
           {features.filter((feature) => !feature.hidden).map((feature, index) => (
             <motion.div
               key={feature.title}
@@ -84,12 +84,15 @@ export function Features() {
             >
               <Card className="h-full border-none shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group bg-card overflow-hidden relative">
                 <div className={`absolute top-0 left-0 w-full h-1 ${feature.color}`} />
-                <CardContent className="p-6 pt-8">
-                  <div className={`w-14 h-14 rounded-2xl ${feature.color}/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                    <feature.icon className={`w-7 h-7 ${feature.color === 'bg-primary' ? 'text-lime-700' : feature.color.replace('bg-', 'text-')}`} />
+                <CardContent className="p-4 pt-5 md:p-6 md:pt-8">
+                  {/* Phones: icon and title on one line to save height. */}
+                  <div className="flex items-center gap-3 mb-2 md:block md:mb-0">
+                    <div className={`w-10 h-10 md:w-14 md:h-14 shrink-0 rounded-xl md:rounded-2xl ${feature.color}/10 flex items-center justify-center md:mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                      <feature.icon aria-hidden="true" className={`w-5 h-5 md:w-7 md:h-7 ${feature.color === 'bg-primary' ? 'text-lime-700' : feature.color.replace('bg-', 'text-')}`} />
+                    </div>
+                    <h3 className="text-lg md:text-xl font-bold md:mb-3 font-display leading-tight md:leading-7">{feature.title}</h3>
                   </div>
-                  <h3 className="text-xl font-bold mb-3 font-display">{feature.title}</h3>
-                  <p className="text-muted-foreground leading-relaxed">
+                  <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
                     {feature.description}
                   </p>
                 </CardContent>

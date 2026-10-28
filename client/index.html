@@ -27,32 +27,37 @@
         l.href = "/assets/images/tennis_main.jpg";
         l.fetchPriority = "high";
         document.head.appendChild(l);
-      } else if (location.pathname === "/travels" || location.pathname === "/clubs") {
-        // Hero photo = LCP. Mobile gets the small file, desktop the original.
-        var hn = location.pathname === "/clubs" ? "Dashboard_club" : "travels-hero-cote-dazur";
-        [["/assets/images/" + hn + "-mobile.webp", "(max-width: 639px)"],
-         ["/assets/images/" + hn + ".webp", "(min-width: 640px)"]].forEach(function (p) {
-          var pl = document.createElement("link");
-          pl.rel = "preload";
-          pl.as = "image";
-          pl.href = p[0];
-          pl.media = p[1];
-          pl.fetchPriority = "high";
-          document.head.appendChild(pl);
-        });
-      } else if (location.pathname === "/play") {
-        // Same two images /play preloads from React (Helmet) - but that runs
-        // only after the JS bundle, too late to be the LCP request.
-        [["/assets/images/games-hero-sydney-harbour-mobile.webp", "(max-width: 767px)"],
-         ["/assets/images/games-hero-sydney-harbour.webp", "(min-width: 768px)"]].forEach(function (p) {
-          var pl = document.createElement("link");
-          pl.rel = "preload";
-          pl.as = "image";
-          pl.href = p[0];
-          pl.media = p[1];
-          pl.fetchPriority = "high";
-          document.head.appendChild(pl);
-        });
+      } else {
+        // Hero photo = LCP on every directory page. Same files and srcset as
+        // client/src/lib/heroImages.ts (HeroPhoto) - keep the two in sync
+        // (uiConsistency.test.ts checks). Phones: the cropped mobile photo
+        // where a page has one; otherwise the browser picks the width.
+        var HERO = {
+          "/players": ["dashboard_players", [900, 1280, 1920]],
+          "/coaches": ["dashboard_coach", [900, 1280, 1920]],
+          "/articles": ["Dashboard_articles", [900, 1280, 1774]],
+          "/clubs": ["Dashboard_club", [1280, 1774], "Dashboard_club-mobile.webp", 639],
+          "/travels": ["travels-hero-cote-dazur", [1280, 1920], "travels-hero-cote-dazur-mobile.webp", 639],
+          "/play": ["games-hero-sydney-harbour", [1280, 1920], "games-hero-sydney-harbour-mobile.webp", 767]
+        }[location.pathname];
+        if (HERO) {
+          var dir = "/assets/images/";
+          var add = function (attrs) {
+            var pl = document.createElement("link");
+            pl.rel = "preload";
+            pl.as = "image";
+            pl.fetchPriority = "high";
+            for (var k in attrs) pl.setAttribute(k, attrs[k]);
+            document.head.appendChild(pl);
+          };
+          var srcset = HERO[1].map(function (w) { return dir + HERO[0] + "-" + w + ".webp " + w + "w"; }).join(", ");
+          if (HERO[2]) {
+            add({ href: dir + HERO[2], media: "(max-width: " + HERO[3] + "px)" });
+            add({ imagesrcset: srcset, imagesizes: "100vw", media: "(min-width: " + (HERO[3] + 1) + "px)" });
+          } else {
+            add({ imagesrcset: srcset, imagesizes: "100vw" });
+          }
+        }
       }
     </script>
    <!-- Google Analytics + Consent Mode -->

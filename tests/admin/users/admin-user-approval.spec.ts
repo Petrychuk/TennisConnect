@@ -10,6 +10,11 @@ import { expectRunOwned } from '../../fixtures/run-id';
 ✓ Can be approved */
 
 test('ADMIN-001 New User Queue - Approve Pending Player', async ({ page }) => {
+  // Multi-account flow (2-3 fresh accounts, each registered + verified
+  // through the UI, plus an admin step). Measured 55-78 s on Staging on
+  // 28 Oct against the 60 s default - test.slow() gives it 3x, instead of
+  // raising the timeout for the whole suite.
+  test.slow();
 
   // ---------- Test data ----------
 

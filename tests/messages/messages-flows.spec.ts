@@ -3,9 +3,11 @@ import { registerPlayer, login, logout } from '../helpers/auth';
 import { completePlayerProfile } from '../helpers/profile';
 import {
   sendContactMessage,
+  sendPlayerProfileMessage,
   getMyUserId,
   grantOrganizerAccess,
   hideUserAsAdmin,
+  CONVERSATION_ROW,
 } from '../helpers/messages';
 import { TEST_USERS } from '../fixtures/test-users';
 
@@ -52,16 +54,20 @@ test('MSG-101 Two Different Conversations Show As Two Separate Tabs', async ({ p
 
   // ---------- Actions (message two different people) ----------
 
+  // Subjects need 3+ characters (messageSchema) - the old 'Hi' was rejected
+  // client-side with a toast, so no POST was ever sent and the helper's
+  // waitForResponse timed out after 60 s.
   await sendContactMessage(
     page,
     `/coach/${TEST_USERS.coach.slug}`,
-    { subject: 'Hi', message: contentToCoach }
+    { subject: 'Hello', message: contentToCoach }
   );
 
-  await sendContactMessage(
+  // Player profiles use the "Message" quick-message modal, not a Contact tab.
+  await sendPlayerProfileMessage(
     page,
     `/player/${TEST_USERS.player.slug}`,
-    { subject: 'Hi', message: contentToPlayer }
+    { subject: 'Hello', message: contentToPlayer }
   );
 
   await page.goto('/messages');
@@ -70,7 +76,7 @@ test('MSG-101 Two Different Conversations Show As Two Separate Tabs', async ({ p
   // Three rows: the automatic welcome message plus the two just sent.
   // Newest first - the player conversation was sent last.
 
-  const items = page.locator('[data-testid^="message-item-"]');
+  const items = page.locator(CONVERSATION_ROW);
   await expect(items).toHaveCount(3);
 
   await items.nth(0).click();
@@ -97,7 +103,7 @@ test('MSG-102 A Second Message To The Same Person Joins The Same Conversation', 
   await sendContactMessage(
     page,
     `/coach/${TEST_USERS.coach.slug}`,
-    { subject: 'Hi', message: firstContent }
+    { subject: 'Hello', message: firstContent } // 3+ characters - see MSG-101
   );
 
   await sendContactMessage(
@@ -113,7 +119,7 @@ test('MSG-102 A Second Message To The Same Person Joins The Same Conversation', 
   // second message joined the first instead of splitting into its own
   // conversation.
 
-  const items = page.locator('[data-testid^="message-item-"]');
+  const items = page.locator(CONVERSATION_ROW);
   await expect(items).toHaveCount(2);
 
   // ---------- Actions (open the coach conversation - the more recent of the two) ----------
@@ -157,7 +163,7 @@ test('MSG-103 Deleting A Conversation Removes The Whole Thread - Cancel Keeps It
   // The coach conversation (index 0) is the most recent of the two
   // rows (welcome message + coach thread).
   const row = page
-    .locator('[data-testid^="message-item-"]')
+    .locator(CONVERSATION_ROW)
     .first()
     .locator('xpath=..');
 
@@ -169,7 +175,7 @@ test('MSG-103 Deleting A Conversation Removes The Whole Thread - Cancel Keeps It
 
   // ---------- Verify (cancelling keeps the conversation) ----------
 
-  await expect(page.locator('[data-testid^="message-item-"]')).toHaveCount(2);
+  await expect(page.locator(CONVERSATION_ROW)).toHaveCount(2);
 
   // ---------- Actions (delete for real) ----------
 
@@ -187,10 +193,10 @@ test('MSG-103 Deleting A Conversation Removes The Whole Thread - Cancel Keeps It
   // ---------- Verify request and toast ----------
 
   expect(deleteResponse.ok()).toBeTruthy();
-  await expect(page.getByText(/conversation deleted/i)).toBeVisible();
+  await expect(page.getByRole('region', { name: /notifications/i }).getByText(/conversation deleted/i)).toBeVisible(); // toast list only - its live announcer repeats the text
 
   // Only the welcome message conversation should remain.
-  await expect(page.locator('[data-testid^="message-item-"]')).toHaveCount(1);
+  await expect(page.locator(CONVERSATION_ROW)).toHaveCount(1);
 
   // ---------- Final verification ----------
   // The actual regression this guards against: previously only the
@@ -201,7 +207,7 @@ test('MSG-103 Deleting A Conversation Removes The Whole Thread - Cancel Keeps It
 
   await page.reload();
 
-  await expect(page.locator('[data-testid^="message-item-"]')).toHaveCount(1);
+  await expect(page.locator(CONVERSATION_ROW)).toHaveCount(1);
 
 });
 
@@ -231,7 +237,7 @@ test('MSG-104 A Conversation You Started Shows In Your Own Inbox Before Any Repl
   // never appeared until the coach replied. The coach conversation is
   // the more recent of the two rows (welcome message + this one).
 
-  const conversationItem = page.locator('[data-testid^="message-item-"]').first();
+  const conversationItem = page.locator(CONVERSATION_ROW).first();
   await expect(conversationItem).toBeVisible();
 
   // And when it does appear, it must show the coach's identity, not
@@ -246,8 +252,11 @@ test('MSG-104 A Conversation You Started Shows In Your Own Inbox Before Any Repl
   // A conversation you started yourself should never show as unread -
   // isRead describes whether the recipient (them) has read it, which
   // says nothing about whether there's anything new for you to see.
+  // Scoped to this conversation's row: a brand-new account also has the
+  // unread "Welcome to Tennis Connect" system message (MSG-108), which the
+  // page-wide count used to pick up.
   await expect(
-    page.locator('[data-testid^="message-item-unread-"]')
+    conversationItem.locator('xpath=..').locator('[data-testid^="message-item-unread-"]')
   ).toHaveCount(0);
 
 });
@@ -271,7 +280,7 @@ test('MSG-113 Reply Via Email Shows For A Conversation You Started, Before Any R
   );
 
   await page.goto('/messages');
-  await page.locator('[data-testid^="message-item-"]').first().click();
+  await page.locator(CONVERSATION_ROW).first().click();
 
   // ---------- Final verification ----------
   // Previously this button relied on scanning the loaded thread for a
@@ -284,6 +293,11 @@ test('MSG-113 Reply Via Email Shows For A Conversation You Started, Before Any R
 });
 
 test('MSG-115 Reply Via Email Does Not Show For A Pending Invitation', async ({ page }) => {
+  // Multi-account flow (2-3 fresh accounts, each registered + verified
+  // through the UI, plus an admin step). Measured 55-78 s on Staging on
+  // 28 Oct against the 60 s default - test.slow() gives it 3x, instead of
+  // raising the timeout for the whole suite.
+  test.slow();
 
   // ---------- Test data (organiser with their own organisation) ----------
 
@@ -329,7 +343,7 @@ test('MSG-115 Reply Via Email Does Not Show For A Pending Invitation', async ({ 
   await login(page, invitee.email, invitee.password);
   await page.goto('/messages');
 
-  const inviteItem = page.locator('[data-testid^="message-item-"]').first();
+  const inviteItem = page.locator(CONVERSATION_ROW).first();
   await inviteItem.click();
   await expect(page.locator('[data-testid^="message-bubble-content-"]', { hasText: /invited you to join/i })).toBeVisible();
 
@@ -366,7 +380,7 @@ test('MSG-105 Replying To Your Own Just-Sent Message Reaches The Recipient, Not 
 
   // The coach conversation is the more recent of the two rows
   // (welcome message + this one).
-  await page.locator('[data-testid^="message-item-"]').first().click();
+  await page.locator(CONVERSATION_ROW).first().click();
   await expect(page.locator('[data-testid^="message-bubble-content-"]', { hasText: content })).toBeVisible();
 
   await page.getByTestId('button-reply').click();
@@ -400,7 +414,7 @@ test('MSG-105 Replying To Your Own Just-Sent Message Reaches The Recipient, Not 
 
   // The most recently active conversation for the coach is this one
   // (they just "received" the follow-up).
-  await page.locator('[data-testid^="message-item-"]').first().click();
+  await page.locator(CONVERSATION_ROW).first().click();
 
   await expect(page.locator('[data-testid^="message-bubble-content-"]', { hasText: content })).toBeVisible();
   await expect(page.locator('[data-testid^="message-bubble-content-"]', { hasText: followUp })).toBeVisible();
@@ -408,6 +422,11 @@ test('MSG-105 Replying To Your Own Just-Sent Message Reaches The Recipient, Not 
 });
 
 test('MSG-106 Only A Participant Can Delete A Conversation', async ({ page }) => {
+  // Multi-account flow (2-3 fresh accounts, each registered + verified
+  // through the UI, plus an admin step). Measured 55-78 s on Staging on
+  // 28 Oct against the 60 s default - test.slow() gives it 3x, instead of
+  // raising the timeout for the whole suite.
+  test.slow();
 
   // ---------- Test data ----------
 
@@ -496,7 +515,7 @@ test('MSG-108 Welcome System Message Appears On Registration', async ({ page }) 
   // A brand-new account has exactly one conversation: the automatic
   // welcome message.
 
-  const welcomeItem = page.locator('[data-testid^="message-item-"]');
+  const welcomeItem = page.locator(CONVERSATION_ROW);
   await expect(welcomeItem).toHaveCount(1);
   await expect(welcomeItem).toContainText('Tennis Connect');
 
@@ -516,7 +535,7 @@ test('MSG-109 Cannot Reply To A System Message With No Real Sender', async ({ pa
   await page.goto('/messages');
 
   // A brand-new account has exactly one conversation: the welcome message.
-  await page.locator('[data-testid^="message-item-"]').first().click();
+  await page.locator(CONVERSATION_ROW).first().click();
 
   // ---------- Final verification ----------
   // Previously the Reply button was clickable here and sending always
@@ -531,6 +550,11 @@ test('MSG-109 Cannot Reply To A System Message With No Real Sender', async ({ pa
 });
 
 test('MSG-110 Organiser-Approval Message Has A Real Sender And Can Be Replied To', async ({ page }) => {
+  // Multi-account flow (2-3 fresh accounts, each registered + verified
+  // through the UI, plus an admin step). Measured 55-78 s on Staging on
+  // 28 Oct against the 60 s default - test.slow() gives it 3x, instead of
+  // raising the timeout for the whole suite.
+  test.slow();
 
   // ---------- Test data (a fresh player, promoted to organiser) ----------
 
@@ -554,7 +578,7 @@ test('MSG-110 Organiser-Approval Message Has A Real Sender And Can Be Replied To
 
   // Two rows: the organiser's own welcome message, and the approval
   // message - the approval message is the more recent of the two.
-  const approvalItem = page.locator('[data-testid^="message-item-"]').first();
+  const approvalItem = page.locator(CONVERSATION_ROW).first();
   await expect(approvalItem).toBeVisible();
   await approvalItem.click();
   await expect(page.locator('[data-testid^="message-bubble-content-"]', { hasText: /approved as an organiser/i })).toBeVisible();
@@ -582,6 +606,11 @@ test('MSG-110 Organiser-Approval Message Has A Real Sender And Can Be Replied To
 });
 
 test('MSG-111 Community Invite - Accept', async ({ page }) => {
+  // Multi-account flow (2-3 fresh accounts, each registered + verified
+  // through the UI, plus an admin step). Measured 55-78 s on Staging on
+  // 28 Oct against the 60 s default - test.slow() gives it 3x, instead of
+  // raising the timeout for the whole suite.
+  test.slow();
 
   // ---------- Test data (organiser with their own organisation) ----------
 
@@ -629,7 +658,7 @@ test('MSG-111 Community Invite - Accept', async ({ page }) => {
 
   // Two rows: the invitee's own welcome message, and the invite - the
   // invite is the more recent of the two.
-  const inviteItem = page.locator('[data-testid^="message-item-"]').first();
+  const inviteItem = page.locator(CONVERSATION_ROW).first();
   await expect(inviteItem).toBeVisible();
   await inviteItem.click();
   await expect(page.locator('[data-testid^="message-bubble-content-"]', { hasText: /invited you to join/i })).toBeVisible();
@@ -659,6 +688,11 @@ test('MSG-111 Community Invite - Accept', async ({ page }) => {
 });
 
 test('MSG-112 Community Invite - Decline', async ({ page }) => {
+  // Multi-account flow (2-3 fresh accounts, each registered + verified
+  // through the UI, plus an admin step). Measured 55-78 s on Staging on
+  // 28 Oct against the 60 s default - test.slow() gives it 3x, instead of
+  // raising the timeout for the whole suite.
+  test.slow();
 
   // ---------- Test data (organiser with their own organisation) ----------
 
@@ -704,7 +738,7 @@ test('MSG-112 Community Invite - Decline', async ({ page }) => {
   await login(page, invitee.email, invitee.password);
   await page.goto('/messages');
 
-  const inviteItem = page.locator('[data-testid^="message-item-"]').first();
+  const inviteItem = page.locator(CONVERSATION_ROW).first();
   await expect(inviteItem).toBeVisible();
   await inviteItem.click();
   await expect(page.locator('[data-testid^="message-bubble-content-"]', { hasText: /invited you to join/i })).toBeVisible();
@@ -734,6 +768,11 @@ test('MSG-112 Community Invite - Decline', async ({ page }) => {
 });
 
 test("MSG-116 Admin Inbox Row For An Avatar-Less Recipient Shows Their Initial, Not The Admin's Own Photo", async ({ page }) => {
+  // Multi-account flow (2-3 fresh accounts, each registered + verified
+  // through the UI, plus an admin step). Measured 55-78 s on Staging on
+  // 28 Oct against the 60 s default - test.slow() gives it 3x, instead of
+  // raising the timeout for the whole suite.
+  test.slow();
 
   // ---------- Test data ----------
   // A fresh registration never gets a default avatar (see the
@@ -757,7 +796,7 @@ test("MSG-116 Admin Inbox Row For An Avatar-Less Recipient Shows Their Initial, 
   await page.goto('/messages');
 
   const conversationItem = page
-    .locator('[data-testid^="message-item-"]')
+    .locator(CONVERSATION_ROW)
     .filter({ hasText: player.name });
 
   // ---------- Verify ----------

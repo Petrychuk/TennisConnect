@@ -56,6 +56,11 @@ test('PUBLIC-007 Players directory pagination navigates to next page', async ({ 
 
   await page.goto('/players');
 
+  const cards = page.locator('[data-testid^="player-card-"]');
+  // The pager only renders once the first page has loaded - without this
+  // wait the skip check below could run before the list exists.
+  await expect(cards.first()).toBeVisible();
+
   const nextButton = page.getByTestId('pagination-next-button');
 
   // Only relevant when there is more than one page of players.
@@ -65,14 +70,19 @@ test('PUBLIC-007 Players directory pagination navigates to next page', async ({ 
 
   await expect(nextButton).toBeEnabled();
 
-  const firstPageFirstCard = await page
-    .locator('[data-testid^="player-card-"]')
-    .first()
-    .getAttribute('data-testid');
+  const firstPageFirstCard = await cards.first().getAttribute('data-testid');
+  expect(firstPageFirstCard).toBeTruthy();
 
   // ---------- Actions ----------
 
+  const page2Response = page.waitForResponse(
+    (r) => r.request().method() === 'GET' && r.url().includes('/api/players') && /[?&]page=2\b/.test(r.url()),
+  );
   await nextButton.click();
+
+  // ---------- Verify request ----------
+
+  expect((await page2Response).ok()).toBeTruthy();
 
   // ---------- Verify ----------
 
@@ -80,12 +90,12 @@ test('PUBLIC-007 Players directory pagination navigates to next page', async ({ 
     page.getByTestId('pagination-page-2')
   ).toHaveAttribute('aria-current', 'page');
 
-  const secondPageFirstCard = await page
-    .locator('[data-testid^="player-card-"]')
-    .first()
-    .getAttribute('data-testid');
-
-  expect(secondPageFirstCard).not.toBe(firstPageFirstCard);
+  // The pager marks page 2 as soon as it's clicked, but the cards change only
+  // when page 2's data has rendered. Reading the first card right away (as
+  // before) raced that render and saw page 1's card. This retries until the
+  // first card really is a different player - it still fails if page 2 never
+  // shows different results.
+  await expect(cards.first()).not.toHaveAttribute('data-testid', firstPageFirstCard!);
 
 });
 
