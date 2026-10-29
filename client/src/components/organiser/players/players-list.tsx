@@ -18,7 +18,7 @@ interface PlayersListProps {
 }
 
 const LEVEL_BADGE_STYLE: Record<OrgPlayer["levelLabel"], string> = {
-  Advanced: "bg-primary/10 text-primary",
+  Advanced: "bg-primary/20 text-primary-text",
   Intermediate: "bg-secondary text-secondary-foreground",
   Social: "bg-muted text-muted-foreground",
   Beginner: "bg-accent text-accent-foreground",
@@ -42,7 +42,7 @@ export function PlayersList({ players, showSessions = true }: PlayersListProps) 
         >
           <CardContent className="p-3 flex items-center gap-3">
             <Avatar className="h-9 w-9 border border-border">
-              <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
+              <AvatarFallback className="bg-primary/10 text-primary-text text-xs font-bold">
                 {player.name[0]}
               </AvatarFallback>
             </Avatar>
@@ -61,8 +61,8 @@ export function PlayersList({ players, showSessions = true }: PlayersListProps) 
             <div onClick={(e) => e.stopPropagation()}>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="shrink-0" data-testid={`organiser-players-page-list-item-${player.id}-menu`}>
-                    <MoreHorizontal className="w-4 h-4" />
+                  <Button variant="ghost" size="icon" aria-label="More actions" className="shrink-0" data-testid={`organiser-players-page-list-item-${player.id}-menu`}>
+                    <MoreHorizontal aria-hidden="true" className="w-4 h-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">

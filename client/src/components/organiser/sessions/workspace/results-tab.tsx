@@ -63,7 +63,7 @@ export function ResultsTab({ session }: ResultsTabProps) {
     <Card className="shadow-sm" data-testid="organiser-session-results-tab">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base flex items-center gap-2">
-          <Trophy className="w-4 h-4 text-primary" />
+          <Trophy className="w-4 h-4 text-primary-text" />
           Final Standings
         </CardTitle>
         <div className="flex items-center gap-2">
@@ -97,7 +97,7 @@ export function ResultsTab({ session }: ResultsTabProps) {
             <span className="w-5 text-sm font-bold text-muted-foreground text-center shrink-0">{i + 1}</span>
             <Avatar className="h-8 w-8 border border-border">
               <AvatarImage src={entry.userAvatar || undefined} />
-              <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">{entry.userName[0]}</AvatarFallback>
+              <AvatarFallback className="bg-primary/10 text-primary-text text-xs font-bold">{entry.userName[0]}</AvatarFallback>
             </Avatar>
             <span className="text-sm flex-1">{entry.userName}</span>
             <span className="text-sm font-semibold">

@@ -144,7 +144,7 @@ export default function OrganiserSessionTemplateEditPage() {
             <div className="space-y-1.5">
               <Label>Session Type</Label>
               <Select value={form.type ?? "social"} onValueChange={(v) => set("type", v)}>
-                <SelectTrigger data-testid="organiser-template-edit-type"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Session type" data-testid="organiser-template-edit-type"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {SESSION_TYPE_OPTIONS.map((t) => (
                     <SelectItem key={t.key} value={t.key}>{t.label}</SelectItem>
@@ -164,7 +164,7 @@ export default function OrganiserSessionTemplateEditPage() {
             <div className="space-y-1.5">
               <Label>City / Timezone</Label>
               <Select value={form.timeZone ?? "Australia/Sydney"} onValueChange={(v) => set("timeZone", v)}>
-                <SelectTrigger data-testid="organiser-template-edit-timezone"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="City / timezone" data-testid="organiser-template-edit-timezone"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {AU_CITY_TIMEZONES.map((c) => (
                     <SelectItem key={c.timeZone} value={c.timeZone}>{c.label}</SelectItem>
@@ -237,7 +237,7 @@ export default function OrganiserSessionTemplateEditPage() {
             <div className="space-y-1.5">
               <Label>Singles / Doubles</Label>
               <Select value={form.matchMode ?? "doubles"} onValueChange={(v) => set("matchMode", v)}>
-                <SelectTrigger data-testid="organiser-template-edit-matchmode"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Singles / doubles" data-testid="organiser-template-edit-matchmode"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="singles">Singles</SelectItem>
                   <SelectItem value="doubles">Doubles</SelectItem>

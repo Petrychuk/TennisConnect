@@ -16,6 +16,7 @@ import express from "express";
 import { createTestHooksRouter, type TestHooksDeps } from "./testHooksRouter";
 import type { TestHookConfig } from "../lib/testHookSecurity";
 import { CapturedEmailStore } from "../services/emailCapture";
+import { classifyEmail, generateRunId, isOwnedByRun, runScopedEmail } from "../seeds/e2e/identities";
 
 let passed = 0;
 let failed = 0;
@@ -38,6 +39,14 @@ const SECRET = `route-${"s".repeat(40)}-${Math.random().toString(36).slice(2)}`;
 
 const STAGING: TestHookConfig = { nodeEnv: "production", dbEnv: "staging", secret: SECRET };
 const PRODUCTION: TestHookConfig = { nodeEnv: "production", dbEnv: "production", secret: SECRET };
+const LOCAL_DEV: TestHookConfig = { nodeEnv: "development", dbEnv: undefined, secret: SECRET };
+
+// Run ownership (layer 4): this test's run, and another concurrent run.
+const RUN = generateRunId(1_790_000_000_000, Buffer.from("00112233445566aa", "hex"));
+const OTHER_RUN = generateRunId(1_790_000_000_001, Buffer.from("ffeeddccbbaa9988", "hex"));
+const ORGANISER_EMAIL = runScopedEmail(RUN, "organiser");
+const P1_EMAIL = runScopedEmail(RUN, "p1");
+const P2_EMAIL = runScopedEmail(RUN, "p2");
 
 interface FakeUser {
   id: string;
@@ -49,14 +58,21 @@ interface FakeUser {
 
 function makeWorld() {
   const users: FakeUser[] = [
-    { id: "organiser", email: "organiser@tennisconnect.test", name: "Org", slug: "org", isTestUser: true },
-    { id: "p1", email: "p1@tennisconnect.test", name: "P1", slug: "p1", isTestUser: true },
-    { id: "p2", email: "p2@tennisconnect.test", name: "P2", slug: "p2", isTestUser: true },
+    { id: "organiser", email: ORGANISER_EMAIL, name: "Org", slug: "org", isTestUser: true },
+    { id: "p1", email: P1_EMAIL, name: "P1", slug: "p1", isTestUser: true },
+    { id: "p2", email: P2_EMAIL, name: "P2", slug: "p2", isTestUser: true },
+    // Test users this run does NOT own:
+    { id: "other-run-organiser", email: runScopedEmail(OTHER_RUN, "organiser"), name: "Other", slug: "other-org", isTestUser: true },
+    { id: "other-run-player", email: runScopedEmail(OTHER_RUN, "p1"), name: "Other P", slug: "other-p", isTestUser: true },
+    { id: "legacy-player", email: "test_player_1700000000000_abcd1234@tennisconnect.test", name: "Legacy", slug: "legacy", isTestUser: true },
+    // Shared seeded fixture account (may take part in any run's session):
+    { id: "fixture-player", email: "e2e-fixture-player-01@tennisconnect.test", name: "Fixture", slug: "fx", isTestUser: true },
     { id: "real-user", email: "real.person@gmail.com", name: "Real", slug: "real", isTestUser: false },
   ];
   const organizations = [
     { id: "org-test", ownerId: "organiser" },
     { id: "org-real", ownerId: "real-user" },
+    { id: "org-other-run", ownerId: "other-run-organiser" },
   ];
   const seasons = [{ id: "season-test", organizationId: "org-test" }];
   const series = [{ id: "series-test", organizationId: "org-test", seasonId: "season-test" }];
@@ -99,7 +115,36 @@ function makeWorld() {
   emails.add({ to: "p1@tennisconnect.test", subject: "Confirm your email", text: "Go https://staging.example/verify-email?token=abc", html: "" });
   emails.add({ to: "real.person@gmail.com", subject: "Reset your password", text: "https://staging.example/reset?token=REAL-USER-TOKEN", html: "" });
 
-  return { users, writes, tokensIssued, storage, emails };
+  // Fake Stage 3 cleanup service - records calls; behaviour of the real
+  // service is covered by server/services/e2eRunCleanup.pg.test.ts.
+  const cleanupCalls: string[] = [];
+  let cleanupRefusal: string | null = null;
+  const runCleanupDeps = {
+    async plan(runId: string) {
+      cleanupCalls.push(`plan:${runId}`);
+      return { runId, users: [], organizationIds: [], counts: {} as any, storagePrefixes: [], refusals: [], storageFiles: 0, storageCleanup: "disabled" as const };
+    },
+    async apply(runId: string) {
+      cleanupCalls.push(`apply:${runId}`);
+      if (cleanupRefusal) {
+        const error = Object.assign(new Error(`[e2e-cleanup] refusing to clean up: ${cleanupRefusal}`), {
+          name: "RunCleanupError",
+          plan: { refusals: [cleanupRefusal] },
+        });
+        throw error;
+      }
+      return { plan: { runId } as any, storage: { removed: 0, skipped: false }, organizations: null, usersDeleted: 2 };
+    },
+    async residue() {
+      cleanupCalls.push("residue");
+      return [{ runId: "r0000000-0000000000000000", users: 1, oldestCreatedAt: null }];
+    },
+  };
+  const refuseCleanup = (reason: string) => {
+    cleanupRefusal = reason;
+  };
+
+  return { users, writes, tokensIssued, storage, emails, cleanupCalls, runCleanupDeps, refuseCleanup };
 }
 
 async function withServer(
@@ -122,7 +167,9 @@ async function withServer(
       emailTransport: "capture",
       stripeMode: "test",
       stripeWebhookConfigured: true,
+      storageHost: "staging-project.supabase.co",
     }),
+    runCleanup: world.runCleanupDeps,
   };
 
   const app = express();
@@ -151,7 +198,8 @@ async function withServer(
   }
 }
 
-const auth = { "X-E2E-Test-Secret": SECRET };
+const secretOnly = { "X-E2E-Test-Secret": SECRET };
+const auth = { ...secretOnly, "X-E2E-Run-Id": RUN };
 
 const validSession = () => ({
   organizationId: "org-test",
@@ -165,11 +213,13 @@ const validSession = () => ({
 });
 
 const HOOK_CALLS: [string, unknown][] = [
-  ["issue-verification-token", { email: "p1@tennisconnect.test" }],
+  ["issue-verification-token", { email: P1_EMAIL }],
   ["seed-players", { count: 2 }],
   ["seed-session", validSession()],
   ["preflight", {}],
   ["emails", { to: "p1@tennisconnect.test" }],
+  ["cleanup-run", {}],
+  ["run-residue", {}],
 ];
 
 // Capture everything the router logs, to prove the secret never appears.
@@ -211,7 +261,7 @@ async function main() {
 
   await test("correct secret on Staging -> issue-verification-token works for a test user", () =>
     withServer(STAGING, async (call, world) => {
-      const res = await call("issue-verification-token", { email: "P1@tennisconnect.test" }, auth);
+      const res = await call("issue-verification-token", { email: P1_EMAIL.toUpperCase() }, auth);
       assert.equal(res.status, 200, res.text);
       assert.equal(res.json.token, "token-for-p1");
       assert.deepEqual(world.tokensIssued, ["p1"]);
@@ -300,7 +350,7 @@ async function main() {
     withServer(STAGING, async (call) => {
       const res = await call("preflight", {}, auth);
       assert.equal(res.status, 200, res.text);
-      assert.deepEqual(Object.keys(res.json).sort(), ["commit", "dbEnv", "emailTransport", "stripeMode", "stripeWebhookConfigured"]);
+      assert.deepEqual(Object.keys(res.json).sort(), ["commit", "dbEnv", "emailTransport", "storageHost", "stripeMode", "stripeWebhookConfigured"]);
       assert.equal(res.json.emailTransport, "capture");
       assert.ok(!res.text.includes(SECRET));
     }));
@@ -327,6 +377,145 @@ async function main() {
     withServer(STAGING, async (call) => {
       assert.equal((await call("emails", { to: "p1@tennisconnect.test", sinceMs: "yesterday" }, auth)).status, 400);
       assert.equal((await call("emails", { to: "p1@tennisconnect.test", subjectContains: 5 }, auth)).status, 400);
+    }));
+
+  // ---------- Run ownership (layer 4) ----------
+
+  await test("Staging: record-creating hooks require X-E2E-Run-Id (400, nothing written)", () =>
+    withServer(STAGING, async (call, world) => {
+      for (const [path, body] of HOOK_CALLS.filter(([path]) => !["preflight", "emails", "run-residue"].includes(path))) {
+        const res = await call(path, body, secretOnly);
+        assert.equal(res.status, 400, path);
+        assert.match(res.json.message, /X-E2E-Run-Id is required/);
+      }
+      assert.deepEqual(world.writes, []);
+      assert.deepEqual(world.tokensIssued, []);
+      // Read-only hooks need no run.
+      assert.equal((await call("preflight", {}, secretOnly)).status, 200);
+      assert.equal((await call("emails", { to: "p1@tennisconnect.test" }, secretOnly)).status, 200);
+    }));
+
+  await test("a malformed run id is refused everywhere (also locally), nothing written", async () => {
+    for (const config of [STAGING, LOCAL_DEV]) {
+      await withServer(config, async (call, world) => {
+        for (const bad of ["abc", "r123-xyz", `${RUN}-extra`, RUN.toUpperCase()]) {
+          for (const path of ["seed-players", "seed-session", "issue-verification-token"]) {
+            const body = HOOK_CALLS.find(([name]) => name === path)![1];
+            assert.equal((await call(path, body, { ...secretOnly, "X-E2E-Run-Id": bad })).status, 400, `${path} ${bad}`);
+          }
+        }
+        assert.deepEqual(world.writes, []);
+      });
+    }
+  });
+
+  await test("seed-players creates users owned by exactly the calling run", () =>
+    withServer(STAGING, async (call) => {
+      const res = await call("seed-players", { count: 3 }, auth);
+      assert.equal(res.status, 200, res.text);
+      for (const player of res.json.players as { email: string }[]) {
+        assert.equal(classifyEmail(player.email).kind, "run", player.email);
+        assert.ok(isOwnedByRun(player.email, RUN), player.email);
+        assert.ok(!isOwnedByRun(player.email, OTHER_RUN));
+      }
+    }));
+
+  await test("seed-session: another run's (or an unowned) creator is refused, nothing written", () =>
+    withServer(STAGING, async (call, world) => {
+      for (const createdBy of ["other-run-organiser", "legacy-player"]) {
+        const res = await call("seed-session", { ...validSession(), organizationId: "org-other-run", createdBy }, auth);
+        assert.equal(res.status, 403, createdBy);
+      }
+      assert.deepEqual(world.writes, []);
+    }));
+
+  await test("seed-session: participants from another run or no run are refused; fixture accounts allowed", () =>
+    withServer(STAGING, async (call, world) => {
+      for (const userId of ["other-run-player", "legacy-player"]) {
+        const res = await call("seed-session", { ...validSession(), registrations: [{ userId }], matches: [] }, auth);
+        assert.equal(res.status, 403, userId);
+        assert.match(res.json.message, /belong to this test run/);
+        const asPlayer = await call(
+          "seed-session",
+          { ...validSession(), matches: [{ teamAIds: ["p1"], teamBIds: [userId], teamAGames: 6, teamBGames: 1 }] },
+          auth
+        );
+        assert.equal(asPlayer.status, 403, `${userId} as match player`);
+      }
+      assert.deepEqual(world.writes, []);
+      const ok = await call("seed-session", { ...validSession(), registrations: [{ userId: "p1" }, { userId: "fixture-player" }], matches: [] }, auth);
+      assert.equal(ok.status, 200, ok.text);
+    }));
+
+  await test("issue-verification-token: only for the calling run's users", () =>
+    withServer(STAGING, async (call, world) => {
+      for (const email of [runScopedEmail(OTHER_RUN, "p1"), "test_player_1700000000000_abcd1234@tennisconnect.test"]) {
+        const res = await call("issue-verification-token", { email }, auth);
+        assert.equal(res.status, 403, email);
+      }
+      assert.deepEqual(world.tokensIssued, []);
+      assert.equal((await call("issue-verification-token", { email: P1_EMAIL }, auth)).status, 200);
+    }));
+
+  await test("local development without a run id keeps the previous behaviour", () =>
+    withServer(LOCAL_DEV, async (call) => {
+      const players = await call("seed-players", { count: 1 }, secretOnly);
+      assert.equal(players.status, 200, players.text);
+      assert.match(players.json.players[0].email, /^seed_player_.*@tennisconnect\.test$/);
+      const token = await call("issue-verification-token", { email: "test_player_1700000000000_abcd1234@tennisconnect.test" }, secretOnly);
+      assert.equal(token.status, 200, token.text);
+    }));
+
+  // ---------- Stage 3 run-scoped cleanup hooks ----------
+
+  await test("cleanup-run: dry run by default - plans, never applies", () =>
+    withServer(STAGING, async (call, world) => {
+      const res = await call("cleanup-run", {}, auth);
+      assert.equal(res.status, 200, res.text);
+      assert.equal(res.json.mode, "dry-run");
+      assert.deepEqual(world.cleanupCalls, [`plan:${RUN}`]);
+      const explicit = await call("cleanup-run", { apply: false, confirmRunId: RUN }, auth);
+      assert.equal(explicit.json.mode, "dry-run");
+      assert.ok(!world.cleanupCalls.some((c) => c.startsWith("apply")));
+    }));
+
+  await test("cleanup-run: needs a run id everywhere (also locally) - 400, nothing called", async () => {
+    for (const config of [STAGING, LOCAL_DEV]) {
+      await withServer(config, async (call, world) => {
+        const res = await call("cleanup-run", { apply: true, confirmRunId: RUN }, secretOnly);
+        assert.equal(res.status, 400, res.text);
+        assert.deepEqual(world.cleanupCalls, []);
+      });
+    }
+  });
+
+  await test("cleanup-run: apply needs confirmRunId repeating the header", () =>
+    withServer(STAGING, async (call, world) => {
+      for (const body of [{ apply: true }, { apply: true, confirmRunId: OTHER_RUN }, { apply: true, confirmRunId: "" }, { apply: "yes", confirmRunId: RUN }]) {
+        const res = await call("cleanup-run", body, auth);
+        assert.equal(res.status, 400, JSON.stringify(body));
+      }
+      assert.deepEqual(world.cleanupCalls, []);
+      const ok = await call("cleanup-run", { apply: true, confirmRunId: RUN }, auth);
+      assert.equal(ok.status, 200, ok.text);
+      assert.equal(ok.json.mode, "apply");
+      assert.deepEqual(world.cleanupCalls, [`apply:${RUN}`]);
+    }));
+
+  await test("cleanup-run: a refusal answers 409 with the reasons", () =>
+    withServer(STAGING, async (call, world) => {
+      world.refuseCleanup("1 registration(s) in this run's sessions by users outside the run");
+      const res = await call("cleanup-run", { apply: true, confirmRunId: RUN }, auth);
+      assert.equal(res.status, 409, res.text);
+      assert.deepEqual(res.json.refusals, ["1 registration(s) in this run's sessions by users outside the run"]);
+    }));
+
+  await test("run-residue: read-only listing", () =>
+    withServer(STAGING, async (call, world) => {
+      const res = await call("run-residue", {}, secretOnly);
+      assert.equal(res.status, 200, res.text);
+      assert.equal(res.json.runs.length, 1);
+      assert.deepEqual(world.cleanupCalls, ["residue"]);
     }));
 
   console.log(`\n${passed} passed, ${failed} failed`);

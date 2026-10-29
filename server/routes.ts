@@ -27,6 +27,8 @@ import weatherRouter from "./routes/weather";
 import supportRouter from "./routes/support";
 import testHooksRouter from "./routes/testHooks";
 import { shouldFlagRegistrationAsTestUser } from "./lib/testHookSecurity";
+import { publicAppUrl } from "./lib/appUrl";
+import { e2eRunRateLimitSkip } from "./lib/e2eRateLimit";
 import { buildHealthPayload } from "./lib/health";
 
 import {
@@ -40,6 +42,7 @@ import {
   passwordResetTokens,
 } from "@shared/schema";
 import { z } from "zod";
+import { coachProfileUpdateSchema } from "./lib/coachProfileUpdate";
 import { sendPasswordResetEmail, sendVerificationEmail, sendDuplicateRegistrationAlertEmail } from "./services/emailService";
 import { issueVerificationToken, verifyEmailToken } from "./services/emailVerification";
 import { db } from "./db";
@@ -59,12 +62,25 @@ import sitemapRoutes from "./routes/sitemapRoutes";
 // Brute-force / abuse protection for auth endpoints. Login gets the
 // tightest window since it's the classic credential-stuffing target;
 // register/forgot-password get a looser one mainly to stop spam/enum.
+
+// Base URL for links in emails - a known site for this environment, never
+// the raw (caller-controlled) Origin header. See server/lib/appUrl.ts.
+function emailLinkBase(req: Request): string {
+  return publicAppUrl({ origin: req.headers.origin, dbEnv: process.env.DB_ENV, configured: process.env.APP_URL });
+}
+
+//
+// skip: on Staging ONLY, requests for temporary E2E run accounts
+// (e2e-run-<runId>-...@tennisconnect.test) are not counted, so a CI
+// regression run from one IP is not throttled. Production, the permanent
+// e2e-* accounts and everyone else stay limited - see server/lib/e2eRateLimit.ts.
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   limit: 10,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many login attempts. Please try again later." },
+  skip: e2eRunRateLimitSkip(),
 });
 
 const authActionLimiter = rateLimit({
@@ -73,6 +89,7 @@ const authActionLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many requests. Please try again later." },
+  skip: e2eRunRateLimitSkip(),
 });
 
 // Tighter than authActionLimiter on purpose - "resend" is the one auth
@@ -116,24 +133,7 @@ const playerProfileUpdateSchema = z.object({
   availabilityStatus: z.string().max(50).optional(),
 });
 
-const coachProfileUpdateSchema = z.object({
-  country: z.string().max(100).optional(),
-  isCertified: z.boolean().optional(),
-  certificationDetails: z.string().max(200).optional(),
-  title: z.string().trim().min(1).max(100).optional(),
-  location: z.string().trim().min(1).max(100).optional(),
-  bio: z.string().trim().max(2000).optional(),
-  tags: z.array(z.string()).optional(),
-  photos: z.array(z.string()).optional(),
-  rate: z.string().max(50).optional(),
-  experience: z.string().max(50).optional(),
-  phone: z.string().max(30).optional(),
-  email: z.string().email().max(200).optional(),
-  locations: z.array(z.string()).optional(),
-  schedule: z.any().optional(),
-  // Deliberately NOT included: rating, reviews - those are earned
-  // (reviews left by other users), never self-reported.
-});
+// Validation for PUT /api/me/coach-profile - see server/lib/coachProfileUpdate.ts.
 
 function requireRole(role: "player" | "coach") {
   return (req: Request, res: Response, next: Function) => {
@@ -316,7 +316,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       // first session gets created). Registering no longer implies
       // being signed in.
       const { token } = await issueVerificationToken(user.id);
-      const verifyUrl = `${req.headers.origin || 'https://www.tennisconnect.com.au'}/verify-email?token=${token}`;
+      const verifyUrl = `${emailLinkBase(req)}/verify-email?token=${token}`;
 
       // Fired, not awaited - same reasoning as forgot-password below:
       // a slow/stalled Resend call shouldn't hold this response open,
@@ -505,7 +505,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
 
       const { token } = await issueVerificationToken(user.id);
-      const verifyUrl = `${req.headers.origin || 'https://www.tennisconnect.com.au'}/verify-email?token=${token}`;
+      const verifyUrl = `${emailLinkBase(req)}/verify-email?token=${token}`;
 
       sendVerificationEmail(user.email, verifyUrl)
         .then((emailResult) => {
@@ -561,7 +561,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       });
 
       // Send email via Resend
-      const resetUrl = `${req.headers.origin || 'https://www.tennisconnect.com.au'}/reset-password?token=${token}`;
+      const resetUrl = `${emailLinkBase(req)}/reset-password?token=${token}`;
 
       // Fired, not awaited: the response message below is already fixed
       // regardless of whether the email actually sends (same reason the

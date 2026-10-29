@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { FilterChip, FILTER_CHIP_ROW } from "@/components/shared/filters";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { Heart, MapPin, Clock, Star, Search } from "lucide-react";
@@ -8,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import SEO from "@/components/seo";
+import { HeroBadge } from "@/components/shared/hero-badge";
 
 interface RecreationService {
   id: string;
@@ -83,16 +85,11 @@ export default function RecreationPage() {
           <div className="absolute inset-0 bg-linear-to-b from-black/0 from-0% via-black/35 via-75% to-background to-100% z-10" />
           <div className="relative z-20 container mx-auto px-4 text-left mt-16 md:mt-20">
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md mb-6">
-                <Heart className="w-3.5 h-3.5 text-primary" />
-                <span className="text-xs sm:text-sm font-bold tracking-wider uppercase text-white">
-                  Tennis Recreation
-                </span>
-              </div>
-              <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold mb-4 tracking-tight text-white drop-shadow-md">
+              <HeroBadge icon={<Heart />} className="mb-6">Tennis Recreation</HeroBadge>
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold mb-4 tracking-tight text-white tc-hero-text">
                 Body. Mind. <span className="text-primary">Performance.</span>
               </h1>
-              <p className="text-lg md:text-xl text-white/85 max-w-2xl font-light drop-shadow-sm">
+              <p className="text-lg md:text-xl text-white max-w-2xl font-medium tc-hero-intro">
                 Massage, cryo, yoga, physio — designed for tennis bodies.
               </p>
             </motion.div>
@@ -111,20 +108,16 @@ export default function RecreationPage() {
                 data-testid="recreation-search-input"
               />
             </div>
-            <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
+            <div className={FILTER_CHIP_ROW} role="group" aria-label="Service types">
               {TYPES.map((t) => (
-                <button
+                <FilterChip
+                  selected={type === t}
                   key={t}
                   onClick={() => setType(t)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border cursor-pointer ${
-                    type === t
-                      ? "bg-primary text-foreground border-primary"
-                      : "bg-background hover:bg-secondary border-input"
-                  }`}
                   data-testid={`recreation-type-${t}`}
                 >
                   {t}
-                </button>
+                </FilterChip>
               ))}
             </div>
           </div>
@@ -134,9 +127,12 @@ export default function RecreationPage() {
           {filtered.length === 0 ? (
             <div className="text-center py-20">
               <Heart className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-xl font-bold mb-2">No services found</h3>
+              <h2 className="text-xl font-bold mb-2">No services found</h2>
             </div>
           ) : (
+            <>
+            {/* Visually hidden section heading: each service title below is an h3. */}
+            <h2 className="sr-only">Services</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filtered.map((s, i) => (
                 <motion.div key={s.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
@@ -181,6 +177,7 @@ export default function RecreationPage() {
                 </motion.div>
               ))}
             </div>
+            </>
           )}
         </div>
 

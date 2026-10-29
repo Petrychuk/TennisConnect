@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import tennisBallImg from "/assets/images/tennis-ball.webp";
 
 // Full-size version - centered ball + shadow + text, used as a
@@ -36,4 +37,48 @@ export function TennisBallSpinner({ className = "" }: { className?: string }) {
       </span>
     </span>
   );
+}
+// ---------- Delayed page loader ----------
+
+// Most page loads finish well under a second, so showing the ball straight
+// away just made it flash - and, because the full-size loader covers the
+// screen, flash on top of an image that had already loaded. Page-level
+// loading states therefore wait this long before the ball appears; until
+// then only a quiet placeholder (page background, no ball) is shown.
+export const PAGE_LOADER_DELAY_MS = 3000;
+
+/** False until `delayMs` has passed since mount, then true. */
+export function useDelayElapsed(delayMs: number = PAGE_LOADER_DELAY_MS): boolean {
+  const [elapsed, setElapsed] = useState(delayMs <= 0);
+
+  // ---------- Timer ----------
+  useEffect(() => {
+    if (delayMs <= 0) return;
+    const timer = window.setTimeout(() => setElapsed(true), delayMs);
+    return () => window.clearTimeout(timer);
+  }, [delayMs]);
+
+  return elapsed;
+}
+
+/**
+ * Full-size TennisLoader that only appears if loading takes longer than
+ * PAGE_LOADER_DELAY_MS. Before that it renders an empty, accessible
+ * placeholder, so fast loads never flash the ball.
+ */
+export function DelayedTennisLoader({
+  text = "Loading…",
+  delayMs = PAGE_LOADER_DELAY_MS,
+}: { text?: string; delayMs?: number } = {}) {
+  const showLoader = useDelayElapsed(delayMs);
+
+  if (!showLoader) {
+    return (
+      <div className="min-h-[60vh]" aria-busy="true" data-testid="page-loader-pending">
+        <span className="sr-only">{text || "Loading…"}</span>
+      </div>
+    );
+  }
+
+  return <TennisLoader text={text} />;
 }

@@ -52,14 +52,14 @@ export function HomeClubs() {
   }, []);
 
   return (
-    <section className="py-24 bg-black text-white relative overflow-hidden" id="tennis-club">
+    <section className="py-10 md:py-24 bg-black text-white relative overflow-hidden" id="tennis-club">
       <div
         className="absolute inset-0 opacity-10 pointer-events-none"
         style={{ backgroundImage: "radial-gradient(#DFFF00 1px, transparent 1px)", backgroundSize: "20px 20px" }}
       />
 
       <div className="container mx-auto px-4 relative z-10">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-[30px] md:mb-12 gap-4 md:gap-6">
           <div>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -76,7 +76,7 @@ export function HomeClubs() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="text-3xl md:text-5xl font-display font-bold"
+              className="text-[26px] md:text-5xl font-display font-bold"
             >
               Tennis <span className="text-primary">Clubs</span>
             </motion.h2>
@@ -100,7 +100,7 @@ export function HomeClubs() {
           >
             <Link href="/clubs" className="hidden md:block">
               <Button
-                className="flex gap-2 bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full px-6 cursor-pointer"
+                className="flex gap-2 px-6"
                 data-testid="clubs-view-all-button"
               >
                 Discover Clubs <ArrowRight className="w-4 h-4" />
@@ -190,7 +190,7 @@ export function HomeClubs() {
                               </p>
                           )}
                                           </div>
-                      <span className="text-sm font-bold text-primary-text group-hover:underline">View →</span>
+                      <span className="text-sm font-bold text-primary group-hover:underline">View →</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -206,7 +206,7 @@ export function HomeClubs() {
           className="mt-8 md:hidden flex justify-center"
         >
           <Link href="/clubs" className="w-2/3">
-            <Button className="w-full gap-2 bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full cursor-pointer">
+            <Button className="w-full gap-2">
               Explore Clubs <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>

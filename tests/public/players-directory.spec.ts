@@ -16,16 +16,23 @@ test('PUBLIC-005 Players directory lists players', async ({ page }) => {
 
 test('PUBLIC-006 Players directory search filters results', async ({ page }) => {
 
+  // The list is fetched after the page renders (GET /api/players) and the
+  // grid starts empty, so wait for the cards before counting - counting
+  // straight away read 0 and made the "no results" check meaningless.
+
   // ---------- Open page ----------
 
   await page.goto('/players');
 
   const searchInput = page.getByTestId('players-search-input');
-  await expect(searchInput).toBeVisible();
+  const cards = page.locator('[data-testid^="player-card-"]');
+  const noResults = page.getByRole('heading', { name: 'No partners found' });
 
-  const initialCount = await page
-    .locator('[data-testid^="player-card-"]')
-    .count();
+  await expect(searchInput).toBeVisible();
+  await expect(cards.first()).toBeVisible();
+
+  const initialCount = await cards.count();
+  expect(initialCount).toBeGreaterThan(0);
 
   // ---------- Actions ----------
 
@@ -33,15 +40,13 @@ test('PUBLIC-006 Players directory search filters results', async ({ page }) => 
 
   // ---------- Verify ----------
 
-  await expect(
-    page.locator('[data-testid^="player-card-"]')
-  ).toHaveCount(0);
+  await expect(cards).toHaveCount(0);
+  await expect(noResults).toBeVisible();
 
   await searchInput.fill('');
 
-  await expect(
-    page.locator('[data-testid^="player-card-"]')
-  ).toHaveCount(initialCount);
+  await expect(cards).toHaveCount(initialCount);
+  await expect(noResults).toBeHidden();
 
 });
 
@@ -50,6 +55,11 @@ test('PUBLIC-007 Players directory pagination navigates to next page', async ({ 
   // ---------- Open page ----------
 
   await page.goto('/players');
+
+  const cards = page.locator('[data-testid^="player-card-"]');
+  // The pager only renders once the first page has loaded - without this
+  // wait the skip check below could run before the list exists.
+  await expect(cards.first()).toBeVisible();
 
   const nextButton = page.getByTestId('pagination-next-button');
 
@@ -60,14 +70,19 @@ test('PUBLIC-007 Players directory pagination navigates to next page', async ({ 
 
   await expect(nextButton).toBeEnabled();
 
-  const firstPageFirstCard = await page
-    .locator('[data-testid^="player-card-"]')
-    .first()
-    .getAttribute('data-testid');
+  const firstPageFirstCard = await cards.first().getAttribute('data-testid');
+  expect(firstPageFirstCard).toBeTruthy();
 
   // ---------- Actions ----------
 
+  const page2Response = page.waitForResponse(
+    (r) => r.request().method() === 'GET' && r.url().includes('/api/players') && /[?&]page=2\b/.test(r.url()),
+  );
   await nextButton.click();
+
+  // ---------- Verify request ----------
+
+  expect((await page2Response).ok()).toBeTruthy();
 
   // ---------- Verify ----------
 
@@ -75,12 +90,12 @@ test('PUBLIC-007 Players directory pagination navigates to next page', async ({ 
     page.getByTestId('pagination-page-2')
   ).toHaveAttribute('aria-current', 'page');
 
-  const secondPageFirstCard = await page
-    .locator('[data-testid^="player-card-"]')
-    .first()
-    .getAttribute('data-testid');
-
-  expect(secondPageFirstCard).not.toBe(firstPageFirstCard);
+  // The pager marks page 2 as soon as it's clicked, but the cards change only
+  // when page 2's data has rendered. Reading the first card right away (as
+  // before) raced that render and saw page 1's card. This retries until the
+  // first card really is a different player - it still fails if page 2 never
+  // shows different results.
+  await expect(cards.first()).not.toHaveAttribute('data-testid', firstPageFirstCard!);
 
 });
 

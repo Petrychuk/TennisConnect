@@ -116,7 +116,7 @@ export function PlayerHero({
               data-testid={stat.testId}
               className="flex items-center gap-2 py-2.5 px-1 sm:px-4 sm:first:pl-1 min-w-0"
             >
-              <span className="text-primary shrink-0">{stat.icon}</span>
+              <span className="text-primary-text shrink-0">{stat.icon}</span>
               <div className="min-w-0">
                 <p className="text-sm font-semibold leading-tight truncate">{stat.value}</p>
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground truncate">

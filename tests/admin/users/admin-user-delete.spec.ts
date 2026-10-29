@@ -1,6 +1,14 @@
 import { test, expect } from '@playwright/test';
 import { registerPlayer, login } from '../../helpers/auth';
 import { TEST_USERS } from '../../fixtures/test-users';
+import { expectRunOwned } from '../../fixtures/run-id';
+
+// The toast list (Radix ToastViewport, aria-label "Notifications (F8)"). A CSS
+// locator on purpose: while a modal dialog is open the rest of the page is
+// aria-hidden, so getByRole('region') could not see the toast that a failed
+// action shows behind it (ADMIN-003, round 2). The toast's own aria-live
+// announcer lives outside this list, so text inside it matches once.
+const TOAST_LIST = '[role="region"][aria-label^="Notifications"]';
 
 /* ADMIN-002 Delete User - Ordinary Player (happy path)
 
@@ -12,6 +20,9 @@ test('ADMIN-002 Delete User - ordinary player succeeds', async ({ page }) => {
   // ---------- Test data ----------
 
   const player = await registerPlayer(page);
+  // Destructive admin test: every target must belong to this run (never a
+  // permanent Stage 2 account, another run's user or a real user).
+  expectRunOwned(player.email);
 
   // ---------- Login as admin ----------
 
@@ -50,7 +61,7 @@ test('ADMIN-002 Delete User - ordinary player succeeds', async ({ page }) => {
 
   // ---------- Final verification ----------
 
-  await expect(page.getByText(/user deleted/i)).toBeVisible();
+  await expect(page.locator(TOAST_LIST).getByText(/user deleted/i)).toBeVisible(); // toast list only - its live announcer repeats the text
   await expect(row).not.toBeVisible();
 
 });
@@ -72,11 +83,19 @@ automatically instead of needing this button at all - see ADMIN-008.)
 ✓ Deleting the (now org-less) user succeeds where it was blocked before */
 
 test('ADMIN-007 Delete Organization unblocks deleting its owner', async ({ page }) => {
+  // Multi-account flow (2-3 fresh accounts, each registered + verified
+  // through the UI, plus an admin step). Measured 55-78 s on Staging on
+  // 28 Oct against the 60 s default - test.slow() gives it 3x, instead of
+  // raising the timeout for the whole suite.
+  test.slow();
 
   // ---------- Test data: an organiser who owns an organization,
   // same setup as ADMIN-003 ----------
 
   const orgOwner = await registerPlayer(page);
+  // Destructive admin test: every target must belong to this run (never a
+  // permanent Stage 2 account, another run's user or a real user).
+  expectRunOwned(orgOwner.email);
 
   await login(
     page,
@@ -150,7 +169,7 @@ test('ADMIN-007 Delete Organization unblocks deleting its owner', async ({ page 
   ]);
 
   expect(orgDeleteResponse.ok()).toBeTruthy();
-  await expect(page.getByText(/organization deleted/i)).toBeVisible();
+  await expect(page.locator(TOAST_LIST).getByText(/organization deleted/i)).toBeVisible(); // toast list only - its live announcer repeats the text
 
   // ---------- The owner's row is untouched - still there, delete
   // button no longer blocked by an organization ----------
@@ -202,6 +221,9 @@ test('ADMIN-003 Delete User - blocked with real reason when the organization has
   // who then creates their own organization with a session under it ----------
 
   const player = await registerPlayer(page);
+  // Destructive admin test: every target must belong to this run (never a
+  // permanent Stage 2 account, another run's user or a real user).
+  expectRunOwned(player.email);
 
   await login(
     page,
@@ -284,7 +306,11 @@ test('ADMIN-003 Delete User - blocked with real reason when the organization has
   // ---------- Final verification: toast shows the real reason, and the
   // user was NOT actually deleted ----------
 
-  await expect(page.getByText(/you own an organization/i)).toBeVisible();
+  // Inside the toast list: the toast's aria-live announcer repeats the same
+  // text, so a page-wide getByText matched two elements (strict mode).
+  await expect(
+    page.locator(TOAST_LIST).getByText(/you own an organization/i)
+  ).toBeVisible();
   await expect(row).toBeVisible();
 
 });
@@ -305,6 +331,9 @@ deliberately chooses to force it).
 test('ADMIN-008 Delete User - an empty organization is cascaded away, not a block', async ({ page }) => {
 
   const player = await registerPlayer(page);
+  // Destructive admin test: every target must belong to this run (never a
+  // permanent Stage 2 account, another run's user or a real user).
+  expectRunOwned(player.email);
 
   await login(
     page,
@@ -386,6 +415,13 @@ independent of anything the UI does or doesn't render.
   batch from being deleted */
 
 test('ADMIN-009 Admin cannot delete their own account via the API, single or bulk', async ({ page }) => {
+  // Deliberately asks the server to delete the admin's OWN account. On
+  // Staging that is the permanent e2e-admin, so a regression in the
+  // server's guard would delete a seeded account - run it locally only.
+  test.skip(
+    (process.env.TEST_ENV ?? '').trim().toLowerCase() === 'staging',
+    'targets the permanent e2e-admin account - local only'
+  );
 
   await login(
     page,
@@ -409,6 +445,9 @@ test('ADMIN-009 Admin cannot delete their own account via the API, single or bul
   // other user in the same batch still goes through ----------
 
   const otherPlayer = await registerPlayer(page);
+  // Destructive admin test: every target must belong to this run (never a
+  // permanent Stage 2 account, another run's user or a real user).
+  expectRunOwned(otherPlayer.email);
 
   await login(
     page,

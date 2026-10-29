@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
 import type { SessionActivityItem } from "@/lib/organiser-sessions-mock-data";
 import { formatInTimeZone } from "@/lib/timezone";
+import { FilterChip } from "@/components/shared/filters";
 
 interface SessionActivityCardProps {
   items: SessionActivityItem[];
@@ -39,7 +39,7 @@ export function SessionActivityCard({ items, timeZone }: SessionActivityCardProp
     <Card className="shadow-sm" data-testid="organiser-session-activity-card">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base">Recent Activity</CardTitle>
-        <span className="text-xs font-medium text-primary flex items-center gap-0.5 cursor-pointer" data-testid="organiser-session-activity-view-all">
+        <span className="text-xs font-medium text-primary-text flex items-center gap-0.5 cursor-pointer" data-testid="organiser-session-activity-view-all">
           View all
           <ChevronRight className="w-3 h-3" />
         </span>
@@ -47,18 +47,15 @@ export function SessionActivityCard({ items, timeZone }: SessionActivityCardProp
       <CardContent className="space-y-4">
         <div className="flex items-center gap-1.5 flex-wrap" data-testid="organiser-session-activity-filters">
           {FILTERS.map((f) => (
-            <button
+            <FilterChip
               key={f.key}
-              type="button"
+              compact
+              selected={filter === f.key}
               onClick={() => setFilter(f.key)}
-              className={cn(
-                "px-3 py-1 rounded-full text-xs font-medium transition-colors",
-                filter === f.key ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent/40"
-              )}
               data-testid={`organiser-session-activity-filter-${f.key}`}
             >
               {f.label}
-            </button>
+            </FilterChip>
           ))}
         </div>
 
@@ -70,7 +67,7 @@ export function SessionActivityCard({ items, timeZone }: SessionActivityCardProp
           <ul className="space-y-3.5">
             {visible.map((item) => (
               <li key={item.id} className="flex items-start gap-3" data-testid={`organiser-session-activity-${item.id}`}>
-                <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                <div className="w-7 h-7 rounded-full bg-primary/10 text-primary-text flex items-center justify-center shrink-0 mt-0.5">
                   <Activity className="w-3.5 h-3.5" />
                 </div>
                 <div className="min-w-0">

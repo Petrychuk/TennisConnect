@@ -260,7 +260,7 @@ export function BackTheRallyModal({
                         {tier.note}
                       </span>
                       {tier.popular && (
-                        <span className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+                        <span className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-text">
                           Most popular
                         </span>
                       )}
@@ -308,10 +308,10 @@ export function BackTheRallyModal({
               </div>
 
               <Button
-                onClick={handleContinue}
+                size="lg" onClick={handleContinue}
                 disabled={!canContinue || isSubmitting}
                 data-testid="button-continue-to-payment"
-                className="w-full h-12 text-base font-bold"
+                className="w-full text-base"
               >
                 {isSubmitting ? (
                   "Redirecting..."
@@ -383,8 +383,8 @@ function SuccessView({ onClose }: { onClose: () => void }) {
         us keep building for the whole community.
       </DialogDescription>
       <Button
-        onClick={onClose}
-        className="w-full md:w-auto md:px-12 h-12 mt-2 font-bold"
+        size="lg" onClick={onClose}
+        className="w-full md:w-auto md:px-12 mt-2"
         data-testid="button-back-to-tennisconnect"
       >
         Back to TennisConnect
@@ -412,7 +412,7 @@ function CancelledView({
         <Button variant="outline" onClick={onClose} className="flex-1">
           Close
         </Button>
-        <Button onClick={onTryAgain} className="flex-1 font-bold">
+        <Button onClick={onTryAgain} className="flex-1">
           Try again
         </Button>
       </div>

@@ -46,7 +46,10 @@ const ScrollBar = React.forwardRef<
   >
     <ScrollAreaPrimitive.ScrollAreaThumb
       className={cn(
-        "relative flex-1 rounded-full bg-[hsl(var(--tennis-ball))] opacity-60 hover:opacity-100",
+        // Neutral, thin, quiet: a scroll indicator, not a highlight. The
+        // lime thumb read as a long bright "button" down the side of
+        // panels like the support chat.
+        "relative flex-1 rounded-full bg-foreground/15 hover:bg-foreground/30 transition-colors",
         thumbClassName
       )}
     />

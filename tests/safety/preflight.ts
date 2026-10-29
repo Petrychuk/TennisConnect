@@ -11,7 +11,10 @@
   - the server reports a commit, and it is the expected one;
   - email is captured, never delivered (emailTransport = "capture");
   - Stripe is in test mode, never live; when payment tests are requested,
-    a test key AND a webhook secret must be configured.
+    a test key AND a webhook secret must be configured;
+  - when upload tests are requested (Stage 3): the server reports its
+    Supabase Storage host, it equals the approved Staging host and differs
+    from Production's - uploads must never land in Production storage.
 
   A successful response also proves the test hooks are reachable only
   with the secret and are enabled on this (non-production) instance -
@@ -28,12 +31,20 @@ export interface PreflightReport {
   emailTransport: string;
   stripeMode: string;
   stripeWebhookConfigured: boolean;
+  /** Supabase Storage host (Stage 3 servers; absent on older ones). */
+  storageHost?: string | null;
 }
 
 export interface PreflightOptions {
   expectedSha: string;
   /** Payment tests (Stripe Checkout) are part of this run. */
   requirePayments?: boolean;
+  /**
+   * Upload tests are part of this run: the approved Staging storage host
+   * (STAGING_SUPABASE_HOST) and, when known, Production's
+   * (PRODUCTION_SUPABASE_HOST). Both are hostnames, never secrets.
+   */
+  uploads?: { stagingHost: string | undefined; productionHost?: string | undefined };
 }
 
 export function preflightProblems(report: PreflightReport, options: PreflightOptions): string[] {
@@ -68,6 +79,22 @@ export function preflightProblems(report: PreflightReport, options: PreflightOpt
     }
   }
 
+  if (options.uploads) {
+    const reported = (report.storageHost ?? '').toLowerCase();
+    const approved = (options.uploads.stagingHost ?? '').trim().toLowerCase();
+    const production = (options.uploads.productionHost ?? '').trim().toLowerCase();
+    if (!reported) {
+      problems.push('upload tests need the server to report its storage host (deploy Stage 3 first)');
+    } else if (!approved) {
+      problems.push('upload tests need STAGING_SUPABASE_HOST (the verified Staging storage host)');
+    } else if (reported !== approved) {
+      problems.push(`storage host is "${reported}", not the approved Staging host "${approved}"`);
+    }
+    if (reported && production && reported === production) {
+      problems.push('Staging uploads would go to the PRODUCTION storage project');
+    }
+  }
+
   return problems;
 }
 
@@ -86,6 +113,7 @@ export function isPreflightReport(value: unknown): value is PreflightReport {
     (r.commit === null || typeof r.commit === 'string') &&
     typeof r.emailTransport === 'string' &&
     typeof r.stripeMode === 'string' &&
-    typeof r.stripeWebhookConfigured === 'boolean'
+    typeof r.stripeWebhookConfigured === 'boolean' &&
+    (r.storageHost === undefined || r.storageHost === null || typeof r.storageHost === 'string')
   );
 }

@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { ScrollToTop } from "@/components/scroll-to-top";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/lib/auth-context";
-import { TennisLoader } from "@/components/ui/tennisLoader";
+import { DelayedTennisLoader } from "@/components/ui/tennisLoader";
 import Home from "@/pages/home";
 import NotFound from "@/pages/not-found";
 import { ChunkErrorBoundary } from "@/components/chunk-error-boundary";
@@ -70,12 +70,13 @@ const OrganisationDetailPage = lazy(() => import("@/pages/organisation-detail"))
 const MaintenancePage = lazy(() => import("@/pages/maintenance"));
 const Error500Page = lazy(() => import("@/pages/error-500"));
 
-// Minimal, unobtrusive - shows only during the brief window a lazy
-// chunk is downloading on navigation, not on every render.
+// Shown while a lazy page chunk downloads on navigation. The ball only
+// appears if that takes longer than PAGE_LOADER_DELAY_MS (3s) - normal
+// loads finish first, so the ball no longer flashes over the page.
 function RouteFallback() {
   return (
     <div className="min-h-[60vh] flex items-center justify-center" data-testid="route-loading-fallback">
-      <TennisLoader text="" />
+      <DelayedTennisLoader text="" />
     </div>
   );
 }

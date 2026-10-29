@@ -30,7 +30,7 @@ export function PlayersStatStrip({ summary }: PlayersStatStripProps) {
         const Icon = item.icon;
         return (
           <div key={item.key} className="rounded-2xl border border-border p-4" data-testid={`organiser-players-page-stat-${item.key}`}>
-            <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-2">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary-text flex items-center justify-center mb-2">
               <Icon className="w-4 h-4" />
             </div>
             <p className="text-lg font-bold leading-tight">{item.value}</p>

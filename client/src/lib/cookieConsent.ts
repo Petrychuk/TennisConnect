@@ -18,7 +18,9 @@ export interface CookieConsent {
   acceptedAt: string;
 }
 
-const STORAGE_KEY = "tennisconnect_cookie_consent";
+// Exported for the Playwright cookie-banner helper (tests/helpers/auth.ts).
+export const COOKIE_CONSENT_STORAGE_KEY = "tennisconnect_cookie_consent";
+const STORAGE_KEY = COOKIE_CONSENT_STORAGE_KEY;
 export const CONSENT_VERSION = 1;
 
 export const CONSENT_UPDATED_EVENT = "cookie-consent-updated";

@@ -23,7 +23,7 @@ const partnerBenefits = [
 
 export function Partnership() {
   return (
-    <section className="py-24 bg-linear-to-br from-black via-gray-900 to-black text-white relative overflow-hidden" id="partnership">
+    <section className="py-10 md:py-24 bg-linear-to-br from-black via-gray-900 to-black text-white relative overflow-hidden" id="partnership">
       <div className="absolute inset-0 opacity-10" 
            style={{ backgroundImage: 'radial-gradient(#DFFF00 1px, transparent 1px)', backgroundSize: '30px 30px' }}>
       </div>
@@ -41,7 +41,7 @@ export function Partnership() {
               <span className="text-sm font-bold uppercase tracking-wider">Partnership</span>
             </div>
             
-            <h2 className="text-3xl md:text-5xl font-display font-bold mb-6 leading-tight">
+            <h2 className="text-[26px] md:text-5xl font-display font-bold mb-6 leading-tight">
               Let's Grow <span className="text-primary">Tennis Together</span>
             </h2>
             
@@ -73,7 +73,7 @@ export function Partnership() {
             <div className="flex flex-col items-start gap-3">
             <Button
                 size="lg"
-                className="bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full px-8 cursor-pointer"
+                className="px-8"
                 onClick={() =>
                   window.dispatchEvent(
                     new CustomEvent("open-support-chat", {
@@ -91,7 +91,7 @@ export function Partnership() {
                 Or email us directly at{" "}
                 <a
                   href="mailto:tennisconnect.au@gmail.com"
-                  className="text-primary-text hover:underline"
+                  className="text-primary hover:underline"
                 >
                   tennisconnect.au@gmail.com
                 </a>

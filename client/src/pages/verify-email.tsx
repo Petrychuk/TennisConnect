@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, CheckCircle, XCircle, Clock, Mail } from "lucide-react";
-import { TennisBallSpinner } from "@/components/ui/tennisLoader";
+import { TennisBallSpinner, useDelayElapsed } from "@/components/ui/tennisLoader";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { consumePostVerifyRedirect } from "@/lib/postVerifyRedirect";
@@ -32,6 +32,8 @@ export default function VerifyEmailPage() {
   const token = searchParams.get("token");
 
   const [state, setState] = useState<VerifyState>(token ? "verifying" : "missing");
+  // Spinner only if confirming takes longer than 3s (no flash on fast loads).
+  const showSlowVerifying = useDelayElapsed();
   const [resendEmail, setResendEmail] = useState("");
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSent, setResendSent] = useState(false);
@@ -147,13 +149,17 @@ export default function VerifyEmailPage() {
 
   if (state === "verifying") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <TennisBallSpinner />
-          <p className="text-muted-foreground mt-4" data-testid="verify-email-loading">
-            Confirming your email...
-          </p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-background" aria-busy="true">
+        {showSlowVerifying ? (
+          <div className="text-center">
+            <TennisBallSpinner />
+            <p className="text-muted-foreground mt-4" data-testid="verify-email-loading">
+              Confirming your email...
+            </p>
+          </div>
+        ) : (
+          <span className="sr-only" data-testid="verify-email-loading">Confirming your email...</span>
+        )}
       </div>
     );
   }
@@ -172,7 +178,7 @@ export default function VerifyEmailPage() {
           {redirectTarget && (
             <button
               onClick={() => setLocation(redirectTarget)}
-              className="text-sm text-primary underline mb-4 block mx-auto"
+              className="text-sm text-primary-text underline mb-4 block mx-auto"
             >
               Not redirected? Click here.
             </button>
@@ -200,7 +206,7 @@ export default function VerifyEmailPage() {
         // about now?).
         <div data-testid="resend-verification-success">
           <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-6">
-            <Mail className="w-8 h-8 text-primary" />
+            <Mail className="w-8 h-8 text-primary-text" />
           </div>
           <h1 className="text-2xl font-bold mb-2">Check your email</h1>
           <p className="text-muted-foreground">
@@ -240,8 +246,8 @@ export default function VerifyEmailPage() {
               className="w-full h-12 rounded-md border border-input bg-background px-3 text-sm"
             />
             <Button
-              type="submit"
-              className="w-2/3 mx-auto flex items-center justify-center bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full h-12"
+              size="lg" type="submit"
+              className="w-2/3 mx-auto flex items-center justify-center"
               disabled={resendLoading}
               data-testid="resend-verification-button"
             >

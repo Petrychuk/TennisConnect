@@ -25,6 +25,34 @@ const good = (): PreflightReport => ({
   stripeWebhookConfigured: true,
 });
 
+describe('preflight: upload tests need verified Staging storage (Stage 3)', () => {
+  const uploads = { stagingHost: 'stagingref.supabase.co', productionHost: 'prodref.supabase.co' };
+
+  it('passes when the server reports the approved Staging host', () => {
+    assert.deepEqual(preflightProblems({ ...good(), storageHost: 'stagingref.supabase.co' }, { expectedSha: SHA, uploads }), []);
+  });
+
+  it('fails when the host is missing, unapproved, or Production', () => {
+    assert.match(preflightProblems(good(), { expectedSha: SHA, uploads }).join(), /report its storage host/);
+    assert.match(preflightProblems({ ...good(), storageHost: 'x.supabase.co' }, { expectedSha: SHA, uploads }).join(), /not the approved Staging host/);
+    assert.match(
+      preflightProblems({ ...good(), storageHost: 'prodref.supabase.co' }, { expectedSha: SHA, uploads: { stagingHost: 'prodref.supabase.co', productionHost: 'prodref.supabase.co' } }).join(),
+      /PRODUCTION storage project/
+    );
+    assert.match(
+      preflightProblems({ ...good(), storageHost: 'stagingref.supabase.co' }, { expectedSha: SHA, uploads: { stagingHost: undefined } }).join(),
+      /STAGING_SUPABASE_HOST/
+    );
+  });
+
+  it('is not checked when upload tests are not requested; older servers stay compatible', () => {
+    assert.deepEqual(preflightProblems(good(), { expectedSha: SHA }), []);
+    assert.ok(isPreflightReport(good()));
+    assert.ok(isPreflightReport({ ...good(), storageHost: null }));
+    assert.ok(!isPreflightReport({ ...good(), storageHost: 42 }));
+  });
+});
+
 describe('preflight rules', () => {
   it('a correctly configured Staging passes', () => {
     assert.deepEqual(preflightProblems(good(), { expectedSha: SHA, requirePayments: true }), []);

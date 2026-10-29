@@ -38,6 +38,8 @@ import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
 import { getSeasons, archiveSeason, deleteSeason, type SeasonWithCounts } from "@/lib/api/organizer-sessions";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
 import { seasonStatus, SEASON_STATUS_LABEL, SEASON_STATUS_STYLE, formatSeasonPeriod, type SeasonStatus } from "@/lib/season-utils";
+import { FilterChip, FILTER_CHIP_ROW } from "@/components/shared/filters";
+import { OrganiserBreadcrumb } from "@/components/organiser/ui/organiser-breadcrumb";
 
 type StatusFilter = "all" | SeasonStatus;
 
@@ -218,7 +220,7 @@ export default function OrganiserSeasonsPage() {
         <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="hidden md:inline-flex" data-testid="organiser-sidebar-trigger">
+              <Button variant="ghost" size="icon" className="hidden md:inline-flex" aria-label="Open Organiser Hub menu" data-testid="organiser-sidebar-trigger">
                 <Menu className="w-5 h-5" />
               </Button>
             </SheetTrigger>
@@ -235,6 +237,8 @@ export default function OrganiserSeasonsPage() {
         </div>
 
         <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+          <OrganiserBreadcrumb current="Seasons" testId="organiser-seasons-page-breadcrumb" />
+
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <h1 className="font-display text-2xl sm:text-3xl font-bold">Seasons</h1>
@@ -246,37 +250,37 @@ export default function OrganiserSeasonsPage() {
             </Button>
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto pb-1" data-testid="organiser-seasons-status-tabs">
-            {([
-              ["all", `All (${counts.all})`],
-              ["active", `Active (${counts.active})`],
-              ["upcoming", `Upcoming (${counts.upcoming})`],
-              ["completed", `Completed (${counts.completed})`],
-            ] as [StatusFilter, string][]).map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setStatusFilter(key)}
-                className={cn(
-                  "px-4 py-1.5 rounded-xl text-sm font-medium shrink-0 transition-colors",
-                  statusFilter === key ? "bg-primary text-foreground" : "border border-border text-muted-foreground hover:bg-accent/40"
-                )}
-                data-testid={`organiser-seasons-status-tab-${key}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search seasons by name..."
-              className="pl-9"
-              data-testid="organiser-seasons-search"
-            />
+          {/* Status chips and search: one row on tablet/desktop; on phones
+              the search drops to a second row with a small gap. */}
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
+            <div className={FILTER_CHIP_ROW} role="group" aria-label="Season status" data-testid="organiser-seasons-status-tabs">
+              {([
+                ["all", `All (${counts.all})`],
+                ["active", `Active (${counts.active})`],
+                ["upcoming", `Upcoming (${counts.upcoming})`],
+                ["completed", `Completed (${counts.completed})`],
+              ] as [StatusFilter, string][]).map(([key, label]) => (
+                <FilterChip
+                  key={key}
+                  selected={statusFilter === key}
+                  onClick={() => setStatusFilter(key)}
+                  data-testid={`organiser-seasons-status-tab-${key}`}
+                >
+                  {label}
+                </FilterChip>
+              ))}
+            </div>
+            <div className="relative w-full md:w-72 lg:w-80 md:shrink-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search seasons by name..."
+                aria-label="Search seasons"
+                className="pl-9"
+                data-testid="organiser-seasons-search"
+              />
+            </div>
           </div>
 
           {seasonsQuery.isLoading ? (

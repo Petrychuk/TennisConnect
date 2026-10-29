@@ -36,7 +36,7 @@ export function PlayerMatchCard({
     >
       <Avatar className="h-14 w-14 shrink-0">
         {player.avatar && <AvatarImage src={player.avatar} alt="" />}
-        <AvatarFallback className="bg-primary/10 text-primary">{initials(player.name)}</AvatarFallback>
+        <AvatarFallback className="bg-primary/10 text-primary-text">{initials(player.name)}</AvatarFallback>
       </Avatar>
 
       <div className="flex-1 min-w-0">
@@ -55,7 +55,7 @@ export function PlayerMatchCard({
 
         {hasEnoughSignal ? (
           <div className="mt-1.5 flex items-center gap-1.5 text-sm" data-testid={`player-match-card-${player.id}-score`}>
-            <span className="font-bold text-primary">{score}% match</span>
+            <span className="font-bold text-primary-text">{score}% match</span>
             <span className="text-xs text-muted-foreground truncate">
               · {reasons.map((r) => PLAYER_MATCH_REASON_TEXT[r] ?? r).join(" · ")}
             </span>

@@ -1,10 +1,13 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig, devices } from '@playwright/test';
-import 'dotenv/config';
+import { describeE2EEnvLoad, loadE2EEnv } from './tests/safety/load-e2e-env';
 import {
   PROD_SAFE_GREP,
   productionTestMatch,
   resolveTarget,
 } from './tests/safety/environment-guard';
+import { ensureRunId } from './tests/fixtures/run-id';
 
 /**
  * Read environment variables from file.
@@ -27,8 +30,23 @@ import {
   bypass is still set. tests/global-setup.ts then verifies the live server
   via GET /api/health and refuses to run if it can't confirm the target.
 */
+// Configuration files (tests/safety/load-e2e-env.ts): TEST_ENV=staging reads
+// ONLY .env.e2e.staging.local (never .env); local/production read .env as
+// before. Shell variables always win. Values are never printed.
+const e2eEnv = loadE2EEnv(process.env, { rootDir: path.dirname(fileURLToPath(import.meta.url)) });
+if (e2eEnv.staging && !process.env.TC_E2E_ENV_LOGGED) {
+  // Once per run (the config is re-evaluated in every worker). stderr, so
+  // machine-readable output (--list --reporter=json) stays valid.
+  console.error(describeE2EEnvLoad(e2eEnv));
+  process.env.TC_E2E_ENV_LOGGED = '1';
+}
+
 const target = resolveTarget(process.env);
 const isProduction = target.testEnv === 'production';
+
+// One run token per Playwright run, inherited by all workers. Temporary
+// records carry it so Stage 3 cleanup can be limited to this run's data.
+ensureRunId(process.env);
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -51,6 +69,9 @@ export default defineConfig({
   /* Fails closed unless the live server confirms TEST_ENV.
      See tests/global-setup.ts. */
   globalSetup: './tests/global-setup.ts',
+  // Stage 3: reports this run's leftover data; deletes it only with
+  // E2E_CLEANUP_ON_TEARDOWN=1 (tests/global-teardown.ts).
+  globalTeardown: './tests/global-teardown.ts',
   /* Run tests in files in parallel */
   fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */

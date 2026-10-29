@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Lock, CheckCircle, XCircle, Eye, EyeOff } from "lucide-react";
-import { TennisBallSpinner } from "@/components/ui/tennisLoader";
+import { TennisBallSpinner, useDelayElapsed } from "@/components/ui/tennisLoader";
 import heroImage from "/assets/images/tennis_main.jpg";
 import SEO from "@/components/seo";
 import { resetPasswordSchema } from "@/lib/validations/auth";
@@ -19,6 +19,9 @@ export default function ResetPasswordPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(true);
+  // The "Verifying reset link" spinner only appears if the check takes
+  // longer than 3s - a normal check finishes first, so nothing flashes.
+  const showSlowVerifying = useDelayElapsed();
   const [isValidToken, setIsValidToken] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   
@@ -100,11 +103,15 @@ export default function ResetPasswordPage() {
   // Loading state
   if (isVerifying) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <TennisBallSpinner className="mx-auto mb-4" />
-          <p className="text-muted-foreground">Verifying reset link...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-background" aria-busy="true" data-testid="reset-password-verifying">
+        {showSlowVerifying ? (
+          <div className="text-center">
+            <TennisBallSpinner className="mx-auto mb-4" />
+            <p className="text-muted-foreground">Verifying reset link...</p>
+          </div>
+        ) : (
+          <span className="sr-only">Verifying reset link...</span>
+        )}
       </div>
     );
   }
@@ -122,7 +129,7 @@ export default function ResetPasswordPage() {
             This password reset link is invalid or has expired. Please request a new one.
           </p>
           <Link href="/auth" >
-            <Button className="w-2/3 mx-auto flex items-center justify-center rounded-full bg-primary text-foreground border-primary">
+            <Button className="mx-auto flex w-fit min-w-44 px-8 items-center justify-center">
               Back to Sign In
             </Button>
           </Link>
@@ -144,7 +151,7 @@ export default function ResetPasswordPage() {
             Your password has been successfully reset. Redirecting to sign in...
           </p>
           <Link href="/auth">
-            <Button className="w-2/3 mx-auto flex items-center justify-center rounded-full bg-primary text-foreground border-primary">
+            <Button className="mx-auto flex w-fit min-w-44 px-8 items-center justify-center">
               Sign In Now
             </Button>
           </Link>
@@ -171,7 +178,7 @@ export default function ResetPasswordPage() {
             </Link>
 
             <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-6">
-              <Lock className="w-6 h-6 text-primary" />
+              <Lock className="w-6 h-6 text-primary-text" />
             </div>
 
             <h1 className="text-3xl font-display font-bold mb-2">
@@ -249,8 +256,8 @@ export default function ResetPasswordPage() {
               </div>
 
               <Button
-                type="submit"
-                className="w-2/3 mx-auto flex items-center justify-center bg-primary text-foreground border-primary hover:bg-primary/90 font-bold rounded-full h-12"
+                size="lg" type="submit"
+                className="mx-auto flex w-fit min-w-44 px-8 items-center justify-center"
                 disabled={isLoading}
                 data-testid="reset-password-button"
               >

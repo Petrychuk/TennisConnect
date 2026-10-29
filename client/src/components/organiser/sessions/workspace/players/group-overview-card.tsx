@@ -16,7 +16,7 @@ export function GroupOverviewCard({ groups, className }: GroupOverviewCardProps)
       <CardContent className="space-y-3">
         {groups.map((group) => (
           <div key={group.key} className="flex items-center gap-3" data-testid={`organiser-group-overview-${group.key}`}>
-            <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">
+            <span className="w-6 h-6 rounded-full bg-primary/10 text-primary-text text-xs font-bold flex items-center justify-center shrink-0">
               {group.key}
             </span>
             <span className="text-sm shrink-0 w-16">{group.key} Group</span>

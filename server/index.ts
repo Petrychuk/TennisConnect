@@ -33,10 +33,12 @@ import cors from "cors";
 import helmet from "helmet";
 import compression from "compression";
 import { registerRoutes } from "./routes";
+import { apiNotFound } from "./lib/apiNotFound";
 import { startDiscoveryScheduler } from "./services/discoveryScheduler";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { setupAuth } from "./auth";
+import { shouldLogResponseBody } from "./lib/responseLogging";
 
 const app = express();
 
@@ -210,8 +212,10 @@ app.use((req, res, next) => {
     let logLine =
       `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
 
-    // Keep existing response-body logging outside production only.
-    if (capturedJsonResponse && !isProduction) {
+    // Keep existing response-body logging outside production only -
+    // never for test hooks (tokens, captured emails): see
+    // server/lib/responseLogging.ts.
+    if (capturedJsonResponse && shouldLogResponseBody(path, isProduction)) {
       logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
     }
 
@@ -233,6 +237,12 @@ app.use((req, res, next) => {
   await registerRoutes(app);
 
   console.log("✅ API routes registered");
+
+  // Any /api/* path no router handled is a real 404 in JSON. Without this
+  // it fell through to the SPA catch-all (static.ts / vite.ts) and came
+  // back as 200 + index.html, so a client calling a wrong API path got
+  // "Unexpected token '<'" instead of a clear "not found".
+  app.use("/api", apiNotFound);
 
   app.use(
     (err: any, _req: Request, res: Response, _next: NextFunction) => {

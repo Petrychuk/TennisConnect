@@ -58,7 +58,7 @@ export function RecentActivityCard({ items, className }: RecentActivityCardProps
                     href={`/organiser/sessions/${item.sessionId}?tab=players`}
                     className="flex items-start gap-3 -m-1.5 p-1.5 rounded-lg hover:bg-accent/40 transition-colors"
                   >
-                    <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                    <div className="w-7 h-7 rounded-full bg-primary/10 text-primary-text flex items-center justify-center shrink-0 mt-0.5">
                       <Icon className="w-3.5 h-3.5" />
                     </div>
                     <div className="min-w-0 flex-1">

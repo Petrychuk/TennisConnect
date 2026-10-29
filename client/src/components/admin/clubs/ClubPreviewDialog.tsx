@@ -117,7 +117,7 @@ import {
                 {club.slug && (
                   <Button
                     asChild
-                    className="mt-5 rounded-xl font-bold cursor-pointer"
+                    className="mt-5"
                     data-testid="club-premium-preview-open-btn"
                   >
                     <a

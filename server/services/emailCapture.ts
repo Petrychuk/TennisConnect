@@ -11,8 +11,17 @@
 //                                 switched off (or on) by this mechanism.
 //   EMAIL_TRANSPORT=resend     -> "resend" (explicit opt-out elsewhere)
 //   EMAIL_TRANSPORT=capture    -> "capture"
-//   DB_ENV=staging (unset)     -> "capture"  <- Staging default
+//   DB_ENV=staging (unset)     -> "capture"  <- Staging default, EXCEPT
+//                                 recipients on STAGING_EMAIL_ALLOWLIST
+//                                 (real team addresses for manual testing,
+//                                 e.g. password reset) -> "resend"
 //   anything else (local dev)  -> "resend"   (unchanged behaviour)
+//
+// STAGING_EMAIL_ALLOWLIST: comma/space separated exact addresses
+// ("anna@gmail.com") and/or whole domains ("@tennisconnect.com.au").
+// Applies on Staging only, never overrides EMAIL_TRANSPORT=capture, and
+// never matches the reserved test domain - automated test accounts
+// (@tennisconnect.test) are always captured.
 //
 // Storage is in-process memory (decided 24 Oct 2026): no migration, lost on
 // restart, assumes a single Staging instance. Bounded by count and age.
@@ -25,6 +34,10 @@ export type EmailTransport = "resend" | "capture";
 export function resolveEmailTransport(source: {
   dbEnv: string | undefined;
   configured: string | undefined;
+  /** The single recipient of this email (allowlist check on Staging). */
+  recipient?: string;
+  /** STAGING_EMAIL_ALLOWLIST. */
+  allowlist?: string;
 }): EmailTransport {
   const dbEnv = (source.dbEnv ?? "").trim().toLowerCase();
   const configured = (source.configured ?? "").trim().toLowerCase();
@@ -32,8 +45,45 @@ export function resolveEmailTransport(source: {
   if (dbEnv === "production") return "resend";
   if (configured === "resend") return "resend";
   if (configured === "capture") return "capture";
-  if (dbEnv === "staging") return "capture";
+  if (dbEnv === "staging") {
+    return isAllowlistedRecipient(source.recipient, source.allowlist) ? "resend" : "capture";
+  }
   return "resend";
+}
+
+const RESERVED_TEST_DOMAIN = "tennisconnect.test";
+const ADDRESS = /^[^\s@,;:<>()[\]"']+@([a-z0-9-]+(?:\.[a-z0-9-]+)+)$/;
+const DOMAIN_ENTRY = /^@([a-z0-9-]+(?:\.[a-z0-9-]+)+)$/;
+
+const isReservedTestDomain = (domain: string) =>
+  domain === RESERVED_TEST_DOMAIN || domain.endsWith(`.${RESERVED_TEST_DOMAIN}`);
+
+/** Parsed STAGING_EMAIL_ALLOWLIST: exact addresses and "@domain" entries. Invalid entries are ignored. */
+export function parseEmailAllowlist(value: string | undefined): { addresses: Set<string>; domains: Set<string> } {
+  const addresses = new Set<string>();
+  const domains = new Set<string>();
+  for (const raw of (value ?? "").split(/[\s,;]+/)) {
+    const entry = raw.trim().toLowerCase();
+    if (!entry) continue;
+    const domain = entry.match(DOMAIN_ENTRY)?.[1];
+    if (domain) {
+      if (!isReservedTestDomain(domain)) domains.add(domain);
+      continue;
+    }
+    const addressDomain = entry.match(ADDRESS)?.[1];
+    if (addressDomain && !isReservedTestDomain(addressDomain)) addresses.add(entry);
+  }
+  return { addresses, domains };
+}
+
+/** True only for ONE well-formed recipient listed (or whose domain is listed) on the allowlist. */
+export function isAllowlistedRecipient(recipient: string | undefined, allowlist: string | undefined): boolean {
+  if (!recipient || !allowlist) return false;
+  const address = recipient.trim().toLowerCase();
+  const domain = address.match(ADDRESS)?.[1];
+  if (!domain || isReservedTestDomain(domain)) return false;
+  const { addresses, domains } = parseEmailAllowlist(allowlist);
+  return addresses.has(address) || domains.has(domain);
 }
 
 export interface CapturedEmail {

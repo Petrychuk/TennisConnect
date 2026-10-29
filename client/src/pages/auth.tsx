@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { zodResolver } from "@/lib/zodResolver";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -284,7 +284,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
       <div className="min-h-screen w-full flex">
         {/* Left Side - Form */}
         <main id="main-content" className="w-full lg:w-1/2 flex flex-col pt-24 px-8 pb-8 md:p-12 lg:p-16 justify-center bg-background relative z-10">
-          <Link href="/" className="absolute top-8 left-8 md:left-12 flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer">
+          <Link href="/" className="absolute top-8 left-8 md:left-12 flex items-center gap-2 text-muted-foreground hover:text-primary-text transition-colors cursor-pointer">
             <ArrowLeft className="w-4 h-4" />
             Back to Home
           </Link>
@@ -293,7 +293,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
             <div className="text-center lg:text-left">
             <h1 className="text-3xl md:text-4xl font-display font-bold mb-2">
               Tennis
-              <span className="text-[hsl(var(--tennis-ball))] [text-shadow:0_1px_3px_rgba(0,0,0,0.45)]"><ConnectWord /></span>
+              <span className="text-[hsl(var(--tennis-ball))]"><ConnectWord /></span>
               <span className="inline-block w-2 h-2 ml-1 rounded-full bg-[hsl(var(--tennis-ball))] animate-pulse" />
             </h1>
               <p className="text-muted-foreground">
@@ -315,7 +315,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                   // "Login failed".
                   <div className="text-center py-8" data-testid="verification-required-screen">
                     <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Mail className="w-8 h-8 text-primary" />
+                      <Mail className="w-8 h-8 text-primary-text" />
                     </div>
                     <h3 className="text-xl font-bold mb-2">Confirm your email</h3>
                     <p className="text-muted-foreground mb-6 break-words">
@@ -330,7 +330,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                       <Button
                         onClick={() => handleResendVerification(verificationRequiredEmail)}
                         disabled={resendLoading}
-                        className="w-2/3 mx-auto flex items-center justify-center font-bold bg-primary text-foreground border-primary hover:bg-primary/90 rounded-full cursor-pointer mb-3"
+                        className="mx-auto flex w-fit min-w-44 px-8 items-center justify-center mb-3"
                         data-testid="resend-verification-button"
                       >
                         {resendLoading ? <TennisBallSpinner /> : "Resend verification email"}
@@ -342,7 +342,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                         setVerificationRequiredEmail(null);
                         setResendSent(false);
                       }}
-                      className="w-2/3 mx-auto flex items-center justify-center rounded-full cursor-pointer"
+                      className="mx-auto flex w-fit min-w-44 px-8 items-center justify-center"
                       data-testid="back-to-sign-in-from-verification"
                     >
                       <ArrowLeft className="w-4 h-4 mr-2" />
@@ -369,7 +369,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                             setForgotPasswordSent(false);
                             setForgotPasswordEmail("");
                           }}
-                          className="w-2/3 rounded-full cursor-pointer"
+                          className="mx-auto w-fit min-w-44 px-8"
                           data-testid="back-to-sign-in"
                         >
                           Back to Sign In
@@ -379,7 +379,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                       <>
                         <div className="text-center mb-6">
                           <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-                            <Mail className="w-6 h-6 text-primary" />
+                            <Mail className="w-6 h-6 text-primary-text" />
                           </div>
                           <h3 className="text-xl font-bold mb-1">Forgot your password?</h3>
                           <p className="text-muted-foreground text-sm">
@@ -402,7 +402,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                           </div>
                           <Button
                             type="submit"
-                            className="w-2/3 mx-auto flex items-center justify-center font-bold bg-primary text-foreground border-primary hover:bg-primary/90 rounded-full cursor-pointer"
+                            className="mx-auto flex w-fit min-w-44 px-8 items-center justify-center"
                             disabled={forgotPasswordLoading}
                             data-testid="send-reset-link-button"
                           >
@@ -411,7 +411,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                           <Button
                             type="button"
                             variant="ghost"
-                            className="w-2/3 mx-auto flex items-center justify-center rounded-full cursor-pointer"
+                            className="mx-auto flex w-fit min-w-44 px-8 items-center justify-center"
                             onClick={() => setShowForgotPassword(false)}
                           >
                             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -498,7 +498,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                     </label>
                   </div>
 
-                  <Button type="submit"  data-testid="login-button" className="w-2/3 mx-auto flex items-center justify-center whitespace-nowrap font-bold bg-primary text-foreground border-primary hover:bg-primary/90 rounded-full cursor-pointer" disabled={isLoading}>
+                  <Button type="submit"  data-testid="login-button" className="mx-auto flex w-fit min-w-44 px-8 items-center justify-center whitespace-nowrap" disabled={isLoading}>
                     {isLoading ? <TennisBallSpinner /> : "Sign In"}
                   </Button>
                 </form>
@@ -511,7 +511,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                   // emailed link is confirmed - see /api/auth/register.
                   <div className="text-center py-8" data-testid="registration-pending-screen">
                     <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Mail className="w-8 h-8 text-primary" />
+                      <Mail className="w-8 h-8 text-primary-text" />
                     </div>
                     <h3 className="text-xl font-bold mb-2">Check your email</h3>
                     <p className="text-muted-foreground mb-6 break-words">
@@ -527,7 +527,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                         variant="outline"
                         onClick={() => handleResendVerification(registrationPendingEmail)}
                         disabled={resendLoading}
-                        className="w-2/3 mx-auto flex items-center justify-center rounded-full cursor-pointer"
+                        className="mx-auto flex w-fit min-w-44 px-8 items-center justify-center"
                         data-testid="resend-verification-button"
                       >
                         {resendLoading ? <TennisBallSpinner /> : "Resend verification email"}
@@ -687,7 +687,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                     )}
                   </div>
 
-                  <Button type="submit" data-testid="register-button" className="w-2/3 mx-auto flex items-center justify-center whitespace-nowrap font-bold bg-primary text-foreground border-primary hover:bg-primary/90 rounded-full cursor-pointer" disabled={isLoading}>
+                  <Button type="submit" data-testid="register-button" className="mx-auto flex w-fit min-w-44 px-8 items-center justify-center whitespace-nowrap" disabled={isLoading}>
                     {isLoading ? <TennisBallSpinner /> : "Create Account"}
                   </Button>
                   
@@ -712,7 +712,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                         href="/articles/terms-of-service"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="underline hover:text-primary"
+                        className="underline hover:text-primary-text"
                       >
                         Terms of Service
                       </a>{" "}
@@ -721,7 +721,7 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
                         href="/articles/privacy-policy"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="underline hover:text-primary"
+                        className="underline hover:text-primary-text"
                       >
                         Privacy Policy
                       </a>

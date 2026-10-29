@@ -35,7 +35,7 @@ export function WizardStepSidebar({ currentStep, onStepClick, maxReachedStep }: 
               {i < WIZARD_STEPS.length - 1 && <div className="w-px flex-1 min-h-8 bg-border my-1" />}
             </div>
             <div className={cn("pb-6", isActive ? "" : "opacity-70")}>
-              <p className={cn("text-sm font-semibold", isActive && "text-primary")}>{step.title}</p>
+              <p className={cn("text-sm font-semibold", isActive && "text-primary-text")}>{step.title}</p>
               <p className="text-xs text-muted-foreground">{step.description}</p>
             </div>
           </div>

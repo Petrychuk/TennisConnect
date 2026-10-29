@@ -59,13 +59,13 @@ export function Step1SessionType({ value, onChange }: Step1SessionTypeProps) {
                   <Check className="w-3 h-3" />
                 </span>
               )}
-              <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-3">
+              <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary-text flex items-center justify-center mb-3">
                 <Icon className="w-5 h-5" />
               </div>
               <p className="font-bold">{option.label}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{option.description}</p>
               {option.mostPopular && (
-                <span className="inline-block mt-2 text-[11px] font-semibold bg-primary/10 text-primary rounded-full px-2 py-0.5">
+                <span className="inline-block mt-2 text-[11px] font-semibold bg-primary/10 text-primary-text rounded-full px-2 py-0.5">
                   Most popular
                 </span>
               )}
@@ -75,7 +75,7 @@ export function Step1SessionType({ value, onChange }: Step1SessionTypeProps) {
       </div>
 
       <div className="rounded-2xl bg-primary/5 border border-primary/20 p-4 flex items-start gap-3">
-        <Lightbulb className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+        <Lightbulb className="w-5 h-5 text-primary-text shrink-0 mt-0.5" />
         <div className="flex-1">
           <p className="font-semibold text-sm">Not sure which one to choose?</p>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -100,7 +100,7 @@ export function Step1SessionType({ value, onChange }: Step1SessionTypeProps) {
               const Icon = TYPE_ICON[option.key];
               return (
                 <div key={option.key} className="flex items-start gap-3 rounded-xl border border-border p-3" data-testid={`organiser-wizard-type-info-${option.key}`}>
-                  <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary-text flex items-center justify-center shrink-0">
                     <Icon className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">

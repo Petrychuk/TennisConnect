@@ -14,6 +14,8 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { FilterChip, FILTER_CHIP_ROW } from "@/components/shared/filters";
+import { cn } from "@/lib/utils";
 
 interface User {
   id: string;
@@ -441,48 +443,45 @@ export default function AdminUsersTab() {
   }
 
   return (
-    <div className="bg-white rounded-3xl border border-border p-6" data-testid="admin-users-tab">
-      <h2 className="font-display text-2xl font-bold mb-6">
-        Users Moderation
-      </h2>      
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-        <div className="flex flex-wrap gap-2">
+    <div className="bg-card rounded-2xl md:rounded-3xl border border-border p-4 md:p-6" data-testid="admin-users-tab">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+        <div className={FILTER_CHIP_ROW} role="group" aria-label="Filter by role">
 
-          <Button
-            variant={roleFilter === "all" ? "default" : "outline"}
+          <FilterChip
+            selected={roleFilter === "all"}
             onClick={() => setRoleFilter("all")}
             data-testid="users-filter-role-all"
           >
             All ({users.length})
-          </Button>
+          </FilterChip>
 
-          <Button
-            variant={roleFilter === "player" ? "default" : "outline"}
+          <FilterChip
+            selected={roleFilter === "player"}
             onClick={() => setRoleFilter("player")}
             data-testid="users-filter-role-player"
           >
             Players ({playersCount})
-          </Button>
+          </FilterChip>
 
-          <Button
-            variant={roleFilter === "coach" ? "default" : "outline"}
+          <FilterChip
+            selected={roleFilter === "coach"}
             onClick={() => setRoleFilter("coach")}
             data-testid="users-filter-role-coach"
           >
             Coaches ({coachesCount})
-          </Button>
+          </FilterChip>
 
         </div>
         <div className="flex gap-2">
           <span
-            className="px-3 py-2 rounded-lg bg-green-100 text-green-700 text-sm"
+            className="inline-flex min-h-8 items-center px-3 rounded-button bg-green-100 text-green-800 text-sm font-medium"
             data-testid="users-stat-approved"
           >
             Approved: {approvedCount}
           </span>
 
           <span
-            className="px-3 py-2 rounded-lg bg-orange-100 text-orange-700 text-sm"
+            className="inline-flex min-h-8 items-center px-3 rounded-button bg-orange-100 text-orange-800 text-sm font-medium"
             data-testid="users-stat-pending"
           >
             Pending: {pendingCount}
@@ -491,36 +490,36 @@ export default function AdminUsersTab() {
       </div>
 
       <div className="flex flex-wrap gap-2 mb-6">
-        <Button
-          variant={organizerFilter === "all" ? "default" : "outline"}
+        <FilterChip
+          selected={organizerFilter === "all"}
           onClick={() => setOrganizerFilter("all")}
           data-testid="users-filter-organizer-all"
         >
           All Organiser Status
-        </Button>
-        <Button
-          variant={organizerFilter === "organizers" ? "default" : "outline"}
+        </FilterChip>
+        <FilterChip
+          selected={organizerFilter === "organizers"}
           onClick={() => setOrganizerFilter("organizers")}
           data-testid="users-filter-organizer-approved"
           className="gap-1"
         >
           <Trophy className="w-3.5 h-3.5" />
           Organisers Approved ({organizersCount})
-        </Button>
-        <Button
-          variant={organizerFilter === "not-organizers" ? "default" : "outline"}
+        </FilterChip>
+        <FilterChip
+          selected={organizerFilter === "not-organizers"}
           onClick={() => setOrganizerFilter("not-organizers")}
           data-testid="users-filter-organizer-not-approved"
         >
           Not Organisers ({notOrganizersCount})
-        </Button>
-        <Button
-          variant={organizerFilter === "awaiting" ? "default" : "outline"}
+        </FilterChip>
+        <FilterChip
+          selected={organizerFilter === "awaiting"}
           onClick={() => setOrganizerFilter("awaiting")}
           data-testid="users-filter-organizer-awaiting"
         >
           Awaiting Organiser Approval ({awaitingOrganizerCount})
-        </Button>
+        </FilterChip>
       </div>
 
       {selectedIds.size > 0 && (
@@ -608,7 +607,7 @@ export default function AdminUsersTab() {
                 <td>{user.role}</td>
                 <td data-testid={`user-organizer-status-${user.id}`}>
                   {user.isOrganizer ? (
-                    <Badge className="bg-primary/10 text-primary">Organiser</Badge>
+                    <Badge className="bg-primary/10 text-primary-text">Organiser</Badge>
                   ) : user.organizerRequestStatus === "pending" ? (
                     <Badge variant="secondary" className="bg-orange-100 text-orange-700">
                       Awaiting Approval
@@ -649,80 +648,111 @@ export default function AdminUsersTab() {
                 </td>
 
                 <td>
-                 <div className="flex justify-center gap-3">
+                 <div className="flex flex-wrap justify-center gap-1">
                     {!user.isApproved && (
-                      <button
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
                         onClick={() => openApprove(user)}
                         title="Approve User"
+                        aria-label={`Approve User: ${user.name}`}
                         data-testid={`approve-user-${user.id}`}
                       >
                         <CheckCircle className="w-5 h-5 text-green-600" />
-                      </button>
+                      </Button>
                     )}
                     {user.isApproved && !user.isHidden && (
-                      <button
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
                         onClick={() => openHide(user)}
                         title="Hide User"
+                        aria-label={`Hide User: ${user.name}`}
                         data-testid={`hide-user-${user.id}`}
                       >
                         <EyeOff className="w-5 h-5 text-orange-500" />
-                      </button>
+                      </Button>
                     )}
 
                     {user.isHidden && (
-                      <button
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
                         onClick={() => openUnhide(user)}
                         title="Restore User"
+                        aria-label={`Restore User: ${user.name}`}
                         data-testid={`unhide-user-${user.id}`}
                       >
                         <Eye className="w-5 h-5 text-green-600" />
-                      </button>
+                      </Button>
                     )}
 
                     {!user.isOrganizer ? (
-                      <button
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
                         onClick={() => openGrantOrganizer(user)}
                         title="Grant Organiser Access"
+                        aria-label={`Grant Organiser Access: ${user.name}`}
                         data-testid={`grant-organizer-${user.id}`}
                       >
-                        <Trophy className="w-5 h-5 text-primary" />
-                      </button>
+                        <Trophy className="w-5 h-5 text-primary-text" />
+                      </Button>
                     ) : (
-                      <button
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
                         onClick={() => openRevokeOrganizer(user)}
                         title="Revoke Organiser Access"
+                        aria-label={`Revoke Organiser Access: ${user.name}`}
                         data-testid={`revoke-organizer-${user.id}`}
                       >
                         <UserMinus className="w-5 h-5 text-destructive" />
-                      </button>
+                      </Button>
                     )}
 
-                    <button
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
                       onClick={() => editUser(user)}
                       title="Edit User"
+                      aria-label={`Edit User: ${user.name}`}
                       data-testid={`edit-user-${user.id}`}
                     >
                       <Pencil className="w-5 h-5 text-blue-600" />
-                    </button>
+                    </Button>
 
                     {user.ownedOrganization && (
-                      <button
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
                         onClick={() => setOrgDeleteTarget({ id: user.ownedOrganization!.id, name: user.ownedOrganization!.name })}
                         title={`Delete Organization "${user.ownedOrganization.name}"`}
+                        aria-label={`Delete organisation ${user.ownedOrganization.name}`}
                         data-testid={`delete-organization-${user.ownedOrganization.id}`}
                       >
-                        <Building2 className="w-5 h-5 text-destructive" />
-                      </button>
+                        <Building2 className="w-5 h-5 text-destructive" aria-hidden="true" />
+                      </Button>
                     )}
                     
                     {user.id !== currentUser?.id && (
                       <Button
-                        size="icon"
-                        variant="outline"
+                        size="icon-sm"
+                        variant="ghost"
                         onClick={() => openDelete(user)}
+                        title="Delete User"
+                        aria-label={`Delete User: ${user.name}`}
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                         data-testid={`delete-user-${user.id}`}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
                       </Button>
                     )} 
                   </div>

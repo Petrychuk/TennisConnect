@@ -83,7 +83,7 @@ export function MessagesTab({ session }: MessagesTabProps) {
           {updates.map((update) => (
             <Card key={update.id} className="shadow-sm" data-testid={`organiser-session-message-${update.id}`}>
               <CardContent className="p-4 flex items-start gap-3">
-                <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary-text flex items-center justify-center shrink-0">
                   <Megaphone className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">

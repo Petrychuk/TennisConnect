@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { skipUnlessStripeEnabled } from '../helpers/staging-gates';
 import { dismissCookieBanner } from '../helpers/auth';
 
 /*
@@ -151,6 +152,8 @@ test('SUPPORT-006 Invalid Custom Amount Blocks Continue And Shows An Error', asy
 });
 
 test('SUPPORT-007 Continue To Payment Opens A New Tab, Doesn\'t Navigate The Current One', async ({ page, context }) => {
+  // Creates a Stripe Checkout session: off unless E2E_ENABLE_STRIPE_TESTS=1.
+  skipUnlessStripeEnabled();
 
   await page.goto('/');
   await page.locator('nav').getByTestId('button-back-the-rally').click();
@@ -195,6 +198,8 @@ test('SUPPORT-007 Continue To Payment Opens A New Tab, Doesn\'t Navigate The Cur
 });
 
 test('SUPPORT-008 Custom Amount Sends Cents, Not Dollars', async ({ page }) => {
+  // Creates a Stripe Checkout session: off unless E2E_ENABLE_STRIPE_TESTS=1.
+  skipUnlessStripeEnabled();
 
   await page.goto('/');
   await page.locator('nav').getByTestId('button-back-the-rally').click();

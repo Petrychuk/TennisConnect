@@ -55,6 +55,7 @@ export function ProfileAvatar({
           size="icon"
           variant="secondary"
           onClick={onEdit}
+          aria-label="Change profile photo"
           data-testid="edit-avatar-profile"
           className="
             absolute

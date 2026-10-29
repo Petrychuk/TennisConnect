@@ -50,7 +50,7 @@ export function PlayersToolbar({
 
       <div className="flex gap-2">
         <Select value={status} onValueChange={onStatusChange}>
-          <SelectTrigger className="w-32" data-testid="organiser-players-page-status-filter">
+          <SelectTrigger aria-label="Filter by status" className="w-32" data-testid="organiser-players-page-status-filter">
             <SelectValue placeholder="All Status" />
           </SelectTrigger>
           <SelectContent>
@@ -60,7 +60,7 @@ export function PlayersToolbar({
           </SelectContent>
         </Select>
         <Select value={level} onValueChange={onLevelChange}>
-          <SelectTrigger className="w-32" data-testid="organiser-players-page-level-filter">
+          <SelectTrigger aria-label="Filter by level" className="w-32" data-testid="organiser-players-page-level-filter">
             <SelectValue placeholder="All Levels" />
           </SelectTrigger>
           <SelectContent>

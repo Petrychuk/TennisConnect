@@ -45,7 +45,7 @@ export function InvitePlayersCard({ sessionId, className }: InvitePlayersCardPro
       <CardContent className="space-y-3">
         <div className="flex items-center gap-2 rounded-xl border border-border px-3 py-2">
           <span className="text-sm text-muted-foreground truncate flex-1">{link}</span>
-          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={copyLink} data-testid="organiser-invite-players-copy">
+          <Button variant="ghost" size="icon" aria-label="Copy invite link" className="h-7 w-7 shrink-0" onClick={copyLink} data-testid="organiser-invite-players-copy">
             <Copy className="w-3.5 h-3.5" />
           </Button>
         </div>

@@ -13,6 +13,8 @@ vite.config.ts.*
 *.env
 .env.sync
 !.env.example
+.env.e2e.staging.local (placeholders only)
+!.env.e2e.staging.example
 credentials.json
 *.pem
 *.key
@@ -32,3 +34,14 @@ playwright-report/
 playwright/.auth/
 
 backfill-backup/
+
+# Authenticated Playwright state (cookies) - never commit, wherever written.
+# tests/helpers/e2e-auth.ts writes only to playwright/.auth/ (mode 0600).
+**/.auth/
+*storageState*.json
+*storage-state*.json
+*auth-state*.json
+
+# Postgres password files
+.pgpass
+*.pgpass

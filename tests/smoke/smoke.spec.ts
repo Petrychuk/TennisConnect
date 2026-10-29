@@ -2,6 +2,9 @@ import { test, expect } from '@playwright/test';
 import { login, logout, dismissCookieBanner } from '../helpers/auth';
 import { getFirstListedCoachPath } from '../helpers/profile';
 import { TEST_USERS } from '../fixtures/test-users';
+// One inbox row per conversation - the row's delete button and unread dot
+// share the message-item- prefix, so a bare prefix match over-counts.
+const CONVERSATION_ROW = 'button[data-testid^="message-item-"]:not([data-testid^="message-item-delete-"])';
 
 /*
   SMOKE SUITE — LOCAL / STAGING ONLY. Not for Production.
@@ -77,10 +80,13 @@ test('@smoke AUTH-SMOKE-001 Login and logout with seeded player', async ({ page 
 
   // ---------- Login ----------
 
+  // { ui: true }: this test is about the real login form and logout, so it
+  // types the password instead of reusing the worker's cached session.
   await login(
     page,
     TEST_USERS.player.email,
-    TEST_USERS.player.password
+    TEST_USERS.player.password,
+    { ui: true }
   );
 
   // ---------- Verify login ----------
@@ -119,7 +125,7 @@ test('@smoke MSG-SMOKE-001 Guest cannot access messages', async ({ page }) => {
   ).toBeVisible();
 
   await expect(
-    page.locator('[data-testid^="message-item-"]')
+    page.locator(CONVERSATION_ROW)
   ).toHaveCount(0);
 
 });

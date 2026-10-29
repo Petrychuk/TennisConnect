@@ -29,7 +29,8 @@ const cli = path.join(ROOT, 'node_modules', '@playwright', 'test', 'cli.js');
 const result = spawnSync(process.execPath, [cli, ...stagingSmokeArgs(process.argv.slice(2))], {
   cwd: ROOT,
   stdio: 'inherit',
-  env: process.env,
+  // Reviewed smoke selection: no hooks or logins needed (staging-run-config.ts).
+  env: { ...process.env, E2E_STAGING_SCOPE: 'smoke' },
 });
 
 process.exit(result.status ?? 1);

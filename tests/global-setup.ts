@@ -13,6 +13,7 @@ import {
   normaliseExpectedSha,
   readHealth,
 } from './safety/deployed-commit';
+import { stagingRunProblems } from './safety/staging-run-config';
 
 // Runs once before any test. FAILS CLOSED - every check below must pass
 // or the whole run is refused (see tests/safety/environment-guard.ts):
@@ -41,6 +42,19 @@ import {
 export default async function globalSetup(config: FullConfig) {
   // A marker inherited from a parent shell must never count as verification.
   delete process.env[VERIFIED_TARGET_ENV_KEY];
+
+  // Staging: refuse up front (no network) when this run lacks the secret,
+  // test-account passwords, expected commit or - for an unphased run - the
+  // write confirmation, instead of failing test after test.
+  if ((process.env.TEST_ENV ?? '').trim().toLowerCase() === 'staging') {
+    const problems = stagingRunProblems(process.env);
+    if (problems.length > 0) {
+      throw new EnvironmentGuardError(
+        `Staging run is missing configuration - no test was started:\n  - ${problems.join('\n  - ')}\n` +
+        `Check it with: npm run e2e:staging:check (setup: tests/README.md).`
+      );
+    }
+  }
 
   const verified = await verifyTargetEnvironment(process.env);
 

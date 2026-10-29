@@ -24,7 +24,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { replySchema } from "@/lib/validations/messages";
-import { TennisBallSpinner } from "@/components/ui/tennisLoader";
+import { DelayedTennisLoader } from "@/components/ui/tennisLoader";
 
 interface Message {
   id: string;
@@ -139,6 +139,11 @@ export function MessagesInbox() {
   const [mobileView, setMobileView] = useState<"list" | "chat">("list");
 
   const selectedMessageRef = useRef<Message | null>(null);
+  // The conversation the reader asked for last, set synchronously on every
+  // selection. A thread response for any other conversation is stale and
+  // dropped - clicking a second row while the first was still loading used
+  // to show the first thread under the second row (MSG-101, 28 Oct run).
+  const activeConversationIdRef = useRef<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   // Guards against overlapping fetchMessages() calls - if the backend
   // takes longer to answer than the poll interval (a slow response
@@ -192,10 +197,16 @@ export function MessagesInbox() {
     };
   }, [isAuthenticated]);
 
+  // Desktop shows the list and a reading pane side by side, so the newest
+  // conversation opens in the pane straight away. Phones show one panel at
+  // a time and start on the list: auto-selecting there (as it used to)
+  // jumped every phone visitor straight into the newest chat - and marked
+  // it read - before they had seen their inbox at all.
   useEffect(() => {
     if (
       messages.length > 0 &&
-      selectedMessage === null
+      selectedMessage === null &&
+      window.innerWidth >= 1024
     ) {
       selectMessage(messages[0]);
     }
@@ -342,34 +353,16 @@ export function MessagesInbox() {
       const data = await res.json();
   
       setMessages(data);
-  
-      // Первый вход на страницу
-      if (
-        data.length > 0 &&
-        selectedMessageRef.current === null
-      ) {
-        const firstMessage = data[0];
-  
-        setSelectedMessage(firstMessage);
-  
-        const firstConversationId = firstMessage.conversationId || firstMessage.id;
-        await loadConversation(firstConversationId);
-  
-        await handleMarkConversationAsRead(firstConversationId);
-  
-        return;
-      }
-  
+
+      // The first visit's "open the newest conversation" (desktop only) is
+      // the effect on messages.length above - it used to run here as well,
+      // a second concurrent load of the same thread.
+
       // Обновляем только текущий открытый чат - только если он
       // реально выбран, ничего не подгружаем вслепую
-      const currentSelected =
-        selectedMessageRef.current;
-  
-      if (currentSelected) {
-        const conversationId =
-          currentSelected.conversationId ||
-          currentSelected.id;
-  
+      const conversationId = activeConversationIdRef.current;
+
+      if (conversationId) {
         await loadConversation(
           conversationId
         );
@@ -403,7 +396,9 @@ export function MessagesInbox() {
               : m
           )
         );
-        setConversation((prev) => prev.map((m) => ({ ...m, isRead: true })));
+        if (activeConversationIdRef.current === conversationId) {
+          setConversation((prev) => prev.map((m) => ({ ...m, isRead: true })));
+        }
         queryClient.invalidateQueries({ queryKey: ["/api/messages/unread-count"] });
       }
     } catch (error) {
@@ -419,6 +414,7 @@ export function MessagesInbox() {
       if (res.ok) {
         setMessages(messages.filter(m => m.id !== messageId));
         if (selectedMessage?.id === messageId) {
+          activeConversationIdRef.current = null;
           setSelectedMessage(null);
         }
         toast({
@@ -505,7 +501,10 @@ export function MessagesInbox() {
       if (!res.ok) return;
   
       const data = await res.json();
-  
+
+      // Another conversation was opened while this one loaded.
+      if (activeConversationIdRef.current !== conversationId) return;
+
       setConversation(data);
     } catch (error) {
       console.error(
@@ -518,6 +517,8 @@ export function MessagesInbox() {
   const selectMessage = async (
     message: Message
   ) => {
+    const conversationId = message.conversationId || message.id;
+    activeConversationIdRef.current = conversationId;
     setSelectedMessage(message);
     
     // мобильный режим
@@ -525,7 +526,6 @@ export function MessagesInbox() {
       setMobileView("chat");
     }
 
-    const conversationId = message.conversationId || message.id;
     await loadConversation(conversationId);
 
     await handleMarkConversationAsRead(conversationId);
@@ -541,7 +541,7 @@ export function MessagesInbox() {
             You need to be signed in to access your inbox.
           </p>
           <Link href="/auth">
-            <Button className="bg-primary text-foreground">
+            <Button>
               Sign In
             </Button>
           </Link>
@@ -552,9 +552,7 @@ export function MessagesInbox() {
   
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <TennisBallSpinner />
-      </div>
+      <DelayedTennisLoader text="Loading messages…" />
     );
   }
   return(
@@ -564,10 +562,13 @@ export function MessagesInbox() {
           </div>
 
           {messagesLoading ? (
-              <div className="flex items-center justify-center py-20">
-                <TennisBallSpinner />
-              </div>
-            ) : !selectedMessage ? (
+              // Same page loader as the rest of the site (full-size ball,
+              // shown after the usual short delay), not the tiny button spinner.
+              <DelayedTennisLoader text="Loading messages…" />
+            ) : messages.length === 0 ? (
+              // Only when there really is nothing. It used to be "nothing
+              // selected", and phones (which no longer auto-open the newest
+              // chat) showed "No messages yet" instead of their inbox.
               <Card className="max-w-md mx-auto" data-testid="messages-empty-state">
                 <CardContent className="pt-6 text-center">
                   <MailOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
@@ -597,7 +598,6 @@ export function MessagesInbox() {
                   <ScrollArea             
                     className="
                       h-[52vh]"
-                      thumbClassName="bg-primary/30 hover:bg-primary/50"
                       onWheel={(e) => e.stopPropagation()}
                     
                   >
@@ -641,7 +641,7 @@ export function MessagesInbox() {
                                     className={
                                       isUnread
                                         ? "bg-primary text-foreground"
-                                        : "bg-primary/10 text-primary"
+                                        : "bg-primary/10 text-primary-text"
                                     }
                                   >
                                     {partner.name?.[0]}
@@ -784,7 +784,6 @@ export function MessagesInbox() {
                       <CardContent className="px-1.5 pt-3 pb-3 sm:px-3 md:px-6 md:pb-6">
                       <ScrollArea
                           className="h-[42vh] sm:h-[52vh] pr-3 sm:pr-4"
-                          thumbClassName="bg-primary/30 hover:bg-primary/50"
                           type="always"
                           onWheel={(e) => e.stopPropagation()}
                         >
@@ -802,7 +801,7 @@ export function MessagesInbox() {
                                     src={withCacheBust(msg.senderAvatar)}
                                     alt={msg.senderName}
                                   />
-                                  <AvatarFallback className="bg-primary/10 text-primary text-xs sm:text-sm">
+                                  <AvatarFallback className="bg-primary/10 text-primary-text text-xs sm:text-sm">
                                     {msg.senderName?.charAt(0)?.toUpperCase()}
                                   </AvatarFallback>
                                 </Avatar>
@@ -864,7 +863,7 @@ export function MessagesInbox() {
 
                                   {msg.messageType && msg.actionStatus === "accepted" && (
                                     <div className="mt-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2" data-testid={`invitation-status-${msg.id}`}>
-                                      <p className="text-sm font-medium text-primary flex items-center gap-1.5">
+                                      <p className="text-sm font-medium text-primary-text flex items-center gap-1.5">
                                         <Check className="w-4 h-4" />
                                         {msg.messageType === "community_invite"
                                           ? "Invitation accepted"

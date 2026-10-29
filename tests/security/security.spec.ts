@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { dismissCookieBanner } from '../helpers/auth';
+import { uniqueTestEmail } from '../fixtures/test-users';
 
 test('SEC-003 Script Tags', async ({ page }) => {
 
@@ -15,7 +16,7 @@ test('SEC-003 Script Tags', async ({ page }) => {
   
     await page.fill(
       '#reg-email',
-      'script@test.com'
+      uniqueTestEmail('sec003')
     );
   
     await page.fill(

@@ -178,7 +178,7 @@ export default function OrganiserSessionEditPage() {
               <div className="space-y-1.5">
                 <Label>City / Timezone</Label>
                 <Select value={timeZone} onValueChange={setTimeZone}>
-                  <SelectTrigger data-testid="organiser-session-edit-timezone">
+                  <SelectTrigger aria-label="City / timezone" data-testid="organiser-session-edit-timezone">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

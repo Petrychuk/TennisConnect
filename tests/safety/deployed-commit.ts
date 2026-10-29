@@ -49,9 +49,11 @@ export function normaliseExpectedSha(raw: string | undefined): string {
 export async function readHealth(origin: string, fetchImpl: FetchLike, timeoutMs = 5000): Promise<HealthSnapshot> {
   const url = new URL(HEALTH_PATH, origin).toString();
   const controller = new AbortController();
+  // Covers the whole exchange, body included - a stalled response can't hang the caller.
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   let response: Awaited<ReturnType<FetchLike>>;
+  let text: string;
   try {
     response = await fetchImpl(url, {
       method: 'GET',
@@ -60,9 +62,14 @@ export async function readHealth(origin: string, fetchImpl: FetchLike, timeoutMs
       headers: { accept: 'application/json' },
       signal: controller.signal,
     });
+    text = await response.text();
   } catch (error) {
+    if (controller.signal.aborted) {
+      throw new EnvironmentGuardError(`could not reach ${url} (timed out after ${timeoutMs}ms).`);
+    }
+    const cause = error instanceof Error && error.cause instanceof Error ? ` - ${error.cause.message}` : '';
     throw new EnvironmentGuardError(
-      `could not reach ${url} (${error instanceof Error ? error.message : String(error)}).`
+      `could not reach ${url} (${error instanceof Error ? error.message : String(error)}${cause}).`
     );
   } finally {
     clearTimeout(timer);
@@ -80,7 +87,7 @@ export async function readHealth(origin: string, fetchImpl: FetchLike, timeoutMs
 
   let body: unknown;
   try {
-    body = JSON.parse(await response.text());
+    body = JSON.parse(text);
   } catch {
     throw new EnvironmentGuardError(`${url} returned invalid JSON.`);
   }

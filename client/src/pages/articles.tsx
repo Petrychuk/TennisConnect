@@ -1,14 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { BookOpen, Clock, Search, SlidersHorizontal } from "lucide-react";
+import { BookOpen, Clock, Dumbbell, Backpack, HeartPulse, Newspaper } from "lucide-react";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import SEO from "@/components/seo";
+import { HeroBadge } from "@/components/shared/hero-badge";
+import { HeroSearch, HeroShortcuts, type HeroShortcut } from "@/components/shared/hero-search";
+import { DelayedTennisLoader } from "@/components/ui/tennisLoader";
+import { HeroPhoto } from "@/components/shared/hero-photo";
 
 interface Article {
   id: string;
@@ -37,15 +39,17 @@ function getInitialCategory(): string {
 export default function ArticlesPage() {
   const [items, setItems] = useState<Article[]>([]);
   const [search, setSearch] = useState("");
+  // false until /api/articles answers, so the empty state never shows mid-load.
+  const [loaded, setLoaded] = useState(false);
   const [category, setCategory] = useState(getInitialCategory);
-  const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
     fetch("/api/articles", { credentials: "include" })
       .then((r) => r.json())
       .then(setItems)
-      .catch(() => setItems([]));
+      .catch(() => setItems([]))
+      .finally(() => setLoaded(true));
   }, []);
 
   const filtered = items.filter((a) => {
@@ -55,6 +59,27 @@ export default function ArticlesPage() {
       !q || a.title.toLowerCase().includes(q) || a.excerpt.toLowerCase().includes(q);
     return matchCat && matchSearch;
   });
+
+  // Hero search (presentational - same state and filtering as before).
+  const scrollToResults = () =>
+    document.getElementById("articles-results")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  // Shortcuts = the existing category filter. Tapping the selected one
+  // goes back to "All".
+  const CATEGORY_ICONS: Record<string, ReactNode> = {
+    Training: <Dumbbell />,
+    Equipment: <Backpack />,
+    Health: <HeartPulse />,
+    News: <Newspaper />,
+  };
+  const shortcutItems = (testIdPrefix = ""): HeroShortcut[] =>
+    CATEGORIES.filter((c) => c !== "All").map((c) => ({
+      key: c,
+      label: c,
+      icon: CATEGORY_ICONS[c],
+      selected: category === c,
+      onClick: () => setCategory(category === c ? "All" : c),
+      testId: `articles-category-${testIdPrefix}${c}`,
+    }));
 
   return (
    <>
@@ -77,35 +102,24 @@ export default function ArticlesPage() {
         <main id="main-content">
         {/* Hero — shares one photo backdrop with the filter bar below */}
         <div className="relative overflow-hidden">
-          <img
-            src="/assets/images/Dashboard_articles.webp"
+          <HeroPhoto
+            hero="articles"
             alt="Tennis articles"
-            fetchPriority="high"
-            loading="eager"
-            decoding="async"
             className="absolute inset-0 w-full h-full object-cover z-0 scale-125 md:scale-100"
           />
+          {/* Tablet/desktop: the left half of the photo darkens towards the left edge (smooth, no hard line) so the title, intro and search stay readable. Phones keep the plain photo. */}
+          <div aria-hidden="true" className="tc-hero-left-shade absolute inset-0 hidden md:block z-10" />
           <div className="absolute inset-0 bg-linear-to-b from-background/0 from-0% via-background/20 via-75% to-background to-100% z-10" />
 
-          <div className="relative min-h-[28vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center justify-start">
+          <div className="relative min-h-[28vh] md:min-h-[30vh] lg:min-h-[35vh] flex items-center md:items-start justify-start">
           {/* Badge (mobile) — overlaps the bottom edge of the hero photo */}
           <div className="md:hidden absolute bottom-3 left-4 z-20">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/50 border border-white/20 backdrop-blur-md">
-              <BookOpen className="w-3.5 h-3.5 text-primary" />
-              <span className="text-[10px] font-bold tracking-wider uppercase text-white">
-                Tennis Journal
-              </span>
-            </div>
+            <HeroBadge size="sm" icon={<BookOpen />}>Tennis Journal</HeroBadge>
           </div>
-          <div className="relative z-20 container mx-auto px-4 text-left mt-24 md:mt-20">
+          <div className="relative z-20 container mx-auto px-4 text-left mt-24 md:mt-0 md:pt-[104px]">
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="hidden md:block">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 backdrop-blur-md mb-6">
-                <BookOpen className="w-3.5 h-3.5 text-primary" />
-                <span className="text-xs sm:text-sm font-bold tracking-wider uppercase text-white">
-                  Tennis Journal
-                </span>
-              </div>
-              <h1 className="text-4xl sm:text-5xl md:text-6xl xl:text-7xl font-display font-bold mb-4 tracking-tight text-white drop-shadow-md">
+              <HeroBadge icon={<BookOpen />} className="mb-6">Tennis Journal</HeroBadge>
+              <h1 className="text-4xl sm:text-5xl md:text-6xl xl:text-7xl font-display font-bold mb-4 tracking-tight text-white tc-hero-text">
                 Articles &{" "}
                 <span className="relative inline-block text-primary">
                   Insights
@@ -123,58 +137,36 @@ export default function ArticlesPage() {
                   </svg>
                 </span>
               </h1>
-              <p className="text-lg md:text-xl text-white/85 max-w-2xl font-medium drop-shadow-sm">
+              <p className="text-lg md:text-[20px] md:leading-[1.3] text-white max-w-2xl font-medium tc-hero-intro">
                 Tactics, gear, mind & body. Written for everyone who plays.
               </p>
+              <HeroSearch
+                className="mt-6 max-w-3xl"
+                value={search}
+                onValueChange={setSearch}
+                onSubmit={scrollToResults}
+                placeholder="Search articles..."
+                inputTestId="articles-search-input"
+                submitTestId="articles-search-submit"
+              />
+              <HeroShortcuts label="Article categories" items={shortcutItems()} className="mt-6" />
             </motion.div>
           </div>
           </div>
 
-        {/* Filter bar (desktop) — floats over the tail of the photo */}
-        <div className="hidden md:block relative z-20 mt-5 pb-5 md:pb-10">
-          <div className="container mx-auto px-4">
-            <div className="bg-card/50 backdrop-blur-lg border border-border/40 shadow-lg rounded-2xl p-3 md:p-4 flex flex-col md:flex-row gap-4 justify-between">
-            <div className="relative w-full md:w-96">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search articles..."
-                className="pl-10 h-11 bg-background/80 border-transparent focus:border-primary rounded-xl"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                data-testid="articles-search-input"
-              />
-            </div>
-            <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
-              {CATEGORIES.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setCategory(c)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border cursor-pointer ${
-                    category === c
-                      ? "bg-primary text-foreground border-primary"
-                      : "bg-background/80 hover:bg-secondary border-input"
-                  }`}
-                  data-testid={`articles-category-${c}`}
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
-            </div>
-          </div>
-        </div>
+        <div className="pb-1.5 md:pb-16" />
         </div>
 
         {/* Hero text (mobile) — sits below the hero photo instead of
             overlapping it */}
-        <div className="md:hidden relative z-20 bg-background pt-4 pb-1">
+        <div className="md:hidden relative z-20 bg-background pt-2 pb-1">
           <div className="container mx-auto px-4 text-left">
-            <h1 className="text-3xl font-display font-bold mb-2 tracking-tight text-foreground">
+            <h1 className="text-3xl font-display font-bold mb-1 tracking-tight text-foreground">
               Articles &{" "}
-              <span className="relative inline-block text-primary">
+              <span className="relative inline-block text-primary-text">
                 Insights
                 <svg
-                  className="absolute w-full h-3 -bottom-1 left-0 text-primary opacity-40"
+                  className="absolute w-full h-3 -bottom-1 left-0 text-primary-text opacity-40"
                   viewBox="0 0 100 10"
                   preserveAspectRatio="none"
                 >
@@ -193,63 +185,27 @@ export default function ArticlesPage() {
           </div>
         </div>
 
-        {/* Filter bar (mobile) — sits below the hero photo instead of floating over it */}
-        <div className="md:hidden relative z-20 bg-background pt-4 pb-3">
+        {/* Search (mobile) - below the hero text, like the other pages */}
+        <div className="md:hidden relative z-20 bg-background pt-1 pb-3">
           <div className="container mx-auto px-4">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search articles..."
-                  className="pl-10 h-11 bg-secondary/50 border-transparent focus:border-primary rounded-xl"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  data-testid="articles-search-input-mobile"
-                />
-              </div>
-              <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
-                <PopoverTrigger asChild>
-                  <button
-                    className={`shrink-0 h-11 w-11 flex items-center justify-center rounded-xl border cursor-pointer transition-all ${
-                      category !== "All"
-                        ? "bg-primary text-foreground border-primary"
-                        : "bg-secondary/50 border-input"
-                    }`}
-                    aria-label="Filter by category"
-                    data-testid="articles-category-filter-trigger"
-                  >
-                    <SlidersHorizontal className="w-4 h-4" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent align="end" className="w-48 p-2">
-                  <div className="flex flex-col gap-1">
-                    {CATEGORIES.map((c) => (
-                      <button
-                        key={c}
-                        onClick={() => {
-                          setCategory(c);
-                          setCategoryPopoverOpen(false);
-                        }}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium text-left transition-all cursor-pointer ${
-                          category === c
-                            ? "bg-primary text-foreground"
-                            : "hover:bg-secondary"
-                        }`}
-                        data-testid={`articles-category-mobile-${c}`}
-                      >
-                        {c}
-                      </button>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
+            <HeroSearch
+              tone="light"
+              value={search}
+              onValueChange={setSearch}
+              onSubmit={scrollToResults}
+              placeholder="Search articles..."
+              inputTestId="articles-search-input-mobile"
+              submitTestId="articles-search-submit-mobile"
+            />
+            <HeroShortcuts label="Article categories" tone="light" items={shortcutItems("mobile-")} className="mt-3" />
           </div>
         </div>
 
         {/* Grid — pulled up so the photo dissolves under the top row */}
-        <div className="relative z-30 container mx-auto px-4 pt-6 pb-12 md:py-12 md:-mt-4">
-          {filtered.length === 0 ? (
+        <div id="articles-results" className="relative z-30 container mx-auto px-4 pt-6 pb-12 md:py-12 md:-mt-4 scroll-mt-24">
+          {!loaded ? (
+            <DelayedTennisLoader text="Loading articles…" />
+          ) : filtered.length === 0 ? (
             <div className="text-center py-20">
               <BookOpen className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-xl font-bold mb-2">No articles found</h3>
@@ -260,6 +216,7 @@ export default function ArticlesPage() {
               {filtered.map((a, i) => (
                 <motion.div
                   key={a.id}
+                  data-testid={`article-card-${a.id}`}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
@@ -278,7 +235,7 @@ export default function ArticlesPage() {
                         </div>
                       </div>
                       <CardContent className="p-5">
-                        <h3 className="font-bold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2 min-h-[3.5rem]">
+                        <h3 className="font-bold text-lg mb-2 group-hover:text-primary-text transition-colors line-clamp-2 min-h-[3.5rem]">
                           {a.title}
                         </h3>
                         <p className="text-sm text-muted-foreground line-clamp-3 mb-4">{a.excerpt}</p>

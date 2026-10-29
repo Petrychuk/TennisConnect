@@ -61,7 +61,7 @@ export function MyClubsSection({ isOwnProfile, isAuthenticated, mode }: MyClubsS
           <p className="text-muted-foreground">
             {mode === "communities" ? "Sign in to see the communities you follow." : "Sign in to see your favorite courts."}
           </p>
-          <Button asChild size="sm" data-testid={`${copy.testPrefix}-sign-in`}>
+          <Button asChild className="min-w-[150px]" data-testid={`${copy.testPrefix}-sign-in`}>
             <Link href="/auth">
               <LogIn className="w-4 h-4 mr-2" />
               Sign In

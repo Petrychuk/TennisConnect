@@ -47,8 +47,7 @@ const SESSION_STATUS_LABEL: Record<string, string> = {
 // submitted (Sessions) — so nothing goes live unseen.
 export default function AdminOrganizerTab() {
   return (
-    <div className="bg-white rounded-3xl border border-border p-6" data-testid="admin-organizer-tab">
-      <h2 className="font-display text-2xl font-bold mb-6">Organiser &amp; Sessions</h2>
+    <div className="bg-card rounded-2xl md:rounded-3xl border border-border p-4 md:p-6" data-testid="admin-organizer-tab">
 
       <Tabs defaultValue="sessions">
         <TabsList className="mb-6">

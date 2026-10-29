@@ -250,6 +250,8 @@ export function ClubGallery({ images: rawImages, clubName, location }: ClubGalle
                 <button
                   key={i}
                   type="button"
+                  aria-label={`Show photo ${i + 1} of ${images.length}`}
+                  aria-current={i === activeIndex ? "true" : undefined}
                   onClick={(e) => {
                     e.stopPropagation();
                     setActiveIndex(i);

@@ -42,7 +42,7 @@ export function SessionNotesCard({ sessionId, initialNote = null }: SessionNotes
           <button
             type="button"
             onClick={() => setIsEditing(true)}
-            className="text-xs font-medium text-primary flex items-center gap-0.5"
+            className="text-xs font-medium text-primary-text flex items-center gap-0.5"
             data-testid="organiser-session-notes-add-button"
           >
             <Plus className="w-3 h-3" />

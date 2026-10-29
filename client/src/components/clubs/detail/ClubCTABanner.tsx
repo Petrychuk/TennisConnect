@@ -48,7 +48,6 @@ export function ClubCTABanner({
         <div className="flex flex-col sm:flex-row gap-3">
           <Button
             onClick={onPrimaryClick}
-            className="rounded-xl font-bold cursor-pointer"
             data-testid="club-cta-primary"
           >
             {primaryLabel}
@@ -57,8 +56,7 @@ export function ClubCTABanner({
           {secondaryLabel && (
             <Button
               onClick={onSecondaryClick}
-              variant="outline"
-              className="rounded-xl font-bold bg-transparent border-white/30 text-white hover:bg-white/10 hover:text-white cursor-pointer"
+              variant="inverse"
               data-testid="club-cta-secondary"
             >
               {secondaryLabel}

@@ -41,7 +41,7 @@ export function StatisticsCard({ stats, className }: StatisticsCardProps) {
                 className="rounded-xl border border-border p-3"
                 data-testid={`organiser-quick-analytics-${stat.key}`}
               >
-                <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-2">
+                <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary-text flex items-center justify-center mb-2">
                   <Icon className="w-4 h-4" />
                 </div>
                 <p className="text-xl font-bold">{stat.value}</p>

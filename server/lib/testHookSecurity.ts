@@ -17,9 +17,17 @@
 //
 // 3. Test-data boundaries - hooks only ever act on test accounts
 //    (users.isTestUser = true) and on Organiser Hub data owned by them.
+//
+// 4. Run ownership (Stage 2) - the caller's Playwright run token travels in
+//    X-E2E-Run-Id. On Staging it is REQUIRED for every hook that creates or
+//    acts on records: created users get run-owned addresses
+//    (e2e-run-<runId>-...@tennisconnect.test), and seed-session /
+//    issue-verification-token refuse users that belong to another run (or
+//    to no run). Locally the header stays optional for older tests.
 
 import { createHash, timingSafeEqual } from "node:crypto";
 import { SESSION_STATUS } from "@shared/constants/sessions";
+import { isOwnedByRun, isSeedOwnedEmail, isValidRunId } from "../seeds/e2e/identities";
 
 // ---------- Configuration ----------
 
@@ -41,6 +49,46 @@ export interface TestHookConfig {
 
 function normalise(value: string | undefined): string {
   return (value ?? "").trim().toLowerCase();
+}
+
+// ---------- Run ownership ----------
+
+export const TEST_RUN_ID_HEADER = "x-e2e-run-id";
+
+export type RunScope =
+  | { ok: true; runId: string | undefined }
+  | { ok: false; status: 400; message: string };
+
+/**
+ * The run this request acts for. A malformed header is always refused; a
+ * missing one is refused on Staging (run ownership is mandatory there).
+ */
+export function resolveRunScope(config: Pick<TestHookConfig, "dbEnv">, header: unknown): RunScope {
+  const value = Array.isArray(header) ? undefined : typeof header === "string" ? header.trim() : undefined;
+  if (Array.isArray(header) || (value !== undefined && value !== "" && !isValidRunId(value))) {
+    return { ok: false, status: 400, message: "X-E2E-Run-Id is malformed" };
+  }
+  if (!value) {
+    if (normalise(config.dbEnv) === "staging") {
+      return { ok: false, status: 400, message: "X-E2E-Run-Id is required on Staging" };
+    }
+    return { ok: true, runId: undefined };
+  }
+  return { ok: true, runId: value };
+}
+
+/** Within a run scope: may a hook act on this user? Run-owned only (no run: any test user). */
+export function userInRunScope(user: { email?: string | null }, runId: string | undefined): boolean {
+  return runId === undefined || isOwnedByRun(user.email, runId);
+}
+
+/**
+ * Within a run scope: may this user TAKE PART in run-owned data (register
+ * for a run's session, play its matches)? This run's users, or the shared
+ * seeded baseline/fixture accounts - never another run's users.
+ */
+export function participantInRunScope(user: { email?: string | null }, runId: string | undefined): boolean {
+  return runId === undefined || isOwnedByRun(user.email, runId) || isSeedOwnedEmail(user.email);
 }
 
 /** Development or staging, and never production. */
@@ -128,6 +176,7 @@ export function shouldFlagRegistrationAsTestUser(
 export interface SeedUserRecord {
   id: string;
   isTestUser: boolean;
+  email?: string | null;
 }
 
 export interface SeedLookups {
@@ -187,11 +236,17 @@ function isGames(value: unknown): value is number {
  *  - the organization exists and is owned by createdBy;
  *  - season / series exist and belong to that organization (and the
  *    series to that season, when both are given);
- *  - every registration and match participant is an existing test user.
+ *  - every registration and match participant is an existing test user;
+ *  - with a run id: createdBy belongs to that run, and every participant
+ *    belongs to it or is a seeded baseline/fixture account.
  * Unknown ids and non-test ids get the same 403, so this can't be used to
  * probe which real ids exist.
  */
-export async function validateSeedSessionInput(body: unknown, lookups: SeedLookups): Promise<SeedValidation> {
+export async function validateSeedSessionInput(
+  body: unknown,
+  lookups: SeedLookups,
+  runId?: string
+): Promise<SeedValidation> {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return bad("Request body must be a JSON object");
   }
@@ -278,6 +333,11 @@ export async function validateSeedSessionInput(body: unknown, lookups: SeedLooku
   if (!creator || creator.isTestUser !== true) {
     return forbidden("createdBy must be an existing test user");
   }
+  // A run's session must be created by that run's own user, so the session
+  // (and everything under it) belongs to exactly one run.
+  if (!userInRunScope(creator, runId)) {
+    return forbidden("createdBy must belong to this test run");
+  }
 
   const organization = await lookups.getOrganizationById(organizationId);
   if (!organization || organization.ownerId !== creator.id) {
@@ -306,6 +366,9 @@ export async function validateSeedSessionInput(body: unknown, lookups: SeedLooku
     const user = await lookups.getUser(id);
     if (!user || user.isTestUser !== true) {
       return forbidden("every registration and match participant must be an existing test user");
+    }
+    if (!participantInRunScope(user, runId)) {
+      return forbidden("participants must belong to this test run (or be seeded fixture accounts)");
     }
   }
 

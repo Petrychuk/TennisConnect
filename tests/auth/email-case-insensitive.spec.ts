@@ -1,5 +1,7 @@
 import { test, expect, Page } from '@playwright/test';
 import { dismissCookieBanner, logout, completeVerification } from '../helpers/auth';
+import { uniqueTestEmail } from '../fixtures/test-users';
+import { waitForCapturedEmail } from '../helpers/test-hooks';
 
 // Alternates upper/lower on the local part only, domain left as-is -
 // deliberately not just .toUpperCase()/.toLowerCase() on the whole
@@ -30,9 +32,10 @@ async function registerWithEmail(page: Page, name: string, email: string, passwo
   ]);
 }
 
-test('AUTH-011 Register - a duplicate email is rejected regardless of casing', async ({ page }) => {
+test('AUTH-011 Register - a duplicate email is caught regardless of casing, without revealing it', async ({ page }) => {
   const timestamp = Date.now();
-  const email = `test_case_${timestamp}@tennisconnect.test`;
+  const startedAt = timestamp;
+  const email = uniqueTestEmail('case');
   const password = 'Test123456!';
 
   await page.goto('/auth');
@@ -57,9 +60,24 @@ test('AUTH-011 Register - a duplicate email is rejected regardless of casing', a
     password
   );
 
-  expect(response.status()).toBe(400);
+  // Since the user-enumeration fix (7334421, 18 Sep) a duplicate address
+  // gets exactly the same answer as a new signup - 201 "check your email" -
+  // so nobody can probe which addresses have accounts. This test used to
+  // expect 400 "already exists", i.e. the leak that was closed. What proves
+  // the duplicate was still caught, case-insensitively: the owner of the
+  // existing (lower-case) address is told about the attempt by email, and
+  // that email is only sent from the "already registered" branch.
+  expect(response.status()).toBe(201);
   const body = await response.json();
-  expect(body.message).toMatch(/already exists/i);
+  expect(body.requiresVerification).toBe(true);
+  expect(body.message).not.toMatch(/already exists|already registered|in use/i);
+  await expect(page.getByTestId('registration-pending-screen')).toBeVisible();
+
+  const alert = await waitForCapturedEmail(email.toLowerCase(), {
+    subjectContains: 'Someone tried to sign up',
+    sinceMs: startedAt,
+  });
+  expect(alert.to.toLowerCase()).toBe(email.toLowerCase());
 
   // Never made it past the register form into a second account.
   await expect(page).toHaveURL(/\/auth/);
@@ -67,7 +85,7 @@ test('AUTH-011 Register - a duplicate email is rejected regardless of casing', a
 
 test('AUTH-012 Login succeeds with a different email casing than used at registration', async ({ page }) => {
   const timestamp = Date.now();
-  const email = mixedCaseEmail(`test_case_login_${timestamp}@tennisconnect.test`);
+  const email = mixedCaseEmail(uniqueTestEmail('case-login'));
   const password = 'Test123456!';
 
   await page.goto('/auth');
@@ -113,7 +131,7 @@ test('AUTH-012 Login succeeds with a different email casing than used at registr
 
 test('AUTH-013 Registered email is stored lowercase regardless of the casing typed', async ({ page }) => {
   const timestamp = Date.now();
-  const email = mixedCaseEmail(`test_case_storage_${timestamp}@tennisconnect.test`);
+  const email = mixedCaseEmail(uniqueTestEmail('case-storage'));
   const password = 'Test123456!';
 
   await page.goto('/auth');

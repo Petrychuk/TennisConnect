@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
-import { registerCoach, login } from '../helpers/auth';
-import { TEST_USERS } from '../fixtures/test-users';
+import { signInAsNewCoach } from '../helpers/accounts';
+import { registerCoach } from '../helpers/auth';
+
+const DIMMED = /(^|\s)opacity-50(\s|$)/;
 
 test('PROFILE-009 Complete Coach Profile - success with Country/Certified/Training Locations', async ({ page }) => {
   await registerCoach(page);
@@ -90,7 +92,10 @@ test('PROFILE-011 Complete Coach Profile - Save Profile is dimmed until the form
   // Title/Location/Bio all start empty - dimmed, but never disabled
   // (still clickable at every point, per the "highlight, don't block"
   // requirement this was built to).
-  await expect(saveButton).toHaveClass(/opacity-50/);
+  // A standalone `opacity-50` class, not the `disabled:opacity-50` variant
+  // every Button now carries in its base classes (shared button system,
+  // 24 Oct) - /opacity-50/ matched that too, so "not dimmed" could never pass.
+  await expect(saveButton).toHaveClass(DIMMED);
   await expect(saveButton).toBeEnabled();
 
   await page.getByTestId('input-title').fill('Playwright Tennis Coach');
@@ -100,12 +105,13 @@ test('PROFILE-011 Complete Coach Profile - Save Profile is dimmed until the form
 
   // Country already defaults to "Australia", so once the 3 fields above
   // are valid the whole form should be too.
-  await expect(saveButton).not.toHaveClass(/opacity-50/);
+  await expect(saveButton).not.toHaveClass(DIMMED);
   await expect(saveButton).toBeEnabled();
 });
 
 test('PROFILE-012 Edit Coach Profile - update Country and Certified after onboarding', async ({ page }) => {
-  await login(page, TEST_USERS.coach.email, TEST_USERS.coach.password);
+  // Own run-owned account: the shared Stage 2 coach must never be modified.
+  await signInAsNewCoach(page);
 
   await expect(page).toHaveURL(/\/coach\/.+/);
 

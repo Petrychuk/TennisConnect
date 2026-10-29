@@ -7,7 +7,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, SlidersHorizontal, CheckCircle2, UserPlus } from "lucide-react";
+import { Search, CheckCircle2, UserPlus } from "lucide-react";
+import { FilterTrigger } from "@/components/shared/filters";
 import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 
 interface PlayersToolbarProps {
@@ -46,7 +47,7 @@ export function PlayersToolbar({
       {showAdvancedFilters && (
         <div className="hidden lg:flex gap-2">
           <Select defaultValue="all">
-            <SelectTrigger className="w-32" data-testid="organiser-players-status-filter">
+            <SelectTrigger aria-label="Filter by status" className="w-32" data-testid="organiser-players-status-filter">
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
             <SelectContent>
@@ -58,7 +59,7 @@ export function PlayersToolbar({
             </SelectContent>
           </Select>
           <Select defaultValue="all">
-            <SelectTrigger className="w-32" data-testid="organiser-players-level-filter">
+            <SelectTrigger aria-label="Filter by level" className="w-32" data-testid="organiser-players-level-filter">
               <SelectValue placeholder="All Levels" />
             </SelectTrigger>
             <SelectContent>
@@ -69,7 +70,7 @@ export function PlayersToolbar({
             </SelectContent>
           </Select>
           <Select defaultValue="all">
-            <SelectTrigger className="w-32" data-testid="organiser-players-group-filter">
+            <SelectTrigger aria-label="Filter by group" className="w-32" data-testid="organiser-players-group-filter">
               <SelectValue placeholder="All Groups" />
             </SelectTrigger>
             <SelectContent>
@@ -82,9 +83,7 @@ export function PlayersToolbar({
         </div>
       )}
 
-      <Button variant="outline" size="icon" className="shrink-0" data-testid="organiser-players-filters-button">
-        <SlidersHorizontal className="w-4 h-4" />
-      </Button>
+      <FilterTrigger iconOnly label="Filter players" data-testid="organiser-players-filters-button" />
 
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1 sm:flex-none" onClick={onCheckInAll} disabled={checkInAllLoading} data-testid="organiser-players-checkin-all">

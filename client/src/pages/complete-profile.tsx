@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { zodResolver } from "@/lib/zodResolver";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,13 +11,14 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { User, MapPin, Check, ChevronsUpDown } from "lucide-react";
+import { User, MapPin, Check, ChevronsUpDown, LogOut } from "lucide-react";
 import { TennisLoader, TennisBallSpinner } from "@/components/ui/tennisLoader";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import SEO from "@/components/seo";
 import { playerProfileSchema, coachProfileSchema } from "@/lib/validations/profile"
 import { cn } from "@/lib/utils";
+import { ConnectWord } from "@/components/ui/brandBall";
 import { Badge } from "@/components/ui/badge";
 import { LOOKING_FOR_OPTIONS } from "@/components/profile/player/PlayerOverviewSections";
 
@@ -82,7 +83,7 @@ export default function CompleteProfilePage() {
   const [countryOpen, setCountryOpen] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { user, loading, updateUserProfile } = useAuth();
+  const { user, loading, updateUserProfile, logout } = useAuth();
 
   const playerForm = useForm<z.infer<typeof playerProfileSchema>>({
     resolver: zodResolver(playerProfileSchema),
@@ -283,19 +284,46 @@ export default function CompleteProfilePage() {
         canonical="/complete-profile"
         noIndex
       />
-      <main id="main-content" className="min-h-screen bg-linear-to-b from-background to-muted/20 py-6 px-3 sm:py-12 sm:px-4">
-        <div className="max-w-2xl mx-auto">
-          <div className="text-center mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold mb-2">Complete Your Profile</h1>
+      <main id="main-content" className="min-h-screen bg-linear-to-b from-background to-muted/30 px-4 pb-10 sm:pb-16">
+        <div className="max-w-3xl mx-auto">
+          {/* This page has no site header, so it carries the logo and the
+              only way to sign out for an account that hasn't finished its
+              profile yet. */}
+          <header className="flex items-center justify-between gap-3 py-4 sm:py-6">
+            <Link
+              href="/"
+              className="text-xl sm:text-2xl font-display font-bold flex items-center gap-1"
+              data-testid="complete-profile-logo"
+            >
+              Tennis<span className="text-[hsl(var(--tennis-ball))]"><ConnectWord /></span>
+              <span className="w-2 h-2 rounded-full bg-[hsl(var(--tennis-ball))] mt-1" aria-hidden="true" />
+            </Link>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                await logout();
+                setLocation("/");
+              }}
+              data-testid="complete-profile-logout"
+            >
+              <LogOut aria-hidden="true" />
+              Sign out
+            </Button>
+          </header>
+
+          <div className="text-center mb-5 sm:mb-7">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-1.5">Complete Your Profile</h1>
             <p className="text-muted-foreground text-sm sm:text-base">
               Fill in the details below to start connecting with {user?.role === "coach" ? "students" : "other players"}
             </p>
           </div>
 
           <Card>
-            <CardHeader className="p-4 sm:p-6">
-              <CardTitle className="flex items-center gap-2">
-                <User className="w-5 h-5" />
+            <CardHeader className="p-4 sm:p-6 pb-2 sm:pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <User className="w-5 h-5 text-primary-text" aria-hidden="true" />
                 {user?.role === "coach" ? "Coach Profile" : "Player Profile"}
               </CardTitle>
               <CardDescription>
@@ -304,7 +332,9 @@ export default function CompleteProfilePage() {
             </CardHeader>
             <CardContent className="p-4 sm:p-6 pt-0">
               {user?.role === "player" ? (
-                <form onSubmit={playerForm.handleSubmit(onPlayerSubmit)} className="space-y-6">
+                <form onSubmit={playerForm.handleSubmit(onPlayerSubmit)} className="space-y-5">
+                  {/* Country + city share one row from tablet up. */}
+                  <div className="grid gap-5 md:grid-cols-2 md:gap-4">
                   <div className="space-y-2">
                       <Label htmlFor="country">Country</Label>
                       <Popover open={countryOpen} onOpenChange={setCountryOpen}>
@@ -367,18 +397,20 @@ export default function CompleteProfilePage() {
                       <p className="text-sm text-destructive">{playerForm.formState.errors.location.message}</p>
                     )}
                   </div>
+                  </div>
 
                   <div className="space-y-2">
                     <Label>Skill Level</Label>
-                    <div className="space-y-2" role="radiogroup" aria-label="Skill level">
+                    {/* 2 x 2 from tablet up, stacked on phones. */}
+                    <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Skill level">
                       {SKILL_LEVELS.map((level) => {
                         const selected = playerForm.watch("skillLevel") === level.value;
                         return (
                           <label
                             key={level.value}
                             className={cn(
-                              "flex items-start gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-colors",
-                              selected ? "border-primary bg-primary/5" : "border-border hover:bg-muted/40"
+                              "flex h-full items-start gap-3 rounded-xl border px-3.5 py-3 cursor-pointer transition-colors",
+                              selected ? "border-primary-text bg-accent" : "border-border hover:bg-muted/40"
                             )}
                           >
                             <input
@@ -387,7 +419,7 @@ export default function CompleteProfilePage() {
                               value={level.value}
                               checked={selected}
                               onChange={() => playerForm.setValue("skillLevel", level.value, { shouldValidate: true })}
-                              className="mt-1 shrink-0 accent-primary"
+                              className="mt-1 shrink-0 accent-primary-text"
                               data-testid={`radio-skill-${level.value.toLowerCase()}`}
                             />
                             <div className="min-w-0">
@@ -402,7 +434,7 @@ export default function CompleteProfilePage() {
                                       key={i}
                                       className={cn(
                                         "w-1.5 h-1.5 rounded-full",
-                                        i < level.dots ? "bg-primary" : "bg-muted-foreground/25"
+                                        i < level.dots ? "bg-primary-text" : "bg-muted-foreground/25"
                                       )}
                                     />
                                   ))}
@@ -520,7 +552,7 @@ export default function CompleteProfilePage() {
 
                   <Button
                     type="submit"
-                    className={cn("w-full sm:w-1/3 sm:mx-auto flex items-center justify-center rounded-full transition-opacity", !playerForm.formState.isValid && "opacity-50 hover:opacity-60")}
+                    className={cn("mx-auto flex w-fit min-w-44 px-8 items-center justify-center transition-opacity", !playerForm.formState.isValid && "opacity-50 hover:opacity-60")}
                     disabled={isLoading}
                     data-testid="button-save"
                   >
@@ -529,7 +561,7 @@ export default function CompleteProfilePage() {
                   </Button>
                 </form>
               ) : (
-                <form onSubmit={coachForm.handleSubmit(onCoachSubmit)} className="space-y-6">
+                <form onSubmit={coachForm.handleSubmit(onCoachSubmit)} className="space-y-5">
                   <div className="space-y-2">
                     <Label htmlFor="title">Title</Label>
                     <Input
@@ -568,6 +600,8 @@ export default function CompleteProfilePage() {
                     )}
                   </div>
 
+                  {/* Country + location share one row from tablet up. */}
+                  <div className="grid gap-5 md:grid-cols-2 md:gap-4">
                   <div className="space-y-2">
                       <Label htmlFor="coach-country">Country</Label>
                       <Popover open={countryOpen} onOpenChange={setCountryOpen}>
@@ -630,6 +664,7 @@ export default function CompleteProfilePage() {
                       <p className="text-sm text-destructive">{coachForm.formState.errors.location.message}</p>
                     )}
                   </div>
+                  </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="trainingLocations">Where I Coach (comma separated)</Label>
@@ -682,7 +717,7 @@ export default function CompleteProfilePage() {
 
                   <Button
                     type="submit"
-                    className={cn("w-full sm:w-1/3 sm:mx-auto flex items-center justify-center rounded-full transition-opacity", !coachForm.formState.isValid && "opacity-50 hover:opacity-60")}
+                    className={cn("mx-auto flex w-fit min-w-44 px-8 items-center justify-center transition-opacity", !coachForm.formState.isValid && "opacity-50 hover:opacity-60")}
                     disabled={isLoading}
                     data-testid="button-save"
                   >

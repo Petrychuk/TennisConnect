@@ -19,7 +19,7 @@ export function EnterLiveButton({ readinessPercent, onClick, className }: EnterL
       size="lg"
       variant={isReady ? "default" : "outline"}
       onClick={onClick}
-      className={cn("font-bold", isReady && "shadow-sm", className)}
+      className={cn("", isReady && "shadow-sm", className)}
       data-testid="organiser-registration-enter-live-button"
     >
       <Play className={cn("w-5 h-5 mr-2", isReady && "fill-current")} />

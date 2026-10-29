@@ -17,7 +17,7 @@ const Checkbox = React.forwardRef<
       // bg-primary green only gives ~2:1, failing even that more
       // lenient threshold. Same fix/reasoning as button.tsx's own
       // "default" variant.
-      "grid place-content-center peer h-4 w-4 shrink-0 rounded-sm border border-primary shadow focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=checked]:text-foreground",
+      "grid place-content-center peer h-4 w-4 shrink-0 rounded-sm border border-primary-text shadow focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-primary-text data-[state=checked]:bg-primary data-[state=checked]:text-foreground",
       className
     )}
     {...props}

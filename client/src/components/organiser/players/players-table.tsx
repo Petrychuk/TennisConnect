@@ -19,7 +19,7 @@ interface PlayersTableProps {
 }
 
 const LEVEL_BADGE_STYLE: Record<OrgPlayer["levelLabel"], string> = {
-  Advanced: "bg-primary/10 text-primary",
+  Advanced: "bg-primary/20 text-primary-text",
   Intermediate: "bg-secondary text-secondary-foreground",
   Social: "bg-muted text-muted-foreground",
   Beginner: "bg-accent text-accent-foreground",
@@ -86,7 +86,7 @@ export function PlayersTable({ players }: PlayersTableProps) {
               <TableCell>
                 <div className="flex items-center gap-2.5">
                   <Avatar className="h-8 w-8 border border-border">
-                    <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
+                    <AvatarFallback className="bg-primary/10 text-primary-text text-xs font-bold">
                       {player.name[0]}
                     </AvatarFallback>
                   </Avatar>
@@ -104,15 +104,15 @@ export function PlayersTable({ players }: PlayersTableProps) {
                 {new Date(player.lastPlayed).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
               </TableCell>
               <TableCell>
-                <Badge className={player.status === "active" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}>
+                <Badge className={player.status === "active" ? "bg-primary/10 text-primary-text" : "bg-muted text-muted-foreground"}>
                   {player.status === "active" ? "Active" : "Inactive"}
                 </Badge>
               </TableCell>
               <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" data-testid={`organiser-players-page-row-${player.id}-menu`}>
-                      <MoreHorizontal className="w-4 h-4" />
+                    <Button variant="ghost" size="icon" aria-label="More actions" data-testid={`organiser-players-page-row-${player.id}-menu`}>
+                      <MoreHorizontal aria-hidden="true" className="w-4 h-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">

@@ -21,18 +21,22 @@ async function main() {
 
   const expectedSha = normaliseExpectedSha(process.env[EXPECTED_DEPLOY_SHA_ENV]);
   const requirePayments = process.env.E2E_REQUIRE_PAYMENTS === '1';
+  const uploads = process.env.E2E_REQUIRE_UPLOADS === '1'
+    ? { stagingHost: process.env.STAGING_SUPABASE_HOST, productionHost: process.env.PRODUCTION_SUPABASE_HOST }
+    : undefined;
 
   const report = await postTestHook<unknown>('preflight', {});
   if (!isPreflightReport(report)) {
     throw new Error('preflight: unexpected response shape from the server.');
   }
 
-  assertPreflight(report, { expectedSha, requirePayments });
+  assertPreflight(report, { expectedSha, requirePayments, uploads });
 
   console.log(
     `[preflight] OK: ${target.origin} dbEnv=${report.dbEnv} commit=${report.commit} ` +
     `email=${report.emailTransport} stripe=${report.stripeMode}` +
-    (requirePayments ? ' (payment tests enabled)' : '')
+    (requirePayments ? ' (payment tests enabled)' : '') +
+    (uploads ? ` (upload tests enabled, storage=${report.storageHost})` : '')
   );
 }
 

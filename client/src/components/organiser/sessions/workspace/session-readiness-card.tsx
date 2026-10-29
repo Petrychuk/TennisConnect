@@ -19,7 +19,7 @@ const STATUS_ICON = {
 // primary, "warning" and "issue" both lean on destructive (at different
 // opacities) rather than inventing an amber/yellow that isn't in the palette.
 const STATUS_STYLE = {
-  ready: "text-primary",
+  ready: "text-primary-text",
   warning: "text-destructive/80",
   issue: "text-destructive",
 } as const;

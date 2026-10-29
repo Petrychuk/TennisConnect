@@ -13,7 +13,7 @@ import { getMyPlayers } from "@/lib/api/organizer-sessions";
 import { toOrgPlayers } from "@/lib/api/session-adapter";
 
 const LEVEL_BADGE_STYLE: Record<string, string> = {
-  Advanced: "bg-primary/10 text-primary",
+  Advanced: "bg-primary/20 text-primary-text",
   Intermediate: "bg-secondary text-secondary-foreground",
   Social: "bg-muted text-muted-foreground",
   Beginner: "bg-accent text-accent-foreground",
@@ -105,7 +105,7 @@ export default function OrganiserPlayerDetailsPage() {
         <div className="flex items-center gap-4">
           <Avatar className="h-16 w-16 border border-border">
             <AvatarImage src={player.avatar || undefined} />
-            <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">
+            <AvatarFallback className="bg-primary/10 text-primary-text text-xl font-bold">
               {player.name[0]}
             </AvatarFallback>
           </Avatar>
@@ -114,7 +114,7 @@ export default function OrganiserPlayerDetailsPage() {
             <div className="flex items-center gap-2 mt-1">
               <span className="text-sm text-muted-foreground">{player.level.toFixed(1)}</span>
               <Badge className={LEVEL_BADGE_STYLE[player.levelLabel]}>{player.levelLabel}</Badge>
-              <Badge className={player.status === "active" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}>
+              <Badge className={player.status === "active" ? "bg-primary/10 text-primary-text" : "bg-muted text-muted-foreground"}>
                 {player.status === "active" ? "Active" : "Inactive"}
               </Badge>
             </div>

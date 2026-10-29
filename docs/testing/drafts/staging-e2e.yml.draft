@@ -1,0 +1,200 @@
+name: Staging E2E (phased, manual)
+
+# DRAFT - kept out of .github/workflows until every Stage 3 safety
+# requirement is implemented AND verified on Staging (deployed hooks,
+# seeded accounts, storage isolation). Proposed path:
+# .github/workflows/staging-e2e.yml
+#
+# Implemented on the Stage 3 branch: phase allowlists + runner
+# (tests/safety/staging-phases.ts, run-staging-phase.ts), run cleanup
+# (POST /api/test-hooks/cleanup-run, npm run e2e:cleanup-run), Staging-only
+# rate-limit exemption for run accounts, cached baseline sessions.
+#
+# Manually triggered only. Never runs for pushes or pull requests.
+# Runs ONE reviewed phase per dispatch against Railway Staging:
+#
+#   auth-readonly   Phase D1 - signed in as Stage 2 baseline accounts, no writes
+#   mutating-core   Phase D2 - auth/registration/profile/security tests, run-owned data
+#   hub-msg-admin   Phase E  - Organiser Hub, Play, messaging, admin workflows
+#   security-last   Phase E  - login/forgot-password payload tests (rate limits)
+#
+# (Phase A stays in staging-readonly.yml; Phases B/C are operator CLI
+# steps - the seed is never run from CI.)
+#
+# Production protection, all fail closed:
+#   - BASE_URL is fixed to Staging below; the Playwright guard rejects any
+#     Production host for TEST_ENV=staging and refuses dbEnv != staging;
+#   - the GitHub Environment "staging-e2e" holds ONLY Staging test
+#     secrets (test-hook secret, E2E_* passwords) and requires a reviewer.
+#     No Production secret exists in it;
+#   - expected commit must be on main, and Staging must report it;
+#   - the test-hook preflight must report emailTransport=capture and a
+#     Stripe test key before anything runs;
+#   - writes need confirm=STAGING typed by the person dispatching.
+#
+# Run ownership: one E2E_RUN_ID per dispatch, generated before any test,
+# passed to Playwright (inherited by workers) and to the cleanup step,
+# which runs even when tests fail and only ever deletes records owned by
+# exactly this run (POST /api/test-hooks/cleanup-run).
+
+on:
+  workflow_dispatch:
+    inputs:
+      phase:
+        description: Reviewed phase to run
+        required: true
+        type: choice
+        options:
+          - auth-readonly
+          - mutating-core
+          - hub-msg-admin
+          - security-last
+      confirm:
+        description: Type STAGING to allow this run to write run-owned test data to Railway Staging
+        required: true
+        default: ''
+      expected_sha:
+        description: Full 40-character commit SHA Staging must be running (empty = selected branch commit, normally main)
+        required: false
+        default: ''
+      wait_minutes:
+        description: Minutes to wait for Railway to deploy that commit (0-30)
+        required: false
+        default: '10'
+
+permissions:
+  contents: read
+
+jobs:
+  staging-e2e:
+    name: Staging E2E - ${{ inputs.phase }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # Reviewer approval + Staging-only secrets live on this environment.
+    environment: staging-e2e
+    # One Staging job at a time, shared with smoke and read-only runs.
+    concurrency:
+      group: staging-smoke
+      cancel-in-progress: false
+
+    env:
+      TEST_ENV: staging
+      BASE_URL: https://tennisconnect-staging.up.railway.app
+
+    steps:
+      - name: Check confirmation
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ "$CONFIRM" != "STAGING" ]; then
+            echo "::error::Type STAGING in the confirm input to run a phase that writes test data."
+            exit 1
+          fi
+
+      - name: Resolve expected Staging commit
+        id: expected
+        env:
+          INPUT_SHA: ${{ inputs.expected_sha }}
+          REF_SHA: ${{ github.sha }}
+        run: |
+          sha="${INPUT_SHA:-$REF_SHA}"
+          sha="$(printf '%s' "$sha" | tr 'A-F' 'a-f' | tr -d '[:space:]')"
+          if ! [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::expected_sha must be a full 40-character commit SHA."
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.expected.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Expected commit must be on main
+        env:
+          SHA: ${{ steps.expected.outputs.sha }}
+        run: |
+          if ! git merge-base --is-ancestor "$SHA" origin/main; then
+            echo "::error::$SHA is not on main - Railway Staging deploys only from main."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Verify Staging runs the expected commit (dbEnv=staging)
+        env:
+          EXPECTED_DEPLOY_SHA: ${{ steps.expected.outputs.sha }}
+          DEPLOY_WAIT_MINUTES: ${{ inputs.wait_minutes }}
+        run: npm run e2e:verify-staging-deploy
+
+      - name: Regression preflight (email capture, Stripe test mode, hooks)
+        env:
+          E2E_TEST_HOOK_SECRET: ${{ secrets.E2E_TEST_HOOK_SECRET }}
+          E2E_REQUIRE_PAYMENTS: '0'
+          # When upload tests are enabled, Staging's reported storage host must
+          # equal the approved Staging host and differ from Production's.
+          E2E_REQUIRE_UPLOADS: ${{ vars.E2E_STORAGE_ISOLATION_VERIFIED }}
+          STAGING_SUPABASE_HOST: ${{ vars.STAGING_SUPABASE_HOST }}
+          PRODUCTION_SUPABASE_HOST: ${{ vars.PRODUCTION_SUPABASE_HOST }}
+        run: npm run e2e:verify-staging-preflight
+
+      - name: Generate this run's E2E_RUN_ID
+        id: run
+        run: |
+          run_id="$(node -e "const {randomBytes}=require('crypto');process.stdout.write('r'+Date.now().toString(36)+'-'+randomBytes(8).toString('hex'))")"
+          if ! [[ "$run_id" =~ ^r[0-9a-z]{6,12}-[0-9a-f]{16}$ ]]; then
+            echo "::error::generated run id is malformed"
+            exit 1
+          fi
+          echo "id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "E2E_RUN_ID=$run_id"
+
+      - run: npx playwright install --with-deps chromium
+
+      - name: Run phase ${{ inputs.phase }} (reviewed allowlist, no retries)
+        env:
+          EXPECTED_DEPLOY_SHA: ${{ steps.expected.outputs.sha }}
+          E2E_RUN_ID: ${{ steps.run.outputs.id }}
+          E2E_PHASE: ${{ inputs.phase }}
+          # The runner refuses a writing phase unless this run confirms that
+          # exact phase (the "Check confirmation" step above required STAGING).
+          E2E_CONFIRM_WRITES: ${{ inputs.phase }}
+          E2E_TEST_HOOK_SECRET: ${{ secrets.E2E_TEST_HOOK_SECRET }}
+          E2E_PLAYER_PASSWORD: ${{ secrets.E2E_PLAYER_PASSWORD }}
+          E2E_PLAYER_2_PASSWORD: ${{ secrets.E2E_PLAYER_2_PASSWORD }}
+          E2E_COACH_PASSWORD: ${{ secrets.E2E_COACH_PASSWORD }}
+          E2E_ORGANISER_PASSWORD: ${{ secrets.E2E_ORGANISER_PASSWORD }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+          # Upload tests skip unless this repository variable is "1" - set it
+          # only after confirming Staging's storage host (preflight) is not
+          # Production's. Stripe tests are not in any phase offered here.
+          E2E_STORAGE_ISOLATION_VERIFIED: ${{ vars.E2E_STORAGE_ISOLATION_VERIFIED }}
+        # tests/safety/run-staging-phase.ts: reviewed allowlist for the phase,
+        # 1 worker, retries 0, trace off (traces would hold session cookies);
+        # writing phases clean up in global teardown.
+        run: npm run test:e2e:staging:phase:ci
+
+      - name: Clean up this run's data (always)
+        if: always() && steps.run.outputs.id != ''
+        env:
+          E2E_RUN_ID: ${{ steps.run.outputs.id }}
+          E2E_TEST_HOOK_SECRET: ${{ secrets.E2E_TEST_HOOK_SECRET }}
+        # POST /api/test-hooks/cleanup-run for exactly this run id, then a dry
+        # run that must report 0 remaining records. The server refuses (409)
+        # if anything outside the run is involved, and deletes uploaded
+        # files only when E2E_STORAGE_CLEANUP=enabled is set on Staging.
+        run: npm run e2e:cleanup-run -- --apply --verify
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: staging-e2e-${{ inputs.phase }}-report
+          path: playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore

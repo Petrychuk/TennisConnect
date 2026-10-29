@@ -33,8 +33,14 @@ test('ACCESS-001 Guest → /messages', async ({ page }) => {
     await page.goto('/admin');
   
     await expect(
-      page.getByText(/admin access required/i)
+      page.getByRole('heading', { name: /admin access required/i })
     ).toBeVisible();
+    await expect(page.getByText("You don't have admin privileges.")).toBeVisible();
+
+    // The page is only the visible half - the admin API itself must refuse
+    // this signed-in non-admin too (server/requireAuth.ts requireAdmin).
+    const api = await page.request.get('/api/admin/users', { failOnStatusCode: false });
+    expect(api.status()).toBe(403);
   
   });
 
@@ -49,8 +55,14 @@ test('ACCESS-001 Guest → /messages', async ({ page }) => {
     await page.goto('/admin');
   
     await expect(
-      page.getByText(/admin access required/i)
+      page.getByRole('heading', { name: /admin access required/i })
     ).toBeVisible();
+    await expect(page.getByText("You don't have admin privileges.")).toBeVisible();
+
+    // The page is only the visible half - the admin API itself must refuse
+    // this signed-in non-admin too (server/requireAuth.ts requireAdmin).
+    const api = await page.request.get('/api/admin/users', { failOnStatusCode: false });
+    expect(api.status()).toBe(403);
   
   });
 
