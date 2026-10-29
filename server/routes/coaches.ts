@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request } from "express";
 import { storage } from "../storage";
 import { toPublicUser } from "../lib/sanitizeUser";
 import { coachProfileAccess, publicCoachResponse, type ContactViewer } from "../lib/publicProfiles";
@@ -50,6 +50,28 @@ router.get("/", async (req, res) => {
   });
 });
 
+/**
+ * The signed-in account as the contact policy needs it, read from the
+ * database. The session copy (server/auth.ts deserializeUser) carries no
+ * isApproved / isHidden, so every approved member was treated as
+ * "pending-approval" (SEC-011 on Staging, 29 Oct). Reading the account
+ * also means approving or hiding it takes effect on the next request.
+ * Fails closed: no account -> treated as a guest.
+ */
+async function currentViewer(req: Request): Promise<ContactViewer | null> {
+  const sessionUser = req.isAuthenticated?.() ? (req.user as { id?: string } | undefined) : undefined;
+  if (!sessionUser?.id) return null;
+  const account = await storage.getUser(sessionUser.id);
+  if (!account) return null;
+  return {
+    id: account.id,
+    isAdmin: account.isAdmin,
+    isApproved: account.isApproved,
+    isHidden: account.isHidden,
+    status: account.status,
+  };
+}
+
 // GET /api/coaches/:slug
 // Same visibility as the directory (server/lib/publicProfiles.ts
 // isCoachPubliclyVisible): a draft, unapproved, hidden or inactive coach -
@@ -63,7 +85,7 @@ router.get("/:slug", async (req, res) => {
   res.set("Cache-Control", "private, no-store");
   res.set("Vary", "Cookie");
 
-  const viewer = req.isAuthenticated?.() ? (req.user as ContactViewer) : null;
+  const viewer = await currentViewer(req);
   const user = await storage.getUserBySlug(req.params.slug);
   const profile = user && user.role === "coach" ? await storage.getCoachProfile(user.id) : undefined;
 

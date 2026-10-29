@@ -3,6 +3,7 @@ import { generateTestUser } from '../fixtures/test-users';
 import { postTestHook } from './test-hooks';
 import { baselineIdentity, classifyEmail, BASELINE_IDENTITIES, type BaselineRole } from '../../server/seeds/e2e/identities';
 import { baselineSessionState, forgetBaselineSession, sessionCookies } from './e2e-auth';
+import { CONSENT_VERSION, COOKIE_CONSENT_STORAGE_KEY } from '../../client/src/lib/cookieConsent';
 
 // ---------- Cookie consent ----------
 
@@ -14,6 +15,13 @@ import { baselineSessionState, forgetBaselineSession, sessionCookies } from './e
 export async function dismissCookieBanner(page: Page) {
   const acceptButton = page.getByTestId('cookie-banner-accept-button');
 
+  // Consent already stored in this browser context (the first page of the
+  // test accepted it): the banner never comes back, so don't wait 5 s for
+  // it. Multi-account tests call this on every login - MSG-016 spent 20 of
+  // its 56 s here (28 Oct report) and then hit the 60 s limit (29 Oct).
+  // Same check as the app (client/src/lib/cookieConsent.ts getStoredConsent).
+  if (await consentAlreadyStored(page)) return;
+
   try {
     await acceptButton.waitFor({ state: 'visible', timeout: 5000 });
 
@@ -24,6 +32,24 @@ export async function dismissCookieBanner(page: Page) {
     ).toBeHidden();
   } catch {
     // Banner did not appear (e.g. consent already stored in this context) - nothing to do.
+  }
+}
+
+async function consentAlreadyStored(page: Page): Promise<boolean> {
+  try {
+    return await page.evaluate(
+      ([key, version]) => {
+        try {
+          const raw = window.localStorage.getItem(key);
+          return !!raw && JSON.parse(raw)?.version === version;
+        } catch {
+          return false;
+        }
+      },
+      [COOKIE_CONSENT_STORAGE_KEY, CONSENT_VERSION] as const,
+    );
+  } catch {
+    return false; // e.g. about:blank - fall back to waiting for the banner
   }
 }
 
