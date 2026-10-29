@@ -1,4 +1,4 @@
-# Production-safe smoke suite: expansion to 32 tests (29 Oct 2026)
+# Production-safe smoke suite: expansion to 33 tests (29 Oct 2026)
 
 Branch: `qa/prod-safe-smoke-expansion`, from `main` `92c6f77` (the commit deployed to Production).
 Target: `https://www.tennisconnect.com.au`, run only through `npm run test:e2e:prod-safe`.
@@ -7,10 +7,10 @@ Target: `https://www.tennisconnect.com.au`, run only through `npm run test:e2e:p
 
 | File | Change |
 |---|---|
-| `tests/prod-safe/prod-safe.spec.ts` | 27 new tests, `PROD-SAFE-006` to `PROD-SAFE-032`. The existing five are unchanged. |
-| `tests/safety/environment-guard.ts` | `PROD_SAFE_ALLOWLIST` lists the 27 new ids. The file list is unchanged: one file. |
+| `tests/prod-safe/prod-safe.spec.ts` | 28 new tests, `PROD-SAFE-006` to `PROD-SAFE-033`. The existing five are unchanged. |
+| `tests/safety/environment-guard.ts` | `PROD_SAFE_ALLOWLIST` lists the 28 new ids. The file list is unchanged: one file. |
 | `tests/safety/prod-safe-suite.unit.ts` (new, in `test:e2e:guard`) | Source checks for the allowlisted file and behaviour checks for global setup and teardown on Production (below). |
-| `tests/safety/staging-phases.ts` | The 27 new ids are in the existing `auth-readonly` phase: guest-only, no writes. `PROD-SAFE-001..005` stay in the Staging read-only set. |
+| `tests/safety/staging-phases.ts` | The 28 new ids are in the existing `auth-readonly` phase: guest-only, no writes. `PROD-SAFE-001..005` stay in the Staging read-only set. |
 | `package.json` | `test:e2e:guard` also runs `prod-safe-suite.unit.ts`. |
 
 `playwright.config.ts`, the prod-safe fixture, the environment guard logic, global setup and teardown are **not** changed.
@@ -29,13 +29,14 @@ Target: `https://www.tennisconnect.com.au`, run only through `npm run test:e2e:p
 | Clubs | 026, 027 | The list renders and search narrows it, with an empty state. A premium club's detail page opens. |
 | Travel | 028-030 | Every active retreat from `/api/travel` is listed. Exactly the ended retreats carry "Archived" (same `isRetreatArchived` the page uses, Sydney calendar), and they come after upcoming ones. A retreat detail page opens. |
 | Articles | 031, 032 | Every published article is listed, and search narrows the list with an empty state. An article page opens from its card. |
+| Private data | 033 | Guest API contract (security fix of 29 Oct, `docs/qa/2026-10-29-coach-contact-security.md`): no directory entry and no coach profile carries `phone`, `email` or account fields; `contact` is `null` with `contactAccess: "sign-in"`; no marketplace item has `sellerEmail`. Checks keys only; no value is read into the report. **Passes only once the fix is deployed.** |
 
 No fixed ids or assumed records: each test reads the environment with GET and compares the page with it. Tests that need a record that may not exist skip themselves with a reason: 017 (a session), 019 and 022 (a coach), 021 (a coach location), 023 (players), 025 (real players, not the demo cards), 027 (a premium club), 029 and 030 (a retreat), 032 (an article).
 
 ## Why it cannot write
 
 - **Runtime (unchanged, every environment):** `tests/fixtures/prod-safe.ts` aborts any browser request that is not GET, HEAD or OPTIONS. A write aimed at the app fails the test. The `request` fixture's `post`/`put`/`patch`/`delete` throw.
-- **Selection (unchanged):** on Production only `tests/prod-safe/prod-safe.spec.ts` can load, and only `@prod-safe` titles in the allowlist run. `--list` confirms 32 tests in 1 file, also with `--grep '.*'`.
+- **Selection (unchanged):** on Production only `tests/prod-safe/prod-safe.spec.ts` can load, and only `@prod-safe` titles in the allowlist run. `--list` confirms 33 tests in 1 file, also with `--grep '.*'`.
 - **Source (new, `prod-safe-suite.unit.ts`):** the allowlisted file must not contain any of these:
   - login, logout or registration calls;
   - test hooks or seeded credentials;
@@ -56,8 +57,8 @@ No fixed ids or assumed records: each test reads the environment with GET and co
 | Check | Result |
 |---|---|
 | `npm run test:e2e:guard` | 162 / 162 pass |
-| `playwright test --list`, `TEST_ENV=production` | 32 tests, 1 file (also with `--grep '.*'`) |
-| `--list`, staging / local | 313 tests, 41 files (286 before + the 27 new) |
+| `playwright test --list`, `TEST_ENV=production` | 33 tests, 1 file (also with `--grep '.*'`) |
+| `--list`, staging / local | 315 tests, 41 files (286 before + 28 prod-safe + SEC-011) |
 | Staging phase classification | every test classified exactly once (`staging-phases.unit.ts`) |
 
 **Not run here:** the suite itself. This environment cannot reach Production or Staging, and has no app server. To run it, use PowerShell:
@@ -77,9 +78,9 @@ npx playwright show-report
 
 The HTML report is written to `playwright-report/`. Its metadata records `testEnv` and `target`. Run it locally first if you can (`npx playwright test tests/prod-safe` against `npm run dev`): the same fixture blocks writes there too.
 
-## Findings to review (not changed in this task)
+## Findings
 
-1. **Coach contact details are public through the API.** `GET /api/coaches/:slug` returns the whole `coach_profiles` row, including `phone` and `email`, to guests. The page hides them behind sign-in (`coach-contact-signed-out`, checked by 022), but anyone can read them from the JSON. Suggested fix: omit `phone`/`email` (and any other contact fields) for unauthenticated requests. This is an application change, so it needs its own ticket.
-2. **Staging phase change:** the 27 new ids join the `auth-readonly` phase. The Staging read-only set (fixed at 32 ids) is unchanged.
+1. **Coach contact details were public through the API.** `GET /api/coaches/:slug` returned the whole `coach_profiles` row, including `phone` and `email`, to guests. **Fixed in the same branch**, see `docs/qa/2026-10-29-coach-contact-security.md`. `PROD-SAFE-033` guards it.
+2. **Staging phase change:** the 28 new ids join the `auth-readonly` phase. The Staging read-only set (fixed at 32 ids) is unchanged.
 
 Any failure on Production should be recorded here, with root cause and steps to reproduce: the test id, the URL, what the API returned compared with what the page showed, and the trace or screenshot from the report.

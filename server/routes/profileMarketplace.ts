@@ -4,6 +4,7 @@ import { requireAuth } from "../requireAuth";
 import { supabaseAdmin } from "../supabaseAdmin";
 import { storage } from "../storage";
 import { multerImageFileFilter, detectImageType } from "../lib/imageValidation";
+import { toPublicMarketplaceItem } from "../lib/publicProfiles";
 
 const router = Router();
 
@@ -14,16 +15,18 @@ const upload = multer({
 });
 
 // PUBLIC VIEW
+// Public listings never carry sellerEmail (the seller's login email) -
+// server/lib/publicProfiles.ts. The seller's own GET / below still does.
 router.get("/public/:userId", async (req, res) => {
   const items = await storage.getUserMarketplaceItems(req.params.userId);
-  res.json(items);
+  res.json(items.map(toPublicMarketplaceItem));
 });
 
 // PUBLIC: all marketplace items (for marketplace page)
 router.get("/all", async (req, res, next) => {
   try {
     const items = await storage.getAllMarketplaceItems();
-    res.json(items);
+    res.json(items.map(toPublicMarketplaceItem));
   } catch (err) {
     next(err);
   }

@@ -1539,7 +1539,10 @@ export class DatabaseStorage implements IStorage {
           eq(coachProfiles.isDraft, false),
           eq(users.profileCompleted, true),
           eq(users.isApproved, true),
-          eq(users.isHidden, false)
+          eq(users.isHidden, false),
+          // Same rule as GET /api/coaches/:slug (server/lib/publicProfiles.ts
+          // isCoachPubliclyVisible): an account that isn't active isn't listed.
+          or(isNull(users.status), eq(users.status, "active"))
         )
       )
       // Paginated by the route with slice(), so the order has to be

@@ -557,9 +557,12 @@ test('MSG-011 Empty Message Validation', async ({ page }) => {
 
   await sendButton.click();
 
-  await expect(
-    page.getByText(/at least 5 characters|validation error/i)
-  ).toBeVisible();
+  // Scoped to the toast list: the toast is also copied into a screen-reader
+  // live region, so a page-wide getByText matched twice (strict mode, 28 Oct
+  // run). 'Hi' trips the subject rule (3+) before the message rule (5+).
+  const toasts = page.locator(TOAST_LIST);
+  await expect(toasts.getByText(/^validation error$/i)).toBeVisible();
+  await expect(toasts.getByText(/^(subject|message) must be at least \d+ characters$/i)).toBeVisible();
 
 });
 
@@ -853,8 +856,9 @@ test('MSG-018 Players Listing Message Validation', async ({ page }) => {
 
   // ---------- Verify ----------
 
-  await expect(
-    page.getByText(/at least 5 characters|validation error/i)
-  ).toBeVisible();
+  // Toast list only (see MSG-011: the live-region copy matched too).
+  const toasts = page.locator(TOAST_LIST);
+  await expect(toasts.getByText(/^validation error$/i)).toBeVisible();
+  await expect(toasts.getByText(/^message must be at least 5 characters$/i)).toBeVisible();
 
 });

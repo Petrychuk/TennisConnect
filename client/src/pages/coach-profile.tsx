@@ -248,6 +248,8 @@ export default function CoachProfile() {
   const [isSending, setIsSending] = useState(false);
 
   const [showCoachEmail, setShowCoachEmail] = useState(false);
+  // "granted" | "sign-in" | "pending-approval" - from GET /api/coaches/:slug.
+  const [contactAccess, setContactAccess] = useState<string>("sign-in");
   const [showCoachPhone, setShowCoachPhone] = useState(false);
 
   const profileSearch = useSearch();
@@ -609,6 +611,7 @@ export default function CoachProfile() {
 
           const data = await res.json();
           setCoachUserId(data.user.id);
+          setContactAccess(data.contactAccess ?? (data.contact ? "granted" : "sign-in"));
           setProfileIsOrganizer(!!data.user.isOrganizer);
 
           setProfile(prev => ({
@@ -643,8 +646,10 @@ export default function CoachProfile() {
             hours_taught: data.profile.hours_taught ?? DEFAULT_COACH_PROFILE.hours_taught,
             attendance: data.profile.attendance ?? DEFAULT_COACH_PROFILE.attendance,
 
-            phone: data.profile.phone ?? "",
-            email: data.profile.email ?? ""
+            // Only sent when this viewer may see them (server/lib/publicProfiles.ts):
+            // the coach, admins and approved accounts. Never in data.profile.
+            phone: data.contact?.phone ?? "",
+            email: data.contact?.email ?? ""
 
           }));
 
@@ -1674,7 +1679,12 @@ export default function CoachProfile() {
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {contactAccess !== "granted" ? (
+                            <p className="text-sm text-muted-foreground" data-testid="coach-contact-pending-approval">
+                              The coach's phone and email appear once your account is approved. You can still send a message below.
+                            </p>
+                          ) : (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="coach-contact-details">
                             <div className="flex items-center gap-3 p-4 rounded-lg bg-primary/5 border border-primary/10">
                               <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-primary-text shadow-sm">
                                 <Phone className="w-5 h-5" />
@@ -1716,6 +1726,7 @@ export default function CoachProfile() {
                               </div>
                             </div>
                           </div>
+                          )}
 
                           <div className="space-y-4 pt-4 border-t">
                             <h3 className="font-bold text-lg">Send a Message</h3>

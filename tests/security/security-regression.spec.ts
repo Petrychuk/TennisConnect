@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
-import { registerPlayer, registerCoach } from '../helpers/auth';
+import { registerPlayer, registerCoach, login } from '../helpers/auth';
+import { approveUser, hideUserAsAdmin } from '../helpers/messages';
 import { completePlayerProfile, completeCoachProfile } from '../helpers/profile';
-import { uniqueTestEmail } from '../fixtures/test-users';
+import { TEST_USERS, uniqueTestEmail } from '../fixtures/test-users';
 import { skipUnlessUploadsAllowed } from '../helpers/staging-gates';
 
 /*
@@ -36,6 +37,9 @@ const FORBIDDEN_PUBLIC_USER_FIELDS = [
   'status',
   'emailVerified',
   'emailVerifiedAt',
+  // Login-lockout state (public user is an allowlist since 29 Oct).
+  'failedLoginAttempts',
+  'lockedUntil',
 ];
 
 function assertNoForbiddenFields(user: Record<string, unknown>, context: string) {
@@ -95,6 +99,145 @@ test.describe('Security: public profile data exposure', () => {
 
     assertNoForbiddenFields(data.user, 'GET /api/players/:slug (incomplete profile)');
     expect(data.user.name).toBeTruthy();
+  });
+});
+
+test.describe('Security: coach contact details', () => {
+  // server/lib/publicProfiles.ts: GET /api/coaches/:slug sends phone/email
+  // (in `contact`, never in `profile`) only to the coach, admins and
+  // approved accounts. Values are run-owned test data, never printed.
+  test('SEC-011 Coach contact details reach the coach and approved accounts only, never guests or unapproved accounts', async ({ page, browser }) => {
+    test.slow(); // four accounts in one flow
+
+    // ---------- Test data ----------
+
+    await registerCoach(page);
+    await completeCoachProfile(page);
+    const me = await (await page.request.get('/api/auth/me')).json();
+    const phone = `+61 4${String(Date.now()).slice(-8)}`;
+    const contactEmail = uniqueTestEmail('coach-contact');
+    const saved = await page.request.put('/api/me/coach-profile', { data: { phone, email: contactEmail } });
+    expect(saved.ok()).toBeTruthy();
+    const url = `/api/coaches/${me.slug}`;
+    const hasContact = (text: string) => text.includes(phone) || text.includes(contactEmail);
+
+    // ---------- Verify (the coach) ----------
+
+    const own = await (await page.request.get(url)).json();
+    expect(own.contactAccess).toBe('granted');
+    expect(own.contact).toEqual({ phone, email: contactEmail });
+    expect(Object.keys(own.profile)).not.toContain('phone');
+    expect(Object.keys(own.profile)).not.toContain('email');
+
+    const guest = await browser.newContext();
+    const unapproved = await browser.newContext();
+    const approved = await browser.newContext();
+    const admin = await browser.newContext();
+    try {
+
+      // Others only see a coach whose profile is public (approved by an
+      // admin) - before that it is a 404 for them (SEC-012).
+      await approveUser(await admin.newPage(), TEST_USERS.admin.email, TEST_USERS.admin.password, me.id);
+
+      // ---------- Verify (guest) ----------
+
+      const guestRes = await guest.request.get(url);
+      expect(guestRes.ok()).toBeTruthy();
+      const guestText = await guestRes.text();
+      expect(hasContact(guestText), 'guest response carries the contact details').toBeFalsy();
+      expect(guestText).not.toContain(me.email);
+      expect(JSON.parse(guestText)).toMatchObject({ contact: null, contactAccess: 'sign-in' });
+
+      // ---------- Verify (signed in, not approved yet) ----------
+
+      const unapprovedPage = await unapproved.newPage();
+      await registerPlayer(unapprovedPage);
+      const pendingText = await (await unapprovedPage.request.get(url)).text();
+      expect(hasContact(pendingText), 'unapproved account sees the contact details').toBeFalsy();
+      expect(JSON.parse(pendingText)).toMatchObject({ contact: null, contactAccess: 'pending-approval' });
+      await unapprovedPage.goto(`/coach/${me.slug}?tab=contact`);
+      await expect(unapprovedPage.getByTestId('coach-contact-pending-approval')).toBeVisible({ timeout: 15000 });
+      await expect(unapprovedPage.getByTestId('coach-contact-details')).toHaveCount(0);
+
+      // ---------- Verify (approved account) ----------
+
+      const approvedPage = await approved.newPage();
+      await login(approvedPage, TEST_USERS.player.email, TEST_USERS.player.password);
+      const granted = await (await approvedPage.request.get(url)).json();
+      expect(granted.contactAccess).toBe('granted');
+      expect(granted.contact).toEqual({ phone, email: contactEmail });
+      await approvedPage.goto(`/coach/${me.slug}?tab=contact`);
+      await expect(approvedPage.getByTestId('coach-contact-details')).toBeVisible({ timeout: 15000 });
+
+      // ---------- Final verification ----------
+
+      // The directory never carries them, for anyone.
+      for (const context of [guest, approved]) {
+        const listText = await (await context.request.get('/api/coaches?page=1&limit=100')).text();
+        expect(hasContact(listText), 'directory list carries contact details').toBeFalsy();
+      }
+    } finally {
+      await Promise.all([guest.close(), unapproved.close(), approved.close(), admin.close()]);
+    }
+  });
+
+  // Same visibility rule for the directory and GET /api/coaches/:slug
+  // (server/lib/publicProfiles.ts isCoachPubliclyVisible).
+  test('SEC-012 Unapproved and hidden coach profiles are a 404 for guests and members, but not for the coach or admins', async ({ page, browser }) => {
+    test.slow(); // four accounts, two admin actions
+
+    // ---------- Test data ----------
+
+    const coach = await registerCoach(page);
+    await completeCoachProfile(page);
+    const me = await (await page.request.get('/api/auth/me')).json();
+    const url = `/api/coaches/${me.slug}`;
+    const listed = async (request: import('@playwright/test').APIRequestContext) => {
+      const body = await (await request.get(`/api/coaches?page=1&limit=100&q=${encodeURIComponent(coach.name)}`)).json();
+      return (body.coaches as { id: string }[]).some((c) => c.id === me.id);
+    };
+
+    const guest = await browser.newContext();
+    const member = await browser.newContext();
+    const admin = await browser.newContext();
+    try {
+      const memberPage = await member.newPage();
+      await login(memberPage, TEST_USERS.player.email, TEST_USERS.player.password);
+      const adminPage = await admin.newPage();
+
+      // ---------- Verify (new coach: completed, not approved yet) ----------
+
+      expect((await guest.request.get(url)).status(), 'guest, unapproved coach').toBe(404);
+      expect((await memberPage.request.get(url)).status(), 'approved member, unapproved coach').toBe(404);
+      expect((await page.request.get(url)).status(), 'the coach').toBe(200);
+      expect(await listed(guest.request), 'unapproved coach in the directory').toBeFalsy();
+      const guestPage = await guest.newPage();
+      await guestPage.goto(`/coach/${me.slug}`);
+      await expect(guestPage).toHaveURL(/\/coaches$/, { timeout: 15000 });
+
+      // ---------- Actions (admin approves) ----------
+
+      await approveUser(adminPage, TEST_USERS.admin.email, TEST_USERS.admin.password, me.id);
+
+      // ---------- Verify (approved: public) ----------
+
+      expect((await guest.request.get(url)).status(), 'guest, approved coach').toBe(200);
+      expect(await listed(guest.request), 'approved coach in the directory').toBeTruthy();
+
+      // ---------- Actions (admin hides) ----------
+
+      await hideUserAsAdmin(adminPage, TEST_USERS.admin.email, TEST_USERS.admin.password, me.id);
+
+      // ---------- Final verification (hidden) ----------
+
+      expect((await guest.request.get(url)).status(), 'guest, hidden coach').toBe(404);
+      expect((await memberPage.request.get(url)).status(), 'member, hidden coach').toBe(404);
+      expect(await listed(guest.request), 'hidden coach in the directory').toBeFalsy();
+      expect((await page.request.get(url)).status(), 'the coach, own hidden profile').toBe(200);
+      expect((await adminPage.request.get(url)).status(), 'admin, hidden coach').toBe(200);
+    } finally {
+      await Promise.all([guest.close(), member.close(), admin.close()]);
+    }
   });
 });
 

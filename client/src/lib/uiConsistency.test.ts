@@ -310,6 +310,22 @@ test("hero photos: responsive files exist and index.html preloads exactly what H
   }
 });
 
+test("inbox: phones see their list (empty state only with no messages); a stale thread never replaces the one opened", () => {
+  const s = read(path.join(SRC, "components/messages/MessagesInbox.tsx"));
+  assert.match(s, /\) : messages\.length === 0 \? \(\s*(\/\/[^\n]*\n\s*)*<Card className="max-w-md mx-auto" data-testid="messages-empty-state">/, "empty state = no messages, not 'nothing selected'");
+  assert.doesNotMatch(s, /\) : !selectedMessage \? \(/, "phones have no selection until they tap a row");
+  assert.match(s, /activeConversationIdRef\.current = conversationId;\s*setSelectedMessage\(message\);/, "selection is recorded before the thread loads");
+  assert.match(s, /if \(activeConversationIdRef\.current !== conversationId\) return;\s*setConversation\(data\);/, "stale thread responses are dropped");
+});
+
+test("coach profile: contact details come from the API's `contact`, never from `profile`", () => {
+  const s = read(path.join(SRC, "pages/coach-profile.tsx"));
+  assert.match(s, /phone: data\.contact\?\.phone \?\? ""/);
+  assert.match(s, /email: data\.contact\?\.email \?\? ""/);
+  assert.doesNotMatch(s, /data\.profile\.(phone|email)/);
+  assert.match(s, /data-testid="coach-contact-pending-approval"/);
+});
+
 test("directory pages never show their empty state while the list is still loading", () => {
   const checks: [string, RegExp][] = [
     ["pages/coaches.tsx", /\{!loading && !loadError && !filtersSettling && filteredCoaches\.length === 0 && \(/],

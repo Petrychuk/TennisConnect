@@ -25,7 +25,19 @@ test.describe('Play', () => {
       status: 'published',
     });
 
+    // In the unfiltered Play list (the API the page reads)...
+    const listed = await page.request.get('/api/play/sessions');
+    expect(listed.ok()).toBeTruthy();
+    const { sessions } = (await listed.json()) as { sessions: { id: string }[] };
+    expect(sessions.map((s) => s.id)).toContain(session.id);
+
+    // ...and as a card. Staging keeps earlier runs' sessions, so the list is
+    // paged (6 per page) and a new one is often not on page 1 (28 Oct run:
+    // 16 sessions). Its unique title brings it to page 1 - typing is a GET
+    // filter, not the smart search.
     await page.goto('/play');
+    await dismissCookieBanner(page);
+    await page.getByTestId('play-page-search-input').fill(title);
 
     // Scoped to the results grid: the same session can also be suggested in
     // the "Recommended for you" row above it (strict-mode duplicate, round 2).

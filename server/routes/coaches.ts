@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { storage } from "../storage";
 import { toPublicUser } from "../lib/sanitizeUser";
+import { coachProfileAccess, publicCoachResponse, type ContactViewer } from "../lib/publicProfiles";
 import { publicBrowseLimiter } from "../lib/rateLimiters";
 import {
   COACHES_PAGE_SIZE,
@@ -50,27 +51,31 @@ router.get("/", async (req, res) => {
 });
 
 // GET /api/coaches/:slug
+// Same visibility as the directory (server/lib/publicProfiles.ts
+// isCoachPubliclyVisible): a draft, unapproved, hidden or inactive coach -
+// or one who hasn't finished onboarding - is a 404 for the public, and for
+// approved members following a direct link. The coach themselves and
+// admins still get it (complete-profile sends a new, not-yet-approved
+// coach straight to their own page). Allowlisted fields only; phone/email
+// only for viewers the contact policy allows. The body depends on who
+// asks, so no shared cache may keep it.
 router.get("/:slug", async (req, res) => {
-  const user = await storage.getUserBySlug(req.params.slug);
+  res.set("Cache-Control", "private, no-store");
+  res.set("Vary", "Cookie");
 
-  // Matches the same check GET /api/players/:slug already has - a coach
-  // who hasn't finished their onboarding wizard (still holding the
-  // registration-time defaults: title "Coach", location "Sydney") isn't
-  // in the public /api/coaches list, but was still directly reachable
-  // by anyone who knew or guessed their slug, since only the role was
-  // checked here, not profileCompleted.
-  if (!user || user.role !== "coach" || !user.profileCompleted) {
+  const viewer = req.isAuthenticated?.() ? (req.user as ContactViewer) : null;
+  const user = await storage.getUserBySlug(req.params.slug);
+  const profile = user && user.role === "coach" ? await storage.getCoachProfile(user.id) : undefined;
+
+  if (!user || coachProfileAccess(user, profile, viewer) === "not-found") {
     return res.status(404).json({
       message: "Coach not found",
     });
   }
 
-  const profile = await storage.getCoachProfile(user.id);
-
-  res.json({
-    user: toPublicUser(user),
-    profile,
-  });
+  res.json(
+    publicCoachResponse({ user, publicUser: toPublicUser(user), profile, viewer }),
+  );
 });
 
 export default router;

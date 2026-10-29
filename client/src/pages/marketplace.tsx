@@ -55,7 +55,8 @@ export default function MarketplacePage() {
             title: item.title,
             image: item.photos?.[0] || item.image || "https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=800&h=800&fit=crop",
             seller_name: item.sellerName,
-            seller_email: item.sellerEmail,
+            // No seller_email: public listings never carry the seller's
+            // login email (server/lib/publicProfiles.ts), and nothing showed it.
           }));
           setItems(transformedItems);
         } else {

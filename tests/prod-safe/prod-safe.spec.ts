@@ -1017,3 +1017,39 @@ test('@prod-safe PROD-SAFE-032 Published article opens from the directory', asyn
   await expect(page.getByRole('heading', { name: 'Article not found' })).toHaveCount(0);
 
 });
+
+test('@prod-safe PROD-SAFE-033 Public coach and marketplace APIs carry no private contact details', async ({ request }) => {
+
+  // ---------- Test data ----------
+
+  // Checks keys and shapes only - no contact value is read into the report.
+  const all = await getJson<CoachesApi>(request, '/api/coaches?page=1&limit=100');
+  const PRIVATE_KEYS = ['phone', 'email', 'password', 'isAdmin', 'isApproved', 'isHidden', 'status', 'failedLoginAttempts', 'lockedUntil'];
+
+  // ---------- Verify request (directory) ----------
+
+  for (const coach of all.coaches) {
+    expect(Object.keys(coach).filter((key) => PRIVATE_KEYS.includes(key)), `directory entry ${coach.id}`).toEqual([]);
+  }
+
+  // ---------- Verify request (profiles) ----------
+
+  for (const coach of all.coaches.slice(0, 5)) {
+    const body = await getJson<{ user: object; profile: object | null; contact: unknown; contactAccess: string }>(request, `/api/coaches/${coach.slug}`);
+    expect(body.contact, `profile ${coach.id}: contact`).toBeNull();
+    expect(body.contactAccess, `profile ${coach.id}: access`).toBe('sign-in');
+    expect(Object.keys(body.user).filter((key) => PRIVATE_KEYS.includes(key)), `profile ${coach.id}: user`).toEqual([]);
+    expect(Object.keys(body.profile ?? {}).filter((key) => PRIVATE_KEYS.includes(key)), `profile ${coach.id}: profile`).toEqual([]);
+  }
+
+  // ---------- Final verification ----------
+
+  const items = await getJson<Record<string, unknown>[]>(request, '/api/profile/marketplace/all');
+  expect(items.filter((item) => 'sellerEmail' in item).length, 'marketplace items with sellerEmail').toBe(0);
+
+  // A profile that isn't public is a plain 404 with no data.
+  const missing = await request.get('/api/coaches/zzz-prod-safe-no-such-coach');
+  expect(missing.status()).toBe(404);
+  expect(await missing.json()).toEqual({ message: 'Coach not found' });
+
+});
