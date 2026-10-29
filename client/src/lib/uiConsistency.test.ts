@@ -312,13 +312,23 @@ test("hero photos: responsive files exist and index.html preloads exactly what H
 
 test("directory pages never show their empty state while the list is still loading", () => {
   const checks: [string, RegExp][] = [
-    ["pages/coaches.tsx", /\{!loading && !loadError && filteredCoaches\.length === 0 && \(/],
+    ["pages/coaches.tsx", /\{!loading && !loadError && !filtersSettling && filteredCoaches\.length === 0 && \(/],
     ["pages/partners.tsx", /\{!loading && filteredPartners\.length === 0 && \(/],
     ["pages/clubs.tsx", /loading && filteredClubs\.length === 0 \?/],
     ["pages/travel.tsx", /\{!loaded \? \(/],
     ["pages/articles.tsx", /\{!loaded \? \(/],
   ];
   for (const [file, pattern] of checks) assert.match(read(path.join(SRC, file)), pattern, file);
+});
+
+test("coaches directory: the API filters the whole directory; the page only sends the filters", () => {
+  const s = read(path.join(SRC, "pages/coaches.tsx"));
+  assert.match(s, /fetch\(`\/api\/coaches\?\$\{params\}`/, "one request carries page + filters");
+  for (const param of ['"q"', '"location"', '"maxRate"']) assert.ok(s.includes(`params.set(${param}`), `sends ${param}`);
+  assert.match(s, /setAppliedFilters\(next\);\s*setPage\(1\);/, "a filter change restarts at page 1");
+  assert.match(s, /setDirectoryLocations\(data\.locations\)/, "location options come from the whole directory");
+  assert.doesNotMatch(s, /matchesMaxRate|coach\.name\.toLowerCase\(\)\.includes/, "no page-only search/price filtering in the browser");
+  assert.match(s, /return \(\) => controller\.abort\(\);/, "stale responses are dropped");
 });
 
 test("complete-profile: logo + Sign out header, compact responsive grid, dark-green level dots, auth-width Save", () => {

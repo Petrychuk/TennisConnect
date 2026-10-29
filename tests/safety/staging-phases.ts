@@ -52,6 +52,15 @@ export const STAGING_PHASES: Readonly<Record<StagingPhase, readonly PhaseEntry[]
     { file: 'tests/organiser/organiser-auth.spec.ts', ids: ['ORG-AUTH-003'] },
     { file: 'tests/auth/reg-validation.spec.ts', ids: ['REG-003', 'REG-004'] },
     { file: 'tests/auth/forgot-password.spec.ts', ids: ['AUTH-007', 'AUTH-008'] },
+    // Coaches directory filters (29 Oct 2026): guest-only, no login, no seeded
+    // credentials; only GET /api/coaches (page + page.request) and the cookie
+    // banner's localStorage consent. PUBLIC-001..004 in the same file stay in
+    // the read-only set (staging-readonly.ts); moving these there is a
+    // separate reviewed decision.
+    {
+      file: 'tests/public/coaches-directory.spec.ts',
+      ids: ['PUBLIC-COACH-001', 'PUBLIC-COACH-002', 'PUBLIC-COACH-003', 'PUBLIC-COACH-004', 'PUBLIC-COACH-005'],
+    },
   ],
   'mutating-core': [
     { file: 'tests/auth/email-case-insensitive.spec.ts', ids: ['AUTH-011', 'AUTH-012', 'AUTH-013'] },

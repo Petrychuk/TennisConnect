@@ -11,6 +11,13 @@ import {
 } from '../helpers/messages';
 import { TEST_USERS } from '../fixtures/test-users';
 
+// The toast list (Radix ToastViewport, aria-label "Notifications (F8)"). A CSS
+// locator on purpose: while a modal dialog is open the rest of the page is
+// aria-hidden, so getByRole('region') could not see the toast that a failed
+// action shows behind it (ADMIN-003, round 2). The toast's own aria-live
+// announcer lives outside this list, so text inside it matches once.
+const TOAST_LIST = '[role="region"][aria-label^="Notifications"]';
+
 /*
   MESSAGING FLOWS - STAGING ONLY (creates real conversations/messages).
   Do not add anything from this file to the @smoke suite.
@@ -193,7 +200,7 @@ test('MSG-103 Deleting A Conversation Removes The Whole Thread - Cancel Keeps It
   // ---------- Verify request and toast ----------
 
   expect(deleteResponse.ok()).toBeTruthy();
-  await expect(page.getByRole('region', { name: /notifications/i }).getByText(/conversation deleted/i)).toBeVisible(); // toast list only - its live announcer repeats the text
+  await expect(page.locator(TOAST_LIST).getByText(/conversation deleted/i)).toBeVisible(); // toast list only - its live announcer repeats the text
 
   // Only the welcome message conversation should remain.
   await expect(page.locator(CONVERSATION_ROW)).toHaveCount(1);

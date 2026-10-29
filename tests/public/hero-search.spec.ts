@@ -1,4 +1,5 @@
 import { test, expect, type Page, type Locator } from '@playwright/test';
+import { dismissCookieBanner } from '../helpers/auth';
 
 /*
   Hero search (components/shared/hero-search.tsx) on every menu page:
@@ -148,6 +149,10 @@ async function waitForList(cfg: PageConfig, page: Page) {
  */
 async function openHeroPage(page: Page, path: string) {
   await page.goto(path);
+  // The cookie-consent banner sits at the bottom of the window, above the
+  // Filters panel's "Clear all / Show results" footer, and swallowed those
+  // clicks (SEARCH-030..040, round 2). Answer it the way a visitor would.
+  await dismissCookieBanner(page);
   await expect(page.getByRole('search').filter({ visible: true })).toBeVisible({ timeout: 20_000 });
 }
 

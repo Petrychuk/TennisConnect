@@ -4,6 +4,13 @@ import { completePlayerProfile, getFirstListedCoachPath } from '../helpers/profi
 import { sendContactMessage, sendPlayerProfileMessage, getMyUserId, approveUser, CONVERSATION_ROW } from '../helpers/messages';
 import { TEST_USERS } from '../fixtures/test-users';
 
+// The toast list (Radix ToastViewport, aria-label "Notifications (F8)"). A CSS
+// locator on purpose: while a modal dialog is open the rest of the page is
+// aria-hidden, so getByRole('region') could not see the toast that a failed
+// action shows behind it (ADMIN-003, round 2). The toast's own aria-live
+// announcer lives outside this list, so text inside it matches once.
+const TOAST_LIST = '[role="region"][aria-label^="Notifications"]';
+
 /*
   MESSAGING SUITE — staging only (creates real conversations/messages).
   Do not add anything from this file to the @smoke suite - see
@@ -36,10 +43,13 @@ test('MSG-001 Send Message Player → Coach', async ({ page }) => {
 
   // ---------- Final verification ----------
 
-  // Exact toast title: the toast's aria-live announcer repeats the text,
-  // so a /message sent/i regex matched two elements (strict-mode error).
+  // The toast title, inside the toast list: the toast's aria-live announcer
+  // (outside the list) repeats the text, so a page-wide match found two
+  // elements. The title is "Message sent" on the coach Contact tab and
+  // "Message sent!" in the quick-message modals - an exact 'Message sent'
+  // (round 1) missed the modals (MSG-005/006/007/016 in round 2).
   await expect(
-    page.getByText('Message sent', { exact: true })
+    page.locator(TOAST_LIST).getByText(/^message sent!?$/i)
   ).toBeVisible();
 
 });
@@ -299,7 +309,7 @@ test('MSG-005 Player → Player Message', async ({ page }) => {
   expect(response.ok()).toBeTruthy();
 
   await expect(
-    page.getByText('Message sent', { exact: true })
+    page.locator(TOAST_LIST).getByText(/^message sent!?$/i)
   ).toBeVisible();
 
 });
@@ -341,7 +351,7 @@ test('MSG-006 Coach → Player Message', async ({ page, browser }) => {
   expect(response.ok()).toBeTruthy();
 
   await expect(
-    page.getByText('Message sent', { exact: true })
+    page.locator(TOAST_LIST).getByText(/^message sent!?$/i)
   ).toBeVisible();
 
 });
@@ -396,7 +406,7 @@ test('MSG-007 Organizer → Player Message', async ({ page }) => {
   expect(response.ok()).toBeTruthy();
 
   await expect(
-    page.getByText('Message sent', { exact: true })
+    page.locator(TOAST_LIST).getByText(/^message sent!?$/i)
   ).toBeVisible();
 
 });
@@ -665,7 +675,7 @@ test('MSG-015 Toast Notifications', async ({ page }) => {
   );
 
   await expect(
-    page.getByText('Message sent', { exact: true })
+    page.locator(TOAST_LIST).getByText(/^message sent!?$/i)
   ).toBeVisible();
 
   // ---------- Verify: validation-error toast ----------
@@ -751,7 +761,7 @@ test('MSG-016 Send Message Via Players Listing (Player → Player)', async ({ pa
   // ---------- Verify request ----------
 
   expect(response.ok()).toBeTruthy();
-  await expect(page.getByText('Message sent', { exact: true })).toBeVisible();
+  await expect(page.locator(TOAST_LIST).getByText(/^message sent!?$/i)).toBeVisible();
 
   // ---------- Final verification (target receives it) ----------
 
