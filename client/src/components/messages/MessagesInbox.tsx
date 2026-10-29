@@ -139,6 +139,11 @@ export function MessagesInbox() {
   const [mobileView, setMobileView] = useState<"list" | "chat">("list");
 
   const selectedMessageRef = useRef<Message | null>(null);
+  // The conversation the reader asked for last, set synchronously on every
+  // selection. A thread response for any other conversation is stale and
+  // dropped - clicking a second row while the first was still loading used
+  // to show the first thread under the second row (MSG-101, 28 Oct run).
+  const activeConversationIdRef = useRef<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   // Guards against overlapping fetchMessages() calls - if the backend
   // takes longer to answer than the poll interval (a slow response
@@ -348,37 +353,16 @@ export function MessagesInbox() {
       const data = await res.json();
   
       setMessages(data);
-  
-      // Первый вход на страницу - desktop only (see the effect above):
-      // on a phone this silently opened the newest conversation in the
-      // background and marked it read while the list was on screen.
-      if (
-        data.length > 0 &&
-        selectedMessageRef.current === null &&
-        window.innerWidth >= 1024
-      ) {
-        const firstMessage = data[0];
-  
-        setSelectedMessage(firstMessage);
-  
-        const firstConversationId = firstMessage.conversationId || firstMessage.id;
-        await loadConversation(firstConversationId);
-  
-        await handleMarkConversationAsRead(firstConversationId);
-  
-        return;
-      }
-  
+
+      // The first visit's "open the newest conversation" (desktop only) is
+      // the effect on messages.length above - it used to run here as well,
+      // a second concurrent load of the same thread.
+
       // Обновляем только текущий открытый чат - только если он
       // реально выбран, ничего не подгружаем вслепую
-      const currentSelected =
-        selectedMessageRef.current;
-  
-      if (currentSelected) {
-        const conversationId =
-          currentSelected.conversationId ||
-          currentSelected.id;
-  
+      const conversationId = activeConversationIdRef.current;
+
+      if (conversationId) {
         await loadConversation(
           conversationId
         );
@@ -412,7 +396,9 @@ export function MessagesInbox() {
               : m
           )
         );
-        setConversation((prev) => prev.map((m) => ({ ...m, isRead: true })));
+        if (activeConversationIdRef.current === conversationId) {
+          setConversation((prev) => prev.map((m) => ({ ...m, isRead: true })));
+        }
         queryClient.invalidateQueries({ queryKey: ["/api/messages/unread-count"] });
       }
     } catch (error) {
@@ -428,6 +414,7 @@ export function MessagesInbox() {
       if (res.ok) {
         setMessages(messages.filter(m => m.id !== messageId));
         if (selectedMessage?.id === messageId) {
+          activeConversationIdRef.current = null;
           setSelectedMessage(null);
         }
         toast({
@@ -514,7 +501,10 @@ export function MessagesInbox() {
       if (!res.ok) return;
   
       const data = await res.json();
-  
+
+      // Another conversation was opened while this one loaded.
+      if (activeConversationIdRef.current !== conversationId) return;
+
       setConversation(data);
     } catch (error) {
       console.error(
@@ -527,6 +517,8 @@ export function MessagesInbox() {
   const selectMessage = async (
     message: Message
   ) => {
+    const conversationId = message.conversationId || message.id;
+    activeConversationIdRef.current = conversationId;
     setSelectedMessage(message);
     
     // мобильный режим
@@ -534,7 +526,6 @@ export function MessagesInbox() {
       setMobileView("chat");
     }
 
-    const conversationId = message.conversationId || message.id;
     await loadConversation(conversationId);
 
     await handleMarkConversationAsRead(conversationId);
@@ -574,7 +565,10 @@ export function MessagesInbox() {
               // Same page loader as the rest of the site (full-size ball,
               // shown after the usual short delay), not the tiny button spinner.
               <DelayedTennisLoader text="Loading messages…" />
-            ) : !selectedMessage ? (
+            ) : messages.length === 0 ? (
+              // Only when there really is nothing. It used to be "nothing
+              // selected", and phones (which no longer auto-open the newest
+              // chat) showed "No messages yet" instead of their inbox.
               <Card className="max-w-md mx-auto" data-testid="messages-empty-state">
                 <CardContent className="pt-6 text-center">
                   <MailOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />

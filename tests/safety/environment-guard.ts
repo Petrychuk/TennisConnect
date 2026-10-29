@@ -481,6 +481,8 @@ export const PROD_SAFE_ALLOWLIST: readonly ProdSafeEntry[] = [
       'PROD-SAFE-030',
       'PROD-SAFE-031',
       'PROD-SAFE-032',
+      // 29 Oct 2026: guest API contract for coach contact details (security fix).
+      'PROD-SAFE-033',
     ],
   },
 ];

@@ -44,7 +44,7 @@ const FORBIDDEN: [RegExp, string][] = [
   [/request\.(post|put|patch|delete|fetch)\(/, 'write request'],
   [/\b(page|context)\.request\b/, 'page.request / context.request bypass the read-only request fixture'],
   [/\bnew(Context|Page)\(|request\.newContext\(/, 'a second context outside the fixture'],
-  [/route\(.*\.(fulfill|continue)\(/s, 'request rewriting'],
+  [/route\([\s\S]*\.(fulfill|continue)\(/, 'request rewriting'],
   [/setInputFiles/, 'upload'],
   [/continue-to-payment|create-checkout-session|stripe/i, 'payment'],
   [/(save|submit|send|delete|publish|approve|reject|join|register)[\w-]*['"`]\)\.(click|press|tap)/i, 'a submit-like click'],

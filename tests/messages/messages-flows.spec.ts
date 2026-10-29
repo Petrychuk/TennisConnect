@@ -7,6 +7,7 @@ import {
   getMyUserId,
   grantOrganizerAccess,
   hideUserAsAdmin,
+  approveUser,
   CONVERSATION_ROW,
 } from '../helpers/messages';
 import { TEST_USERS } from '../fixtures/test-users';
@@ -798,6 +799,10 @@ test("MSG-116 Admin Inbox Row For An Avatar-Less Recipient Shows Their Initial, 
   // up in the admin's OWN inbox, with the admin as sender and this
   // avatar-less player as the recipient.
 
+  // The Users tab offers Hide only for approved accounts (users_tab.tsx);
+  // a fresh registration is Pending, so it showed Approve and no Hide
+  // button, and the click waited out the whole test (28 Oct run).
+  await approveUser(page, TEST_USERS.admin.email, TEST_USERS.admin.password, playerId);
   await hideUserAsAdmin(page, TEST_USERS.admin.email, TEST_USERS.admin.password, playerId);
 
   await page.goto('/messages');

@@ -66,7 +66,7 @@ export const STAGING_PHASES: Readonly<Record<StagingPhase, readonly PhaseEntry[]
     // stay in the read-only set (staging-readonly.ts).
     {
       file: 'tests/prod-safe/prod-safe.spec.ts',
-      ids: Array.from({ length: 27 }, (_, i) => `PROD-SAFE-${String(i + 6).padStart(3, '0')}`),
+      ids: Array.from({ length: 28 }, (_, i) => `PROD-SAFE-${String(i + 6).padStart(3, '0')}`),
     },
   ],
   'mutating-core': [
@@ -90,7 +90,7 @@ export const STAGING_PHASES: Readonly<Record<StagingPhase, readonly PhaseEntry[]
     { file: 'tests/profile/image-optimization.spec.ts', ids: ['IMG-001', 'IMG-002'] },
     {
       file: 'tests/security/security-regression.spec.ts',
-      ids: ['SEC-001', 'SEC-002', 'SEC-002b', 'SEC-003', 'SEC-004', 'SEC-004b', 'SEC-005', 'SEC-006', 'SEC-007', 'SEC-008', 'SEC-009', 'SEC-010'],
+      ids: ['SEC-001', 'SEC-002', 'SEC-002b', 'SEC-003', 'SEC-004', 'SEC-004b', 'SEC-005', 'SEC-006', 'SEC-007', 'SEC-008', 'SEC-009', 'SEC-010', 'SEC-011', 'SEC-012'],
     },
     { file: 'tests/security/security.spec.ts', ids: ['SEC-003', 'SEC-004', 'SEC-005'] },
     { file: 'tests/security/sql-injection.spec.ts', ids: ['SEC-001'] },
