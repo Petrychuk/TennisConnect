@@ -61,6 +61,13 @@ export const STAGING_PHASES: Readonly<Record<StagingPhase, readonly PhaseEntry[]
       file: 'tests/public/coaches-directory.spec.ts',
       ids: ['PUBLIC-COACH-001', 'PUBLIC-COACH-002', 'PUBLIC-COACH-003', 'PUBLIC-COACH-004', 'PUBLIC-COACH-005'],
     },
+    // Production-safe smoke expansion (29 Oct 2026): guest-only and GET-only,
+    // enforced by the prod-safe fixture on every environment. PROD-SAFE-001..005
+    // stay in the read-only set (staging-readonly.ts).
+    {
+      file: 'tests/prod-safe/prod-safe.spec.ts',
+      ids: Array.from({ length: 27 }, (_, i) => `PROD-SAFE-${String(i + 6).padStart(3, '0')}`),
+    },
   ],
   'mutating-core': [
     { file: 'tests/auth/email-case-insensitive.spec.ts', ids: ['AUTH-011', 'AUTH-012', 'AUTH-013'] },
