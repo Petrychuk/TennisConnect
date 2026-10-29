@@ -186,3 +186,64 @@ The directory query has the same conditions, plus a new "account active" conditi
 - `GET /api/players/:slug` still serves hidden or unapproved **players** by slug. That route only checks role. Same class of issue, outside this coach ticket: follow-up.
 - `GET /api/organizer/organizations/by-user/:userSlug` and `/api/profile/marketplace/public/:userId` don't check whether the owner is hidden. They return business data (organisation, items), not contacts.
 - Not validated against a real Express, Postgres or browser from here: see the release readiness file.
+
+## 4. SEC-011 on Staging: approved member got "pending-approval" (29 Oct)
+
+**Failure:** `tests/security/security-regression.spec.ts:167`. Expected `contactAccess: "granted"` for `TEST_USERS.player`, received `"pending-approval"`.
+
+**Class:** APP_BUG, in the fix from section 1. Neither test data nor authentication was at fault.
+
+**Test account:** the seed sets the baseline `e2e-player` to approved, profile completed, `status: "active"`, not hidden (`server/seeds/e2e/drizzleStore.ts`). The login itself worked: the response came back for a signed-in user.
+
+**Root cause:** the route made the contact decision from `req.user`. That is the session copy built by `server/auth.ts` `deserializeUser`, which has only these fields:
+
+- `id`, `email`, `name`, `role`, `slug`, `avatar`, `cover`;
+- `status`, `profileCompleted`, `isAdmin`, `isOrganizer`.
+
+It has **no `isApproved` and no `isHidden`**. `isApproved === true` was therefore never true. Every signed-in member who was neither the coach nor an admin got `"pending-approval"`. The route test missed it because its fake `req.user` was the whole account row.
+
+**Fix** (`server/routes/coaches.ts`, `currentViewer()`):
+
+- The route reads the signed-in account with `storage.getUser(req.user.id)` and passes its `id`, `isAdmin`, `isApproved`, `isHidden` and `status` to the same policy.
+- If the account no longer exists, the viewer is treated as a guest (fail closed).
+- Side effect, wanted: approving, hiding or suspending an account takes effect on the next request, not at the next login.
+- The session object and `/api/auth/me` are unchanged.
+
+**Policy unchanged:**
+
+- guests: `sign-in`;
+- unapproved, hidden or inactive members: `pending-approval`;
+- approved, active members: `granted`, for visible coaches only;
+- the coach and admins: always;
+- hidden, draft or inactive coaches: 404 for others.
+
+**Tests** (`server/routes/coachContact.test.ts`, now 9):
+
+- The fake `req.user` now has exactly the `deserializeUser` fields, and `storage.getUser` returns the account row.
+- New checks:
+  - the session copy has no `isApproved`, yet an approved member is granted;
+  - hiding or suspending the member takes effect on the next request;
+  - a session for a deleted account is treated as a guest.
+- **Control:** against the unfixed route the same file fails 4 tests, including the SEC-011 scenario. With the fix all 9 pass.
+
+**SEC-011 itself is unchanged.** No assertion was weakened.
+
+**Still to run on Staging,** after deploying this branch:
+
+1. `npm run e2e:staging:check`.
+2. Confirm the deployed commit (`EXPECTED_DEPLOY_SHA`).
+3. Confirm the baseline accounts exist (preflight).
+4. Run SEC-011 only, through the reviewed phase runner. It does its own preflight, uses one worker, no retries and a run id.
+
+PowerShell:
+
+```powershell
+$env:EXPECTED_DEPLOY_SHA = (git rev-parse HEAD)   # the commit deployed to Staging
+npm run test:e2e:staging:phase:ci -- --phase=mutating-core --confirm-writes=mutating-core --grep "SEC-011 "
+Remove-Item Env:EXPECTED_DEPLOY_SHA
+```
+
+- `--list` with these arguments selects exactly 1 test: SEC-011.
+- It writes run-owned data only: a fresh coach and a fresh player.
+- Run SEC-012 the same way with `--grep "SEC-012 "`.
+- Afterwards, `npm run e2e:cleanup-run -- --residue` lists anything left over.

@@ -326,6 +326,18 @@ test("coach profile: contact details come from the API's `contact`, never from `
   assert.match(s, /data-testid="coach-contact-pending-approval"/);
 });
 
+test("UI primitives use Tailwind 4 syntax for Radix CSS variables (a Select taller than the window must scroll)", () => {
+  // Tailwind 4 compiles max-h-[--x] to "max-height: --x" (invalid, dropped by
+  // the browser), so the Select list had no max height: long lists ran off
+  // screen and options there could not be reached (PROD-SAFE-021, 29 Oct).
+  // The v4 form is max-h-(--x) -> max-height: var(--x).
+  const dir = path.join(SRC, "components/ui");
+  for (const file of readdirSync(dir).filter((f) => f.endsWith(".tsx"))) {
+    assert.doesNotMatch(read(path.join(dir, file)), /-\[--radix-/, `${file}: use -(--radix-...) not -[--radix-...]`);
+  }
+  assert.match(read(path.join(dir, "select.tsx")), /max-h-\(--radix-select-content-available-height\)/);
+});
+
 test("directory pages never show their empty state while the list is still loading", () => {
   const checks: [string, RegExp][] = [
     ["pages/coaches.tsx", /\{!loading && !loadError && !filtersSettling && filteredCoaches\.length === 0 && \(/],

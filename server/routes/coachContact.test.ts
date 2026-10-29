@@ -4,7 +4,9 @@
 // loopback server. `storage` is faked (no Postgres) and sign-in is stubbed
 // by a test-only middleware that sets req.user / req.isAuthenticated from an
 // `x-test-viewer` header - what a Passport session has already done by the
-// time the route runs.
+// time the route runs. req.user has exactly the fields server/auth.ts
+// deserializeUser puts there (no isApproved / isHidden): giving it the
+// whole account row is what hid the SEC-011 Staging failure (29 Oct).
 
 process.env.DATABASE_URL ??= "postgres://fake:fake@localhost:5432/fake";
 process.env.SUPABASE_URL ??= "http://fake.invalid";
@@ -51,12 +53,18 @@ const profileFor = (id: string) => {
   return Object.values(COACHES_BY_SLUG).some((c) => c.id === id) ? { ...PROFILE, userId: id } : undefined;
 };
 
-const VIEWERS: Record<string, object> = {
+// Account rows (what storage.getUser returns), keyed by test name.
+const VIEWERS: Record<string, Record<string, unknown>> = {
   approved: { id: "player-1", role: "player", isAdmin: false, isApproved: true, isHidden: false, status: "active" },
   unapproved: { id: "player-2", role: "player", isAdmin: false, isApproved: false, isHidden: false, status: "active" },
   admin: { id: "admin-1", role: "player", isAdmin: true, isApproved: true, isHidden: false, status: "active" },
   self: { ...COACH },
 };
+
+/** The session copy of an account - the same fields as server/auth.ts deserializeUser. */
+const SESSION_FIELDS = ["id", "email", "name", "role", "slug", "avatar", "cover", "status", "profileCompleted", "isAdmin", "isOrganizer"];
+const sessionUser = (account: Record<string, unknown> | undefined) =>
+  account && Object.fromEntries(SESSION_FIELDS.filter((k) => k in account).map((k) => [k, account[k]]));
 
 let server: http.Server;
 let base = "";
@@ -65,7 +73,8 @@ let restore = () => {};
 before(async () => {
   const { storage } = await import("../storage");
   const s = storage as any;
-  const originals = { getUserBySlug: s.getUserBySlug, getCoachProfile: s.getCoachProfile, getAllCoachesWithProfiles: s.getAllCoachesWithProfiles };
+  const originals = { getUser: s.getUser, getUserBySlug: s.getUserBySlug, getCoachProfile: s.getCoachProfile, getAllCoachesWithProfiles: s.getAllCoachesWithProfiles };
+  s.getUser = async (id: string) => Object.values(VIEWERS).find((v) => v.id === id);
   s.getUserBySlug = async (slug: string) => COACHES_BY_SLUG[slug];
   s.getCoachProfile = async (id: string) => profileFor(id);
   s.getAllCoachesWithProfiles = async () => [{ user: COACH, profile: PROFILE }];
@@ -74,7 +83,7 @@ before(async () => {
   const app = express();
   app.use((req: any, _res: any, next: any) => {
     const who = req.headers["x-test-viewer"];
-    const user = typeof who === "string" ? VIEWERS[who] : undefined;
+    const user = typeof who === "string" ? sessionUser(VIEWERS[who]) : undefined;
     req.user = user;
     req.isAuthenticated = () => !!user;
     next();
@@ -171,4 +180,39 @@ test("the coach and admins can still open a hidden or unapproved profile (approv
   assert.equal((await get(`/api/coaches/${NOT_PUBLIC.hidden.slug}`, "self")).res.status, 404);
   // Nothing to show before onboarding, even for admins.
   assert.equal((await get(`/api/coaches/${NOT_PUBLIC.incomplete.slug}`, "admin")).res.status, 404);
+});
+
+test("the session user has no approval flags - the route reads the account, so an approved member is granted", async () => {
+  // Same check the real session copy fails: req.user.isApproved is undefined.
+  assert.equal("isApproved" in (sessionUser(VIEWERS.approved) as object), false);
+  const { text } = await get("/api/coaches/jordan-coach", "approved");
+  assert.equal(JSON.parse(text).contactAccess, "granted");
+});
+
+test("approval and hiding take effect on the next request (fresh account read, not the session)", async () => {
+  VIEWERS.changing = { id: "player-3", role: "player", isAdmin: false, isApproved: true, isHidden: false, status: "active" };
+  assert.equal(JSON.parse((await get("/api/coaches/jordan-coach", "changing")).text).contactAccess, "granted");
+  VIEWERS.changing.isHidden = true;
+  const hidden = await get("/api/coaches/jordan-coach", "changing");
+  assert.equal(JSON.parse(hidden.text).contactAccess, "pending-approval");
+  assert.ok(!hidden.text.includes(PHONE) && !hidden.text.includes(CONTACT_EMAIL));
+  VIEWERS.changing.isHidden = false;
+  VIEWERS.changing.status = "suspended";
+  assert.equal(JSON.parse((await get("/api/coaches/jordan-coach", "changing")).text).contactAccess, "pending-approval");
+});
+
+test("a session whose account no longer exists is treated as a guest", async () => {
+  VIEWERS.ghost = { id: "deleted-1", role: "player", isApproved: true };
+  const realGhost = VIEWERS.ghost;
+  // The session still says signed in, but storage has no such account.
+  const { storage } = await import("../storage");
+  const s = storage as any;
+  const getUser = s.getUser;
+  s.getUser = async (id: string) => (id === realGhost.id ? undefined : getUser(id));
+  try {
+    const { text } = await get("/api/coaches/jordan-coach", "ghost");
+    assert.deepEqual({ contact: JSON.parse(text).contact, access: JSON.parse(text).contactAccess }, { contact: null, access: "sign-in" });
+  } finally {
+    s.getUser = getUser;
+  }
 });
