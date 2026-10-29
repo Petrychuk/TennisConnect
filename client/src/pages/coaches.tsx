@@ -25,16 +25,18 @@ import { HeroSearch, HeroSearchFiltersButton, HeroShortcuts, type HeroShortcut }
 import { HeroFiltersPanel, FilterSection } from "@/components/shared/hero-filters";
 import { DelayedTennisLoader } from "@/components/ui/tennisLoader";
 import { HeroPhoto } from "@/components/shared/hero-photo";
+import { parseHourlyRate } from "@/lib/coachRate";
+import { ANY_PRICE, COACHES_PAGE_SIZE } from "@shared/coachDirectory";
 
 export default function CoachesPage() {
   const coachesSectionRef = useRef<HTMLDivElement>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [locationFilter, setLocationFilter] = useState("all");
-  const [priceRange, setPriceRange] = useState([150]); // Max price
+  const [priceRange, setPriceRange] = useState([ANY_PRICE]); // Max price (ANY_PRICE = no limit)
   const [minRating, setMinRating] = useState(0);
   const [coaches, setCoaches] = useState<
-    (typeof COACHES_DATA[number] & { isOrganizer?: boolean })[]
+    (Omit<typeof COACHES_DATA[number], "rate"> & { rate: number | null; isOrganizer?: boolean })[]
   >([]);
   const [loading, setLoading] = useState(true);
   // Set when /api/coaches fails (e.g. 429 rate limit, 500), so the page says
@@ -44,20 +46,44 @@ export default function CoachesPage() {
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 16,
+    limit: COACHES_PAGE_SIZE,
     total: 0,
     totalPages: 0,
   });
-  
+  // Every location in the directory (from the API), not just this page's.
+  const [directoryLocations, setDirectoryLocations] = useState<string[]>([]);
+
+  // Search, location and price are applied by /api/coaches to the whole
+  // directory (shared/coachDirectory.ts) - filtering the 16 coaches of the
+  // current page in the browser said "No coaches found" while matches sat
+  // on page 2. The filters settle for 300ms (typing, dragging the slider)
+  // and then the list restarts at page 1. No filters = every coach.
+  const [appliedFilters, setAppliedFilters] = useState({ q: "", location: "all", maxRate: ANY_PRICE });
   useEffect(() => {
+    const next = { q: searchTerm.trim(), location: locationFilter, maxRate: priceRange[0] };
+    if (next.q === appliedFilters.q && next.location === appliedFilters.location && next.maxRate === appliedFilters.maxRate) return;
+    const timer = setTimeout(() => {
+      setAppliedFilters(next);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm, locationFilter, priceRange, appliedFilters]);
+
+  useEffect(() => {
+    // A slower earlier response (previous page or filters) must not
+    // overwrite the newer one.
+    const controller = new AbortController();
     async function fetchCoaches() {
       try {
         setLoading(true);
         setLoadError(null);
-  
-        const res = await fetch(
-          `/api/coaches?page=${page}&limit=16`
-        );
+
+        const params = new URLSearchParams({ page: String(page), limit: String(COACHES_PAGE_SIZE) });
+        if (appliedFilters.q) params.set("q", appliedFilters.q);
+        if (appliedFilters.location !== "all") params.set("location", appliedFilters.location);
+        if (appliedFilters.maxRate < ANY_PRICE) params.set("maxRate", String(appliedFilters.maxRate));
+
+        const res = await fetch(`/api/coaches?${params}`, { signal: controller.signal });
   
         if (!res.ok) {
           throw new Error(
@@ -69,8 +95,10 @@ export default function CoachesPage() {
   
         const data = await res.json();
   
-        // Pagination
+        // Pagination (the API clamps a page past the end to the last page)
         setPagination(data.pagination);
+        if (data.pagination?.page && data.pagination.page !== page) setPage(data.pagination.page);
+        if (Array.isArray(data.locations)) setDirectoryLocations(data.locations);
   
         // API -> UI
         const transformedCoaches = data.coaches.map((coach: any) => ({
@@ -85,9 +113,9 @@ export default function CoachesPage() {
             coach.location ??
             "Sydney",
   
-          rate: coach.rate
-            ? Number(coach.rate)
-            : 80,
+          // Free text ("$80/hr") - see lib/coachRate.ts. Number() made these NaN
+          // and the price filter then hid the coach.
+          rate: parseHourlyRate(coach.rate),
   
           rating: coach.rating || "4.9",
   
@@ -107,6 +135,7 @@ export default function CoachesPage() {
   
         setCoaches(transformedCoaches);
       } catch (error) {
+        if (controller.signal.aborted) return;
         console.error("Failed to fetch coaches:", error);
         setLoadError(error instanceof Error && error.message ? error.message : "The coaches list could not be loaded.");
   
@@ -114,35 +143,36 @@ export default function CoachesPage() {
   
         setPagination({
           page: 1,
-          limit: 16,
+          limit: COACHES_PAGE_SIZE,
           total: 0,
           totalPages: 0,
         });
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     }
-  
+
     fetchCoaches();
-  }, [page, reloadKey]);
+    return () => controller.abort();
+  }, [page, appliedFilters, reloadKey]);
 
-  // Dynamically get all unique locations from coaches
-  const uniqueLocations = useMemo(() => {
-    const locations = coaches.map(coach => coach.location).filter(Boolean);
-    return Array.from(new Set(locations)).sort();
-  }, [coaches]);
+  // The selected location stays in the list even if no coach has it any more.
+  const uniqueLocations = useMemo(
+    () => (locationFilter === "all" || directoryLocations.includes(locationFilter)
+      ? directoryLocations
+      : [...directoryLocations, locationFilter].sort()),
+    [directoryLocations, locationFilter],
+  );
 
-  const filteredCoaches = coaches.filter(coach => {
-    const matchesSearch = coach.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          coach.title.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesLocation = locationFilter === "all" || coach.location === locationFilter;
-    const matchesPrice = coach.rate <= priceRange[0];
-    const matchesRating = coach.rating >= minRating;
-    
-    return matchesSearch && matchesLocation && matchesPrice && matchesRating;
-  });
+  // The server has already applied search, location and price. Rating is
+  // hidden until coaches have real reviews (minRating stays 0), so this
+  // keeps the whole page.
+  const filteredCoaches = coaches.filter(coach => Number(coach.rating) >= minRating);
+  // Still typing / dragging, or the request is in flight.
+  const filtersSettling =
+    searchTerm.trim() !== appliedFilters.q || locationFilter !== appliedFilters.location || priceRange[0] !== appliedFilters.maxRate;
 
-  const activeFiltersCount = (locationFilter !== "all" ? 1 : 0) + (priceRange[0] < 150 ? 1 : 0) + (minRating > 0 ? 1 : 0);
+  const activeFiltersCount = (locationFilter !== "all" ? 1 : 0) + (priceRange[0] < ANY_PRICE ? 1 : 0) + (minRating > 0 ? 1 : 0);
 
   // GA4 "search" - same debounced-on-settle approach as partners.tsx's
   // own player search, so this doesn't fire once per keystroke either.
@@ -170,7 +200,7 @@ export default function CoachesPage() {
       label: `Under $${max}`,
       icon: [<Coins key="c" />, <Wallet key="w" />, <DollarSign key="d" />][i],
       selected: priceRange[0] === max,
-      onClick: () => setPriceRange(priceRange[0] === max ? [150] : [max]),
+      onClick: () => setPriceRange(priceRange[0] === max ? [ANY_PRICE] : [max]),
       testId: `coaches-shortcut-under-${max}${suffix}`,
     }));
   // The Filters panel (dropdown on tablet/desktop, modal on phones):
@@ -207,7 +237,7 @@ export default function CoachesPage() {
           <span className="font-semibold">${priceRange[0]}/hr</span>
         </div>
         <Slider
-          defaultValue={[150]}
+          defaultValue={[ANY_PRICE]}
           max={200}
           step={10}
           value={priceRange}
@@ -227,7 +257,7 @@ export default function CoachesPage() {
   const clearFilters = () => {
     setSearchTerm("");
     setLocationFilter("all");
-    setPriceRange([150]);
+    setPriceRange([ANY_PRICE]);
     setMinRating(0);
   };
 
@@ -397,6 +427,10 @@ export default function CoachesPage() {
                 real H2 parent instead of skipping straight from the
                 page's H1. */}
             <h2 className="sr-only">Search Results</h2>
+            {/* Announces the total for screen readers; tests read it too. */}
+            <p className="sr-only" aria-live="polite" data-testid="coaches-results-count" data-total={loading ? undefined : pagination.total}>
+              {loading ? "Loading coaches" : `${pagination.total} ${pagination.total === 1 ? "coach" : "coaches"} found`}
+            </p>
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
               {filteredCoaches.map((coach, index) => (
                 <motion.div
@@ -497,9 +531,15 @@ export default function CoachesPage() {
                         <div className="flex flex-col">
                           <span className="text-[10px] md:text-xs text-muted-foreground">Hourly Rate</span>
                           <div className="flex items-center font-bold text-base md:text-lg">
-                            <DollarSign className="w-3 h-3 md:w-4 md:h-4 text-primary-text" />
-                            {coach.rate}
-                            <span className="text-xs md:text-sm font-normal text-muted-foreground ml-1">AUD</span>
+                            {coach.rate !== null ? (
+                              <>
+                                <DollarSign className="w-3 h-3 md:w-4 md:h-4 text-primary-text" />
+                                {coach.rate}
+                                <span className="text-xs md:text-sm font-normal text-muted-foreground ml-1">AUD</span>
+                              </>
+                            ) : (
+                              <span className="text-sm font-normal text-muted-foreground">On request</span>
+                            )}
                           </div>
                         </div>
                         
@@ -556,7 +596,7 @@ export default function CoachesPage() {
                 </Button>
               </div>
             )}
-            {!loading && !loadError && filteredCoaches.length === 0 && (
+            {!loading && !loadError && !filtersSettling && filteredCoaches.length === 0 && (
               <div className="text-center py-20">
                 <h3 className="text-2xl font-bold mb-2">No coaches found</h3>
                 <p className="text-muted-foreground">Try adjusting your search or filters to find more coaches.</p>

@@ -97,7 +97,11 @@ export async function createSeason(
   page: Page,
   data: { name: string; startDate: string; endDate: string; type?: string; description?: string }
 ): Promise<SeasonFixture> {
-  const res = await page.request.post('/api/organizer/seasons', { data });
+  // `type` is a required column (seasons.type NOT NULL) and the season
+  // form always sends one (default "social" - pages/organiser/season-new.tsx).
+  // The helper used to omit it, so every Organiser Hub test that creates a
+  // season got 400 "Invalid input: expected string" (28 Oct, round 2).
+  const res = await page.request.post('/api/organizer/seasons', { data: { type: 'social', ...data } });
   if (!res.ok()) {
     throw new Error(`createSeason(): POST /api/organizer/seasons returned ${res.status()} - ${await res.text()}`);
   }

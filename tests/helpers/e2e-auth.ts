@@ -9,12 +9,18 @@
 //   workers never share or overwrite each other's state.
 // - Each test gets its own browser context; a worker reuses its login for a
 //   role (the login endpoint is rate-limited to 10 per 15 min per IP).
+// - The state file is keyed by the worker's PARALLEL index, which stays the
+//   same when Playwright replaces a worker after a failed test (the worker
+//   index does not). A replacement worker re-checks that file's session
+//   with GET /api/auth/me and reuses it instead of logging in again - every
+//   restart used to cost a new login, and after ~10 failures in 15 minutes
+//   the run hit HTTP 429 (round 2, 28 Oct).
 //   Tests that log out or change the session must use { fresh: true }.
 // - Passwords come only from E2E_*_PASSWORD environment variables; a missing
 //   one fails with the variable NAME, never a value.
 // - Refused on Production: these accounts exist only on Local/Staging.
 
-import { chmodSync, mkdirSync, readFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import type { APIRequestContext, Browser, BrowserContext, TestInfo } from '@playwright/test';
 import { baselineIdentity, type BaselineRole } from '../../server/seeds/e2e/identities';
@@ -95,25 +101,36 @@ export interface AuthenticatedContextOptions {
  */
 export async function baselineSessionState(
   role: BaselineRole,
-  testInfo: Pick<TestInfo, 'workerIndex' | 'project'>,
+  testInfo: Pick<TestInfo, 'parallelIndex' | 'project'>,
   options: AuthenticatedContextOptions = {}
 ): Promise<string> {
   assertE2EAuthAllowed();
   const baseURL = testInfo.project.use.baseURL;
   if (!baseURL) throw new E2EAuthError('no baseURL configured.');
 
-  const key = `${role}:${testInfo.workerIndex}`;
+  const key = `${role}:${testInfo.parallelIndex}`;
   const cached = options.fresh ? undefined : cachedStates.get(key);
   if (cached) return cached;
 
   const { request } = await import('@playwright/test');
+
+  // A previous worker in the same slot may already have a live session on
+  // disk - reuse it if the server still accepts it as this account.
+  if (!options.fresh) {
+    const existing = storageStatePath(role, testInfo.parallelIndex);
+    if (existsSync(existing) && (await sessionStillValid(request, baseURL, existing, role))) {
+      cachedStates.set(key, existing);
+      return existing;
+    }
+  }
+
   const api = await request.newContext({ baseURL });
   let statePath: string;
   try {
     await loginViaApi(api, role);
     // A fresh login gets its own file, so a test that logs out can never
     // invalidate the worker's cached state.
-    statePath = storageStatePath(role, testInfo.workerIndex, options.fresh ? freshCounter++ : undefined);
+    statePath = storageStatePath(role, testInfo.parallelIndex, options.fresh ? freshCounter++ : undefined);
     mkdirSync(path.dirname(statePath), { recursive: true, mode: 0o700 });
     await api.storageState({ path: statePath });
     chmodSync(statePath, 0o600);
@@ -125,8 +142,28 @@ export async function baselineSessionState(
 }
 
 /** Drops the worker's cached session for `role` (e.g. the server ended it). */
-export function forgetBaselineSession(role: BaselineRole, workerIndex: number) {
-  cachedStates.delete(`${role}:${workerIndex}`);
+export function forgetBaselineSession(role: BaselineRole, parallelIndex: number) {
+  cachedStates.delete(`${role}:${parallelIndex}`);
+}
+
+/** True when the saved session still belongs to `role` on this server. */
+async function sessionStillValid(
+  request: typeof import('@playwright/test').request,
+  baseURL: string,
+  statePath: string,
+  role: BaselineRole,
+): Promise<boolean> {
+  const api = await request.newContext({ baseURL, storageState: statePath });
+  try {
+    const me = await api.get('/api/auth/me', { failOnStatusCode: false });
+    if (!me.ok()) return false;
+    const body = await me.json().catch(() => null);
+    return !!body?.authenticated && String(body.email).toLowerCase() === baselineIdentity(role).email;
+  } catch {
+    return false;
+  } finally {
+    await api.dispose();
+  }
 }
 
 /** Session cookies from a storage-state file written by baselineSessionState(). */

@@ -3,6 +3,13 @@ import { registerPlayer, login } from '../../helpers/auth';
 import { TEST_USERS } from '../../fixtures/test-users';
 import { expectRunOwned } from '../../fixtures/run-id';
 
+// The toast list (Radix ToastViewport, aria-label "Notifications (F8)"). A CSS
+// locator on purpose: while a modal dialog is open the rest of the page is
+// aria-hidden, so getByRole('region') could not see the toast that a failed
+// action shows behind it (ADMIN-003, round 2). The toast's own aria-live
+// announcer lives outside this list, so text inside it matches once.
+const TOAST_LIST = '[role="region"][aria-label^="Notifications"]';
+
 /* ADMIN-002 Delete User - Ordinary Player (happy path)
 
 ✓ Admin can delete a plain player with no organisation/sessions
@@ -54,7 +61,7 @@ test('ADMIN-002 Delete User - ordinary player succeeds', async ({ page }) => {
 
   // ---------- Final verification ----------
 
-  await expect(page.getByRole('region', { name: /notifications/i }).getByText(/user deleted/i)).toBeVisible(); // toast list only - its live announcer repeats the text
+  await expect(page.locator(TOAST_LIST).getByText(/user deleted/i)).toBeVisible(); // toast list only - its live announcer repeats the text
   await expect(row).not.toBeVisible();
 
 });
@@ -162,7 +169,7 @@ test('ADMIN-007 Delete Organization unblocks deleting its owner', async ({ page 
   ]);
 
   expect(orgDeleteResponse.ok()).toBeTruthy();
-  await expect(page.getByRole('region', { name: /notifications/i }).getByText(/organization deleted/i)).toBeVisible(); // toast list only - its live announcer repeats the text
+  await expect(page.locator(TOAST_LIST).getByText(/organization deleted/i)).toBeVisible(); // toast list only - its live announcer repeats the text
 
   // ---------- The owner's row is untouched - still there, delete
   // button no longer blocked by an organization ----------
@@ -302,7 +309,7 @@ test('ADMIN-003 Delete User - blocked with real reason when the organization has
   // Inside the toast list: the toast's aria-live announcer repeats the same
   // text, so a page-wide getByText matched two elements (strict mode).
   await expect(
-    page.getByRole('region', { name: /notifications/i }).getByText(/you own an organization/i)
+    page.locator(TOAST_LIST).getByText(/you own an organization/i)
   ).toBeVisible();
   await expect(row).toBeVisible();
 

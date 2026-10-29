@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { registerPlayer } from '../helpers/auth';
+import { registerPlayer, dismissCookieBanner } from '../helpers/auth';
 import { becomeOrganiser, seedPlayers, seedSession } from '../helpers/organiser';
 
 /*
@@ -27,9 +27,11 @@ test.describe('Play', () => {
 
     await page.goto('/play');
 
-    const card = page.getByTestId(`play-session-card-${session.id}`);
+    // Scoped to the results grid: the same session can also be suggested in
+    // the "Recommended for you" row above it (strict-mode duplicate, round 2).
+    const card = page.getByTestId('play-page-results').getByTestId(`play-session-card-${session.id}`);
     await expect(card).toBeVisible({ timeout: 15000 });
-    await expect(page.getByTestId(`play-session-card-${session.id}-title`)).toHaveText(title);
+    await expect(card.getByTestId(`play-session-card-${session.id}-title`)).toHaveText(title);
     await expect(card).toContainText(organiser.organizationName);
   });
 
@@ -60,6 +62,7 @@ test.describe('Play', () => {
     });
 
     await page.goto('/play');
+    await dismissCookieBanner(page); // it covers the Filters panel's footer
     await page.getByTestId('play-page-search-input').fill(String(stamp));
 
     await expect(page.getByTestId('play-page-no-matches')).toBeVisible({ timeout: 15000 });
@@ -82,11 +85,11 @@ test.describe('Play', () => {
 
     // By organiser name.
     await page.getByTestId('play-page-search-input').fill(organiser.organizationName);
-    await expect(page.getByTestId(`play-session-card-${session.id}`)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('play-page-results').getByTestId(`play-session-card-${session.id}`)).toBeVisible({ timeout: 15000 });
 
     // By session title.
     await page.getByTestId('play-page-search-input').fill('Uniquely Named Session');
-    await expect(page.getByTestId(`play-session-card-${session.id}`)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('play-page-results').getByTestId(`play-session-card-${session.id}`)).toBeVisible({ timeout: 15000 });
   });
 
   test('PLAY-004 Format filter narrows the list to just that format', async ({ page }) => {
@@ -111,15 +114,22 @@ test.describe('Play', () => {
     });
 
     await page.goto('/play');
+    await dismissCookieBanner(page); // it covers the Filters panel's footer
     await page.getByTestId('play-page-search-input').fill(String(stamp));
-    await expect(page.getByTestId(`play-session-card-${americano.id}`)).toBeVisible({ timeout: 15000 });
-    await expect(page.getByTestId(`play-session-card-${social.id}`)).toBeVisible();
+    await expect(page.getByTestId('play-page-results').getByTestId(`play-session-card-${americano.id}`)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('play-page-results').getByTestId(`play-session-card-${social.id}`)).toBeVisible();
 
-    await page.getByTestId('play-page-filter-format').click();
-    await page.getByTestId('play-page-filter-format-americano').click();
+    // The format filter lives in the Filters panel since the hero search
+    // (hero-filters.tsx); the old play-page-filter-format control is gone.
+    // The panel edits a draft, which "Show results" applies.
+    await page.getByTestId('play-quick-filter-open').click();
+    await page.getByTestId('play-filter-format').click();
+    await page.getByTestId('play-filter-format-americano').click();
+    await page.getByTestId('play-filters-show-results').click();
+    await expect(page.getByTestId('play-filters-dialog')).toBeHidden();
 
-    await expect(page.getByTestId(`play-session-card-${americano.id}`)).toBeVisible({ timeout: 15000 });
-    await expect(page.getByTestId(`play-session-card-${social.id}`)).toHaveCount(0);
+    await expect(page.getByTestId('play-page-results').getByTestId(`play-session-card-${americano.id}`)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('play-page-results').getByTestId(`play-session-card-${social.id}`)).toHaveCount(0);
   });
 
   test('@smoke PLAY-005 Player can register, see Registered, then cancel', async ({ page }) => {

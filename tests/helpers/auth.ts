@@ -174,6 +174,14 @@ async function loginWithCachedSession(page: Page, role: BaselineRole) {
     // attributes; the API check below then saw the admin while the page's
     // own requests still sent the player's, and /admin showed "Admin Access
     // Required" (ADMIN-001/005/007 in the 28 Oct Staging run).
+    // Leave the previous account's page first. Its polling (unread counts,
+    // messages) keeps sending requests, and every authenticated response
+    // re-sets that account's session cookie (server/auth.ts updates
+    // lastActivity, so express-session rewrites the cookie). One response
+    // landing after the switch put the player's cookie back over the
+    // admin's - /admin then said "You don't have admin privileges"
+    // (ADMIN-001/007, MSG-116 in both Staging rounds).
+    await page.goto('about:blank');
     await page.context().clearCookies();
     await page.context().addCookies(sessionCookies(statePath));
     const me = await page.request.get('/api/auth/me', { failOnStatusCode: false });
@@ -186,7 +194,7 @@ async function loginWithCachedSession(page: Page, role: BaselineRole) {
       await expect(page.getByTestId('profile-menu')).toBeVisible({ timeout: 15000 });
       return;
     }
-    forgetBaselineSession(role, info.workerIndex);
+    forgetBaselineSession(role, info.parallelIndex);
   }
   throw new Error(`[e2e-auth] could not restore a session for ${identity.email}. Has the Staging seed been run?`);
 }
