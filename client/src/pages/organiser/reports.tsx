@@ -1,4 +1,3 @@
-import { OrganiserBarLogo } from "@/components/organiser/ui/organiser-bar-logo";
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -11,11 +10,9 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import {
   Select,
   SelectContent,
@@ -38,19 +35,15 @@ import {
   BarChart3,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import SEO from "@/components/seo";
 
-import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar";
-import { useSidebarCollapsed } from "@/lib/use-sidebar-collapsed";
 import { cn } from "@/lib/utils";
-import { NotificationBell } from "@/components/organiser/ui/notification-bell";
 import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
-import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
 import { seasonStatus, formatSeasonPeriod } from "@/lib/season-utils";
 import { getSeasons } from "@/lib/api/organizer-sessions";
 import { getSeriesForSeason } from "@/lib/api/organizer-rankings";
 import { getReportsData } from "@/lib/api/organizer-reports";
 import type { ReportsPeriod } from "@shared/schema";
+import { OrganiserLayout } from "@/components/organiser/ui/organiser-layout";
 import { OrganiserBreadcrumb } from "@/components/organiser/ui/organiser-breadcrumb";
 
 const PERIOD_OPTIONS: { value: ReportsPeriod; label: string }[] = [
@@ -147,9 +140,6 @@ const EMPTY_STATE_COPY: Record<string, { title: string; body: string }> = {
 export default function OrganiserReportsPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed();
-  const profileHref = user ? `/${user.role}/${user.slug}` : "/";
-  const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null, isAdmin: user.isAdmin ?? false } : mockOrganiser;
 
   const [period, setPeriod] = useState<ReportsPeriod>("this_season");
   const [seasonId, setSeasonId] = useState<string>("");
@@ -207,48 +197,15 @@ export default function OrganiserReportsPage() {
   });
   const data = reportsQuery.data;
 
-  if (authLoading) return null;
-  if (!isAuthenticated) {
-    setLocation("/auth");
-    return null;
-  }
-  if (!user?.isOrganizer) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-background">
-        <Card className="max-w-md w-full shadow-sm">
-          <CardContent className="p-6 text-muted-foreground">You need to be an approved organiser to view this page.</CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   const emptyCopy = data?.emptyReason ? EMPTY_STATE_COPY[data.emptyReason] : null;
 
   return (
-    <div className="min-h-screen flex bg-background" data-testid="organiser-reports-page">
-      <SEO title="Reports | Organiser Hub | TennisConnect" description="Understand participation and attendance across your sessions." noIndex />
-
-      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-72")}>
-        <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} className="w-full" collapsed={sidebarCollapsed} onToggleCollapsed={() => setSidebarCollapsed((v) => !v)} />
-      </aside>
-
-      <main id="main-content" className="flex-1 min-w-0 pb-16 md:pb-0">
-        <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="hidden md:inline-flex" aria-label="Open Organiser Hub menu" data-testid="organiser-sidebar-trigger">
-                <Menu className="w-5 h-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-72">
-              <SheetTitle className="sr-only">Organiser Hub navigation</SheetTitle>
-              <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} />
-            </SheetContent>
-          </Sheet>
-          <OrganiserBarLogo />
-          <div className="hidden md:block mr-auto font-display font-bold">Reports</div>
-          <div className="flex items-center gap-1"><NotificationBell testId="organiser-header-bell-mobile" /></div>
-        </div>
+    <OrganiserLayout
+      testId="organiser-reports-page"
+      seoTitle="Reports | Organiser Hub | TennisConnect"
+      seoDescription="Understand participation and attendance across your sessions."
+      mobileTitle="Reports"
+    >
 
         <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
           <OrganiserBreadcrumb current="Reports" testId="organiser-reports-page-breadcrumb" />
@@ -543,9 +500,8 @@ export default function OrganiserReportsPage() {
             </>
           )}
         </div>
-      </main>
 
       <OrganiserMobileNav />
-    </div>
+    </OrganiserLayout>
   );
 }

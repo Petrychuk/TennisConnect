@@ -21,11 +21,16 @@ import {
   extractTestId,
   fetchServerEnvironment,
   productionTestMatch,
+  productionSelection,
+  productionSuite,
+  assertProdLiveInternalTest,
+  PROD_LIVE_INTERNAL_ALLOWLIST,
   resolveTarget,
   verifyTargetEnvironment,
   type FetchLike,
   type VerifiedTarget,
 } from './environment-guard';
+import { allowedLiveWrite } from './prod-live-internal-rules';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -442,5 +447,89 @@ describe('production allowlist', () => {
       [{ name: 'Desktop Chrome', testMatch: productionTestMatch(), grep: /@prod-safe PROD-SAFE-002/, use: { baseURL: PROD } }],
       verified
     );
+  });
+});
+
+// ---------- TC Live v1: internal Production Live suite (opt-in) ----------
+
+describe('prod-live-internal suite selection', () => {
+  const SID = '3f2b8c1e-1d2a-4b5c-9e8f-0a1b2c3d4e5f';
+  const full = {
+    TEST_ENV: 'production',
+    BASE_URL: PROD,
+    E2E_PROD_SUITE: 'prod-live-internal',
+    E2E_PROD_LIVE_SESSION_ID: SID,
+    E2E_CONFIRM_PROD_LIVE_INTERNAL: SID,
+    E2E_PROD_LIVE_ORGANISER_EMAIL: 'internal-organiser@example.invalid',
+    E2E_PROD_LIVE_ORGANISER_PASSWORD: 'not-a-real-password',
+    E2E_PROD_LIVE_PLAYER_SLUGS: 'internal-player-1,internal-player-2',
+  };
+
+  it('defaults to prod-safe; the internal suite needs the opt-in, every variable and a matching confirmation', () => {
+    assert.equal(productionSuite({ TEST_ENV: 'production', BASE_URL: PROD }), 'prod-safe');
+    assert.equal(productionSuite(full), 'prod-live-internal');
+    assert.throws(() => productionSuite({ ...full, E2E_CONFIRM_PROD_LIVE_INTERNAL: '' }), /confirm this run/);
+    assert.throws(() => productionSuite({ ...full, E2E_CONFIRM_PROD_LIVE_INTERNAL: 'yes' }), /confirm this run/);
+    assert.throws(() => productionSuite({ ...full, E2E_PROD_LIVE_ORGANISER_PASSWORD: '' }), (e: Error) => /E2E_PROD_LIVE_ORGANISER_PASSWORD/.test(e.message) && !e.message.includes('not-a-real-password'));
+    assert.throws(() => productionSuite({ ...full, E2E_PROD_LIVE_SESSION_ID: 'abc', E2E_CONFIRM_PROD_LIVE_INTERNAL: 'abc' }), /uuid/);
+    assert.throws(() => productionSuite({ ...full, E2E_PROD_SUITE: 'everything' }), /not a Production suite/);
+  });
+
+  it('is refused anywhere but Production', () => {
+    for (const TEST_ENV of ['staging', 'local']) {
+      assert.throws(() => productionSuite({ ...full, TEST_ENV }), /only for TEST_ENV=production/);
+    }
+  });
+
+  it('selects only its own file and tag - never the prod-safe suite, never anything else', () => {
+    const live = productionSelection('prod-live-internal');
+    const safe = productionSelection('prod-safe');
+    assert.equal(live.testMatch.length, 1);
+    assert.ok(live.testMatch[0].test('tests/prod-live-internal/live-internal.spec.ts'));
+    assert.ok(!live.testMatch[0].test('tests/prod-safe/prod-safe.spec.ts'));
+    assert.ok(!safe.testMatch.some((re) => re.test('tests/prod-live-internal/live-internal.spec.ts')));
+    assert.equal(live.grep.source, '@prod-live-internal');
+    assert.equal(safe.grep.source, '@prod-safe');
+    assert.deepEqual(PROD_LIVE_INTERNAL_ALLOWLIST[0].testIds, ['LIVE-PROD-001', 'LIVE-PROD-002']);
+  });
+
+  it('global setup refuses a Production project that mixes the suites', () => {
+    const verified = { testEnv: 'production', serverEnv: 'production', origin: PROD } as VerifiedTarget;
+    const live = productionSelection('prod-live-internal');
+    assert.doesNotThrow(() => assertProjectsSafe([{ name: 'c', testMatch: live.testMatch, grep: live.grep, use: { baseURL: PROD } }], verified, 'prod-live-internal'));
+    assert.throws(() => assertProjectsSafe([{ name: 'c', testMatch: productionTestMatch(), grep: PROD_SAFE_GREP, use: { baseURL: PROD } }], verified, 'prod-live-internal'), /allowlist for prod-live-internal/);
+    assert.throws(() => assertProjectsSafe([{ name: 'c', testMatch: live.testMatch, grep: live.grep, use: { baseURL: PROD } }], verified, 'prod-safe'), /allowlist for prod-safe/);
+  });
+
+  it('per-test allowlist', () => {
+    const file = 'tests/prod-live-internal/live-internal.spec.ts';
+    assert.doesNotThrow(() => assertProdLiveInternalTest({ file, title: '@prod-live-internal LIVE-PROD-002 flow', tags: ['@prod-live-internal'] }));
+    assert.throws(() => assertProdLiveInternalTest({ file, title: '@prod-live-internal LIVE-PROD-009 x', tags: ['@prod-live-internal'] }), /not in PROD_LIVE_INTERNAL_ALLOWLIST/);
+    assert.throws(() => assertProdLiveInternalTest({ file, title: 'LIVE-PROD-001 x', tags: [] }), /not tagged/);
+    assert.throws(() => assertProdLiveInternalTest({ file: 'tests/live/live-engine.spec.ts', title: '@prod-live-internal LIVE-001', tags: ['@prod-live-internal'] }), /not in PROD_LIVE_INTERNAL_ALLOWLIST/);
+  });
+
+  it('writes: only sign-in/out and the Live routes of the one internal session', () => {
+    const base = `/api/organizer/sessions/${SID}`;
+    for (const p of ['/api/auth/login', '/api/auth/logout', `${base}/checkin/r1`, `${base}/go-live`, `${base}/rounds/generate`, `${base}/matches/m1/score`, `${base}/matches/m1/start`, `${base}/registrations/r1/live-status`, `${base}/finish`]) {
+      assert.equal(allowedLiveWrite('POST', p, SID), true, p);
+    }
+    const other = 'aaaaaaaa-1d2a-4b5c-9e8f-0a1b2c3d4e5f';
+    for (const [m, p] of [
+      ['POST', `/api/organizer/sessions/${other}/finish`],
+      ['DELETE', `${base}/registrations/r1`],
+      ['PUT', base],
+      ['POST', `${base}/broadcast`],
+      ['POST', `${base}/invite`],
+      ['POST', `${base}/join`],
+      ['POST', '/api/organizer/sessions'],
+      ['POST', '/api/auth/register'],
+      ['PATCH', '/api/admin/users/x/grant-organizer'],
+      ['POST', `${base}/finish/extra`],
+    ]) {
+      assert.equal(allowedLiveWrite(m, p, SID), false, `${m} ${p}`);
+    }
+    assert.equal(allowedLiveWrite('GET', '/api/anything', SID), true);
+    assert.equal(allowedLiveWrite('POST', `${base}/finish`, 'not-a-uuid'), false);
   });
 });

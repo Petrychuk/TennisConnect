@@ -15,14 +15,24 @@ import { becomeOrganiser } from '../helpers/organiser';
 */
 
 test('@smoke ORG-AUTH-001 Organiser can access Organiser Hub', async ({ page }) => {
-  await becomeOrganiser(page);
+  // Register a run-owned player (verified through the test hook), an admin
+  // grants organiser access through the Users tab, the organiser's
+  // organisation is created - becomeOrganiser() checks each step.
+  const organiser = await becomeOrganiser(page);
+
+  // The permission and the organisation are real on the server, not just in the UI.
+  const me = await (await page.request.get('/api/auth/me')).json();
+  expect(me.isOrganizer).toBe(true);
+  expect(me.isAdmin).toBeFalsy();
+  const org = await (await page.request.get('/api/organizer/organizations/me')).json();
+  expect(org?.id).toBe(organiser.organizationId);
 
   await page.goto('/organiser');
 
   await expect(page.getByTestId('organiser-dashboard')).toBeVisible({ timeout: 15000 });
 
-  // Home / Sessions / Seasons & Series / Players / Rankings / Reports / Messages...
-  for (const key of ['home', 'sessions', 'seasons', 'players', 'rankings', 'reports', 'messages']) {
+  // Home / Sessions / Seasons & Series / Players / Rankings / Reports / Messages / Your Organisation...
+  for (const key of ['home', 'sessions', 'seasons', 'players', 'rankings', 'reports', 'messages', 'organisation']) {
     await expect(page.getByTestId(`organiser-sidebar-nav-${key}`)).toBeVisible();
   }
 
@@ -41,6 +51,12 @@ test('ORG-AUTH-002 Player cannot access Organiser Hub', async ({ page }) => {
   // organiser-dashboard.tsx's own !isOrganizer && !isAdmin branch.
   await expect(page.getByRole('heading', { name: 'Organiser access required' })).toBeVisible({ timeout: 15000 });
   await expect(page.getByTestId('organiser-dashboard')).toHaveCount(0);
+
+  // ...and the API refuses too - the page isn't the only thing in the way.
+  // (POST with an empty body: refused by requireOrganizer before validation,
+  // so nothing could be created even if the check were missing.)
+  const create = await page.request.post('/api/organizer/organizations', { data: {}, failOnStatusCode: false });
+  expect(create.status()).toBe(403);
 });
 
 test('ORG-AUTH-003 Unauthenticated user cannot access Organiser Hub', async ({ page }) => {

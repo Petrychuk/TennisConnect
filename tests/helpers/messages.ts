@@ -109,6 +109,16 @@ export async function grantOrganizerAccess(
 ) {
   expectRunOwned(organiserEmail);
   await login(page, adminEmail, adminPassword);
+  // Fail with the cause, not a timeout two pages later (ORG-AUTH-001): the
+  // signed-in account must be the admin we asked for, and an admin.
+  const meRes = await page.request.get('/api/auth/me', { failOnStatusCode: false });
+  const me = meRes.ok() ? await meRes.json().catch(() => null) : null;
+  if (!me?.authenticated || String(me.email).toLowerCase() !== adminEmail.trim().toLowerCase()) {
+    throw new Error(`grantOrganizerAccess(): not signed in as ${adminEmail} after login (HTTP ${meRes.status()})`);
+  }
+  if (!me.isAdmin) {
+    throw new Error(`grantOrganizerAccess(): ${adminEmail} signed in but is not an admin on this server - check the Staging seed`);
+  }
   await page.goto('/admin');
   await page.getByTestId('organiser-sidebar-nav-admin-users').click();
 
@@ -118,7 +128,7 @@ export async function grantOrganizerAccess(
 
   await row.getByTitle('Grant Organiser Access').click();
 
-  await Promise.all([
+  const [grant] = await Promise.all([
     page.waitForResponse(
       response =>
         /\/api\/admin\/users\/.+\/grant-organizer$/.test(response.url()) &&
@@ -126,6 +136,9 @@ export async function grantOrganizerAccess(
     ),
     page.getByTestId('user-action-confirm').click(),
   ]);
+  if (grant.status() !== 200) {
+    throw new Error(`grantOrganizerAccess(): PATCH grant-organizer returned ${grant.status()}`);
+  }
 
   await logout(page);
 }

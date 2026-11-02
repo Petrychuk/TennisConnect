@@ -1,0 +1,73 @@
+# E2E coverage matrix
+
+Updated 30 Oct 2026. Inventory from `npx playwright test --list`: **339 tests in 47 files**. Production selection: **33 tests in 1 file**. Phases are in `tests/safety/staging-phases.ts`. "Not run" means the test exists but its last Staging result is not known for this branch (`REGRESSION_RESULTS.md`).
+
+## Platform
+
+| Feature | Staging (phase) | Production | Gaps |
+|---|---|---|---|
+| Home and public navigation | HOME-001, PUBLIC-SMOKE-001/002 (read-only set) | PROD-SAFE-002, 006, 007 | — |
+| Registration and email verification | REG-001…005, AUTH-011…013 (mutating-core) | Excluded | — |
+| Login / logout | AUTH-003…005, AUTH-014, AUTH-SMOKE-001 | Sign-in page only (PROD-SAFE-008) | — |
+| Forgot / reset password | AUTH-006…010; payload tests SEC-FORGOT (security-last) | Pages only, nothing sent (009, 010) | — |
+| Player and coach profiles | PROFILE-003…013, PROFILE-RD-001…004, IMG-001/002; uploads skip on Staging until storage isolation is verified | Public view (022, 025) | `tests/profile/complete-profile.spec.ts` is empty |
+| Directories, search, filters | PUBLIC-001…008, PUBLIC-COACH-001…005; SEARCH-001…094 (local only, not yet reviewed for Staging) | 003, 004, 018–026, 031 | SEARCH on Staging is a reviewed decision |
+| Play discovery and registration | PLAY-001…006, **PLAY-007…009 (new)** (hub-msg-admin) | 014–017 | — |
+| Organiser Hub | See below (hub-msg-admin) | Access gates only (012, 013) | — |
+| Messaging | MSG-001…018, MSG-101…116, MSG-SMOKE-001…005 | Guest gate only (005) | — |
+| Articles | — | 031, 032 | `tests/public/articles.spec.ts` and `tests/admin/articles/create-article.spec.ts` are empty: no Staging test |
+| Travel & Retreats | — | 028–030 | `tests/public/travel.spec.ts` is empty |
+| Clubs and organisations | Organisation page: ORG-RESP-003, PLAY-007 | 026, 027 | No Staging test for clubs |
+| Admin | ADMIN-001…008, ACCESS-005/006; ADMIN-009 local only | Guest gate only (011) | — |
+| Access control | ACCESS-001…004, SEC-001…012 | 011–013, 033 | — |
+| Live rounds, check-in, scoring (TC Live) | **LIVE-001…016** (`tests/live/live-engine.spec.ts`, needs `TC_LIVE_ENABLED=true`); check-in also ORG-RESP-002; results via seeded matches ORG-FLOW-001/003, ORG-WS-001 | Internal only: LIVE-PROD-001/002 (`@prod-live-internal`, opt-in, approval) | See `docs/live/LIVE_TEST_COVERAGE.md` |
+| Payments (Back the Rally) | SUPPORT-001…016; SUPPORT-007/008 create Stripe test sessions (stripe phase, opt-in) | Excluded | — |
+
+## Organiser Hub (Phase 2)
+
+| Ticket area | Scenario | Tests |
+|---|---|---|
+| **A. Auth and permissions** | Guest → sign in; player blocked in UI **and API** | ORG-AUTH-002, ORG-AUTH-003, PROD-SAFE-012/013 |
+| | Organiser reaches the Hub, `isOrganizer` and organisation real on the server, all nav items | ORG-AUTH-001 |
+| | Cannot read or change another organiser's organisation, sessions, players or rounds (API and UI); cross-session IDOR | ORG-PERM-001; route unit tests `server/routes/organizerOwnership.test.ts` |
+| | Admin: Hub access and session reads (rounds included) for any session; writes stay owner-only | Unit tests only (`organizerOwnership.test.ts`). **Gap:** no E2E as e2e-admin on another organiser's session |
+| **B. Organisation** | View, edit, validate website, save, reload, public page | ORG-RESP-003 (phone), ORG-PERM-002 |
+| | No verified / premium / slug / status changes by the organiser; server-side validation | ORG-PERM-002; unit `shared/organizationProfile.test.ts` |
+| | Unauthorised edit | ORG-PERM-001 (404) |
+| **C. Wizard** | Social Play, Competition, Coaching & Fitness, Other: category-specific fields, saved values via API | ORG-WIZ-001 |
+| | Required fields | ORG-WIZ-002 |
+| | Edit (policies persist after reload), Duplicate (pre-fill, nothing saved) | ORG-WIZ-003 |
+| | Publish | ORG-WIZ-004, **opt-in** (see decision below) |
+| **D. Workspace** | Real rounds and scores, results, results export | ORG-WS-001 |
+| | Empty and error states | ORG-WS-002 |
+| | Coaching navigation (no Rounds / Results / Live, deep link) | ORG-WS-003 |
+| | Live visibility by environment | ORG-WS-002, ORG-WS-004 |
+| | Policies | ORG-WS-005 |
+| | Players and check-in | ORG-RESP-002; IDOR in ORG-PERM-001 |
+| **E. Actions** | Cancel (confirmation, Keep), Archive | ORG-ACT-001, ORG-ACT-002 |
+| | Invite: published OK; draft, cancelled, finished refused (UI and API) | ORG-ACT-003, ORG-ACT-001 |
+| | Announcement (delivered count), not for drafts | ORG-ACT-004 |
+| | Export players, Share (real public link, none for drafts) | ORG-ACT-005, ORG-ACT-006 |
+| | Edit, Duplicate, Publish | ORG-WIZ-003, ORG-WIZ-004 |
+| **F. Public** | Published in Play, drafts private | PLAY-001, PLAY-002, PLAY-009 |
+| | Category, format, policies, organiser public page | PLAY-007 |
+| | Event Quick View | PLAY-008, PROD-SAFE-017 |
+| | Registration and status | PLAY-003…006 |
+| **G. Responsive** | 6 viewports: navigation, wizard, players, touch targets, check-in, organisation, overflow | ORG-RESP-001…003 |
+| Rankings, reports, series | Existing | ORG-RANK-002/004/006, ORG-REPORT-003/004/010/012, ORG-FLOW-001/003 |
+
+## Decision needed: ORG-WIZ-004 (Publish)
+
+An organiser's Publish submits for review, and the server then messages **every admin** (`POST /sessions/:id/publish`). Run cleanup refuses a run with messages to anyone outside it (`server/services/e2eRunCleanup.ts`). So if Staging has any admin besides `e2e-admin`, a run that includes ORG-WIZ-004 leaves its data behind. The test therefore skips itself unless `E2E_ALLOW_PUBLISH_REVIEW=1`.
+
+Options:
+1. Confirm `e2e-admin` is the only Staging admin, then run it with the opt-in.
+2. Allow cleanup to remove review notices sent to admins about run sessions (a cleanup rule change).
+3. Leave it opt-in.
+
+## Recommended follow-ups
+
+- E2E as `e2e-admin` on another organiser's session: reads allowed, writes refused.
+- Fill or delete the four empty spec files (articles, travel, create-article, complete-profile).
+- A reviewed prod-safe addition for a session details page and an organisation page (`PRODUCTION_SMOKE_POLICY.md`).
+- Create multi-account fixtures through the API instead of the UI (MSG-1xx, ORG-PERM-001 take 60–80 s).

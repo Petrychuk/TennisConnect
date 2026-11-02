@@ -1,3 +1,4 @@
+import { isCompetitionType } from "@shared/sessionCategories";
 // Deterministic Player <-> Event matching for Play's "Recommended for
 // You". No LLM anywhere in this file - a fixed weighting over a
 // handful of signals, normalised when player-profile data is missing
@@ -258,7 +259,7 @@ export function computeRecommendation(
   const hasIntentSignal = (player.playStyle && player.playStyle !== "Both") || (player.lookingFor?.length ?? 0) > 0;
   if (hasIntentSignal) {
     available += 10;
-    const isCompetitionEvent = ["tournament", "league", "club-championship", "junior-event"].includes(event.type);
+    const isCompetitionEvent = isCompetitionType(event.type);
     if (player.playStyle === "Competitive" && isCompetitionEvent) {
       matched += 10;
       reasons.push("PREFERRED_STYLE");

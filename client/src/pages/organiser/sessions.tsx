@@ -1,22 +1,11 @@
-import { OrganiserBarLogo } from "@/components/organiser/ui/organiser-bar-logo";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Menu, Plus, LayoutTemplate, CalendarDays } from "lucide-react";
+import { Plus, LayoutTemplate } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import SEO from "@/components/seo";
 
-import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar";
-import { useSidebarCollapsed } from "@/lib/use-sidebar-collapsed";
-import { cn } from "@/lib/utils";
-import { NotificationBell } from "@/components/organiser/ui/notification-bell";
-import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
 import { SessionStatusTabs } from "@/components/organiser/sessions/session-status-tabs";
 import { SessionFiltersBar, type SessionsViewMode } from "@/components/organiser/sessions/session-filters-bar";
 import { SessionCard } from "@/components/organiser/sessions/session-card";
@@ -27,22 +16,17 @@ import { NewSessionMenu } from "@/components/organiser/sessions/wizard/new-sessi
 import { groupSessionsByBucket, BUCKET_ORDER, type SessionBucket } from "@/components/organiser/sessions/session-utils";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
 import { getMySessions, deleteSession, archiveSession } from "@/lib/api/organizer-sessions";
 import { toSessionListItems } from "@/lib/api/session-adapter";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
+import { OrganiserLayout } from "@/components/organiser/ui/organiser-layout";
 import { OrganiserBreadcrumb } from "@/components/organiser/ui/organiser-breadcrumb";
 
 export default function OrganiserSessionsPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const profileHref = user ? `/${user.role}/${user.slug}` : "/";
-  // Real name/avatar from the authenticated user - role/organization
-  // fields stay mock for now since there's no backend for those yet.
-  const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null, isAdmin: user.isAdmin ?? false } : mockOrganiser;
 
   const sessionsQuery = useQuery({
     queryKey: ["/api/organizer/sessions/mine"],
@@ -148,80 +132,18 @@ export default function OrganiserSessionsPage() {
     }
   };
 
-  if (authLoading) return null;
-
-  if (!isAuthenticated) {
-    setLocation("/auth");
-    return null;
-  }
-
-  if (!user?.isOrganizer) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-background">
-        <Card className="max-w-md w-full shadow-sm">
-          <CardHeader>
-            <CardTitle asChild><h1>Organiser access required</h1></CardTitle>
-          </CardHeader>
-          <CardContent className="text-muted-foreground">
-            You need to be an approved organiser to view this page. Head to your profile to
-            request organiser access.
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen flex bg-background" data-testid="organiser-sessions-page">
-      <SEO
-        title="Sessions | Organiser Hub | TennisConnect"
-        description="Manage all your tennis sessions in one place."
-        noIndex
-      />
-
-      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-72")}>
-        <OrganiserSidebarNav
-          organiser={organiser}
-          profileHref={profileHref}
-          className="w-full"
-          collapsed={sidebarCollapsed}
-          onToggleCollapsed={() => setSidebarCollapsed((v) => !v)}
-        />
-      </aside>
-
-      {/* The public site's equivalent pages use <Navbar>/<Footer> with a
-          <main> in between; this sidebar-nav'd Organiser Hub layout has
-          no direct equivalent to swap in, so the same landmark is added
-          by hand here - <aside> (already correctly used above for the
-          sidebar nav) and <OrganiserMobileNav /> below both stay
-          siblings of, not children of, this <main>. */}
-      <main id="main-content" className="flex-1 min-w-0 pb-16 md:pb-0">
-        {/* Compact bar — tablet & mobile */}
-        <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="hidden md:inline-flex" aria-label="Open Organiser Hub menu" data-testid="organiser-sidebar-trigger">
-                <Menu className="w-5 h-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-72">
-              <SheetTitle className="sr-only">Organiser Hub navigation</SheetTitle>
-              <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} />
-            </SheetContent>
-          </Sheet>
-          <OrganiserBarLogo />
-
-          <div className="hidden md:flex mr-auto items-center gap-1.5 font-display font-bold">
-            Sessions
-          </div>
-
-          <div className="flex items-center gap-1">
-            <NotificationBell testId="organiser-header-bell-mobile" />
-            <Button size="icon" className="h-8 w-8" onClick={() => setLocation("/organiser/sessions/new")} data-testid="organiser-sessions-new-mobile">
-              <Plus className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
+    <OrganiserLayout
+      testId="organiser-sessions-page"
+      seoTitle="Sessions | Organiser Hub | TennisConnect"
+      seoDescription="Manage all your tennis sessions in one place."
+      mobileTitle="Sessions"
+      mobileActions={
+        <Button size="icon" className="h-8 w-8" onClick={() => setLocation("/organiser/sessions/new")} aria-label="New session" data-testid="organiser-sessions-new-mobile">
+          <Plus className="w-4 h-4" />
+        </Button>
+      }
+    >
 
         <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 max-w-[1500px] mx-auto">
           <OrganiserBreadcrumb current="Sessions" testId="organiser-sessions-page-breadcrumb" />
@@ -309,9 +231,6 @@ export default function OrganiserSessionsPage() {
             </>
           )}
         </div>
-      </main>
-
-      <OrganiserMobileNav />
-    </div>
+    </OrganiserLayout>
   );
 }

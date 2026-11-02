@@ -21,6 +21,8 @@ import { RECOMMENDATION_REASON_TEXT } from "@/lib/play-status";
 import { resolveRegistrationCta, resolvePartnerBadge } from "@shared/partnerEvents";
 import { ActivityStatus } from "./ActivityStatus";
 import { getPlaySessionById, joinSession, leaveSession } from "@/lib/api/play";
+import { isCompetitionType } from "@shared/sessionCategories";
+import { SessionPoliciesList } from "@/components/play/session-policies";
 
 function formatLabel(type: string): string {
   const known = SESSION_TYPE_OPTIONS.find((t) => t.key === type)?.label;
@@ -36,7 +38,6 @@ function initials(name: string): string {
 // Same 4 formats the Play page's own "Competitions" quick filter
 // groups - reused here to pick "Join Competition" vs "Join Session"
 // wording (spec §10), rather than duplicating the list a second time.
-const COMPETITION_TYPES = new Set(["tournament", "league", "club-championship", "junior-event"]);
 
 interface EventQuickViewModalProps {
   sessionId: string | null;
@@ -98,7 +99,7 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
   });
 
   let actionButton: ReactNode = null;
-  const isCompetition = session ? COMPETITION_TYPES.has(session.type) : false;
+  const isCompetition = session ? isCompetitionType(session.type) : false;
   const joinLabel = isCompetition ? "Join Competition" : "Join Session";
 
   if (session) {
@@ -253,7 +254,14 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
               {session.description && (
                 <div data-testid="event-modal-description">
                   <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1">About</p>
-                  <p className="text-sm text-muted-foreground">{session.description}</p>
+                  <p className="text-sm text-muted-foreground whitespace-pre-line">{session.description}</p>
+                </div>
+              )}
+
+              {session.policies && Object.values(session.policies).some(Boolean) && (
+                <div data-testid="event-modal-policies-section">
+                  <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1">Rules & policies</p>
+                  <SessionPoliciesList policies={session.policies} compact testId="event-modal-policies" />
                 </div>
               )}
 

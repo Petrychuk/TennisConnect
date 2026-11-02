@@ -243,7 +243,7 @@ export async function login(
   await page.getByTestId('login-email').fill(email);
   await page.getByTestId('login-password').fill(password);
 
-  await Promise.all([
+  const [loginResponse] = await Promise.all([
     page.waitForResponse(
       response =>
         response.url().includes('/api/auth/login') &&
@@ -251,7 +251,11 @@ export async function login(
     ),
     page.getByTestId('login-button').click(),
   ]);
-
+  
+  console.log('[E2E login]', {
+    status: loginResponse.status(),
+    url: page.url(),
+  });
   // Wait for the post-login redirect. An account that never finished its
   // profile is sent to /complete-profile instead of its own profile page
   // (that's AUTH-014's whole point) - accounts made by registerPlayer()

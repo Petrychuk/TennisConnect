@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -16,11 +15,10 @@ export function SettingsTab({ session }: SettingsTabProps) {
   const detail = getSessionDetail(session);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  // Local-only - no real backend column for either of these yet (see
-  // the toast copy below, which says so honestly instead of claiming
-  // "updated" like the two real, persisted toggles below do).
-  const [checkInOpen, setCheckInOpen] = useState(!!detail.checkInOpen);
-  const [notifyChanges, setNotifyChanges] = useState(true);
+  // Only settings that are saved. "Check-in Open" and "Notify Players of
+  // Changes" were switches that only said "not saved yet" (Phase 2: hidden
+  // - organisers check players in from the Players tab, and there's no
+  // player self check-in or change-notification setting behind them).
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.id] });
@@ -69,34 +67,12 @@ export function SettingsTab({ session }: SettingsTabProps) {
       disabled: registrationMutation.isPending,
     },
     {
-      key: "checkin",
-      label: "Check-in Open",
-      description: "Players can check themselves in on arrival.",
-      checked: checkInOpen,
-      onCheckedChange: (v: boolean) => {
-        setCheckInOpen(v);
-        toast({ title: "Check-in Open (not saved yet)", description: "This setting isn't persisted - it'll reset next time you load this session." });
-      },
-      disabled: false,
-    },
-    {
       key: "waitlist",
       label: "Waiting List Enabled",
       description: "Auto-promote from the waiting list when a spot opens up.",
       checked: !!detail.waitingListEnabled,
       onCheckedChange: (v: boolean) => waitingListMutation.mutate(v),
       disabled: waitingListMutation.isPending,
-    },
-    {
-      key: "notify",
-      label: "Notify Players of Changes",
-      description: "Send an update when session details change.",
-      checked: notifyChanges,
-      onCheckedChange: (v: boolean) => {
-        setNotifyChanges(v);
-        toast({ title: "Notify Players of Changes (not saved yet)", description: "This setting isn't persisted - it'll reset next time you load this session." });
-      },
-      disabled: false,
     },
   ];
 

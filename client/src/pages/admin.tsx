@@ -8,7 +8,7 @@ import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar
 import { useSidebarCollapsed } from "@/lib/use-sidebar-collapsed";
 import { NotificationBell } from "@/components/organiser/ui/notification-bell";
 import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
-import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
+import { useOrganiserIdentity } from "@/components/organiser/ui/organiser-layout";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,10 +90,8 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>(getInitialTab);
   const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed();
   const urlSearch = useSearch();
-  const profileHref = user ? `/${user.role}/${user.slug}` : "/";
-  const organiser = user
-    ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null, isAdmin: user.isAdmin ?? false }
-    : mockOrganiser;
+  // Real name, avatar and role (Admin / Organiser · Admin) - no mock fallback.
+  const { organiser, profileHref } = useOrganiserIdentity();
 
   // Admin is now reached from the Organiser Hub sidebar (each item
   // links to /admin?tab=X) rather than a set of horizontal Tabs on

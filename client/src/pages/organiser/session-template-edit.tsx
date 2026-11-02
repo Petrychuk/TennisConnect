@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { OrganiserAccessGate } from "@/components/organiser/ui/organiser-layout";
 import { Link, useLocation, useRoute } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,7 @@ import type { SessionTemplate, InsertSessionTemplate } from "@shared/schema";
 // columns for are editable - matches exactly what Save as Template
 // captures, so there's nothing here that silently does nothing on
 // save.
-export default function OrganiserSessionTemplateEditPage() {
+function OrganiserSessionTemplateEditPageContent() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/organiser/sessions/templates/:id/edit");
@@ -86,11 +87,6 @@ export default function OrganiserSessionTemplateEditPage() {
     }
   };
 
-  if (authLoading) return null;
-  if (!isAuthenticated) {
-    setLocation("/auth");
-    return null;
-  }
 
   if (templatesQuery.isLoading) {
     return (
@@ -269,5 +265,15 @@ export default function OrganiserSessionTemplateEditPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Access (signed in, organiser or admin) is checked once, for every Hub
+// page, by OrganiserAccessGate (components/organiser/ui/organiser-layout.tsx).
+export default function OrganiserSessionTemplateEditPage() {
+  return (
+    <OrganiserAccessGate>
+      <OrganiserSessionTemplateEditPageContent />
+    </OrganiserAccessGate>
   );
 }

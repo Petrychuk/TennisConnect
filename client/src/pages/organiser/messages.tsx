@@ -1,120 +1,22 @@
-import { OrganiserBarLogo } from "@/components/organiser/ui/organiser-bar-logo";
-import { Link, useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Menu } from "lucide-react";
-import { useAuth } from "@/lib/auth-context";
-import SEO from "@/components/seo";
-
-import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar";
-import { useSidebarCollapsed } from "@/lib/use-sidebar-collapsed";
-import { cn } from "@/lib/utils";
-import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
 import { MessagesInbox } from "@/components/messages/MessagesInbox";
-import { NotificationBell } from "@/components/organiser/ui/notification-bell";
-
-import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
+import { OrganiserLayout } from "@/components/organiser/ui/organiser-layout";
 import { OrganiserBreadcrumb } from "@/components/organiser/ui/organiser-breadcrumb";
 
+// The site inbox inside the Hub shell. MessagesInbox renders the page's
+// one <h1> ("Messages") - the separate sr-only H1 this page used to add
+// made two.
 export default function OrganiserMessagesPage() {
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
-  const [, setLocation] = useLocation();
-  const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed();
-  const profileHref = user ? `/${user.role}/${user.slug}` : "/";
-  // Real name/avatar from the authenticated user - role/organization
-  // fields stay mock for now since there's no backend for those yet.
-  const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null, isAdmin: user.isAdmin ?? false } : mockOrganiser;
-
-  if (authLoading) return null;
-  if (!isAuthenticated) {
-    setLocation("/auth");
-    return null;
-  }
-
-  if (!user?.isOrganizer) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-background">
-        <Card className="max-w-md w-full shadow-sm">
-          <CardHeader>
-            <CardTitle asChild><h1>Organiser access required</h1></CardTitle>
-          </CardHeader>
-          <CardContent className="text-muted-foreground">
-            You need to be an approved organiser to view this page. Head to your profile to
-            request organiser access.
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen flex bg-background" data-testid="organiser-messages-page">
-      <SEO
-        title="Messages | Organiser Hub | TennisConnect"
-        description="Your messages, right from the Organiser Hub."
-        noIndex
-      />
-
-      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-72")}>
-        <OrganiserSidebarNav
-          organiser={organiser}
-          profileHref={profileHref}
-          className="w-full"
-          collapsed={sidebarCollapsed}
-          onToggleCollapsed={() => setSidebarCollapsed((v) => !v)}
-        />
-      </aside>
-
-      {/* See sessions.tsx's own comment on this same pattern - <aside>
-          above and <OrganiserMobileNav /> below both stay siblings of
-          this <main>, not children of it. */}
-      <main id="main-content" className="flex-1 min-w-0 pb-16 md:pb-0">
-        {/* Visually hidden - the visible "Messages" label just below
-            (mobile-only compact bar) and the breadcrumb's last crumb
-            are both plain text, not headings; this is the one real H1
-            for the page, present regardless of viewport width so
-            desktop (which shows neither of those) still has one. */}
-        <h1 className="sr-only">Messages</h1>
-        {/* Compact bar — tablet & mobile */}
-        <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="hidden md:inline-flex" aria-label="Open Organiser Hub menu" data-testid="organiser-sidebar-trigger">
-                <Menu className="w-5 h-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-72">
-              <SheetTitle className="sr-only">Organiser Hub navigation</SheetTitle>
-              <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} />
-            </SheetContent>
-          </Sheet>
-          <OrganiserBarLogo />
-
-          <div className="hidden md:block mr-auto font-display font-bold">Messages</div>
-
-          <div className="flex items-center gap-1">
-            <NotificationBell testId="organiser-header-bell-mobile" />
-            <Link href={profileHref}>
-              <Avatar className="h-8 w-8 border border-border">
-                <AvatarImage src={organiser.avatar || undefined} />
-                <AvatarFallback className="bg-primary/10 text-primary-text font-bold text-xs">
-                  {organiser.name[0]}
-                </AvatarFallback>
-              </Avatar>
-            </Link>
-          </div>
-        </div>
-
-        <div className="px-2 sm:px-6 lg:px-8 py-6 space-y-6">
-          <OrganiserBreadcrumb current="Messages" testId="organiser-messages-page-breadcrumb" />
-
-          <MessagesInbox />
-        </div>
-      </main>
-
-      <OrganiserMobileNav />
-    </div>
+    <OrganiserLayout
+      testId="organiser-messages-page"
+      seoTitle="Messages | Organiser Hub | TennisConnect"
+      seoDescription="Your messages, right from the Organiser Hub."
+      mobileTitle="Messages"
+    >
+      <div className="px-2 sm:px-6 lg:px-8 py-6 space-y-6">
+        <OrganiserBreadcrumb current="Messages" testId="organiser-messages-page-breadcrumb" />
+        <MessagesInbox />
+      </div>
+    </OrganiserLayout>
   );
 }

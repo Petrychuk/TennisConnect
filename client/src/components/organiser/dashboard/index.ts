@@ -3,7 +3,6 @@ export { DashboardHeader } from "./dashboard-header";
 export { DashboardHero } from "./dashboard-hero";
 export { LiveTodayCard } from "./live-today-card";
 export { UpcomingSessionsCard } from "./upcoming-sessions-card";
-export { SeasonProgressCard } from "./season-progress-card";
 export { QuickActionsCard } from "./quick-actions-card";
 export { RecentActivityCard } from "./recent-activity-card";
 export { StatisticsCard } from "./statistics-card";

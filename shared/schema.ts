@@ -876,6 +876,17 @@ export const tennisSessions = pgTable("sessions", {
   // Session Workspace overview, nothing to do with reviewNote below
   // (that's admin moderation feedback, this is the organizer's own).
   notes: text("notes"),
+  // Shown to players (Play session page, Quick View) and restored by Edit -
+  // see shared/sessionPolicies.ts. Older sessions carry them inside
+  // `description` instead (migration 0034_sessions_policies.sql).
+  rulesText: text("rules_text"),
+  refundPolicy: text("refund_policy"),
+  latePolicy: text("late_policy"),
+  cancellationPolicy: text("cancellation_policy"),
+  // TC Live v1: an internal test session (migration 0035). Set by the server
+  // only - from the creator being in TC_INTERNAL_TEST_EMAILS (server/lib/
+  // liveFeature.ts). Hidden from every public listing.
+  isInternalTest: boolean("is_internal_test").default(false).notNull(),
   // Admin moderation — every organizer-submitted session is reviewed
  // before it goes live. Null until an admin approves or rejects it.
   reviewedBy: varchar("reviewed_by").references(() => users.id),
@@ -1135,7 +1146,7 @@ export const matches = pgTable("matches", {
   courtLabel: text("court_label").notNull(), // "Court 1" - matches CourtStatus.label in the live UI
   teamAIds: json("team_a_ids").$type<string[]>().notNull(),
   teamBIds: json("team_b_ids").$type<string[]>().notNull(),
-  status: text("status").default("pending").notNull(), // pending | playing | confirmed
+  status: text("status").default("pending").notNull(), // pending | playing | confirmed | abandoned (session ended without a score)
   teamAGames: integer("team_a_games"),
   teamBGames: integer("team_b_games"),
   // Both set to the organizer in v0.1 (organizer-only score entry) -
@@ -1377,7 +1388,9 @@ export type PublicSessionCard = {
 };
 
 export type PublicSessionDetails = PublicSessionCard & {
+  // Without the policy paragraphs of older sessions - they're in `policies`.
   description: string | null;
+  policies: import("./sessionPolicies").SessionPolicies;
   matchMode: string;
   scoringFormat: string;
   price: string | null;
@@ -1503,6 +1516,7 @@ export const insertSessionSchema = createInsertSchema(tennisSessions)
     organizationId: true,
     createdBy: true,
     status: true,
+    isInternalTest: true, // server-set only (TC Live v1)
     reviewedBy: true,
     reviewedAt: true,
     reviewNote: true,

@@ -1,10 +1,7 @@
-import { OrganiserBarLogo } from "@/components/organiser/ui/organiser-bar-logo";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useRoute, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   DropdownMenu,
@@ -12,7 +9,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Menu,
   ChevronRight,
@@ -29,32 +25,40 @@ import {
   Megaphone,
   ListPlus,
   Download,
+  XCircle,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { publishSession, archiveSession, inviteToSession, broadcastToSession, getSessionRegistrations, createSessionDivision } from "@/lib/api/organizer-sessions";
+import { canAnnounceToSession, canInviteToSession } from "@shared/sessionActions";
+import { publishSession, archiveSession, cancelSession, inviteToSession, broadcastToSession, getSessionRegistrations, createSessionDivision } from "@/lib/api/organizer-sessions";
 import { InvitePlayersDialog } from "@/components/organiser/shared/invite-players-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
-import SEO from "@/components/seo";
+import { OrganiserAccessGate, OrganiserLayout } from "@/components/organiser/ui/organiser-layout";
+import { useLiveAvailable } from "@/lib/use-live-available";
+import { sessionCategoryOf } from "@shared/sessionCategories";
+import { csvFileName, downloadCsv, playersCsv } from "@/lib/organiser-export";
 
-import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar";
-import { useSidebarCollapsed } from "@/lib/use-sidebar-collapsed";
-import { cn } from "@/lib/utils";
-import { NotificationBell } from "@/components/organiser/ui/notification-bell";
-import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
 import { OverviewTab } from "@/components/organiser/sessions/workspace/overview-tab";
 import { PlayersTab } from "@/components/organiser/sessions/workspace/players-tab";
 import { FormatRulesTab } from "@/components/organiser/sessions/workspace/format-rules-tab";
 import { RoundsTab } from "@/components/organiser/sessions/workspace/rounds-tab";
 import { MessagesTab } from "@/components/organiser/sessions/workspace/messages-tab";
-import { PhotosTab } from "@/components/organiser/sessions/workspace/photos-tab";
 import { ResultsTab } from "@/components/organiser/sessions/workspace/results-tab";
 import { SettingsTab } from "@/components/organiser/sessions/workspace/settings-tab";
 import { bucketFor } from "@/components/organiser/sessions/session-utils";
 
-import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
 import { useQuery } from "@tanstack/react-query";
 import { getSessionById } from "@/lib/api/organizer-sessions";
 import { toSessionListItem } from "@/lib/api/session-adapter";
@@ -67,7 +71,8 @@ const WORKSPACE_TABS = [
   { key: "format", label: "Format & Rules" },
   { key: "rounds", label: "Rounds" },
   { key: "messages", label: "Messages" },
-  { key: "photos", label: "Photos" },
+  // "Photos" hidden (Phase 2): its only control was a disabled "Upload
+  // Photos" button - there's no photo upload for sessions yet.
   { key: "results", label: "Results" },
   { key: "settings", label: "Settings" },
 ] as const;
@@ -86,13 +91,13 @@ const BUCKET_BADGE_LABEL: Record<string, string> = {
 export default function OrganiserSessionWorkspacePage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed();
   const [, params] = useRoute("/organiser/sessions/:id");
   const sessionQuery = useQuery({
     queryKey: ["/api/organizer/sessions", params?.id],
     queryFn: () => getSessionById(params!.id),
     enabled: !!params?.id,
   });
+  const liveAvailable = useLiveAvailable(sessionQuery.data);
   // Only fetched when this session is actually a division - powers the
   // "Sessions > Parent Event > This Division" breadcrumb so it's quick
   // to get back to the container from inside one of its divisions.
@@ -116,17 +121,7 @@ export default function OrganiserSessionWorkspacePage() {
     if (!session) return;
     try {
       const registrations = await getSessionRegistrations(session.id);
-      const header = "Name,Profile,Status,Registered At\n";
-      const rows = registrations
-        .map((r) => [r.userName, r.userSlug, r.status, new Date(r.createdAt).toLocaleString()].map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(","))
-        .join("\n");
-      const blob = new Blob([header + rows], { type: "text/csv" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${session.title.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-players.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadCsv(csvFileName(session.title), playersCsv(registrations, session.timeZone));
     } catch (error: any) {
       toast({ title: "Couldn't export player list", description: error?.message ?? "Please try again.", variant: "destructive" });
     }
@@ -191,6 +186,47 @@ export default function OrganiserSessionWorkspacePage() {
     setLocation(`/organiser/sessions/new?duplicateFrom=${session.id}`);
   };
 
+  const handleShare = () => {
+    if (!session) return;
+    // The session's own public page (/play/:id). It used to copy
+    // "/player/<organisation slug>", which isn't a page at all.
+    // Same rule as GET /api/play/sessions/:id: published or live, and public.
+    if (!["published", "live"].includes(session.status)) {
+      toast({ title: "No public link right now", description: "A session has a public page while it's published or live." });
+      return;
+    }
+    if (sessionQuery.data?.visibility && sessionQuery.data.visibility !== "public") {
+      toast({ title: "This session isn't public", description: "Only public sessions have a shareable page. Use Invite Players instead." });
+      return;
+    }
+    const url = `${window.location.origin}/play/${session.id}`;
+    navigator.clipboard
+      .writeText(url)
+      .then(() => toast({ title: "Link copied", description: "Anyone with the link can see the session and register." }))
+      .catch(() => toast({ title: "Couldn't copy the link", description: url, variant: "destructive" }));
+  };
+
+  // Cancelling tells every registered player (server: notifyActiveRegistrants),
+  // so it asks first. Only before the session has finished.
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [confirmArchiveOpen, setConfirmArchiveOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const handleCancel = async () => {
+    if (!session || cancelling) return;
+    setCancelling(true);
+    try {
+      await cancelSession(session.id);
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine"] });
+      toast({ title: "Session cancelled", description: "Everyone registered has been sent a cancellation message." });
+    } catch (error: any) {
+      toast({ title: "Couldn't cancel", description: error?.message ?? "Please try again.", variant: "destructive" });
+    } finally {
+      setCancelling(false);
+      setConfirmCancelOpen(false);
+    }
+  };
+
   const handlePublish = async () => {
     if (!session || publishing) return;
     setPublishing(true);
@@ -212,16 +248,19 @@ export default function OrganiserSessionWorkspacePage() {
       setPublishing(false);
     }
   };
-  const profileHref = user ? `/${user.role}/${user.slug}` : "/";
-  // Real name/avatar from the authenticated user - role/organization
-  // fields stay mock for now since there's no backend for those yet.
-  const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null, isAdmin: user.isAdmin ?? false } : mockOrganiser;
   const [tab, setTab] = useState<WorkspaceTabKey>("overview");
   const session = sessionQuery.data ? toSessionListItem(sessionQuery.data) : undefined;
   // A division's workspace is deliberately stripped down - format/rules
   // and messaging both live at the container level, not per-division.
   const isDivision = !!session?.parentSessionId;
-  const visibleTabs = isDivision ? WORKSPACE_TABS.filter((t) => t.key !== "format" && t.key !== "messages") : WORKSPACE_TABS;
+  // Coaching & Fitness sessions have no rounds or scores
+  // (shared/sessionCategories.ts), so no Rounds / Results tabs and no Live.
+  const usesLiveRounds = sessionCategoryOf(session?.type).usesLiveRounds;
+  const visibleTabs = WORKSPACE_TABS.filter(
+    (t) =>
+      !(isDivision && (t.key === "format" || t.key === "messages")) &&
+      !(!usesLiveRounds && (t.key === "rounds" || t.key === "results")),
+  );
 
   useEffect(() => {
     const requested = new URLSearchParams(search).get("tab");
@@ -244,45 +283,27 @@ export default function OrganiserSessionWorkspacePage() {
     }
   };
 
-  if (authLoading) return null;
-  if (!isAuthenticated) {
-    setLocation("/auth");
-    return null;
-  }
-
-  if (!user?.isOrganizer) {
+  if (sessionQuery.isLoading || !isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-background">
-        <Card className="max-w-md w-full shadow-sm">
-          <CardHeader>
-            <CardTitle asChild><h1>Organiser access required</h1></CardTitle>
-          </CardHeader>
-          <CardContent className="text-muted-foreground">
-            You need to be an approved organiser to view this page. Head to your profile to
-            request organiser access.
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (sessionQuery.isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <TennisBallSpinner />
-      </div>
+      <OrganiserAccessGate>
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <TennisBallSpinner />
+        </div>
+      </OrganiserAccessGate>
     );
   }
 
 
   if (!session) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-background gap-4">
-        <p className="text-muted-foreground">Session not found.</p>
-        <Button asChild variant="outline">
-          <Link href="/organiser/sessions">Back to Sessions</Link>
-        </Button>
-      </div>
+      <OrganiserAccessGate>
+        <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-background gap-4" data-testid="organiser-session-not-found">
+          <p className="text-muted-foreground">Session not found.</p>
+          <Button asChild variant="outline">
+            <Link href="/organiser/sessions">Back to Sessions</Link>
+          </Button>
+        </div>
+      </OrganiserAccessGate>
     );
   }
 
@@ -293,68 +314,27 @@ export default function OrganiserSessionWorkspacePage() {
 
   // Same state -> action mapping as the Sessions list card, so a session
   // never presents different actions depending on where you opened it from.
+  // Without TC Live (Production) the session is run from the Players tab
+  // (check-in) instead of a "coming soon" page.
+  const goPlayers = () => handleTabChange("players");
   const primaryAction =
     bucket === "draft"
       ? { label: "Continue Setup", onClick: goEdit, icon: undefined }
-      : bucket === "live"
-      ? { label: "Enter Live Session", onClick: goLive, icon: Play }
-      : bucket === "completed"
-      ? { label: "View Results", onClick: () => setTab("results"), icon: undefined }
-      : bucket === "archived"
-      ? { label: "View History", onClick: () => setTab("results"), icon: undefined }
-      : { label: "Enter Live Session", onClick: goLive, icon: Play }; // registration-open / upcoming — session hasn't started, button still points at Live for when it does
+      : (bucket === "completed" || bucket === "archived") && usesLiveRounds
+      ? { label: "View Results", onClick: () => handleTabChange("results"), icon: undefined }
+      : bucket === "completed" || bucket === "archived"
+      ? { label: "View Players", onClick: goPlayers, icon: undefined }
+      : liveAvailable && usesLiveRounds
+      ? { label: "Enter Live Session", onClick: goLive, icon: Play } // live, registration-open, upcoming
+      : { label: "Manage Players", onClick: goPlayers, icon: undefined };
 
   return (
-    <div className="min-h-screen flex bg-background" data-testid="organiser-session-workspace">
-      <SEO
-        title={`${session.title} | Organiser Hub | TennisConnect`}
-        description={`Manage ${session.title} — registration, players, rounds, and results.`}
-        noIndex
-      />
-
-      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-72")}>
-        <OrganiserSidebarNav
-          organiser={organiser}
-          profileHref={profileHref}
-          className="w-full"
-          collapsed={sidebarCollapsed}
-          onToggleCollapsed={() => setSidebarCollapsed((v) => !v)}
-        />
-      </aside>
-
-      {/* See sessions.tsx's own comment on this same pattern - <aside>
-          above and <OrganiserMobileNav /> below both stay siblings of
-          this <main>, not children of it. */}
-      <main id="main-content" className="flex-1 min-w-0 pb-16 md:pb-0">
-        {/* Compact bar — tablet & mobile */}
-        <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="hidden md:inline-flex" aria-label="Open Organiser Hub menu" data-testid="organiser-sidebar-trigger">
-                <Menu className="w-5 h-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-72">
-              <SheetTitle className="sr-only">Organiser Hub navigation</SheetTitle>
-              <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} />
-            </SheetContent>
-          </Sheet>
-          <OrganiserBarLogo />
-
-          <div className="hidden md:block mr-auto font-display font-bold">Session Details</div>
-
-          <div className="flex items-center gap-1">
-            <NotificationBell testId="organiser-header-bell-mobile" />
-            <Link href={profileHref}>
-              <Avatar className="h-8 w-8 border border-border">
-                <AvatarImage src={organiser.avatar || undefined} />
-                <AvatarFallback className="bg-primary/10 text-primary-text font-bold text-xs">
-                  {organiser.name[0]}
-                </AvatarFallback>
-              </Avatar>
-            </Link>
-          </div>
-        </div>
+    <OrganiserLayout
+      testId="organiser-session-workspace"
+      seoTitle={`${session.title} | Organiser Hub | TennisConnect`}
+      seoDescription={`Manage ${session.title} — registration, players, rounds, and results.`}
+      mobileTitle="Session Details"
+    >
 
         <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 md:space-y-4 max-w-6xl mx-auto">
           {/* Breadcrumb */}
@@ -402,20 +382,13 @@ export default function OrganiserSessionWorkspacePage() {
               </div>
             </div>
 
-            <div className="hidden xl:flex items-center gap-2 shrink-0">
+            {/* Actions: the More menu is available at every width (tablet and
+                phone used to get only a sheet of "isn't wired up yet" toasts). */}
+            <div className="flex items-center gap-2 shrink-0">
               <Button
                 variant="outline"
-                onClick={() => {
-                  if (!session.organizationSlug) {
-                    toast({ title: "Publish this session first", description: "It needs to be public before there's a link to share." });
-                    return;
-                  }
-                  const url = `${window.location.origin}/player/${session.organizationSlug}`;
-                  navigator.clipboard
-                    .writeText(url)
-                    .then(() => toast({ title: "Link copied", description: "Players can find this on the organiser's Organising tab." }))
-                    .catch(() => toast({ title: "Couldn't copy the link", description: url, variant: "destructive" }));
-                }}
+                className="hidden xl:inline-flex"
+                onClick={handleShare}
                 data-testid="organiser-session-share-button"
               >
                 <Share2 className="w-4 h-4 mr-2" />
@@ -429,42 +402,58 @@ export default function OrganiserSessionWorkspacePage() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   {session.status === "draft" && (
-                    <DropdownMenuItem onClick={handlePublish} disabled={publishing}>
+                    <DropdownMenuItem onClick={handlePublish} disabled={publishing} data-testid="organiser-session-more-publish">
                       <Send className="w-4 h-4 mr-2" />
                       {publishing ? "Publishing..." : "Publish Session"}
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onClick={goEdit}>
+                  <DropdownMenuItem onClick={goEdit} data-testid="organiser-session-more-edit">
                     <Pencil className="w-4 h-4 mr-2" />
                     Edit Session
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setInviteOpen(true)}>
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    Invite Players
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setAnnounceOpen(true)}>
-                    <Megaphone className="w-4 h-4 mr-2" />
-                    Send Announcement
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setLocation(`/organiser/sessions/${session.id}?tab=players`)}>
+                  {canInviteToSession(session.status, session.endAt) && (
+                    <DropdownMenuItem onClick={() => setInviteOpen(true)} data-testid="organiser-session-more-invite">
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Invite Players
+                    </DropdownMenuItem>
+                  )}
+                  {canAnnounceToSession(session.status) && (
+                    <DropdownMenuItem onClick={() => setAnnounceOpen(true)} data-testid="organiser-session-more-announce">
+                      <Megaphone className="w-4 h-4 mr-2" />
+                      Send Announcement
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={() => handleTabChange("players")} data-testid="organiser-session-more-waitlist">
                     <ListPlus className="w-4 h-4 mr-2" />
                     Manage Waitlist
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleExportPlayers}>
+                  <DropdownMenuItem onClick={handleShare} data-testid="organiser-session-more-share">
+                    <Share2 className="w-4 h-4 mr-2" />
+                    Copy Share Link
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportPlayers} data-testid="organiser-session-more-export">
                     <Download className="w-4 h-4 mr-2" />
                     Export Player List
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleDuplicate} disabled={duplicating}>
+                  <DropdownMenuItem onClick={handleDuplicate} disabled={duplicating} data-testid="organiser-session-more-duplicate">
                     <Copy className="w-4 h-4 mr-2" />
                     {duplicating ? "Duplicating..." : "Duplicate"}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleArchive} disabled={archiving}>
-                    <Archive className="w-4 h-4 mr-2" />
-                    {archiving ? "Archiving..." : "Archive"}
-                  </DropdownMenuItem>
+                  {["published", "pending_review"].includes(session.status) && (
+                    <DropdownMenuItem onClick={() => setConfirmCancelOpen(true)} className="text-destructive" data-testid="organiser-session-more-cancel">
+                      <XCircle className="w-4 h-4 mr-2" />
+                      Cancel Session
+                    </DropdownMenuItem>
+                  )}
+                  {session.status !== "archived" && (
+                    <DropdownMenuItem onClick={() => setConfirmArchiveOpen(true)} disabled={archiving} data-testid="organiser-session-more-archive">
+                      <Archive className="w-4 h-4 mr-2" />
+                      {archiving ? "Archiving..." : "Archive"}
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button onClick={primaryAction.onClick} data-testid="organiser-session-primary-action">
+              <Button onClick={primaryAction.onClick} className="hidden xl:inline-flex" data-testid="organiser-session-primary-action">
                 {primaryAction.icon && <primaryAction.icon className="w-4 h-4 mr-2" />}
                 {primaryAction.label}
               </Button>
@@ -485,10 +474,15 @@ export default function OrganiserSessionWorkspacePage() {
             </TabsList>
 
             <TabsContent value="overview" className="mt-4">
-              <OverviewTab session={session} onEdit={goEdit} isDivision={isDivision} />
+              <OverviewTab
+                session={session}
+                onEdit={goEdit}
+                onInvite={canInviteToSession(session.status, session.endAt) ? () => setInviteOpen(true) : undefined}
+                isDivision={isDivision}
+              />
             </TabsContent>
             <TabsContent value="players" className="mt-4">
-              <PlayersTab session={session} onEdit={goEdit} />
+              <PlayersTab session={session} onOpenMessages={isDivision ? undefined : () => handleTabChange("messages")} onExport={handleExportPlayers} />
             </TabsContent>
             <TabsContent value="format" className="mt-4">
               <FormatRulesTab session={session} />
@@ -498,9 +492,6 @@ export default function OrganiserSessionWorkspacePage() {
             </TabsContent>
             <TabsContent value="messages" className="mt-4">
               <MessagesTab session={session} />
-            </TabsContent>
-            <TabsContent value="photos" className="mt-4">
-              <PhotosTab />
             </TabsContent>
             <TabsContent value="results" className="mt-4">
               <ResultsTab session={session} />
@@ -519,9 +510,6 @@ export default function OrganiserSessionWorkspacePage() {
             </Button>
           </div>
         </div>
-      </main>
-
-      <OrganiserMobileNav />
 
       <InvitePlayersDialog
         open={inviteOpen}
@@ -559,6 +547,46 @@ export default function OrganiserSessionWorkspacePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      <AlertDialog open={confirmCancelOpen} onOpenChange={setConfirmCancelOpen}>
+        <AlertDialogContent data-testid="organiser-session-cancel-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel this session?</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{session.title}" will be cancelled and taken off Play. Everyone registered ({session.registeredCount}) gets a
+              cancellation message. This can't be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="organiser-session-cancel-keep">Keep Session</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCancel} disabled={cancelling} data-testid="organiser-session-cancel-confirm">
+              {cancelling ? "Cancelling..." : "Cancel Session"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmArchiveOpen} onOpenChange={setConfirmArchiveOpen}>
+        <AlertDialogContent data-testid="organiser-session-archive-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive this session?</AlertDialogTitle>
+            <AlertDialogDescription>
+              It moves to the Archived tab on your Sessions list. Players and results are kept.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmArchiveOpen(false);
+                handleArchive();
+              }}
+              data-testid="organiser-session-archive-confirm"
+            >
+              Archive
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </OrganiserLayout>
   );
 }

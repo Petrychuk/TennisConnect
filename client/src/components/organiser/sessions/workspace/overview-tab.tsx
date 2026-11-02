@@ -1,4 +1,6 @@
 import { useLocation } from "wouter";
+import { useLiveAvailable } from "@/lib/use-live-available";
+import { sessionCategoryOf } from "@shared/sessionCategories";
 import { Button } from "@/components/ui/button";
 import { UserPlus } from "lucide-react";
 import { SessionSummaryCard } from "./session-summary-card";
@@ -10,7 +12,6 @@ import { SessionNotesCard } from "./session-notes-card";
 import { DivisionsCard } from "./divisions-card";
 import { LiveTodayCard } from "@/components/organiser/dashboard/live-today-card";
 import type { MockSession } from "@/lib/organiser-hub-mock-data";
-import { useToast } from "@/hooks/use-toast";
 import {
   mockSessionQuickStats,
   mockSessionTopPlayers,
@@ -22,13 +23,15 @@ import {
 interface OverviewTabProps {
   session: SessionListItem;
   onEdit?: () => void;
+  /** Opens the real invite dialog; omitted when invites aren't possible (shared/sessionActions.ts). */
+  onInvite?: () => void;
   isDivision?: boolean;
 }
 
-export function OverviewTab({ session, onEdit, isDivision }: OverviewTabProps) {
+export function OverviewTab({ session, onEdit, onInvite, isDivision }: OverviewTabProps) {
   const [, setLocation] = useLocation();
+  const liveAvailable = useLiveAvailable(session) && sessionCategoryOf(session.type).usesLiveRounds;
   const detail = getSessionDetail(session);
-  const { toast } = useToast();
   // Readiness itself (registration open/closed, who's checked in) is
   // what the Players tab's own stat strip and table already show in
   // full - pointing here instead of the old, now-removed Registration
@@ -130,7 +133,7 @@ export function OverviewTab({ session, onEdit, isDivision }: OverviewTabProps) {
         {session.status === "live" ? (
           <LiveTodayCard
             session={liveSession}
-            onEnterLive={() => setLocation(`/organiser/sessions/${session.id}/live`)}
+            onEnterLive={liveAvailable ? () => setLocation(`/organiser/sessions/${session.id}/live`) : undefined}
           />
         ) : (
           <LiveTodayCard session={null} />
@@ -184,18 +187,16 @@ export function OverviewTab({ session, onEdit, isDivision }: OverviewTabProps) {
         <SessionStatusCard session={session} showEditButton={false} />
         <SessionReadinessCard readiness={sessionReadiness} onViewDetails={viewReadinessDetails} />
         {isMultiDivisionType && <DivisionsCard sessionId={session.id} />}
-        <div className="grid grid-cols-2 gap-3">
-          <Button variant="outline" onClick={onEdit} data-testid="organiser-session-overview-edit-mobile">
+        <div className={onInvite ? "grid grid-cols-2 gap-3" : "grid grid-cols-1"}>
+          <Button variant="outline" className="min-h-11" onClick={onEdit} data-testid="organiser-session-overview-edit-mobile">
             Edit Session
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => toast({ title: "Invite Players isn't wired up yet" })}
-            data-testid="organiser-session-overview-invite-mobile"
-          >
-            <UserPlus className="w-4 h-4 mr-2" />
-            Invite Players
-          </Button>
+          {onInvite && (
+            <Button variant="outline" className="min-h-11" onClick={onInvite} data-testid="organiser-session-overview-invite-mobile">
+              <UserPlus className="w-4 h-4 mr-2" />
+              Invite Players
+            </Button>
+          )}
         </div>
         <SessionDetailsCard session={session} />
         <SessionNotesCard sessionId={session.id} initialNote={detail.notes} />

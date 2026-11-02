@@ -59,18 +59,21 @@ export function SessionDetailsCard({ session, isDivision }: SessionDetailsCardPr
         : "Disabled",
       testId: "waiting-list",
     },
-    { icon: DollarSign, label: "Cost", value: detail.costPerPlayer ? `$${detail.costPerPlayer} per player` : "Free", testId: "cost" },
+    // Price is information for players only - TennisConnect doesn't take payment.
+    { icon: DollarSign, label: "Cost", value: detail.costPerPlayer ? `$${detail.costPerPlayer} per player · paid to the organiser` : "Free", testId: "cost" },
     { icon: UserCog, label: "Organiser", value: detail.organizerName, testId: "organiser" },
     {
       icon: CalendarPlus,
       label: "Created",
-      value: formatInTimeZone(detail.createdAt, session.timeZone, {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
+      value: detail.createdAt
+        ? formatInTimeZone(detail.createdAt, session.timeZone, {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "—",
       testId: "created",
     },
   ];

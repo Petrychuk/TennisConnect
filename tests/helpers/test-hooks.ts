@@ -36,7 +36,7 @@ export type TestHookName =
   | 'run-residue';
 
 /** What went wrong, so callers (e.g. the Staging check) can give targeted advice. */
-export type TestHookErrorKind = 'config' | 'timeout' | 'network' | 'http' | 'response';
+export type TestHookErrorKind = 'config' | 'timeout' | 'network' | 'http' | 'response' | 'refused';
 
 export class TestHookError extends Error {
   constructor(
@@ -100,8 +100,15 @@ export async function postTestHook<T>(
   env: Record<string, string | undefined> = process.env,
   options: PostTestHookOptions = {}
 ): Promise<T> {
+  // Refused before anything is sent: Production has no test hooks, and the
+  // Staging hook secret must never reach a Production server (its logs,
+  // proxies). The server would answer 404 anyway - this keeps the secret home.
+  const target = resolveTarget(env);
+  if (target.testEnv === 'production') {
+    throw new TestHookError(`test hooks are never called on Production (POST /api/test-hooks/${hook} refused, nothing sent)`, undefined, 'refused');
+  }
   const headers = testHookHeaders(env);
-  const url = new URL(`/api/test-hooks/${hook}`, resolveTarget(env).origin).toString();
+  const url = new URL(`/api/test-hooks/${hook}`, target.origin).toString();
   const timeoutMs = options.timeoutMs ?? TEST_HOOK_TIMEOUT_MS;
   const fetchImpl: HookFetch = options.fetchImpl ?? ((input, init) => fetch(input, init));
   const controller = new AbortController();

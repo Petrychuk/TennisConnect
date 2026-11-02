@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { OrganiserAccessGate } from "@/components/organiser/ui/organiser-layout";
 import { Link, useLocation, useRoute } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ import SEO from "@/components/seo";
 import { getSessionById, updateSession } from "@/lib/api/organizer-sessions";
 import { NumberField } from "@/components/organiser/sessions/wizard/number-field";
 import { AU_CITY_TIMEZONES, zonedTimeToUtc, toZonedDateTimeInputs } from "@/lib/timezone";
+import { POLICY_LABELS, policyColumns, readSessionPolicies, type SessionPolicies } from "@shared/sessionPolicies";
 
 // A single-page edit form for the core, always-real fields (title,
 // venue, date/time, capacity, pricing, registration window, waiting
@@ -24,7 +26,7 @@ import { AU_CITY_TIMEZONES, zonedTimeToUtc, toZonedDateTimeInputs } from "@/lib/
 // deliberately not the full multi-step creation wizard pre-filled (a
 // separate, larger piece of work), but it's genuinely functional
 // rather than a placeholder.
-export default function OrganiserSessionEditPage() {
+function OrganiserSessionEditPageContent() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/organiser/sessions/:id/edit");
@@ -51,6 +53,10 @@ export default function OrganiserSessionEditPage() {
   const [waitingListEnabled, setWaitingListEnabled] = useState(true);
   const [registrationCloses, setRegistrationCloses] = useState("");
   const [registrationClosesTime, setRegistrationClosesTime] = useState("23:59");
+  // Rules & policies - their own columns now; an older session's are split
+  // out of its description here, and saved to the columns (and out of the
+  // description) on the next save. shared/sessionPolicies.ts
+  const [policies, setPolicies] = useState<SessionPolicies>({ rules: null, refund: null, lateArrival: null, cancellation: null });
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
@@ -65,7 +71,9 @@ export default function OrganiserSessionEditPage() {
     // of which is what the organizer actually set for the venue.
     const { date: startDate, time: startTimeStr } = toZonedDateTimeInputs(session.startAt, zone);
     setTitle(session.title);
-    setDescription(session.description ?? "");
+    const read = readSessionPolicies(session);
+    setDescription(read.description ?? "");
+    setPolicies(read.policies);
     setVenue(session.location ?? "");
     setTimeZone(zone);
     setCourtsCount(session.courtsCount != null ? String(session.courtsCount) : "");
@@ -82,27 +90,7 @@ export default function OrganiserSessionEditPage() {
     setLoaded(true);
   }, [sessionQuery.data, loaded]);
 
-  if (authLoading) return null;
-  if (!isAuthenticated) {
-    setLocation("/auth");
-    return null;
-  }
 
-  if (!user?.isOrganizer) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-background">
-        <Card className="max-w-md w-full shadow-sm">
-          <CardHeader>
-            <CardTitle asChild><h1>Organiser access required</h1></CardTitle>
-          </CardHeader>
-          <CardContent className="text-muted-foreground">
-            You need to be an approved organiser to view this page. Head to your profile to
-            request organiser access.
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   const session = sessionQuery.data;
 
@@ -138,6 +126,7 @@ export default function OrganiserSessionEditPage() {
         price: pricing === "paid" ? Number(price || 0) : 0,
         waitingListEnabled,
         registrationClosesAt: registrationCloses ? zonedTimeToUtc(registrationCloses, registrationClosesTime || "23:59", timeZone) : undefined,
+        ...policyColumns(policies),
       } as any);
       queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", params.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine"] });
@@ -255,9 +244,24 @@ export default function OrganiserSessionEditPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Description</Label>
-              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-24" data-testid="organiser-session-edit-description" />
+              <Label htmlFor="organiser-session-edit-description">Description</Label>
+              <Textarea id="organiser-session-edit-description" value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-24" data-testid="organiser-session-edit-description" />
             </div>
+            <fieldset className="space-y-4 rounded-xl border border-border p-4" data-testid="organiser-session-edit-policies">
+              <legend className="px-1 text-sm font-semibold">Rules & policies <span className="font-normal text-muted-foreground">(optional, shown to players)</span></legend>
+              {(Object.keys(POLICY_LABELS) as (keyof SessionPolicies)[]).map((key) => (
+                <div key={key} className="space-y-1.5">
+                  <Label htmlFor={`organiser-session-edit-policy-${key}`}>{POLICY_LABELS[key]}</Label>
+                  <Textarea
+                    id={`organiser-session-edit-policy-${key}`}
+                    value={policies[key] ?? ""}
+                    onChange={(e) => setPolicies((prev) => ({ ...prev, [key]: e.target.value }))}
+                    className="min-h-16"
+                    data-testid={`organiser-session-edit-policy-${key}`}
+                  />
+                </div>
+              ))}
+            </fieldset>
 
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setLocation(`/organiser/sessions/${params?.id}`)} data-testid="organiser-session-edit-cancel">
@@ -271,5 +275,15 @@ export default function OrganiserSessionEditPage() {
         </Card>
       </div>
     </main>
+  );
+}
+
+// Access (signed in, organiser or admin) is checked once, for every Hub
+// page, by OrganiserAccessGate (components/organiser/ui/organiser-layout.tsx).
+export default function OrganiserSessionEditPage() {
+  return (
+    <OrganiserAccessGate>
+      <OrganiserSessionEditPageContent />
+    </OrganiserAccessGate>
   );
 }

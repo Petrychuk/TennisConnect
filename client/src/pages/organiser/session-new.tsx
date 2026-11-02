@@ -1,20 +1,11 @@
-import { OrganiserBarLogo } from "@/components/organiser/ui/organiser-bar-logo";
 import { useEffect, useState } from "react";
-import { Link, useLocation, useSearch } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Menu, Clock, ArrowRight, ArrowLeft } from "lucide-react";
+import { Clock, ArrowRight, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import SEO from "@/components/seo";
+import { OrganiserLayout } from "@/components/organiser/ui/organiser-layout";
 
-import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar";
-import { useSidebarCollapsed } from "@/lib/use-sidebar-collapsed";
-import { cn } from "@/lib/utils";
-import { NotificationBell } from "@/components/organiser/ui/notification-bell";
-import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
 import { WizardStepSidebar } from "@/components/organiser/sessions/wizard/wizard-step-sidebar";
 import { WizardStepIndicator } from "@/components/organiser/sessions/wizard/wizard-step-indicator";
 import { Step1SessionType } from "@/components/organiser/sessions/wizard/step1-session-type";
@@ -23,7 +14,6 @@ import { Step3DetailsRules } from "@/components/organiser/sessions/wizard/step3-
 import { Step4ReviewPublish } from "@/components/organiser/sessions/wizard/step4-review-publish";
 import { PendingApprovalDialog } from "@/components/organiser/sessions/wizard/pending-approval-dialog";
 
-import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
 import { ensureMyOrganization, createSession, publishSession, getSessionById, getSessionTemplates } from "@/lib/api/organizer-sessions";
 import {
   createEmptyDraft,
@@ -37,12 +27,7 @@ import {
 export default function OrganiserSessionNewPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed();
   const { toast } = useToast();
-  const profileHref = user ? `/${user.role}/${user.slug}` : "/";
-  // Real name/avatar from the authenticated user - role/organization
-  // fields stay mock for now since there's no backend for those yet.
-  const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null, isAdmin: user.isAdmin ?? false } : mockOrganiser;
 
   const [draft, setDraft] = useState<NewSessionDraft>(createEmptyDraft);
   const [step, setStep] = useState(1);
@@ -165,7 +150,7 @@ export default function OrganiserSessionNewPage() {
     }
     setSubmitting(true);
     try {
-      await ensureMyOrganization(`${organiser.name}'s Sessions`);
+      await ensureMyOrganization(`${user?.name ?? "My"}'s Sessions`);
       await createSession(draftToInsertSession(draft) as any);
       toast({ title: "Saved as draft", description: "Pick up where you left off any time from Sessions." });
       setLocation("/organiser/sessions");
@@ -185,7 +170,7 @@ export default function OrganiserSessionNewPage() {
     }
     setSubmitting(true);
     try {
-      await ensureMyOrganization(`${organiser.name}'s Sessions`);
+      await ensureMyOrganization(`${user?.name ?? "My"}'s Sessions`);
       const created = await createSession(draftToInsertSession(draft) as any);
       await publishSession(created.id);
       setPendingApprovalOpen(true);
@@ -196,81 +181,15 @@ export default function OrganiserSessionNewPage() {
     }
   };
 
-  if (authLoading) return null;
-  if (!isAuthenticated) {
-    setLocation("/auth");
-    return null;
-  }
-
-  if (!user?.isOrganizer) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-background">
-        <Card className="max-w-md w-full shadow-sm">
-          <CardHeader>
-            <CardTitle asChild><h1>Organiser access required</h1></CardTitle>
-          </CardHeader>
-          <CardContent className="text-muted-foreground">
-            You need to be an approved organiser to view this page. Head to your profile to
-            request organiser access.
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   const typeLabel = SESSION_TYPE_OPTIONS.find((t) => t.key === draft.type)?.label ?? "session";
 
   return (
-    <div className="min-h-screen flex bg-background" data-testid="organiser-session-new-page">
-      <SEO
-        title="Create New Session | Organiser Hub | TennisConnect"
-        description="Create a new tennis session in just a few steps."
-        noIndex
-      />
-
-      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-72")}>
-        <OrganiserSidebarNav
-          organiser={organiser}
-          profileHref={profileHref}
-          className="w-full"
-          collapsed={sidebarCollapsed}
-          onToggleCollapsed={() => setSidebarCollapsed((v) => !v)}
-        />
-      </aside>
-
-      {/* See sessions.tsx's own comment on this same pattern - <aside>
-          above and <OrganiserMobileNav /> below both stay siblings of
-          this <main>, not children of it. */}
-      <main id="main-content" className="flex-1 min-w-0 pb-16 md:pb-0">
-        {/* Compact bar — tablet & mobile */}
-        <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="hidden md:inline-flex" aria-label="Open Organiser Hub menu" data-testid="organiser-sidebar-trigger">
-                <Menu className="w-5 h-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-72">
-              <SheetTitle className="sr-only">Organiser Hub navigation</SheetTitle>
-              <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} />
-            </SheetContent>
-          </Sheet>
-          <OrganiserBarLogo />
-
-          <div className="hidden md:block mr-auto font-display font-bold">New Session</div>
-
-          <div className="flex items-center gap-1">
-            <NotificationBell testId="organiser-header-bell-mobile" />
-            <Link href={profileHref}>
-              <Avatar className="h-8 w-8 border border-border">
-                <AvatarImage src={organiser.avatar || undefined} />
-                <AvatarFallback className="bg-primary/10 text-primary-text font-bold text-xs">
-                  {organiser.name[0]}
-                </AvatarFallback>
-              </Avatar>
-            </Link>
-          </div>
-        </div>
+    <OrganiserLayout
+      testId="organiser-session-new-page"
+      seoTitle="Create New Session | Organiser Hub | TennisConnect"
+      seoDescription="Create a new tennis session in just a few steps."
+      mobileTitle="New Session"
+    >
 
         <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 max-w-6xl mx-auto">
           {/* Desktop header row */}
@@ -356,27 +275,16 @@ export default function OrganiserSessionNewPage() {
                   <Clock className="w-5 h-5 text-primary-text shrink-0" />
                   <div className="flex-1">
                     <p className="text-sm font-semibold">You can always edit session details later</p>
-                    <p className="text-xs text-muted-foreground">All settings can be changed before you start the live session.</p>
+                    <p className="text-xs text-muted-foreground">Everything here can be changed from Edit Session until the session starts.</p>
                   </div>
-                  <button
-                    type="button"
-                    className="text-sm font-medium text-primary-text flex items-center gap-1 shrink-0"
-                    onClick={() => toast({ title: "Example sessions isn't wired up yet" })}
-                    data-testid="organiser-wizard-view-examples"
-                  >
-                    View example sessions
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
+                  {/* "View example sessions" only toasted "isn't wired up yet" - removed (no examples exist). */}
                 </div>
               )}
             </div>
           </div>
         </div>
-      </main>
-
-      <OrganiserMobileNav />
 
       <PendingApprovalDialog open={pendingApprovalOpen} sessionName={draft.name || "Untitled Session"} sessionTypeLabel={typeLabel} />
-    </div>
+    </OrganiserLayout>
   );
 }

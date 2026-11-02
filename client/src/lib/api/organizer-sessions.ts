@@ -17,6 +17,7 @@ import type {
   Season,
   InsertSeason,
 } from "@shared/schema";
+import type { OrganizationProfile } from "@shared/organizationProfile";
 
 const BASE = "/api/organizer";
 
@@ -105,6 +106,17 @@ export async function getMyOrganization(): Promise<Organization | null> {
 
 export async function createOrganization(name: string): Promise<Organization> {
   const res = await apiRequest("POST", `${BASE}/organizations`, { name });
+  return res.json();
+}
+
+/** "Your Organisation" page - profile fields only (shared/organizationProfile.ts). */
+export async function updateOrganization(id: string, updates: Partial<OrganizationProfile>): Promise<Organization> {
+  const res = await apiRequest("PUT", `${BASE}/organizations/${id}`, updates);
+  return res.json();
+}
+
+export async function createOrganizationWithProfile(profile: OrganizationProfile): Promise<Organization> {
+  const res = await apiRequest("POST", `${BASE}/organizations`, profile);
   return res.json();
 }
 
@@ -301,7 +313,13 @@ export async function generateNextRound(sessionId: string): Promise<{ round: Ses
   return res.json();
 }
 
-/** Null if no round has been generated yet. */
+/** Every stored round with its matches, oldest first ([] if the session never ran in Live). */
+export async function getSessionRounds(sessionId: string): Promise<{ round: SessionRound; matches: MatchWithPlayers[] }[]> {
+  const res = await apiRequest("GET", `${BASE}/sessions/${sessionId}/rounds`);
+  return res.json();
+}
+
+/** The latest round, or null if no round has been generated yet. */
 export async function getCurrentRound(sessionId: string): Promise<{ round: SessionRound; matches: MatchWithPlayers[] } | null> {
   const res = await apiRequest("GET", `${BASE}/sessions/${sessionId}/rounds/current`);
   return res.json();
@@ -327,8 +345,9 @@ export async function reportMatchScore(
 }
 
 /** live -> completed. */
-export async function finishSession(id: string): Promise<TennisSession> {
-  const res = await apiRequest("POST", `${BASE}/sessions/${id}/finish`);
+/** force: end even with unscored matches (they're marked abandoned and never count). Without it the server answers 409 UNSCORED_MATCHES. */
+export async function finishSession(id: string, force = false): Promise<TennisSession> {
+  const res = await apiRequest("POST", `${BASE}/sessions/${id}/finish`, force ? { force: true } : undefined);
   return res.json();
 }
 

@@ -5,7 +5,7 @@ import { Footer } from "@/components/footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, MapPin, Users } from "lucide-react";
+import { Calendar, Globe, Mail, MapPin, Phone, Users } from "lucide-react";
 import { TennisBallSpinner, TennisLoader } from "@/components/ui/tennisLoader";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -36,6 +36,9 @@ interface OrganizationDetail {
   description: string | null;
   logo: string | null;
   cover: string | null;
+  website: string | null;
+  email: string | null;
+  phone: string | null;
   upcomingSessions: SessionWithDetails[];
 }
 
@@ -148,8 +151,9 @@ export default function OrganisationDetailPage() {
             {organization.name}
           </h1>
           {organization.description && (
-            <p className="text-muted-foreground mt-2 max-w-2xl">{organization.description}</p>
+            <p className="text-muted-foreground mt-2 max-w-2xl whitespace-pre-line">{organization.description}</p>
           )}
+          <OrganizationContacts organization={organization} />
         </div>
 
         <div>
@@ -250,5 +254,41 @@ export default function OrganisationDetailPage() {
 
       <Footer />
     </div>
+  );
+}
+// Contact details the organiser set on "Your Organisation"
+// (/organiser/organisation). Only http(s) websites become links - older
+// rows were saved before shared/organizationProfile.ts validated them.
+function OrganizationContacts({ organization }: { organization: Pick<OrganizationDetail, "website" | "email" | "phone"> }) {
+  const website = organization.website && /^https?:\/\//i.test(organization.website) ? organization.website : null;
+  if (!website && !organization.email && !organization.phone) return null;
+  const linkClass = "inline-flex items-center gap-2 min-h-11 sm:min-h-0 text-primary-text hover:underline break-all";
+  return (
+    <ul className="mt-4 flex flex-col sm:flex-row sm:flex-wrap gap-x-6 gap-y-1 text-sm" data-testid="organization-contacts">
+      {website && (
+        <li>
+          <a href={website} target="_blank" rel="noopener noreferrer nofollow" className={linkClass} data-testid="organization-website">
+            <Globe className="w-4 h-4 shrink-0" />
+            {website.replace(/^https?:\/\//i, "").replace(/\/$/, "")}
+          </a>
+        </li>
+      )}
+      {organization.email && (
+        <li>
+          <a href={`mailto:${organization.email}`} className={linkClass} data-testid="organization-email">
+            <Mail className="w-4 h-4 shrink-0" />
+            {organization.email}
+          </a>
+        </li>
+      )}
+      {organization.phone && (
+        <li>
+          <a href={`tel:${organization.phone.replace(/[^+0-9]/g, "")}`} className={linkClass} data-testid="organization-phone">
+            <Phone className="w-4 h-4 shrink-0" />
+            {organization.phone}
+          </a>
+        </li>
+      )}
+    </ul>
   );
 }

@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ADMIN_SECTIONS } from "@/lib/adminSections";
-import type { OrganiserUser } from "@/lib/organiser-hub-mock-data";
+import type { OrganiserUser } from "@/lib/organiser-types";
 
 interface NavItem {
   key: string;
@@ -43,6 +43,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "rankings", label: "Rankings", icon: Trophy, href: "/organiser/rankings" },
   { key: "reports", label: "Reports", icon: FileBarChart, href: "/organiser/reports" },
   { key: "messages", label: "Messages", icon: MessageSquare, href: "/organiser/messages" },
+  { key: "organisation", label: "Your Organisation", icon: Building2, href: "/organiser/organisation" },
 ];
 
 // Same six sections the old standalone /admin page's own horizontal

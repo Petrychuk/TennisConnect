@@ -109,15 +109,28 @@ export function LiveTodayCard({ session, nextUpcoming, className, onEnterLive, o
             </div>
           </div>
 
-          <Button
-            size="lg"
-            className="w-full sm:w-auto"
-            onClick={onEnterLive}
-            data-testid="organiser-live-today-enter-button"
-          >
-            <Play className="w-4 h-4 mr-2" />
-            Enter Live Session
-          </Button>
+          {/* No onEnterLive = TC Live isn't available here (Production):
+              open the session instead of a "coming soon" page. */}
+          {onEnterLive ? (
+            <Button
+              size="lg"
+              className="w-full sm:w-auto"
+              onClick={onEnterLive}
+              data-testid="organiser-live-today-enter-button"
+            >
+              <Play className="w-4 h-4 mr-2" />
+              Enter Live Session
+            </Button>
+          ) : onOpenSession && (
+            <Button
+              size="lg"
+              className="w-full sm:w-auto"
+              onClick={() => onOpenSession(session.id)}
+              data-testid="organiser-live-today-open-button"
+            >
+              Open Session
+            </Button>
+          )}
         </div>
       </div>
     );

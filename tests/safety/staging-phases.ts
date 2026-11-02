@@ -102,6 +102,26 @@ export const STAGING_PHASES: Readonly<Record<StagingPhase, readonly PhaseEntry[]
     { file: 'tests/organiser/organiser-critical-flows.spec.ts', ids: ['ORG-FLOW-001', 'ORG-FLOW-003'] },
     { file: 'tests/organiser/organiser-rankings.spec.ts', ids: ['ORG-RANK-002', 'ORG-RANK-004', 'ORG-RANK-006'] },
     { file: 'tests/organiser/organiser-reports.spec.ts', ids: ['ORG-REPORT-003', 'ORG-REPORT-004', 'ORG-REPORT-010', 'ORG-REPORT-012'] },
+    // Responsive checks (Phase 2 Batch 2): run-owned organiser, seeded
+    // session; writes one check-in and that organiser's own organisation.
+    { file: 'tests/organiser/organiser-hub-responsive.spec.ts', ids: ['ORG-RESP-001', 'ORG-RESP-002', 'ORG-RESP-003'] },
+    // Phase 2 coverage (30 Oct 2026, docs/testing/E2E_COVERAGE_MATRIX.md). Run-owned
+    // organisers, players and sessions; messages only to run-owned players.
+    // ORG-WIZ-004 skips itself unless E2E_ALLOW_PUBLISH_REVIEW=1 (it messages every admin).
+    { file: 'tests/organiser/organiser-permissions.spec.ts', ids: ['ORG-PERM-001', 'ORG-PERM-002'] },
+    { file: 'tests/organiser/organiser-wizard.spec.ts', ids: ['ORG-WIZ-001', 'ORG-WIZ-002', 'ORG-WIZ-003', 'ORG-WIZ-004'] },
+    { file: 'tests/organiser/organiser-workspace.spec.ts', ids: ['ORG-WS-001', 'ORG-WS-002', 'ORG-WS-003', 'ORG-WS-004', 'ORG-WS-005'] },
+    {
+      file: 'tests/organiser/organiser-session-actions.spec.ts',
+      ids: ['ORG-ACT-001', 'ORG-ACT-002', 'ORG-ACT-003', 'ORG-ACT-004', 'ORG-ACT-005', 'ORG-ACT-006'],
+    },
+    { file: 'tests/play/play-session-details.spec.ts', ids: ['PLAY-007', 'PLAY-008', 'PLAY-009'] },
+    // TC Live v1 (30 Oct 2026): needs TC_LIVE_ENABLED=true on Staging. Run-owned
+    // organisers/players/sessions; LIVE-015 skips itself unless Live is off.
+    {
+      file: 'tests/live/live-engine.spec.ts',
+      ids: Array.from({ length: 16 }, (_, i) => `LIVE-${String(i + 1).padStart(3, '0')}`),
+    },
     { file: 'tests/play/play.spec.ts', ids: ['PLAY-001', 'PLAY-002', 'PLAY-003', 'PLAY-004', 'PLAY-005', 'PLAY-006'] },
     {
       file: 'tests/messages/messages.spec.ts',
@@ -139,6 +159,16 @@ export const HERO_SEARCH_TEST_IDS: readonly string[] = Array.from({ length: 94 }
 export const LOCAL_ONLY_TESTS: readonly PhaseEntry[] = [
   { file: 'tests/admin/users/admin-user-delete.spec.ts', ids: ['ADMIN-009'] },
   { file: 'tests/public/hero-search.spec.ts', ids: HERO_SEARCH_TEST_IDS },
+];
+
+/**
+ * Production only, never on Staging or local: the internal TC Live
+ * validation suite (tests/prod-live-internal/, docs/live/LIVE_RUNBOOK.md).
+ * Its fixture skips every test unless TEST_ENV=production and
+ * E2E_PROD_SUITE=prod-live-internal are set and confirmed.
+ */
+export const PRODUCTION_ONLY_TESTS: readonly PhaseEntry[] = [
+  { file: 'tests/prod-live-internal/live-internal.spec.ts', ids: ['LIVE-PROD-001', 'LIVE-PROD-002'] },
 ];
 
 export function isStagingPhase(value: unknown): value is StagingPhase {

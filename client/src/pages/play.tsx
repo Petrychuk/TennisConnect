@@ -31,6 +31,7 @@ import { HeroBadge } from "@/components/shared/hero-badge";
 import { HeroSearch, HeroSearchFiltersButton } from "@/components/shared/hero-search";
 import { HeroFiltersPanel } from "@/components/shared/hero-filters";
 import { HeroPhoto } from "@/components/shared/hero-photo";
+import { isCompetitionType } from "@shared/sessionCategories";
 
 /** Example smart searches shown under the search box. */
 const EXAMPLES = ["Doubles this weekend", "Social tennis near me", "Competition around my level"];
@@ -38,7 +39,6 @@ const EXAMPLES = ["Doubles this weekend", "Social tennis near me", "Competition 
 const ALL = PLAY_FILTER_ALL;
 const PAGE_SIZE = 6;
 
-const COMPETITION_FORMAT_KEYS = new Set(["tournament", "league", "club-championship", "junior-event"]);
 
 export default function PlayPage() {
   const [, setLocation] = useLocation();
@@ -227,7 +227,7 @@ export default function PlayPage() {
   });
   const allSessions = sessionsQuery.data ?? [];
   const sessions = competitionsOnly
-    ? allSessions.filter((s) => COMPETITION_FORMAT_KEYS.has(s.type))
+    ? allSessions.filter((s) => isCompetitionType(s.type))
     : allSessions;
   const organiserName = sessions.find((s) => s.organizationId === organizerId)?.organizationName;
 

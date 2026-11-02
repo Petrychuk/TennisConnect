@@ -1,12 +1,9 @@
-import { OrganiserBarLogo } from "@/components/organiser/ui/organiser-bar-logo";
 import { useMemo, useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
@@ -24,21 +21,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Menu, Plus, CalendarRange, Users, MoreHorizontal, Archive, Trash2, Search } from "lucide-react";
+import { Plus, CalendarRange, Users, MoreHorizontal, Archive, Trash2, Search } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import SEO from "@/components/seo";
 
-import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar";
-import { useSidebarCollapsed } from "@/lib/use-sidebar-collapsed";
 import { cn } from "@/lib/utils";
-import { NotificationBell } from "@/components/organiser/ui/notification-bell";
-import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
-import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
 import { getSeasons, archiveSeason, deleteSeason, type SeasonWithCounts } from "@/lib/api/organizer-sessions";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
 import { seasonStatus, SEASON_STATUS_LABEL, SEASON_STATUS_STYLE, formatSeasonPeriod, type SeasonStatus } from "@/lib/season-utils";
 import { FilterChip, FILTER_CHIP_ROW } from "@/components/shared/filters";
+import { OrganiserLayout } from "@/components/organiser/ui/organiser-layout";
 import { OrganiserBreadcrumb } from "@/components/organiser/ui/organiser-breadcrumb";
 
 type StatusFilter = "all" | SeasonStatus;
@@ -118,11 +110,8 @@ function SeasonRow({ season, onArchive, onDelete }: { season: SeasonWithCounts; 
 export default function OrganiserSeasonsPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const profileHref = user ? `/${user.role}/${user.slug}` : "/";
-  const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null, isAdmin: user.isAdmin ?? false } : mockOrganiser;
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -180,61 +169,13 @@ export default function OrganiserSeasonsPage() {
     }
   };
 
-  if (authLoading) return null;
-  if (!isAuthenticated) {
-    setLocation("/auth");
-    return null;
-  }
-
-  if (!user?.isOrganizer) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-background">
-        <Card className="max-w-md w-full shadow-sm">
-          <CardContent className="p-6 text-muted-foreground">
-            You need to be an approved organiser to view this page.
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen flex bg-background" data-testid="organiser-seasons-page">
-      <SEO
-        title="Seasons | Organiser Hub | TennisConnect"
-        description="Organise your sessions and track participation and results over time."
-        noIndex
-      />
-
-      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-72")}>
-        <OrganiserSidebarNav
-          organiser={organiser}
-          profileHref={profileHref}
-          className="w-full"
-          collapsed={sidebarCollapsed}
-          onToggleCollapsed={() => setSidebarCollapsed((v) => !v)}
-        />
-      </aside>
-
-      <main id="main-content" className="flex-1 min-w-0 pb-16 md:pb-0">
-        <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="hidden md:inline-flex" aria-label="Open Organiser Hub menu" data-testid="organiser-sidebar-trigger">
-                <Menu className="w-5 h-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-72">
-              <SheetTitle className="sr-only">Organiser Hub navigation</SheetTitle>
-              <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} />
-            </SheetContent>
-          </Sheet>
-          <OrganiserBarLogo />
-          <div className="hidden md:block mr-auto font-display font-bold">Seasons</div>
-          <div className="flex items-center gap-1">
-            <NotificationBell testId="organiser-header-bell-mobile" />
-          </div>
-        </div>
+    <OrganiserLayout
+      testId="organiser-seasons-page"
+      seoTitle="Seasons | Organiser Hub | TennisConnect"
+      seoDescription="Organise your sessions and track participation and results over time."
+      mobileTitle="Seasons"
+    >
 
         <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
           <OrganiserBreadcrumb current="Seasons" testId="organiser-seasons-page-breadcrumb" />
@@ -317,9 +258,6 @@ export default function OrganiserSeasonsPage() {
             </div>
           )}
         </div>
-      </main>
-
-      <OrganiserMobileNav />
 
       <AlertDialog open={!!archiveTarget} onOpenChange={(open) => !open && setArchiveTarget(null)}>
         <AlertDialogContent>
@@ -355,6 +293,6 @@ export default function OrganiserSeasonsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </OrganiserLayout>
   );
 }

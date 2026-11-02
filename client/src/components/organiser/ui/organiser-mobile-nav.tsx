@@ -3,9 +3,8 @@ import { Home, CalendarDays, Users, CalendarRange, MoreHorizontal } from "lucide
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { useAuth } from "@/lib/auth-context";
-import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
 import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar";
+import { useOrganiserIdentity } from "@/components/organiser/ui/organiser-layout";
 
 const ITEMS = [
   { key: "home", label: "Home", icon: Home, href: "/organiser" },
@@ -21,12 +20,10 @@ const ITEMS = [
 // still a placeholder until those pages exist.
 export function OrganiserMobileNav() {
   const [location] = useLocation();
-  const { user } = useAuth();
+  const { organiser, profileHref } = useOrganiserIdentity();
   const [moreOpen, setMoreOpen] = useState(false);
   // Close the menu once a page has been picked.
   useEffect(() => { setMoreOpen(false); }, [location]);
-  const profileHref = user ? `/${user.role}/${user.slug}` : "/";
-  const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null, isAdmin: user.isAdmin ?? false } : mockOrganiser;
 
   return (
     <>

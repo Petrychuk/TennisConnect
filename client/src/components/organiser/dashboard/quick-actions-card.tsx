@@ -5,7 +5,8 @@ import { cn } from "@/lib/utils";
 import type { MockSession } from "@/lib/organiser-hub-mock-data";
 
 interface QuickActionsCardProps {
-  organizationSlug: string;
+  /** null until the organisation exists (it's created with the first session). */
+  organizationSlug: string | null;
   // The soonest published session, if any - Check-in Players goes
   // straight there when there's exactly one obvious candidate.
   upcomingSessions?: MockSession[];
@@ -16,7 +17,7 @@ interface QuickActionsCardProps {
 
 type ActionItem =
   | { key: string; label: string; icon: LucideIcon; kind: "link"; href: string }
-  | { key: string; label: string; icon: LucideIcon; kind: "button"; onClick?: () => void; disabled?: boolean };
+  | { key: string; label: string; icon: LucideIcon; kind: "button"; onClick?: () => void; disabled?: boolean; disabledReason?: string };
 
 // Operational actions ("things I may need to DO now"), not a second
 // copy of sidebar navigation - Settings was removed per explicit spec
@@ -36,12 +37,17 @@ export function QuickActionsCard({ organizationSlug, upcomingSessions = [], onCr
       kind: "button",
       onClick: nextSession ? () => onCheckIn?.(nextSession.id) : undefined,
       disabled: !nextSession,
+      disabledReason: "Publish a session first - check-in is for your next published session.",
     },
     ...(nextSession
       ? ([{ key: "invite", label: "Invite Players", icon: UserPlus, kind: "link", href: `/organiser/sessions/${nextSession.id}?tab=players` }] as ActionItem[])
-      : ([{ key: "invite", label: "Invite Players", icon: UserPlus, kind: "button", disabled: true }] as ActionItem[])),
+      : ([{ key: "invite", label: "Invite Players", icon: UserPlus, kind: "button", disabled: true, disabledReason: "Publish a session first - invitations are for a specific session." }] as ActionItem[])),
     { key: "message", label: "Message Players", icon: MessageSquare, kind: "link", href: "/organiser/messages" },
-    { key: "view-org", label: "View Public Page", icon: ExternalLink, kind: "link", href: `/organisations/${organizationSlug}` },
+    // Only once the organisation exists - it used to fall back to a mock
+    // organisation's page ("/organisations/lyne-park-tennis").
+    organizationSlug
+      ? { key: "view-org", label: "View Public Page", icon: ExternalLink, kind: "link", href: `/organisations/${organizationSlug}` }
+      : { key: "view-org", label: "View Public Page", icon: ExternalLink, kind: "button", disabled: true, disabledReason: "Your public page appears after you create your first session." },
   ];
 
   return (
@@ -86,9 +92,13 @@ export function QuickActionsCard({ organizationSlug, upcomingSessions = [], onCr
                   "disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:bg-transparent disabled:hover:scale-100"
                 )}
                 data-testid={`organiser-quick-action-${action.key}`}
-                title={action.disabled ? "Coming soon" : undefined}
+                title={action.disabled ? action.disabledReason : undefined}
+                aria-describedby={action.disabled ? `organiser-quick-action-${action.key}-why` : undefined}
               >
                 {content}
+                {action.disabled && action.disabledReason && (
+                  <span id={`organiser-quick-action-${action.key}-why`} className="sr-only">{action.disabledReason}</span>
+                )}
               </button>
             );
           })}

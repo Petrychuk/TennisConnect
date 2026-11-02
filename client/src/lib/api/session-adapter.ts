@@ -82,6 +82,8 @@ export function toSessionListItem(session: TennisSession | SessionWithDetails): 
     coverImage: session.coverImage ?? undefined,
     type: (session.type ?? "custom") as SessionListItem["type"],
     status: session.status as SessionListItem["status"],
+    visibility: session.visibility ?? null,
+    isInternalTest: session.isInternalTest === true,
     location: session.location ?? "",
     timeZone: session.timeZone ?? "Australia/Sydney",
     startAt: new Date(session.startAt).toISOString(),
@@ -99,6 +101,7 @@ export function toSessionListItem(session: TennisSession | SessionWithDetails): 
     noAd: session.noAd ?? null,
     tiebreak: session.tiebreak ?? null,
     plannedRoundsCount: session.plannedRoundsCount ?? null,
+    policies: readSessionPolicies(session).policies,
     progressPercent,
     progressLabel,
     registrationOpen,
@@ -154,6 +157,7 @@ export function toSessionPlayer(registration: RegistrationWithUser): SessionPlay
     isReal: true,
     slug: registration.userSlug,
     role: registration.userRole,
+    userId: registration.userId,
   };
 }
 
@@ -169,6 +173,7 @@ export function toSessionPlayers(registrationsList: RegistrationWithUser[]): Ses
  * fabricated numbers, same reasoning as toSessionPlayer's level/group.
  */
 import { skillLevelToUtr } from "@/lib/skillLevel";
+import { readSessionPolicies } from "@shared/sessionPolicies";
 
 function toLevelLabel(skillLevel: string | null): OrgPlayer["levelLabel"] {
   if (skillLevel === "Beginner" || skillLevel === "Intermediate" || skillLevel === "Advanced") {

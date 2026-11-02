@@ -92,6 +92,7 @@ import {
   type LeaderboardRow,
   type ActivityFeedItem,
 } from "@shared/schema";
+import { readSessionPolicies } from "@shared/sessionPolicies";
 import { db, pool } from "./db";
 import { cascadeDeleteOrganizations as cascadeDeleteOrganizationsShared } from "./lib/organizationCascade";
 import { deleteUserRows } from "./lib/userCascade";
@@ -105,6 +106,8 @@ import { alias } from "drizzle-orm/pg-core";
 import { locationTerms, softLevelValues } from "./services/playFilters";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { planRound, computeLeaderboard, type PastMatch } from "./services/liveEngine";
+import { LiveRuleError } from "./lib/liveErrors";
+import { liveModeOf, roundProblem } from "@shared/liveRules";
 
 // Second reference to `users`, joined on messages.recipientId - lets a
 // conversation-list row resolve "the other participant"'s name/avatar
@@ -453,7 +456,7 @@ export interface IStorage {
   updateOrganization(id: string, updates: Partial<InsertOrganization>): Promise<Organization>;
 
   // ===== SESSIONS =====
-  createSession(organizationId: string, createdBy: string, session: InsertSession): Promise<TennisSession>;
+  createSession(organizationId: string, createdBy: string, session: InsertSession, options?: { isInternalTest?: boolean }): Promise<TennisSession>;
   getSessionById(id: string): Promise<TennisSession | undefined>;
  getSessionByIdWithDetails(id: string, viewerId?: string): Promise<SessionWithDetails | undefined>;
  getSessionDivisions(parentSessionId: string): Promise<SessionWithDetails[]>;
@@ -494,6 +497,9 @@ export interface IStorage {
   getSessionRegistrationCounts(sessionId: string): Promise<{ registered: number; waitlisted: number }>;
 
   // ===== TC LIVE ENGINE =====
+  getRegistrationById(registrationId: string): Promise<Registration | undefined>;
+  getMatchById(matchId: string): Promise<Match | undefined>;
+  getSessionRounds(sessionId: string): Promise<{ round: SessionRound; matches: MatchWithPlayers[] }[]>;
   checkInRegistration(registrationId: string): Promise<Registration>;
   setRegistrationLiveStatus(registrationId: string, liveStatus: "unavailable" | "withdrawn" | null): Promise<Registration>;
   goLiveSession(sessionId: string): Promise<TennisSession>;
@@ -1327,7 +1333,7 @@ export class DatabaseStorage implements IStorage {
   // date/time - comparing a UTC date to a local one would mis-match
   // every morning session.
   async getPublicSessionsForDuplicateCheck(filters: { location?: string | null; startDate?: string | null }) {
-    const conditions = [inArray(tennisSessions.status, ["published", "live"]), eq(tennisSessions.visibility, "public")];
+    const conditions = [inArray(tennisSessions.status, ["published", "live"]), eq(tennisSessions.visibility, "public"), eq(tennisSessions.isInternalTest, false) /* TC Live v1: internal test sessions are never public */];
     if (filters.startDate) {
       const day = new Date(`${filters.startDate}T00:00:00Z`).getTime();
       conditions.push(gte(tennisSessions.startAt, new Date(day - 36 * 3_600_000)));
@@ -3528,6 +3534,8 @@ export class DatabaseStorage implements IStorage {
     return {
       ...card,
       description: activity.description,
+      // Discovered events have no TennisConnect policies.
+      policies: { rules: null, refund: null, lateArrival: null, cancellation: null },
       matchMode: "",
       scoringFormat: "",
       price: activity.price != null ? (activity.price === 0 ? "Free" : String(activity.price)) : null,
@@ -3561,7 +3569,7 @@ export class DatabaseStorage implements IStorage {
   }): Promise<PublicSessionCard[]> {
     const conditions = [
       inArray(tennisSessions.status, ["published", "live"]),
-      eq(tennisSessions.visibility, "public"),
+      eq(tennisSessions.visibility, "public"), eq(tennisSessions.isInternalTest, false) /* TC Live v1: internal test sessions are never public */,
     ];
     if (filters.format) conditions.push(eq(tennisSessions.type, filters.format));
     // Soft level rule (services/playFilters.ts): also sessions open to all levels
@@ -3686,7 +3694,7 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(tennisSessions.id, id),
           inArray(tennisSessions.status, ["published", "live"]),
-          eq(tennisSessions.visibility, "public")
+          eq(tennisSessions.visibility, "public"), eq(tennisSessions.isInternalTest, false) /* TC Live v1: internal test sessions are never public */
         )
       );
     if (!row) return this.getExternalPublicSessionById(id);
@@ -3714,9 +3722,14 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
+    // Columns first; older sessions keep their policies inside the
+    // description and are split here (shared/sessionPolicies.ts).
+    const { description, policies } = readSessionPolicies(session);
+
     return {
       ...card,
-      description: session.description,
+      description,
+      policies,
       matchMode: session.matchMode,
       scoringFormat: session.scoringFormat,
       price: session.price,
@@ -3989,7 +4002,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           inArray(tennisSessions.status, ["published", "live", "completed"]),
-          eq(tennisSessions.visibility, "public")
+          eq(tennisSessions.visibility, "public"), eq(tennisSessions.isInternalTest, false) /* TC Live v1: internal test sessions are never public */
         )
       );
 
@@ -4335,7 +4348,10 @@ export class DatabaseStorage implements IStorage {
   async createSession(
     organizationId: string,
     createdBy: string,
-    session: InsertSession
+    session: InsertSession,
+    // TC Live v1: decided by the route from the creator's account
+    // (server/lib/liveFeature.ts), never from the request body.
+    options: { isInternalTest?: boolean } = {}
   ): Promise<TennisSession> {
     const [createdSession] = await db
       .insert(tennisSessions)
@@ -4343,6 +4359,7 @@ export class DatabaseStorage implements IStorage {
         ...session,
         organizationId,
         createdBy,
+        isInternalTest: options.isInternalTest === true,
         price:
           session.price !== undefined && session.price !== null
             ? String(session.price)
@@ -4466,6 +4483,7 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(tennisSessions.organizationId, organizationId),
           eq(tennisSessions.status, "published"),
+          eq(tennisSessions.isInternalTest, false), // TC Live v1: never on a public organisation page
           // A session currently in progress (started, hasn't ended)
           // still belongs here - comparing against startAt alone
           // dropped it the moment it started, well before it actually
@@ -4490,7 +4508,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(tennisSessions.status, "published"),
-          eq(tennisSessions.visibility, "public"),
+          eq(tennisSessions.visibility, "public"), eq(tennisSessions.isInternalTest, false) /* TC Live v1: internal test sessions are never public */,
           gte(tennisSessions.startAt, now),
           lte(tennisSessions.startAt, weekFromNow)
         )
@@ -5143,14 +5161,29 @@ export class DatabaseStorage implements IStorage {
   // TC LIVE ENGINE
   // =====================
 
+  async getRegistrationById(registrationId: string): Promise<Registration | undefined> {
+    const [registration] = await db.select().from(registrations).where(eq(registrations.id, registrationId));
+    return registration;
+  }
+
+  // Only a registered player can be checked in (not a waitlisted, invited or
+  // cancelled one - they used to be, and then got paired in Live). Checking
+  // in twice keeps the first time (double taps, two devices).
   async checkInRegistration(registrationId: string): Promise<Registration> {
+    const [existing] = await db.select().from(registrations).where(eq(registrations.id, registrationId));
+    if (!existing) throw new Error("Registration not found");
+    if (existing.status !== "registered") {
+      throw new LiveRuleError(`Only registered players can be checked in (this one is ${existing.status})`);
+    }
+    if (existing.checkedInAt) return existing;
     const [registration] = await db
       .update(registrations)
       .set({ checkedInAt: new Date() })
-      .where(eq(registrations.id, registrationId))
+      .where(and(eq(registrations.id, registrationId), isNull(registrations.checkedInAt)))
       .returning();
-    if (!registration) throw new Error("Registration not found");
-    return registration;
+    if (registration) return registration;
+    const [current] = await db.select().from(registrations).where(eq(registrations.id, registrationId));
+    return current;
   }
 
   // Organizer removing a specific player from their session - the
@@ -5199,27 +5232,67 @@ export class DatabaseStorage implements IStorage {
     return registration;
   }
 
-  // draft/published -> live. Caller (route) is responsible for checking
-  // there's at least 2 checked-in players first - this just flips status.
+  // published -> live. The route checks readiness (shared/liveRules.ts
+  // goLiveProblem). Conditional on the status still being "published", so
+  // two concurrent clicks (or a retry after a dropped response) can't move a
+  // session that changed meanwhile; already live is returned as it is.
   async goLiveSession(sessionId: string): Promise<TennisSession> {
     const [session] = await db
       .update(tennisSessions)
       .set({ status: "live", updatedAt: new Date() })
-      .where(eq(tennisSessions.id, sessionId))
+      .where(and(eq(tennisSessions.id, sessionId), eq(tennisSessions.status, "published")))
       .returning();
-    return session;
+    if (session) return session;
+    const [current] = await db.select().from(tennisSessions).where(eq(tennisSessions.id, sessionId));
+    if (!current) throw new Error("Session not found");
+    if (current.status === "live") return current;
+    throw new LiveRuleError(`Can't go live from status "${current.status}"`, 409);
   }
 
   // live -> completed. Leaderboard is computed on demand from confirmed
   // matches (getSessionLeaderboard), not snapshotted here - see TC Live
   // spec §6 for why writing into tournamentHistory is a separate, later step.
-  async finishSession(sessionId: string): Promise<TennisSession> {
-    const [session] = await db
-      .update(tennisSessions)
-      .set({ status: "completed", updatedAt: new Date() })
-      .where(eq(tennisSessions.id, sessionId))
-      .returning();
-    return session;
+  //
+  // Only from "live" (it used to complete a draft, a cancelled session -
+  // anything). Matches without a confirmed score are refused (409
+  // UNSCORED_MATCHES) unless `force`: then they're marked "abandoned" (they
+  // never count) and the open round is closed, in one transaction. Finishing
+  // an already completed session again returns it unchanged.
+  async finishSession(sessionId: string, options: { force?: boolean } = {}): Promise<TennisSession> {
+    return db.transaction(async (tx) => {
+      const [current] = await tx.select().from(tennisSessions).where(eq(tennisSessions.id, sessionId)).for("update");
+      if (!current) throw new Error("Session not found");
+      if (current.status === "completed") return current;
+      if (current.status !== "live") {
+        throw new LiveRuleError(`Only a live session can be finished (this one is ${current.status})`, 409);
+      }
+      const unscored = await tx
+        .select({ id: matches.id })
+        .from(matches)
+        .where(and(eq(matches.sessionId, sessionId), inArray(matches.status, ["pending", "playing"])));
+      if (unscored.length > 0 && !options.force) {
+        throw new LiveRuleError(
+          `${unscored.length} match${unscored.length === 1 ? " has" : "es have"} no score yet - enter them, or end anyway (they won't count)`,
+          409,
+          "UNSCORED_MATCHES",
+          { unscored: unscored.length },
+        );
+      }
+      if (unscored.length > 0) {
+        await tx.update(matches).set({ status: "abandoned" }).where(inArray(matches.id, unscored.map((m) => m.id)));
+      }
+      await tx
+        .update(sessionRounds)
+        .set({ status: "completed", completedAt: new Date() })
+        .where(and(eq(sessionRounds.sessionId, sessionId), eq(sessionRounds.status, "active")));
+      const [session] = await tx
+        .update(tennisSessions)
+        .set({ status: "completed", updatedAt: new Date() })
+        .where(eq(tennisSessions.id, sessionId))
+        .returning();
+      console.log(`[TC LIVE] session ${sessionId}: finished${unscored.length ? ` (${unscored.length} unscored match(es) abandoned)` : ""}`);
+      return session;
+    });
   }
 
   // Every checked-in, available (liveStatus IS NULL) player for a session -
@@ -5232,6 +5305,10 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(registrations.sessionId, sessionId),
+          // Only registered players - a checked-in player the organiser
+          // later removed (cancelled) or moved to the waiting list must not
+          // be paired (TC Live v1 audit).
+          eq(registrations.status, "registered"),
           sql`${registrations.checkedInAt} IS NOT NULL`,
           isNull(registrations.liveStatus)
         )
@@ -5322,7 +5399,7 @@ export class DatabaseStorage implements IStorage {
 
         const activeRound = existingRounds.find((r) => r.status === "active");
         if (activeRound) {
-          throw new Error("Current round isn't fully confirmed yet");
+          throw new LiveRuleError("Current round isn't fully confirmed yet", 409, "ROUND_IN_PROGRESS");
         }
 
         const [players, pastMatches, restCounts] = await Promise.all([
@@ -5331,14 +5408,16 @@ export class DatabaseStorage implements IStorage {
           this.getRestCounts(sessionId, tx),
         ]);
 
-        if (players.length < 2) {
-          throw new Error("Need at least 2 eligible checked-in players to generate a round");
-        }
+        // A full court of available players, or no round at all: doubles
+        // with 2-3 players used to create an empty "completed" round (and a
+        // rest for everyone) on every click.
+        const problem = roundProblem(session.matchMode, players.length);
+        if (problem) throw new LiveRuleError(problem);
 
         const plan = planRound({
           players,
           courtsCount: session.courtsCount ?? 1,
-          mode: (session.matchMode as "singles" | "doubles") ?? "doubles",
+          mode: liveModeOf(session.matchMode),
           pastMatches,
           restCounts,
         });
@@ -5388,7 +5467,7 @@ export class DatabaseStorage implements IStorage {
       // and raced to insert. Surface the same message as the pre-check
       // instead of a raw constraint error reaching the client.
       if (error?.code === "23505") {
-        throw new Error("Current round isn't fully confirmed yet");
+        throw new LiveRuleError("Current round isn't fully confirmed yet", 409, "ROUND_IN_PROGRESS");
       }
       throw error;
     }
@@ -5407,14 +5486,49 @@ export class DatabaseStorage implements IStorage {
     return { round, matches: await this.attachPlayersToMatches(roundMatches) };
   }
 
+  // Every round of a session with its matches, oldest first - the Session
+  // Workspace Rounds tab (read-only). Empty when the session never ran in
+  // TC Live. Two queries, not one per round.
+  async getSessionRounds(sessionId: string): Promise<{ round: SessionRound; matches: MatchWithPlayers[] }[]> {
+    const rounds = await db
+      .select()
+      .from(sessionRounds)
+      .where(eq(sessionRounds.sessionId, sessionId))
+      .orderBy(asc(sessionRounds.roundNumber));
+    if (rounds.length === 0) return [];
+    const matchRows = await db.select().from(matches).where(inArray(matches.roundId, rounds.map((r) => r.id)));
+    const withPlayers = await this.attachPlayersToMatches(matchRows);
+    return rounds.map((round) => ({
+      round,
+      matches: withPlayers
+        .filter((m) => m.roundId === round.id)
+        .sort((a, b) => a.courtLabel.localeCompare(b.courtLabel, undefined, { numeric: true })),
+    }));
+  }
+
+  async getMatchById(matchId: string): Promise<Match | undefined> {
+    const [match] = await db.select().from(matches).where(eq(matches.id, matchId));
+    return match;
+  }
+
+  // pending -> playing, while the session is live. It used to set ANY match
+  // back to "playing" - a confirmed one too, which reopened a finished
+  // round. Starting a match that's already playing returns it (double tap).
   async startMatch(matchId: string): Promise<Match> {
+    const [existing] = await db.select().from(matches).where(eq(matches.id, matchId));
+    if (!existing) throw new Error("Match not found");
+    const [session] = await db.select().from(tennisSessions).where(eq(tennisSessions.id, existing.sessionId));
+    if (!session || session.status !== "live") throw new LiveRuleError("Can only start matches while the session is live", 409);
+    if (existing.status === "playing") return existing;
+    if (existing.status !== "pending") throw new LiveRuleError(`This match is already ${existing.status}`, 409);
     const [match] = await db
       .update(matches)
       .set({ status: "playing", startedAt: new Date() })
-      .where(eq(matches.id, matchId))
+      .where(and(eq(matches.id, matchId), eq(matches.status, "pending")))
       .returning();
-    if (!match) throw new Error("Match not found");
-    return match;
+    if (match) return match;
+    const [current] = await db.select().from(matches).where(eq(matches.id, matchId));
+    return current;
   }
 
   // Organizer-only score entry (v0.1 - see TC Live spec §5): saving a
@@ -5447,9 +5561,17 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Can only enter scores while the session is live");
     }
 
+    if (existing.status === "abandoned") {
+      throw new LiveRuleError("This match was abandoned when the session ended", 409);
+    }
     const isCorrection = existing.status === "confirmed";
 
     const match = await db.transaction(async (tx) => {
+      // Lock the round first: two last scores saved at the same moment each
+      // used to see the other match still unconfirmed (READ COMMITTED), so
+      // neither closed the round and "Generate Next Round" stayed locked.
+      // With the lock the second waits, then sees the first's committed score.
+      await tx.select({ id: sessionRounds.id }).from(sessionRounds).where(eq(sessionRounds.id, existing.roundId)).for("update");
       const [match] = await tx
         .update(matches)
         .set({
@@ -5486,10 +5608,14 @@ export class DatabaseStorage implements IStorage {
     const [matchRows, restCounts, registeredPlayers] = await Promise.all([
       db.select().from(matches).where(eq(matches.sessionId, sessionId)),
       this.getRestCounts(sessionId),
+      // Who took part: checked-in players (a player who rested every round
+      // still has a row). Players who played appear through their matches
+      // even if they withdrew later; waitlisted or never-arrived
+      // registrants no longer show up as 0-0 rows.
       db
         .select({ userId: registrations.userId })
         .from(registrations)
-        .where(and(eq(registrations.sessionId, sessionId), ne(registrations.status, "cancelled"))),
+        .where(and(eq(registrations.sessionId, sessionId), ne(registrations.status, "cancelled"), sql`${registrations.checkedInAt} IS NOT NULL`)),
     ]);
 
     const entries = computeLeaderboard({

@@ -20,17 +20,6 @@ export interface SessionReadiness {
   items: ReadinessItem[];
 }
 
-export const mockSessionReadiness: SessionReadiness = {
-  percent: 84,
-  items: [
-    { id: "registration", label: "Registration Closed", status: "ready" },
-    { id: "courts", label: "Courts Ready (6/6)", status: "ready" },
-    { id: "checkin", label: "2 Players Not Checked In", status: "warning" },
-    { id: "waitlist", label: "Waiting List Ready", status: "ready" },
-    { id: "rounds", label: "Round 1 Not Generated", status: "issue" },
-  ],
-};
-
 export interface SessionListItem {
   id: string;
   title: string;
@@ -61,6 +50,12 @@ export interface SessionListItem {
   noAd: boolean | null;
   tiebreak: boolean | null;
   plannedRoundsCount: number | null;
+  /** TC Live v1: an internal test session (server-set) - Live may run for it in TC_LIVE_ENABLED=internal. */
+  isInternalTest?: boolean;
+  /** sessions.visibility ("public" | "members" | "invite") - set by toSessionListItem. */
+  visibility?: string | null;
+  /** Rules & policies (shared/sessionPolicies.ts) - set by toSessionListItem. */
+  policies?: import("@shared/sessionPolicies").SessionPolicies;
   progressPercent: number; // for the thin bar under each card
   progressLabel: string; // e.g. "Ends in 1h 13m", "Registration closes in 21h 45m", "Starts in 3 days"
   roundCurrent?: number;
@@ -104,465 +99,27 @@ function daysAgo(days: number) {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 }
 
-export const mockSessionsList: SessionListItem[] = [
-  // Live
-  {
-    id: "live-1",
-    title: "Wednesday Social Tennis",
-    type: "social",
-    status: "live",
-    location: "Lyne Park Tennis Centre",
-    timeZone: "Australia/Sydney",
-    startAt: hoursFromNow(-1.5),
-    endAt: hoursFromNow(0.72),
-    registeredCount: 24,
-    checkedInCount: 21,
-    waitingCount: 3,
-    maxParticipants: 24,
-    courtsCount: 6,
-    matchMode: "doubles",
-    category: "open",
-    gamesTo: 4,
-    noAd: true,
-    tiebreak: true,
-    plannedRoundsCount: 5,
-    progressPercent: 40,
-    progressLabel: "Ends in 1h 13m",
-    roundCurrent: 2,
-    roundTotal: 5,
-    roundEndsAt: hoursFromNow(1.22),
-    registrationOpen: true,
-    registrationClosesAt: hoursFromNow(-0.5),
-    checkInOpen: true,
-    format: "Fun doubles · Random partners · Balance skill",
-    roundsDescription: "5 rounds · Best of 4 games (no-ad)",
-    waitingListEnabled: true,
-    costPerPlayer: 15,
-    organizerName: "Henry Coach",
-    createdAt: daysAgo(12),
-    notes: null,
-    courts: [
-      { id: "court-1", label: "Court 1", state: "ready" },
-      { id: "court-2", label: "Court 2", state: "playing" },
-      { id: "court-3", label: "Court 3", state: "playing" },
-      { id: "court-4", label: "Court 4", state: "pending" },
-      { id: "court-5", label: "Court 5", state: "ready" },
-      { id: "court-6", label: "Court 6", state: "playing" },
-    ],
-  },
-
-  // Registration open
-  {
-    id: "reg-1",
-    title: "Friday Ladies Social",
-    type: "social",
-    status: "published",
-    location: "Lyne Park Tennis Centre",
-    timeZone: "Australia/Sydney",
-    startAt: daysFromNow(6),
-    registeredCount: 18,
-    checkedInCount: 0,
-    waitingCount: 2,
-    maxParticipants: 24,
-    courtsCount: 6,
-    matchMode: "doubles",
-    category: "open",
-    gamesTo: 4,
-    noAd: true,
-    tiebreak: true,
-    plannedRoundsCount: 5,
-    progressPercent: 75,
-    progressLabel: "Registration closes in 21h 45m",
-    registrationOpen: true,
-  },
-  {
-    id: "reg-2",
-    title: "Thursday Cardio Tennis",
-    type: "clinic",
-    status: "published",
-    location: "Lyne Park Tennis Centre",
-    timeZone: "Australia/Sydney",
-    startAt: daysFromNow(5),
-    registeredCount: 8,
-    checkedInCount: 0,
-    waitingCount: 0,
-    maxParticipants: 12,
-    courtsCount: 3,
-    matchMode: "doubles",
-    category: "open",
-    gamesTo: 4,
-    noAd: true,
-    tiebreak: true,
-    plannedRoundsCount: 5,
-    progressPercent: 55,
-    progressLabel: "Registration closes in 2 days",
-    registrationOpen: true,
-  },
-
-  // Upcoming
-  {
-    id: "up-1",
-    title: "Sunday Americano",
-    type: "round-robin",
-    status: "published",
-    location: "Lyne Park Tennis Centre",
-    timeZone: "Australia/Sydney",
-    startAt: daysFromNow(8),
-    registeredCount: 24,
-    checkedInCount: 0,
-    waitingCount: 6,
-    maxParticipants: 32,
-    courtsCount: 8,
-    matchMode: "doubles",
-    category: "open",
-    gamesTo: 4,
-    noAd: true,
-    tiebreak: true,
-    plannedRoundsCount: 5,
-    progressPercent: 20,
-    progressLabel: "Starts in 3 days",
-  },
-  {
-    id: "up-2",
-    title: "Tuesday Morning Social",
-    type: "social",
-    status: "pending_review",
-    location: "Lyne Park Tennis Centre",
-    timeZone: "Australia/Sydney",
-    startAt: daysFromNow(10),
-    registeredCount: 12,
-    checkedInCount: 0,
-    waitingCount: 0,
-    maxParticipants: 16,
-    courtsCount: 4,
-    matchMode: "doubles",
-    category: "open",
-    gamesTo: 4,
-    noAd: true,
-    tiebreak: true,
-    plannedRoundsCount: 5,
-    progressPercent: 10,
-    progressLabel: "Awaiting admin approval",
-  },
-  {
-    id: "up-3",
-    title: "Saturday Junior Clinic",
-    type: "clinic",
-    status: "published",
-    location: "Lyne Park Tennis Centre",
-    timeZone: "Australia/Sydney",
-    startAt: daysFromNow(12),
-    registeredCount: 6,
-    checkedInCount: 0,
-    waitingCount: 0,
-    maxParticipants: 10,
-    courtsCount: 2,
-    matchMode: "doubles",
-    category: "open",
-    gamesTo: 4,
-    noAd: true,
-    tiebreak: true,
-    plannedRoundsCount: 5,
-    progressPercent: 10,
-    progressLabel: "Starts in 12 days",
-  },
-  {
-    id: "up-4",
-    title: "Monthly Mixed Doubles",
-    type: "round-robin",
-    status: "published",
-    location: "Lyne Park Tennis Centre",
-    timeZone: "Australia/Sydney",
-    startAt: daysFromNow(15),
-    registeredCount: 14,
-    checkedInCount: 0,
-    waitingCount: 0,
-    maxParticipants: 24,
-    courtsCount: 6,
-    matchMode: "doubles",
-    category: "open",
-    gamesTo: 4,
-    noAd: true,
-    tiebreak: true,
-    plannedRoundsCount: 5,
-    progressPercent: 5,
-    progressLabel: "Starts in 15 days",
-  },
-
-  // Draft
-  {
-    id: "draft-1",
-    title: "Winter Club Championship",
-    type: "tournament",
-    status: "draft",
-    location: "Lyne Park Tennis Centre",
-    timeZone: "Australia/Sydney",
-    startAt: daysFromNow(20),
-    registeredCount: 0,
-    checkedInCount: 0,
-    waitingCount: 0,
-    maxParticipants: 64,
-    courtsCount: 16,
-    matchMode: "doubles",
-    category: "open",
-    gamesTo: 4,
-    noAd: true,
-    tiebreak: true,
-    plannedRoundsCount: 5,
-    progressPercent: 0,
-    progressLabel: "Not published",
-  },
-  {
-    id: "draft-2",
-    title: "Spring Round Robin",
-    type: "round-robin",
-    status: "draft",
-    location: "Lyne Park Tennis Centre",
-    timeZone: "Australia/Sydney",
-    startAt: daysFromNow(25),
-    registeredCount: 0,
-    checkedInCount: 0,
-    waitingCount: 0,
-    maxParticipants: 24,
-    courtsCount: 6,
-    matchMode: "doubles",
-    category: "open",
-    gamesTo: 4,
-    noAd: true,
-    tiebreak: true,
-    plannedRoundsCount: 5,
-    progressPercent: 0,
-    progressLabel: "Not published",
-  },
-  {
-    id: "draft-3",
-    title: "Kids Holiday Camp",
-    type: "clinic",
-    status: "draft",
-    location: "Lyne Park Tennis Centre",
-    timeZone: "Australia/Sydney",
-    startAt: daysFromNow(30),
-    registeredCount: 0,
-    checkedInCount: 0,
-    waitingCount: 0,
-    maxParticipants: 20,
-    courtsCount: 5,
-    matchMode: "doubles",
-    category: "open",
-    gamesTo: 4,
-    noAd: true,
-    tiebreak: true,
-    plannedRoundsCount: 5,
-    progressPercent: 0,
-    progressLabel: "Not published",
-  },
-
-  // Completed
-  {
-    id: "done-1",
-    title: "Monday Social Tennis",
-    type: "social",
-    status: "completed",
-    location: "Lyne Park Tennis Centre",
-    timeZone: "Australia/Sydney",
-    startAt: daysAgo(2),
-    registeredCount: 26,
-    checkedInCount: 25,
-    waitingCount: 0,
-    maxParticipants: 26,
-    courtsCount: 6,
-    matchMode: "doubles",
-    category: "open",
-    gamesTo: 4,
-    noAd: true,
-    tiebreak: true,
-    plannedRoundsCount: 5,
-    progressPercent: 100,
-    progressLabel: "Completed",
-    resultsPublished: true,
-  },
-  {
-    id: "done-2",
-    title: "Weekend Americano",
-    type: "round-robin",
-    status: "completed",
-    location: "Lyne Park Tennis Centre",
-    timeZone: "Australia/Sydney",
-    startAt: daysAgo(6),
-    registeredCount: 32,
-    checkedInCount: 30,
-    waitingCount: 0,
-    maxParticipants: 32,
-    courtsCount: 8,
-    matchMode: "doubles",
-    category: "open",
-    gamesTo: 4,
-    noAd: true,
-    tiebreak: true,
-    plannedRoundsCount: 5,
-    progressPercent: 100,
-    progressLabel: "Completed",
-    resultsPublished: true,
-  },
-  {
-    id: "done-3",
-    title: "Beginner Clinic",
-    type: "clinic",
-    status: "completed",
-    location: "Lyne Park Tennis Centre",
-    timeZone: "Australia/Sydney",
-    startAt: daysAgo(9),
-    registeredCount: 10,
-    checkedInCount: 9,
-    waitingCount: 0,
-    maxParticipants: 10,
-    courtsCount: 2,
-    matchMode: "doubles",
-    category: "open",
-    gamesTo: 4,
-    noAd: true,
-    tiebreak: true,
-    plannedRoundsCount: 5,
-    progressPercent: 100,
-    progressLabel: "Completed",
-    resultsPublished: false,
-  },
-  {
-    id: "done-4",
-    title: "Ladies Social",
-    type: "social",
-    status: "completed",
-    location: "Lyne Park Tennis Centre",
-    timeZone: "Australia/Sydney",
-    startAt: daysAgo(13),
-    registeredCount: 20,
-    checkedInCount: 18,
-    waitingCount: 0,
-    maxParticipants: 24,
-    courtsCount: 6,
-    matchMode: "doubles",
-    category: "open",
-    gamesTo: 4,
-    noAd: true,
-    tiebreak: true,
-    plannedRoundsCount: 5,
-    progressPercent: 100,
-    progressLabel: "Completed",
-    resultsPublished: true,
-  },
-
-  // Archived
-  {
-    id: "arch-1",
-    title: "Autumn Club Championship 2026",
-    type: "tournament",
-    status: "archived",
-    location: "Lyne Park Tennis Centre",
-    timeZone: "Australia/Sydney",
-    startAt: daysAgo(120),
-    registeredCount: 48,
-    checkedInCount: 46,
-    waitingCount: 0,
-    maxParticipants: 48,
-    courtsCount: 12,
-    matchMode: "doubles",
-    category: "open",
-    gamesTo: 4,
-    noAd: true,
-    tiebreak: true,
-    plannedRoundsCount: 5,
-    progressPercent: 100,
-    progressLabel: "Archived",
-    resultsPublished: true,
-  },
-  {
-    id: "arch-2",
-    title: "Summer Social Series — Week 8",
-    type: "social",
-    status: "archived",
-    location: "Lyne Park Tennis Centre",
-    timeZone: "Australia/Sydney",
-    startAt: daysAgo(150),
-    registeredCount: 22,
-    checkedInCount: 20,
-    waitingCount: 0,
-    maxParticipants: 24,
-    courtsCount: 6,
-    matchMode: "doubles",
-    category: "open",
-    gamesTo: 4,
-    noAd: true,
-    tiebreak: true,
-    plannedRoundsCount: 5,
-    progressPercent: 100,
-    progressLabel: "Archived",
-    resultsPublished: true,
-  },
-  {
-    id: "arch-3",
-    title: "Winter Americano 2025",
-    type: "round-robin",
-    status: "archived",
-    location: "Lyne Park Tennis Centre",
-    timeZone: "Australia/Sydney",
-    startAt: daysAgo(210),
-    registeredCount: 30,
-    checkedInCount: 28,
-    waitingCount: 0,
-    maxParticipants: 32,
-    courtsCount: 8,
-    matchMode: "doubles",
-    category: "open",
-    gamesTo: 4,
-    noAd: true,
-    tiebreak: true,
-    plannedRoundsCount: 5,
-    progressPercent: 100,
-    progressLabel: "Archived",
-    resultsPublished: true,
-  },
-];
-
 // Not every mock session has the full workspace-detail fields filled in
 // (only the flagship "live-1" example matches the approved mockup
 // exactly) — this fills in sensible defaults for the rest so every
 // session in the list still has a working Workspace page.
-export function getSessionDetail(session: SessionListItem): Required<
-  Pick<
-    SessionListItem,
-    | "endAt"
-    | "checkInOpen"
-    | "format"
-    | "roundsDescription"
-    | "waitingListEnabled"
-    | "costPerPlayer"
-    | "organizerName"
-    | "createdAt"
-    | "notes"
-  >
-> & { gameFormat: string | null; cancellationPolicy: string } {
-  const start = new Date(session.startAt);
+/**
+ * Display values for the Session Workspace, from the real session only
+ * (Phase 2). It used to fill gaps with mock values - $15, "Henry Coach",
+ * "created 14 days ago", a made-up format and cancellation policy, an end
+ * time of start + 90 min - so a session showed details nobody entered.
+ * Unknown now stays unknown (null / "—").
+ */
+export function getSessionDetail(session: SessionListItem) {
   return {
-    endAt: session.endAt ?? new Date(start.getTime() + 90 * 60 * 1000).toISOString(),
+    endAt: session.endAt ?? null,
+    // Not a stored setting: check-in is open while the session is running.
     checkInOpen: session.checkInOpen ?? (session.status === "live" || session.status === "completed"),
-    format: session.format ?? "Fun doubles · Random partners · Balance skill",
-    roundsDescription:
-      session.roundsDescription ??
-      (session.roundTotal ? `${session.roundTotal} rounds · Best of 4 games (no-ad)` : "Not set yet"),
-    waitingListEnabled: session.waitingListEnabled ?? true,
-    costPerPlayer: session.costPerPlayer ?? 15,
-    organizerName: session.organizerName ?? "Henry Coach",
-    createdAt: session.createdAt ?? daysAgo(14),
+    waitingListEnabled: !!session.waitingListEnabled,
+    costPerPlayer: session.costPerPlayer ?? 0,
+    organizerName: session.organizerName ?? "—",
+    createdAt: session.createdAt ?? null,
     notes: session.notes ?? null,
-    // No real column for this yet (games-to-win / no-ad are wizard Step
-    // 3 fields folded into free-text description on creation, not
-    // stored structured) - was a bare hardcoded "4 Games (No-Ad)" for
-    // every session regardless of what was actually picked. Honest null
-    // until there's a real settings column to read from.
-    gameFormat: null,
-    cancellationPolicy:
-      session.cancellationPolicy ??
-      "Free cancellation up to 24 hours before the session starts. After that, no refund — the spot may still be offered to the waiting list.",
   };
 }
 
@@ -572,15 +129,6 @@ export interface SessionActivityItem {
   message: string;
   timestamp: string; // ISO
 }
-
-export const mockSessionActivity: SessionActivityItem[] = [
-  { id: "sa-1", kind: "players", message: "Emma Wilson checked in", timestamp: hoursFromNow(-0.2) },
-  { id: "sa-2", kind: "players", message: "Michael Lee checked in", timestamp: hoursFromNow(-0.25) },
-  { id: "sa-3", kind: "players", message: "Kate Smith joined the session", timestamp: hoursFromNow(-2.5) },
-  { id: "sa-4", kind: "players", message: "Alex Brown moved to waiting list", timestamp: hoursFromNow(-6) },
-  { id: "sa-5", kind: "system", message: "You opened registration", timestamp: daysAgo(1) },
-  { id: "sa-6", kind: "live", message: "Round 1 started", timestamp: hoursFromNow(-1.4) },
-];
 
 export interface SessionQuickStat {
   key: string;
@@ -629,28 +177,13 @@ export interface SessionPlayer {
   // looks like without needing dozens of real test accounts to join.
   isReal?: boolean;
   slug?: string; // real player's profile slug, when isReal
+  userId?: string; // the registrant's user id - for messaging them
   role?: string; // real user's role ("player"/"coach"), when isReal - needed to build the right /player/ vs /coach/ profile link
 }
 
 function minutesAgo(minutes: number) {
   return new Date(Date.now() - minutes * 60 * 1000).toISOString();
 }
-
-export const mockSessionPlayers: SessionPlayer[] = [
-  { id: "p-1", name: "Emma Wilson", avatar: null, level: 4.5, levelLabel: "Advanced", group: "A", status: "registered", checkedIn: true, checkInTime: minutesAgo(52), joinedAt: minutesAgo(172), paymentStatus: "paid", rating: 4.2 },
-  { id: "p-2", name: "Kate Smith", avatar: null, level: 4.0, levelLabel: "Intermediate", group: "A", status: "registered", checkedIn: false, checkInTime: null, joinedAt: minutesAgo(195), paymentStatus: "pending" },
-  { id: "p-3", name: "Michael Lee", avatar: null, level: 4.0, levelLabel: "Intermediate", group: "A", status: "registered", checkedIn: true, checkInTime: minutesAgo(62), joinedAt: minutesAgo(210), paymentStatus: "paid" },
-  { id: "p-4", name: "Alex Brown", avatar: null, level: 3.5, levelLabel: "Intermediate", group: "B", status: "registered", checkedIn: true, checkInTime: minutesAgo(65), joinedAt: minutesAgo(247), paymentStatus: "paid", rating: 4.5 },
-  { id: "p-5", name: "James Davis", avatar: null, level: 3.5, levelLabel: "Intermediate", group: "B", status: "registered", checkedIn: true, checkInTime: minutesAgo(40), joinedAt: minutesAgo(238) },
-  { id: "p-6", name: "Sophie Carter", avatar: null, level: 3.0, levelLabel: "Social", group: "B", status: "registered", checkedIn: false, checkInTime: null, joinedAt: minutesAgo(225), paymentStatus: "guest" },
-  { id: "p-7", name: "Olena Boncheva", avatar: null, level: 3.0, levelLabel: "Social", group: "C", status: "registered", checkedIn: false, checkInTime: null, joinedAt: minutesAgo(220) },
-  { id: "p-8", name: "Katerina Leon", avatar: null, level: 3.0, levelLabel: "Social", group: "C", status: "registered", checkedIn: true, checkInTime: minutesAgo(48), joinedAt: minutesAgo(210) },
-  { id: "p-9", name: "Sophie Turner", avatar: null, level: 3.5, levelLabel: "Intermediate", group: null, status: "cancelled", checkedIn: false, checkInTime: null, joinedAt: minutesAgo(300) },
-  { id: "p-10", name: "Liam Chen", avatar: null, level: 3.0, levelLabel: "Social", group: null, status: "invited", checkedIn: false, checkInTime: null, joinedAt: minutesAgo(90) },
-  { id: "p-11", name: "Priya Nair", avatar: null, level: 3.5, levelLabel: "Intermediate", group: null, status: "invited", checkedIn: false, checkInTime: null, joinedAt: minutesAgo(80) },
-  { id: "p-12", name: "Ryan Foster", avatar: null, level: 3.0, levelLabel: "Social", group: null, status: "no-response", checkedIn: false, checkInTime: null, joinedAt: minutesAgo(120) },
-  { id: "p-13", name: "Grace Kim", avatar: null, level: 4.0, levelLabel: "Intermediate", group: null, status: "no-response", checkedIn: false, checkInTime: null, joinedAt: minutesAgo(140) },
-];
 
 export interface WaitingPlayer {
   id: string;
@@ -661,20 +194,8 @@ export interface WaitingPlayer {
   joinedAt: string;
 }
 
-export const mockWaitingList: WaitingPlayer[] = [
-  { id: "w-1", name: "Tom Anderson", avatar: null, level: 3.0, levelLabel: "Social", joinedAt: minutesAgo(70) },
-  { id: "w-2", name: "Liam Johnson", avatar: null, level: 3.5, levelLabel: "Intermediate", joinedAt: minutesAgo(65) },
-  { id: "w-3", name: "Daniel Price", avatar: null, level: 3.0, levelLabel: "Social", joinedAt: minutesAgo(55) },
-];
-
 export interface GroupOverviewItem {
   key: "A" | "B" | "C";
   filled: number;
   capacity: number;
 }
-
-export const mockGroupOverview: GroupOverviewItem[] = [
-  { key: "A", filled: 8, capacity: 8 },
-  { key: "B", filled: 8, capacity: 8 },
-  { key: "C", filled: 8, capacity: 8 },
-];

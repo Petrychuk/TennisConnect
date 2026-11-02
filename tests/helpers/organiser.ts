@@ -57,6 +57,13 @@ export async function becomeOrganiser(page: Page, organizationName?: string): Pr
 
   const meRes = await page.request.get('/api/auth/me');
   const me = await meRes.json();
+  // The grant must have landed on THIS account (ORG-AUTH-001 diagnostics).
+  if (!me?.authenticated || String(me.email).toLowerCase() !== organiser.email.toLowerCase()) {
+    throw new Error('becomeOrganiser(): the new player is no longer signed in after the admin grant');
+  }
+  if (!me.isOrganizer) {
+    throw new Error('becomeOrganiser(): organiser access was granted but /api/auth/me still says isOrganizer: false');
+  }
 
   const name = organizationName ?? `Playwright Club ${Date.now()}`;
   const orgRes = await page.request.post('/api/organizer/organizations', { data: { name } });

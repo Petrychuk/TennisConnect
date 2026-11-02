@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, MapPin, Users, LayoutGrid, Repeat, ClipboardCheck, Hourglass, QrCode } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, LayoutGrid, Repeat, ClipboardCheck, Hourglass, DollarSign } from "lucide-react";
 import { SESSION_TYPE_OPTIONS, type NewSessionDraft } from "@/lib/organiser-session-wizard-types";
 import { zonedTimeToUtc, formatInTimeZone } from "@/lib/timezone";
 import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.webp";
@@ -103,11 +103,13 @@ export function Step4ReviewPublish({ draft }: Step4ReviewPublishProps) {
                 <p className="font-medium">{draft.waitingListEnabled ? "Enabled" : "Disabled"}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 text-sm" data-testid="organiser-wizard-review-qr">
-              <QrCode className="w-4 h-4 text-primary-text shrink-0" />
+            {/* Was "QR Check-in: Enabled" - a setting that was never saved
+                (Phase 1 audit 5.1). Price is real and saved. */}
+            <div className="flex items-center gap-2 text-sm" data-testid="organiser-wizard-review-price">
+              <DollarSign className="w-4 h-4 text-primary-text shrink-0" />
               <div>
-                <p className="text-muted-foreground text-xs">QR Check-in</p>
-                <p className="font-medium">{draft.qrCheckIn ? "Enabled" : "Disabled"}</p>
+                <p className="text-muted-foreground text-xs">Price</p>
+                <p className="font-medium">{draft.pricing === "paid" && draft.price > 0 ? `$${draft.price} · paid to you directly` : "Free"}</p>
               </div>
             </div>
           </div>

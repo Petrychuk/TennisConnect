@@ -1,26 +1,15 @@
-import { OrganiserBarLogo } from "@/components/organiser/ui/organiser-bar-logo";
 import { useMemo, useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Menu, UserPlus } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import SEO from "@/components/seo";
 
-import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar";
-import { useSidebarCollapsed } from "@/lib/use-sidebar-collapsed";
-import { cn } from "@/lib/utils";
-import { NotificationBell } from "@/components/organiser/ui/notification-bell";
-import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
 import { PlayersStatStrip } from "@/components/organiser/players/players-stat-strip";
 import { PlayersToolbar } from "@/components/organiser/players/players-toolbar";
 import { PlayersTable } from "@/components/organiser/players/players-table";
 import { PlayersList } from "@/components/organiser/players/players-list";
 
-import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
 import {
   type OrgPlayer,
 } from "@/lib/organiser-players-mock-data";
@@ -28,6 +17,7 @@ import { getMyPlayers, inviteToOrganization } from "@/lib/api/organizer-sessions
 import { toOrgPlayers } from "@/lib/api/session-adapter";
 import { InvitePlayersDialog } from "@/components/organiser/shared/invite-players-dialog";
 import { FilterChip, FILTER_CHIP_ROW } from "@/components/shared/filters";
+import { OrganiserLayout } from "@/components/organiser/ui/organiser-layout";
 import { OrganiserBreadcrumb } from "@/components/organiser/ui/organiser-breadcrumb";
 
 type MobileFilter = "all" | "active" | "returning";
@@ -35,11 +25,6 @@ type MobileFilter = "all" | "active" | "returning";
 export default function OrganiserPlayersPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed();
-  const profileHref = user ? `/${user.role}/${user.slug}` : "/";
-  // Real name/avatar from the authenticated user - role/organization
-  // fields stay mock for now since there's no backend for those yet.
-  const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null, isAdmin: user.isAdmin ?? false } : mockOrganiser;
 
   const myPlayersQuery = useQuery({
     queryKey: ["/api/organizer/players/mine"],
@@ -95,79 +80,13 @@ export default function OrganiserPlayersPage() {
     return filtered;
   }, [filtered, mobileFilter]);
 
-  if (authLoading) return null;
-  if (!isAuthenticated) {
-    setLocation("/auth");
-    return null;
-  }
-
-  if (!user?.isOrganizer) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-background">
-        <Card className="max-w-md w-full shadow-sm">
-          <CardHeader>
-            <CardTitle asChild><h1>Organiser access required</h1></CardTitle>
-          </CardHeader>
-          <CardContent className="text-muted-foreground">
-            You need to be an approved organiser to view this page. Head to your profile to
-            request organiser access.
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen flex bg-background" data-testid="organiser-players-page">
-      <SEO
-        title="Players | Organiser Hub | TennisConnect"
-        description="All players who have joined your sessions."
-        noIndex
-      />
-
-      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-72")}>
-        <OrganiserSidebarNav
-          organiser={organiser}
-          profileHref={profileHref}
-          className="w-full"
-          collapsed={sidebarCollapsed}
-          onToggleCollapsed={() => setSidebarCollapsed((v) => !v)}
-        />
-      </aside>
-
-      {/* See sessions.tsx's own comment on this same pattern - <aside>
-          above and <OrganiserMobileNav /> below both stay siblings of
-          this <main>, not children of it. */}
-      <main id="main-content" className="flex-1 min-w-0 pb-16 md:pb-0">
-        {/* Compact bar — tablet & mobile */}
-        <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="hidden md:inline-flex" aria-label="Open Organiser Hub menu" data-testid="organiser-sidebar-trigger">
-                <Menu className="w-5 h-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-72">
-              <SheetTitle className="sr-only">Organiser Hub navigation</SheetTitle>
-              <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} />
-            </SheetContent>
-          </Sheet>
-          <OrganiserBarLogo />
-
-          <div className="hidden md:block mr-auto font-display font-bold">Players</div>
-
-          <div className="flex items-center gap-1">
-            <NotificationBell testId="organiser-header-bell-mobile" />
-            <Link href={profileHref}>
-              <Avatar className="h-8 w-8 border border-border">
-                <AvatarImage src={organiser.avatar || undefined} />
-                <AvatarFallback className="bg-primary/10 text-primary-text font-bold text-xs">
-                  {organiser.name[0]}
-                </AvatarFallback>
-              </Avatar>
-            </Link>
-          </div>
-        </div>
+    <OrganiserLayout
+      testId="organiser-players-page"
+      seoTitle="Players | Organiser Hub | TennisConnect"
+      seoDescription="All players who have joined your sessions."
+      mobileTitle="Players"
+    >
 
         <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
           <OrganiserBreadcrumb current="Players" testId="organiser-players-page-breadcrumb" />
@@ -275,9 +194,6 @@ export default function OrganiserPlayersPage() {
           </>
           )}
         </div>
-      </main>
-
-      <OrganiserMobileNav />
 
       <InvitePlayersDialog
         open={inviteOpen}
@@ -288,6 +204,6 @@ export default function OrganiserPlayersPage() {
         searchContext={{ community: true }}
         alreadyConnectedLabel="Already a member"
       />
-    </div>
+    </OrganiserLayout>
   );
 }

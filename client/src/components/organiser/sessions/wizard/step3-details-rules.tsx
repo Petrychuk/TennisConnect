@@ -6,8 +6,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Sliders, Users2, Radio, HelpCircle, ScrollText, ChevronDown, Plus } from "lucide-react";
+import { Sliders, Users2, HelpCircle, ScrollText, ChevronDown, Plus, Info } from "lucide-react";
 import type { NewSessionDraft } from "@/lib/organiser-session-wizard-types";
+import { sessionCategoryOf } from "@shared/sessionCategories";
+import { useLiveAvailable } from "@/lib/use-live-available";
 import { NumberField } from "./number-field";
 
 interface Step3DetailsRulesProps {
@@ -37,8 +39,39 @@ function ToggleRow({ label, checked, onCheckedChange, testId, hint }: { label: s
 }
 
 export function Step3DetailsRules({ draft, onChange }: Step3DetailsRulesProps) {
+  // Only what applies to the chosen category (shared/sessionCategories.ts).
+  const category = sessionCategoryOf(draft.type);
+  // Rounds, scores and pairing happen in TC Live, which each site switches on
+  // with TC_LIVE_ENABLED - the notes say so instead of promising something
+  // that isn't there. (No session yet here, so "internal" counts as off.)
+  const liveAvailable = useLiveAvailable();
   return (
-    <div className="space-y-4" data-testid="organiser-wizard-step3">
+    <div className="space-y-4" data-testid="organiser-wizard-step3" data-category={category.key}>
+      {!category.usesMatchFormat && (
+        <Card className="shadow-sm" data-testid="organiser-wizard-coaching-note">
+          <CardContent className="p-4 flex items-start gap-3 text-sm">
+            <Info className="w-4 h-4 text-primary-text shrink-0 mt-0.5" />
+            <p className="text-muted-foreground">
+              {category.label} sessions are coach-led: there's no match format, rounds or scores to set.
+              Add anything players should know below.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+      {category.key === "competition" && (
+        <Card className="shadow-sm" data-testid="organiser-wizard-competition-note">
+          <CardContent className="p-4 flex items-start gap-3 text-sm">
+            <Info className="w-4 h-4 text-primary-text shrink-0 mt-0.5" />
+            <p className="text-muted-foreground">
+              {liveAvailable
+                ? "Results are recorded per match in Live (games won) and build the session leaderboard and series rankings."
+                : "Recording match results needs Live, which isn't available on this site yet - players can still register and be checked in."}{" "}
+              Seeded draws and knockout brackets aren't available yet.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+      {category.usesMatchFormat && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="shadow-sm" data-testid="organiser-wizard-format-card">
           <CardHeader className="flex flex-row items-center gap-2 space-y-0">
@@ -123,39 +156,30 @@ export function Step3DetailsRules({ draft, onChange }: Step3DetailsRulesProps) {
           </CardContent>
         </Card>
 
+        {/* Pairing and Live preferences used to be nine toggles here that
+            were never saved or used (Phase 1 audit 5.1). What the engine
+            really does is fixed, so it is described instead - the same
+            behaviour as server/services/liveEngine.ts planRound(). */}
         <Card className="shadow-sm" data-testid="organiser-wizard-pairing-card">
           <CardHeader className="flex flex-row items-center gap-2 space-y-0">
             <Users2 className="w-4 h-4 text-primary-text" />
-            <div>
-              <CardTitle className="text-base">Pairing</CardTitle>
-              <p className="text-xs text-muted-foreground mt-0.5 font-normal">Saved to the session summary as guidance — automatic pairing isn't built yet.</p>
-            </div>
+            <CardTitle className="text-base">Pairing</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <ToggleRow label="Random Partners" checked={draft.randomPartners} onCheckedChange={(v) => onChange("randomPartners", v)} testId="organiser-wizard-random-partners" />
-            <ToggleRow label="Avoid Repeat Partners" checked={draft.avoidRepeatPartners} onCheckedChange={(v) => onChange("avoidRepeatPartners", v)} testId="organiser-wizard-avoid-repeat" />
-            <ToggleRow label="Balance Waiting List" checked={draft.balanceWaitingList} onCheckedChange={(v) => onChange("balanceWaitingList", v)} testId="organiser-wizard-balance-waiting" />
-            <ToggleRow label="Use Player Rating" checked={draft.usePlayerRating} onCheckedChange={(v) => onChange("usePlayerRating", v)} testId="organiser-wizard-use-rating" />
-            <ToggleRow label="Allow Guests" checked={draft.allowGuests} onCheckedChange={(v) => onChange("allowGuests", v)} testId="organiser-wizard-allow-guests" />
+          <CardContent className="space-y-2 text-sm text-muted-foreground" data-testid="organiser-wizard-pairing-note">
+            <p>
+              {liveAvailable
+                ? "Pairings are made for you when you generate each round in Live:"
+                : "When Live is available, pairings are made for you each round:"}
+            </p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>players are shuffled every round;</li>
+              <li>repeat partners and opponents are avoided where possible;</li>
+              <li>if there are more players than court spots, rests are shared evenly.</li>
+            </ul>
           </CardContent>
         </Card>
       </div>
-
-      <Card className="shadow-sm" data-testid="organiser-wizard-live-settings-card">
-        <CardHeader className="flex flex-row items-center gap-2 space-y-0">
-          <Radio className="w-4 h-4 text-primary-text" />
-          <div>
-            <CardTitle className="text-base">Live Settings</CardTitle>
-            <p className="text-xs text-muted-foreground mt-0.5 font-normal">Preferences for the live session experience — set now, applied once TC Live is available.</p>
-          </div>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <ToggleRow label="QR Check-in" checked={draft.qrCheckIn} onCheckedChange={(v) => onChange("qrCheckIn", v)} testId="organiser-wizard-qr-checkin" />
-          <ToggleRow label="Live Scores" checked={draft.liveScores} onCheckedChange={(v) => onChange("liveScores", v)} testId="organiser-wizard-live-scores" />
-          <ToggleRow label="Auto Next Round" checked={draft.autoNextRound} onCheckedChange={(v) => onChange("autoNextRound", v)} testId="organiser-wizard-auto-next-round" />
-          <ToggleRow label="Publish Results" checked={draft.publishResults} onCheckedChange={(v) => onChange("publishResults", v)} testId="organiser-wizard-publish-results" />
-        </CardContent>
-      </Card>
+      )}
 
       <RulesAndPoliciesCard draft={draft} onChange={onChange} />
     </div>

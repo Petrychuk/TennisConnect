@@ -1,13 +1,23 @@
 import { ConnectWord } from "@/components/ui/brandBall";
-import { useState } from "react";
-import { Link, useLocation, useRoute } from "wouter";
+import { OrganiserAccessGate } from "@/components/organiser/ui/organiser-layout";
+import { useEffect, useState } from "react";
+import { Link, useRoute } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   ArrowLeft,
   Play,
@@ -16,23 +26,22 @@ import {
   Trophy,
   LayoutDashboard,
   Users,
-  Grid3x3,
   Repeat,
   ClipboardList,
   MessageSquare,
   Settings,
-  Share2,
   Square,
   Percent,
+  WifiOff,
 } from "lucide-react";
 import { TennisBallSpinner } from "@/components/ui/tennisLoader";
-import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import SEO from "@/components/seo";
 import {
   getSessionById,
   getSessionRegistrations,
   checkInRegistration,
+  setRegistrationLiveStatus,
   goLiveSession,
   generateNextRound,
   getCurrentRound,
@@ -41,156 +50,157 @@ import {
   finishSession,
   getSessionLeaderboard,
 } from "@/lib/api/organizer-sessions";
+import { apiErrorInfo } from "@/lib/api-error";
+import { liveAvailableFor, useLiveMode, type LiveMode } from "@/lib/use-live-available";
 import { MessagesTab } from "@/components/organiser/sessions/workspace/messages-tab";
+import { RoundsTab } from "@/components/organiser/sessions/workspace/rounds-tab";
+import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 import type { MatchWithPlayers, RegistrationWithUser } from "@shared/schema";
+import { goLiveProblem, liveModeOf, MAX_GAMES, roundProblem, scoreProblem } from "@shared/liveRules";
 import { cn } from "@/lib/utils";
 
-type LiveTab = "overview" | "players" | "courts" | "rounds" | "leaderboard" | "messages" | "settings";
+/*
+  TC Live v1 control centre (Social Play singles & doubles).
+
+    published  check-in list + Go Live
+    live       courts and score entry, players (late arrivals, unavailable,
+               withdrawn), round history, leaderboard, messages, End Session
+    completed  final leaderboard and every round (read-only)
+
+  Everything is server state: a reload, a second device or a dropped
+  connection shows the same session (queries refetch every 10 s while live,
+  on focus and on reconnect). The server enforces every rule
+  (server/routes/organizer.ts, shared/liveRules.ts); this screen disables a
+  control with the same reason the server would give.
+
+  Availability: TC_LIVE_ENABLED (server/lib/liveFeature.ts) via
+  useLiveMode(). Switched off, a session that is still live can only be
+  ended, and finished sessions stay readable - the kill switch never hides
+  history.
+*/
+
+type LiveTab = "overview" | "players" | "rounds" | "leaderboard" | "messages" | "settings";
 
 const NAV_ITEMS: { key: LiveTab; label: string; icon: typeof LayoutDashboard }[] = [
-  { key: "overview", label: "Overview", icon: LayoutDashboard },
+  { key: "overview", label: "Courts", icon: LayoutDashboard },
   { key: "players", label: "Players", icon: Users },
-  { key: "courts", label: "Courts", icon: Grid3x3 },
   { key: "rounds", label: "Rounds", icon: Repeat },
   { key: "leaderboard", label: "Leaderboard", icon: Trophy },
   { key: "messages", label: "Messages", icon: MessageSquare },
   { key: "settings", label: "Settings", icon: Settings },
 ];
 
-// TC Live Engine v0.1 control centre. Three states share this one screen,
-// matching the diagram's Registration -> Check-in -> Live -> Results flow:
-//   "published"  -> check-in list + Go Live
-//   "live"       -> courts/rounds + organizer-only score entry
-//   "completed"  -> final leaderboard
-// Everything here calls the real API (server/routes/organizer.ts TC Live
-// block) - no more mock court data.
-//
-// Layout redesigned to match the reference mockup: a dark left rail with
-// section nav (Overview/Players/Courts/Rounds/Leaderboard/Messages/
-// Settings) - same dark-sidebar-plus-light-content pattern already used
-// for the rest of the Organiser Hub - rather than the single dark column
-// this page used before.
-export default function OrganiserSessionLivePage() {
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
-  const [, setLocation] = useLocation();
+const LIVE_REFRESH_MS = 10_000;
+
+/** Registered, checked in, not marked unavailable/withdrawn - who a round draws from. */
+const isAvailable = (r: RegistrationWithUser) => r.status === "registered" && !!r.checkedInAt && !r.liveStatus;
+
+function useOnline(): boolean {
+  const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
+  return online;
+}
+
+function OrganiserSessionLivePageContent() {
   const [, params] = useRoute("/organiser/sessions/:id/live");
   const sessionId = params?.id;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<LiveTab>("overview");
-
-  // TC Live is staging-only for now (see server/routes/organizer.ts
-  // requireStagingEnv) - production shows the stub below instead of
-  // hitting APIs that would just 404 there. env.DB_ENV, not NODE_ENV,
-  // is what actually distinguishes staging from production (both run
-  // NODE_ENV=production) - see server/env.ts.
-  const healthQuery = useQuery({
-    queryKey: ["/api/health"],
-    queryFn: async () => (await fetch("/api/health")).json() as Promise<{ dbEnv: string }>,
-    staleTime: Infinity,
-  });
-  const isStaging = healthQuery.data?.dbEnv === "staging";
+  const [busy, setBusy] = useState(false);
+  const [finishOpen, setFinishOpen] = useState(false);
+  const [unscored, setUnscored] = useState<number | null>(null);
+  const online = useOnline();
+  const mode = useLiveMode();
 
   const sessionQuery = useQuery({
     queryKey: ["/api/organizer/sessions", sessionId],
     queryFn: () => getSessionById(sessionId!),
-    enabled: !!sessionId && isStaging,
+    enabled: !!sessionId,
+    refetchInterval: (query) => ((query.state.data as any)?.status === "live" ? LIVE_REFRESH_MS : false),
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
-
   const session = sessionQuery.data;
   const status = session?.status;
+  const allowed = !!session && liveAvailableFor(mode, session);
+  const isLive = status === "live";
 
   const registrationsQuery = useQuery({
     queryKey: ["/api/organizer/sessions", sessionId, "registrations"],
     queryFn: () => getSessionRegistrations(sessionId!),
-    enabled: !!sessionId && (status === "published" || status === "live"),
+    enabled: !!sessionId && allowed && (status === "published" || isLive),
+    refetchInterval: isLive ? LIVE_REFRESH_MS : false,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
   const roundQuery = useQuery({
     queryKey: ["/api/organizer/sessions", sessionId, "rounds", "current"],
     queryFn: () => getCurrentRound(sessionId!),
-    enabled: !!sessionId && status === "live",
+    enabled: !!sessionId && allowed && isLive,
+    refetchInterval: isLive ? LIVE_REFRESH_MS : false,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
   const leaderboardQuery = useQuery({
     queryKey: ["/api/organizer/sessions", sessionId, "leaderboard"],
     queryFn: () => getSessionLeaderboard(sessionId!),
-    enabled: !!sessionId && (status === "live" || status === "completed"),
+    enabled: !!sessionId && (isLive || status === "completed"),
+    refetchInterval: isLive ? LIVE_REFRESH_MS : false,
   });
-
-  const [busy, setBusy] = useState(false);
 
   const refreshAll = () => {
     queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", sessionId] });
-    queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", sessionId, "registrations"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", sessionId, "rounds", "current"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", sessionId, "leaderboard"] });
   };
 
-  const runAction = async (label: string, action: () => Promise<unknown>) => {
+  const runAction = async (label: string, action: () => Promise<unknown>, onError?: (info: ReturnType<typeof apiErrorInfo>) => boolean) => {
+    if (busy) return;
     setBusy(true);
     try {
       await action();
-      refreshAll();
-    } catch (error: any) {
-      toast({ title: `Couldn't ${label}`, description: error?.message ?? "Please try again.", variant: "destructive" });
+    } catch (error) {
+      const info = apiErrorInfo(error);
+      if (!onError?.(info)) {
+        toast({ title: `Couldn't ${label}`, description: info.message, variant: "destructive" });
+      }
     } finally {
+      refreshAll();
       setBusy(false);
     }
   };
 
-  const handleShareLiveBoard = async () => {
-    // No separate public spectator page exists yet - copies this same
-    // organiser URL as an honest placeholder rather than faking a
-    // dedicated share link that doesn't actually exist. A real public
-    // live-board view (no organiser controls, just scores/leaderboard)
-    // is a genuinely separate feature to scope, not something to invent
-    // silently here.
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      toast({ title: "Link copied", description: "Note: this is the organiser view - a public spectator board isn't built yet." });
-    } catch {
-      toast({ title: "Couldn't copy link", variant: "destructive" });
-    }
-  };
-
-  if (authLoading) return null;
-  if (!isAuthenticated) {
-    setLocation("/auth");
-    return null;
-  }
-
-  if (!user?.isOrganizer) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-background">
-        <Card className="max-w-md w-full shadow-sm">
-          <CardHeader>
-            <CardTitle asChild><h1>Organiser access required</h1></CardTitle>
-          </CardHeader>
-          <CardContent className="text-muted-foreground">
-            You need to be an approved organiser to view this page. Head to your profile to
-            request organiser access.
-          </CardContent>
-        </Card>
-      </div>
+  const endSession = (force: boolean) =>
+    runAction(
+      "end the session",
+      async () => {
+        await finishSession(session!.id, force);
+        setFinishOpen(false);
+        setUnscored(null);
+        toast({ title: "Session ended", description: "The final leaderboard is saved." });
+      },
+      (info) => {
+        if (info.code === "UNSCORED_MATCHES") {
+          setUnscored(Number(info.body?.unscored ?? 0));
+          return true;
+        }
+        return false;
+      },
     );
-  }
 
-  if (healthQuery.isLoading) {
+  if (!sessionId || mode === undefined || sessionQuery.isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-foreground">
-        <TennisBallSpinner />
-      </div>
-    );
-  }
-
-  if (!isStaging) {
-    return <TcLiveComingSoonStub sessionId={sessionId} />;
-  }
-
-  if (sessionQuery.isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-foreground">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <TennisBallSpinner />
       </div>
     );
@@ -198,7 +208,7 @@ export default function OrganiserSessionLivePage() {
 
   if (!session) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-background gap-4">
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-background gap-4" data-testid="organiser-session-live-not-found">
         <p className="text-muted-foreground">Session not found.</p>
         <Button asChild variant="outline">
           <Link href="/organiser/sessions">Back to Sessions</Link>
@@ -207,24 +217,31 @@ export default function OrganiserSessionLivePage() {
     );
   }
 
-  const round = roundQuery.data;
-  const checkedInCount = registrationsQuery.data?.filter((r) => !!r.checkedInAt).length ?? session.checkedInCount;
-  const canGoLive = checkedInCount >= 2 && !!session.courtsCount;
-  const roundReadyForNext = !round || round.round.status === "completed";
+  // Live not available here for this session, and nothing to close or read.
+  if (!allowed && !isLive && status !== "completed") {
+    return <LiveUnavailable sessionId={session.id} mode={mode} />;
+  }
 
-  const activeCourts = round?.matches.length ?? session.courtsCount ?? 0;
+  const registrations = registrationsQuery.data ?? [];
+  const available = registrations.filter(isAvailable).length;
+  const checkedInCount = registrationsQuery.data ? registrations.filter((r) => r.status === "registered" && !!r.checkedInAt).length : session.checkedInCount;
+  const round = roundQuery.data;
+  const roundReadyForNext = !round || round.round.status === "completed";
+  const nextRoundBlocker = roundReadyForNext ? roundProblem(session.matchMode, available) : "Every match this round needs a score first";
+  const matchesThisRound = round?.matches.length ?? 0;
   const scoresSubmitted = round?.matches.filter((m) => m.status === "confirmed").length ?? 0;
-  const completionPercent = activeCourts > 0 ? Math.round((scoresSubmitted / activeCourts) * 100) : 0;
+  const completionPercent = matchesThisRound > 0 ? Math.round((scoresSubmitted / matchesThisRound) * 100) : 0;
+  const modeLabel = liveModeOf(session.matchMode) === "singles" ? "Singles" : "Doubles";
+  const roundsTabSession = { id: session.id, status: session.status, isInternalTest: session.isInternalTest } as unknown as SessionListItem;
+
+  const controls = allowed && isLive; // round / score / player controls
+  const generate = () => runAction("generate the next round", () => generateNextRound(session.id));
 
   return (
-    <div className="min-h-screen flex bg-background" data-testid="organiser-session-live">
-      <SEO
-        title={`Live — ${session.title} | TennisConnect`}
-        description={`Live control centre for ${session.title}.`}
-        noIndex
-      />
+    <div className="min-h-screen flex bg-background" data-testid="organiser-session-live" data-live-allowed={allowed ? "true" : "false"}>
+      <SEO title={`Live — ${session.title} | TennisConnect`} description={`Live control centre for ${session.title}.`} noIndex />
 
-      {status === "live" && (
+      {controls && (
         <aside className="hidden lg:flex lg:w-60 shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto">
           <div className="dark flex flex-col h-full w-full bg-background text-foreground">
             <div className="px-5 pt-6 pb-4">
@@ -234,18 +251,18 @@ export default function OrganiserSessionLivePage() {
               </Link>
               <p className="text-[11px] font-semibold tracking-widest text-muted-foreground mt-3">LIVE SESSION</p>
             </div>
-            <nav className="px-3 space-y-1 flex-1">
+            <nav className="px-3 space-y-1 flex-1" aria-label="Live session sections">
               {NAV_ITEMS.map((item) => {
                 const Icon = item.icon;
-                const isActive = activeTab === item.key;
                 return (
                   <button
                     key={item.key}
                     type="button"
                     onClick={() => setActiveTab(item.key)}
+                    aria-current={activeTab === item.key ? "page" : undefined}
                     className={cn(
                       "w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors text-left",
-                      isActive ? "bg-primary/10 text-primary-text" : "text-foreground/80 hover:bg-accent/10 hover:text-foreground"
+                      activeTab === item.key ? "bg-primary/10 text-primary-text" : "text-foreground/80 hover:bg-accent/10 hover:text-foreground",
                     )}
                     data-testid={`organiser-live-nav-${item.key}`}
                   >
@@ -269,10 +286,17 @@ export default function OrganiserSessionLivePage() {
 
       <div className="flex-1 min-w-0">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-          {status !== "live" && (
+          {!online && (
+            <div role="status" className="flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900" data-testid="organiser-session-live-offline">
+              <WifiOff className="w-4 h-4 shrink-0" />
+              You're offline. Nothing is saved until the connection is back - the screen updates by itself when it is.
+            </div>
+          )}
+
+          {(!controls) && (
             <Link
               href={`/organiser/sessions/${session.id}`}
-              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors min-h-11"
               data-testid="organiser-session-live-back"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -281,181 +305,154 @@ export default function OrganiserSessionLivePage() {
           )}
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <h1 className="font-display text-xl sm:text-2xl font-bold">{session.title}</h1>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <h1 className="font-display text-xl sm:text-2xl font-bold break-words">{session.title}</h1>
                 <Badge className="bg-primary text-primary-foreground gap-1.5" data-testid="organiser-session-live-badge">
-                  {status === "live" && (
+                  {isLive && (
                     <span className="relative flex h-1.5 w-1.5">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-foreground opacity-75" />
                       <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary-foreground" />
                     </span>
                   )}
-                  {status === "live" ? "LIVE" : status === "completed" ? "COMPLETED" : "CHECK-IN"}
+                  {isLive ? "LIVE" : status === "completed" ? "COMPLETED" : "CHECK-IN"}
                 </Badge>
+                <Badge variant="outline" data-testid="organiser-session-live-mode">{modeLabel}</Badge>
               </div>
               <p className="text-muted-foreground text-sm">
-                {status === "live" && round ? `Round ${round.round.roundNumber}${session.plannedRoundsCount ? ` of ${session.plannedRoundsCount}` : ""} · ` : ""}
-                {checkedInCount} / {session.registeredCount} players
-                {session.courtsCount ? ` · ${session.courtsCount} courts` : ""}
+                {isLive && round ? `Round ${round.round.roundNumber} · ` : ""}
+                {checkedInCount} / {session.registeredCount} checked in
+                {session.courtsCount ? ` · ${session.courtsCount} court${session.courtsCount === 1 ? "" : "s"}` : ""}
               </p>
             </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <Button variant="outline" onClick={handleShareLiveBoard} data-testid="organiser-session-live-share">
-                <Share2 className="w-4 h-4 mr-2" />
-                Share Live Board
+            {isLive && (
+              <Button
+                variant="outline"
+                className="text-destructive border-destructive/30 hover:bg-destructive/10 min-h-11 shrink-0"
+                disabled={busy}
+                onClick={() => {
+                  setUnscored(null);
+                  setFinishOpen(true);
+                }}
+                data-testid="organiser-session-live-finish"
+              >
+                End Session
               </Button>
-              {status === "live" && (
-                <Button
-                  variant="outline"
-                  className="text-destructive border-destructive/30 hover:bg-destructive/10"
-                  disabled={busy}
-                  onClick={() => runAction("finish the session", () => finishSession(session.id))}
-                  data-testid="organiser-session-live-finish"
-                >
-                  End Session
-                </Button>
-              )}
-            </div>
+            )}
           </div>
 
-          {status === "live" && (
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3" data-testid="organiser-session-live-stats">
-              <StatCard icon={Users} label="Players Checked In" value={`${checkedInCount}/${session.registeredCount}`} />
-              <StatCard icon={Square} label="Active Courts" value={String(activeCourts)} />
-              <StatCard
-                icon={Repeat}
-                label="Current Round"
-                value={round ? `${round.round.roundNumber}${session.plannedRoundsCount ? `/${session.plannedRoundsCount}` : ""}` : "—"}
-              />
-              <StatCard icon={ClipboardList} label="Scores Submitted" value={String(scoresSubmitted)} />
-              <StatCard icon={Percent} label="Completion" value={`${completionPercent}%`} />
-            </div>
-          )}
-
-          {status !== "live" && (
-            <div className="grid grid-cols-3 gap-3 max-w-md" data-testid="organiser-session-live-stats">
-              <div>
-                <p className="text-2xl font-bold" data-testid="organiser-session-live-registered">{session.registeredCount}</p>
-                <p className="text-xs text-muted-foreground">Registered</p>
+          {/* Section tabs on phones and tablets (the rail is desktop-only). */}
+          {controls && (
+            <nav className="lg:hidden -mx-4 px-4 overflow-x-auto" aria-label="Live session sections">
+              <div className="flex gap-2 w-max">
+                {NAV_ITEMS.map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setActiveTab(item.key)}
+                    aria-current={activeTab === item.key ? "page" : undefined}
+                    className={cn(
+                      "min-h-11 px-4 rounded-full border text-sm font-medium whitespace-nowrap",
+                      activeTab === item.key ? "border-primary bg-primary/10 text-primary-text" : "border-border text-muted-foreground",
+                    )}
+                    data-testid={`organiser-live-tab-${item.key}`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
               </div>
-              <div>
-                <p className="text-2xl font-bold" data-testid="organiser-session-live-checkedin">{checkedInCount}</p>
-                <p className="text-xs text-muted-foreground">Checked In</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold" data-testid="organiser-session-live-waiting">{session.waitlistedCount}</p>
-                <p className="text-xs text-muted-foreground">Waiting List</p>
-              </div>
-            </div>
+            </nav>
           )}
 
-          {status === "published" && (
-            <CheckInPanel
-              registrations={registrationsQuery.data ?? []}
-              loading={registrationsQuery.isLoading}
-              busy={busy}
-              canGoLive={canGoLive}
-              missingCourts={!session.courtsCount}
-              onCheckIn={(registrationId) =>
-                runAction("check that player in", () => checkInRegistration(session.id, registrationId))
-              }
-              onGoLive={() => runAction("go live", () => goLiveSession(session.id))}
-            />
-          )}
-
-          {status === "live" && activeTab === "overview" && (
-            <LiveRoundPanel
-              round={round}
-              loading={roundQuery.isLoading}
-              busy={busy}
-              roundReadyForNext={roundReadyForNext}
-              onGenerateRound={() => runAction("generate the next round", () => generateNextRound(session.id))}
-              onStart={(matchId) => runAction("start the match", () => startMatch(session.id, matchId))}
-              onScore={(matchId, a, b) => runAction("save the score", () => reportMatchScore(session.id, matchId, a, b))}
-            />
-          )}
-
-          {status === "live" && activeTab === "courts" && (
-            <LiveRoundPanel
-              round={round}
-              loading={roundQuery.isLoading}
-              busy={busy}
-              roundReadyForNext={roundReadyForNext}
-              onGenerateRound={() => runAction("generate the next round", () => generateNextRound(session.id))}
-              onStart={(matchId) => runAction("start the match", () => startMatch(session.id, matchId))}
-              onScore={(matchId, a, b) => runAction("save the score", () => reportMatchScore(session.id, matchId, a, b))}
-            />
-          )}
-
-          {status === "live" && activeTab === "rounds" && (
-            <Card className="shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-base">Rounds</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {round ? (
-                  <p className="text-sm text-muted-foreground">
-                    Round {round.round.roundNumber}{session.plannedRoundsCount ? ` of ${session.plannedRoundsCount}` : ""} ·{" "}
-                    {round.round.status === "completed" ? "all matches confirmed" : "in progress"}
-                  </p>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No round started yet.</p>
-                )}
-                <Button
-                  disabled={busy || !roundReadyForNext}
-                  onClick={() => runAction("generate the next round", () => generateNextRound(session.id))}
-                  data-testid="organiser-session-live-generate-round"
-                  title={roundReadyForNext ? undefined : "Every match this round needs a confirmed score first"}
-                >
-                  {round ? "Generate Next Round" : "Start Round 1"}
-                </Button>
-                {/* Only the current round's matches are available from the
-                    API today (GET /sessions/:id/rounds/current) - a full
-                    round-by-round history view would need a new endpoint,
-                    a separate feature to scope rather than fake here. */}
+          {isLive && !allowed && (
+            <Card className="shadow-sm" data-testid="organiser-session-live-switched-off">
+              <CardContent className="p-4 text-sm space-y-1">
+                <p className="font-medium">Live is switched off on this site.</p>
+                <p className="text-muted-foreground">
+                  Rounds and scores can't be changed right now. Everything recorded so far is kept, and you can still end the session.
+                </p>
               </CardContent>
             </Card>
           )}
 
-          {status === "live" && activeTab === "players" && (
+          {controls && (
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3" data-testid="organiser-session-live-stats">
+              <StatCard icon={Users} label="Available" value={`${available}/${checkedInCount}`} />
+              <StatCard icon={Square} label="Matches this round" value={String(matchesThisRound)} />
+              <StatCard icon={Repeat} label="Current round" value={round ? String(round.round.roundNumber) : "—"} />
+              <StatCard icon={ClipboardList} label="Scores in" value={`${scoresSubmitted}/${matchesThisRound}`} />
+              <StatCard icon={Percent} label="Round done" value={`${completionPercent}%`} />
+            </div>
+          )}
+
+          {status === "published" && allowed && (
             <CheckInPanel
-              registrations={registrationsQuery.data ?? []}
+              registrations={registrations}
               loading={registrationsQuery.isLoading}
               busy={busy}
-              canGoLive={false}
-              hideGoLive
-              missingCourts={false}
-              onCheckIn={(registrationId) =>
-                runAction("check that player in", () => checkInRegistration(session.id, registrationId))
-              }
-              onGoLive={() => {}}
+              goLiveBlocker={goLiveProblem(session, available)}
+              waitlisted={session.waitlistedCount}
+              onCheckIn={(id) => runAction("check that player in", () => checkInRegistration(session.id, id))}
+              onGoLive={() => runAction("go live", () => goLiveSession(session.id))}
             />
           )}
 
-          {(activeTab === "leaderboard" || status === "completed") && (status === "live" || status === "completed") && (
-            <LeaderboardPanel rows={leaderboardQuery.data ?? []} loading={leaderboardQuery.isLoading} />
+          {controls && activeTab === "overview" && (
+            <LiveRoundPanel
+              round={round}
+              loading={roundQuery.isLoading}
+              busy={busy}
+              roundReadyForNext={roundReadyForNext}
+              nextRoundBlocker={nextRoundBlocker}
+              onGenerateRound={generate}
+              onStart={(matchId) => runAction("start the match", () => startMatch(session.id, matchId))}
+              onScore={(matchId, a, b) => runAction("save the score", () => reportMatchScore(session.id, matchId, a, b))}
+            />
           )}
 
-          {status === "live" && activeTab === "messages" && (
+          {controls && activeTab === "players" && (
+            <LivePlayersPanel
+              registrations={registrations}
+              loading={registrationsQuery.isLoading}
+              busy={busy}
+              onCheckIn={(id) => runAction("check that player in", () => checkInRegistration(session.id, id))}
+              onSetStatus={(id, liveStatus) => runAction("update that player", () => setRegistrationLiveStatus(session.id, id, liveStatus))}
+            />
+          )}
+
+          {(controls && activeTab === "rounds") || status === "completed" || (isLive && !allowed) ? (
+            <section className="space-y-3" aria-label="Rounds">
+              {status === "completed" && <h2 className="font-display text-lg font-bold">Rounds</h2>}
+              <RoundsTab session={roundsTabSession} hideOpenLive />
+            </section>
+          ) : null}
+
+          {((controls && activeTab === "leaderboard") || status === "completed" || (isLive && !allowed)) && (
+            <LeaderboardPanel rows={leaderboardQuery.data ?? []} loading={leaderboardQuery.isLoading} final={status === "completed"} />
+          )}
+
+          {controls && activeTab === "messages" && (
             <MessagesTab session={{ id: session.id, timeZone: session.timeZone ?? "Australia/Sydney" }} />
           )}
 
-          {status === "live" && activeTab === "settings" && (
+          {controls && activeTab === "settings" && (
             <Card className="shadow-sm">
               <CardHeader>
                 <CardTitle className="text-base">Settings</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Ending the session moves it to Completed and locks in the final leaderboard.
+                  {modeLabel} · {session.courtsCount ?? "?"} court{session.courtsCount === 1 ? "" : "s"}. Court count and format are set in Edit Session.
+                  Ending the session moves it to Completed and keeps the final leaderboard.
                 </p>
                 <Button
                   variant="outline"
-                  className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                  className="text-destructive border-destructive/30 hover:bg-destructive/10 min-h-11"
                   disabled={busy}
-                  onClick={() => runAction("finish the session", () => finishSession(session.id))}
+                  onClick={() => {
+                    setUnscored(null);
+                    setFinishOpen(true);
+                  }}
                   data-testid="organiser-session-live-finish-settings"
                 >
                   End Session
@@ -465,12 +462,38 @@ export default function OrganiserSessionLivePage() {
           )}
 
           {status !== "published" && status !== "live" && status !== "completed" && (
-            <div className="rounded-2xl border border-dashed border-border py-12 text-center text-muted-foreground">
-              This session isn't ready for live control yet (status: {status}).
+            <div className="rounded-2xl border border-dashed border-border py-12 text-center text-muted-foreground" data-testid="organiser-session-live-not-ready">
+              This session isn't ready for live control (status: {status}). Publish it first.
             </div>
           )}
         </div>
       </div>
+
+      <AlertDialog open={finishOpen} onOpenChange={(open) => !busy && setFinishOpen(open)}>
+        <AlertDialogContent data-testid="organiser-session-live-finish-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{unscored ? "Some matches have no score" : "End this session?"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {unscored
+                ? `${unscored} match${unscored === 1 ? " has" : "es have"} no score. If you end now ${unscored === 1 ? "it won't" : "they won't"} count towards the leaderboard. Everything else is kept.`
+                : "The session moves to Completed and the leaderboard becomes final. No more rounds or scores can be added."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy} data-testid="organiser-session-live-finish-cancel">Keep playing</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={busy}
+              onClick={(e) => {
+                e.preventDefault(); // stays open until the server answers
+                endSession(!!unscored);
+              }}
+              data-testid="organiser-session-live-finish-confirm"
+            >
+              {unscored ? "End anyway" : "End Session"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -478,16 +501,21 @@ export default function OrganiserSessionLivePage() {
 function StatCard({ icon: Icon, label, value }: { icon: typeof Users; label: string; value: string }) {
   return (
     <Card className="shadow-sm">
-      <CardContent className="p-4 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary-text flex items-center justify-center shrink-0">
-          <Icon className="w-4 h-4" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-lg font-bold leading-tight">{value}</p>
-          <p className="text-xs text-muted-foreground truncate">{label}</p>
-        </div>
+      <CardContent className="p-3">
+        <Icon className="w-4 h-4 text-primary-text mb-1" />
+        <p className="text-lg font-bold">{value}</p>
+        <p className="text-[11px] text-muted-foreground">{label}</p>
       </CardContent>
     </Card>
+  );
+}
+
+function PlayerAvatar({ r }: { r: Pick<RegistrationWithUser, "userAvatar" | "userName"> }) {
+  return (
+    <Avatar className="w-8 h-8 shrink-0">
+      <AvatarImage src={r.userAvatar ?? undefined} />
+      <AvatarFallback>{r.userName?.[0] ?? "?"}</AvatarFallback>
+    </Avatar>
   );
 }
 
@@ -495,69 +523,122 @@ function CheckInPanel({
   registrations,
   loading,
   busy,
-  canGoLive,
-  missingCourts,
-  hideGoLive = false,
+  goLiveBlocker,
+  waitlisted,
   onCheckIn,
   onGoLive,
 }: {
   registrations: RegistrationWithUser[];
   loading: boolean;
   busy: boolean;
-  canGoLive: boolean;
-  missingCourts: boolean;
-  hideGoLive?: boolean;
+  goLiveBlocker: string | null;
+  waitlisted: number;
   onCheckIn: (registrationId: string) => void;
   onGoLive: () => void;
 }) {
   const registered = registrations.filter((r) => r.status === "registered");
-
   return (
-    <Card className="shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-base">Check-In</CardTitle>
-        {!hideGoLive && (
-          <Button
-            disabled={!canGoLive || busy}
-            onClick={onGoLive}
-            data-testid="organiser-session-live-go-live"
-            title={
-              missingCourts
-                ? "Set a court count for this session first"
-                : !canGoLive
-                ? "Need at least 2 checked-in players"
-                : undefined
-            }
-          >
+    <Card className="shadow-sm" data-testid="organiser-session-live-checkin">
+      <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 space-y-0">
+        <div>
+          <CardTitle className="text-base">Check-In</CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            Only registered players can be checked in{waitlisted > 0 ? ` (${waitlisted} on the waiting list)` : ""}.
+          </p>
+        </div>
+        <div className="flex flex-col items-stretch sm:items-end gap-1">
+          <Button disabled={!!goLiveBlocker || busy} onClick={onGoLive} className="min-h-11" data-testid="organiser-session-live-go-live">
             <Play className="w-4 h-4 mr-2" />
             Go Live
           </Button>
-        )}
+          {goLiveBlocker && (
+            <p className="text-xs text-muted-foreground" data-testid="organiser-session-live-go-live-blocker">{goLiveBlocker}</p>
+          )}
+        </div>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="space-y-1">
         {loading && <TennisBallSpinner />}
-        {!loading && registered.length === 0 && (
-          <p className="text-muted-foreground text-sm">No registered players yet.</p>
-        )}
+        {!loading && registered.length === 0 && <p className="text-muted-foreground text-sm">No registered players yet.</p>}
         {registered.map((r) => (
-          <label
-            key={r.id}
-            className="flex items-center gap-3 py-2 border-b border-border last:border-0 cursor-pointer"
-            data-testid={`organiser-session-live-checkin-row-${r.id}`}
-          >
-            <Checkbox
-              checked={!!r.checkedInAt}
-              disabled={!!r.checkedInAt}
-              onCheckedChange={() => onCheckIn(r.id)}
-            />
-            <Avatar className="w-7 h-7">
-              <AvatarImage src={r.userAvatar ?? undefined} />
-              <AvatarFallback>{r.userName?.[0] ?? "?"}</AvatarFallback>
-            </Avatar>
-            <span className="text-sm">{r.userName}</span>
-            {r.checkedInAt && <CheckCircle2 className="w-4 h-4 text-primary-text ml-auto" />}
-          </label>
+          <div key={r.id} className="flex items-center gap-3 py-2 border-b border-border last:border-0" data-testid={`organiser-session-live-checkin-row-${r.id}`}>
+            <PlayerAvatar r={r} />
+            <span className="text-sm flex-1 min-w-0 truncate">{r.userName}</span>
+            {r.checkedInAt ? (
+              <span className="flex items-center gap-1 text-sm text-primary-text font-medium" data-testid={`organiser-session-live-checkin-row-${r.id}-done`}>
+                <CheckCircle2 className="w-4 h-4" /> Checked in
+              </span>
+            ) : (
+              <Button size="sm" variant="outline" className="min-h-11 px-4" disabled={busy} onClick={() => onCheckIn(r.id)} data-testid={`organiser-session-live-checkin-row-${r.id}-button`}>
+                Check In
+              </Button>
+            )}
+          </div>
         ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Live Players tab: late arrivals, unavailable (sits out, can come back) and withdrawn. */
+function LivePlayersPanel({
+  registrations,
+  loading,
+  busy,
+  onCheckIn,
+  onSetStatus,
+}: {
+  registrations: RegistrationWithUser[];
+  loading: boolean;
+  busy: boolean;
+  onCheckIn: (registrationId: string) => void;
+  onSetStatus: (registrationId: string, liveStatus: "unavailable" | "withdrawn" | null) => void;
+}) {
+  const registered = registrations.filter((r) => r.status === "registered");
+  return (
+    <Card className="shadow-sm" data-testid="organiser-session-live-players">
+      <CardHeader>
+        <CardTitle className="text-base">Players</CardTitle>
+        <p className="text-xs text-muted-foreground">
+          Changes apply from the next round. A player already on court finishes their match.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-1">
+        {loading && <TennisBallSpinner />}
+        {registered.map((r) => {
+          const state = !r.checkedInAt ? "not-arrived" : r.liveStatus ?? "available";
+          const id = `organiser-session-live-player-${r.id}`;
+          return (
+            <div key={r.id} className="flex flex-wrap items-center gap-2 py-2 border-b border-border last:border-0" data-testid={id} data-state={state}>
+              <PlayerAvatar r={r} />
+              <span className="text-sm flex-1 min-w-[8rem] truncate">{r.userName}</span>
+              <Badge variant="outline" className="shrink-0" data-testid={`${id}-state`}>
+                {state === "not-arrived" ? "Not checked in" : state === "available" ? "Available" : state === "unavailable" ? "Sitting out" : "Withdrawn"}
+              </Badge>
+              <div className="flex gap-2 w-full sm:w-auto">
+                {state === "not-arrived" && (
+                  <Button size="sm" variant="outline" className="min-h-11 flex-1" disabled={busy} onClick={() => onCheckIn(r.id)} data-testid={`${id}-checkin`}>
+                    Check In
+                  </Button>
+                )}
+                {state === "available" && (
+                  <>
+                    <Button size="sm" variant="outline" className="min-h-11 flex-1" disabled={busy} onClick={() => onSetStatus(r.id, "unavailable")} data-testid={`${id}-unavailable`}>
+                      Sit out
+                    </Button>
+                    <Button size="sm" variant="outline" className="min-h-11 flex-1 text-destructive" disabled={busy} onClick={() => onSetStatus(r.id, "withdrawn")} data-testid={`${id}-withdraw`}>
+                      Withdraw
+                    </Button>
+                  </>
+                )}
+                {(state === "unavailable" || state === "withdrawn") && (
+                  <Button size="sm" variant="outline" className="min-h-11 flex-1" disabled={busy} onClick={() => onSetStatus(r.id, null)} data-testid={`${id}-return`}>
+                    Back in
+                  </Button>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </CardContent>
     </Card>
   );
@@ -568,49 +649,53 @@ function LiveRoundPanel({
   loading,
   busy,
   roundReadyForNext,
+  nextRoundBlocker,
   onGenerateRound,
   onStart,
   onScore,
 }: {
-  round: { round: { id: string; roundNumber: number; status: string }; matches: MatchWithPlayers[] } | null | undefined;
+  round: { round: { id: string; roundNumber: number; status: string; restingPlayerIds?: string[] | null }; matches: MatchWithPlayers[] } | null | undefined;
   loading: boolean;
   busy: boolean;
   roundReadyForNext: boolean;
+  nextRoundBlocker: string | null;
   onGenerateRound: () => void;
   onStart: (matchId: string) => void;
   onScore: (matchId: string, teamAGames: number, teamBGames: number) => void;
 }) {
-  if (loading) {
-    return <TennisBallSpinner />;
-  }
+  if (loading) return <TennisBallSpinner />;
 
-  if (!round || round.matches.length === 0) {
+  const generateButton = (testId: string, label: string) => (
+    <div className="flex flex-col items-stretch sm:items-start gap-1">
+      <Button disabled={busy || !!nextRoundBlocker} onClick={onGenerateRound} className="min-h-11" data-testid={testId}>
+        {label}
+      </Button>
+      {nextRoundBlocker && roundReadyForNext && (
+        <p className="text-xs text-muted-foreground" data-testid={`${testId}-blocker`}>{nextRoundBlocker}</p>
+      )}
+    </div>
+  );
+
+  if (!round) {
     return (
-      <div className="rounded-2xl border border-dashed border-border py-12 text-center text-muted-foreground space-y-3">
-        <p>No round yet — start one to pair up checked-in players.</p>
-        <Button disabled={busy} onClick={onGenerateRound} data-testid="organiser-session-live-generate-round">
-          Start Round 1
-        </Button>
-      </div>
+      <Card className="shadow-sm">
+        <CardContent className="py-10 text-center space-y-3">
+          <p className="text-muted-foreground">No round yet. Round 1 puts available players on courts.</p>
+          <div className="flex justify-center">{generateButton("organiser-session-live-generate-round", "Start Round 1")}</div>
+        </CardContent>
+      </Card>
     );
   }
 
+  const resting = round.round.restingPlayerIds?.length ?? 0;
   return (
     <div className="space-y-3" data-testid="organiser-session-live-courts">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Round {round.round.roundNumber} · {round.round.status === "completed" ? "All matches confirmed" : "In progress"}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground" data-testid="organiser-session-live-round-status">
+          Round {round.round.roundNumber} · {round.round.status === "completed" ? "all scores in" : "in progress"}
+          {resting > 0 ? ` · ${resting} resting` : ""}
         </p>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={busy || !roundReadyForNext}
-          onClick={onGenerateRound}
-          data-testid="organiser-session-live-generate-round-inline"
-          title={roundReadyForNext ? undefined : "Every match this round needs a confirmed score first"}
-        >
-          Generate Next Round
-        </Button>
+        {generateButton("organiser-session-live-generate-round-inline", "Generate Next Round")}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {round.matches.map((match) => (
@@ -632,78 +717,112 @@ function MatchCard({
   onStart: (matchId: string) => void;
   onScore: (matchId: string, teamAGames: number, teamBGames: number) => void;
 }) {
+  const [editing, setEditing] = useState(false);
   const [teamAGames, setTeamAGames] = useState("");
   const [teamBGames, setTeamBGames] = useState("");
   const names = (players: MatchWithPlayers["teamA"]) => players.map((p) => p.name).join(" & ");
-
-  const canSubmit =
-    teamAGames !== "" &&
-    teamBGames !== "" &&
-    Number(teamAGames) >= 0 &&
-    Number(teamBGames) >= 0;
+  const confirmed = match.status === "confirmed";
+  const showInputs = (match.status === "pending" || match.status === "playing" || (confirmed && editing));
+  const a = teamAGames === "" ? NaN : Number(teamAGames);
+  const b = teamBGames === "" ? NaN : Number(teamBGames);
+  const filled = teamAGames !== "" && teamBGames !== "";
+  const problem = filled ? scoreProblem(a, b) : null;
+  const id = `organiser-session-live-match-${match.id}`;
 
   return (
-    <Card className="shadow-sm" data-testid={`organiser-session-live-match-${match.id}`}>
+    <Card className="shadow-sm" data-testid={id} data-status={match.status}>
       <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 gap-2">
           <p className="font-semibold text-sm">{match.courtLabel}</p>
-          {match.status === "confirmed" ? (
-            <Badge variant="secondary" className="gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Score submitted
-            </Badge>
+          {confirmed ? (
+            <Badge variant="secondary" className="gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Score in</Badge>
           ) : match.status === "playing" ? (
-            <Badge className="gap-1 bg-amber-100 text-amber-800 hover:bg-amber-100">
-              <Hourglass className="w-3.5 h-3.5" /> Waiting for score
-            </Badge>
+            <Badge className="gap-1 bg-amber-100 text-amber-800 hover:bg-amber-100"><Hourglass className="w-3.5 h-3.5" /> Playing</Badge>
+          ) : match.status === "abandoned" ? (
+            <Badge variant="outline" className="text-muted-foreground">Not played</Badge>
           ) : (
-            <Badge variant="outline" className="gap-1 text-muted-foreground">
-              Pending
-            </Badge>
+            <Badge variant="outline" className="gap-1 text-muted-foreground">Not started</Badge>
           )}
         </div>
 
-        <p className="text-sm mb-1">{names(match.teamA)}</p>
-        <p className="text-xs text-muted-foreground mb-2">vs</p>
-        <p className="text-sm mb-3">{names(match.teamB)}</p>
+        <p className="text-sm mb-1 break-words">{names(match.teamA)}</p>
+        <p className="text-xs text-muted-foreground mb-1">vs</p>
+        <p className="text-sm mb-3 break-words">{names(match.teamB)}</p>
 
-        {match.status === "confirmed" ? (
-          <div className="flex items-center justify-center gap-3 py-1 text-lg font-bold">
-            <span>{match.teamAGames}</span>
-            <span className="text-muted-foreground">–</span>
-            <span>{match.teamBGames}</span>
-          </div>
-        ) : match.status === "pending" ? (
-          <Button size="sm" variant="secondary" className="w-full" disabled={busy} onClick={() => onStart(match.id)}>
-            Start Match
-          </Button>
-        ) : (
-          <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              min={0}
-              className="w-16 h-8"
-              value={teamAGames}
-              onChange={(e) => setTeamAGames(e.target.value)}
-              data-testid={`organiser-session-live-match-${match.id}-score-a`}
-            />
-            <span className="text-muted-foreground">–</span>
-            <Input
-              type="number"
-              min={0}
-              className="w-16 h-8"
-              value={teamBGames}
-              onChange={(e) => setTeamBGames(e.target.value)}
-              data-testid={`organiser-session-live-match-${match.id}-score-b`}
-            />
+        {confirmed && !editing && (
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 text-lg font-bold" data-testid={`${id}-score`}>
+              <span>{match.teamAGames}</span>
+              <span className="text-muted-foreground">–</span>
+              <span>{match.teamBGames}</span>
+            </div>
             <Button
               size="sm"
-              className="flex-1"
-              disabled={!canSubmit || busy}
-              onClick={() => onScore(match.id, Number(teamAGames), Number(teamBGames))}
-              data-testid={`organiser-session-live-match-${match.id}-save-score`}
+              variant="ghost"
+              className="min-h-11"
+              disabled={busy}
+              onClick={() => {
+                setTeamAGames(String(match.teamAGames ?? ""));
+                setTeamBGames(String(match.teamBGames ?? ""));
+                setEditing(true);
+              }}
+              data-testid={`${id}-correct`}
             >
-              Enter Score
+              Correct score
             </Button>
+          </div>
+        )}
+
+        {showInputs && (
+          <div className="space-y-2">
+            {match.status === "pending" && (
+              <Button size="sm" variant="secondary" className="w-full min-h-11" disabled={busy} onClick={() => onStart(match.id)} data-testid={`${id}-start`}>
+                Mark as started
+              </Button>
+            )}
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={MAX_GAMES}
+                aria-label={`Games won by ${names(match.teamA)}`}
+                className="w-16 h-11 text-center text-base"
+                value={teamAGames}
+                onChange={(e) => setTeamAGames(e.target.value)}
+                data-testid={`${id}-score-a`}
+              />
+              <span className="text-muted-foreground">–</span>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={MAX_GAMES}
+                aria-label={`Games won by ${names(match.teamB)}`}
+                className="w-16 h-11 text-center text-base"
+                value={teamBGames}
+                onChange={(e) => setTeamBGames(e.target.value)}
+                data-testid={`${id}-score-b`}
+              />
+              <Button
+                size="sm"
+                className="flex-1 min-h-11"
+                disabled={!filled || !!problem || busy}
+                onClick={() => {
+                  onScore(match.id, a, b);
+                  setEditing(false);
+                }}
+                data-testid={`${id}-save-score`}
+              >
+                {confirmed ? "Save" : "Enter Score"}
+              </Button>
+            </div>
+            {problem && <p className="text-xs text-destructive" data-testid={`${id}-score-error`}>{problem}</p>}
+            {confirmed && editing && (
+              <Button size="sm" variant="ghost" className="min-h-11" onClick={() => setEditing(false)} data-testid={`${id}-correct-cancel`}>
+                Cancel
+              </Button>
+            )}
           </div>
         )}
       </CardContent>
@@ -714,40 +833,32 @@ function MatchCard({
 function LeaderboardPanel({
   rows,
   loading,
+  final,
 }: {
   rows: { userId: string; userName: string; userAvatar: string | null; matchesPlayed: number; wins: number; losses: number; draws: number; gamesWon: number; gamesLost: number; restRounds: number }[];
   loading: boolean;
+  final: boolean;
 }) {
   return (
-    <Card className="shadow-sm">
+    <Card className="shadow-sm" data-testid="organiser-session-live-leaderboard">
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
-          <Trophy className="w-4 h-4 text-primary-text" /> Leaderboard
+          <Trophy className="w-4 h-4 text-primary-text" /> {final ? "Final leaderboard" : "Leaderboard"}
         </CardTitle>
+        <p className="text-xs text-muted-foreground">Wins, then draws, then games difference. Only scored matches count.</p>
       </CardHeader>
       <CardContent>
         {loading && <TennisBallSpinner />}
-        {!loading && rows.length === 0 && (
-          <p className="text-muted-foreground text-sm">No confirmed matches yet.</p>
-        )}
+        {!loading && rows.length === 0 && <p className="text-muted-foreground text-sm">No scores yet.</p>}
         {rows.map((row, i) => (
-          <div
-            key={row.userId}
-            className="flex items-center gap-3 py-2 border-b border-border last:border-0"
-            data-testid={`organiser-session-live-leaderboard-row-${row.userId}`}
-          >
+          <div key={row.userId} className="flex items-center gap-3 py-2 border-b border-border last:border-0" data-testid={`organiser-session-live-leaderboard-row-${row.userId}`} data-position={i + 1}>
             <span className="w-5 text-sm text-muted-foreground">{i + 1}</span>
-            <Avatar className="w-7 h-7">
-              <AvatarImage src={row.userAvatar ?? undefined} />
-              <AvatarFallback>{row.userName?.[0] ?? "?"}</AvatarFallback>
-            </Avatar>
-            <span className="text-sm flex-1">{row.userName}</span>
+            <PlayerAvatar r={row} />
+            <span className="text-sm flex-1 min-w-0 truncate">{row.userName}</span>
             <span className="text-xs text-muted-foreground">
               {row.wins}W{row.draws > 0 ? `–${row.draws}D` : ""}–{row.losses}L
             </span>
-            <span className="text-xs text-muted-foreground w-14 text-right">
-              {row.gamesWon}–{row.gamesLost}
-            </span>
+            <span className="text-xs text-muted-foreground w-14 text-right">{row.gamesWon}–{row.gamesLost}</span>
           </div>
         ))}
       </CardContent>
@@ -755,29 +866,36 @@ function LeaderboardPanel({
   );
 }
 
-// Shown on production while TC Live is staging-only (see the isStaging
-// check above and server/routes/organizer.ts requireStagingEnv). Not an
-// error state - the session and its registrations are perfectly real,
-// this specific screen just isn't turned on for real sessions yet.
-function TcLiveComingSoonStub({ sessionId }: { sessionId?: string }) {
+/** TC_LIVE_ENABLED is off here, or "internal" and this isn't an internal test session. */
+function LiveUnavailable({ sessionId, mode }: { sessionId: string; mode: LiveMode }) {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-background">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-background" data-testid="organiser-session-live-unavailable">
       <Card className="max-w-md w-full shadow-sm text-center">
         <CardHeader>
-          <CardTitle asChild><h1>Live sessions are coming soon</h1></CardTitle>
+          <CardTitle asChild><h1>Live isn't available for this session</h1></CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground">
-            We're still finishing the live check-in, court, and scoring experience. It'll show up
-            here as soon as it's ready.
+            {mode === "internal"
+              ? "Live is only switched on for internal test sessions on this site at the moment."
+              : "Live isn't switched on on this site yet."}{" "}
+            You can still check players in from the Players tab of the session.
           </p>
-          {sessionId && (
-            <Button asChild variant="outline">
-              <Link href={`/organiser/sessions/${sessionId}`}>Back to Session Workspace</Link>
-            </Button>
-          )}
+          <Button asChild variant="outline" className="min-h-11">
+            <Link href={`/organiser/sessions/${sessionId}`}>Back to Session Workspace</Link>
+          </Button>
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// Access (signed in, organiser or admin) is checked once, for every Hub
+// page, by OrganiserAccessGate (components/organiser/ui/organiser-layout.tsx).
+export default function OrganiserSessionLivePage() {
+  return (
+    <OrganiserAccessGate>
+      <OrganiserSessionLivePageContent />
+    </OrganiserAccessGate>
   );
 }

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import SEO from "@/components/seo";
 import { useAuth } from "@/lib/auth-context";
@@ -27,22 +27,16 @@ import {
 } from "@/lib/api/organizer-sessions";
 import type { TennisSession, SessionWithDetails } from "@shared/schema";
 
-import {
-  mockOrganiser,
-  mockStatStrip,
-  type MockSession,
-  type StatStripItem,
-  type QuickStat,
-} from "@/lib/organiser-hub-mock-data";
+import type { MockSession, StatStripItem, QuickStat } from "@/lib/organiser-hub-mock-data";
+import { OrganiserAccessGate, useOrganiserIdentity } from "@/components/organiser/ui/organiser-layout";
+import { liveAvailableFor, useLiveMode } from "@/lib/use-live-available";
 
-// Real sessions take priority everywhere they're available. Live
-// Session/Upcoming Sessions/Active Players/Attendance/Revenue/Activity
-// Feed are all real now (dashboard/stats + dashboard/activity - see
-// server/storage.ts getOrganizerDashboardStats/
-// getRecentActivityForOrganization). Season Progress/Leaderboard and
-// the Statistics/Highlight card still have no real backend to source
-// from (no seasons or analytics-rollup endpoints exist yet), so those
-// stay mock for now.
+// Every number on the dashboard is real (Phase 2): /sessions/mine,
+// /dashboard/stats and /dashboard/activity (server/storage.ts
+// getOrganizerDashboardStats / getRecentActivityForOrganization). While
+// a request is loading its tile shows a skeleton, and after an error it
+// says so - it never falls back to invented figures (the old
+// mockStatStrip showed "1 / 3 / 87 / 91%").
 function toMockSession(session: TennisSession | SessionWithDetails, checkedInCount = 0): MockSession {
   const details = "registeredCount" in session ? session : null;
   return {
@@ -63,10 +57,6 @@ function toMockSession(session: TennisSession | SessionWithDetails, checkedInCou
   };
 }
 
-// NOTE: mock-data only for now (see organiser-hub-mock-data.ts). Every
-// prop type mirrors the shape the real /api/organizer/* endpoints already
-// return, so this component doesn't need to change shape when the data
-// source does — only the imports at the top of OrganiserDashboardPage do.
 function DashboardSkeleton() {
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-8" data-testid="organiser-dashboard-skeleton">
@@ -84,14 +74,28 @@ function DashboardSkeleton() {
 }
 
 export function OrganiserDashboard() {
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  return (
+    <OrganiserAccessGate>
+      <OrganiserDashboardContent />
+    </OrganiserAccessGate>
+  );
+}
+
+/** The four headline tiles. value null = still loading; error = request failed. */
+const STAT_STRIP: Omit<StatStripItem, "value">[] = [
+  { key: "live", label: "Live Session", sublabel: "Today" },
+  { key: "upcoming", label: "Upcoming Sessions", sublabel: "Next 7 days" },
+  { key: "players", label: "Active Players", sublabel: "This season" },
+  { key: "attendance", label: "Attendance", sublabel: "This season" },
+];
+
+function OrganiserDashboardContent() {
+  const { user, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed();
-  const [loading, setLoading] = useState(true);
-  const profileHref = user ? `/${user.role}/${user.slug}` : "/";
-  // Real name/avatar from the authenticated user - role/organization
-  // fields stay mock for now since there's no backend for those yet.
-  const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null, isAdmin: user.isAdmin ?? false } : mockOrganiser;
+  const { organiser, profileHref } = useOrganiserIdentity();
+  // Per session (TC_LIVE_ENABLED=internal only covers internal test sessions).
+  const liveMode = useLiveMode();
 
   const mySessionsQuery = useQuery({
     queryKey: ["/api/organizer/sessions/mine"],
@@ -144,10 +148,17 @@ export function OrganiserDashboard() {
   // (the "View all" link). Backend already excludes anything not
   // "published" (draft/archived/completed/live never show up here -
   // see getUpcomingPublishedSessionsByOrganization).
-  const upcomingSessions: MockSession[] = useMemo(
-    () => (orgQuery.data?.upcomingSessions ?? []).slice(0, 4).map((s) => toMockSession(s)),
-    [orgQuery.data]
-  );
+  // From /sessions/mine (every session this organiser created), not the
+  // organisation's public list: an organiser whose organisation doesn't
+  // exist yet (it is created with their first session) still sees them.
+  const upcomingSessions: MockSession[] = useMemo(() => {
+    const now = Date.now();
+    return (mySessionsQuery.data ?? [])
+      .filter((s) => s.status === "published" && new Date(s.startAt).getTime() >= now)
+      .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
+      .slice(0, 4)
+      .map((s) => toMockSession(s));
+  }, [mySessionsQuery.data]);
 
   const upcomingCount7Days = useMemo(() => {
     if (!mySessionsQuery.data) return null;
@@ -191,69 +202,39 @@ export function OrganiserDashboard() {
     return stats;
   }, [mySessionsQuery.data]);
 
-  // Every stat is real now once its query has loaded - dashboardStatsQuery
-  // covers players/attendance in one round trip (see
-  // getOrganizerDashboardStats), live/upcoming come from mySessionsQuery.
-  // href is only set where there's a real page to land on - Attendance
-  // has none yet (no Reports page exists), so it stays non-clickable
-  // rather than linking to somewhere that doesn't exist.
-  const statStrip: StatStripItem[] = mockStatStrip.map((stat) => {
-    if (stat.key === "live" && mySessionsQuery.data) {
-      const liveSessions = mySessionsQuery.data.filter((s) => s.status === "live");
+  // Each tile: the real value, null while its request loads, or "—" with an
+  // error note if it failed. No invented fallbacks.
+  const sessionsTile = mySessionsQuery.isError ? "—" : mySessionsQuery.data ? undefined : null;
+  const statsTile = dashboardStatsQuery.isError ? "—" : dashboardStatsQuery.data ? undefined : null;
+  const statStrip: StatStripItem[] = STAT_STRIP.map((stat) => {
+    if (stat.key === "live") {
+      const liveSessions = (mySessionsQuery.data ?? []).filter((s) => s.status === "live");
       return {
         ...stat,
-        value: String(liveSessions.length),
-        href: liveSessions.length === 1 ? `/organiser/sessions/${liveSessions[0].id}/live` : "/organiser/sessions?bucket=live",
+        value: sessionsTile !== undefined ? sessionsTile : String(liveSessions.length),
+        // One live session: straight to it (Live page on Staging, the
+        // workspace elsewhere). Several: the Live bucket of the list.
+        href: !mySessionsQuery.data
+          ? undefined
+          : liveSessions.length === 1
+            ? liveAvailableFor(liveMode, liveSessions[0]) ? `/organiser/sessions/${liveSessions[0].id}/live` : `/organiser/sessions/${liveSessions[0].id}`
+            : "/organiser/sessions?bucket=live",
       };
     }
-    if (stat.key === "upcoming" && upcomingCount7Days !== null) {
-      return { ...stat, value: String(upcomingCount7Days), href: "/organiser/sessions?bucket=upcoming" };
+    if (stat.key === "upcoming") {
+      return { ...stat, value: sessionsTile !== undefined ? sessionsTile : String(upcomingCount7Days ?? 0), href: mySessionsQuery.data ? "/organiser/sessions?bucket=upcoming" : undefined };
     }
-    if (stat.key === "players" && dashboardStatsQuery.data) {
-      return { ...stat, value: String(dashboardStatsQuery.data.activePlayers), href: "/organiser/players" };
+    if (stat.key === "players") {
+      return { ...stat, value: statsTile !== undefined ? statsTile : String(dashboardStatsQuery.data!.activePlayers), href: dashboardStatsQuery.data ? "/organiser/players" : undefined };
     }
-    if (stat.key === "attendance" && dashboardStatsQuery.data) {
-      return { ...stat, value: `${dashboardStatsQuery.data.attendancePercent}%` };
-    }
-    return stat;
+    return {
+      ...stat,
+      value: statsTile !== undefined ? statsTile : `${dashboardStatsQuery.data!.attendancePercent}%`,
+      href: dashboardStatsQuery.data ? "/organiser/reports" : undefined,
+    };
   });
-
-  useEffect(() => {
-    // Mock-data phase: nothing to actually await yet, but keeping a brief
-    // loading state here means the Skeleton path is exercised and ready
-    // for when this becomes a real fetch.
-    const timer = setTimeout(() => setLoading(false), 400);
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (authLoading) return null;
-
-  if (!isAuthenticated) {
-    setLocation("/auth");
-    return null;
-  }
-
-  // Admin's own sidebar section (see OrganiserSidebarNav) needs this
-  // page to actually be reachable for a pure admin account (isAdmin
-  // but not isOrganizer) too - the navbar's own "Admin Panel" link
-  // was the only other way in, and that's been removed now that admin
-  // functionality lives inside this same Hub instead of a separate
-  // page.
-  if (!user?.isOrganizer && !user?.isAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-background">
-        <Card className="max-w-md w-full shadow-sm">
-          <CardHeader>
-            <CardTitle asChild><h1>Organiser access required</h1></CardTitle>
-          </CardHeader>
-          <CardContent className="text-muted-foreground">
-            You need to be an approved organiser to view this page. Head to your profile to
-            request organiser access.
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const dataError = mySessionsQuery.isError || dashboardStatsQuery.isError || dashboardActivityQuery.isError;
+  const firstLoad = mySessionsQuery.isLoading && dashboardStatsQuery.isLoading;
 
   return (
     <div className="min-h-screen flex bg-background" data-testid="organiser-dashboard">
@@ -287,11 +268,31 @@ export function OrganiserDashboard() {
           onCreateSession={() => setLocation("/organiser/sessions/new")}
         />
 
-        {loading ? (
+        {firstLoad ? (
           <DashboardSkeleton />
         ) : (
           <>
             <DashboardHero organiser={organiser} stats={statStrip} />
+
+            {dataError && (
+              <div className="px-4 sm:px-6 lg:px-8 pt-4">
+                <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm" data-testid="organiser-dashboard-error">
+                  <span>Some dashboard data couldn't be loaded. The figures marked "—" are unavailable right now.</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      mySessionsQuery.refetch();
+                      dashboardStatsQuery.refetch();
+                      dashboardActivityQuery.refetch();
+                    }}
+                    data-testid="organiser-dashboard-retry"
+                  >
+                    Try again
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-6 xl:grid-cols-12 gap-6">
@@ -299,8 +300,8 @@ export function OrganiserDashboard() {
                   session={liveSession}
                   nextUpcoming={upcomingSessions[0] ?? null}
                   className="md:col-span-6 xl:col-span-8"
-                  onEnterLive={() => liveSession && setLocation(`/organiser/sessions/${liveSession.id}/live`)}
-                  onManageCheckIn={(id) => setLocation(`/organiser/sessions/${id}/live`)}
+                  onEnterLive={liveAvailableFor(liveMode, realLiveSession) ? () => liveSession && setLocation(`/organiser/sessions/${liveSession.id}/live`) : undefined}
+                  onManageCheckIn={(id) => setLocation(`/organiser/sessions/${id}?tab=players`)}
                   onOpenSession={(id) => setLocation(`/organiser/sessions/${id}`)}
                 />
                 <RecentActivityCard items={dashboardActivityQuery.data ?? []} className="md:col-span-6 xl:col-span-4" />
@@ -312,10 +313,10 @@ export function OrganiserDashboard() {
                   className="md:col-span-6 xl:col-span-8"
                 />
                 <QuickActionsCard
-                  organizationSlug={orgQuery.data?.slug || organiser.organizationSlug}
+                  organizationSlug={orgQuery.data?.slug ?? null}
                   upcomingSessions={upcomingSessions}
                   onCreateSession={() => setLocation("/organiser/sessions/new")}
-                  onCheckIn={(id) => setLocation(`/organiser/sessions/${id}/live`)}
+                  onCheckIn={(id) => setLocation(`/organiser/sessions/${id}?tab=players`)}
                   className="md:col-span-6 xl:col-span-4"
                 />
 

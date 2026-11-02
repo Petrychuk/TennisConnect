@@ -356,14 +356,9 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
             </div>
           </Field>
         )}
-        <div className="flex items-center justify-between rounded-xl border border-border px-3 py-2.5 sm:col-span-2">
-          <Label className="text-sm">Allow Late Registration</Label>
-          <Switch
-            checked={draft.allowLateRegistration}
-            onCheckedChange={(v) => onChange("allowLateRegistration", v)}
-            data-testid="organiser-wizard-late-registration-toggle"
-          />
-        </div>
+        {/* "Allow Late Registration" was here - never saved and no rule
+            behind it (Phase 1 audit 5.1). Registration closes at the time
+            set above. */}
       </SectionCard>
 
       <SectionCard icon={DollarSign} title="Pricing">
@@ -393,6 +388,11 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
               data-testid="organiser-wizard-price"
             />
           </Field>
+        )}
+        {draft.pricing === "paid" && (
+          <p className="text-xs text-muted-foreground sm:col-span-2" data-testid="organiser-wizard-price-note">
+            TennisConnect shows the price to players but doesn't collect payment. Players pay you directly, the way you usually take payment.
+          </p>
         )}
       </SectionCard>
 

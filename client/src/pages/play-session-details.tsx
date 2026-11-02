@@ -17,6 +17,8 @@ import { formatInTimeZone } from "@/lib/timezone";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
 import { PLAY_STATUS_LABEL, PLAY_STATUS_STYLE } from "@/lib/play-status";
 import { getPlaySessionById, joinSession, leaveSession } from "@/lib/api/play";
+import { SessionPoliciesList } from "@/components/play/session-policies";
+import { sessionCategoryOf } from "@shared/sessionCategories";
 
 function formatLabel(type: string): string {
   return SESSION_TYPE_OPTIONS.find((t) => t.key === type)?.label ?? type;
@@ -175,7 +177,9 @@ export default function PlaySessionDetailsPage() {
         )}
 
         <div className="flex flex-wrap gap-2 mt-3">
-          <Badge variant="secondary">{formatLabel(session.type)}</Badge>
+          {/* Category (shared/sessionCategories.ts) + the format itself. */}
+          <Badge variant="outline" data-testid="play-session-details-category">{sessionCategoryOf(session.type).label}</Badge>
+          <Badge variant="secondary" data-testid="play-session-details-format">{formatLabel(session.type)}</Badge>
           <Badge variant="outline">{session.skillLevel ?? "All Levels"}</Badge>
           {session.courtsCount != null && <Badge variant="outline">{session.courtsCount} courts</Badge>}
         </div>
@@ -216,6 +220,13 @@ export default function PlaySessionDetailsPage() {
           </div>
         )}
 
+        {session.policies && Object.values(session.policies).some(Boolean) && (
+          <div className="mt-6">
+            <h2 className="text-xs font-bold tracking-widest text-muted-foreground uppercase mb-2">Rules & policies</h2>
+            <SessionPoliciesList policies={session.policies} testId="play-session-details-policies" />
+          </div>
+        )}
+
         <div className="mt-6">
           <h2 className="text-xs font-bold tracking-widest text-muted-foreground uppercase mb-2">Organised by</h2>
           <Card>
@@ -225,7 +236,19 @@ export default function PlaySessionDetailsPage() {
                   {session.organizationLogo && <AvatarImage src={session.organizationLogo} alt="" />}
                   <AvatarFallback className="bg-primary/10 text-primary-text font-bold">{initials(session.organizationName)}</AvatarFallback>
                 </Avatar>
-                <span className="font-medium truncate">{session.organizationName}</span>
+                {/* The organiser's public page (/organisations/:slug). External
+                    events have no TennisConnect organisation, so no slug. */}
+                {session.organizationSlug ? (
+                  <Link
+                    href={`/organisations/${session.organizationSlug}`}
+                    className="font-medium truncate text-primary-text hover:underline"
+                    data-testid="play-session-details-organizer-page"
+                  >
+                    {session.organizationName}
+                  </Link>
+                ) : (
+                  <span className="font-medium truncate">{session.organizationName}</span>
+                )}
               </div>
               <Button variant="outline" size="sm" asChild data-testid="play-session-details-view-organizer">
                 <Link href={`/play?organizer=${session.organizationId}`}>Their sessions</Link>

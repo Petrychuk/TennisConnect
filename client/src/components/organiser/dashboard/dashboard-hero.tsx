@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { Users, CalendarDays, UsersRound, Percent, DollarSign } from "lucide-react";
 import type { OrganiserUser, StatStripItem } from "@/lib/organiser-hub-mock-data";
@@ -33,16 +34,19 @@ function StatCard({ stat }: { stat: StatStripItem }) {
         <Icon className="w-4 h-4" />
       </div>
       <div className="min-w-0">
-        <p className="text-lg font-bold leading-tight truncate">{stat.value}</p>
+        {stat.value === null ? (
+          <Skeleton className="h-6 w-10 my-0.5" aria-label={`Loading ${stat.label}`} data-testid={`organiser-stat-strip-${stat.key}-loading`} />
+        ) : (
+          <p className="text-lg font-bold leading-tight truncate" data-testid={`organiser-stat-strip-${stat.key}-value`}>{stat.value}</p>
+        )}
         <p className="text-xs text-muted-foreground leading-tight sm:truncate">{stat.label}</p>
         <p className="text-[11px] text-muted-foreground/70 truncate">{stat.sublabel}</p>
       </div>
     </CardContent>
   );
 
-  // Only clickable when there's somewhere real to send the organiser -
-  // Attendance has no href yet (no Reports page exists) and stays a
-  // plain, non-interactive card rather than a link to nowhere.
+  // Only clickable once its data has loaded and there's a real page to go
+  // to (Attendance -> Reports since Phase 2).
   if (stat.href) {
     return (
       <Link href={stat.href} className="block h-full" data-testid={`organiser-stat-strip-${stat.key}`}>
