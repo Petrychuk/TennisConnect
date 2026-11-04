@@ -276,6 +276,15 @@ async function main() {
       assert.ok(res.json.players.every((p: { email: string }) => p.email.endsWith("@tennisconnect.test")));
     }));
 
+  await test("seed-players: optional role and approved, validated", () =>
+    withServer(STAGING, async (call) => {
+      const coach = await call("seed-players", { count: 1, role: "coach", approved: false }, auth);
+      assert.equal(coach.status, 200, coach.text);
+      assert.ok(coach.json.players[0].email.includes("seed-coach-") || coach.json.players[0].email.includes("seed_coach_"));
+      assert.equal((await call("seed-players", { count: 1, role: "admin" }, auth)).status, 400);
+      assert.equal((await call("seed-players", { count: 1, approved: "yes" }, auth)).status, 400);
+    }));
+
   await test("correct secret on Staging -> seed-session writes valid test-owned data", () =>
     withServer(STAGING, async (call, world) => {
       const res = await call("seed-session", validSession(), auth);

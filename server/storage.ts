@@ -96,6 +96,7 @@ import { readSessionPolicies } from "@shared/sessionPolicies";
 import { db, pool } from "./db";
 import { cascadeDeleteOrganizations as cascadeDeleteOrganizationsShared } from "./lib/organizationCascade";
 import { deleteUserRows } from "./lib/userCascade";
+import { planUserDeletion, uniqueIds, SELF_SERVICE_DELETION_MESSAGES, type DeletionResult, type UserDeletionFacts } from "@shared/userDeletion";
 import { zonedTimeToUtc } from "./lib/zonedTime";
 import { classifyQueueTab, type QueueTab } from "./services/discoveryQueue";
 import { expandOccurrences, makeOccurrenceId, parseOccurrenceId } from "./services/discoveryOccurrences";
@@ -176,7 +177,8 @@ export interface IStorage {
   resetFailedLogins(userId: string): Promise<void>;
   getUserBySlug(slug: string): Promise<User | undefined>;
   deleteUserAccount(userId: string): Promise<void>;
-  deleteUserAccounts(userIds: string[]): Promise<{ deleted: string[]; failed: { id: string; message: string }[] }>;
+  deleteUserAccounts(userIds: string[], options?: { selfId?: string | null }): Promise<DeletionResult>;
+  getUserDeletionFacts(userIds: string[]): Promise<UserDeletionFacts>;
   getAllUsers(): Promise<typeof users.$inferSelect[]>;
   approveUser(id: string): Promise<typeof users.$inferSelect>;
   deleteUserByAdmin(userId: string): Promise<void>;
@@ -636,76 +638,42 @@ export class DatabaseStorage implements IStorage {
   // deleteUserAccount(userId) is now a thin wrapper around this with a
   // single-element array - one implementation, not two copies of the
   // same 18 queries to keep in sync by hand.
-  async deleteUserAccounts(
-    userIds: string[]
-  ): Promise<{ deleted: string[]; failed: { id: string; message: string }[] }> {
-    if (userIds.length === 0) return { deleted: [], failed: [] };
+  async deleteUserAccounts(userIds: string[], options: { selfId?: string | null } = {}): Promise<DeletionResult> {
+    // Duplicates count once, so one id is never reported as deleted twice.
+    const requested = uniqueIds(userIds);
+    if (requested.length === 0) return { deleted: [], failed: [] };
+
+    // Ids that are already gone (deleted by another admin, a second click,
+    // a stale selection) are reported as not found - before, they fell
+    // through to `deleted` and inflated the "Deleted N" count.
+    const existingRows = await db.select({ id: users.id }).from(users).where(inArray(users.id, requested));
 
     // Owning an organization is only actually a problem if that
     // organization has sessions under it - a session someone might have
     // registered for, a match with a result recorded, real activity
-    // other people are relying on. An organization with none is exactly
-    // as harmless to remove as any other empty row this account owns,
-    // so it's cascaded away along with the user (cascadeDeleteOrganizations,
-    // below, inside the same transaction) instead of blocking the whole
-    // delete purely on the organization existing at all.
-    const ownedOrgRows = await db
-      .select({ id: organizations.id, ownerId: organizations.ownerId })
-      .from(organizations)
-      .where(inArray(organizations.ownerId, userIds));
+    // other people are relying on. ANY session counts (draft, cancelled
+    // or finished too): registrations and results hang off it. An
+    // organization with none is exactly as harmless to remove as any
+    // other empty row this account owns, so it's cascaded away along with
+    // the user (cascadeDeleteOrganizations, below, inside the same
+    // transaction) instead of blocking the whole delete.
+    const { ownedOrganizations: ownedOrgRows, sessionCountByOrganization, createdSessionCountByUser } =
+      await this.getUserDeletionFacts(requested);
 
-    const ownedOrgIds = ownedOrgRows.map((r) => r.id);
-    const sessionOrgRows = ownedOrgIds.length > 0
-      ? await db
-          .select({ organizationId: tennisSessions.organizationId })
-          .from(tennisSessions)
-          .where(inArray(tennisSessions.organizationId, ownedOrgIds))
-      : [];
-    const orgIdsWithSessions = new Set(sessionOrgRows.map((r) => r.organizationId));
-
-    const blockedOwnerIds = new Set(
-      ownedOrgRows.filter((r) => orgIdsWithSessions.has(r.id)).map((r) => r.ownerId)
-    );
-
-    const createdSessionRows = await db
-      .select({ createdBy: tennisSessions.createdBy })
-      .from(tennisSessions)
-      .where(inArray(tennisSessions.createdBy, userIds));
-    const createdSessionIds = new Set(createdSessionRows.map((r) => r.createdBy));
-
-    const failed: { id: string; message: string }[] = [];
-    const allowedIds: string[] = [];
-
-    for (const id of userIds) {
-      if (blockedOwnerIds.has(id)) {
-        failed.push({ id, message: "You own an organization with active sessions - these need to be cancelled or reassigned, or ownership transferred, before deleting your account" });
-      } else if (createdSessionIds.has(id)) {
-        failed.push({ id, message: "You've created sessions - these need to be cancelled or reassigned before deleting your account" });
-      } else {
-        allowedIds.push(id);
-      }
-    }
-
-    // Session-less organizations owned by someone who's ACTUALLY going
-    // through with the delete (allowedIds, not just "owns an empty
-    // org") - cascaded away in the same transaction below rather than
-    // left dangling (organizations.ownerId is NOT NULL). Filtered by
-    // allowedIds rather than computed straight off ownedOrgRows on
-    // purpose: today, every session's createdBy is necessarily that
-    // session's own organization's owner (POST /organizer/sessions only
-    // ever creates one for storage.getOrganizationOwnedByUser(self)), so
-    // an owner blocked by createdSessionIds could never simultaneously
-    // own a genuinely session-less organization - but that's an
-    // invariant of today's session-creation code, not of this function.
-    // Deriving the cascade list from the userIds actually being deleted
-    // means this stays correct even if that ever changes (e.g. staff
-    // gaining the ability to create sessions for someone else's org),
-    // instead of silently deleting an organization out from under an
-    // owner whose account deletion never actually happened.
-    const allowedIdSet = new Set(allowedIds);
-    const emptyOrgIdsToCascade = ownedOrgRows
-      .filter((r) => !orgIdsWithSessions.has(r.id) && allowedIdSet.has(r.ownerId))
-      .map((r) => r.id);
+    // The rules themselves live in shared/userDeletion.ts (unit-tested).
+    // Session-less organizations are cascaded only for owners who are
+    // ACTUALLY being deleted (allowedIds) - never out from under an owner
+    // whose own deletion was refused.
+    const plan = planUserDeletion({
+      requestedIds: requested,
+      existingIds: existingRows.map((r) => r.id),
+      ownedOrganizations: ownedOrgRows,
+      sessionCountByOrganization,
+      createdSessionCountByUser,
+      selfId: options.selfId,
+    });
+    const { allowedIds, failed } = plan;
+    const emptyOrgIdsToCascade = plan.emptyOrganizationIdsToCascade;
 
     if (allowedIds.length === 0) {
       return { deleted: [], failed };
@@ -719,7 +687,12 @@ export class DatabaseStorage implements IStorage {
 
         // Same statements as before, now shared with the E2E run cleanup
         // (server/lib/userCascade.ts), plus external_activities.reviewed_by.
-        await deleteUserRows(tx, allowedIds);
+        const removed = await deleteUserRows(tx, allowedIds);
+        if (removed !== allowedIds.length) {
+          // Someone else deleted one of these between the check above and
+          // this transaction. Logged; the id is gone either way.
+          console.warn("deleteUserAccounts: expected", allowedIds.length, "user row(s), removed", removed);
+        }
       });
     } catch (error) {
       // The whole batch transaction rolled back - none of allowedIds
@@ -733,11 +706,51 @@ export class DatabaseStorage implements IStorage {
       console.error("deleteUserAccounts: batch transaction failed for", allowedIds.length, "user(s)", error);
       return {
         deleted: [],
-        failed: [...failed, ...allowedIds.map((id) => ({ id, message: "Failed to delete user" }))],
+        failed: [...failed, ...allowedIds.map((id) => ({ id, code: "error" as const, message: SELF_SERVICE_DELETION_MESSAGES.error }))],
       };
     }
 
     return { deleted: allowedIds, failed };
+  }
+
+  // What the deletion rules (shared/userDeletion.ts) need to know about a
+  // set of accounts: the organisations they own, how many sessions (any
+  // status) each of those has, and how many sessions each account created.
+  // Used by deleteUserAccounts and by the admin Users list, so the list can
+  // say up front which accounts are protected and why - from the same
+  // three queries the delete itself uses.
+  async getUserDeletionFacts(userIds: string[]): Promise<UserDeletionFacts> {
+    const ids = uniqueIds(userIds);
+    if (ids.length === 0) {
+      return { ownedOrganizations: [], sessionCountByOrganization: new Map(), createdSessionCountByUser: new Map() };
+    }
+    const ownedOrganizations = await db
+      .select({ id: organizations.id, name: organizations.name, ownerId: organizations.ownerId })
+      .from(organizations)
+      .where(inArray(organizations.ownerId, ids));
+
+    const ownedOrgIds = ownedOrganizations.map((r) => r.id);
+    const sessionOrgRows = ownedOrgIds.length > 0
+      ? await db
+          .select({ organizationId: tennisSessions.organizationId })
+          .from(tennisSessions)
+          .where(inArray(tennisSessions.organizationId, ownedOrgIds))
+      : [];
+    const sessionCountByOrganization = new Map<string, number>();
+    for (const r of sessionOrgRows) {
+      if (r.organizationId) sessionCountByOrganization.set(r.organizationId, (sessionCountByOrganization.get(r.organizationId) ?? 0) + 1);
+    }
+
+    const createdSessionRows = await db
+      .select({ createdBy: tennisSessions.createdBy })
+      .from(tennisSessions)
+      .where(inArray(tennisSessions.createdBy, ids));
+    const createdSessionCountByUser = new Map<string, number>();
+    for (const r of createdSessionRows) {
+      if (r.createdBy) createdSessionCountByUser.set(r.createdBy, (createdSessionCountByUser.get(r.createdBy) ?? 0) + 1);
+    }
+
+    return { ownedOrganizations, sessionCountByOrganization, createdSessionCountByUser };
   }
 
   async deleteUserAccount(userId: string): Promise<void> {

@@ -1,6 +1,6 @@
 # E2E coverage matrix
 
-Updated 2 Nov 2026. Inventory from `npx playwright test --list`: **371 tests in 50 files**. Production selection: **33 tests in 1 file**. Phases are in `tests/safety/staging-phases.ts`. "Not run" means the test exists but its last Staging result is not known for this branch (`REGRESSION_RESULTS.md`).
+Updated 2 Nov 2026. Inventory from `npx playwright test --list`: **383 tests in 51 files**. Production selection: **33 tests in 1 file**. Phases are in `tests/safety/staging-phases.ts`. "Not run" means the test exists but its last Staging result is not known for this branch (`REGRESSION_RESULTS.md`).
 
 ## Platform
 
@@ -19,6 +19,7 @@ Updated 2 Nov 2026. Inventory from `npx playwright test --list`: **371 tests in 
 | Travel & Retreats | — | 028–030 | `tests/public/travel.spec.ts` is empty |
 | Clubs and organisations | Organisation page: ORG-RESP-003, PLAY-007 | 026, 027 | No Staging test for clubs |
 | Admin | ADMIN-001…008, ACCESS-005/006; ADMIN-009 local only | Guest gate only (011) | — |
+| Admin user deletion (4 Nov) | **ADMIN-DEL-001…012** (`tests/admin/users/admin-user-deletion.spec.ts`, hub-msg-admin): single (player, coach, protected, former organiser), bulk under Players / Coaches / Awaiting / Organisers Approved / Players + Pending, partial success 3/2 with summary, selection reset on filter change, double submit, all 36 filter combinations. Every delete request is guarded to run-owned ids; no collateral check after each delete. Unit: `shared/userDeletion.test.ts`, `client/src/lib/adminUserFilters.test.ts`, `server/routes/adminUsers.test.ts` | Excluded | — |
 | Access control | ACCESS-001…004, SEC-001…012 | 011–013, 033 | — |
 | Live rounds, check-in, scoring (TC Live) | **LIVE-001…016** (`tests/live/live-engine.spec.ts`, needs `TC_LIVE_ENABLED=true`); check-in also ORG-RESP-002; results via seeded matches ORG-FLOW-001/003, ORG-WS-001 | Internal only: LIVE-PROD-001/002 (`@prod-live-internal`, opt-in, approval) | See `docs/live/LIVE_TEST_COVERAGE.md` |
 | Payments (Back the Rally) | SUPPORT-001…016; SUPPORT-007/008 create Stripe test sessions (stripe phase, opt-in) | Excluded | — |

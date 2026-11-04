@@ -148,8 +148,12 @@ export interface SeededPlayer {
 // E2E_TEST_HOOK_SECRET via postTestHook (helpers/test-hooks.ts). `page`
 // is kept for call-site compatibility; the hook doesn't need the
 // browser session.
-export async function seedPlayers(_page: Page, count: number): Promise<SeededPlayer[]> {
-  const { players } = await postTestHook<{ players: SeededPlayer[] }>('seed-players', { count });
+export async function seedPlayers(
+  _page: Page,
+  count: number,
+  options: { role?: 'player' | 'coach'; approved?: boolean } = {}
+): Promise<SeededPlayer[]> {
+  const { players } = await postTestHook<{ players: SeededPlayer[] }>('seed-players', { count, ...options });
   return players;
 }
 

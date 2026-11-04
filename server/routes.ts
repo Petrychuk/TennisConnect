@@ -13,6 +13,7 @@ import { computeLookingToPlayExpiry } from "./services/playerMatchEngine";
 import { resolveCoordinates } from "./services/geocodingService";
 import contentRouter from "./routes/adminContent";
 import adminDiscoveryRouter from "./routes/adminDiscovery";
+import adminUsersRouter from "./routes/adminUsers";
 import passport from "passport";
 import { requireAuth, requireAdmin } from "./requireAuth";
 import supportRoutes from "./routes/supportRoutes";
@@ -182,6 +183,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/api/me/player-profile/photos", playerPhotos);
   app.use("/api", contentRouter);
   app.use("/api/admin/discovery", adminDiscoveryRouter);
+  app.use("/api/admin", adminUsersRouter);
   app.use("/", sitemapRoutes);
   app.use("/api/players", playersRouter);
   app.use("/api/coaches", coachesRouter);
@@ -736,40 +738,9 @@ export async function registerRoutes(app: Express): Promise<void> {
   });
 
   // ===== ADMIN USERS =====
-    app.get("/api/admin/users",
-      requireAdmin,
-      async (_req, res) => {
-        const users = await storage.getAllUsers();
-        const requests = await storage.getOrganizerRequests();
-
-        // Latest request per user (requests are already ordered desc by createdAt).
-        const latestRequestByUser = new Map<string, string>();
-        for (const r of requests) {
-          if (!latestRequestByUser.has(r.userId)) {
-            latestRequestByUser.set(r.userId, r.status);
-          }
-        }
-
-        // Which organization (if any) each user owns - lets the admin
-        // Users table offer a "Delete Organization" action right next
-        // to a blocked "Delete User" attempt, instead of the block
-        // message pointing at an action ("transfer ownership or delete
-        // it") that had no actual UI anywhere to do.
-        const organizerIds = users.filter((u) => u.isOrganizer).map((u) => u.id);
-        const organizations = await storage.getOrganizationsByOwnerIds(organizerIds);
-        const organizationByOwner = new Map(organizations.map((o) => [o.ownerId, o]));
-
-        const usersWithOrganizerStatus = users.map((u: any) => ({
-          ...omitPassword(u),
-          organizerRequestStatus: u.isOrganizer
-            ? null
-            : latestRequestByUser.get(u.id) || null,
-          ownedOrganization: organizationByOwner.get(u.id) || null,
-        }));
-
-        res.json(usersWithOrganizerStatus);
-       }
-     );
+    // GET /api/admin/users, DELETE /api/admin/users/:id and
+    // POST /api/admin/users/bulk-delete live in server/routes/adminUsers.ts
+    // (mounted below, next to the other /api/admin routers).
 
     // Admin-only - deletes an organization and everything under it
     // (see storage.deleteOrganizationCascade for the full cascade).
@@ -823,85 +794,6 @@ export async function registerRoutes(app: Express): Promise<void> {
         }
 
         res.json(omitPassword(user));
-      }
-    );
-
-    app.delete("/api/admin/users/:id",
-      requireAdmin,
-      async (req, res) => {
-        try {
-          const userId = req.params.id;
-    
-          // защита от удаления самого себя
-          if (req.user?.id === userId) {
-            return res.status(400).json({
-              message: "You cannot delete yourself",
-            });
-          }
-    
-          await storage.deleteUserByAdmin(userId);
-    
-          return res.json({
-            success: true,
-          });
-    
-        } catch (error: any) {
-          console.error(error);
-
-          // Same two known, expected "blocked" cases as /api/me/account
-          // below (owns an organization / has created sessions) - the
-          // admin route was missing this classification entirely, so
-          // deleting an organiser who owns a test organization (a common
-          // state for smoke-test fixtures) always fell through to a
-          // blank "Failed to delete user" 500 instead of the real,
-          // actionable reason.
-          const knownBlock =
-            typeof error?.message === "string" &&
-            (error.message.includes("You own an organization") ||
-              error.message.includes("You've created sessions"));
-          if (knownBlock) {
-            return res.status(400).json({ message: error.message });
-          }
-
-          return res.status(500).json({
-            message: "Failed to delete user",
-          });
-        }
-      }
-    );
-
-    // Single query-shaped batch (see storage.deleteUserAccounts), not a
-    // loop over the single-user path - deleting 190 accounts one at a
-    // time meant ~3,400 sequential queries and took long enough to look
-    // exactly like a hung request. Still reports back exactly which ids
-    // succeeded and which didn't, and why - a blocked user (owns an
-    // organization / has created sessions) is reported, never force-
-    // deleted or silently dropped from the batch without saying why.
-    app.post("/api/admin/users/bulk-delete",
-      requireAdmin,
-      async (req, res) => {
-        try {
-          const { ids } = req.body;
-
-          if (!Array.isArray(ids) || ids.length === 0) {
-            return res.status(400).json({ message: "ids must be a non-empty array" });
-          }
-
-          const stringIds = ids.filter((id: unknown): id is string => typeof id === "string");
-          const selfId = req.user?.id;
-
-          const targetIds = stringIds.filter((id) => id !== selfId);
-          const selfFailed = selfId && stringIds.includes(selfId)
-            ? [{ id: selfId, message: "You cannot delete yourself" }]
-            : [];
-
-          const { deleted, failed } = await storage.deleteUserAccounts(targetIds);
-
-          res.json({ deleted, failed: [...selfFailed, ...failed] });
-        } catch (error) {
-          console.error(error);
-          res.status(500).json({ message: "Bulk delete failed" });
-        }
       }
     );
 

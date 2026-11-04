@@ -150,6 +150,12 @@ export const STAGING_PHASES: Readonly<Record<StagingPhase, readonly PhaseEntry[]
     { file: 'tests/admin/users/admin-unverified-visibility.spec.ts', ids: ['ADMIN-004'] },
     { file: 'tests/admin/users/admin-bulk-delete.spec.ts', ids: ['ADMIN-005', 'ADMIN-006'] },
     { file: 'tests/admin/users/admin-user-delete.spec.ts', ids: ['ADMIN-002', 'ADMIN-003', 'ADMIN-007', 'ADMIN-008'] },
+    // Admin user deletion suite (4 Nov 2026): seeded run-owned accounts only;
+    // guardDeletes() aborts any delete naming an id the test didn't create.
+    {
+      file: 'tests/admin/users/admin-user-deletion.spec.ts',
+      ids: Array.from({ length: 12 }, (_, i) => `ADMIN-DEL-${String(i + 1).padStart(3, '0')}`),
+    },
   ],
   'security-last': [{ file: 'tests/security/security-payloads.spec.ts', ids: ['SEC-LOGIN', 'SEC-FORGOT'] }],
   stripe: [{ file: 'tests/support/back-the-rally.spec.ts', ids: ['SUPPORT-007', 'SUPPORT-008'] }],
