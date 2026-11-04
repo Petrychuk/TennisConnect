@@ -4,7 +4,6 @@ import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import SEO from "@/components/seo";
 import { DelayedTennisLoader } from "@/components/ui/tennisLoader";
 import { useAuth } from "@/lib/auth-context";
@@ -13,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { OrganiserSidebarNav } from "./organiser-sidebar";
 import { OrganiserMobileNav } from "./organiser-mobile-nav";
 import { OrganiserBarLogo } from "./organiser-bar-logo";
+import { OrganiserAccessModal } from "./organiser-access-modal";
 import { NotificationBell } from "./notification-bell";
 import type { OrganiserUser } from "@/lib/organiser-types";
 
@@ -58,7 +58,7 @@ export function canUseOrganiserHub(user: { isOrganizer?: boolean | null; isAdmin
   return !!user && (!!user.isOrganizer || !!user.isAdmin);
 }
 
-/** Loader while auth resolves; /auth for guests; an explanation for non-organisers. */
+/** Loader while auth resolves; /auth for guests; the request-access modal for non-organisers. */
 export function OrganiserAccessGate({ children }: { children: ReactNode }) {
   const { user, isAuthenticated, loading } = useAuth();
   const [location, setLocation] = useLocation();
@@ -74,24 +74,13 @@ export function OrganiserAccessGate({ children }: { children: ReactNode }) {
   }
 
   if (!canUseOrganiserHub(user)) {
+    // A signed-in player/coach who isn't approved: a friendly request modal,
+    // not an error page. Nothing of the Hub is rendered behind it - just a
+    // blank screen - and the API keeps refusing them whatever this shows.
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-background" data-testid="organiser-access-required">
-        <Card className="max-w-md w-full shadow-sm">
-          <CardHeader>
-            <CardTitle asChild><h1>Organiser access required</h1></CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-muted-foreground">
-            <p>
-              The Organiser Hub is for approved organisers. You can request organiser access from
-              your profile; an admin reviews every request.
-            </p>
-            {user && (
-              <Button asChild variant="outline">
-                <Link href={`/${user.role}/${user.slug}`}>Go to my profile</Link>
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-muted/40" data-testid="organiser-access-required">
+        <SEO title="Organiser Hub | TennisConnect" description="Request organiser access on TennisConnect." noIndex />
+        <OrganiserAccessModal onDismiss={(profilePath) => setLocation(profilePath)} />
       </div>
     );
   }

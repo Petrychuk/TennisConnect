@@ -53,10 +53,25 @@ async function consentAlreadyStored(page: Page): Promise<boolean> {
   }
 }
 
-export async function registerPlayer(page: Page) {
-  const user = generateTestUser('player');
+export interface RegisterPlayerOptions {
+  /**
+   * Where the guest starts. Anything but '/auth' must be a page that sends a
+   * guest to /auth?returnTo=... (the Organiser Hub does), so the return path
+   * travels through registration and email verification (ORG-ONB-012b).
+   */
+  startAt?: string;
+  /** Where verification should land. Default: /complete-profile, as for every new account. */
+  landsOn?: RegExp;
+}
 
-  await page.goto('/auth');
+export async function registerPlayer(page: Page, options: RegisterPlayerOptions = {}) {
+  const user = generateTestUser('player');
+  const startAt = options.startAt ?? '/auth';
+
+  await page.goto(startAt);
+  if (startAt !== '/auth') {
+    await expect(page).toHaveURL(/\/auth\?returnTo=/, { timeout: 15000 });
+  }
   await dismissCookieBanner(page);
 
   await page.getByTestId('register-tab').click();
@@ -89,7 +104,7 @@ export async function registerPlayer(page: Page) {
 
   await completeVerification(page, user.email);
 
-  await expect(page).toHaveURL(/\/complete-profile/, {
+  await expect(page).toHaveURL(options.landsOn ?? /\/complete-profile/, {
     timeout: 15000,
   });
 

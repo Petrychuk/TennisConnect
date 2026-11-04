@@ -188,3 +188,32 @@ test("results CSV: standings in order, names defused", async () => {
   assert.equal(csvFileName("Wed Social!", "results"), "wed-social-results.csv");
   assert.equal(csvFileName("Wed Social!"), "wed-social-players.csv", "player export name unchanged");
 });
+
+test("access gate: a non-approved player gets the request modal, not an error page, and no Hub content behind it", () => {
+  const layout = read("components/organiser/ui/organiser-layout.tsx");
+  assert.match(layout, /<OrganiserAccessModal\b/);
+  assert.doesNotMatch(layout, /Organiser access required/, "the technical error card is gone");
+  // The modal branch returns before children render: nothing of the Hub sits behind it.
+  const gate = layout.slice(layout.indexOf("export function OrganiserAccessGate"), layout.indexOf("interface OrganiserLayoutProps"));
+  assert.ok(gate.indexOf("<OrganiserAccessModal") < gate.indexOf("<>{children}</>"));
+  assert.match(layout, /!!user\.isOrganizer \|\| !!user\.isAdmin/, "still the same rule as the API");
+
+  const modal = read("components/organiser/ui/organiser-access-modal.tsx");
+  assert.match(modal, /\/api\/organizer\/requests/, "reuses the existing request API");
+  assert.match(modal, /@radix-ui\/react-dialog/, "focus trap, Escape and aria-modal come from Radix");
+  assert.match(modal, /env\(safe-area-inset-bottom\)/, "phone sheet respects the safe area");
+  assert.match(modal, /hidden sm:block/, "photo is not shown on phones");
+  assert.doesNotMatch(modal, /player account is ready/i);
+  assert.doesNotMatch(modal, /isOrganizer:\s*true|stripe|price|billing/i, "grants nothing, no payments");
+  // 44 px touch targets on the three controls.
+  assert.match(modal, /h-11 w-11/, "close button");
+  assert.equal((modal.match(/<Button\s+size="lg"/g) ?? []).length >= 3, true, "request, retry and back buttons use the 48 px lg size");
+});
+
+test("post-verification redirects come from one place", () => {
+  for (const file of ["pages/verify-email.tsx", "pages/auth.tsx"]) {
+    const src = read(file);
+    assert.match(src, /postVerifyTarget|resolveReturnTarget/, `${file} uses the shared target`);
+    assert.doesNotMatch(src, /new URL\((redirect\.)?returnTo/, `${file} no longer follows an unchecked returnTo`);
+  }
+});

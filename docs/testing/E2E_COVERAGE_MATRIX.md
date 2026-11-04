@@ -1,6 +1,6 @@
 # E2E coverage matrix
 
-Updated 30 Oct 2026. Inventory from `npx playwright test --list`: **339 tests in 47 files**. Production selection: **33 tests in 1 file**. Phases are in `tests/safety/staging-phases.ts`. "Not run" means the test exists but its last Staging result is not known for this branch (`REGRESSION_RESULTS.md`).
+Updated 2 Nov 2026. Inventory from `npx playwright test --list`: **371 tests in 50 files**. Production selection: **33 tests in 1 file**. Phases are in `tests/safety/staging-phases.ts`. "Not run" means the test exists but its last Staging result is not known for this branch (`REGRESSION_RESULTS.md`).
 
 ## Platform
 
@@ -31,6 +31,15 @@ Updated 30 Oct 2026. Inventory from `npx playwright test --list`: **339 tests in
 | | Organiser reaches the Hub, `isOrganizer` and organisation real on the server, all nav items | ORG-AUTH-001 |
 | | Cannot read or change another organiser's organisation, sessions, players or rounds (API and UI); cross-session IDOR | ORG-PERM-001; route unit tests `server/routes/organizerOwnership.test.ts` |
 | | Admin: Hub access and session reads (rounds included) for any session; writes stay owner-only | Unit tests only (`organizerOwnership.test.ts`). **Gap:** no E2E as e2e-admin on another organiser's session |
+| **H. Onboarding** (2 Nov) | Verified email → own profile (never `/organiser` by default) | ORG-ONB-001 |
+| | Player opens Hub → request modal; no Hub content behind it; Escape / X / Back return to the profile; focus stays in the dialog | ORG-ONB-002 |
+| | Request uses the existing API; nothing is granted | ORG-ONB-003, ORG-ONB-010 |
+| | Confirmation; pending is "under review" and can't be sent twice (UI and API) | ORG-ONB-004, ORG-ONB-005 |
+| | Approved organiser and admin open the Hub with no modal | ORG-ONB-006, ORG-ONB-007 |
+| | Guest → sign in with the Hub as return path | ORG-ONB-008 (auth-readonly), ORG-ONB-012a |
+| | Rejected shows the existing status; a new request follows the server | ORG-ONB-011 |
+| | Return path through registration and verification; permissions checked on arrival | ORG-ONB-012b; unit `client/src/lib/postVerifyTarget.test.ts` (unsafe return paths) |
+| | Six viewports: fits, no overflow, 44 px targets, keyboard and touch, phone sheet without photo | ORG-ONB-009 |
 | **B. Organisation** | View, edit, validate website, save, reload, public page | ORG-RESP-003 (phone), ORG-PERM-002 |
 | | No verified / premium / slug / status changes by the organiser; server-side validation | ORG-PERM-002; unit `shared/organizationProfile.test.ts` |
 | | Unauthorised edit | ORG-PERM-001 (404) |

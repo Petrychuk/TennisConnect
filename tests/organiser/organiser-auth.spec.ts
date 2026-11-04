@@ -46,10 +46,10 @@ test('ORG-AUTH-002 Player cannot access Organiser Hub', async ({ page }) => {
 
   await page.goto('/organiser');
 
-  // Stays on /organiser (no redirect) but shows the "not an organiser"
-  // message instead of the real dashboard - see
-  // organiser-dashboard.tsx's own !isOrganizer && !isAdmin branch.
-  await expect(page.getByRole('heading', { name: 'Organiser access required' })).toBeVisible({ timeout: 15000 });
+  // Stays on /organiser (no redirect) but shows the friendly "request organiser
+  // access" modal instead of the real dashboard (OrganiserAccessGate; the modal
+  // itself is covered by ORG-ONB-002..005 in organiser-onboarding.spec.ts).
+  await expect(page.getByTestId('organiser-onboarding-modal')).toBeVisible({ timeout: 15000 });
   await expect(page.getByTestId('organiser-dashboard')).toHaveCount(0);
 
   // ...and the API refuses too - the page isn't the only thing in the way.

@@ -50,6 +50,8 @@ export const STAGING_PHASES: Readonly<Record<StagingPhase, readonly PhaseEntry[]
     { file: 'tests/smoke/smoke.spec.ts', ids: ['AUTH-SMOKE-001', 'MSG-SMOKE-003', 'MSG-SMOKE-004', 'MSG-SMOKE-005'] },
     // Guest-only, no writes (reviewed in Stage 3; candidates for the read-only set).
     { file: 'tests/organiser/organiser-auth.spec.ts', ids: ['ORG-AUTH-003'] },
+    // Guest-only: /organiser sends a guest to /auth?returnTo=..., no modal, no writes.
+    { file: 'tests/organiser/organiser-onboarding.spec.ts', ids: ['ORG-ONB-008'] },
     { file: 'tests/auth/reg-validation.spec.ts', ids: ['REG-003', 'REG-004'] },
     { file: 'tests/auth/forgot-password.spec.ts', ids: ['AUTH-007', 'AUTH-008'] },
     // Coaches directory filters (29 Oct 2026): guest-only, no login, no seeded
@@ -99,6 +101,13 @@ export const STAGING_PHASES: Readonly<Record<StagingPhase, readonly PhaseEntry[]
   ],
   'hub-msg-admin': [
     { file: 'tests/organiser/organiser-auth.spec.ts', ids: ['ORG-AUTH-001', 'ORG-AUTH-002'] },
+    // Organiser onboarding (2 Nov 2026): run-owned players register and send their own
+    // organiser request; ORG-ONB-011 has the baseline admin reject that run-owned
+    // request. Baseline admin/organiser accounts are only signed into.
+    {
+      file: 'tests/organiser/organiser-onboarding.spec.ts',
+      ids: ['ORG-ONB-001', 'ORG-ONB-002', 'ORG-ONB-003', 'ORG-ONB-004', 'ORG-ONB-005', 'ORG-ONB-006', 'ORG-ONB-007', 'ORG-ONB-009', 'ORG-ONB-010', 'ORG-ONB-011', 'ORG-ONB-012a', 'ORG-ONB-012b'],
+    },
     { file: 'tests/organiser/organiser-critical-flows.spec.ts', ids: ['ORG-FLOW-001', 'ORG-FLOW-003'] },
     { file: 'tests/organiser/organiser-rankings.spec.ts', ids: ['ORG-RANK-002', 'ORG-RANK-004', 'ORG-RANK-006'] },
     { file: 'tests/organiser/organiser-reports.spec.ts', ids: ['ORG-REPORT-003', 'ORG-REPORT-004', 'ORG-REPORT-010', 'ORG-REPORT-012'] },

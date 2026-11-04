@@ -236,8 +236,11 @@ export function Navbar() {
                       Organiser Hub link below now also covers a pure
                       admin account (isAdmin but not isOrganizer) so
                       there's still a way in - organiser-dashboard.tsx's
-                      own access gate was relaxed to match. */}
-                  {(user?.isOrganizer || user?.isAdmin) && (
+                      own access gate was relaxed to match. It is now shown
+                      to every signed-in person: a player or coach who is not
+                      approved gets the "request organiser access" modal
+                      from OrganiserAccessGate instead of the Hub. */}
+                  {user && (
                     <DropdownMenuItem asChild className="cursor-pointer">
                       <Link href="/organiser" className="flex items-center gap-2" data-testid="navbar-organiser-hub-link">
                         <Trophy className="w-4 h-4" />
@@ -619,7 +622,7 @@ export function Navbar() {
         <div className="flex flex-col gap-1 border-t border-border pt-3">
           {/* Admin Panel used to be its own separate link here - see the
               same removal reasoning in the desktop dropdown above. */}
-          {(user?.isOrganizer || user?.isAdmin) && (
+          {user && (
             <Link
               href="/organiser"
               data-testid="mobile-more-organiser-hub-link"

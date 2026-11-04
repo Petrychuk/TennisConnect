@@ -6,6 +6,7 @@ import { TennisBallSpinner, useDelayElapsed } from "@/components/ui/tennisLoader
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { consumePostVerifyRedirect } from "@/lib/postVerifyRedirect";
+import { postVerifyTarget } from "@/lib/postVerifyTarget";
 import heroImage from "/assets/images/tennis_main.jpg";
 import SEO from "@/components/seo";
 
@@ -56,16 +57,11 @@ export default function VerifyEmailPage() {
 
     verifyEmail(token)
       .then((user) => {
-        const redirect = consumePostVerifyRedirect();
-        const target = redirect
-          ? (() => {
-              const url = new URL(redirect.returnTo, window.location.origin);
-              if (redirect.joinSession) url.searchParams.set("joinSession", redirect.joinSession);
-              return url.pathname + url.search;
-            })()
-          : !user.profileCompleted
-            ? "/complete-profile"
-            : `/${user.role}/${user.slug}`;
+        // The server created the session when it accepted the token, so
+        // `user` is already signed in. Stashed returnTo first (if it is a
+        // safe same-site path), else /complete-profile, else their own
+        // profile. Never /organiser by default.
+        const target = postVerifyTarget(user, consumePostVerifyRedirect());
 
         setRedirectTarget(target);
         setState("success");
