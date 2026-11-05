@@ -1,5 +1,6 @@
 import { friendlyApiError } from "@/lib/apiError";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Clock, ArrowRight, ArrowLeft } from "lucide-react";
@@ -15,10 +16,14 @@ import { Step3DetailsRules } from "@/components/organiser/sessions/wizard/step3-
 import { Step4ReviewPublish } from "@/components/organiser/sessions/wizard/step4-review-publish";
 import { PendingApprovalDialog } from "@/components/organiser/sessions/wizard/pending-approval-dialog";
 
-import { ensureMyOrganization, createSession, publishSession, getSessionById, getSessionTemplates } from "@/lib/api/organizer-sessions";
+import { ensureMyOrganization, createSession, updateSession, publishSession, getSessionById, getSessionTemplates } from "@/lib/api/organizer-sessions";
+import { createDraftSaver, DraftConflictError } from "@/lib/sessionDraftSaver";
+import { PUBLISHABLE_STATUSES, publishProblems } from "@shared/sessionDraft";
 import {
   createEmptyDraft,
   draftToInsertSession,
+  draftToSessionPayload,
+  savedSessionToDraft,
   sessionToDraft,
   templateToDraft,
   SESSION_TYPE_OPTIONS,
@@ -34,6 +39,79 @@ export default function OrganiserSessionNewPage() {
   const [step, setStep] = useState(1);
   const [maxReachedStep, setMaxReachedStep] = useState(1);
   const [pendingApprovalOpen, setPendingApprovalOpen] = useState(false);
+  const queryClient = useQueryClient();
+
+  // Save as Draft: one saver for the life of the page. It creates the draft the
+  // first time and updates that same row afterwards (lib/sessionDraftSaver.ts).
+  const saver = useRef(
+    createDraftSaver({
+      ensureOrganization: () => ensureMyOrganization(`${user?.name ?? "My"}'s Sessions`),
+      create: (payload) => createSession(payload as any),
+      update: (id, payload) => updateSession(id, payload as any),
+    }),
+  ).current;
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [conflict, setConflict] = useState(false);
+  const [published, setPublished] = useState(false);
+  // JSON of the draft as last saved (or loaded); differs from the live draft = unsaved changes.
+  const [lastSaved, setLastSaved] = useState(() => JSON.stringify(createEmptyDraft()));
+  const isDirty = useMemo(() => JSON.stringify(draft) !== lastSaved, [draft, lastSaved]);
+
+  // "Continue Setup" on a draft lands here with ?draft=<id>: load what was saved
+  // (savedSessionToDraft keeps every field as saved) and keep saving to that row.
+  const search = useSearch();
+  const draftId = new URLSearchParams(search).get("draft");
+  const [draftLoading, setDraftLoading] = useState(!!draftId);
+  const [draftLoadError, setDraftLoadError] = useState<string | null>(null);
+  const [draftReloadKey, setDraftReloadKey] = useState(0);
+  useEffect(() => {
+    if (!draftId) return;
+    if (saver.id() === draftId) return; // this page just created it; nothing to load
+    let cancelled = false;
+    setDraftLoading(true);
+    setDraftLoadError(null);
+    getSessionById(draftId)
+      .then((session) => {
+        if (cancelled) return;
+        if (!(PUBLISHABLE_STATUSES as readonly string[]).includes(session.status)) {
+          // Only a draft is edited here; anything else has its own page.
+          toast({ title: "This session is no longer a draft", description: "Opening it in the session workspace instead." });
+          setLocation(`/organiser/sessions/${session.id}`, { replace: true });
+          return;
+        }
+        const loaded = savedSessionToDraft(session);
+        saver.adopt(session);
+        setDraft(loaded);
+        setLastSaved(JSON.stringify(loaded));
+        setSavedAt(new Date(session.updatedAt));
+        const start = loaded.type === null ? 1 : 2;
+        setStep(start);
+        setMaxReachedStep(4); // everything is already filled in: every step is reachable
+        setDraftLoading(false);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setDraftLoadError(friendlyApiError(error, "We couldn't load this draft."));
+          setDraftLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftId, draftReloadKey]);
+
+  // Leaving with unsaved changes: the browser's own "Leave site?" prompt.
+  useEffect(() => {
+    if (!isDirty || published) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [isDirty, published]);
 
   // "Duplicate" (from the sessions list or a session's own workspace
   // page) lands here with ?duplicateFrom=<id> instead of silently
@@ -45,7 +123,6 @@ export default function OrganiserSessionNewPage() {
   // (which is also what actually sets a sensible status - the session
   // this replaced never called publishSession, so it sat stuck as
   // "draft" forever).
-  const search = useSearch();
   const duplicateFromId = new URLSearchParams(search).get("duplicateFrom");
   useEffect(() => {
     if (!duplicateFromId) return;
@@ -140,45 +217,77 @@ export default function OrganiserSessionNewPage() {
 
   const handleBack = () => setStep((prev) => Math.max(prev - 1, 1));
 
-  const [submitting, setSubmitting] = useState(false);
+  const submitting = saving;
 
-  const handleSaveDraft = async () => {
-    if (submitting) return;
-    if (!canProceedFromStep2) {
-      toast({ title: step2ValidationError(), variant: "destructive" });
-      setStep(2);
-      return;
-    }
-    setSubmitting(true);
+  // Save as Draft, from any step. No publish-only validation: a draft may be
+  // incomplete. Resolves true only if the server confirmed the save.
+  const saveDraftNow = async (options: { quiet?: boolean } = {}): Promise<boolean> => {
+    if (saver.isSaving() || draftLoading || draftLoadError) return false;
+    const snapshot = JSON.stringify(draft);
+    setSaving(true);
     try {
-      await ensureMyOrganization(`${user?.name ?? "My"}'s Sessions`);
-      await createSession(draftToInsertSession(draft) as any);
-      toast({ title: "Saved as draft", description: "Pick up where you left off any time from Sessions." });
-      setLocation("/organiser/sessions");
-    } catch (error: any) {
-      toast({ title: "Couldn't save draft", description: friendlyApiError(error), variant: "destructive" });
+      const wasNew = saver.id() === null;
+      const row = await saver.save((mode) => draftToSessionPayload(draft, mode));
+      setLastSaved(snapshot);
+      setSavedAt(new Date(row.updatedAt));
+      setConflict(false);
+      // The Sessions list (All and Drafts) must show it straight away.
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", row.id] });
+      if (wasNew) setLocation(`/organiser/sessions/new?draft=${row.id}`, { replace: true });
+      if (!options.quiet) toast({ title: "Session saved as draft" });
+      return true;
+    } catch (error) {
+      if (error instanceof DraftConflictError) {
+        setConflict(true);
+        toast({ title: "Draft changed elsewhere", description: "Reload to see the latest version before saving.", variant: "destructive" });
+      } else {
+        toast({ title: "Couldn't save draft", description: friendlyApiError(error), variant: "destructive" });
+      }
+      return false;
     } finally {
-      setSubmitting(false);
+      setSaving(false);
     }
   };
 
+  const handleSaveDraft = () => {
+    void saveDraftNow();
+  };
+
+  // Publish the draft that already exists (saving the latest edits to it first),
+  // never a second copy. The server only publishes a draft and re-checks that the
+  // required fields are there.
   const handlePublish = async () => {
-    if (submitting) return;
-    if (!canProceedFromStep2) {
-      toast({ title: step2ValidationError(), variant: "destructive" });
+    if (saver.isSaving() || published || draftLoading || draftLoadError) return;
+    const insert = draftToInsertSession(draft);
+    const problems = publishProblems({
+      title: draft.name,
+      location: draft.venue,
+      startAt: insert.startAt,
+      endAt: insert.endAt,
+      registrationOpensAt: insert.registrationOpensAt,
+      registrationClosesAt: insert.registrationClosesAt,
+    });
+    if (problems.length > 0 || !canProceedFromStep2) {
+      toast({ title: problems[0] ?? step2ValidationError(), variant: "destructive" });
       setStep(2);
       return;
     }
-    setSubmitting(true);
+    if (!(await saveDraftNow({ quiet: true }))) return;
+    const id = saver.id();
+    if (!id) return;
+    setSaving(true);
     try {
-      await ensureMyOrganization(`${user?.name ?? "My"}'s Sessions`);
-      const created = await createSession(draftToInsertSession(draft) as any);
-      await publishSession(created.id);
+      const updated = await publishSession(id);
+      saver.adopt(updated);
+      setPublished(true);
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", id] });
       setPendingApprovalOpen(true);
-    } catch (error: any) {
+    } catch (error) {
       toast({ title: "Couldn't publish session", description: friendlyApiError(error), variant: "destructive" });
     } finally {
-      setSubmitting(false);
+      setSaving(false);
     }
   };
 
@@ -216,10 +325,43 @@ export default function OrganiserSessionNewPage() {
             </div>
 
             <div className="xl:col-span-3 space-y-6">
-              {step === 1 && <Step1SessionType value={draft.type} onChange={(v) => updateDraft("type", v)} />}
-              {step === 2 && <Step2DateRegistration draft={draft} onChange={updateDraft} />}
-              {step === 3 && <Step3DetailsRules draft={draft} onChange={updateDraft} />}
-              {step === 4 && <Step4ReviewPublish draft={draft} />}
+              {!draftLoading && !draftLoadError && step === 1 && <Step1SessionType value={draft.type} onChange={(v) => updateDraft("type", v)} />}
+              {!draftLoading && !draftLoadError && step === 2 && <Step2DateRegistration draft={draft} onChange={updateDraft} />}
+              {!draftLoading && !draftLoadError && step === 3 && <Step3DetailsRules draft={draft} onChange={updateDraft} />}
+              {!draftLoading && !draftLoadError && step === 4 && <Step4ReviewPublish draft={draft} />}
+
+              {draftLoading && (
+                <p className="text-sm text-muted-foreground" role="status" data-testid="organiser-wizard-draft-loading">
+                  Loading your draft…
+                </p>
+              )}
+              {draftLoadError && (
+                <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm" data-testid="organiser-wizard-draft-load-error">
+                  <span>{draftLoadError}</span>
+                  <Button size="sm" variant="outline" className="min-h-11" onClick={() => setDraftReloadKey((k) => k + 1)} data-testid="organiser-wizard-draft-retry">
+                    Try again
+                  </Button>
+                </div>
+              )}
+              {conflict && (
+                <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm" data-testid="organiser-wizard-conflict">
+                  <span>This draft was changed somewhere else (another tab or device). Reload to see the latest version before saving, so nothing is overwritten.</span>
+                  <Button size="sm" variant="outline" className="min-h-11" onClick={() => window.location.reload()} data-testid="organiser-wizard-conflict-reload">
+                    Reload latest
+                  </Button>
+                </div>
+              )}
+              {!draftLoading && !draftLoadError && (
+                <p className="text-xs text-muted-foreground" role="status" aria-live="polite" data-testid="organiser-wizard-save-status">
+                  {saving
+                    ? "Saving…"
+                    : isDirty
+                      ? savedAt ? "Unsaved changes" : "Not saved yet"
+                      : savedAt
+                        ? `Draft saved ${savedAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
+                        : "Not saved yet"}
+                </p>
+              )}
 
               {/* Tablet/mobile nav buttons */}
               <div className="xl:hidden flex flex-col sm:flex-row gap-2">
@@ -229,8 +371,8 @@ export default function OrganiserSessionNewPage() {
                     Back
                   </Button>
                 )}
-                <Button variant="outline" onClick={handleSaveDraft} disabled={submitting} className="sm:order-2" data-testid="organiser-wizard-save-draft">
-                  Save Draft
+                <Button variant="outline" onClick={handleSaveDraft} disabled={submitting || draftLoading || !!draftLoadError} className="sm:order-2" data-testid="organiser-wizard-save-draft">
+                  {saving ? "Saving…" : "Save Draft"}
                 </Button>
                 {step < 4 ? (
                   <Button onClick={handleNext} className="sm:order-3 sm:ml-auto" data-testid="organiser-wizard-next">
@@ -238,7 +380,7 @@ export default function OrganiserSessionNewPage() {
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 ) : (
-                  <Button onClick={handlePublish} disabled={submitting} className="sm:order-3 sm:ml-auto" data-testid="organiser-wizard-publish">
+                  <Button onClick={handlePublish} disabled={submitting || published || draftLoading || !!draftLoadError} className="sm:order-3 sm:ml-auto" data-testid="organiser-wizard-publish">
                     Publish Session
                   </Button>
                 )}
@@ -255,8 +397,8 @@ export default function OrganiserSessionNewPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" onClick={handleSaveDraft} disabled={submitting} data-testid="organiser-wizard-save-draft-bottom">
-                    Save as Draft
+                  <Button variant="outline" onClick={handleSaveDraft} disabled={submitting || draftLoading || !!draftLoadError} data-testid="organiser-wizard-save-draft-bottom">
+                    {saving ? "Saving…" : "Save as Draft"}
                   </Button>
                   {step < 4 ? (
                     <Button onClick={handleNext} data-testid="organiser-wizard-next-bottom">
@@ -264,7 +406,7 @@ export default function OrganiserSessionNewPage() {
                       <ArrowRight className="w-4 h-4 ml-2" />
                     </Button>
                   ) : (
-                    <Button onClick={handlePublish} disabled={submitting} data-testid="organiser-wizard-publish-bottom">
+                    <Button onClick={handlePublish} disabled={submitting || published || draftLoading || !!draftLoadError} data-testid="organiser-wizard-publish-bottom">
                       Publish Session
                     </Button>
                   )}

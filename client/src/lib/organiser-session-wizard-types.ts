@@ -2,6 +2,7 @@ import { zonedTimeToUtc, toZonedDateTimeInputs } from "@/lib/timezone";
 import type { SessionWithDetails, SessionTemplate } from "@shared/schema";
 import { sessionCategoryOf } from "@shared/sessionCategories";
 import { policyColumns, readSessionPolicies } from "@shared/sessionPolicies";
+import { CLEARABLE_SESSION_FIELDS, DRAFT_PLACEHOLDER_TITLE, isPlaceholderTitle } from "@shared/sessionDraft";
 
 export type SessionTypeKey =
   | "social"
@@ -277,6 +278,84 @@ export function sessionToDraft(session: SessionWithDetails): NewSessionDraft {
         cancellationPolicy: policies.cancellation ?? "",
       };
     })(),
+  };
+}
+
+/*
+ * Saving a DRAFT (Save as Draft, every step) - shared/sessionDraft.ts has the rules.
+ *
+ * draftToSessionPayload: a draft may be incomplete, so nothing publish-only is
+ * required here. A name that is empty (or a single character, which the server
+ * would refuse) is stored as the placeholder title; a type that was never chosen
+ * is left out so the row keeps its default. When the draft is already saved
+ * ("update"), every optional field the form has emptied is sent as an explicit
+ * null, otherwise a cleared venue / end time / cover photo would quietly keep its
+ * old value in the row.
+ */
+export function draftToSessionPayload(draft: NewSessionDraft, mode: "create" | "update") {
+  const base: Record<string, unknown> = { ...draftToInsertSession(draft) };
+  base.title = draft.name.trim().length >= 2 ? draft.name.trim() : DRAFT_PLACEHOLDER_TITLE;
+  if (draft.type === null) delete base.type;
+  if (mode === "update") {
+    for (const key of CLEARABLE_SESSION_FIELDS) {
+      if (base[key] === undefined) base[key] = null;
+    }
+  }
+  return base;
+}
+
+/**
+ * The inverse for RESUMING a saved draft (Continue Setup / ?draft=<id>). Unlike
+ * sessionToDraft (Duplicate: "(Copy)" in the name, dates reset to today) this
+ * keeps exactly what was saved: the name (the placeholder title shows as an empty
+ * name again), real dates and times, registration window, multi-day end date,
+ * and a blank stays blank instead of snapping back to a default.
+ */
+export function savedSessionToDraft(session: SessionWithDetails): NewSessionDraft {
+  const empty = createEmptyDraft();
+  const zone = session.timeZone ?? empty.timeZone;
+  const start = toZonedDateTimeInputs(session.startAt, zone);
+  const end = session.endAt ? toZonedDateTimeInputs(session.endAt, zone) : null;
+  const opens = session.registrationOpensAt ? toZonedDateTimeInputs(session.registrationOpensAt, zone) : null;
+  const closes = session.registrationClosesAt ? toZonedDateTimeInputs(session.registrationClosesAt, zone) : null;
+  const { policies } = readSessionPolicies(session);
+  const priceNum = session.price ? Number(session.price) : 0;
+  // draftToInsertSession writes "Format: Mixed Doubles" into the description; matchMode alone can't tell it from doubles.
+  const mixed = /^Format: Mixed Doubles/.test(session.description ?? "");
+
+  return {
+    ...empty,
+    type: (session.type as SessionTypeKey) ?? null,
+    name: isPlaceholderTitle(session.title) ? "" : session.title,
+    seasonId: session.seasonId ?? null,
+    venue: session.location ?? "",
+    courtCount: session.courtsCount ?? 0,
+    timeZone: zone,
+    date: start.date,
+    endDate: end && end.date !== start.date ? end.date : "",
+    startTime: start.time,
+    endTime: end?.time ?? "",
+    registrationOpens: opens?.date ?? "",
+    registrationOpensTime: opens?.time ?? empty.registrationOpensTime,
+    registrationCloses: closes?.date ?? "",
+    registrationClosesTime: closes?.time ?? empty.registrationClosesTime,
+    maxPlayers: session.maxParticipants ?? 0,
+    waitingListEnabled: session.waitingListEnabled ?? empty.waitingListEnabled,
+    waitingListCapacity: session.waitingListEnabled ? (session.waitingListCapacity ?? null) : empty.waitingListCapacity,
+    pricing: priceNum > 0 ? "paid" : "free",
+    price: priceNum > 0 ? priceNum : empty.price,
+    visibility: (session.visibility as Visibility) ?? empty.visibility,
+    coverImage: session.coverImage ?? null,
+    matchType: mixed ? "mixed" : session.matchMode === "singles" ? "singles" : "doubles",
+    category: (session.category as NewSessionDraft["category"]) ?? empty.category,
+    gamesTo: session.gamesTo ?? empty.gamesTo,
+    roundsCount: session.plannedRoundsCount ?? empty.roundsCount,
+    noAd: session.noAd ?? empty.noAd,
+    tiebreak: session.tiebreak ?? empty.tiebreak,
+    rulesText: policies.rules ?? "",
+    refundPolicy: policies.refund ?? "",
+    latePolicy: policies.lateArrival ?? "",
+    cancellationPolicy: policies.cancellation ?? "",
   };
 }
 

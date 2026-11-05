@@ -56,7 +56,7 @@ test.describe('TC Live v1', () => {
     await page.getByTestId('organiser-wizard-next-bottom').click();
     await page.getByTestId('organiser-wizard-match-type-singles').click();
     await page.getByTestId('organiser-wizard-save-draft-bottom').click();
-    await expect(page).toHaveURL(/\/organiser\/sessions(\?|$)/, { timeout: 15_000 });
+    await expect(page.getByText('Session saved as draft').first()).toBeVisible({ timeout: 15_000 });
 
     const mine = (await (await page.request.get('/api/organizer/sessions/mine')).json()) as { id: string; title: string }[];
     const created = mine.find((s) => s.title === title)!;

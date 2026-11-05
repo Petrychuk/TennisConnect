@@ -50,7 +50,7 @@ function resetData() {
     "live-b": { id: "live-b", organizationId: "org-b", status: "live", courtsCount: 2, matchMode: "singles", isInternalTest: false, title: "Live B" },
     "live-i": { id: "live-i", organizationId: "org-i", status: "live", courtsCount: 1, matchMode: "singles", isInternalTest: true, title: "Internal" },
     "pub-i": { id: "pub-i", organizationId: "org-i", status: "published", courtsCount: 1, matchMode: "singles", isInternalTest: true, title: "Internal pub", startAt: new Date(Date.now() + 864e5), endAt: null, timeZone: "Australia/Sydney" },
-    "draft-i": { id: "draft-i", organizationId: "org-i", status: "draft", isInternalTest: true, title: "Internal draft", parentSessionId: null },
+    "draft-i": { id: "draft-i", organizationId: "org-i", status: "draft", isInternalTest: true, title: "Internal draft", location: "Court 1", startAt: new Date(Date.now() + 864e5), endAt: null, parentSessionId: null },
   };
   // pub-a: 3 checked-in + available registrants (doubles needs 4), one withdrawn, one waitlisted+checked in.
   REGS = [

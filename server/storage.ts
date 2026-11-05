@@ -468,6 +468,12 @@ export interface IStorage {
   getSessionsThisWeek(): Promise<SessionWithDetails[]>;
   getSessionsUserRegisteredFor(userId: string): Promise<SessionWithDetails[]>;
   updateSession(id: string, updates: Partial<InsertSession>): Promise<TennisSession>;
+  /** Save only if the row is still the one the editor loaded (updatedAt, to the millisecond). undefined = it moved on. */
+  updateSessionIfUnchanged(
+    id: string,
+    updates: Partial<InsertSession> & Record<string, unknown>,
+    expectedUpdatedAt: Date
+  ): Promise<TennisSession | undefined>;
  // Organizer: send a draft to the admin queue.
   submitSessionForReview(id: string): Promise<TennisSession>;
   // Admin: approve (-> published) or reject (-> rejected) a submitted session.
@@ -4567,6 +4573,32 @@ export class DatabaseStorage implements IStorage {
       .where(eq(tennisSessions.id, id))
       .returning();
   
+    return session;
+  }
+
+  // Draft saves (stale-write guard, shared/sessionDraft.ts). The comparison is
+  // truncated to milliseconds on both sides: Postgres keeps microseconds, a JS
+  // Date (and the ISO string the client sends back) only milliseconds.
+  async updateSessionIfUnchanged(
+    id: string,
+    updates: Partial<InsertSession> & Record<string, unknown>,
+    expectedUpdatedAt: Date
+  ): Promise<TennisSession | undefined> {
+    const { price, ...rest } = updates as any;
+    const [session] = await db
+      .update(tennisSessions)
+      .set({
+        ...rest,
+        ...(price !== undefined ? { price: price !== null ? String(price) : null } : {}),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(tennisSessions.id, id),
+          sql`date_trunc('milliseconds', ${tennisSessions.updatedAt}) = date_trunc('milliseconds', ${expectedUpdatedAt.toISOString()}::timestamptz)`
+        )
+      )
+      .returning();
     return session;
   }
 

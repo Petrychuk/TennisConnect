@@ -42,7 +42,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
-import { bucketFor, STATUS_BADGE_LABEL, STATUS_BADGE_STYLE, getPrimaryActionMeta } from "./session-utils";
+import { bucketFor, STATUS_BADGE_LABEL, STATUS_BADGE_STYLE, getPrimaryActionMeta, sessionEditPath } from "./session-utils";
 import { SaveAsTemplateDialog } from "./save-as-template-dialog";
 import { Metric } from "./session-card";
 import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.webp";
@@ -79,7 +79,7 @@ export function SessionCardGrid({ session, onDuplicate, onDelete, onArchive }: S
   const openWorkspace = () => setLocation(`/organiser/sessions/${session.id}`);
   // Where Live isn't enabled for this session (TC_LIVE_ENABLED), a live session opens its workspace.
   const openLive = () => setLocation(liveAvailable ? `/organiser/sessions/${session.id}/live` : `/organiser/sessions/${session.id}`);
-  const openEdit = () => setLocation(`/organiser/sessions/${session.id}/edit`);
+  const openEdit = () => setLocation(sessionEditPath(session));
   const openResults = () => setLocation(`/organiser/sessions/${session.id}?tab=${hasRounds ? "results" : "players"}`);
 
   const handleDuplicate = () => {
@@ -90,7 +90,9 @@ export function SessionCardGrid({ session, onDuplicate, onDelete, onArchive }: S
 
   const primaryAction = getPrimaryActionMeta(bucket, Play, liveAvailable, hasRounds);
   const primaryOnClick =
-    bucket === "draft" || bucket === "registration-open" || bucket === "upcoming"
+    bucket === "draft"
+      ? openEdit // Continue Setup: back into the wizard, with everything that was saved
+      : bucket === "registration-open" || bucket === "upcoming"
       ? openWorkspace
       : bucket === "live"
       ? openLive

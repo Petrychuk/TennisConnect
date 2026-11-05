@@ -57,7 +57,8 @@ import { RoundsTab } from "@/components/organiser/sessions/workspace/rounds-tab"
 import { MessagesTab } from "@/components/organiser/sessions/workspace/messages-tab";
 import { ResultsTab } from "@/components/organiser/sessions/workspace/results-tab";
 import { SettingsTab } from "@/components/organiser/sessions/workspace/settings-tab";
-import { bucketFor } from "@/components/organiser/sessions/session-utils";
+import { bucketFor, sessionEditPath } from "@/components/organiser/sessions/session-utils";
+import { friendlyApiError } from "@/lib/apiError";
 
 import { useQuery } from "@tanstack/react-query";
 import { getSessionById } from "@/lib/api/organizer-sessions";
@@ -243,7 +244,7 @@ export default function OrganiserSessionWorkspacePage() {
           : { title: "Sent for review", description: "It'll go live once an admin approves it." }
       );
     } catch (error: any) {
-      toast({ title: "Couldn't publish", description: error?.message ?? "Please try again.", variant: "destructive" });
+      toast({ title: "Couldn't publish", description: friendlyApiError(error), variant: "destructive" });
     } finally {
       setPublishing(false);
     }
@@ -309,7 +310,7 @@ export default function OrganiserSessionWorkspacePage() {
 
   const bucket = bucketFor(session);
 
-  const goEdit = () => setLocation(`/organiser/sessions/${session.id}/edit`);
+  const goEdit = () => setLocation(sessionEditPath(session));
   const goLive = () => setLocation(`/organiser/sessions/${session.id}/live`);
 
   // Same state -> action mapping as the Sessions list card, so a session

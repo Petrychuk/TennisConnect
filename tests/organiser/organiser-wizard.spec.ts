@@ -49,9 +49,12 @@ async function addPolicies(page: Page, rules: string, refund: string) {
   await page.getByTestId('organiser-wizard-refund-policy').fill(refund);
 }
 
+// Save as Draft keeps the organiser in the wizard (so they can keep going and save again):
+// the success toast, then the URL carries ?draft=<id>.
 async function saveDraft(page: Page) {
   await page.getByTestId('organiser-wizard-save-draft-bottom').click();
-  await expect(page).toHaveURL(/\/organiser\/sessions(\?|$)/, { timeout: 15_000 });
+  await expect(page.getByText('Session saved as draft').first()).toBeVisible({ timeout: 15_000 });
+  await expect(page).toHaveURL(/\/organiser\/sessions\/new\?draft=/);
 }
 
 test.describe('Create Session wizard', () => {
@@ -106,7 +109,7 @@ test.describe('Create Session wizard', () => {
     }
   });
 
-  test('ORG-WIZ-002 Required fields: no session without a type, name, venue and date', async ({ page }) => {
+  test('ORG-WIZ-002 Required fields: Next needs name, venue and date; a draft does not; publishing does', async ({ page }) => {
     await becomeOrganiser(page);
     const before = (await (await page.request.get('/api/organizer/sessions/mine')).json()).length;
 
@@ -116,16 +119,18 @@ test.describe('Create Session wizard', () => {
     await expect(page.getByTestId('organiser-wizard-step1')).toBeVisible();
 
     await pickFormat(page, 'social-play', 'social');
-    // Step 2 with no name/venue: Next and Save Draft both refuse.
+    // Step 2 with no name/venue: Next refuses...
     await page.getByTestId('organiser-wizard-session-name').fill('');
     await page.getByTestId('organiser-wizard-next-bottom').click();
     await expect(page.getByTestId('organiser-wizard-step2')).toBeVisible();
     await expect(page.getByText('Give your session a name, venue, and date to continue').first()).toBeVisible();
-    await page.getByTestId('organiser-wizard-save-draft-bottom').click();
-    await expect(page.getByTestId('organiser-wizard-step2')).toBeVisible();
+    expect((await (await page.request.get('/api/organizer/sessions/mine')).json()).length, 'Next saved nothing').toBe(before);
 
-    const after = (await (await page.request.get('/api/organizer/sessions/mine')).json()).length;
-    expect(after, 'nothing was saved').toBe(before);
+    // ...but Save as Draft keeps the incomplete draft (one row, as a draft).
+    await saveDraft(page);
+    const mine = (await (await page.request.get('/api/organizer/sessions/mine')).json()) as { id: string; status: string }[];
+    expect(mine.length, 'exactly one draft was created').toBe(before + 1);
+    expect(mine.find((s) => s.status === 'draft')).toBeTruthy();
   });
 
   test('ORG-WIZ-003 Edit keeps the policies after a reload; Duplicate pre-fills without saving', async ({ page }) => {
@@ -140,6 +145,7 @@ test.describe('Create Session wizard', () => {
 
     // Edit restores the policies as separate fields...
     await page.goto(`/organiser/sessions/${seeded.id}/edit`);
+    await page.getByTestId('organiser-session-edit-policies-toggle').click(); // Rules & policies start collapsed
     await expect(page.getByTestId('organiser-session-edit-policy-rules')).toHaveValue('Bring a racquet', { timeout: 15_000 });
     await expect(page.getByTestId('organiser-session-edit-policy-cancellation')).toHaveValue('Cancel from My Sessions');
     await page.getByTestId('organiser-session-edit-policy-lateArrival').fill('Spots go to the waiting list after 15 minutes');
@@ -153,6 +159,7 @@ test.describe('Create Session wizard', () => {
     expect(saved.rulesText).toBeNull();
     expect(saved.cancellationPolicy).toBe('Cancel from My Sessions');
     await page.goto(`/organiser/sessions/${seeded.id}/edit`);
+    await page.getByTestId('organiser-session-edit-policies-toggle').click();
     await expect(page.getByTestId('organiser-session-edit-policy-lateArrival')).toHaveValue('Spots go to the waiting list after 15 minutes', { timeout: 15_000 });
 
     // Duplicate opens the wizard pre-filled and creates nothing by itself.

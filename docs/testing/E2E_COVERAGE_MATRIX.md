@@ -1,6 +1,6 @@
 # E2E coverage matrix
 
-Updated 5 Nov 2026. Inventory from `npx playwright test --list`: **390 tests in 52 files**. Production selection: **33 tests in 1 file**. Phases are in `tests/safety/staging-phases.ts`. "Not run" means the test exists but its last Staging result is not known for this branch (`REGRESSION_RESULTS.md`).
+Updated 5 Nov 2026. Inventory from `npx playwright test --list`: **404 tests in 54 files**. Production selection: **33 tests in 1 file**. Phases are in `tests/safety/staging-phases.ts`. "Not run" means the test exists but its last Staging result is not known for this branch (`REGRESSION_RESULTS.md`).
 
 ## Platform
 
@@ -46,6 +46,20 @@ Updated 5 Nov 2026. Inventory from `npx playwright test --list`: **390 tests in 
 | | Unauthorised edit | ORG-PERM-001 (404) |
 | **C. Wizard** | Social Play, Competition, Coaching & Fitness, Other: category-specific fields, saved values via API | ORG-WIZ-001 |
 | | Step 2 layout at six viewports: no overflow, field icons centred, 44 px controls on touch | ORG-WIZ-005 |
+| | Save as Draft from every wizard step; first save = exactly one draft, later saves update it | ORG-DRAFT-001 |
+| | Draft in My Sessions All + Drafts; refresh keeps incomplete fields | ORG-DRAFT-002 |
+| | Reopen after logout/login, edit another step, save again, no duplicate or loss | ORG-DRAFT-003 |
+| | Failed save: error, no success claim, nothing created; retry succeeds | ORG-DRAFT-004 |
+| | Stale save refused with a conflict banner | ORG-DRAFT-005 |
+| | Incomplete draft cannot be published, stays a draft | ORG-DRAFT-006 |
+| | Publish saved draft = same session, leaves Drafts (opt-in, messages admins) | ORG-DRAFT-007 |
+| | Edit Session: prefill, three compact sections, shared rows, readable width | ORG-EDIT-001 |
+| | Edit saves and persists; Cancel saves nothing | ORG-EDIT-002 |
+| | Price only for Paid; Free to Paid needs a price | ORG-EDIT-003 |
+| | Waiting List toggle persists | ORG-EDIT-004 |
+| | Rules & policies collapsed, values kept when collapsed, each policy saves | ORG-EDIT-005 |
+| | Required fields block the save with inline errors | ORG-EDIT-006 |
+| | Phone: no horizontal scroll, Start/End share a row | ORG-EDIT-007 |
 | | Required fields | ORG-WIZ-002 |
 | | Edit (policies persist after reload), Duplicate (pre-fill, nothing saved) | ORG-WIZ-003 |
 | | Publish | ORG-WIZ-004, **opt-in** (see decision below) |

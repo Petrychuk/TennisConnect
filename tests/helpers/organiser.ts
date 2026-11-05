@@ -24,6 +24,7 @@ export interface OrganiserFixture {
   id: string;
   name: string;
   email: string;
+  password: string;
   slug: string;
   organizationId: string;
   organizationName: string;
@@ -81,6 +82,7 @@ export async function becomeOrganiser(page: Page, organizationName?: string): Pr
     id: me.id,
     name: me.name,
     email: organiser.email,
+    password: organiser.password,
     slug: me.slug,
     organizationId: organization.id,
     organizationName: organization.name,

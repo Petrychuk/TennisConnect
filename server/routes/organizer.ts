@@ -9,6 +9,13 @@ import { isInternalTestUser, liveAllowedFor, liveMode } from "../lib/liveFeature
 import { LiveRuleError } from "../lib/liveErrors";
 import { goLiveProblem, scoreProblem } from "@shared/liveRules";
 import {
+  STALE_DRAFT_MESSAGE,
+  publishProblems,
+  publishStatusProblem,
+  readExpectedUpdatedAt,
+  splitNullClears,
+} from "@shared/sessionDraft";
+import {
   type InsertOrganization,
   insertSessionSchema,
   insertMatchScoreSchema,
@@ -18,6 +25,7 @@ import {
   updateSeasonSchema,
   type Season,
   type TennisSession,
+  type InsertSession,
   insertSeriesSchema,
   updateSeriesSchema,
   type Series,
@@ -873,12 +881,31 @@ async function requireMatchInSession(req: Request, res: Response, next: NextFunc
 
 router.put("/sessions/:id", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
   try {
-    const parsed = insertSessionSchema.partial().safeParse(req.body);
+    // `null` on an optional field means "clear it" (a draft whose venue was
+    // emptied must not keep the old one) and `expectedUpdatedAt` is the
+    // stale-write guard - both in shared/sessionDraft.ts.
+    const { expectedUpdatedAt: expectedRaw, ...bodyWithoutGuard } = (req.body ?? {}) as Record<string, unknown>;
+    const { rest, clears } = splitNullClears(bodyWithoutGuard);
+    const expected = readExpectedUpdatedAt(expectedRaw);
+    if (expected.kind === "invalid") {
+      return res.status(400).json({ message: "expectedUpdatedAt must be an ISO date" });
+    }
+    const parsed = insertSessionSchema.partial().safeParse(rest);
     if (!parsed.success) {
       return res.status(400).json({ message: "Invalid input", errors: parsed.error });
     }
     const before = (req as any).session_ as TennisSession;
-    const updated = await storage.updateSession(req.params.id, parsed.data);
+    const changes = { ...parsed.data, ...clears } as Partial<InsertSession> & Record<string, unknown>;
+    let updated: TennisSession;
+    if (expected.kind === "ok") {
+      const saved = await storage.updateSessionIfUnchanged(req.params.id, changes, expected.at);
+      if (!saved) {
+        return res.status(409).json({ code: "stale", message: STALE_DRAFT_MESSAGE });
+      }
+      updated = saved;
+    } else {
+      updated = await storage.updateSession(req.params.id, changes);
+    }
 
     // Only startAt actually changing means a real reschedule - a
     // no-op PUT (saving the form without touching the date/time) or a
@@ -888,7 +915,8 @@ router.put("/sessions/:id", requireAuth, requireOrganizer, requireOwnSession, as
     // the actual decision a "when's it now" notice needs to inform.
     const oldStart = new Date(before.startAt).getTime();
     const newStart = new Date(updated.startAt).getTime();
-    if (oldStart !== newStart) {
+    // (A draft has nobody registered - saving one never notifies anyone.)
+    if (oldStart !== newStart && before.status !== "draft") {
       const organizer = await storage.getUser((req.user as any).id);
       if (organizer) {
         const newWhen = new Date(updated.startAt).toLocaleString("en-US", {
@@ -921,6 +949,19 @@ router.post("/sessions/:id/publish", requireAuth, requireOrganizer, requireOwnSe
     const reviewerId = (req.user as any).id;
     const isAdmin = (req.user as any).isAdmin;
     const thisSession = (req as any).session_ as TennisSession;
+
+    // Only a draft (or a rejected session being resubmitted) can be published.
+    // Before, publishing a live or published session quietly reset it to
+    // "pending_review", and a double click on Publish submitted it twice.
+    const statusProblem = publishStatusProblem(thisSession.status);
+    if (statusProblem) {
+      return res.status(409).json({ code: "not_publishable", message: statusProblem });
+    }
+    // Drafts may be incomplete; publishing may not.
+    const problems = publishProblems(thisSession);
+    if (problems.length > 0) {
+      return res.status(400).json({ code: "incomplete", message: problems.join(" "), problems });
+    }
 
     // A division of a container that's already published doesn't need
     // its own admin review - the admin already approved the event

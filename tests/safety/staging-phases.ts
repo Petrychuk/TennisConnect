@@ -125,6 +125,8 @@ export const STAGING_PHASES: Readonly<Record<StagingPhase, readonly PhaseEntry[]
     // ORG-WIZ-004 skips itself unless E2E_ALLOW_PUBLISH_REVIEW=1 (it messages every admin).
     { file: 'tests/organiser/organiser-permissions.spec.ts', ids: ['ORG-PERM-001', 'ORG-PERM-002'] },
     { file: 'tests/organiser/organiser-wizard.spec.ts', ids: ['ORG-WIZ-001', 'ORG-WIZ-002', 'ORG-WIZ-003', 'ORG-WIZ-004', 'ORG-WIZ-005'] },
+    { file: 'tests/organiser/organiser-edit.spec.ts', ids: ['ORG-EDIT-001', 'ORG-EDIT-002', 'ORG-EDIT-003', 'ORG-EDIT-004', 'ORG-EDIT-005', 'ORG-EDIT-006', 'ORG-EDIT-007'] },
+    { file: 'tests/organiser/organiser-drafts.spec.ts', ids: ['ORG-DRAFT-001', 'ORG-DRAFT-002', 'ORG-DRAFT-003', 'ORG-DRAFT-004', 'ORG-DRAFT-005', 'ORG-DRAFT-006', 'ORG-DRAFT-007'] },
     { file: 'tests/organiser/organiser-workspace.spec.ts', ids: ['ORG-WS-001', 'ORG-WS-002', 'ORG-WS-003', 'ORG-WS-004', 'ORG-WS-005'] },
     {
       file: 'tests/organiser/organiser-session-actions.spec.ts',

@@ -109,3 +109,12 @@ export function getPrimaryActionMeta(bucket: Exclude<SessionBucket, "all">, play
       return { label: "Manage Session", urgent: true }; // registration-open, upcoming
   }
 }
+
+/**
+ * Where "open / edit this session" goes. A draft is finished in the wizard (all
+ * four steps, Save as Draft, Publish); the flat Edit page is for sessions that
+ * are already out (it asks for name, venue and date, which a draft may not have yet).
+ */
+export function sessionEditPath(session: { id: string; status: string }): string {
+  return session.status === "draft" ? `/organiser/sessions/new?draft=${session.id}` : `/organiser/sessions/${session.id}/edit`;
+}

@@ -42,3 +42,6 @@ Batches 1 and 2 are checked by code-level tests: unit, route and source guards. 
 - the updated ORG-AUTH tests.
 
 Layout on phone and tablet, and every page with real data, are therefore unverified until that run. See `docs/testing/REGRESSION_RESULTS.md` for the run order and `docs/testing/E2E_COVERAGE_MATRIX.md` for what each test covers.
+
+## Drafts
+See `docs/organiser-hub/DRAFTS.md`: unselected type saves as `social`; null player/court counts resume as 0; no server-side idempotency key; `updateSessionIfUnchanged` is covered by route tests with a fake store, not against Postgres; ORG-DRAFT specs have not been run (no app/Staging available in this environment).
