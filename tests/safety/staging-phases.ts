@@ -114,6 +114,20 @@ export const STAGING_PHASES: Readonly<Record<StagingPhase, readonly PhaseEntry[]
       file: 'tests/organiser/organiser-dashboard-states.spec.ts',
       ids: ['ORG-DASH-001', 'ORG-DASH-002', 'ORG-DASH-003', 'ORG-DASH-004', 'ORG-DASH-005', 'ORG-DASH-006'],
     },
+    // Automation gap report (P0), 5 Nov 2026. Run-owned organisers, players and sessions;
+    // drafts and check-ins only - nothing is published, emailed or messaged.
+    {
+      file: 'tests/organiser/organiser-workspace-players.spec.ts',
+      ids: ['ORG-WSP-001', 'ORG-WSP-002', 'ORG-WSP-003', 'ORG-WSP-004', 'ORG-WSP-005', 'ORG-WSP-006'],
+    },
+    {
+      file: 'tests/organiser/organiser-wizard-review.spec.ts',
+      ids: ['ORG-WIZ-006', 'ORG-WIZ-007'],
+    },
+    {
+      file: 'tests/organiser/organiser-access-organisation.spec.ts',
+      ids: ['ORG-ACC-001', 'ORG-ACC-002', 'ORG-ACC-003', 'ORG-ORGN-001'],
+    },
     { file: 'tests/organiser/organiser-critical-flows.spec.ts', ids: ['ORG-FLOW-001', 'ORG-FLOW-003'] },
     { file: 'tests/organiser/organiser-rankings.spec.ts', ids: ['ORG-RANK-002', 'ORG-RANK-004', 'ORG-RANK-006'] },
     { file: 'tests/organiser/organiser-reports.spec.ts', ids: ['ORG-REPORT-003', 'ORG-REPORT-004', 'ORG-REPORT-010', 'ORG-REPORT-012'] },
