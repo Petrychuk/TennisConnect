@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import SEO from "@/components/seo";
 import { useAuth } from "@/lib/auth-context";
@@ -17,6 +16,16 @@ import { UpcomingSessionsCard } from "./upcoming-sessions-card";
 import { QuickActionsCard } from "./quick-actions-card";
 import { RecentActivityCard } from "./recent-activity-card";
 import { StatisticsCard } from "./statistics-card";
+import { CardSkeleton, CardUnavailable, DashboardWarning, WelcomeEmptyState } from "./dashboard-states";
+import {
+  attendanceTileValue,
+  countTileValue,
+  countUpcoming7Days,
+  failedSources,
+  failureMessage,
+  isNewOrganiser,
+  sourceStatus,
+} from "@/lib/organiserDashboard";
 
 import {
   getMySessions,
@@ -160,16 +169,6 @@ function OrganiserDashboardContent() {
       .map((s) => toMockSession(s));
   }, [mySessionsQuery.data]);
 
-  const upcomingCount7Days = useMemo(() => {
-    if (!mySessionsQuery.data) return null;
-    const now = Date.now();
-    const in7Days = now + 7 * 24 * 60 * 60 * 1000;
-    return mySessionsQuery.data.filter((s) => {
-      const start = new Date(s.startAt).getTime();
-      return s.status === "published" && start >= now && start <= in7Days;
-    }).length;
-  }, [mySessionsQuery.data]);
-
   // Real, computed directly from mySessionsQuery (which already carries
   // registeredCount/maxParticipants per session) rather than a mock -
   // deliberately no week-over-week delta (see QuickStat's own comment):
@@ -202,19 +201,23 @@ function OrganiserDashboardContent() {
     return stats;
   }, [mySessionsQuery.data]);
 
-  // Each tile: the real value, null while its request loads, or "—" with an
-  // error note if it failed. No invented fallbacks.
-  const sessionsTile = mySessionsQuery.isError ? "—" : mySessionsQuery.data ? undefined : null;
-  const statsTile = dashboardStatsQuery.isError ? "—" : dashboardStatsQuery.data ? undefined : null;
+  // Each source is judged on its own (organiserDashboard.ts): a failed
+  // sessions request must not blank the player figures that did load.
+  const statuses = {
+    sessions: sourceStatus(mySessionsQuery),
+    stats: sourceStatus(dashboardStatsQuery),
+    activity: sourceStatus(dashboardActivityQuery),
+  };
+  const sessions = mySessionsQuery.data ?? [];
+  const liveSessions = sessions.filter((s) => s.status === "live");
   const statStrip: StatStripItem[] = STAT_STRIP.map((stat) => {
     if (stat.key === "live") {
-      const liveSessions = (mySessionsQuery.data ?? []).filter((s) => s.status === "live");
       return {
         ...stat,
-        value: sessionsTile !== undefined ? sessionsTile : String(liveSessions.length),
+        value: countTileValue(statuses.sessions, liveSessions.length),
         // One live session: straight to it (Live page on Staging, the
         // workspace elsewhere). Several: the Live bucket of the list.
-        href: !mySessionsQuery.data
+        href: statuses.sessions !== "ready"
           ? undefined
           : liveSessions.length === 1
             ? liveAvailableFor(liveMode, liveSessions[0]) ? `/organiser/sessions/${liveSessions[0].id}/live` : `/organiser/sessions/${liveSessions[0].id}`
@@ -222,19 +225,27 @@ function OrganiserDashboardContent() {
       };
     }
     if (stat.key === "upcoming") {
-      return { ...stat, value: sessionsTile !== undefined ? sessionsTile : String(upcomingCount7Days ?? 0), href: mySessionsQuery.data ? "/organiser/sessions?bucket=upcoming" : undefined };
+      return { ...stat, value: countTileValue(statuses.sessions, countUpcoming7Days(sessions)), href: statuses.sessions === "ready" ? "/organiser/sessions?bucket=upcoming" : undefined };
     }
     if (stat.key === "players") {
-      return { ...stat, value: statsTile !== undefined ? statsTile : String(dashboardStatsQuery.data!.activePlayers), href: dashboardStatsQuery.data ? "/organiser/players" : undefined };
+      return { ...stat, value: countTileValue(statuses.stats, dashboardStatsQuery.data?.activePlayers), href: statuses.stats === "ready" ? "/organiser/players" : undefined };
     }
     return {
       ...stat,
-      value: statsTile !== undefined ? statsTile : `${dashboardStatsQuery.data!.attendancePercent}%`,
-      href: dashboardStatsQuery.data ? "/organiser/reports" : undefined,
+      value: attendanceTileValue(statuses.stats, dashboardStatsQuery.data?.attendancePercent),
+      href: statuses.stats === "ready" ? "/organiser/reports" : undefined,
     };
   });
-  const dataError = mySessionsQuery.isError || dashboardStatsQuery.isError || dashboardActivityQuery.isError;
-  const firstLoad = mySessionsQuery.isLoading && dashboardStatsQuery.isLoading;
+  const failed = failedSources(statuses);
+  const retryFailed = () => {
+    if (failed.includes("sessions")) mySessionsQuery.refetch();
+    if (failed.includes("stats")) dashboardStatsQuery.refetch();
+    if (failed.includes("activity")) dashboardActivityQuery.refetch();
+  };
+  const retrying = mySessionsQuery.isFetching || dashboardStatsQuery.isFetching || dashboardActivityQuery.isFetching;
+  const firstLoad = statuses.sessions === "loading" && statuses.stats === "loading";
+  const newOrganiser = isNewOrganiser(statuses.sessions, mySessionsQuery.data);
+  const goCreate = () => setLocation("/organiser/sessions/new");
 
   return (
     <div className="min-h-screen flex bg-background" data-testid="organiser-dashboard">
@@ -274,53 +285,59 @@ function OrganiserDashboardContent() {
           <>
             <DashboardHero organiser={organiser} stats={statStrip} />
 
-            {dataError && (
-              <div className="px-4 sm:px-6 lg:px-8 pt-4">
-                <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm" data-testid="organiser-dashboard-error">
-                  <span>Some dashboard data couldn't be loaded. The figures marked "—" are unavailable right now.</span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      mySessionsQuery.refetch();
-                      dashboardStatsQuery.refetch();
-                      dashboardActivityQuery.refetch();
-                    }}
-                    data-testid="organiser-dashboard-retry"
-                  >
-                    Try again
-                  </Button>
-                </div>
-              </div>
-            )}
+            {failed.length > 0 && <DashboardWarning message={failureMessage(failed)} onRetry={retryFailed} retrying={retrying} />}
 
             <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-6 xl:grid-cols-12 gap-6">
-                <LiveTodayCard
-                  session={liveSession}
-                  nextUpcoming={upcomingSessions[0] ?? null}
-                  className="md:col-span-6 xl:col-span-8"
-                  onEnterLive={liveAvailableFor(liveMode, realLiveSession) ? () => liveSession && setLocation(`/organiser/sessions/${liveSession.id}/live`) : undefined}
-                  onManageCheckIn={(id) => setLocation(`/organiser/sessions/${id}?tab=players`)}
-                  onOpenSession={(id) => setLocation(`/organiser/sessions/${id}`)}
-                />
-                <RecentActivityCard items={dashboardActivityQuery.data ?? []} className="md:col-span-6 xl:col-span-4" />
+                {statuses.sessions === "loading" ? (
+                  <CardSkeleton testId="organiser-live-skeleton" className="md:col-span-6 xl:col-span-8" height="h-72" />
+                ) : statuses.sessions === "error" ? (
+                  <CardUnavailable testId="organiser-live-unavailable" title="Live Session" className="md:col-span-6 xl:col-span-8" />
+                ) : newOrganiser ? (
+                  <WelcomeEmptyState onCreateSession={goCreate} className="md:col-span-6 xl:col-span-8" />
+                ) : (
+                  <LiveTodayCard
+                    session={liveSession}
+                    nextUpcoming={upcomingSessions[0] ?? null}
+                    className="md:col-span-6 xl:col-span-8"
+                    onEnterLive={liveAvailableFor(liveMode, realLiveSession) ? () => liveSession && setLocation(`/organiser/sessions/${liveSession.id}/live`) : undefined}
+                    onManageCheckIn={(id) => setLocation(`/organiser/sessions/${id}?tab=players`)}
+                    onOpenSession={(id) => setLocation(`/organiser/sessions/${id}`)}
+                  />
+                )}
+                {statuses.activity === "loading" ? (
+                  <CardSkeleton testId="organiser-activity-skeleton" className="md:col-span-6 xl:col-span-4" height="h-72" />
+                ) : statuses.activity === "error" ? (
+                  <CardUnavailable testId="organiser-activity-unavailable" title="Recent Activity" className="md:col-span-6 xl:col-span-4" />
+                ) : (
+                  <RecentActivityCard items={dashboardActivityQuery.data ?? []} className="md:col-span-6 xl:col-span-4" />
+                )}
 
-                <UpcomingSessionsCard
-                  sessions={upcomingSessions}
-                  onCreateSession={() => setLocation("/organiser/sessions/new")}
-                  onManage={(id) => setLocation(`/organiser/sessions/${id}`)}
-                  className="md:col-span-6 xl:col-span-8"
-                />
+                {/* A new organiser's welcome card already carries the Create Session
+                    CTA, so the empty Upcoming card is left out rather than repeating it. */}
+                {statuses.sessions === "loading" ? (
+                  <CardSkeleton testId="organiser-upcoming-skeleton" className="md:col-span-6 xl:col-span-8" />
+                ) : statuses.sessions === "error" ? (
+                  <CardUnavailable testId="organiser-upcoming-unavailable" title="Upcoming Sessions" className="md:col-span-6 xl:col-span-8" />
+                ) : newOrganiser ? null : (
+                  <UpcomingSessionsCard
+                    sessions={upcomingSessions}
+                    onCreateSession={goCreate}
+                    onManage={(id) => setLocation(`/organiser/sessions/${id}`)}
+                    className="md:col-span-6 xl:col-span-8"
+                  />
+                )}
                 <QuickActionsCard
                   organizationSlug={orgQuery.data?.slug ?? null}
                   upcomingSessions={upcomingSessions}
-                  onCreateSession={() => setLocation("/organiser/sessions/new")}
+                  onCreateSession={goCreate}
                   onCheckIn={(id) => setLocation(`/organiser/sessions/${id}?tab=players`)}
-                  className="md:col-span-6 xl:col-span-4"
+                  className={newOrganiser ? "md:col-span-6 xl:col-span-12" : "md:col-span-6 xl:col-span-4"}
                 />
 
-                <StatisticsCard stats={quickAnalytics} className="md:col-span-6 xl:col-span-12" />
+                {statuses.sessions === "ready" && !newOrganiser && (
+                  <StatisticsCard stats={quickAnalytics} className="md:col-span-6 xl:col-span-12" />
+                )}
               </div>
             </div>
           </>

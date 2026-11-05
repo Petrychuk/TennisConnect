@@ -108,6 +108,12 @@ export const STAGING_PHASES: Readonly<Record<StagingPhase, readonly PhaseEntry[]
       file: 'tests/organiser/organiser-onboarding.spec.ts',
       ids: ['ORG-ONB-001', 'ORG-ONB-002', 'ORG-ONB-003', 'ORG-ONB-004', 'ORG-ONB-005', 'ORG-ONB-006', 'ORG-ONB-007', 'ORG-ONB-009', 'ORG-ONB-010', 'ORG-ONB-011', 'ORG-ONB-012a', 'ORG-ONB-012b'],
     },
+    // Dashboard states (5 Nov 2026): run-owned organiser with no sessions; failures are simulated
+    // in the browser (page.route), nothing extra is written.
+    {
+      file: 'tests/organiser/organiser-dashboard-states.spec.ts',
+      ids: ['ORG-DASH-001', 'ORG-DASH-002', 'ORG-DASH-003', 'ORG-DASH-004', 'ORG-DASH-005', 'ORG-DASH-006'],
+    },
     { file: 'tests/organiser/organiser-critical-flows.spec.ts', ids: ['ORG-FLOW-001', 'ORG-FLOW-003'] },
     { file: 'tests/organiser/organiser-rankings.spec.ts', ids: ['ORG-RANK-002', 'ORG-RANK-004', 'ORG-RANK-006'] },
     { file: 'tests/organiser/organiser-reports.spec.ts', ids: ['ORG-REPORT-003', 'ORG-REPORT-004', 'ORG-REPORT-010', 'ORG-REPORT-012'] },
@@ -118,7 +124,7 @@ export const STAGING_PHASES: Readonly<Record<StagingPhase, readonly PhaseEntry[]
     // organisers, players and sessions; messages only to run-owned players.
     // ORG-WIZ-004 skips itself unless E2E_ALLOW_PUBLISH_REVIEW=1 (it messages every admin).
     { file: 'tests/organiser/organiser-permissions.spec.ts', ids: ['ORG-PERM-001', 'ORG-PERM-002'] },
-    { file: 'tests/organiser/organiser-wizard.spec.ts', ids: ['ORG-WIZ-001', 'ORG-WIZ-002', 'ORG-WIZ-003', 'ORG-WIZ-004'] },
+    { file: 'tests/organiser/organiser-wizard.spec.ts', ids: ['ORG-WIZ-001', 'ORG-WIZ-002', 'ORG-WIZ-003', 'ORG-WIZ-004', 'ORG-WIZ-005'] },
     { file: 'tests/organiser/organiser-workspace.spec.ts', ids: ['ORG-WS-001', 'ORG-WS-002', 'ORG-WS-003', 'ORG-WS-004', 'ORG-WS-005'] },
     {
       file: 'tests/organiser/organiser-session-actions.spec.ts',

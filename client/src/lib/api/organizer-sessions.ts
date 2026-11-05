@@ -141,7 +141,8 @@ export async function getMySessions(): Promise<SessionWithDetails[]> {
 
 export interface DashboardStats {
   activePlayers: number;
-  attendancePercent: number;
+  /** null = no registrations yet for a session that happened, so no percentage exists. */
+  attendancePercent: number | null;
   revenueThisWeek: number;
   revenueCurrency: string;
 }

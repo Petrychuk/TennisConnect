@@ -181,4 +181,52 @@ test.describe('Create Session wizard', () => {
     const saved = await findMySession(page, title);
     expect(saved.status).toBe('pending_review');
   });
+  test('ORG-WIZ-005 Step 2 layout at all six viewports: nothing overflows, icons are centred, controls are 44px on touch', async ({ page }) => {
+    await becomeOrganiser(page);
+    const viewports = [
+      { name: '1440x900', width: 1440, height: 900, touch: false },
+      { name: '1280x800', width: 1280, height: 800, touch: false },
+      { name: '768x1024', width: 768, height: 1024, touch: true },
+      { name: '1024x768', width: 1024, height: 768, touch: true },
+      { name: '390x844', width: 390, height: 844, touch: true },
+      { name: '360x800', width: 360, height: 800, touch: true },
+    ];
+    for (const vp of viewports) {
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      await page.goto('/organiser/sessions/new');
+      await page.getByTestId('organiser-wizard-session-category-social-play').click();
+      // xl and up has the bottom action bar; below it the stacked buttons
+      await page.getByTestId(vp.width >= 1280 ? 'organiser-wizard-next-bottom' : 'organiser-wizard-next').click();
+      await expect(page.getByTestId('organiser-wizard-step2')).toBeVisible();
+
+      const m = await page.evaluate(() => {
+        const step = document.querySelector('[data-testid=organiser-wizard-step2]')!;
+        const spill: string[] = [];
+        step.querySelectorAll<HTMLElement>('input, button:not([role=radio]):not([role=switch]):not([role=combobox])').forEach((el) => {
+          const card = el.closest('[data-testid^=organiser-wizard-section]');
+          if (!card || (el as HTMLInputElement).type === 'file') return;
+          const r = el.getBoundingClientRect();
+          const c = card.getBoundingClientRect();
+          if (r.width && (r.left < c.left - 0.5 || r.right > c.right + 0.5)) spill.push(el.getAttribute('data-testid') ?? el.tagName);
+        });
+        const iconOff = Array.from(step.querySelectorAll('svg.pointer-events-none')).filter((svg) => {
+          const a = svg.getBoundingClientRect();
+          const b = svg.parentElement!.getBoundingClientRect();
+          return Math.abs(a.top + a.height / 2 - (b.top + b.height / 2)) > 1;
+        }).length;
+        const heights = ['organiser-wizard-session-name', 'organiser-wizard-session-venue', 'organiser-wizard-date', 'organiser-wizard-max-players']
+          .map((id) => document.querySelector(`[data-testid=${id}]`)!.getBoundingClientRect().height);
+        return {
+          overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          spill,
+          iconOff,
+          minHeight: Math.min(...heights),
+        };
+      });
+      expect(m.overflow, `${vp.name}: horizontal overflow`).toBeLessThanOrEqual(0);
+      expect(m.spill, `${vp.name}: controls outside their card`).toEqual([]);
+      expect(m.iconOff, `${vp.name}: icons not vertically centred in their field`).toBe(0);
+      if (vp.touch) expect(m.minHeight, `${vp.name}: control height`).toBeGreaterThanOrEqual(43.5);
+    }
+  });
 });

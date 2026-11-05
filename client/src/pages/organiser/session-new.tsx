@@ -1,3 +1,4 @@
+import { friendlyApiError } from "@/lib/apiError";
 import { useEffect, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -155,7 +156,7 @@ export default function OrganiserSessionNewPage() {
       toast({ title: "Saved as draft", description: "Pick up where you left off any time from Sessions." });
       setLocation("/organiser/sessions");
     } catch (error: any) {
-      toast({ title: "Couldn't save draft", description: error?.message ?? "Please try again.", variant: "destructive" });
+      toast({ title: "Couldn't save draft", description: friendlyApiError(error), variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -175,7 +176,7 @@ export default function OrganiserSessionNewPage() {
       await publishSession(created.id);
       setPendingApprovalOpen(true);
     } catch (error: any) {
-      toast({ title: "Couldn't publish session", description: error?.message ?? "Please try again.", variant: "destructive" });
+      toast({ title: "Couldn't publish session", description: friendlyApiError(error), variant: "destructive" });
     } finally {
       setSubmitting(false);
     }

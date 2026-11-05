@@ -480,7 +480,7 @@ export interface IStorage {
  deleteSession(id: string): Promise<void>;
  getRegistrationsForSession(sessionId: string): Promise<RegistrationWithUser[]>;
  getPlayersForOrganization(organizationId: string): Promise<OrgPlayerRow[]>;
-  getOrganizerDashboardStats(organizationId: string): Promise<{ activePlayers: number; attendancePercent: number; revenueThisWeek: number; revenueCurrency: string }>;
+  getOrganizerDashboardStats(organizationId: string): Promise<{ activePlayers: number; attendancePercent: number | null; revenueThisWeek: number; revenueCurrency: string }>;
   getRecentActivityForOrganization(organizationId: string, limit: number): Promise<ActivityFeedItem[]>;
  createInvitedRegistration(sessionId: string, userId: string): Promise<Registration>;
  acceptInvitedRegistration(sessionId: string, userId: string): Promise<Registration>;
@@ -4861,7 +4861,7 @@ export class DatabaseStorage implements IStorage {
   // "upcoming" stat already on this page.
   async getOrganizerDashboardStats(
     organizationId: string
-  ): Promise<{ activePlayers: number; attendancePercent: number; revenueThisWeek: number; revenueCurrency: string }> {
+  ): Promise<{ activePlayers: number; attendancePercent: number | null; revenueThisWeek: number; revenueCurrency: string }> {
     const [players, attendanceRows, revenueRows] = await Promise.all([
       this.getPlayersForOrganization(organizationId),
       db
@@ -4902,7 +4902,9 @@ export class DatabaseStorage implements IStorage {
 
     const registered = Number(attendanceRows[0]?.registered ?? 0);
     const checkedIn = Number(attendanceRows[0]?.checkedIn ?? 0);
-    const attendancePercent = registered > 0 ? Math.round((checkedIn / registered) * 100) : 0;
+    // null (not 0) when nobody has registered for a session that happened: 0% would
+    // claim nobody showed up, and the dashboard shows "—" for "can't be calculated".
+    const attendancePercent = registered > 0 ? Math.round((checkedIn / registered) * 100) : null;
 
     const revenueThisWeek = revenueRows.reduce(
       (sum, r) => sum + Number(r.price ?? 0) * Number(r.registeredCount ?? 0),

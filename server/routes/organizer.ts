@@ -698,7 +698,7 @@ router.get("/dashboard/stats", requireAuth, async (req, res, next) => {
   try {
     const organization = await storage.getOrganizationOwnedByUser((req.user as any).id);
     if (!organization) {
-      return res.json({ activePlayers: 0, attendancePercent: 0, revenueThisWeek: 0, revenueCurrency: "AUD" });
+      return res.json({ activePlayers: 0, attendancePercent: null, revenueThisWeek: 0, revenueCurrency: "AUD" });
     }
     const stats = await storage.getOrganizerDashboardStats(organization.id);
     res.json(stats);

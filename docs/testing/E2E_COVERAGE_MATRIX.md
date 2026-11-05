@@ -1,6 +1,6 @@
 # E2E coverage matrix
 
-Updated 2 Nov 2026. Inventory from `npx playwright test --list`: **383 tests in 51 files**. Production selection: **33 tests in 1 file**. Phases are in `tests/safety/staging-phases.ts`. "Not run" means the test exists but its last Staging result is not known for this branch (`REGRESSION_RESULTS.md`).
+Updated 5 Nov 2026. Inventory from `npx playwright test --list`: **390 tests in 52 files**. Production selection: **33 tests in 1 file**. Phases are in `tests/safety/staging-phases.ts`. "Not run" means the test exists but its last Staging result is not known for this branch (`REGRESSION_RESULTS.md`).
 
 ## Platform
 
@@ -45,6 +45,7 @@ Updated 2 Nov 2026. Inventory from `npx playwright test --list`: **383 tests in 
 | | No verified / premium / slug / status changes by the organiser; server-side validation | ORG-PERM-002; unit `shared/organizationProfile.test.ts` |
 | | Unauthorised edit | ORG-PERM-001 (404) |
 | **C. Wizard** | Social Play, Competition, Coaching & Fitness, Other: category-specific fields, saved values via API | ORG-WIZ-001 |
+| | Step 2 layout at six viewports: no overflow, field icons centred, 44 px controls on touch | ORG-WIZ-005 |
 | | Required fields | ORG-WIZ-002 |
 | | Edit (policies persist after reload), Duplicate (pre-fill, nothing saved) | ORG-WIZ-003 |
 | | Publish | ORG-WIZ-004, **opt-in** (see decision below) |
@@ -65,6 +66,9 @@ Updated 2 Nov 2026. Inventory from `npx playwright test --list`: **383 tests in 
 | | Registration and status | PLAY-003…006 |
 | **G. Responsive** | 6 viewports: navigation, wizard, players, touch targets, check-in, organisation, overflow | ORG-RESP-001…003 |
 | Rankings, reports, series | Existing | ORG-RANK-002/004/006, ORG-REPORT-003/004/010/012, ORG-FLOW-001/003 |
+| **I. Dashboard states** (5 Nov) | New organiser: 0 / 0 / 0 / `—`, welcome card with Create Session | ORG-DASH-001 |
+| | Sessions or stats request fails: compact warning + Try again, other figures kept, recovery | ORG-DASH-002, ORG-DASH-003, ORG-DASH-005 |
+| | Skeletons while loading; six viewports without overflow | ORG-DASH-004, ORG-DASH-006 |
 
 ## Decision needed: ORG-WIZ-004 (Publish)
 
