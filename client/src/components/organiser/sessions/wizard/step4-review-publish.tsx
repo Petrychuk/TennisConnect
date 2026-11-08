@@ -43,16 +43,16 @@ export function Step4ReviewPublish({ draft }: Step4ReviewPublishProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4" data-testid="organiser-wizard-step4">
       <Card className="shadow-sm lg:col-span-2 overflow-hidden" data-testid="organiser-wizard-review-summary">
-        <div className="relative h-40">
+        <div className="relative h-36 overflow-hidden">
           <img src={draft.coverImage || courtImage} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-foreground/40" />
-          <div className="absolute inset-0 p-5 flex flex-col justify-end text-primary-foreground">
-            <Badge className="bg-primary text-foreground w-fit mb-2">{typeLabel}</Badge>
-            <h2 className="text-2xl font-display font-bold">{draft.name || "Untitled Session"}</h2>
-          </div>
+          <div className="absolute inset-0 bg-foreground/20" />
         </div>
 
         <CardContent className="p-5 space-y-5">
+          <div className="flex items-start gap-3">
+            <Badge className="bg-primary/10 text-primary-text border-0 shrink-0 mt-0.5">{typeLabel}</Badge>
+            <h2 className="text-xl font-display font-bold leading-tight">{draft.name || "Untitled Session"}</h2>
+          </div>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
             {dateObj && (
               <>

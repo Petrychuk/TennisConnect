@@ -32,7 +32,7 @@ export function SessionStatusCard({ session, onEdit, showEditButton = true }: Se
               <p className="text-muted-foreground text-xs">Registration</p>
               <span className="text-xs font-semibold">{session.registeredCount} / {capacity}</span>
             </div>
-            <Progress value={(session.registeredCount / capacity) * 100} className="h-1.5 mt-1.5" />
+            <Progress value={(session.registeredCount / capacity) * 100} className="h-2 mt-1.5 [&>div]:bg-primary-text" />
           </div>
           {session.registeredCount >= capacity ? (
             <CheckCircle2 className="w-4 h-4 text-primary-text shrink-0 mt-0.5" />
@@ -50,7 +50,7 @@ export function SessionStatusCard({ session, onEdit, showEditButton = true }: Se
               <p className="text-muted-foreground text-xs">Check-in</p>
               <span className="text-xs font-semibold">{session.checkedInCount} / {session.registeredCount}</span>
             </div>
-            <Progress value={(session.checkedInCount / Math.max(session.registeredCount, 1)) * 100} className="h-1.5 mt-1.5" />
+            <Progress value={(session.checkedInCount / Math.max(session.registeredCount, 1)) * 100} className="h-2 mt-1.5 [&>div]:bg-primary-text" />
           </div>
           {detail.checkInOpen && session.checkedInCount >= session.registeredCount ? (
             <CheckCircle2 className="w-4 h-4 text-primary-text shrink-0 mt-0.5" />

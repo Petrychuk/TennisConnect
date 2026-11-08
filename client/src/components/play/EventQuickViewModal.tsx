@@ -214,11 +214,11 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                <p className="flex items-center gap-2" data-testid="event-modal-datetime">
-                  📅 {formatInTimeZone(session.startAt, session.timeZone, { weekday: "short", day: "numeric", month: "short" })}
+                <p className="flex items-center gap-2 whitespace-nowrap" data-testid="event-modal-datetime">
+                  📅 <span className="truncate">{formatInTimeZone(session.startAt, session.timeZone, { weekday: "short", day: "numeric", month: "short" })}
                   {" · "}
                   {formatInTimeZone(session.startAt, session.timeZone, { hour: "numeric", minute: "2-digit" })}
-                  {session.endAt && ` – ${formatInTimeZone(session.endAt, session.timeZone, { hour: "numeric", minute: "2-digit" })}`}
+                  {session.endAt && ` – ${formatInTimeZone(session.endAt, session.timeZone, { hour: "numeric", minute: "2-digit" })}`}</span>
                 </p>
                 {session.location && (
                   <p className="flex items-center gap-2 min-w-0" data-testid="event-modal-location">

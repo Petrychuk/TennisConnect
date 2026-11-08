@@ -14,7 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Clock, Globe, Hourglass, LayoutGrid, MapPin, Repeat, Swords, Type } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import SEO from "@/components/seo";
@@ -107,11 +108,32 @@ function OrganiserSessionTemplateEditPageContent() {
     );
   }
 
+  // Compact field + control heights matching the session-edit / wizard step cards.
+  const CONTROL = "h-11 md:pointer-fine:h-9";
+
+  function Field({ label, htmlFor, children, className }: { label: string; htmlFor?: string; children: React.ReactNode; className?: string }) {
+    return (
+      <div className={cn("space-y-1 min-w-0", className)}>
+        <label htmlFor={htmlFor} className="text-xs font-medium text-muted-foreground">{label}</label>
+        {children}
+      </div>
+    );
+  }
+
+  function WithIcon({ icon: Icon, children }: { icon: React.ElementType; children: React.ReactNode }) {
+    return (
+      <div className="relative">
+        <Icon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden />
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background" data-testid="organiser-template-edit-page">
       <SEO title={`Edit ${template.name} | Templates | TennisConnect`} description={`Edit the "${template.name}" session template.`} noIndex />
 
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-5">
         <Link
           href="/organiser/sessions/templates"
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -124,125 +146,156 @@ function OrganiserSessionTemplateEditPageContent() {
         <h1 className="font-display text-2xl font-bold">Edit Template</h1>
 
         <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base">Basics</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Basics</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="sm:col-span-2 space-y-1.5">
-              <Label htmlFor="template-name">Template Name *</Label>
-              <Input
-                id="template-name"
-                value={form.name ?? ""}
-                onChange={(e) => set("name", e.target.value)}
-                data-testid="organiser-template-edit-name"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Session Type</Label>
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Template Name *" htmlFor="template-name" className="sm:col-span-2">
+              <WithIcon icon={Type}>
+                <Input
+                  id="template-name"
+                  value={form.name ?? ""}
+                  onChange={(e) => set("name", e.target.value)}
+                  className={cn(CONTROL, "pl-9")}
+                  data-testid="organiser-template-edit-name"
+                />
+              </WithIcon>
+            </Field>
+
+            <Field label="Session Type">
               <Select value={form.type ?? "social"} onValueChange={(v) => set("type", v)}>
-                <SelectTrigger aria-label="Session type" data-testid="organiser-template-edit-type"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Session type" className={CONTROL} data-testid="organiser-template-edit-type">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {SESSION_TYPE_OPTIONS.map((t) => (
                     <SelectItem key={t.key} value={t.key}>{t.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="template-venue">Venue</Label>
-              <Input
-                id="template-venue"
-                value={form.location ?? ""}
-                onChange={(e) => set("location", e.target.value)}
-                data-testid="organiser-template-edit-venue"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>City / Timezone</Label>
-              <Select value={form.timeZone ?? "Australia/Sydney"} onValueChange={(v) => set("timeZone", v)}>
-                <SelectTrigger aria-label="City / timezone" data-testid="organiser-template-edit-timezone"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {AU_CITY_TIMEZONES.map((c) => (
-                    <SelectItem key={c.timeZone} value={c.timeZone}>{c.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="template-start-time">Usual Start Time</Label>
-              <Input
-                id="template-start-time"
-                type="time"
-                value={form.preferredStartTime ?? ""}
-                onChange={(e) => set("preferredStartTime", e.target.value)}
-                data-testid="organiser-template-edit-starttime"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="template-duration">Duration (minutes)</Label>
-              <Input
-                id="template-duration"
-                type="number"
-                min={0}
-                value={form.durationMinutes ?? ""}
-                onChange={(e) => set("durationMinutes", e.target.value ? Number(e.target.value) : null)}
-                data-testid="organiser-template-edit-duration"
-              />
-            </div>
+            </Field>
+
+            <Field label="Venue" htmlFor="template-venue">
+              <WithIcon icon={MapPin}>
+                <Input
+                  id="template-venue"
+                  value={form.location ?? ""}
+                  onChange={(e) => set("location", e.target.value)}
+                  placeholder="e.g. Lyne Park Tennis Centre"
+                  className={cn(CONTROL, "pl-9")}
+                  data-testid="organiser-template-edit-venue"
+                />
+              </WithIcon>
+            </Field>
+
+            <Field label="City / Timezone">
+              <WithIcon icon={Globe}>
+                <Select value={form.timeZone ?? "Australia/Sydney"} onValueChange={(v) => set("timeZone", v)}>
+                  <SelectTrigger aria-label="City / timezone" className={cn(CONTROL, "pl-9")} data-testid="organiser-template-edit-timezone">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AU_CITY_TIMEZONES.map((c) => (
+                      <SelectItem key={c.timeZone} value={c.timeZone}>{c.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </WithIcon>
+            </Field>
+
+            <Field label="Usual Start Time" htmlFor="template-start-time">
+              <WithIcon icon={Clock}>
+                <Input
+                  id="template-start-time"
+                  type="time"
+                  value={form.preferredStartTime ?? ""}
+                  onChange={(e) => set("preferredStartTime", e.target.value)}
+                  className={cn(CONTROL, "pl-9")}
+                  data-testid="organiser-template-edit-starttime"
+                />
+              </WithIcon>
+            </Field>
+
+            <Field label="Duration (minutes)" htmlFor="template-duration">
+              <WithIcon icon={Hourglass}>
+                <Input
+                  id="template-duration"
+                  type="number"
+                  min={0}
+                  value={form.durationMinutes ?? ""}
+                  onChange={(e) => set("durationMinutes", e.target.value ? Number(e.target.value) : null)}
+                  className={cn(CONTROL, "pl-9")}
+                  data-testid="organiser-template-edit-duration"
+                />
+              </WithIcon>
+            </Field>
           </CardContent>
         </Card>
 
         <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base">Capacity & Format</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Capacity & Format</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="template-courts">Courts</Label>
-              <Input
-                id="template-courts"
-                type="number"
-                min={0}
-                value={form.courtsCount ?? ""}
-                onChange={(e) => set("courtsCount", e.target.value ? Number(e.target.value) : null)}
-                data-testid="organiser-template-edit-courts"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="template-capacity">Max Players</Label>
-              <Input
-                id="template-capacity"
-                type="number"
-                min={0}
-                value={form.maxParticipants ?? ""}
-                onChange={(e) => set("maxParticipants", e.target.value ? Number(e.target.value) : null)}
-                data-testid="organiser-template-edit-capacity"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="template-rounds">Number of Rounds</Label>
-              <Input
-                id="template-rounds"
-                type="number"
-                min={0}
-                value={form.plannedRoundsCount ?? ""}
-                onChange={(e) => set("plannedRoundsCount", e.target.value ? Number(e.target.value) : null)}
-                data-testid="organiser-template-edit-rounds"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Singles / Doubles</Label>
-              <Select value={form.matchMode ?? "doubles"} onValueChange={(v) => set("matchMode", v)}>
-                <SelectTrigger aria-label="Singles / doubles" data-testid="organiser-template-edit-matchmode"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="singles">Singles</SelectItem>
-                  <SelectItem value="doubles">Doubles</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Courts" htmlFor="template-courts">
+              <WithIcon icon={LayoutGrid}>
+                <Input
+                  id="template-courts"
+                  type="number"
+                  min={0}
+                  value={form.courtsCount ?? ""}
+                  onChange={(e) => set("courtsCount", e.target.value ? Number(e.target.value) : null)}
+                  className={cn(CONTROL, "pl-9")}
+                  data-testid="organiser-template-edit-courts"
+                />
+              </WithIcon>
+            </Field>
+
+            <Field label="Max Players" htmlFor="template-capacity">
+              <WithIcon icon={Repeat}>
+                <Input
+                  id="template-capacity"
+                  type="number"
+                  min={0}
+                  value={form.maxParticipants ?? ""}
+                  onChange={(e) => set("maxParticipants", e.target.value ? Number(e.target.value) : null)}
+                  className={cn(CONTROL, "pl-9")}
+                  data-testid="organiser-template-edit-capacity"
+                />
+              </WithIcon>
+            </Field>
+
+            <Field label="Number of Rounds" htmlFor="template-rounds">
+              <WithIcon icon={Repeat}>
+                <Input
+                  id="template-rounds"
+                  type="number"
+                  min={0}
+                  value={form.plannedRoundsCount ?? ""}
+                  onChange={(e) => set("plannedRoundsCount", e.target.value ? Number(e.target.value) : null)}
+                  className={cn(CONTROL, "pl-9")}
+                  data-testid="organiser-template-edit-rounds"
+                />
+              </WithIcon>
+            </Field>
+
+            <Field label="Singles / Doubles">
+              <WithIcon icon={Swords}>
+                <Select value={form.matchMode ?? "doubles"} onValueChange={(v) => set("matchMode", v)}>
+                  <SelectTrigger aria-label="Singles / doubles" className={cn(CONTROL, "pl-9")} data-testid="organiser-template-edit-matchmode">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="singles">Singles</SelectItem>
+                    <SelectItem value="doubles">Doubles</SelectItem>
+                  </SelectContent>
+                </Select>
+              </WithIcon>
+            </Field>
+
             <div className="flex items-center justify-between rounded-xl border border-border px-3 py-2.5 sm:col-span-2">
               <div>
-                <Label htmlFor="template-waitinglist">Waiting List</Label>
+                <p className="text-sm font-medium">Waiting List</p>
                 <p className="text-xs text-muted-foreground">Enable a waiting list once the session is full.</p>
               </div>
               <Switch
@@ -255,7 +308,7 @@ function OrganiserSessionTemplateEditPageContent() {
           </CardContent>
         </Card>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 pt-1">
           <Button onClick={handleSave} disabled={saving} data-testid="organiser-template-edit-save">
             {saving ? "Saving..." : "Save Changes"}
           </Button>

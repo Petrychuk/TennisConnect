@@ -355,11 +355,9 @@ export default function OrganiserSessionNewPage() {
                 <p className="text-xs text-muted-foreground" role="status" aria-live="polite" data-testid="organiser-wizard-save-status">
                   {saving
                     ? "Saving…"
-                    : isDirty
-                      ? savedAt ? "Unsaved changes" : "Not saved yet"
-                      : savedAt
-                        ? `Draft saved ${savedAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
-                        : "Not saved yet"}
+                    : savedAt
+                      ? `Draft saved ${savedAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
+                      : null}
                 </p>
               )}
 
