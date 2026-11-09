@@ -81,7 +81,7 @@ export function SessionStatusCard({ session, onEdit, showEditButton = true }: Se
           {session.status === "completed" ? <CheckCircle2 className="w-4 h-4 text-primary-text shrink-0" /> : <Circle className="w-4 h-4 text-muted-foreground shrink-0" />}
         </div>
 
-        {showEditButton && (
+        {showEditButton && onEdit && (
           <Button variant="outline" className="w-full mt-2" onClick={onEdit} data-testid="organiser-session-status-edit-button">
             <Pencil className="w-4 h-4 mr-2" />
             Edit Session

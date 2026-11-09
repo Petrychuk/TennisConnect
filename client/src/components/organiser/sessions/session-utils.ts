@@ -115,6 +115,11 @@ export function getPrimaryActionMeta(bucket: Exclude<SessionBucket, "all">, play
  * four steps, Save as Draft, Publish); the flat Edit page is for sessions that
  * are already out (it asks for name, venue and date, which a draft may not have yet).
  */
+/** An archived session is closed: it can be viewed and duplicated, never edited. */
+export function canEditSession(session: { status: string }): boolean {
+  return session.status !== "archived";
+}
+
 export function sessionEditPath(session: { id: string; status: string }): string {
   return session.status === "draft" ? `/organiser/sessions/new?draft=${session.id}` : `/organiser/sessions/${session.id}/edit`;
 }

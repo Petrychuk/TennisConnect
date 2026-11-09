@@ -295,7 +295,8 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
               </p>
             </div>
 
-            <Tabs defaultValue="login" className="w-full">
+            {/* ?tab=register opens Sign Up straight away (e.g. "Create an account" on a session page). */}
+            <Tabs defaultValue={new URLSearchParams(search).get("tab") === "register" ? "register" : "login"} className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-8">
                 <TabsTrigger value="login" data-testid="login-tab" className="cursor-pointer">Sign In</TabsTrigger>
                 <TabsTrigger value="register" data-testid="register-tab" className="cursor-pointer">Sign Up</TabsTrigger>

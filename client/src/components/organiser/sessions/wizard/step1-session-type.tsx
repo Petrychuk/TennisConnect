@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Users, Repeat, Trophy, Swords, Crown, Settings2, Check, Lightbulb, Award, Shield, Heart, Activity, GraduationCap, Dumbbell, Sparkles, Medal } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { SESSION_TYPE_OPTIONS, type SessionTypeKey } from "@/lib/organiser-session-wizard-types";
@@ -49,13 +48,22 @@ export function Step1SessionType({ value, onChange }: Step1SessionTypeProps) {
   const selectedCategory = value ? sessionCategoryOf(value) : null;
 
   return (
-    <div className="space-y-6" data-testid="organiser-wizard-step1">
-      <div>
+    <div className="space-y-4" data-testid="organiser-wizard-step1">
+      {/* Heading and the help link on one line - the old "Not sure which one
+          to choose?" panel took a whole block for one sentence. */}
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="text-lg font-bold">What kind of session is it?</h2>
-        <p className="text-sm text-muted-foreground mt-0.5">Choose what happens at the event. The next steps only ask for what applies.</p>
+        <button
+          type="button"
+          onClick={() => setInfoOpen(true)}
+          className="inline-flex items-center gap-1 text-sm font-medium text-primary-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+          data-testid="organiser-wizard-type-learn-more"
+        >
+          <Lightbulb className="w-4 h-4" aria-hidden /> Not sure? Compare the formats
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" role="radiogroup" aria-label="Session category">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5" role="radiogroup" aria-label="Session category">
         {SESSION_CATEGORIES.map((category) => {
           const Icon = CATEGORY_ICON[category.key];
           const selected = selectedCategory?.key === category.key;
@@ -69,32 +77,28 @@ export function Step1SessionType({ value, onChange }: Step1SessionTypeProps) {
                 if (!selected) onChange(category.formats[0] as SessionTypeKey);
               }}
               className={cn(
-                "relative text-left rounded-2xl border p-4 min-h-24 transition-all hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                selected ? "border-primary bg-primary/5" : "border-border",
+                "group relative text-left rounded-2xl border p-3 transition-all hover:border-primary/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                selected ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/30" : "border-border bg-card",
               )}
               data-testid={`organiser-wizard-session-category-${category.key}`}
             >
               {selected && (
-                <span className="absolute top-3 right-3 w-5 h-5 rounded-full bg-primary text-foreground flex items-center justify-center">
+                <span className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-primary text-foreground flex items-center justify-center">
                   <Check className="w-3 h-3" />
                 </span>
               )}
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary-text flex items-center justify-center shrink-0">
-                  <Icon className="w-5 h-5" />
-                </div>
-                <div className="min-w-0 pr-6">
-                  <p className="font-bold">{category.label}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{category.description}</p>
-                </div>
+              <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center transition-colors", selected ? "bg-primary text-foreground" : "bg-primary/10 text-primary-text")}>
+                <Icon className="w-4.5 h-4.5" />
               </div>
+              <p className="font-bold text-sm mt-2 pr-5 leading-tight">{category.label}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{category.description}</p>
             </button>
           );
         })}
       </div>
 
       {selectedCategory && selectedCategory.formats.length > 1 && (
-        <div className="space-y-2" data-testid="organiser-wizard-format-picker">
+        <div className="space-y-2 rounded-2xl border border-border bg-card p-3" data-testid="organiser-wizard-format-picker">
           <p className="text-sm font-semibold" id="organiser-wizard-format-label">Format</p>
           <div className="flex flex-wrap gap-2" role="radiogroup" aria-labelledby="organiser-wizard-format-label">
             {selectedCategory.formats.map((key) => {
@@ -110,12 +114,12 @@ export function Step1SessionType({ value, onChange }: Step1SessionTypeProps) {
                   aria-checked={selected}
                   onClick={() => onChange(option.key)}
                   className={cn(
-                    "inline-flex items-center gap-2 rounded-full border px-3.5 min-h-11 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    selected ? "border-primary bg-primary/10 text-foreground" : "border-border hover:border-primary/40",
+                    "inline-flex items-center gap-1.5 rounded-full border px-3 min-h-11 md:pointer-fine:min-h-8 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    selected ? "border-primary bg-primary text-foreground" : "border-border hover:border-primary/40",
                   )}
                   data-testid={`organiser-wizard-type-${option.key}`}
                 >
-                  <Icon className="w-4 h-4 text-primary-text" />
+                  <Icon className={cn("w-4 h-4", selected ? "text-foreground" : "text-primary-text")} />
                   {option.label}
                 </button>
               );
@@ -124,19 +128,6 @@ export function Step1SessionType({ value, onChange }: Step1SessionTypeProps) {
           {value && <p className="text-xs text-muted-foreground" data-testid="organiser-wizard-format-details">{optionFor(value)?.details}</p>}
         </div>
       )}
-
-      <div className="rounded-2xl bg-primary/5 border border-primary/20 p-4 flex flex-col sm:flex-row sm:items-start gap-3">
-        <Lightbulb className="w-5 h-5 text-primary-text shrink-0 mt-0.5" />
-        <div className="flex-1">
-          <p className="font-semibold text-sm">Not sure which one to choose?</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Social Play suits most club sessions: players rotate across courts and the scores build a leaderboard.
-          </p>
-        </div>
-        <Button variant="outline" size="sm" className="shrink-0 self-start" onClick={() => setInfoOpen(true)} data-testid="organiser-wizard-type-learn-more">
-          Learn more
-        </Button>
-      </div>
 
       <Dialog open={infoOpen} onOpenChange={setInfoOpen}>
         <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col" data-testid="organiser-wizard-type-info-modal">

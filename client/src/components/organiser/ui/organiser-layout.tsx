@@ -116,7 +116,7 @@ function OrganiserShell({ testId, seoTitle, seoDescription, mobileTitle, mobileA
     <div className="min-h-screen flex bg-background" data-testid={testId}>
       <SEO title={seoTitle} description={seoDescription} noIndex />
 
-      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-72")}>
+      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-hidden transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-72")}>
         <OrganiserSidebarNav
           organiser={organiser}
           profileHref={profileHref}

@@ -45,7 +45,7 @@ export interface SessionListItem {
   // no_ad/tiebreak/planned_rounds_count) - set by the wizard's Step 3,
   // null for sessions created before these columns existed.
   matchMode: "singles" | "doubles" | null;
-  category: "open" | "mens" | "womens" | null;
+  category: "open" | "mens" | "womens" | "mixed" | null;
   gamesTo: number | null;
   noAd: boolean | null;
   tiebreak: boolean | null;

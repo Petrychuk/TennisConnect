@@ -80,7 +80,9 @@ test("warnings name only the sources that failed; loading and empty are never fa
 
 test("the dashboard wires these rules and keeps each section independent (source check)", () => {
   const src = readFileSync(new URL("../components/organiser/dashboard/organiser-dashboard.tsx", import.meta.url), "utf8");
-  for (const name of ["sourceStatus", "countTileValue", "attendanceTileValue", "failedSources", "isNewOrganiser", "DashboardWarning", "WelcomeEmptyState"]) {
+  // countTileValue / attendanceTileValue fed the KPI row that was removed from Home
+  // on purpose (the same numbers live in TC Live, Upcoming Sessions and Reports).
+  for (const name of ["sourceStatus", "failedSources", "isNewOrganiser", "DashboardWarning", "WelcomeEmptyState"]) {
     assert.match(src, new RegExp(name), `${name} used`);
   }
   assert.doesNotMatch(src, /dataError/, "no catch-all error flag");

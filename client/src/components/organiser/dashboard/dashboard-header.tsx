@@ -8,6 +8,7 @@ import { Menu, Bell, Plus, Trophy } from "lucide-react";
 import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar";
 import { useUnreadMessagesCount } from "@/hooks/use-unread-messages";
 import type { OrganiserUser } from "@/lib/organiser-hub-mock-data";
+import { DashboardHero } from "./dashboard-hero";
 
 interface DashboardHeaderProps {
   organiser: OrganiserUser;
@@ -74,32 +75,45 @@ export function DashboardHeader({ organiser, profileHref, onCreateSession }: Das
         </div>
       </div>
 
-      {/* Desktop row — sidebar is persistent, this just holds notifications + the primary action */}
-      <div className="hidden xl:flex items-center justify-end gap-3 px-8 pt-6">
-        <Button variant="outline" size="icon" className="relative" asChild data-testid="organiser-header-bell-desktop">
-          <Link href="/organiser/messages">
-            <Bell className="w-4 h-4" />
-            {hasUnread && (
-              <Badge
-                // NOTE: text-primary-foreground was tried here first (the
-                // color dark mode's own tokens pair with --primary) but
-                // still rendered white in production after a confirmed
-                // fresh deploy and hard refresh - so this badge is always
-                // small text on the bright lime --primary background,
-                // and needs to just always be black text, full stop,
-                // rather than depend on a theme token resolving the way
-                // the CSS says it should.
-                className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 justify-center text-[10px] text-black"
-              >
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </Badge>
-            )}
-          </Link>
-        </Button>
-        <Button onClick={onCreateSession} data-testid="organiser-header-new-session">
-          <Plus className="w-4 h-4 mr-2" />
+      {/* Tablet & mobile: greeting + New Session on one compact row, so the
+          primary action is always visible. Desktop has its own row below. */}
+      <div className="xl:hidden px-4 sm:px-6 pt-3 flex items-center justify-between gap-3">
+        <DashboardHero organiser={organiser} testId="organiser-dashboard-hero-compact" />
+        <Button size="sm" onClick={onCreateSession} className="shrink-0" data-testid="organiser-header-new-session-compact">
+          <Plus className="w-4 h-4 mr-1.5" />
           New Session
         </Button>
+      </div>
+
+      {/* Desktop row — sidebar is persistent, this just holds notifications + the primary action */}
+      <div className="hidden xl:flex items-center justify-between gap-3 px-8 pt-4">
+        <DashboardHero organiser={organiser} />
+        <div className="flex items-center gap-3 shrink-0">
+          <Button variant="outline" size="icon" className="relative" asChild data-testid="organiser-header-bell-desktop">
+            <Link href="/organiser/messages">
+              <Bell className="w-4 h-4" />
+              {hasUnread && (
+                <Badge
+                  // NOTE: text-primary-foreground was tried here first (the
+                  // color dark mode's own tokens pair with --primary) but
+                  // still rendered white in production after a confirmed
+                  // fresh deploy and hard refresh - so this badge is always
+                  // small text on the bright lime --primary background,
+                  // and needs to just always be black text, full stop,
+                  // rather than depend on a theme token resolving the way
+                  // the CSS says it should.
+                  className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 justify-center text-[10px] text-black"
+                >
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </Badge>
+              )}
+            </Link>
+          </Button>
+          <Button onClick={onCreateSession} data-testid="organiser-header-new-session">
+            <Plus className="w-4 h-4 mr-2" />
+            New Session
+          </Button>
+        </div>
       </div>
     </div>
   );

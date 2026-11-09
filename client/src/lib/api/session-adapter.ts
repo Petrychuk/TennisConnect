@@ -96,7 +96,7 @@ export function toSessionListItem(session: TennisSession | SessionWithDetails): 
     maxParticipants: session.maxParticipants ?? null,
     courtsCount: session.courtsCount ?? null,
     matchMode: (session.matchMode as "singles" | "doubles") ?? null,
-    category: (session.category as "open" | "mens" | "womens" | null) ?? null,
+    category: (session.category as "open" | "mens" | "womens" | "mixed" | null) ?? null,
     gamesTo: session.gamesTo ?? null,
     noAd: session.noAd ?? null,
     tiebreak: session.tiebreak ?? null,

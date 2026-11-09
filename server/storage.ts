@@ -103,6 +103,28 @@ import { expandOccurrences, makeOccurrenceId, parseOccurrenceId } from "./servic
 import { summariseLabelForCard } from "./services/discoveryPrice";
 import { resolveRegistrationUrl } from "./services/discoveryNormalization";
 import { eq, desc, and, or, asc, sql, lte, ne, gte, ilike, inArray, isNull, isNotNull, notInArray } from "drizzle-orm";
+
+// Invite search: who can be found and how the organiser narrows the list.
+// Players only unless allRoles is set (coaches/organisers are people the
+// organiser usually does not mean when filling a game).
+export interface UserSearchFilters {
+  level?: string;
+  location?: string;
+  lookingToPlay?: boolean;
+  allRoles?: boolean;
+}
+export type UserSearchResult = Pick<User, "id" | "name" | "slug" | "avatar" | "role"> & {
+  alreadyConnected: boolean;
+  skillLevel: string | null;
+  location: string | null;
+  lookingToPlay: boolean;
+};
+
+// A sign-up that really counts as a player: not cancelled, and not merely an
+// invitation. An "invited" row only means the organiser sent an invite - nobody
+// has accepted yet - so it must not fill spots, trigger "Waiting List", or
+// inflate player, attendance and revenue figures.
+const countsAsPlayer = () => notInArray(registrations.status, ["cancelled", "invited"]);
 import { alias } from "drizzle-orm/pg-core";
 import { locationTerms, softLevelValues } from "./services/playFilters";
 import { supabaseAdmin } from "./supabaseAdmin";
@@ -493,7 +515,7 @@ export interface IStorage {
  createOrganizationMembership(organizationId: string, userId: string): Promise<CommunityMembership>;
  updateOrganizationMembershipStatus(organizationId: string, userId: string, status: string): Promise<CommunityMembership>;
  updateMessageActionStatus(id: string, actionStatus: string): Promise<Message>;
- searchUsers(query: string, excludeUserId: string, limit?: number, context?: { sessionId?: string; organizationId?: string }): Promise<(Pick<User, "id" | "name" | "slug" | "avatar" | "role"> & { alreadyConnected: boolean })[]>;
+ searchUsers(query: string, excludeUserId: string, limit?: number, context?: { sessionId?: string; organizationId?: string }, filters?: UserSearchFilters): Promise<UserSearchResult[]>;
   // Admin: every session on the platform, across all organizations, so
   // nothing goes live without the admin seeing it first.
  getAllSessionsForAdmin(status?: string): Promise<SessionWithDetails[]>;
@@ -2821,7 +2843,7 @@ export class DatabaseStorage implements IStorage {
       .select({ seasonId: tennisSessions.seasonId, count: sql<number>`count(distinct ${registrations.userId})` })
       .from(registrations)
       .innerJoin(tennisSessions, eq(registrations.sessionId, tennisSessions.id))
-      .where(and(inArray(tennisSessions.seasonId, seasonIds), ne(registrations.status, "cancelled")))
+      .where(and(inArray(tennisSessions.seasonId, seasonIds), countsAsPlayer()))
       .groupBy(tennisSessions.seasonId);
     const playersCountBySeason = new Map(playerCountRows.map((r) => [r.seasonId as string, Number(r.count)]));
 
@@ -2855,7 +2877,7 @@ export class DatabaseStorage implements IStorage {
       .select({ count: sql<number>`count(distinct ${registrations.userId})` })
       .from(registrations)
       .innerJoin(tennisSessions, eq(registrations.sessionId, tennisSessions.id))
-      .where(and(eq(tennisSessions.seasonId, id), ne(registrations.status, "cancelled")));
+      .where(and(eq(tennisSessions.seasonId, id), countsAsPlayer()));
 
     return {
       ...season,
@@ -2938,7 +2960,7 @@ export class DatabaseStorage implements IStorage {
       .select({ seriesId: tennisSessions.seriesId, count: sql<number>`count(distinct ${registrations.userId})` })
       .from(registrations)
       .innerJoin(tennisSessions, eq(registrations.sessionId, tennisSessions.id))
-      .where(and(inArray(tennisSessions.seriesId, seriesIds), ne(registrations.status, "cancelled")))
+      .where(and(inArray(tennisSessions.seriesId, seriesIds), countsAsPlayer()))
       .groupBy(tennisSessions.seriesId);
     const playersCountBySeries = new Map(playerCountRows.map((r) => [r.seriesId as string, Number(r.count)]));
 
@@ -3001,7 +3023,7 @@ export class DatabaseStorage implements IStorage {
     const playerCountRows = await db
       .select({ sessionId: registrations.sessionId, count: sql<number>`count(*)` })
       .from(registrations)
-      .where(and(inArray(registrations.sessionId, ids), ne(registrations.status, "cancelled")))
+      .where(and(inArray(registrations.sessionId, ids), countsAsPlayer()))
       .groupBy(registrations.sessionId);
     const playersBySession = new Map(playerCountRows.map((r) => [r.sessionId, Number(r.count)]));
 
@@ -3326,7 +3348,7 @@ export class DatabaseStorage implements IStorage {
       const regRows = await db
         .select()
         .from(registrations)
-        .where(and(inArray(registrations.sessionId, sessionIds), ne(registrations.status, "cancelled")));
+        .where(and(inArray(registrations.sessionId, sessionIds), countsAsPlayer()));
       return { sessionRows, regRows };
     };
 
@@ -3556,6 +3578,8 @@ export class DatabaseStorage implements IStorage {
       // Discovered events have no TennisConnect policies.
       policies: { rules: null, refund: null, lateArrival: null, cancellation: null },
       matchMode: "",
+      category: null,
+      plannedRoundsCount: null,
       scoringFormat: "",
       price: activity.price != null ? (activity.price === 0 ? "Free" : String(activity.price)) : null,
       currency: activity.currency,
@@ -3626,7 +3650,7 @@ export class DatabaseStorage implements IStorage {
       const countRows = await db
         .select({ sessionId: registrations.sessionId, count: sql<number>`count(*)` })
         .from(registrations)
-        .where(and(inArray(registrations.sessionId, sessionIds), ne(registrations.status, "cancelled")))
+        .where(and(inArray(registrations.sessionId, sessionIds), countsAsPlayer()))
         .groupBy(registrations.sessionId);
       const countBySession = new Map(countRows.map((r) => [r.sessionId, Number(r.count)]));
 
@@ -3736,7 +3760,10 @@ export class DatabaseStorage implements IStorage {
     let myRegistrationStatus: PublicSessionDetails["myRegistrationStatus"] = null;
     if (viewerUserId) {
       const existing = await this.getRegistrationForUser(session.id, viewerUserId);
-      if (existing && existing.status !== "cancelled") {
+      // An open invitation is not a place yet - the player still has to
+      // Join (or accept it in Messages), so the page offers Join, not
+      // "Registered".
+      if (existing && existing.status !== "cancelled" && existing.status !== "invited") {
         myRegistrationStatus = existing.status === "waitlisted" ? "waitlisted" : "registered";
       }
     }
@@ -3750,6 +3777,8 @@ export class DatabaseStorage implements IStorage {
       description,
       policies,
       matchMode: session.matchMode,
+      category: session.category ?? null,
+      plannedRoundsCount: session.plannedRoundsCount ?? null,
       scoringFormat: session.scoringFormat,
       price: session.price,
       currency: session.currency,
@@ -4740,14 +4769,17 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Session is full");
     }
 
-    if (existing && existing.status !== "cancelled") {
+    // An invited player who joins from the session page takes a place like
+    // anyone else; before, the open invitation was returned unchanged and
+    // they stayed "invited" - joined in the UI, never on the list.
+    if (existing && existing.status !== "cancelled" && existing.status !== "invited") {
       return { registration: existing, waitlisted: existing.status === "waitlisted" };
     }
 
     if (existing) {
       const [updated] = await db
         .update(registrations)
-        .set({ status: nextStatus, checkedInAt: null })
+        .set({ status: nextStatus, checkedInAt: null, ...(existing.status === "invited" ? { createdAt: new Date() } : {}) })
         .where(eq(registrations.id, existing.id))
         .returning();
       return { registration: updated, waitlisted: nextStatus === "waitlisted" };
@@ -4919,7 +4951,7 @@ export class DatabaseStorage implements IStorage {
         .from(tennisSessions)
         .leftJoin(
           registrations,
-          and(eq(registrations.sessionId, tennisSessions.id), ne(registrations.status, "cancelled"))
+          and(eq(registrations.sessionId, tennisSessions.id), countsAsPlayer())
         )
         .where(
           and(
@@ -4960,7 +4992,10 @@ export class DatabaseStorage implements IStorage {
         .from(registrations)
         .innerJoin(tennisSessions, eq(registrations.sessionId, tennisSessions.id))
         .innerJoin(users, eq(registrations.userId, users.id))
-        .where(and(eq(tennisSessions.organizationId, organizationId), ne(registrations.status, "cancelled")))
+        // "Joined" means really joined: an invitation nobody has accepted
+        // yet is not a join, and the organiser joining their own session
+        // is not news to them - the feed is other people's activity.
+        .where(and(eq(tennisSessions.organizationId, organizationId), countsAsPlayer(), ne(registrations.userId, tennisSessions.createdBy)))
         .orderBy(desc(registrations.createdAt))
         .limit(limit),
       db
@@ -4977,7 +5012,8 @@ export class DatabaseStorage implements IStorage {
         .where(
           and(
             eq(tennisSessions.organizationId, organizationId),
-            sql`${registrations.checkedInAt} IS NOT NULL`
+            sql`${registrations.checkedInAt} IS NOT NULL`,
+            ne(registrations.userId, tennisSessions.createdBy)
           )
         )
         .orderBy(desc(registrations.checkedInAt))
@@ -5097,10 +5133,32 @@ export class DatabaseStorage implements IStorage {
     if (!existing) {
       throw new Error("Invitation not found");
     }
+    // Only an open invitation turns into a place; anything else (already
+    // registered, waitlisted, cancelled) stays as it is.
+    if (existing.status !== "invited") return existing;
 
+    // Accepting takes a real place, so the same limits as Join apply: when
+    // the session is already full the player goes on the waiting list (or
+    // is told it's full) instead of pushing it over capacity.
+    const [session] = await db.select().from(tennisSessions).where(eq(tennisSessions.id, sessionId));
+    let status: "registered" | "waitlisted" = "registered";
+    if (session?.maxParticipants) {
+      const [{ count: taken }] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(registrations)
+        .where(and(eq(registrations.sessionId, sessionId), eq(registrations.status, "registered")));
+      if (Number(taken) >= session.maxParticipants) {
+        if (!session.waitingListEnabled) throw new Error("This session is full.");
+        status = "waitlisted";
+      }
+    }
+
+    // createdAt becomes the moment they accepted: that's when they joined
+    // (the Players tab "Joined" date and the organiser's activity feed),
+    // not when the invitation was sent.
     const [updated] = await db
       .update(registrations)
-      .set({ status: "registered" })
+      .set({ status, createdAt: new Date() })
       .where(eq(registrations.id, existing.id))
       .returning();
     return updated;
@@ -5133,24 +5191,41 @@ export class DatabaseStorage implements IStorage {
     query: string,
     excludeUserId: string,
     limit = 10,
-    context?: { sessionId?: string; organizationId?: string }
-  ): Promise<(Pick<User, "id" | "name" | "slug" | "avatar" | "role"> & { alreadyConnected: boolean })[]> {
-    const rows = await db
+    context?: { sessionId?: string; organizationId?: string },
+    filters: UserSearchFilters = {}
+  ): Promise<UserSearchResult[]> {
+    const now = new Date();
+    const conditions = [ne(users.id, excludeUserId)];
+    if (query) conditions.push(ilike(users.name, `%${query}%`));
+    if (!filters.allRoles) conditions.push(eq(users.role, "player"));
+    if (filters.level) conditions.push(eq(playerProfiles.skillLevel, filters.level));
+    if (filters.location) conditions.push(ilike(playerProfiles.location, `%${filters.location}%`));
+    if (filters.lookingToPlay) {
+      // A "Looking to Play" status expires on its own (see playerProfiles).
+      conditions.push(eq(playerProfiles.lookingToPlayEnabled, true));
+      conditions.push(or(isNull(playerProfiles.lookingToPlayExpiresAt), gte(playerProfiles.lookingToPlayExpiresAt, now))!);
+    }
+    const found = await db
       .select({
         id: users.id,
         name: users.name,
         slug: users.slug,
         avatar: users.avatar,
         role: users.role,
+        skillLevel: playerProfiles.skillLevel,
+        location: playerProfiles.location,
+        lookingToPlayEnabled: playerProfiles.lookingToPlayEnabled,
+        lookingToPlayExpiresAt: playerProfiles.lookingToPlayExpiresAt,
       })
       .from(users)
-      .where(
-        and(
-          ilike(users.name, `%${query}%`),
-          ne(users.id, excludeUserId)
-        )
-      )
+      .leftJoin(playerProfiles, eq(playerProfiles.userId, users.id))
+      .where(and(...conditions))
+      .orderBy(asc(users.name))
       .limit(limit);
+    const rows = found.map(({ lookingToPlayEnabled, lookingToPlayExpiresAt, ...r }) => ({
+      ...r,
+      lookingToPlay: !!lookingToPlayEnabled && (!lookingToPlayExpiresAt || lookingToPlayExpiresAt >= now),
+    }));
 
     if (rows.length === 0) return [];
 

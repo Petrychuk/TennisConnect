@@ -5,6 +5,7 @@ import { env } from "../env";
 import { sendMessageBetween, ORGANIZER_APPROVED_SUBJECT, ORGANIZER_APPROVED_MESSAGE } from "../services/systemMessages";
 import { organizationProfileSchema, organizationProfileUpdateSchema } from "@shared/organizationProfile";
 import { canInviteToSession } from "@shared/sessionActions";
+import { joinBlockedReason } from "@shared/sessionJoinRules";
 import { isInternalTestUser, liveAllowedFor, liveMode } from "../lib/liveFeature";
 import { LiveRuleError } from "../lib/liveErrors";
 import { goLiveProblem, scoreProblem } from "@shared/liveRules";
@@ -734,10 +735,22 @@ router.get("/dashboard/activity", requireAuth, async (req, res, next) => {
 // Players page and a session's own Players tab invite dialogs.
 router.get("/players/search", requireAuth, async (req, res, next) => {
   try {
-    const query = typeof req.query.q === "string" ? req.query.q.trim() : "";
-    if (query.length < 2) {
+    const rawQuery = typeof req.query.q === "string" ? req.query.q.trim() : "";
+    // Narrowing filters for the invite dialog. Players only unless scope=all.
+    const level = typeof req.query.level === "string" ? req.query.level.trim() : "";
+    const location = typeof req.query.location === "string" ? req.query.location.trim() : "";
+    const filters = {
+      level: level || undefined,
+      location: location || undefined,
+      lookingToPlay: req.query.lookingToPlay === "1" || req.query.lookingToPlay === "true",
+      allRoles: req.query.scope === "all",
+    };
+    const hasFilter = !!(filters.level || filters.location || filters.lookingToPlay);
+    // Names need 2+ characters; with a filter active the list can be browsed without a name.
+    if (rawQuery.length < 2 && !hasFilter) {
       return res.json([]);
     }
+    const query = rawQuery.length >= 2 ? rawQuery : "";
 
     const context: { sessionId?: string; organizationId?: string } = {};
 
@@ -757,7 +770,7 @@ router.get("/players/search", requireAuth, async (req, res, next) => {
       }
     }
 
-    const results = await storage.searchUsers(query, (req.user as any).id, 10, context);
+    const results = await storage.searchUsers(query, (req.user as any).id, hasFilter ? 20 : 10, context, filters);
     res.json(results);
   } catch (error) {
     next(error);
@@ -895,7 +908,24 @@ router.put("/sessions/:id", requireAuth, requireOrganizer, requireOwnSession, as
       return res.status(400).json({ message: "Invalid input", errors: parsed.error });
     }
     const before = (req as any).session_ as TennisSession;
+    // An archived session is closed. Hiding Edit in the UI is not enough - the
+    // API refuses too (Duplicate it to run the session again).
+    if (before.status === "archived") {
+      return res.status(409).json({ code: "archived", message: "Archived sessions can't be edited. Duplicate the session to run it again." });
+    }
     const changes = { ...parsed.data, ...clears } as Partial<InsertSession> & Record<string, unknown>;
+
+    // A completed session whose date is moved into the future is being run
+    // again: its status must follow the date, otherwise it keeps the
+    // "Completed" label (and its bucket) forever while showing a future date.
+    // It goes back to "published" - it was already reviewed/approved when it
+    // first ran.
+    if (before.status === "completed" && changes.startAt) {
+      const nextStart = new Date(changes.startAt as string | Date).getTime();
+      if (Number.isFinite(nextStart) && nextStart > Date.now()) {
+        changes.status = "published";
+      }
+    }
     let updated: TennisSession;
     if (expected.kind === "ok") {
       const saved = await storage.updateSessionIfUnchanged(req.params.id, changes, expected.at);
@@ -1022,7 +1052,11 @@ async function notifyActiveRegistrants(
   message: string
 ) {
   const registrationsList = await storage.getRegistrationsForSession(session.id);
-  const activeRecipients = registrationsList.filter((r) => r.status !== "cancelled");
+  // Never message the organiser about their own action: when they are also
+  // registered/invited to their own session (common for admin test
+  // sessions) they used to receive "<organiser> has rescheduled ..." from
+  // themselves.
+  const activeRecipients = registrationsList.filter((r) => r.status !== "cancelled" && r.userId !== organizer.id);
   await Promise.all(
     activeRecipients.map((r) =>
       sendMessageBetween(organizer as any, r.userId, r.userRole, subject, message)
@@ -1721,7 +1755,7 @@ router.post("/sessions/:id/invite", requireAuth, requireOrganizer, requireOwnSes
       const endTime = session.endAt ? new Date(session.endAt).toLocaleTimeString("en-US", timeOptions) : null;
       const timeRange = endTime ? `${startTime}–${endTime}` : startTime;
 
-      const formatLabel = session.matchMode === "singles" ? "Singles" : "Doubles";
+      const formatLabel = session.matchMode === "singles" ? "Singles" : session.category === "mixed" ? "Mixed Doubles" : "Doubles";
       const priceValue = session.price ? Number(session.price) : 0;
       const costLabel = priceValue > 0 ? `$${priceValue} ${session.currency}` : "Free";
 
@@ -1760,6 +1794,12 @@ router.post("/sessions/:id/join", requireAuth, async (req, res, next) => {
     const target = await storage.getSessionById(req.params.id);
     if (target?.isInternalTest && !isInternalTestUser((req.user as any).email)) {
       return res.status(404).json({ message: "Session not found" });
+    }
+    // Registration window and "I agree to the rules and policies" - the same
+    // rules for every client, not only the buttons the page shows.
+    if (target) {
+      const blocked = joinBlockedReason(target, req.body?.acceptedPolicies === true);
+      if (blocked) return res.status(400).json({ message: blocked });
     }
     const { registration, waitlisted } = await storage.registerForSession(
       req.params.id,

@@ -10,7 +10,6 @@ import { useSidebarCollapsed } from "@/lib/use-sidebar-collapsed";
 import { cn } from "@/lib/utils";
 import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
 import { DashboardHeader } from "./dashboard-header";
-import { DashboardHero } from "./dashboard-hero";
 import { LiveTodayCard } from "./live-today-card";
 import { UpcomingSessionsCard } from "./upcoming-sessions-card";
 import { QuickActionsCard } from "./quick-actions-card";
@@ -18,9 +17,6 @@ import { RecentActivityCard } from "./recent-activity-card";
 import { StatisticsCard } from "./statistics-card";
 import { CardSkeleton, CardUnavailable, DashboardWarning, WelcomeEmptyState } from "./dashboard-states";
 import {
-  attendanceTileValue,
-  countTileValue,
-  countUpcoming7Days,
   failedSources,
   failureMessage,
   isNewOrganiser,
@@ -31,12 +27,12 @@ import {
   getMySessions,
   getOrganizationByUserSlug,
   getSessionRegistrations,
-  getDashboardStats,
   getDashboardActivity,
 } from "@/lib/api/organizer-sessions";
 import type { TennisSession, SessionWithDetails } from "@shared/schema";
 
-import type { MockSession, StatStripItem, QuickStat } from "@/lib/organiser-hub-mock-data";
+import type { MockSession, QuickStat } from "@/lib/organiser-hub-mock-data";
+import bgImage from "/assets/images/subtle_abstract_tennis-themed_background_with_lime_green_accents.webp";
 import { OrganiserAccessGate, useOrganiserIdentity } from "@/components/organiser/ui/organiser-layout";
 import { liveAvailableFor, useLiveMode } from "@/lib/use-live-available";
 
@@ -68,15 +64,10 @@ function toMockSession(session: TennisSession | SessionWithDetails, checkedInCou
 
 function DashboardSkeleton() {
   return (
-    <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-8" data-testid="organiser-dashboard-skeleton">
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-6">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-20 rounded-xl" />
-        ))}
-      </div>
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <Skeleton className="h-72 rounded-2xl xl:col-span-2" />
-        <Skeleton className="h-72 rounded-2xl" />
+    <div className="px-4 sm:px-6 lg:px-8 py-4 space-y-6" data-testid="organiser-dashboard-skeleton">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <Skeleton className="h-56 rounded-2xl xl:col-span-2" />
+        <Skeleton className="h-56 rounded-2xl" />
       </div>
     </div>
   );
@@ -89,14 +80,6 @@ export function OrganiserDashboard() {
     </OrganiserAccessGate>
   );
 }
-
-/** The four headline tiles. value null = still loading; error = request failed. */
-const STAT_STRIP: Omit<StatStripItem, "value">[] = [
-  { key: "live", label: "Live Session", sublabel: "Today" },
-  { key: "upcoming", label: "Upcoming Sessions", sublabel: "Next 7 days" },
-  { key: "players", label: "Active Players", sublabel: "This season" },
-  { key: "attendance", label: "Attendance", sublabel: "This season" },
-];
 
 function OrganiserDashboardContent() {
   const { user, isAuthenticated } = useAuth();
@@ -115,11 +98,6 @@ function OrganiserDashboardContent() {
     queryKey: ["/api/organizer/organizations/by-user", user?.slug],
     queryFn: () => getOrganizationByUserSlug(user!.slug!),
     enabled: isAuthenticated && !!user?.slug,
-  });
-  const dashboardStatsQuery = useQuery({
-    queryKey: ["/api/organizer/dashboard/stats"],
-    queryFn: getDashboardStats,
-    enabled: isAuthenticated,
   });
   const dashboardActivityQuery = useQuery({
     queryKey: ["/api/organizer/dashboard/activity"],
@@ -151,8 +129,8 @@ function OrganiserDashboardContent() {
       )
     : null;
 
-  // Real only, capped at 4 - enough to feel useful without overflowing
-  // or unbalancing the grid next to Quick Actions in the same row. A
+  // Real only, capped at 3 - sits in the compact column next to the
+  // TC Live banner. A
   // full "everything upcoming" list already exists at /organiser/sessions
   // (the "View all" link). Backend already excludes anything not
   // "published" (draft/archived/completed/live never show up here -
@@ -165,7 +143,7 @@ function OrganiserDashboardContent() {
     return (mySessionsQuery.data ?? [])
       .filter((s) => s.status === "published" && new Date(s.startAt).getTime() >= now)
       .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
-      .slice(0, 4)
+      .slice(0, 3)
       .map((s) => toMockSession(s));
   }, [mySessionsQuery.data]);
 
@@ -205,50 +183,39 @@ function OrganiserDashboardContent() {
   // sessions request must not blank the player figures that did load.
   const statuses = {
     sessions: sourceStatus(mySessionsQuery),
-    stats: sourceStatus(dashboardStatsQuery),
     activity: sourceStatus(dashboardActivityQuery),
   };
-  const sessions = mySessionsQuery.data ?? [];
-  const liveSessions = sessions.filter((s) => s.status === "live");
-  const statStrip: StatStripItem[] = STAT_STRIP.map((stat) => {
-    if (stat.key === "live") {
-      return {
-        ...stat,
-        value: countTileValue(statuses.sessions, liveSessions.length),
-        // One live session: straight to it (Live page on Staging, the
-        // workspace elsewhere). Several: the Live bucket of the list.
-        href: statuses.sessions !== "ready"
-          ? undefined
-          : liveSessions.length === 1
-            ? liveAvailableFor(liveMode, liveSessions[0]) ? `/organiser/sessions/${liveSessions[0].id}/live` : `/organiser/sessions/${liveSessions[0].id}`
-            : "/organiser/sessions?bucket=live",
-      };
-    }
-    if (stat.key === "upcoming") {
-      return { ...stat, value: countTileValue(statuses.sessions, countUpcoming7Days(sessions)), href: statuses.sessions === "ready" ? "/organiser/sessions?bucket=upcoming" : undefined };
-    }
-    if (stat.key === "players") {
-      return { ...stat, value: countTileValue(statuses.stats, dashboardStatsQuery.data?.activePlayers), href: statuses.stats === "ready" ? "/organiser/players" : undefined };
-    }
-    return {
-      ...stat,
-      value: attendanceTileValue(statuses.stats, dashboardStatsQuery.data?.attendancePercent),
-      href: statuses.stats === "ready" ? "/organiser/reports" : undefined,
-    };
-  });
   const failed = failedSources(statuses);
   const retryFailed = () => {
     if (failed.includes("sessions")) mySessionsQuery.refetch();
-    if (failed.includes("stats")) dashboardStatsQuery.refetch();
     if (failed.includes("activity")) dashboardActivityQuery.refetch();
   };
-  const retrying = mySessionsQuery.isFetching || dashboardStatsQuery.isFetching || dashboardActivityQuery.isFetching;
-  const firstLoad = statuses.sessions === "loading" && statuses.stats === "loading";
+  const retrying = mySessionsQuery.isFetching || dashboardActivityQuery.isFetching;
+  const firstLoad = statuses.sessions === "loading" && statuses.activity === "loading";
   const newOrganiser = isNewOrganiser(statuses.sessions, mySessionsQuery.data);
   const goCreate = () => setLocation("/organiser/sessions/new");
+  // Activity sits in the right column under Upcoming and spans the two left
+  // blocks below TC Live (Quick Actions + Quick Analytics), so it is as tall as them.
+  // With no sessions yet there is no right column: it takes the full row.
+  const activityPlacement = newOrganiser
+    ? "md:col-span-6 xl:col-span-12 xl:col-start-1 xl:row-start-3"
+    : "md:col-span-6 xl:col-span-4 xl:col-start-9 xl:row-start-2 xl:row-span-2";
 
   return (
     <div className="min-h-screen flex bg-background" data-testid="organiser-dashboard">
+      {/* Same page background as the player and coach profiles: the faint lime
+          tennis texture, fixed behind the content. */}
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 z-0 pointer-events-none opacity-[0.15]"
+        style={{
+          backgroundImage: `url(${bgImage})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundAttachment: "fixed",
+          mixBlendMode: "multiply",
+        }}
+      />
       <SEO
         title="Organiser Hub | TennisConnect"
         description="Your organising activity, sessions, and stats in one place."
@@ -258,7 +225,7 @@ function OrganiserDashboardContent() {
       {/* Persistent sidebar — true desktop only (xl+). Tablet, in either
           orientation, gets the collapsible hamburger version instead
           (see DashboardHeader) so it doesn't cramp the content grid. */}
-      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-72")}>
+      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 z-10 h-screen overflow-hidden transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-72")}>
         <OrganiserSidebarNav
           organiser={organiser}
           profileHref={profileHref}
@@ -272,7 +239,7 @@ function OrganiserDashboardContent() {
           sits alongside (sessions.tsx, players.tsx, etc.) - <aside>
           above and <OrganiserMobileNav /> below both stay siblings of
           this <main>, not children of it. */}
-      <main id="main-content" className="flex-1 min-w-0 pb-16 md:pb-0">
+      <main id="main-content" className="relative z-10 flex-1 min-w-0 pb-16 md:pb-0">
         <DashboardHeader
           organiser={organiser}
           profileHref={profileHref}
@@ -283,60 +250,62 @@ function OrganiserDashboardContent() {
           <DashboardSkeleton />
         ) : (
           <>
-            <DashboardHero organiser={organiser} stats={statStrip} />
-
             {failed.length > 0 && <DashboardWarning message={failureMessage(failed)} onRetry={retryFailed} retrying={retrying} />}
 
-            <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-6 xl:grid-cols-12 gap-6">
+            {/* Desktop (xl): left column = TC Live, Quick Actions, Quick Analytics;
+                right column = Upcoming Sessions (level with TC Live), then Activity
+                Feed spanning the two left blocks below TC Live's row. Mobile keeps
+                the DOM order: Live, Upcoming, Quick Actions, Activity, Analytics. */}
+            <div className="px-4 sm:px-6 lg:px-8 py-4" data-testid="organiser-dashboard-content">
+              <div className="grid grid-cols-1 md:grid-cols-6 xl:grid-cols-12 gap-2">
                 {statuses.sessions === "loading" ? (
-                  <CardSkeleton testId="organiser-live-skeleton" className="md:col-span-6 xl:col-span-8" height="h-72" />
+                  <CardSkeleton testId="organiser-live-skeleton" className="md:col-span-6 xl:col-span-8 xl:col-start-1 xl:row-start-1 xl:h-[340px]" height="h-64" />
                 ) : statuses.sessions === "error" ? (
-                  <CardUnavailable testId="organiser-live-unavailable" title="Live Session" className="md:col-span-6 xl:col-span-8" />
+                  <CardUnavailable testId="organiser-live-unavailable" title="Live Session" className="md:col-span-6 xl:col-span-8 xl:col-start-1 xl:row-start-1" />
                 ) : newOrganiser ? (
-                  <WelcomeEmptyState onCreateSession={goCreate} className="md:col-span-6 xl:col-span-8" />
+                  <WelcomeEmptyState onCreateSession={goCreate} className="md:col-span-6 xl:col-span-12 xl:col-start-1 xl:row-start-1" />
                 ) : (
                   <LiveTodayCard
                     session={liveSession}
                     nextUpcoming={upcomingSessions[0] ?? null}
-                    className="md:col-span-6 xl:col-span-8"
+                    className="md:col-span-6 xl:col-span-8 xl:col-start-1 xl:row-start-1"
                     onEnterLive={liveAvailableFor(liveMode, realLiveSession) ? () => liveSession && setLocation(`/organiser/sessions/${liveSession.id}/live`) : undefined}
                     onManageCheckIn={(id) => setLocation(`/organiser/sessions/${id}?tab=players`)}
                     onOpenSession={(id) => setLocation(`/organiser/sessions/${id}`)}
                   />
                 )}
-                {statuses.activity === "loading" ? (
-                  <CardSkeleton testId="organiser-activity-skeleton" className="md:col-span-6 xl:col-span-4" height="h-72" />
-                ) : statuses.activity === "error" ? (
-                  <CardUnavailable testId="organiser-activity-unavailable" title="Recent Activity" className="md:col-span-6 xl:col-span-4" />
-                ) : (
-                  <RecentActivityCard items={dashboardActivityQuery.data ?? []} className="md:col-span-6 xl:col-span-4" />
-                )}
 
                 {/* A new organiser's welcome card already carries the Create Session
                     CTA, so the empty Upcoming card is left out rather than repeating it. */}
                 {statuses.sessions === "loading" ? (
-                  <CardSkeleton testId="organiser-upcoming-skeleton" className="md:col-span-6 xl:col-span-8" />
+                  <CardSkeleton testId="organiser-upcoming-skeleton" className="md:col-span-6 xl:col-span-4 xl:col-start-9 xl:row-start-1 xl:h-[340px]" />
                 ) : statuses.sessions === "error" ? (
-                  <CardUnavailable testId="organiser-upcoming-unavailable" title="Upcoming Sessions" className="md:col-span-6 xl:col-span-8" />
+                  <CardUnavailable testId="organiser-upcoming-unavailable" title="Upcoming Sessions" className="md:col-span-6 xl:col-span-4 xl:col-start-9 xl:row-start-1" />
                 ) : newOrganiser ? null : (
                   <UpcomingSessionsCard
                     sessions={upcomingSessions}
-                    onCreateSession={goCreate}
                     onManage={(id) => setLocation(`/organiser/sessions/${id}`)}
-                    className="md:col-span-6 xl:col-span-8"
+                    className="md:col-span-6 xl:col-span-4 xl:col-start-9 xl:row-start-1 xl:h-[340px]"
                   />
                 )}
+
                 <QuickActionsCard
                   organizationSlug={orgQuery.data?.slug ?? null}
                   upcomingSessions={upcomingSessions}
-                  onCreateSession={goCreate}
                   onCheckIn={(id) => setLocation(`/organiser/sessions/${id}?tab=players`)}
-                  className={newOrganiser ? "md:col-span-6 xl:col-span-12" : "md:col-span-6 xl:col-span-4"}
+                  className={newOrganiser ? "md:col-span-6 xl:col-span-12 xl:col-start-1 xl:row-start-2" : "md:col-span-6 xl:col-span-8 xl:col-start-1 xl:row-start-2"}
                 />
 
+                {statuses.activity === "loading" ? (
+                  <CardSkeleton testId="organiser-activity-skeleton" className={activityPlacement} height="h-40" />
+                ) : statuses.activity === "error" ? (
+                  <CardUnavailable testId="organiser-activity-unavailable" title="Recent Activity" className={activityPlacement} />
+                ) : (
+                  <RecentActivityCard items={dashboardActivityQuery.data ?? []} className={activityPlacement} />
+                )}
+
                 {statuses.sessions === "ready" && !newOrganiser && (
-                  <StatisticsCard stats={quickAnalytics} className="md:col-span-6 xl:col-span-12" />
+                  <StatisticsCard stats={quickAnalytics} className="md:col-span-6 xl:col-span-8 xl:col-start-1 xl:row-start-3" />
                 )}
               </div>
             </div>

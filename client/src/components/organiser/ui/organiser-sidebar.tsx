@@ -200,8 +200,8 @@ export function OrganiserSidebarNav({ organiser, profileHref, className, collaps
   };
 
   return (
-    <div className={cn("dark flex flex-col h-full bg-background text-foreground", className)} data-testid="organiser-sidebar">
-      <div className={cn("pt-6", collapsed ? "px-3" : "px-5")}>
+    <div className={cn("dark flex flex-col h-full min-h-0 bg-background text-foreground", className)} data-testid="organiser-sidebar">
+      <div className={cn("pt-5", collapsed ? "px-3" : "px-5")}>
         <div className="flex items-center justify-between gap-2">
           {!collapsed && (
             <Link href="/" className="text-xl font-display font-bold flex items-center gap-1 whitespace-nowrap min-w-0" data-testid="organiser-sidebar-logo">
@@ -227,7 +227,7 @@ export function OrganiserSidebarNav({ organiser, profileHref, className, collaps
       {/* Avatar/profile block - moved up here right under the logo, per
           explicit request, instead of sitting at the bottom of the nav
           list below every section. */}
-      <div className={cn("mt-4", collapsed ? "px-3" : "px-5")}>
+      <div className={cn("mt-3", collapsed ? "px-3" : "px-5")}>
         <Link
           href={profileHref}
           className={cn(
@@ -255,7 +255,9 @@ export function OrganiserSidebarNav({ organiser, profileHref, className, collaps
         </Link>
       </div>
 
-      <nav className="px-3 pt-4 space-y-1 overflow-y-auto" data-testid="organiser-sidebar-nav">
+      {/* The nav is the only scroll area: logo + profile stay pinned, and the
+          wrapping <aside> no longer scrolls as a second, nested scrollbar. */}
+      <nav className="flex-1 min-h-0 px-3 pt-4 pb-4 space-y-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-testid="organiser-sidebar-nav">
         {!collapsed && (
           <p className="text-[11px] font-semibold tracking-widest text-muted-foreground px-2 pb-1">
             ORGANISER HUB

@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, ExternalLink, UserPlus, MessageSquare, CheckCircle2, type LucideIcon } from "lucide-react";
+import { ExternalLink, UserPlus, MessageSquare, CheckCircle2, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { MockSession } from "@/lib/organiser-hub-mock-data";
 
@@ -10,7 +10,6 @@ interface QuickActionsCardProps {
   // The soonest published session, if any - Check-in Players goes
   // straight there when there's exactly one obvious candidate.
   upcomingSessions?: MockSession[];
-  onCreateSession?: () => void;
   onCheckIn?: (sessionId: string) => void;
   className?: string;
 }
@@ -19,17 +18,17 @@ type ActionItem =
   | { key: string; label: string; icon: LucideIcon; kind: "link"; href: string }
   | { key: string; label: string; icon: LucideIcon; kind: "button"; onClick?: () => void; disabled?: boolean; disabledReason?: string };
 
+// New Session lives in the page header, so it is not repeated here.
 // Operational actions ("things I may need to DO now"), not a second
 // copy of sidebar navigation - Settings was removed per explicit spec
 // feedback ("Remove actions such as: Settings from Quick Actions").
 // Check-in Players and Message Players both need a real session to
 // act on - each disables itself with an honest tooltip when there
 // isn't one, rather than silently doing nothing on click.
-export function QuickActionsCard({ organizationSlug, upcomingSessions = [], onCreateSession, onCheckIn, className }: QuickActionsCardProps) {
+export function QuickActionsCard({ organizationSlug, upcomingSessions = [], onCheckIn, className }: QuickActionsCardProps) {
   const nextSession = upcomingSessions[0];
 
   const actions: ActionItem[] = [
-    { key: "create-session", label: "Create Session", icon: Plus, kind: "button", onClick: onCreateSession },
     {
       key: "checkin",
       label: "Check-in Players",
@@ -52,11 +51,11 @@ export function QuickActionsCard({ organizationSlug, upcomingSessions = [], onCr
 
   return (
     <Card className={cn("shadow-sm hover:shadow-md transition-shadow", className)} data-testid="organiser-quick-actions-card">
-      <CardHeader>
+      <CardHeader className="pb-3">
         <CardTitle asChild className="text-base"><h2>Quick Actions</h2></CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           {actions.map((action) => {
             const Icon = action.icon;
             const content = (
@@ -66,7 +65,7 @@ export function QuickActionsCard({ organizationSlug, upcomingSessions = [], onCr
               </>
             );
             const sharedClasses =
-              "flex flex-col items-center justify-center gap-1.5 rounded-xl border border-border p-3 text-center transition-all hover:border-primary/40 hover:bg-accent/40 hover:scale-[1.01]";
+              "flex flex-col items-center justify-center gap-1.5 rounded-xl border border-border min-h-14 p-2.5 text-center transition-all hover:border-primary/40 hover:bg-accent/40 hover:scale-[1.01]";
 
             if (action.kind === "link") {
               return (

@@ -1392,6 +1392,10 @@ export type PublicSessionDetails = PublicSessionCard & {
   description: string | null;
   policies: import("./sessionPolicies").SessionPolicies;
   matchMode: string;
+  // "open" | "mens" | "womens" | "mixed" | null - with matchMode, the format
+  // line ("Mixed Doubles"); plannedRoundsCount for "5 rounds".
+  category: string | null;
+  plannedRoundsCount: number | null;
   scoringFormat: string;
   price: string | null;
   currency: string;

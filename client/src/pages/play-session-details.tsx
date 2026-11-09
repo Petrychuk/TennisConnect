@@ -1,31 +1,90 @@
+import { useState, type ReactNode } from "react";
 import { useRoute, useLocation, Link } from "wouter";
-import type { ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import SEO from "@/components/seo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, MapPin, Users, CalendarDays, Clock, CheckCircle2 } from "lucide-react";
+import {
+  ArrowLeft,
+  BarChart3,
+  CalendarDays,
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  FileText,
+  Layers,
+  MapPin,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
+import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.webp";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { formatInTimeZone } from "@/lib/timezone";
-import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
+import { SESSION_TYPE_OPTIONS, sessionFormatLabel } from "@/lib/organiser-session-wizard-types";
 import { PLAY_STATUS_LABEL, PLAY_STATUS_STYLE } from "@/lib/play-status";
 import { getPlaySessionById, joinSession, leaveSession } from "@/lib/api/play";
-import { SessionPoliciesList } from "@/components/play/session-policies";
+import { FormattedPolicyText, SessionPoliciesList } from "@/components/play/session-policies";
+import { SessionVenueCard } from "@/components/play/session-venue-card";
+import { ShareSessionButton } from "@/components/play/share-session-button";
+import { PoliciesAgreement } from "@/components/play/policies-agreement";
 import { sessionCategoryOf } from "@shared/sessionCategories";
+import { hasAnyPolicy, type SessionPolicies } from "@shared/sessionPolicies";
 
-function formatLabel(type: string): string {
+/*
+  The public page of a session - the one place a player sees and joins it
+  (Play's cards, the organiser's public page and shared links all lead here).
+
+  Top to bottom: the session's own banner (or the standard court photo) with
+  its name and a short description; the booking card (price, places, ONE main
+  action for the real state); date, time, venue, format, level and length at
+  a glance; the details; rules & policies as collapsible sections (only the
+  ones the organiser filled in); who organises it; where it is, on a map.
+  On a phone the booking card comes straight after the banner.
+*/
+
+function formatTypeLabel(type: string): string {
   return SESSION_TYPE_OPTIONS.find((t) => t.key === type)?.label ?? type;
 }
 
 function initials(name: string): string {
   return name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
+}
+
+/** The wizard's "Format: ..." summary line is shown as the Format fact - not repeated as text. */
+function storyParagraphs(description: string | null): string[] {
+  const lines = (description ?? "").replace(/\r\n?/g, "\n").split("\n");
+  if (lines[0]?.trim().startsWith("Format:")) lines.shift();
+  return lines.join("\n").split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+}
+
+function durationLabel(startAt: string, endAt: string | null): string | null {
+  if (!endAt) return null;
+  const minutes = Math.round((new Date(endAt).getTime() - new Date(startAt).getTime()) / 60000);
+  if (!(minutes > 0)) return null;
+  if (minutes % 60 === 0) return `${minutes / 60} hour${minutes === 60 ? "" : "s"}`;
+  if (minutes > 60) return `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
+  return `${minutes} min`;
+}
+
+function Fact({ icon: Icon, label, value, sub, testId }: { icon: typeof CalendarDays; label: string; value: ReactNode; sub?: ReactNode; testId?: string }) {
+  return (
+    <div className="flex min-w-0 items-start gap-3" data-testid={testId}>
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary-text">
+        <Icon className="h-4 w-4" aria-hidden />
+      </span>
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="font-semibold leading-tight">{value}</p>
+        {sub && <p className="text-sm text-muted-foreground leading-tight mt-0.5">{sub}</p>}
+      </div>
+    </div>
+  );
 }
 
 export default function PlaySessionDetailsPage() {
@@ -35,6 +94,7 @@ export default function PlaySessionDetailsPage() {
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [agreed, setAgreed] = useState(false);
 
   const sessionQuery = useQuery({
     queryKey: ["/api/play/sessions", sessionId],
@@ -45,9 +105,9 @@ export default function PlaySessionDetailsPage() {
   const session = sessionQuery.data;
 
   const joinMutation = useMutation({
-    mutationFn: () => joinSession(sessionId!),
+    mutationFn: () => joinSession(sessionId!, agreed),
     onSuccess: ({ waitlisted }) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/play/sessions", sessionId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/play/sessions"] });
       toast({ title: waitlisted ? "You're on the waiting list" : "You're registered!" });
     },
     onError: (error: any) => {
@@ -58,7 +118,8 @@ export default function PlaySessionDetailsPage() {
   const leaveMutation = useMutation({
     mutationFn: () => leaveSession(sessionId!),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/play/sessions", sessionId] });
+      setAgreed(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/play/sessions"] });
       toast({ title: "Registration cancelled" });
     },
     onError: (error: any) => {
@@ -70,10 +131,10 @@ export default function PlaySessionDetailsPage() {
     return (
       <div className="min-h-screen bg-background" data-testid="play-session-details-loading">
         <Navbar />
-        <div className="container mx-auto px-4 py-8 max-w-3xl space-y-4">
-          <Skeleton className="h-56 w-full rounded-2xl" />
-          <Skeleton className="h-8 w-2/3" />
-          <Skeleton className="h-24 w-full" />
+        <div className="container mx-auto px-4 pt-24 pb-8 max-w-6xl space-y-4">
+          <Skeleton className="h-64 w-full rounded-3xl" />
+          <Skeleton className="h-24 w-full rounded-2xl" />
+          <Skeleton className="h-40 w-full rounded-2xl" />
         </div>
       </div>
     );
@@ -83,11 +144,9 @@ export default function PlaySessionDetailsPage() {
     return (
       <div className="min-h-screen bg-background" data-testid="play-session-details-not-found">
         <Navbar />
-        <div className="container mx-auto px-4 py-16 text-center max-w-lg">
+        <div className="container mx-auto px-4 pt-32 pb-16 text-center max-w-lg">
           <p className="font-semibold text-lg">This session isn't available</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            It may have been cancelled, or it's no longer open for discovery.
-          </p>
+          <p className="text-sm text-muted-foreground mt-1">It may have been cancelled, or it's no longer open for discovery.</p>
           <Button variant="outline" className="mt-4" onClick={() => setLocation("/play")} data-testid="play-session-details-back-to-play">
             <ArrowLeft className="w-4 h-4 mr-2" /> Back to Play
           </Button>
@@ -96,171 +155,258 @@ export default function PlaySessionDetailsPage() {
     );
   }
 
+  const pagePath = `/play/${session.id}`;
+  const pageUrl = typeof window !== "undefined" ? `${window.location.origin}${pagePath}` : pagePath;
+  const category = sessionCategoryOf(session.type);
+  const paragraphs = storyParagraphs(session.description);
+  // A short first paragraph is the banner's blurb; the rest is Session Details.
+  const blurb = paragraphs[0] && paragraphs[0].length <= 280 ? paragraphs[0].replace(/\*\*/g, "") : null;
+  const details = blurb ? paragraphs.slice(1) : paragraphs;
+  const policies = session.policies as SessionPolicies | undefined;
+  const hasPolicies = !!policies && hasAnyPolicy(policies);
+  const formatFact = category.usesMatchFormat
+    ? sessionFormatLabel({ matchMode: session.matchMode, category: session.category, description: session.description })
+    : null;
+  const roundsSub = session.plannedRoundsCount ? `${session.plannedRoundsCount} rounds` : null;
+  const duration = durationLabel(session.startAt, session.endAt);
+  const priceValue = session.price ? Number(session.price) : 0;
+  const priceLabel = priceValue > 0 ? `${session.currency} ${priceValue.toFixed(2)}` : "Free";
   const spotsLeft = session.maxParticipants != null ? session.maxParticipants - session.registeredCount : null;
+  const authHref = (tab?: "register") => `/auth?${tab ? "tab=register&" : ""}returnTo=${encodeURIComponent(pagePath)}`;
 
-  let actionButton: ReactNode;
-  if (!isAuthenticated) {
-    actionButton = (
-      <Button className="w-full sm:w-auto" onClick={() => setLocation("/auth")} data-testid="play-session-details-signin-to-register">
-        Sign in to Register
+  // ---------- The one main action, for the real state ----------
+  const needsAgreement = hasPolicies && isAuthenticated;
+  const joinDisabled = joinMutation.isPending || (needsAgreement && !agreed);
+  let note: ReactNode = null;
+  let action: ReactNode;
+  if (session.externalSourceUrl) {
+    action = (
+      <Button className="w-full" asChild data-testid="play-session-details-view-original">
+        <a href={session.externalSourceUrl} target="_blank" rel="noopener noreferrer">Register on the organiser's site</a>
       </Button>
     );
+  } else if (!isAuthenticated) {
+    // Joining needs an account: sign in, or create one - both come back here.
+    note = <p className="text-sm text-muted-foreground">Sign in or create a free account to join this session.</p>;
+    action = (
+      <div className="grid gap-2">
+        <Button className="w-full" onClick={() => setLocation(authHref())} data-testid="play-session-details-signin-to-register">
+          Sign in to join
+        </Button>
+        <Button variant="outline" className="w-full" onClick={() => setLocation(authHref("register"))} data-testid="play-session-details-create-account">
+          Create an account
+        </Button>
+      </div>
+    );
   } else if (session.myRegistrationStatus === "registered") {
-    actionButton = (
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-        <Badge className="bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400 justify-center py-2 px-4" data-testid="play-session-details-registered-badge">
+    action = (
+      <div className="flex flex-row items-stretch gap-2">
+        <Badge className="flex-1 bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400 justify-center py-2" data-testid="play-session-details-registered-badge">
           <CheckCircle2 className="w-4 h-4 mr-1.5" /> Registered
         </Badge>
-        <Button variant="outline" onClick={() => leaveMutation.mutate()} disabled={leaveMutation.isPending} data-testid="play-session-details-cancel-registration">
-          {leaveMutation.isPending ? "Cancelling..." : "Cancel Registration"}
+        <Button variant="outline" className="flex-1" onClick={() => leaveMutation.mutate()} disabled={leaveMutation.isPending} data-testid="play-session-details-cancel-registration">
+          {leaveMutation.isPending ? "Cancelling..." : "Cancel"}
         </Button>
       </div>
     );
   } else if (session.myRegistrationStatus === "waitlisted") {
-    actionButton = (
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-        <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400 justify-center py-2 px-4">
-          On Waiting List
-        </Badge>
-        <Button variant="outline" onClick={() => leaveMutation.mutate()} disabled={leaveMutation.isPending} data-testid="play-session-details-leave-waitlist">
-          {leaveMutation.isPending ? "Leaving..." : "Leave Waiting List"}
+    note = <p className="text-sm text-muted-foreground">You'll get a place automatically if one opens up.</p>;
+    action = (
+      <div className="flex flex-row items-stretch gap-2">
+        <Badge className="flex-1 bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400 justify-center py-2">On Waiting List</Badge>
+        <Button variant="outline" className="flex-1" onClick={() => leaveMutation.mutate()} disabled={leaveMutation.isPending} data-testid="play-session-details-leave-waitlist">
+          {leaveMutation.isPending ? "Leaving..." : "Leave"}
         </Button>
       </div>
     );
+  } else if (session.playStatus === "live") {
+    action = <Button className="w-full" disabled data-testid="play-session-details-live">Session in progress</Button>;
+  } else if (session.playStatus === "upcoming") {
+    action = (
+      <Button className="w-full" disabled data-testid="play-session-details-not-open">
+        {session.registrationOpensAt
+          ? `Registration opens ${formatInTimeZone(session.registrationOpensAt, session.timeZone, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}`
+          : "Registration not open yet"}
+      </Button>
+    );
   } else if (session.playStatus === "closed") {
-    actionButton = <Button className="w-full sm:w-auto" disabled data-testid="play-session-details-closed">Registration Closed</Button>;
+    action = <Button className="w-full" disabled data-testid="play-session-details-closed">Registration Closed</Button>;
   } else if (session.playStatus === "full") {
-    actionButton = <Button className="w-full sm:w-auto" disabled data-testid="play-session-details-full">Full</Button>;
+    note = <p className="text-sm text-muted-foreground">This session is full and has no waiting list.</p>;
+    action = <Button className="w-full" disabled data-testid="play-session-details-full">Full</Button>;
   } else if (session.playStatus === "waitlist") {
-    actionButton = (
-      <Button className="w-full sm:w-auto" onClick={() => joinMutation.mutate()} disabled={joinMutation.isPending} data-testid="play-session-details-join-waitlist">
+    note = (
+      <p className="text-sm text-muted-foreground" data-testid="play-session-details-waitlist-note">
+        This session is full. Join the waiting list - you'll move up automatically if a place opens.
+      </p>
+    );
+    action = (
+      <Button className="w-full" onClick={() => joinMutation.mutate()} disabled={joinDisabled} data-testid="play-session-details-join-waitlist">
+        <Clock className="w-4 h-4 mr-1.5" aria-hidden />
         {joinMutation.isPending ? "Joining..." : "Join Waiting List"}
       </Button>
     );
   } else {
-    actionButton = (
-      <Button className="w-full sm:w-auto" onClick={() => joinMutation.mutate()} disabled={joinMutation.isPending} data-testid="play-session-details-register">
-        {joinMutation.isPending ? "Registering..." : "Register"}
+    action = (
+      <Button className="w-full" onClick={() => joinMutation.mutate()} disabled={joinDisabled} data-testid="play-session-details-register">
+        {joinMutation.isPending ? "Joining..." : "Join Session"}
       </Button>
     );
   }
+  const offersJoin = !session.externalSourceUrl && isAuthenticated && !session.myRegistrationStatus && (session.playStatus === "waitlist" || session.playStatus === "open" || session.playStatus === "almost_full");
 
   return (
     <div className="min-h-screen bg-background" data-testid="play-session-details-page">
-      <SEO title={`${session.title} | TennisConnect`} description={session.description ?? `Join ${session.title}, organised by ${session.organizationName}.`} />
+      <SEO
+        title={`${session.title} | TennisConnect`}
+        description={(blurb ?? paragraphs[0] ?? `Join ${session.title}, organised by ${session.organizationName}.`).slice(0, 200)}
+        image={session.coverImage && /^https:\/\//.test(session.coverImage) ? session.coverImage : undefined}
+        canonical={pagePath}
+      />
       <Navbar />
 
-      <main id="main-content" className="container mx-auto px-4 py-6 max-w-3xl">
-        <Link href="/play" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4" data-testid="play-session-details-back-link">
+      <main id="main-content" className="container mx-auto max-w-6xl px-4 pt-20 sm:pt-24 pb-24 lg:pb-12">
+        <Link href="/play" className="inline-flex min-h-11 sm:min-h-0 items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-3" data-testid="play-session-details-back-link">
           <ArrowLeft className="w-4 h-4" /> Back to Play
         </Link>
 
-        <div className="relative h-48 sm:h-64 rounded-2xl overflow-hidden bg-muted mb-5">
-          {session.coverImage ? (
-            <img src={session.coverImage} alt="" className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/15 to-primary/5">
-              <span className="text-5xl">🎾</span>
-            </div>
-          )}
-          <Badge className={cn("absolute top-3 left-3 font-semibold", PLAY_STATUS_STYLE[session.playStatus])} data-testid="play-session-details-status">
-            {PLAY_STATUS_LABEL[session.playStatus]}
-          </Badge>
-        </div>
-
-        <h1 className="text-2xl sm:text-3xl font-display font-bold" data-testid="play-session-details-title">{session.title}</h1>
-
-        {(session.seasonName || session.seriesName) && (
-          <p className="text-xs text-muted-foreground mt-1" data-testid="play-session-details-season-context">
-            Part of {[session.seasonName, session.seriesName].filter(Boolean).join(" · ")}
-          </p>
-        )}
-
-        <div className="flex flex-wrap gap-2 mt-3">
-          {/* Category (shared/sessionCategories.ts) + the format itself. */}
-          <Badge variant="outline" data-testid="play-session-details-category">{sessionCategoryOf(session.type).label}</Badge>
-          <Badge variant="secondary" data-testid="play-session-details-format">{formatLabel(session.type)}</Badge>
-          <Badge variant="outline">{session.skillLevel ?? "All Levels"}</Badge>
-          {session.courtsCount != null && <Badge variant="outline">{session.courtsCount} courts</Badge>}
-        </div>
-
-        <div className="grid sm:grid-cols-2 gap-3 mt-5">
-          <div className="flex items-center gap-2.5 text-sm">
-            <CalendarDays className="w-4 h-4 text-muted-foreground shrink-0" />
-            {formatInTimeZone(session.startAt, session.timeZone, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+        {/* ---------- Banner ---------- */}
+        <section className="relative overflow-hidden rounded-3xl bg-muted min-h-[15rem] sm:min-h-[19rem] lg:min-h-[22rem] flex flex-col justify-end" data-testid="play-session-details-hero">
+          <img src={session.coverImage || courtImage} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10 lg:bg-gradient-to-r lg:from-black/75 lg:via-black/40 lg:to-transparent" aria-hidden />
+          <div className="absolute right-3 top-3 sm:right-4 sm:top-4">
+            <ShareSessionButton url={pageUrl} title={session.title} />
           </div>
-          <div className="flex items-center gap-2.5 text-sm">
-            <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
-            {formatInTimeZone(session.startAt, session.timeZone, { hour: "numeric", minute: "2-digit" })}
-            {session.endAt && <> – {formatInTimeZone(session.endAt, session.timeZone, { hour: "numeric", minute: "2-digit" })}</>}
-          </div>
-          {session.location && (
-            <div className="flex items-center gap-2.5 text-sm sm:col-span-2">
-              <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
-              {session.location}
+          <div className="relative p-5 sm:p-7 lg:max-w-[60%] text-white">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className={cn("font-semibold", PLAY_STATUS_STYLE[session.playStatus])} data-testid="play-session-details-status">
+                {PLAY_STATUS_LABEL[session.playStatus]}
+              </Badge>
+              {/* Category (shared/sessionCategories.ts) + the format itself. */}
+              <Badge variant="outline" className="border-white/40 bg-white/10 text-white" data-testid="play-session-details-category">{category.label}</Badge>
+              <Badge className="bg-white text-foreground hover:bg-white" data-testid="play-session-details-format">{formatTypeLabel(session.type)}</Badge>
             </div>
-          )}
-          <div className="flex items-center gap-2.5 text-sm">
-            <Users className="w-4 h-4 text-muted-foreground shrink-0" />
-            {session.maxParticipants != null ? (
-              <span>
-                {session.registeredCount} / {session.maxParticipants} players
-                {spotsLeft != null && spotsLeft > 0 && <span className="text-green-600 dark:text-green-400 font-medium"> · {spotsLeft} spots remaining</span>}
-              </span>
-            ) : (
-              <span>{session.registeredCount} players</span>
+            <h1 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-display font-bold leading-tight" data-testid="play-session-details-title">{session.title}</h1>
+            {(session.seasonName || session.seriesName) && (
+              <p className="mt-1 text-xs text-white/80" data-testid="play-session-details-season-context">
+                Part of {[session.seasonName, session.seriesName].filter(Boolean).join(" · ")}
+              </p>
             )}
+            {blurb && <p className="mt-2 text-sm sm:text-base text-white/90 line-clamp-3" data-testid="play-session-details-blurb">{blurb}</p>}
           </div>
-        </div>
+        </section>
 
-        {session.description && (
-          <div className="mt-6">
-            <h2 className="text-xs font-bold tracking-widest text-muted-foreground uppercase mb-2">About</h2>
-            <p className="text-sm text-foreground/90 whitespace-pre-line">{session.description}</p>
-          </div>
-        )}
-
-        {session.policies && Object.values(session.policies).some(Boolean) && (
-          <div className="mt-6">
-            <h2 className="text-xs font-bold tracking-widest text-muted-foreground uppercase mb-2">Rules & policies</h2>
-            <SessionPoliciesList policies={session.policies} testId="play-session-details-policies" />
-          </div>
-        )}
-
-        <div className="mt-6">
-          <h2 className="text-xs font-bold tracking-widest text-muted-foreground uppercase mb-2">Organised by</h2>
-          <Card>
-            <CardContent className="p-4 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <Avatar className="h-10 w-10 shrink-0">
-                  {session.organizationLogo && <AvatarImage src={session.organizationLogo} alt="" />}
-                  <AvatarFallback className="bg-primary/10 text-primary-text font-bold">{initials(session.organizationName)}</AvatarFallback>
-                </Avatar>
-                {/* The organiser's public page (/organisations/:slug). External
-                    events have no TennisConnect organisation, so no slug. */}
-                {session.organizationSlug ? (
-                  <Link
-                    href={`/organisations/${session.organizationSlug}`}
-                    className="font-medium truncate text-primary-text hover:underline"
-                    data-testid="play-session-details-organizer-page"
-                  >
-                    {session.organizationName}
-                  </Link>
+        <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[auto_1fr]">
+          {/* ---------- Booking card: first on a phone, beside the banner on desktop ---------- */}
+          <aside className="lg:col-start-2 lg:row-start-1 lg:-mt-40 relative z-10" data-testid="play-session-details-booking">
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-lg space-y-4">
+              <div>
+                <p className="text-2xl font-display font-bold" data-testid="play-session-details-price">{priceLabel}</p>
+                {priceValue > 0 && <p className="text-xs text-muted-foreground">per player · paid to the organiser</p>}
+              </div>
+              <p className="flex items-center gap-2 text-sm" data-testid="play-session-details-spots">
+                <Users className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden />
+                {session.maxParticipants != null ? (
+                  <span>
+                    {session.registeredCount} / {session.maxParticipants} players
+                    {spotsLeft != null && spotsLeft > 0 ? (
+                      <span className="text-green-600 dark:text-green-400 font-medium"> · {spotsLeft} {spotsLeft === 1 ? "spot" : "spots"} left</span>
+                    ) : (
+                      <span className="font-medium"> · Full</span>
+                    )}
+                  </span>
                 ) : (
-                  <span className="font-medium truncate">{session.organizationName}</span>
+                  <span>{session.registeredCount} players</span>
+                )}
+              </p>
+              {note}
+              {offersJoin && hasPolicies && (
+                <PoliciesAgreement checked={agreed} onCheckedChange={setAgreed} testId="play-session-details-agree" />
+              )}
+              {action}
+            </div>
+          </aside>
+
+          {/* ---------- Main column ---------- */}
+          <div className="lg:col-start-1 lg:row-start-1 lg:row-span-2 space-y-5 min-w-0">
+            <section className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-sm grid gap-4 sm:grid-cols-2 xl:grid-cols-3" data-testid="play-session-details-facts">
+              <Fact
+                icon={CalendarDays}
+                label="When"
+                value={formatInTimeZone(session.startAt, session.timeZone, { weekday: "short", day: "numeric", month: "short" })}
+                sub={
+                  <>
+                    {formatInTimeZone(session.startAt, session.timeZone, { hour: "numeric", minute: "2-digit" })}
+                    {session.endAt && <> – {formatInTimeZone(session.endAt, session.timeZone, { hour: "numeric", minute: "2-digit" })}</>}
+                  </>
+                }
+                testId="play-session-details-when"
+              />
+              {session.location && <Fact icon={MapPin} label="Where" value={session.location} sub={session.timeZone.split("/").pop()?.replace(/_/g, " ")} testId="play-session-details-where" />}
+              {formatFact && <Fact icon={Layers} label="Format" value={formatFact} sub={roundsSub} testId="play-session-details-match-format" />}
+              <Fact icon={BarChart3} label="Level" value={session.skillLevel ?? "All levels"} testId="play-session-details-level" />
+              {duration && <Fact icon={Clock} label="Duration" value={duration} sub={session.courtsCount != null ? `${session.courtsCount} courts` : null} />}
+            </section>
+
+            {details.length > 0 && (
+              <section className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-sm" data-testid="play-session-details-about">
+                <h2 className="flex items-center gap-2 font-semibold mb-3">
+                  <FileText className="w-4 h-4 text-primary-text" aria-hidden /> Session details
+                </h2>
+                <FormattedPolicyText text={details.join("\n\n")} />
+              </section>
+            )}
+
+            {hasPolicies && (
+              <section id="session-policies" className="scroll-mt-24 space-y-2" data-testid="play-session-details-policies-section">
+                <h2 className="flex items-center gap-2 font-semibold">
+                  <ShieldCheck className="w-4 h-4 text-primary-text" aria-hidden /> Rules &amp; policies
+                </h2>
+                <SessionPoliciesList policies={policies} variant="accordion" testId="play-session-details-policies" />
+              </section>
+            )}
+
+            <section className="rounded-2xl border border-border bg-card p-4 shadow-sm" data-testid="play-session-details-organiser">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Avatar className="h-11 w-11 shrink-0">
+                    {session.organizationLogo && <AvatarImage src={session.organizationLogo} alt="" />}
+                    <AvatarFallback className="bg-primary/10 text-primary-text font-bold">{initials(session.organizationName)}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Organised by</p>
+                    {/* The organiser's public page (/organisations/:slug). External
+                        events have no TennisConnect organisation, so no slug. */}
+                    {session.organizationSlug ? (
+                      <Link href={`/organisations/${session.organizationSlug}`} className="font-semibold truncate block hover:underline" data-testid="play-session-details-organizer-page">
+                        {session.organizationName}
+                      </Link>
+                    ) : (
+                      <span className="font-semibold truncate block">{session.organizationName}</span>
+                    )}
+                  </div>
+                </div>
+                {session.organizationSlug ? (
+                  <Button variant="ghost" size="icon" asChild aria-label={`${session.organizationName} - all sessions`} data-testid="play-session-details-view-organizer">
+                    <Link href={`/organisations/${session.organizationSlug}`}>
+                      <ChevronRight className="w-5 h-5" />
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button variant="outline" size="sm" asChild data-testid="play-session-details-view-organizer">
+                    <Link href={`/play?organizer=${session.organizationId}`}>Their sessions</Link>
+                  </Button>
                 )}
               </div>
-              <Button variant="outline" size="sm" asChild data-testid="play-session-details-view-organizer">
-                <Link href={`/play?organizer=${session.organizationId}`}>Their sessions</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+            </section>
+          </div>
 
-        <div className="mt-8 sticky bottom-4">
-          <Card className="shadow-lg">
-            <CardContent className="p-4 flex items-center justify-center">{actionButton}</CardContent>
-          </Card>
+          {/* ---------- Where: map, address, Google Maps ---------- */}
+          {session.location && (
+            <aside className="lg:col-start-2 lg:row-start-2 min-w-0">
+              <SessionVenueCard sessionId={session.id} venue={session.location} timeZone={session.timeZone} />
+            </aside>
+          )}
         </div>
       </main>
 

@@ -3,6 +3,7 @@ import { Shuffle, Repeat, Trophy, Ruler, ScrollText, GraduationCap } from "lucid
 import { type SessionListItem } from "@/lib/organiser-sessions-mock-data";
 import { sessionCategoryOf } from "@shared/sessionCategories";
 import { SessionPoliciesList } from "@/components/play/session-policies";
+import { sessionFormatLabel } from "@/lib/organiser-session-wizard-types";
 
 interface FormatRulesTabProps {
   session: SessionListItem;
@@ -15,16 +16,7 @@ export function FormatRulesTab({ session }: FormatRulesTabProps) {
   // getSessionDetail()'s mock fallback, regardless of what the
   // organizer actually picked in the wizard. Same real data
   // session-details-card.tsx's Overview cards already use.
-  const formatLabel =
-    session.matchMode == null
-      ? "Not set"
-      : session.category === "mens"
-      ? `Men's ${session.matchMode === "singles" ? "Singles" : "Doubles"}`
-      : session.category === "womens"
-      ? `Women's ${session.matchMode === "singles" ? "Singles" : "Doubles"}`
-      : session.matchMode === "singles"
-      ? "Singles"
-      : "Doubles";
+  const formatLabel = sessionFormatLabel(session) ?? "Not set";
   const roundsCount = session.roundTotal ?? session.plannedRoundsCount ?? null;
   const scoringLabel =
     session.gamesTo != null

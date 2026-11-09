@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Sliders, Users2, HelpCircle, ScrollText, ChevronDown, Plus, Info } from "lucide-react";
-import type { NewSessionDraft } from "@/lib/organiser-session-wizard-types";
+import { SESSION_LEVEL_OPTIONS, type NewSessionDraft } from "@/lib/organiser-session-wizard-types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sessionCategoryOf } from "@shared/sessionCategories";
 import { useLiveAvailable } from "@/lib/use-live-available";
 import { NumberField } from "./number-field";
@@ -47,6 +48,26 @@ export function Step3DetailsRules({ draft, onChange }: Step3DetailsRulesProps) {
   const liveAvailable = useLiveAvailable();
   return (
     <div className="space-y-4" data-testid="organiser-wizard-step3" data-category={category.key}>
+      {/* Who the session is for - every type, coaching included. Shown on Play
+          (card, quick view, session page) and used by its level filter. */}
+      <Card className="shadow-sm" data-testid="organiser-wizard-level-card">
+        <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:w-40 shrink-0">
+            <Users2 className="w-4 h-4 text-primary-text" />
+            <Label htmlFor="organiser-wizard-level" className="text-sm font-semibold">Player level</Label>
+          </div>
+          <Select value={draft.skillLevel || "all"} onValueChange={(v) => onChange("skillLevel", v === "all" ? "" : v)}>
+            <SelectTrigger id="organiser-wizard-level" className="sm:max-w-xs" data-testid="organiser-wizard-level">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SESSION_LEVEL_OPTIONS.map((o) => (
+                <SelectItem key={o.value || "all"} value={o.value || "all"}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
       {!category.usesMatchFormat && (
         <Card className="shadow-sm" data-testid="organiser-wizard-coaching-note">
           <CardContent className="p-4 flex items-start gap-3 text-sm">

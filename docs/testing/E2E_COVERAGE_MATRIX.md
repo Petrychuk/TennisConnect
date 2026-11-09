@@ -75,9 +75,11 @@ Updated 5 Nov 2026. Inventory from `npx playwright test --list`: **404 tests in 
 | | Export players, Share (real public link, none for drafts) | ORG-ACT-005, ORG-ACT-006 |
 | | Edit, Duplicate, Publish | ORG-WIZ-003, ORG-WIZ-004 |
 | **F. Public** | Published in Play, drafts private | PLAY-001, PLAY-002, PLAY-009 |
-| | Category, format, policies, organiser public page | PLAY-007 |
-| | Event Quick View | PLAY-008, PROD-SAFE-017 |
+| | Category, format, policies, organiser public page (and back to the session) | PLAY-007 |
+| | Play card opens the session's own page, not Quick View (Quick View only for external events) | PLAY-008, PROD-SAFE-017 |
 | | Registration and status | PLAY-003…006 |
+| | "I agree to the rules & policies" before Join (page and API) | PLAY-010 |
+| | Guest: Sign in / Create an account, no Join | PLAY-011, PROD-SAFE-017 |
 | **G. Responsive** | 6 viewports: navigation, wizard, players, touch targets, check-in, organisation, overflow | ORG-RESP-001…003 |
 | Rankings, reports, series | Existing | ORG-RANK-002/004/006, ORG-REPORT-003/004/010/012, ORG-FLOW-001/003 |
 | **I. Dashboard states** (5 Nov) | New organiser: 0 / 0 / 0 / `—`, welcome card with Create Session | ORG-DASH-001 |

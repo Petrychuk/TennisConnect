@@ -4,6 +4,7 @@
 // their own registration status on the details endpoint.
 import { Router } from "express";
 import { storage } from "../storage";
+import { lookupVenue } from "../services/venueLookup";
 import { publicBrowseLimiter, smartSearchLimiter } from "../lib/rateLimiters";
 import {
   computeRecommendation,
@@ -489,6 +490,22 @@ router.get("/players-looking", async (req, res, next) => {
     }
     const result = await getMatchedPlayers((req.user as any).id);
     res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/play/sessions/:id/venue - the court's name, address and map pin
+// for the public session page, looked up from the venue name
+// (server/services/venueLookup.ts). Same visibility as the session itself.
+router.get("/sessions/:id/venue", async (req, res, next) => {
+  try {
+    const viewerUserId = req.isAuthenticated && req.isAuthenticated() ? (req.user as any).id : undefined;
+    const session = await storage.getPublicSessionById(req.params.id, viewerUserId);
+    if (!session) {
+      return res.status(404).json({ message: "Session not found" });
+    }
+    res.json(await lookupVenue(session));
   } catch (error) {
     next(error);
   }

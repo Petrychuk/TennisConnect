@@ -1615,7 +1615,13 @@ export async function registerRoutes(app: Express): Promise<void> {
         if (!message.relatedSessionId) {
           return res.status(400).json({ message: "Missing session" });
         }
-        await storage.acceptInvitedRegistration(message.relatedSessionId, req.user!.id);
+        try {
+          await storage.acceptInvitedRegistration(message.relatedSessionId, req.user!.id);
+        } catch (err: any) {
+          // Full and no waiting list: the invitation stays open, the player is told why.
+          if (err?.message === "This session is full.") return res.status(409).json({ message: err.message });
+          throw err;
+        }
       }
       // play_invite (spec section 12) has no side effect to perform
       // here at all - "do not require the players to create an

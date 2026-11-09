@@ -76,7 +76,7 @@ const FAILURE_LABEL: Record<DashboardSourceKey, string> = {
 };
 
 /** Sources whose request actually failed, in display order. Loading and empty are never failures. */
-export function failedSources(statuses: Record<DashboardSourceKey, SourceStatus>): DashboardSourceKey[] {
+export function failedSources(statuses: Partial<Record<DashboardSourceKey, SourceStatus>>): DashboardSourceKey[] {
   return (["sessions", "stats", "activity"] as const).filter((k) => statuses[k] === "error");
 }
 

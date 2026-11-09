@@ -57,7 +57,7 @@ import { RoundsTab } from "@/components/organiser/sessions/workspace/rounds-tab"
 import { MessagesTab } from "@/components/organiser/sessions/workspace/messages-tab";
 import { ResultsTab } from "@/components/organiser/sessions/workspace/results-tab";
 import { SettingsTab } from "@/components/organiser/sessions/workspace/settings-tab";
-import { bucketFor, sessionEditPath } from "@/components/organiser/sessions/session-utils";
+import { bucketFor, canEditSession, sessionEditPath } from "@/components/organiser/sessions/session-utils";
 import { friendlyApiError } from "@/lib/apiError";
 
 import { useQuery } from "@tanstack/react-query";
@@ -408,10 +408,12 @@ export default function OrganiserSessionWorkspacePage() {
                       {publishing ? "Publishing..." : "Publish Session"}
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onClick={goEdit} data-testid="organiser-session-more-edit">
-                    <Pencil className="w-4 h-4 mr-2" />
-                    Edit Session
-                  </DropdownMenuItem>
+                  {canEditSession(session) && (
+                    <DropdownMenuItem onClick={goEdit} data-testid="organiser-session-more-edit">
+                      <Pencil className="w-4 h-4 mr-2" />
+                      Edit Session
+                    </DropdownMenuItem>
+                  )}
                   {canInviteToSession(session.status, session.endAt) && (
                     <DropdownMenuItem onClick={() => setInviteOpen(true)} data-testid="organiser-session-more-invite">
                       <UserPlus className="w-4 h-4 mr-2" />
@@ -477,7 +479,7 @@ export default function OrganiserSessionWorkspacePage() {
             <TabsContent value="overview" className="mt-4">
               <OverviewTab
                 session={session}
-                onEdit={goEdit}
+                onEdit={canEditSession(session) ? goEdit : undefined}
                 onInvite={canInviteToSession(session.status, session.endAt) ? () => setInviteOpen(true) : undefined}
                 isDivision={isDivision}
               />

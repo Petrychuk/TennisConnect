@@ -187,10 +187,12 @@ export function OverviewTab({ session, onEdit, onInvite, isDivision }: OverviewT
         <SessionStatusCard session={session} showEditButton={false} />
         <SessionReadinessCard readiness={sessionReadiness} onViewDetails={viewReadinessDetails} />
         {isMultiDivisionType && <DivisionsCard sessionId={session.id} />}
-        <div className={onInvite ? "grid grid-cols-2 gap-3" : "grid grid-cols-1"}>
-          <Button variant="outline" className="min-h-11" onClick={onEdit} data-testid="organiser-session-overview-edit-mobile">
-            Edit Session
-          </Button>
+        <div className={onInvite && onEdit ? "grid grid-cols-2 gap-3" : "grid grid-cols-1"}>
+          {onEdit && (
+            <Button variant="outline" className="min-h-11" onClick={onEdit} data-testid="organiser-session-overview-edit-mobile">
+              Edit Session
+            </Button>
+          )}
           {onInvite && (
             <Button variant="outline" className="min-h-11" onClick={onInvite} data-testid="organiser-session-overview-invite-mobile">
               <UserPlus className="w-4 h-4 mr-2" />

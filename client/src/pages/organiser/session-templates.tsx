@@ -1,9 +1,11 @@
-import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useSearch } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
@@ -25,6 +27,8 @@ import { Plus, LayoutTemplate, MapPin, Users, Square, Repeat, Clock, Hourglass, 
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { OrganiserLayout } from "@/components/organiser/ui/organiser-layout";
+import { CreateFromTemplateDialog } from "@/components/organiser/templates/create-from-template-dialog";
+import { TemplateEditForm } from "@/components/organiser/templates/template-edit-form";
 
 import { getSessionTemplates, duplicateSessionTemplate, deleteSessionTemplate } from "@/lib/api/organizer-sessions";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
@@ -39,8 +43,7 @@ function formatDuration(minutes: number | null): string | null {
   return `${h}h ${m}m`;
 }
 
-function TemplateCard({ template, onDuplicate, onDelete }: { template: SessionTemplate; onDuplicate: (t: SessionTemplate) => void; onDelete: (t: SessionTemplate) => void }) {
-  const [, setLocation] = useLocation();
+function TemplateCard({ template, onUse, onEdit, onDuplicate, onDelete }: { template: SessionTemplate; onUse: (t: SessionTemplate) => void; onEdit: (t: SessionTemplate) => void; onDuplicate: (t: SessionTemplate) => void; onDelete: (t: SessionTemplate) => void }) {
   const typeLabel = SESSION_TYPE_OPTIONS.find((t) => t.key === template.type)?.label ?? "Session";
   const duration = formatDuration(template.durationMinutes);
 
@@ -90,25 +93,33 @@ function TemplateCard({ template, onDuplicate, onDelete }: { template: SessionTe
         </div>
 
         <div className="flex items-center gap-2 pt-1">
+          {/* One height for all three buttons: the icon ones are square at that height. */}
           <Button
             size="sm"
-            className="flex-1"
-            onClick={() => setLocation(`/organiser/sessions/new?templateId=${template.id}`)}
+            className="flex-1 h-9 min-h-9"
+            onClick={() => onUse(template)}
             data-testid={`organiser-template-card-${template.id}-use`}
           >
             Use Template
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setLocation(`/organiser/sessions/templates/${template.id}/edit`)}
-            data-testid={`organiser-template-card-${template.id}-edit`}
-          >
-            <Pencil className="w-4 h-4" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-9 min-h-9 w-9 p-0"
+                onClick={() => onEdit(template)}
+                aria-label="Edit Template"
+                data-testid={`organiser-template-card-${template.id}-edit`}
+              >
+                <Pencil className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Edit Template</TooltipContent>
+          </Tooltip>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="icon" variant="outline" data-testid={`organiser-template-card-${template.id}-menu`}>
+              <Button size="sm" variant="outline" className="h-9 min-h-9 w-9 p-0" data-testid={`organiser-template-card-${template.id}-menu`}>
                 <MoreHorizontal className="w-4 h-4" />
                 <span className="sr-only">More actions</span>
               </Button>
@@ -140,6 +151,9 @@ export default function OrganiserSessionTemplatesPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [deleteTarget, setDeleteTarget] = useState<SessionTemplate | null>(null);
+  const [useTarget, setUseTarget] = useState<SessionTemplate | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const search = useSearch();
 
   const templatesQuery = useQuery({
     queryKey: ["/api/organizer/session-templates"],
@@ -173,6 +187,16 @@ export default function OrganiserSessionTemplatesPage() {
   };
 
   const templates = templatesQuery.data ?? [];
+  const editTarget = templates.find((t) => t.id === editId) ?? null;
+
+  // Old /templates/:id/edit links arrive here as ?edit=<id>: open the panel, then tidy the URL.
+  useEffect(() => {
+    const id = new URLSearchParams(search).get("edit");
+    if (id) {
+      setEditId(id);
+      setLocation("/organiser/sessions/templates", { replace: true });
+    }
+  }, [search, setLocation]);
 
   return (
     <OrganiserLayout
@@ -229,11 +253,24 @@ export default function OrganiserSessionTemplatesPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {templates.map((template) => (
-                <TemplateCard key={template.id} template={template} onDuplicate={handleDuplicate} onDelete={setDeleteTarget} />
+                <TemplateCard key={template.id} template={template} onUse={setUseTarget} onEdit={(t) => setEditId(t.id)} onDuplicate={handleDuplicate} onDelete={setDeleteTarget} />
               ))}
             </div>
           )}
         </div>
+
+      <CreateFromTemplateDialog template={useTarget} onClose={() => setUseTarget(null)} />
+
+      {/* Edit Template: a side panel on desktop, full screen on phones. All the template's fields stay. */}
+      <Sheet open={!!editTarget} onOpenChange={(open) => !open && setEditId(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-lg flex flex-col gap-3" data-testid="organiser-template-edit-panel">
+          <SheetHeader>
+            <SheetTitle>Edit Template</SheetTitle>
+            <SheetDescription>Changes apply to future sessions only - sessions already created from this template stay as they are.</SheetDescription>
+          </SheetHeader>
+          {editTarget && <TemplateEditForm key={editTarget.id} template={editTarget} onSaved={() => setEditId(null)} onCancel={() => setEditId(null)} />}
+        </SheetContent>
+      </Sheet>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>

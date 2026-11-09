@@ -291,6 +291,17 @@ export default function PlayPage() {
   };
 
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  // One way to look at a TennisConnect session: its public page (/play/:id),
+  // where it can be joined, shared and found again. Quick View stays only
+  // for events that live on someone else's site (no TennisConnect page).
+  const openSession = (card: { id: string; sourceType?: string; externalSourceUrl?: string | null }, recommendation: typeof selectedRecommendation) => {
+    if (card.sourceType === "EXTERNAL" || card.externalSourceUrl) {
+      setSelectedSessionId(card.id);
+      setSelectedRecommendation(recommendation);
+      return;
+    }
+    setLocation(`/play/${card.id}`);
+  };
   const [selectedRecommendation, setSelectedRecommendation] = useState<{ score: number; reasons: string[] } | null>(null);
   const dateFilterLabel = PLAY_DATE_FILTER_OPTIONS.find((o) => o.value === dateFilter)?.label;
   const formatLabel = PLAY_FORMAT_OPTIONS.find((o) => o.key === format)?.label;
@@ -592,9 +603,8 @@ export default function PlayPage() {
                       session={activity}
                       recommendation={recommendation}
                       onView={() => {
-                        setSelectedSessionId(activity.id);
-                        setSelectedRecommendation(recommendation);
                         trackRecommendationOpen(activity.id, recommendation?.score, position, activity.type);
+                        openSession(activity, recommendation);
                       }}
                     />
                   ))}
@@ -708,10 +718,7 @@ export default function PlayPage() {
                             key={s.id}
                             session={s}
                             recommendation={smartSearchResult.recommendations[i]}
-                            onView={() => {
-                              setSelectedSessionId(s.id);
-                              setSelectedRecommendation(smartSearchResult.recommendations[i]);
-                            }}
+                            onView={() => openSession(s, smartSearchResult.recommendations[i])}
                           />
                         ))}
                       </div>
@@ -741,10 +748,7 @@ export default function PlayPage() {
                     <PlaySessionCard
                       key={session.id}
                       session={session}
-                      onView={() => {
-                        setSelectedSessionId(session.id);
-                        setSelectedRecommendation(null);
-                      }}
+                      onView={() => openSession(session, null)}
                     />
                   ))}
                 </div>

@@ -23,13 +23,15 @@ export function SettingsTab({ session }: SettingsTabProps) {
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.id] });
     queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine"] });
+    // The same session is on Play too (cards, quick view, details).
+    queryClient.invalidateQueries({ queryKey: ["/api/play/sessions"] });
   };
 
   const waitingListMutation = useMutation({
     mutationFn: (enabled: boolean) => updateSession(session.id, { waitingListEnabled: enabled }),
-    onSuccess: () => {
+    onSuccess: (_data, enabled) => {
       invalidate();
-      toast({ title: "Waiting List Enabled updated" });
+      toast({ title: enabled ? "Waiting list turned on" : "Waiting list turned off" });
     },
     onError: (error: any) => {
       toast({ title: "Couldn't update", description: error?.message ?? "Please try again.", variant: "destructive" });
@@ -37,20 +39,16 @@ export function SettingsTab({ session }: SettingsTabProps) {
   });
 
   // Registration open/closed isn't its own column - it's derived from
-  // registrationClosesAt. Closing sets that to right now; reopening
-  // pushes it a year out rather than trying to null the field, which
-  // achieves the same real effect (registration reads as open again)
-  // without needing the backend to special-case an explicit clear.
+  // registrationClosesAt. Closing sets that to right now. Reopening clears
+  // it (null is a supported clear), so registration stays open until the
+  // session starts. It used to push the date a year out, which put a close
+  // time after the session on the Edit form (and "2027" in it).
   const registrationMutation = useMutation({
     mutationFn: (open: boolean) =>
-      updateSession(session.id, {
-        registrationClosesAt: open
-          ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
-          : new Date(),
-      }),
-    onSuccess: () => {
+      updateSession(session.id, { registrationClosesAt: open ? null : new Date() } as any),
+    onSuccess: (_data, open) => {
       invalidate();
-      toast({ title: "Registration Open updated" });
+      toast({ title: open ? "Registration reopened" : "Registration closed", description: open ? "Players can join again." : "Players can no longer join." });
     },
     onError: (error: any) => {
       toast({ title: "Couldn't update", description: error?.message ?? "Please try again.", variant: "destructive" });

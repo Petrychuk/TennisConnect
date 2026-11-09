@@ -43,8 +43,24 @@ export async function getPlaySessionById(id: string): Promise<PublicSessionDetai
   return res.json();
 }
 
-export async function joinSession(sessionId: string): Promise<{ waitlisted: boolean }> {
-  const res = await apiRequest("POST", `/api/organizer/sessions/${sessionId}/join`);
+/** acceptedPolicies: the player ticked "I agree" - required when the session has rules or policies. */
+export async function joinSession(sessionId: string, acceptedPolicies = false): Promise<{ waitlisted: boolean }> {
+  const res = await apiRequest("POST", `/api/organizer/sessions/${sessionId}/join`, { acceptedPolicies });
+  return res.json();
+}
+
+/** Where the session is played - see server/services/venueLookup.ts. */
+export type SessionVenue = {
+  name: string;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  source: "club" | "map" | null;
+  googleMapsUrl: string;
+};
+
+export async function getSessionVenue(sessionId: string): Promise<SessionVenue | null> {
+  const res = await apiRequest("GET", `/api/play/sessions/${sessionId}/venue`);
   return res.json();
 }
 

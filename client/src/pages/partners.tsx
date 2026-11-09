@@ -306,17 +306,17 @@ export default function PartnersPage() {
         </div>
       </FilterSection>
       <FilterSection label="Availability" icon={<RacketIcon />}>
-        <Button
-          type="button"
-          variant={filterLookingToPlay ? "default" : "outline"}
-          aria-pressed={filterLookingToPlay}
-          onClick={toggleLookingToPlay}
-          className="w-full justify-start"
-          data-testid="players-filter-looking-to-play"
-        >
-          <RacketIcon className="w-4 h-4 mr-2" />
-          Looking to Play
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <FilterChip
+            compact
+            selected={filterLookingToPlay}
+            onClick={toggleLookingToPlay}
+            data-testid="players-filter-looking-to-play"
+          >
+            <RacketIcon className="w-4 h-4 mr-1.5" />
+            Looking to Play
+          </FilterChip>
+        </div>
       </FilterSection>
     </HeroFiltersPanel>
   );

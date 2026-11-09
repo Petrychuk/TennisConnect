@@ -67,6 +67,42 @@ export const SESSION_TYPE_OPTIONS: SessionTypeOption[] = [
 export type Visibility = "public" | "members" | "invite";
 export type PricingMode = "free" | "paid";
 
+/**
+ * Who a session is for. "" = all levels (stored as null - the same "no
+ * restriction" Play's level filter already treats a null skillLevel as).
+ */
+export const SESSION_LEVEL_OPTIONS = [
+  { value: "", label: "All levels" },
+  { value: "Beginner", label: "Beginner" },
+  { value: "Intermediate", label: "Intermediate" },
+  { value: "Advanced", label: "Advanced" },
+] as const;
+
+/*
+ * Mixed Doubles has no column of its own: matchMode stays "doubles" (that is
+ * what TC Live pairs by) and category records the mix as "mixed". Older
+ * sessions only had it as the "Format: Mixed Doubles" description prefix, so
+ * that is still recognised when reading.
+ */
+export function isMixedSession(row: { category?: string | null; description?: string | null }): boolean {
+  return row.category === "mixed" || /^Format: Mixed Doubles/.test(row.description ?? "");
+}
+/** "Mixed Doubles", "Men's Singles", "Doubles" ... - null when no format is set. */
+export function sessionFormatLabel(row: { matchMode?: string | null; category?: string | null; description?: string | null }): string | null {
+  if (row.matchMode == null) return null;
+  if (isMixedSession(row)) return "Mixed Doubles";
+  const base = row.matchMode === "singles" ? "Singles" : "Doubles";
+  if (row.category === "mens") return `Men's ${base}`;
+  if (row.category === "womens") return `Women's ${base}`;
+  return base;
+}
+function readCategory(category: string | null | undefined): NewSessionDraft["category"] | null {
+  return category === "mens" || category === "womens" || category === "open" ? category : null;
+}
+function categoryToSave(draft: Pick<NewSessionDraft, "matchType" | "category">): string {
+  return draft.matchType === "mixed" ? "mixed" : draft.category;
+}
+
 export interface NewSessionDraft {
   // Step 1
   type: SessionTypeKey | null;
@@ -111,6 +147,8 @@ export interface NewSessionDraft {
   // Step 3 - Format
   matchType: "singles" | "doubles" | "mixed";
   category: "open" | "mens" | "womens";
+  /** "" = all levels. See SESSION_LEVEL_OPTIONS. */
+  skillLevel: string;
   gamesTo: number;
   roundsCount: number;
   noAd: boolean;
@@ -175,6 +213,7 @@ export function createEmptyDraft(): NewSessionDraft {
     coverImage: null,
     matchType: "doubles",
     category: "open",
+    skillLevel: "",
     gamesTo: 4,
     roundsCount: 5,
     noAd: true,
@@ -261,8 +300,9 @@ export function sessionToDraft(session: SessionWithDetails): NewSessionDraft {
     price: session.price ? Number(session.price) : empty.price,
     visibility: (session.visibility as Visibility) ?? empty.visibility,
     coverImage: session.coverImage ?? empty.coverImage,
-    matchType: session.matchMode === "singles" ? "singles" : "doubles",
-    category: (session.category as NewSessionDraft["category"]) ?? empty.category,
+    matchType: isMixedSession(session) ? "mixed" : session.matchMode === "singles" ? "singles" : "doubles",
+    category: readCategory(session.category) ?? empty.category,
+    skillLevel: session.skillLevel ?? "",
     gamesTo: session.gamesTo ?? empty.gamesTo,
     roundsCount: session.plannedRoundsCount ?? empty.roundsCount,
     noAd: session.noAd ?? empty.noAd,
@@ -320,8 +360,7 @@ export function savedSessionToDraft(session: SessionWithDetails): NewSessionDraf
   const closes = session.registrationClosesAt ? toZonedDateTimeInputs(session.registrationClosesAt, zone) : null;
   const { policies } = readSessionPolicies(session);
   const priceNum = session.price ? Number(session.price) : 0;
-  // draftToInsertSession writes "Format: Mixed Doubles" into the description; matchMode alone can't tell it from doubles.
-  const mixed = /^Format: Mixed Doubles/.test(session.description ?? "");
+  const mixed = isMixedSession(session);
 
   return {
     ...empty,
@@ -347,7 +386,8 @@ export function savedSessionToDraft(session: SessionWithDetails): NewSessionDraf
     visibility: (session.visibility as Visibility) ?? empty.visibility,
     coverImage: session.coverImage ?? null,
     matchType: mixed ? "mixed" : session.matchMode === "singles" ? "singles" : "doubles",
-    category: (session.category as NewSessionDraft["category"]) ?? empty.category,
+    category: readCategory(session.category) ?? empty.category,
+    skillLevel: session.skillLevel ?? "",
     gamesTo: session.gamesTo ?? empty.gamesTo,
     roundsCount: session.plannedRoundsCount ?? empty.roundsCount,
     noAd: session.noAd ?? empty.noAd,
@@ -402,8 +442,9 @@ export function templateToDraft(template: SessionTemplate): NewSessionDraft {
     pricing: template.price && Number(template.price) > 0 ? "paid" : "free",
     price: template.price ? Number(template.price) : empty.price,
     visibility: (template.visibility as Visibility) ?? empty.visibility,
-    matchType: template.matchMode === "singles" ? "singles" : "doubles",
-    category: (template.category as NewSessionDraft["category"]) ?? empty.category,
+    matchType: template.category === "mixed" ? "mixed" : template.matchMode === "singles" ? "singles" : "doubles",
+    category: readCategory(template.category) ?? empty.category,
+    skillLevel: template.skillLevel ?? "",
     gamesTo: template.gamesTo ?? empty.gamesTo,
     roundsCount: template.plannedRoundsCount ?? empty.roundsCount,
     noAd: template.noAd ?? empty.noAd,
@@ -438,7 +479,8 @@ export function draftToTemplateConfig(draft: NewSessionDraft, name: string) {
     visibility: draft.visibility,
     courtsCount: draft.courtCount || null,
     matchMode: draft.matchType === "singles" ? "singles" : "doubles",
-    category: draft.category,
+    category: categoryToSave(draft),
+    skillLevel: draft.skillLevel || null,
     gamesTo: draft.gamesTo || null,
     noAd: draft.noAd,
     tiebreak: draft.tiebreak,
@@ -503,6 +545,7 @@ export function draftToInsertSession(draft: NewSessionDraft) {
     courtsCount: draft.courtCount || undefined,
     waitingListEnabled: draft.waitingListEnabled,
     waitingListCapacity: draft.waitingListEnabled ? draft.waitingListCapacity : undefined,
+    skillLevel: draft.skillLevel || undefined,
     ...policyColumns({
       rules: draft.rulesText,
       refund: draft.refundPolicy,
@@ -518,7 +561,7 @@ export function draftToInsertSession(draft: NewSessionDraft) {
     ...(usesMatchFormat
       ? {
           matchMode: draft.matchType === "singles" ? "singles" : "doubles",
-          category: draft.category,
+          category: categoryToSave(draft),
           gamesTo: draft.gamesTo || undefined,
           noAd: draft.noAd,
           tiebreak: draft.tiebreak,

@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, MapPin, Users, LayoutGrid, Repeat, ClipboardCheck, Hourglass, DollarSign } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, LayoutGrid, Repeat, ClipboardCheck, Hourglass } from "lucide-react";
 import { SESSION_TYPE_OPTIONS, type NewSessionDraft } from "@/lib/organiser-session-wizard-types";
 import { zonedTimeToUtc, formatInTimeZone } from "@/lib/timezone";
 import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.webp";
@@ -38,6 +38,7 @@ export function Step4ReviewPublish({ draft }: Step4ReviewPublishProps) {
     { icon: Users, label: "Players", value: `${draft.maxPlayers} Players` },
     { icon: LayoutGrid, label: "Courts", value: `${draft.courtCount} Courts` },
     { icon: Repeat, label: "Rounds", value: `${draft.roundsCount} Rounds` },
+    { icon: Users, label: "Level", value: draft.skillLevel || "All levels" },
   ];
 
   return (
@@ -72,7 +73,7 @@ export function Step4ReviewPublish({ draft }: Step4ReviewPublishProps) {
             </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {stats.map((stat) => {
               const Icon = stat.icon;
               return (
@@ -106,7 +107,6 @@ export function Step4ReviewPublish({ draft }: Step4ReviewPublishProps) {
             {/* Was "QR Check-in: Enabled" - a setting that was never saved
                 (Phase 1 audit 5.1). Price is real and saved. */}
             <div className="flex items-center gap-2 text-sm" data-testid="organiser-wizard-review-price">
-              <DollarSign className="w-4 h-4 text-primary-text shrink-0" />
               <div>
                 <p className="text-muted-foreground text-xs">Price</p>
                 <p className="font-medium">{draft.pricing === "paid" && draft.price > 0 ? `$${draft.price} · paid to you directly` : "Free"}</p>

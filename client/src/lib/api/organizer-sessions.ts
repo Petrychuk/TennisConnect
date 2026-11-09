@@ -163,11 +163,28 @@ export async function getMyPlayers(): Promise<OrgPlayerRow[]> {
   return res.json();
 }
 
-export type SearchablePlayer = { id: string; name: string; slug: string; avatar: string | null; role: string; alreadyConnected: boolean };
+export type SearchablePlayer = {
+  id: string;
+  name: string;
+  slug: string;
+  avatar: string | null;
+  role: string;
+  alreadyConnected: boolean;
+  skillLevel: string | null;
+  location: string | null;
+  lookingToPlay: boolean;
+};
+
+/** Narrowing for the invite search. Players only unless `allRoles`; with a filter set a name isn't needed. */
+export type PlayerSearchFilters = { level?: string; location?: string; lookingToPlay?: boolean; allRoles?: boolean };
 
 /** Search real platform users by name, for either invite dialog. Pass a sessionId or community context so already-connected players are flagged instead of being re-invitable. */
-export async function searchPlayers(query: string, context?: { sessionId?: string; community?: boolean }): Promise<SearchablePlayer[]> {
+export async function searchPlayers(query: string, context?: { sessionId?: string; community?: boolean }, filters?: PlayerSearchFilters): Promise<SearchablePlayer[]> {
   const params = new URLSearchParams({ q: query });
+  if (filters?.level) params.set("level", filters.level);
+  if (filters?.location?.trim()) params.set("location", filters.location.trim());
+  if (filters?.lookingToPlay) params.set("lookingToPlay", "1");
+  if (filters?.allRoles) params.set("scope", "all");
   if (context?.sessionId) params.set("sessionId", context.sessionId);
   if (context?.community) params.set("community", "1");
   const res = await apiRequest("GET", `${BASE}/players/search?${params.toString()}`);

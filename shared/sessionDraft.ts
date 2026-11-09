@@ -76,6 +76,7 @@ export const CLEARABLE_SESSION_FIELDS = [
   "seasonId",
   "matchMode",
   "category",
+  "skillLevel",
   "gamesTo",
   "plannedRoundsCount",
   "rulesText",

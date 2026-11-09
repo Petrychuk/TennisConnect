@@ -1,5 +1,5 @@
 import { useEffect, useState, type ComponentType, type ReactNode } from "react";
-import { OrganiserAccessGate } from "@/components/organiser/ui/organiser-layout";
+import { OrganiserLayout } from "@/components/organiser/ui/organiser-layout";
 import { Link, useLocation, useRoute } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,8 @@ import { friendlyApiError } from "@/lib/apiError";
 import { NumberField } from "@/components/organiser/sessions/wizard/number-field";
 import { AU_CITY_TIMEZONES, zonedTimeToUtc, toZonedDateTimeInputs } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
+import { sessionCategoryOf } from "@shared/sessionCategories";
+import { SESSION_LEVEL_OPTIONS, isMixedSession } from "@/lib/organiser-session-wizard-types";
 import { POLICY_LABELS, policyColumns, readSessionPolicies, type SessionPolicies } from "@shared/sessionPolicies";
 
 // A single-page edit form for the core, always-real fields (title,
@@ -53,6 +55,10 @@ function OrganiserSessionEditPageContent() {
   const [pricing, setPricing] = useState<"free" | "paid">("free");
   const [price, setPrice] = useState("");
   const [waitingListEnabled, setWaitingListEnabled] = useState(true);
+  // Singles / Doubles / Mixed - changed when the turnout is not what was planned.
+  const [matchFormat, setMatchFormat] = useState<"singles" | "doubles" | "mixed">("doubles");
+  // "" = all levels.
+  const [skillLevel, setSkillLevel] = useState("");
   const [registrationCloses, setRegistrationCloses] = useState("");
   const [registrationClosesTime, setRegistrationClosesTime] = useState("23:59");
   // Rules & policies - their own columns now; an older session's are split
@@ -92,14 +98,23 @@ function OrganiserSessionEditPageContent() {
     setPricing(priceNum > 0 ? "paid" : "free");
     setPrice(priceNum > 0 ? String(priceNum) : "");
     setWaitingListEnabled(session.waitingListEnabled);
-    setRegistrationCloses(session.registrationClosesAt ? toZonedDateTimeInputs(session.registrationClosesAt, zone).date : "");
-    setRegistrationClosesTime(session.registrationClosesAt ? toZonedDateTimeInputs(session.registrationClosesAt, zone).time : "23:59");
+    setMatchFormat(isMixedSession(session) ? "mixed" : session.matchMode === "singles" ? "singles" : "doubles");
+    setSkillLevel(session.skillLevel ?? "");
+    // A close time after the session starts can't be valid. Older sessions can
+    // carry one (the Registration switch used to reopen by pushing it a year
+    // out), so it is pulled back to the start instead of opening the form on
+    // an error the organiser did not cause.
+    const closes = session.registrationClosesAt ? toZonedDateTimeInputs(session.registrationClosesAt, zone) : null;
+    const closesAfterStart = !!closes && closes.date > startDate;
+    setRegistrationCloses(closesAfterStart ? startDate : closes?.date ?? "");
+    setRegistrationClosesTime(closesAfterStart ? startTimeStr : closes?.time ?? "23:59");
     setLoaded(true);
   }, [sessionQuery.data, loaded]);
 
 
 
   const session = sessionQuery.data;
+  const usesMatchFormat = session ? sessionCategoryOf(session.type).usesMatchFormat : false;
 
   // A draft is finished in the wizard: this flat form insists on name, venue and
   // date, and has no format, cover, visibility or registration-open fields.
@@ -108,9 +123,18 @@ function OrganiserSessionEditPageContent() {
     if (isDraft && params?.id) setLocation(`/organiser/sessions/new?draft=${params.id}`, { replace: true });
   }, [isDraft, params?.id, setLocation]);
 
-  if (sessionQuery.isLoading || !session || isDraft) {
+  // An archived session is closed - it can't be edited, so don't show the form.
+  const isArchived = session?.status === "archived";
+  useEffect(() => {
+    if (isArchived && params?.id) {
+      toast({ title: "Archived sessions can't be edited", description: "Duplicate it to run it again." });
+      setLocation(`/organiser/sessions/${params.id}`, { replace: true });
+    }
+  }, [isArchived, params?.id, setLocation, toast]);
+
+  if (sessionQuery.isLoading || !session || isDraft || isArchived) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-[60vh] flex items-center justify-center">
         <TennisBallSpinner />
       </div>
     );
@@ -144,11 +168,22 @@ function OrganiserSessionEditPageContent() {
         maxParticipants: maxParticipants.trim() ? Number(maxParticipants) : undefined,
         price: pricing === "paid" ? Number(price || 0) : 0,
         waitingListEnabled,
+        // Mixed is doubles for pairing; the mix itself is the category. Leaving
+        // Mixed falls back to Open; Men's/Women's are kept otherwise.
+        ...(usesMatchFormat
+          ? {
+              matchMode: matchFormat === "singles" ? "singles" : "doubles",
+              ...(matchFormat === "mixed" ? { category: "mixed" } : session.category === "mixed" ? { category: "open" } : {}),
+            }
+          : {}),
+        skillLevel: skillLevel || null,
         registrationClosesAt: registrationCloses ? zonedTimeToUtc(registrationCloses, registrationClosesTime || "23:59", timeZone) : undefined,
         ...policyColumns(policies),
       } as any);
       queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", params.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine"] });
+      // Players see the same session on Play: without this /play keeps the old description, time and price.
+      queryClient.invalidateQueries({ queryKey: ["/api/play/sessions"] });
       toast({ title: "Saved", description: "Session details updated." });
       setLocation(`/organiser/sessions/${params.id}`);
     } catch (error: any) {
@@ -166,14 +201,17 @@ function OrganiserSessionEditPageContent() {
   const policiesConfigured = (Object.keys(POLICY_LABELS) as (keyof SessionPolicies)[]).some((k) => (policies[k] ?? "").trim() !== "");
 
   return (
-    <main id="main-content" className="min-h-screen bg-background px-4 py-6 sm:py-8 overflow-x-hidden" data-testid="organiser-session-edit">
+    <div className="px-4 pt-4 sm:pt-6 overflow-x-hidden" data-testid="organiser-session-edit">
       <SEO title={`Edit ${session.title} | Organiser Hub | TennisConnect`} description="Edit your session's details." noIndex />
-      <div className="mx-auto w-full max-w-[820px] space-y-4">
-        <Link href={`/organiser/sessions/${params?.id}`} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground min-h-11 sm:min-h-0" data-testid="organiser-session-edit-back">
-          <ArrowLeft className="w-4 h-4" />
-          <span className="truncate">Back to {session.title}</span>
-        </Link>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Edit Session</h1>
+      <div className="mx-auto w-full max-w-[820px] space-y-3">
+        {/* Compact header: where you came from, then the title. */}
+        <div>
+          <Link href={`/organiser/sessions/${params?.id}`} className="inline-flex max-w-full items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground min-h-11 sm:min-h-0" data-testid="organiser-session-edit-back">
+            <ArrowLeft className="w-4 h-4 shrink-0" />
+            <span className="truncate">Back to {session.title}</span>
+          </Link>
+          <h1 className="text-xl sm:text-2xl font-display font-bold tracking-tight mt-0.5">Edit Session</h1>
+        </div>
 
         {/* ---------- Session Details ---------- */}
         <EditSection icon={CalendarDays} title="Session Details" testId="organiser-session-edit-section-details">
@@ -181,7 +219,7 @@ function OrganiserSessionEditPageContent() {
             <Input id="organiser-session-edit-title" value={title} onChange={(e) => setTitle(e.target.value)} aria-invalid={nameError} data-testid="organiser-session-edit-title" />
           </Field>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-3">
             <Field label="Venue" required htmlFor="organiser-session-edit-venue" error={venueError ? "Enter a venue." : undefined}>
               <div className="relative">
                 <MapPin className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden />
@@ -205,7 +243,7 @@ function OrganiserSessionEditPageContent() {
           </div>
 
           {/* Phone: Date, then Start|End side by side, then Courts. Tablet: two columns. Desktop: one row of four. */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-3">
             <Field label="Date" required htmlFor="organiser-session-edit-date" error={dateError ? "Choose a date." : undefined} className="col-span-2 sm:col-span-1">
               <Input id="organiser-session-edit-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-invalid={dateError} data-testid="organiser-session-edit-date" />
             </Field>
@@ -219,11 +257,39 @@ function OrganiserSessionEditPageContent() {
               <NumberField min={1} value={courtsCount === "" ? NaN : Number(courtsCount)} onChange={(v) => setCourtsCount(String(v))} placeholder="Not set" data-testid="organiser-session-edit-courts" />
             </Field>
           </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-3">
+            {usesMatchFormat && (
+              <Field label="Format" htmlFor="organiser-session-edit-match-mode">
+                <Select value={matchFormat} onValueChange={(v) => setMatchFormat(v as "singles" | "doubles" | "mixed")}>
+                  <SelectTrigger id="organiser-session-edit-match-mode" aria-label="Format" data-testid="organiser-session-edit-match-mode">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="doubles">Doubles</SelectItem>
+                    <SelectItem value="mixed">Mixed Doubles</SelectItem>
+                    <SelectItem value="singles">Singles</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+            )}
+            <Field label="Player level" htmlFor="organiser-session-edit-level">
+              <Select value={skillLevel || "all"} onValueChange={(v) => setSkillLevel(v === "all" ? "" : v)}>
+                <SelectTrigger id="organiser-session-edit-level" aria-label="Player level" data-testid="organiser-session-edit-level">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SESSION_LEVEL_OPTIONS.map((o) => (
+                    <SelectItem key={o.value || "all"} value={o.value || "all"}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
         </EditSection>
 
         {/* ---------- Registration ---------- */}
         <EditSection icon={Users} title="Registration" testId="organiser-session-edit-section-registration">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-3 gap-y-3">
             <Field label="Registration closes" htmlFor="organiser-session-edit-registration-closes" error={closesError ? "Registration can't close after the session date." : undefined} className="md:col-span-2">
               <div className="flex gap-2">
                 <Input id="organiser-session-edit-registration-closes" type="date" value={registrationCloses} max={date || undefined} onChange={(e) => setRegistrationCloses(e.target.value)} className="flex-1 min-w-0" aria-invalid={closesError} data-testid="organiser-session-edit-registration-closes" />
@@ -235,13 +301,14 @@ function OrganiserSessionEditPageContent() {
             </Field>
 
             <Field label="Pricing" required>
-              <RadioGroup value={pricing} onValueChange={(v) => setPricing(v as "free" | "paid")} className="flex items-center gap-6 min-h-10">
-                <label className="flex items-center gap-2 text-sm cursor-pointer min-h-10">
-                  <RadioGroupItem value="free" data-testid="organiser-session-edit-pricing-free" />
+              {/* Segmented control - the same look as the Create wizard. */}
+              <RadioGroup value={pricing} onValueChange={(v) => setPricing(v as "free" | "paid")} className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1" aria-label="Pricing">
+                <label className={SEGMENT}>
+                  <RadioGroupItem value="free" className="absolute inset-0 h-full w-full rounded-lg border-0 opacity-0 cursor-pointer" data-testid="organiser-session-edit-pricing-free" />
                   Free
                 </label>
-                <label className="flex items-center gap-2 text-sm cursor-pointer min-h-10">
-                  <RadioGroupItem value="paid" data-testid="organiser-session-edit-pricing-paid" />
+                <label className={SEGMENT}>
+                  <RadioGroupItem value="paid" className="absolute inset-0 h-full w-full rounded-lg border-0 opacity-0 cursor-pointer" data-testid="organiser-session-edit-pricing-paid" />
                   Paid
                 </label>
               </RadioGroup>
@@ -255,8 +322,8 @@ function OrganiserSessionEditPageContent() {
                 </div>
               </Field>
             )}
-            <div className="flex items-center justify-between gap-3 md:col-start-3 md:border-l md:border-border md:pl-4 min-h-10 self-end">
-              <Label htmlFor="organiser-session-edit-waiting-list" className="text-sm font-semibold">Waiting List</Label>
+            <div className="flex items-center justify-between gap-3 md:col-start-3 rounded-xl border border-input px-3 min-h-11 md:pointer-fine:min-h-9 self-end">
+              <Label htmlFor="organiser-session-edit-waiting-list" className="text-sm font-medium">Waiting list</Label>
               <Switch id="organiser-session-edit-waiting-list" checked={waitingListEnabled} onCheckedChange={setWaitingListEnabled} data-testid="organiser-session-edit-waiting-list" />
             </div>
           </div>
@@ -296,26 +363,35 @@ function OrganiserSessionEditPageContent() {
           </Collapsible>
         </EditSection>
 
-        {/* Buttons keep their existing style; on a phone they stack full width so Save stays obvious. */}
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-1 pb-4">
-          <Button variant="outline" onClick={() => setLocation(`/organiser/sessions/${params?.id}`)} data-testid="organiser-session-edit-cancel">
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={saving} data-testid="organiser-session-edit-save">
-            {saving ? "Saving..." : "Save Changes"}
-          </Button>
+        {/* Sticky action bar: Save is always in reach on a long form. On a
+            phone it sits above the Hub's bottom navigation. */}
+        <div className="sticky bottom-16 md:bottom-0 z-10 -mx-4 px-4 py-3 border-t border-border bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
+          <div className="flex items-center justify-end gap-2">
+            <Button variant="outline" size="sm" className="min-h-11 md:pointer-fine:min-h-9 px-4" onClick={() => setLocation(`/organiser/sessions/${params?.id}`)} data-testid="organiser-session-edit-cancel">
+              Cancel
+            </Button>
+            <Button size="sm" className="min-h-11 md:pointer-fine:min-h-9 px-5" onClick={handleSave} disabled={saving} data-testid="organiser-session-edit-save">
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }
 
-/** One flat section: a heading with its icon and a thin border. No shadow, no nested cards. */
+// One segment of a segmented control; an invisible radio over it gets the click and the focus.
+const SEGMENT =
+  "relative flex min-h-11 md:pointer-fine:min-h-8 cursor-pointer items-center justify-center rounded-lg px-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground has-[[data-state=checked]]:bg-background has-[[data-state=checked]]:text-foreground has-[[data-state=checked]]:shadow-sm has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring";
+
+/** One section card: an icon chip and a small title, the same look as the Create wizard's cards. */
 function EditSection({ icon: Icon, title, testId, children }: { icon: ComponentType<{ className?: string }>; title: string; testId: string; children: ReactNode }) {
   return (
-    <section className="rounded-2xl border border-border bg-card p-4 sm:p-5 space-y-4" data-testid={testId}>
-      <h2 className="flex items-center gap-2.5 text-base sm:text-lg font-semibold">
-        <Icon className="w-5 h-5 text-primary-text" aria-hidden />
+    <section className="rounded-2xl border border-border bg-card p-4 space-y-3 shadow-sm" data-testid={testId}>
+      <h2 className="flex items-center gap-2.5 text-sm font-semibold">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary-text">
+          <Icon className="w-4 h-4" aria-hidden />
+        </span>
         {title}
       </h2>
       {children}
@@ -323,11 +399,11 @@ function EditSection({ icon: Icon, title, testId, children }: { icon: ComponentT
   );
 }
 
-/** Label + control + inline error. A required field gets a red asterisk. */
+/** Small muted label + control + inline error. A required field gets a red asterisk. */
 function Field({ label, required, htmlFor, error, className, children }: { label: string; required?: boolean; htmlFor?: string; error?: string; className?: string; children: ReactNode }) {
   return (
-    <div className={cn("space-y-1.5 min-w-0", className)}>
-      <Label htmlFor={htmlFor} className="text-sm">
+    <div className={cn("space-y-1 min-w-0", className)}>
+      <Label htmlFor={htmlFor} className="text-xs font-medium text-muted-foreground">
         {label}
         {required && <span className="text-destructive" aria-hidden> *</span>}
       </Label>
@@ -337,12 +413,18 @@ function Field({ label, required, htmlFor, error, className, children }: { label
   );
 }
 
-// Access (signed in, organiser or admin) is checked once, for every Hub
-// page, by OrganiserAccessGate (components/organiser/ui/organiser-layout.tsx).
+// Inside the Organiser Hub shell (sidebar, phone bar, bottom navigation) like
+// every other Hub page; the shell also does the access check
+// (OrganiserAccessGate, components/organiser/ui/organiser-layout.tsx).
 export default function OrganiserSessionEditPage() {
   return (
-    <OrganiserAccessGate>
+    <OrganiserLayout
+      testId="organiser-session-edit-page"
+      seoTitle="Edit Session | Organiser Hub | TennisConnect"
+      seoDescription="Edit your session's details."
+      mobileTitle="Edit Session"
+    >
       <OrganiserSessionEditPageContent />
-    </OrganiserAccessGate>
+    </OrganiserLayout>
   );
 }
