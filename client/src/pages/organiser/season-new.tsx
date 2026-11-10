@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { OrganiserAccessGate } from "@/components/organiser/ui/organiser-layout";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +28,7 @@ import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
 // the dates) - the flow is Create Season -> Season Details -> Add
 // Sessions, so a season always exists as an empty container first
 // rather than one long form trying to do everything at once.
-export default function OrganiserSeasonNewPage() {
+function OrganiserSeasonNewPageContent() {
   const { isAuthenticated, user, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -64,22 +65,6 @@ export default function OrganiserSeasonNewPage() {
     }
   };
 
-  if (authLoading) return null;
-  if (!isAuthenticated) {
-    setLocation("/auth");
-    return null;
-  }
-  if (!user?.isOrganizer) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-background">
-        <Card className="max-w-md w-full shadow-sm">
-          <CardContent className="p-6 text-muted-foreground">
-            You need to be an approved organiser to view this page.
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background" data-testid="organiser-season-new-page">
@@ -193,5 +178,15 @@ export default function OrganiserSeasonNewPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+// Access (signed in, organiser or admin) is checked once, for every Hub
+// page, by OrganiserAccessGate (components/organiser/ui/organiser-layout.tsx).
+export default function OrganiserSeasonNewPage() {
+  return (
+    <OrganiserAccessGate>
+      <OrganiserSeasonNewPageContent />
+    </OrganiserAccessGate>
   );
 }

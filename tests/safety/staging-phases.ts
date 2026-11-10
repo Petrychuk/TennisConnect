@@ -50,6 +50,8 @@ export const STAGING_PHASES: Readonly<Record<StagingPhase, readonly PhaseEntry[]
     { file: 'tests/smoke/smoke.spec.ts', ids: ['AUTH-SMOKE-001', 'MSG-SMOKE-003', 'MSG-SMOKE-004', 'MSG-SMOKE-005'] },
     // Guest-only, no writes (reviewed in Stage 3; candidates for the read-only set).
     { file: 'tests/organiser/organiser-auth.spec.ts', ids: ['ORG-AUTH-003'] },
+    // Guest-only: /organiser sends a guest to /auth?returnTo=..., no modal, no writes.
+    { file: 'tests/organiser/organiser-onboarding.spec.ts', ids: ['ORG-ONB-008'] },
     { file: 'tests/auth/reg-validation.spec.ts', ids: ['REG-003', 'REG-004'] },
     { file: 'tests/auth/forgot-password.spec.ts', ids: ['AUTH-007', 'AUTH-008'] },
     // Coaches directory filters (29 Oct 2026): guest-only, no login, no seeded
@@ -99,9 +101,60 @@ export const STAGING_PHASES: Readonly<Record<StagingPhase, readonly PhaseEntry[]
   ],
   'hub-msg-admin': [
     { file: 'tests/organiser/organiser-auth.spec.ts', ids: ['ORG-AUTH-001', 'ORG-AUTH-002'] },
+    // Organiser onboarding (2 Nov 2026): run-owned players register and send their own
+    // organiser request; ORG-ONB-011 has the baseline admin reject that run-owned
+    // request. Baseline admin/organiser accounts are only signed into.
+    {
+      file: 'tests/organiser/organiser-onboarding.spec.ts',
+      ids: ['ORG-ONB-001', 'ORG-ONB-002', 'ORG-ONB-003', 'ORG-ONB-004', 'ORG-ONB-005', 'ORG-ONB-006', 'ORG-ONB-007', 'ORG-ONB-009', 'ORG-ONB-010', 'ORG-ONB-011', 'ORG-ONB-012a', 'ORG-ONB-012b'],
+    },
+    // Dashboard states (5 Nov 2026): run-owned organiser with no sessions; failures are simulated
+    // in the browser (page.route), nothing extra is written.
+    {
+      file: 'tests/organiser/organiser-dashboard-states.spec.ts',
+      ids: ['ORG-DASH-001', 'ORG-DASH-002', 'ORG-DASH-003', 'ORG-DASH-004', 'ORG-DASH-005', 'ORG-DASH-006'],
+    },
+    // Automation gap report (P0), 5 Nov 2026. Run-owned organisers, players and sessions;
+    // drafts and check-ins only - nothing is published, emailed or messaged.
+    {
+      file: 'tests/organiser/organiser-workspace-players.spec.ts',
+      ids: ['ORG-WSP-001', 'ORG-WSP-002', 'ORG-WSP-003', 'ORG-WSP-004', 'ORG-WSP-005', 'ORG-WSP-006'],
+    },
+    {
+      file: 'tests/organiser/organiser-wizard-review.spec.ts',
+      ids: ['ORG-WIZ-006', 'ORG-WIZ-007'],
+    },
+    {
+      file: 'tests/organiser/organiser-access-organisation.spec.ts',
+      ids: ['ORG-ACC-001', 'ORG-ACC-002', 'ORG-ACC-003', 'ORG-ORGN-001'],
+    },
     { file: 'tests/organiser/organiser-critical-flows.spec.ts', ids: ['ORG-FLOW-001', 'ORG-FLOW-003'] },
     { file: 'tests/organiser/organiser-rankings.spec.ts', ids: ['ORG-RANK-002', 'ORG-RANK-004', 'ORG-RANK-006'] },
     { file: 'tests/organiser/organiser-reports.spec.ts', ids: ['ORG-REPORT-003', 'ORG-REPORT-004', 'ORG-REPORT-010', 'ORG-REPORT-012'] },
+    // Responsive checks (Phase 2 Batch 2): run-owned organiser, seeded
+    // session; writes one check-in and that organiser's own organisation.
+    { file: 'tests/organiser/organiser-hub-responsive.spec.ts', ids: ['ORG-RESP-001', 'ORG-RESP-002', 'ORG-RESP-003'] },
+    // Phase 2 coverage (30 Oct 2026, docs/testing/E2E_COVERAGE_MATRIX.md). Run-owned
+    // organisers, players and sessions; messages only to run-owned players.
+    // ORG-WIZ-004 skips itself unless E2E_ALLOW_PUBLISH_REVIEW=1 (it messages every admin).
+    { file: 'tests/organiser/organiser-permissions.spec.ts', ids: ['ORG-PERM-001', 'ORG-PERM-002'] },
+    { file: 'tests/organiser/organiser-wizard.spec.ts', ids: ['ORG-WIZ-001', 'ORG-WIZ-002', 'ORG-WIZ-003', 'ORG-WIZ-004', 'ORG-WIZ-005'] },
+    { file: 'tests/organiser/organiser-edit.spec.ts', ids: ['ORG-EDIT-001', 'ORG-EDIT-002', 'ORG-EDIT-003', 'ORG-EDIT-004', 'ORG-EDIT-005', 'ORG-EDIT-006', 'ORG-EDIT-007'] },
+    { file: 'tests/organiser/organiser-drafts.spec.ts', ids: ['ORG-DRAFT-001', 'ORG-DRAFT-002', 'ORG-DRAFT-003', 'ORG-DRAFT-004', 'ORG-DRAFT-005', 'ORG-DRAFT-006', 'ORG-DRAFT-007'] },
+    { file: 'tests/organiser/organiser-workspace.spec.ts', ids: ['ORG-WS-001', 'ORG-WS-002', 'ORG-WS-003', 'ORG-WS-004', 'ORG-WS-005'] },
+    {
+      file: 'tests/organiser/organiser-session-actions.spec.ts',
+      ids: ['ORG-ACT-001', 'ORG-ACT-002', 'ORG-ACT-003', 'ORG-ACT-004', 'ORG-ACT-005', 'ORG-ACT-006'],
+    },
+    // PLAY-010 registers a run-owned player into a run-owned session; PLAY-011 is a guest view;
+    // PLAY-012 seeds a run-owned past session (join refused).
+    { file: 'tests/play/play-session-details.spec.ts', ids: ['PLAY-007', 'PLAY-008', 'PLAY-009', 'PLAY-010', 'PLAY-011', 'PLAY-012'] },
+    // TC Live v1 (30 Oct 2026): needs TC_LIVE_ENABLED=true on Staging. Run-owned
+    // organisers/players/sessions; LIVE-015 skips itself unless Live is off.
+    {
+      file: 'tests/live/live-engine.spec.ts',
+      ids: Array.from({ length: 16 }, (_, i) => `LIVE-${String(i + 1).padStart(3, '0')}`),
+    },
     { file: 'tests/play/play.spec.ts', ids: ['PLAY-001', 'PLAY-002', 'PLAY-003', 'PLAY-004', 'PLAY-005', 'PLAY-006'] },
     {
       file: 'tests/messages/messages.spec.ts',
@@ -121,6 +174,12 @@ export const STAGING_PHASES: Readonly<Record<StagingPhase, readonly PhaseEntry[]
     { file: 'tests/admin/users/admin-unverified-visibility.spec.ts', ids: ['ADMIN-004'] },
     { file: 'tests/admin/users/admin-bulk-delete.spec.ts', ids: ['ADMIN-005', 'ADMIN-006'] },
     { file: 'tests/admin/users/admin-user-delete.spec.ts', ids: ['ADMIN-002', 'ADMIN-003', 'ADMIN-007', 'ADMIN-008'] },
+    // Admin user deletion suite (4 Nov 2026): seeded run-owned accounts only;
+    // guardDeletes() aborts any delete naming an id the test didn't create.
+    {
+      file: 'tests/admin/users/admin-user-deletion.spec.ts',
+      ids: Array.from({ length: 12 }, (_, i) => `ADMIN-DEL-${String(i + 1).padStart(3, '0')}`),
+    },
   ],
   'security-last': [{ file: 'tests/security/security-payloads.spec.ts', ids: ['SEC-LOGIN', 'SEC-FORGOT'] }],
   stripe: [{ file: 'tests/support/back-the-rally.spec.ts', ids: ['SUPPORT-007', 'SUPPORT-008'] }],
@@ -139,6 +198,16 @@ export const HERO_SEARCH_TEST_IDS: readonly string[] = Array.from({ length: 94 }
 export const LOCAL_ONLY_TESTS: readonly PhaseEntry[] = [
   { file: 'tests/admin/users/admin-user-delete.spec.ts', ids: ['ADMIN-009'] },
   { file: 'tests/public/hero-search.spec.ts', ids: HERO_SEARCH_TEST_IDS },
+];
+
+/**
+ * Production only, never on Staging or local: the internal TC Live
+ * validation suite (tests/prod-live-internal/, docs/live/LIVE_RUNBOOK.md).
+ * Its fixture skips every test unless TEST_ENV=production and
+ * E2E_PROD_SUITE=prod-live-internal are set and confirmed.
+ */
+export const PRODUCTION_ONLY_TESTS: readonly PhaseEntry[] = [
+  { file: 'tests/prod-live-internal/live-internal.spec.ts', ids: ['LIVE-PROD-001', 'LIVE-PROD-002'] },
 ];
 
 export function isStagingPhase(value: unknown): value is StagingPhase {

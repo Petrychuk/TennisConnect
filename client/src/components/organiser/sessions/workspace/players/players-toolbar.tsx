@@ -8,7 +8,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Search, CheckCircle2, UserPlus } from "lucide-react";
-import { FilterTrigger } from "@/components/shared/filters";
 import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 
 interface PlayersToolbarProps {
@@ -17,19 +16,20 @@ interface PlayersToolbarProps {
   onCheckInAll?: () => void;
   checkInAllLoading?: boolean;
   onInvitePlayers?: () => void;
-  showAdvancedFilters?: boolean;
+  /** Selected level ("all" or a levelLabel) - omit onLevelChange to hide the filter. */
+  level?: string;
+  onLevelChange?: (level: string) => void;
 }
 
-// Level/Group filtering is visual-only for now (desktop shows the
-// selects to match the mockup) — real filtering waits for the backend
-// pass, search already works client-side against the real list.
+// Search and the Level filter both work on the loaded registrations.
 export function PlayersToolbar({
   search,
   onSearchChange,
   onCheckInAll,
   checkInAllLoading = false,
   onInvitePlayers,
-  showAdvancedFilters = false,
+  level,
+  onLevelChange,
 }: PlayersToolbarProps) {
   return (
     <div className="flex flex-col sm:flex-row gap-2" data-testid="organiser-players-toolbar">
@@ -44,56 +44,34 @@ export function PlayersToolbar({
         />
       </div>
 
-      {showAdvancedFilters && (
-        <div className="hidden lg:flex gap-2">
-          <Select defaultValue="all">
-            <SelectTrigger aria-label="Filter by status" className="w-32" data-testid="organiser-players-status-filter">
-              <SelectValue placeholder="All Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="registered">Registered</SelectItem>
-              <SelectItem value="waiting">Waiting</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
-              <SelectItem value="invited">Invited</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select defaultValue="all">
-            <SelectTrigger aria-label="Filter by level" className="w-32" data-testid="organiser-players-level-filter">
-              <SelectValue placeholder="All Levels" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Levels</SelectItem>
-              <SelectItem value="advanced">Advanced</SelectItem>
-              <SelectItem value="intermediate">Intermediate</SelectItem>
-              <SelectItem value="social">Social</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select defaultValue="all">
-            <SelectTrigger aria-label="Filter by group" className="w-32" data-testid="organiser-players-group-filter">
-              <SelectValue placeholder="All Groups" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Groups</SelectItem>
-              <SelectItem value="a">Group A</SelectItem>
-              <SelectItem value="b">Group B</SelectItem>
-              <SelectItem value="c">Group C</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      {/* Level filter - the only filter here that isn't already a tab
+          above (status) and that has real data behind it (no groups exist). */}
+      {onLevelChange && (
+        <Select value={level ?? "all"} onValueChange={onLevelChange}>
+          <SelectTrigger aria-label="Filter by level" className="sm:w-40" data-testid="organiser-players-level-filter">
+            <SelectValue placeholder="All Levels" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Levels</SelectItem>
+            <SelectItem value="Advanced">Advanced</SelectItem>
+            <SelectItem value="Intermediate">Intermediate</SelectItem>
+            <SelectItem value="Beginner">Beginner</SelectItem>
+            <SelectItem value="Social">Social / not set</SelectItem>
+          </SelectContent>
+        </Select>
       )}
-
-      <FilterTrigger iconOnly label="Filter players" data-testid="organiser-players-filters-button" />
 
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1 sm:flex-none" onClick={onCheckInAll} disabled={checkInAllLoading} data-testid="organiser-players-checkin-all">
           {checkInAllLoading ? <TennisBallSpinner className="mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
           Check-in All
         </Button>
-        <Button className="flex-1 sm:flex-none" onClick={onInvitePlayers} data-testid="organiser-players-invite-button">
-          <UserPlus className="w-4 h-4 mr-2" />
-          Invite Players
-        </Button>
+        {onInvitePlayers && (
+          <Button className="flex-1 sm:flex-none" onClick={onInvitePlayers} data-testid="organiser-players-invite-button">
+            <UserPlus className="w-4 h-4 mr-2" />
+            Invite Players
+          </Button>
+        )}
       </div>
     </div>
   );

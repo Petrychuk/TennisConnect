@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useLiveAvailable } from "@/lib/use-live-available";
+import { sessionCategoryOf } from "@shared/sessionCategories";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,10 +40,9 @@ import {
   Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
-import { bucketFor, STATUS_BADGE_LABEL, STATUS_BADGE_STYLE, getPrimaryActionMeta } from "./session-utils";
+import { bucketFor, STATUS_BADGE_LABEL, STATUS_BADGE_STYLE, getPrimaryActionMeta, sessionEditPath } from "./session-utils";
 import { SaveAsTemplateDialog } from "./save-as-template-dialog";
 import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.webp";
 
@@ -67,7 +68,6 @@ export function Metric({ icon: Icon, value, label, testId }: { icon: typeof User
 
 export function SessionCard({ session, onDuplicate, onDelete, onArchive }: SessionCardProps) {
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   const bucket = bucketFor(session);
   const spots = session.maxParticipants !== null ? session.maxParticipants - session.registeredCount : null;
@@ -77,15 +77,20 @@ export function SessionCard({ session, onDuplicate, onDelete, onArchive }: Sessi
       ? Math.round((session.checkedInCount / session.registeredCount) * 100)
       : null;
 
+  // Live only where TC Live runs and for sessions that have rounds
+  // (not Coaching & Fitness - shared/sessionCategories.ts).
+  const hasRounds = sessionCategoryOf(session.type).usesLiveRounds;
+  const liveAvailable = useLiveAvailable(session) && hasRounds;
   const openWorkspace = () => setLocation(`/organiser/sessions/${session.id}`);
-  const openLive = () => setLocation(`/organiser/sessions/${session.id}/live`);
-  const openEdit = () => setLocation(`/organiser/sessions/${session.id}/edit`);
-  const openResults = () => setLocation(`/organiser/sessions/${session.id}?tab=results`);
-  const openHistory = () => setLocation(`/organiser/sessions/${session.id}?tab=history`);
+  // Where Live isn't enabled for this session (TC_LIVE_ENABLED), a live session opens its workspace.
+  const openLive = () => setLocation(liveAvailable ? `/organiser/sessions/${session.id}/live` : `/organiser/sessions/${session.id}`);
+  const openEdit = () => setLocation(sessionEditPath(session));
+  const openResults = () => setLocation(`/organiser/sessions/${session.id}?tab=${hasRounds ? "results" : "players"}`);
 
   const handleDuplicate = () => {
+    // Opens the Create Session wizard pre-filled (sessions.tsx) - nothing
+    // is saved until the organiser goes through it, so no "duplicated" toast.
     onDuplicate?.(session);
-    toast({ title: "Session duplicated", description: `"${session.title}" was copied as a new draft.` });
   };
 
   // One primary action per status - everything else (Duplicate, Edit,
@@ -93,15 +98,15 @@ export function SessionCard({ session, onDuplicate, onDelete, onArchive }: Sessi
   // of sitting on the row as its own full-size button. Shared with
   // session-card-grid.tsx via getPrimaryActionMeta so both layouts
   // agree on which action is primary and how urgent it looks.
-  const primaryAction = getPrimaryActionMeta(bucket, Play);
+  const primaryAction = getPrimaryActionMeta(bucket, Play, liveAvailable, hasRounds);
   const primaryOnClick =
-    bucket === "draft" || bucket === "registration-open" || bucket === "upcoming"
+    bucket === "draft"
+      ? openEdit // Continue Setup: back into the wizard, with everything that was saved
+      : bucket === "registration-open" || bucket === "upcoming"
       ? openWorkspace
       : bucket === "live"
       ? openLive
-      : bucket === "completed"
-      ? openResults
-      : openHistory; // archived
+      : openResults; // completed, archived (there is no History tab)
 
   return (
     <Card className="shadow-sm hover:shadow-md transition-shadow overflow-hidden" data-testid={`organiser-session-card-${session.id}`}>

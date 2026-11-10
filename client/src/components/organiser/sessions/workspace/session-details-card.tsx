@@ -5,6 +5,7 @@ import { Tag, Shuffle, Layers, Repeat, MapPinned, Users, ListPlus, DollarSign, U
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 import { getSessionDetail } from "@/lib/organiser-sessions-mock-data";
 import { formatInTimeZone } from "@/lib/timezone";
+import { sessionFormatLabel } from "@/lib/organiser-session-wizard-types";
 
 interface SessionDetailsCardProps {
   session: SessionListItem;
@@ -25,16 +26,7 @@ export function SessionDetailsCard({ session, isDivision }: SessionDetailsCardPr
   // there's nothing real to show outside TC Live's own round tracking.
   const roundsCount = session.roundTotal ?? session.plannedRoundsCount ?? null;
 
-  const matchTypeLabel =
-    session.matchMode == null
-      ? null
-      : session.category === "mens"
-      ? `Men's ${session.matchMode === "singles" ? "Singles" : "Doubles"}`
-      : session.category === "womens"
-      ? `Women's ${session.matchMode === "singles" ? "Singles" : "Doubles"}`
-      : session.matchMode === "singles"
-      ? "Singles"
-      : "Doubles";
+  const matchTypeLabel = sessionFormatLabel(session);
   const gameFormatLabel =
     session.gamesTo != null ? `${session.gamesTo} Games${session.noAd ? " (No-Ad)" : ""}` : null;
 
@@ -59,18 +51,21 @@ export function SessionDetailsCard({ session, isDivision }: SessionDetailsCardPr
         : "Disabled",
       testId: "waiting-list",
     },
-    { icon: DollarSign, label: "Cost", value: detail.costPerPlayer ? `$${detail.costPerPlayer} per player` : "Free", testId: "cost" },
+    // Price is information for players only - TennisConnect doesn't take payment.
+    { icon: DollarSign, label: "Cost", value: detail.costPerPlayer ? `$${detail.costPerPlayer} per player · paid to the organiser` : "Free", testId: "cost" },
     { icon: UserCog, label: "Organiser", value: detail.organizerName, testId: "organiser" },
     {
       icon: CalendarPlus,
       label: "Created",
-      value: formatInTimeZone(detail.createdAt, session.timeZone, {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
+      value: detail.createdAt
+        ? formatInTimeZone(detail.createdAt, session.timeZone, {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "—",
       testId: "created",
     },
   ];
@@ -101,7 +96,7 @@ export function SessionDetailsCard({ session, isDivision }: SessionDetailsCardPr
         <Button
           variant="outline"
           className="w-full mt-2"
-          onClick={() => setLocation(`/organiser/sessions/${session.id}?tab=settings`)}
+          onClick={() => setLocation(`/organiser/sessions/${session.id}?tab=format`)}
           data-testid="organiser-session-details-view-full"
         >
           View Full Details

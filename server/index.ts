@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import { SCHEMA_DRIFT_MESSAGE, isSchemaDriftError } from "./lib/schemaDrift";
 
 // Process diagnostics for unexpected crashes and Railway restarts.
 process.on("unhandledRejection", (reason) => {
@@ -35,6 +36,7 @@ import compression from "compression";
 import { registerRoutes } from "./routes";
 import { apiNotFound } from "./lib/apiNotFound";
 import { startDiscoveryScheduler } from "./services/discoveryScheduler";
+import { storage } from "./storage";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { setupAuth } from "./auth";
@@ -261,8 +263,11 @@ app.use((req, res, next) => {
       // only the response sent back is generic for this one category,
       // and only in production (kept verbose in development).
       const looksLikeRawDriverError = typeof err.code === "string" && !err.status && !err.statusCode;
-      const message =
-        looksLikeRawDriverError && process.env.NODE_ENV === "production"
+      // Code newer than the database (a migration not applied): say so, in every
+      // environment, without the SQL statement the driver puts in .message.
+      const message = isSchemaDriftError(err)
+        ? SCHEMA_DRIFT_MESSAGE
+        : looksLikeRawDriverError && process.env.NODE_ENV === "production"
           ? "Something went wrong. Please try again."
           : err.message || "Internal Server Error";
 
@@ -295,6 +300,12 @@ app.use((req, res, next) => {
       log(`serving on port ${port}`);
       // No-op unless DISCOVERY_SCHEDULER_ENABLED=true (see discoveryScheduler.ts).
       startDiscoveryScheduler();
+      // Finished sessions move to "archived" for everyone, not only once their
+      // organiser opens the Sessions list (storage.archiveFinishedSessions).
+      const archiveFinished = () =>
+        storage.archiveFinishedSessions().catch((error) => log(`archive finished sessions failed: ${error?.message ?? error}`));
+      archiveFinished();
+      setInterval(archiveFinished, 10 * 60 * 1000).unref();
     },
   );
 })();

@@ -47,6 +47,11 @@ export interface PlanRoundResult {
 
 const TEAM_SIZE: Record<MatchMode, number> = { singles: 1, doubles: 2 };
 
+/** Shuffled greedy pairings tried per round (TC Live v1); cheap for club-sized groups. */
+const PAIRING_ATTEMPTS = 60;
+/** A repeated partner is much worse than a repeated opponent. */
+const PARTNER_REPEAT_WEIGHT = 100;
+
 /** Canonical, order-independent key for a pair of player ids. */
 function pairKey(a: string, b: string): string {
   return [a, b].sort().join("|");
@@ -201,22 +206,31 @@ export function planRound(input: PlanRoundInput): PlanRoundResult {
   const partnerCounts = buildPartnerCounts(pastMatches);
   const opponentCounts = buildOpponentCounts(pastMatches);
 
-  let teams: Team[];
-  if (mode === "singles") {
-    teams = playing.map((p) => ({ id: p.id, playerIds: [p.id] }));
-  } else {
-    const partnerPairs = greedyPairByHistory(playing, partnerCounts);
-    teams = partnerPairs.map(([a, b]) => ({
-      id: pairKey(a.id, b.id),
-      playerIds: [a.id, b.id],
-    }));
+  // One greedy pass commits to early pairs and leaves the last pair to
+  // chance - it repeated partners while fresh ones were still available
+  // (TC Live v1 audit: 8 players, round 3). So try several shuffled greedy
+  // passes and keep the cheapest: a repeated partner costs far more than a
+  // repeated opponent, and among equal costs the first one found wins.
+  let best: { teams: [Team, Team][]; cost: number } | null = null;
+  for (let attempt = 0; attempt < PAIRING_ATTEMPTS; attempt++) {
+    let teams: Team[];
+    let partnerCost = 0;
+    if (mode === "singles") {
+      teams = playing.map((p) => ({ id: p.id, playerIds: [p.id] }));
+    } else {
+      const partnerPairs = greedyPairByHistory(playing, partnerCounts);
+      teams = partnerPairs.map(([a, b]) => ({ id: pairKey(a.id, b.id), playerIds: [a.id, b.id] }));
+      partnerCost = partnerPairs.reduce((sum, [a, b]) => sum + (partnerCounts.get(pairKey(a.id, b.id)) ?? 0), 0);
+    }
+    const teamOpponentCounts = mode === "singles" ? opponentCounts : buildOpponentCountsForTeams(teams, opponentCounts);
+    const matchups = greedyPairByHistory(teams, teamOpponentCounts);
+    const opponentCost = matchups.reduce((sum, [a, b]) => sum + (teamOpponentCounts.get(pairKey(a.id, b.id)) ?? 0), 0);
+    const cost = partnerCost * PARTNER_REPEAT_WEIGHT + opponentCost;
+    if (!best || cost < best.cost) best = { teams: matchups, cost };
+    if (cost === 0) break; // can't do better
   }
 
-  const teamOpponentCounts =
-    mode === "singles" ? opponentCounts : buildOpponentCountsForTeams(teams, opponentCounts);
-  const matchups = greedyPairByHistory(teams, teamOpponentCounts);
-
-  const matches: PlannedMatch[] = matchups.map(([teamA, teamB], i) => ({
+  const matches: PlannedMatch[] = best!.teams.map(([teamA, teamB], i) => ({
     courtLabel: `Court ${i + 1}`,
     teamAIds: teamA.playerIds,
     teamBIds: teamB.playerIds,
@@ -322,10 +336,15 @@ export function computeLeaderboard(input: LeaderboardInput): LeaderboardEntry[] 
   const allEntries = Array.from(stats.values());
   for (const row of allEntries) row.points = pointsFor(row);
 
+  // Wins, then draws, then games difference, then games won; the user id
+  // last only so equal players keep the same order on every load (the
+  // order used to depend on database row order).
   return allEntries.sort((a, b) => {
     if (b.wins !== a.wins) return b.wins - a.wins;
-    const diffA = a.gamesWon - a.gamesLost;
-    const diffB = b.gamesWon - b.gamesLost;
-    return diffB - diffA;
+    if (b.draws !== a.draws) return b.draws - a.draws;
+    const diff = (b.gamesWon - b.gamesLost) - (a.gamesWon - a.gamesLost);
+    if (diff !== 0) return diff;
+    if (b.gamesWon !== a.gamesWon) return b.gamesWon - a.gamesWon;
+    return a.userId < b.userId ? -1 : a.userId > b.userId ? 1 : 0;
   });
 }

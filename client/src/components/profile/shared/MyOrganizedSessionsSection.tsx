@@ -23,6 +23,7 @@ import {
   leaveSession as leaveSessionApi,
 } from "@/lib/api/organizer-sessions";
 import type { TennisSession, SessionWithDetails } from "@shared/schema";
+import { sessionHasPolicies } from "@shared/sessionJoinRules";
 import { formatInTimeZone } from "@/lib/timezone";
 import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.webp";
 
@@ -211,6 +212,13 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
   };
 
   const handleJoin = async (session: TennisSession) => {
+    // A session with rules or policies is joined on its own page, where the
+    // player reads them and ticks "I agree" (the API requires it -
+    // shared/sessionJoinRules.ts). The page also handles signing in.
+    if (sessionHasPolicies(session)) {
+      setLocation(`/play/${session.id}`);
+      return;
+    }
     if (!isAuthenticated) {
       // Send them to sign in (or register), but bring them right back
       // here afterwards instead of to their own profile, and remember
@@ -243,7 +251,8 @@ export function MyOrganizedSessionsSection({ isOwnProfile, profileSlug }: MyOrga
 
     const target = sessions.find((s) => s.id === pendingSessionId);
     if (target && !myStatusById.get(target.id)) {
-      performJoin(target, "after-auth");
+      if (sessionHasPolicies(target)) setLocation(`/play/${target.id}`);
+      else performJoin(target, "after-auth");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, isLoading, myRegisteredQuery.isLoading, sessions, search]);

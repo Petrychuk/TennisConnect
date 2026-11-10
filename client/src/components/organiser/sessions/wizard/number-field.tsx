@@ -8,6 +8,7 @@ interface NumberFieldProps {
   max?: number;
   step?: number;
   placeholder?: string;
+  className?: string;
   "data-testid"?: string;
 }
 
@@ -30,7 +31,7 @@ interface NumberFieldProps {
 // elsewhere (but never while this field is focused, so it doesn't fight
 // what's being typed), and committing out via onChange as soon as the
 // text parses, falling back to min (or 0) on blur if it's left empty.
-export function NumberField({ value, onChange, min, max, step, placeholder, ...rest }: NumberFieldProps) {
+export function NumberField({ value, onChange, min, max, step, placeholder, className, ...rest }: NumberFieldProps) {
   const [text, setText] = useState(() => (Number.isNaN(value) ? "" : String(value)));
   const isFocused = useRef(false);
 
@@ -59,6 +60,7 @@ export function NumberField({ value, onChange, min, max, step, placeholder, ...r
       inputMode="numeric"
       pattern="-?[0-9]*"
       placeholder={placeholder}
+      className={className}
       value={text}
       onFocus={(e) => {
         isFocused.current = true;

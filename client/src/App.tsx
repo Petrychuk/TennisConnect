@@ -66,6 +66,7 @@ const OrganiserSessionLivePage = lazy(() => import("@/pages/organiser/session-li
 // entirely - in a production build.
 const LiveSimulatorPage = lazy(() => import("@/pages/dev/live-simulator"));
 const OrganiserSessionEditPage = lazy(() => import("@/pages/organiser/session-edit"));
+const OrganiserOrganisationPage = lazy(() => import("@/pages/organiser/organisation"));
 const OrganisationDetailPage = lazy(() => import("@/pages/organisation-detail"));
 const MaintenancePage = lazy(() => import("@/pages/maintenance"));
 const Error500Page = lazy(() => import("@/pages/error-500"));
@@ -142,6 +143,7 @@ function Router() {
         <Route path="/organiser/players" component={OrganiserPlayersPage} />
         <Route path="/organiser/players/:slug" component={OrganiserPlayerDetailsPage} />
         <Route path="/organiser/messages" component={OrganiserMessagesPage} />
+        <Route path="/organiser/organisation" component={OrganiserOrganisationPage} />
         <Route path="/organiser/sessions/:id/live" component={OrganiserSessionLivePage} />
         <Route path="/organiser/sessions/:id/edit" component={OrganiserSessionEditPage} />
         <Route path="/organiser/sessions/:id" component={OrganiserSessionWorkspacePage} />

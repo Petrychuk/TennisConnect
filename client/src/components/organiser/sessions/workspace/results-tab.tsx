@@ -6,6 +6,7 @@ import { Trophy, Download, Clock, Send } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { getSessionLeaderboard, sendSessionResults } from "@/lib/api/organizer-sessions";
+import { csvFileName, downloadCsv, resultsCsv } from "@/lib/organiser-export";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 
 interface ResultsTabProps {
@@ -77,7 +78,13 @@ export function ResultsTab({ session }: ResultsTabProps) {
             <Send className="w-4 h-4 mr-2" />
             {sending ? "Sending..." : "Send to Everyone"}
           </Button>
-          <Button variant="outline" size="sm" onClick={() => toast({ title: "Export isn't wired up yet" })} data-testid="organiser-session-results-export">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => downloadCsv(csvFileName(session.title, "results"), resultsCsv(standings))}
+            disabled={standings.length === 0}
+            data-testid="organiser-session-results-export"
+          >
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>

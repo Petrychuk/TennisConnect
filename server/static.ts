@@ -2,6 +2,9 @@ import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
 import { staticCacheControl } from "./lib/staticCache";
+import { buildSessionShareMeta, injectShareMeta } from "./lib/shareMeta";
+import { PRODUCTION_SITE } from "./lib/appUrl";
+import { storage } from "./storage";
 
 export function serveStatic(app: Express) {
   const distPath = path.resolve(__dirname, "public");
@@ -39,6 +42,31 @@ export function serveStatic(app: Express) {
   );
   app.use("/.well-known", (_req, res) => {
     res.status(404).type("text/plain").send("Not found");
+  });
+
+  // A shared session link (/play/:id) gets its own title, description and
+  // image in the HTML, so Facebook / WhatsApp previews show the session
+  // rather than the generic site card (server/lib/shareMeta.ts). Anything
+  // that isn't a published public session - or any error - falls through to
+  // the plain shell below, exactly as before.
+  app.get("/play/:id", async (req, res, next) => {
+    try {
+      const session = await storage.getPublicSessionById(req.params.id);
+      if (!session) return next();
+      const html = await fs.promises.readFile(path.resolve(distPath, "index.html"), "utf-8");
+      const when = new Intl.DateTimeFormat("en-AU", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone: session.timeZone || "Australia/Sydney",
+      }).format(new Date(session.startAt));
+      res.setHeader("Cache-Control", "no-cache");
+      res.type("html").send(injectShareMeta(html, buildSessionShareMeta(session, PRODUCTION_SITE, when)));
+    } catch {
+      next();
+    }
   });
 
   // fall through to index.html if the file doesn't exist

@@ -22,7 +22,7 @@ const STAT_ICON: Record<string, LucideIcon> = {
 export function StatisticsCard({ stats, className }: StatisticsCardProps) {
   return (
     <Card className={cn("shadow-sm hover:shadow-md transition-shadow", className)} data-testid="organiser-statistics-card">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
         <CardTitle asChild className="text-base"><h2>Quick Analytics</h2></CardTitle>
         <span className="text-xs text-muted-foreground">This Week</span>
       </CardHeader>
@@ -32,16 +32,16 @@ export function StatisticsCard({ stats, className }: StatisticsCardProps) {
             Run a few sessions and your analytics will show up here.
           </p>
         ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           {stats.map((stat) => {
             const Icon = STAT_ICON[stat.key] ?? Users;
             return (
               <div
                 key={stat.key}
-                className="rounded-xl border border-border p-3"
+                className="rounded-xl border border-border p-2.5"
                 data-testid={`organiser-quick-analytics-${stat.key}`}
               >
-                <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary-text flex items-center justify-center mb-2">
+                <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary-text flex items-center justify-center mb-1.5">
                   <Icon className="w-4 h-4" />
                 </div>
                 <p className="text-xl font-bold">{stat.value}</p>

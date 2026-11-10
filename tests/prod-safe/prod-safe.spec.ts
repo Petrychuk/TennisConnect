@@ -478,7 +478,7 @@ test('@prod-safe PROD-SAFE-016 Play format filter updates the results', async ({
 
 });
 
-test('@prod-safe PROD-SAFE-017 Event Quick View opens for a listed event; guests cannot join', async ({ page }) => {
+test('@prod-safe PROD-SAFE-017 A listed event opens (its session page, or Quick View for an external event); guests cannot join', async ({ page }) => {
 
   // ---------- Open page ----------
 
@@ -491,6 +491,7 @@ test('@prod-safe PROD-SAFE-017 Event Quick View opens for a listed event; guests
 
   const viewId = (await viewButtons.first().getAttribute('data-testid'))!;
   const cardId = viewId.replace(/-view$/, '');
+  const sessionId = cardId.replace(/^play-session-card-/, '');
   const title = (await page.getByTestId(`${cardId}-title`).innerText()).trim();
 
   // ---------- Actions ----------
@@ -498,21 +499,36 @@ test('@prod-safe PROD-SAFE-017 Event Quick View opens for a listed event; guests
   await viewButtons.first().click();
 
   // ---------- Verify ----------
+  // A TennisConnect session opens its own public page (/play/:id); only an
+  // event that lives on another site still opens Event Quick View.
 
   const modal = page.getByTestId('event-quick-view-modal');
-  await expect(modal).toBeVisible();
-  await expect(modal.getByTestId('event-modal-title')).toHaveText(title);
-  await expect(modal.getByTestId('event-modal-datetime')).toBeVisible();
+  const sessionPage = page.getByTestId('play-session-details-page');
+  await expect(modal.or(sessionPage)).toBeVisible();
 
-  // ---------- Final verification ----------
+  if (await modal.isVisible()) {
+    await expect(modal.getByTestId('event-modal-title')).toHaveText(title);
+    await expect(modal.getByTestId('event-modal-datetime')).toBeVisible();
+    // A guest is offered sign-in (or the partner's own site), never Join.
+    await expect(modal.getByTestId('event-modal-signin').or(modal.getByTestId('event-modal-view-original'))).toBeVisible();
+    await expect(modal.getByTestId('event-modal-join')).toHaveCount(0);
+    await expect(modal.getByTestId('event-modal-join-waitlist')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(modal).toBeHidden();
+    return;
+  }
 
+  // ---------- Final verification (session page) ----------
+
+  await expect(page).toHaveURL(new RegExp(`/play/${sessionId}$`));
+  await expect(page.getByTestId('play-session-details-title')).toHaveText(title);
+  await expect(page.getByTestId('play-session-details-when')).toBeVisible();
   // A guest is offered sign-in (or the partner's own site), never Join.
-  await expect(modal.getByTestId('event-modal-signin').or(modal.getByTestId('event-modal-view-original'))).toBeVisible();
-  await expect(modal.getByTestId('event-modal-join')).toHaveCount(0);
-  await expect(modal.getByTestId('event-modal-join-waitlist')).toHaveCount(0);
-  await page.keyboard.press('Escape');
-  await expect(modal).toBeHidden();
-
+  await expect(
+    page.getByTestId('play-session-details-signin-to-register').or(page.getByTestId('play-session-details-view-original')),
+  ).toBeVisible();
+  await expect(page.getByTestId('play-session-details-register')).toHaveCount(0);
+  await expect(page.getByTestId('play-session-details-join-waitlist')).toHaveCount(0);
 });
 
 // =====================================================================

@@ -9,6 +9,9 @@ interface RecentActivityCardProps {
   className?: string;
 }
 
+// Only the most recent few - the full history is not meant to live on Home.
+const MAX_ITEMS = 4;
+
 const TYPE_ICON: Record<ActivityFeedItem["type"], typeof UserPlus> = {
   joined: UserPlus,
   checked_in: CheckCircle2,
@@ -40,7 +43,7 @@ function timeAgo(iso: string) {
 export function RecentActivityCard({ items, className }: RecentActivityCardProps) {
   return (
     <Card className={cn("shadow-sm hover:shadow-md transition-shadow", className)} data-testid="organiser-recent-activity-card">
-      <CardHeader>
+      <CardHeader className="pb-3">
         <CardTitle asChild className="text-base"><h2>Activity Feed</h2></CardTitle>
       </CardHeader>
       <CardContent>
@@ -49,8 +52,8 @@ export function RecentActivityCard({ items, className }: RecentActivityCardProps
             No activity yet.
           </p>
         ) : (
-          <ul className="space-y-3.5">
-            {items.map((item) => {
+          <ul className="space-y-2.5">
+            {items.slice(0, MAX_ITEMS).map((item) => {
               const Icon = TYPE_ICON[item.type];
               return (
                 <li key={item.id} data-testid={`organiser-activity-${item.id}`}>

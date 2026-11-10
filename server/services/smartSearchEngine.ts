@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ALL_SESSION_FORMATS } from "@shared/sessionCategories";
 
 // [PLAY][AI] Smart Natural-Language Tennis Search - spec section 13's
 // own contract, as a real, enforced Zod schema rather than just a
@@ -40,19 +41,8 @@ export interface SmartSearchPlayerContext {
   availability?: string[] | null;
 }
 
-const SUPPORTED_ACTIVITY_TYPES = [
-  "social",
-  "americano",
-  "round-robin",
-  "mexicano",
-  "king-of-the-court",
-  "tournament",
-  "league",
-  "club-championship",
-  "junior-event",
-  "cardio-tennis",
-  "coaching-clinic",
-];
+// Every Play format except "custom" (shared/sessionCategories.ts).
+const SUPPORTED_ACTIVITY_TYPES = ALL_SESSION_FORMATS.filter((format) => format !== "custom");
 
 /**
  * Builds the exact system + user prompt sent to the model. Kept as a

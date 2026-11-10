@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -16,22 +15,23 @@ export function SettingsTab({ session }: SettingsTabProps) {
   const detail = getSessionDetail(session);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  // Local-only - no real backend column for either of these yet (see
-  // the toast copy below, which says so honestly instead of claiming
-  // "updated" like the two real, persisted toggles below do).
-  const [checkInOpen, setCheckInOpen] = useState(!!detail.checkInOpen);
-  const [notifyChanges, setNotifyChanges] = useState(true);
+  // Only settings that are saved. "Check-in Open" and "Notify Players of
+  // Changes" were switches that only said "not saved yet" (Phase 2: hidden
+  // - organisers check players in from the Players tab, and there's no
+  // player self check-in or change-notification setting behind them).
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.id] });
     queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine"] });
+    // The same session is on Play too (cards, quick view, details).
+    queryClient.invalidateQueries({ queryKey: ["/api/play/sessions"] });
   };
 
   const waitingListMutation = useMutation({
     mutationFn: (enabled: boolean) => updateSession(session.id, { waitingListEnabled: enabled }),
-    onSuccess: () => {
+    onSuccess: (_data, enabled) => {
       invalidate();
-      toast({ title: "Waiting List Enabled updated" });
+      toast({ title: enabled ? "Waiting list turned on" : "Waiting list turned off" });
     },
     onError: (error: any) => {
       toast({ title: "Couldn't update", description: error?.message ?? "Please try again.", variant: "destructive" });
@@ -39,20 +39,16 @@ export function SettingsTab({ session }: SettingsTabProps) {
   });
 
   // Registration open/closed isn't its own column - it's derived from
-  // registrationClosesAt. Closing sets that to right now; reopening
-  // pushes it a year out rather than trying to null the field, which
-  // achieves the same real effect (registration reads as open again)
-  // without needing the backend to special-case an explicit clear.
+  // registrationClosesAt. Closing sets that to right now. Reopening clears
+  // it (null is a supported clear), so registration stays open until the
+  // session starts. It used to push the date a year out, which put a close
+  // time after the session on the Edit form (and "2027" in it).
   const registrationMutation = useMutation({
     mutationFn: (open: boolean) =>
-      updateSession(session.id, {
-        registrationClosesAt: open
-          ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
-          : new Date(),
-      }),
-    onSuccess: () => {
+      updateSession(session.id, { registrationClosesAt: open ? null : new Date() } as any),
+    onSuccess: (_data, open) => {
       invalidate();
-      toast({ title: "Registration Open updated" });
+      toast({ title: open ? "Registration reopened" : "Registration closed", description: open ? "Players can join again." : "Players can no longer join." });
     },
     onError: (error: any) => {
       toast({ title: "Couldn't update", description: error?.message ?? "Please try again.", variant: "destructive" });
@@ -69,34 +65,12 @@ export function SettingsTab({ session }: SettingsTabProps) {
       disabled: registrationMutation.isPending,
     },
     {
-      key: "checkin",
-      label: "Check-in Open",
-      description: "Players can check themselves in on arrival.",
-      checked: checkInOpen,
-      onCheckedChange: (v: boolean) => {
-        setCheckInOpen(v);
-        toast({ title: "Check-in Open (not saved yet)", description: "This setting isn't persisted - it'll reset next time you load this session." });
-      },
-      disabled: false,
-    },
-    {
       key: "waitlist",
       label: "Waiting List Enabled",
       description: "Auto-promote from the waiting list when a spot opens up.",
       checked: !!detail.waitingListEnabled,
       onCheckedChange: (v: boolean) => waitingListMutation.mutate(v),
       disabled: waitingListMutation.isPending,
-    },
-    {
-      key: "notify",
-      label: "Notify Players of Changes",
-      description: "Send an update when session details change.",
-      checked: notifyChanges,
-      onCheckedChange: (v: boolean) => {
-        setNotifyChanges(v);
-        toast({ title: "Notify Players of Changes (not saved yet)", description: "This setting isn't persisted - it'll reset next time you load this session." });
-      },
-      disabled: false,
     },
   ];
 

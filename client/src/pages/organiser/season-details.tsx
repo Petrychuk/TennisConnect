@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
+import { OrganiserAccessGate } from "@/components/organiser/ui/organiser-layout";
 import { Link, useLocation, useRoute } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -48,7 +48,6 @@ import {
 } from "@/lib/api/organizer-sessions";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
 import { seasonStatus, SEASON_STATUS_LABEL, SEASON_STATUS_STYLE, formatSeasonPeriod } from "@/lib/season-utils";
-import { cn } from "@/lib/utils";
 import type { SessionWithDetails } from "@shared/schema";
 
 // No Rankings preview section here, even though the spec's own mockup
@@ -59,7 +58,7 @@ import type { SessionWithDetails } from "@shared/schema";
 // found and removed elsewhere (fake win rates, fake ratings) - once a
 // real cross-session ranking exists, this is the natural place to link
 // to it.
-export default function OrganiserSeasonDetailsPage() {
+function OrganiserSeasonDetailsPageContent() {
   const { isAuthenticated, user, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/organiser/seasons/:id");
@@ -156,22 +155,6 @@ export default function OrganiserSeasonDetailsPage() {
     }
   };
 
-  if (authLoading) return null;
-  if (!isAuthenticated) {
-    setLocation("/auth");
-    return null;
-  }
-  if (!user?.isOrganizer) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-background">
-        <Card className="max-w-md w-full shadow-sm">
-          <CardContent className="p-6 text-muted-foreground">
-            You need to be an approved organiser to view this page.
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   if (seasonQuery.isLoading) {
     return (
@@ -396,5 +379,15 @@ export default function OrganiserSeasonDetailsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+// Access (signed in, organiser or admin) is checked once, for every Hub
+// page, by OrganiserAccessGate (components/organiser/ui/organiser-layout.tsx).
+export default function OrganiserSeasonDetailsPage() {
+  return (
+    <OrganiserAccessGate>
+      <OrganiserSeasonDetailsPageContent />
+    </OrganiserAccessGate>
   );
 }

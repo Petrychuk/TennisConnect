@@ -91,17 +91,35 @@ export interface SessionPrimaryAction {
 // urgent thing on the page (the session already happened), so they
 // stay a plain outline button instead of visually shouting louder
 // than an unfinished draft or a live session in progress.
-export function getPrimaryActionMeta(bucket: Exclude<SessionBucket, "all">, playIcon: LucideIcon): SessionPrimaryAction {
+// hasRounds: false for Coaching & Fitness (shared/sessionCategories.ts) -
+// they have no Results tab, so a finished one opens its players instead.
+export function getPrimaryActionMeta(bucket: Exclude<SessionBucket, "all">, playIcon: LucideIcon, liveAvailable = true, hasRounds = true): SessionPrimaryAction {
   switch (bucket) {
     case "draft":
       return { label: "Continue Setup", urgent: true };
     case "live":
-      return { label: "Enter Live", urgent: true, icon: playIcon };
+      // Without TC Live (Production) the button opens the workspace.
+      return liveAvailable ? { label: "Enter Live", urgent: true, icon: playIcon } : { label: "Manage Session", urgent: true };
     case "completed":
-      return { label: "View Results", urgent: false };
     case "archived":
-      return { label: "View History", urgent: false };
+      // Archived used to say "View History" and open ?tab=history, a tab
+      // that doesn't exist (it fell back to Overview).
+      return { label: hasRounds ? "View Results" : "View Players", urgent: false };
     default:
       return { label: "Manage Session", urgent: true }; // registration-open, upcoming
   }
+}
+
+/**
+ * Where "open / edit this session" goes. A draft is finished in the wizard (all
+ * four steps, Save as Draft, Publish); the flat Edit page is for sessions that
+ * are already out (it asks for name, venue and date, which a draft may not have yet).
+ */
+/** An archived session is closed: it can be viewed and duplicated, never edited. */
+export function canEditSession(session: { status: string }): boolean {
+  return session.status !== "archived";
+}
+
+export function sessionEditPath(session: { id: string; status: string }): string {
+  return session.status === "draft" ? `/organiser/sessions/new?draft=${session.id}` : `/organiser/sessions/${session.id}/edit`;
 }

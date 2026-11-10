@@ -14,6 +14,7 @@ import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
   LOCAL_ONLY_TESTS,
+  PRODUCTION_ONLY_TESTS,
   STAGING_PHASE_ORDER,
   STAGING_PHASES,
   phaseGrep,
@@ -72,6 +73,7 @@ describe('staging phases', () => {
     for (const k of READONLY_KEYS) add(k, 'read-only');
     for (const phase of STAGING_PHASE_ORDER) for (const k of keysOf(STAGING_PHASES[phase])) add(k, phase);
     for (const k of keysOf(LOCAL_ONLY_TESTS)) add(k, 'local-only');
+    for (const k of keysOf(PRODUCTION_ONLY_TESTS)) add(k, 'production-only');
 
     const duplicates = Array.from(owners).filter(([, list]) => list.length > 1);
     assert.deepEqual(duplicates, [], 'classified more than once');
