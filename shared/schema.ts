@@ -1337,7 +1337,8 @@ export type ReportsData = {
 // §8). "closed" covers a published session whose registration window
 // has passed but the session itself hasn't happened/been marked live
 // yet.
-export type PublicSessionStatus = "live" | "upcoming" | "open" | "almost_full" | "full" | "waitlist" | "closed";
+// "archived": the session is over (shared/sessionJoinRules.ts sessionHasFinished) - shown on a direct link only, nothing to do.
+export type PublicSessionStatus = "live" | "upcoming" | "open" | "almost_full" | "full" | "waitlist" | "closed" | "archived";
 
 export type PublicSessionCard = {
   id: string;

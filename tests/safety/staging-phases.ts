@@ -146,8 +146,9 @@ export const STAGING_PHASES: Readonly<Record<StagingPhase, readonly PhaseEntry[]
       file: 'tests/organiser/organiser-session-actions.spec.ts',
       ids: ['ORG-ACT-001', 'ORG-ACT-002', 'ORG-ACT-003', 'ORG-ACT-004', 'ORG-ACT-005', 'ORG-ACT-006'],
     },
-    // PLAY-010 registers a run-owned player into a run-owned session; PLAY-011 is a guest view.
-    { file: 'tests/play/play-session-details.spec.ts', ids: ['PLAY-007', 'PLAY-008', 'PLAY-009', 'PLAY-010', 'PLAY-011'] },
+    // PLAY-010 registers a run-owned player into a run-owned session; PLAY-011 is a guest view;
+    // PLAY-012 seeds a run-owned past session (join refused).
+    { file: 'tests/play/play-session-details.spec.ts', ids: ['PLAY-007', 'PLAY-008', 'PLAY-009', 'PLAY-010', 'PLAY-011', 'PLAY-012'] },
     // TC Live v1 (30 Oct 2026): needs TC_LIVE_ENABLED=true on Staging. Run-owned
     // organisers/players/sessions; LIVE-015 skips itself unless Live is off.
     {

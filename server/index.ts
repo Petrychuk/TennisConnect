@@ -36,6 +36,7 @@ import compression from "compression";
 import { registerRoutes } from "./routes";
 import { apiNotFound } from "./lib/apiNotFound";
 import { startDiscoveryScheduler } from "./services/discoveryScheduler";
+import { storage } from "./storage";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { setupAuth } from "./auth";
@@ -299,6 +300,12 @@ app.use((req, res, next) => {
       log(`serving on port ${port}`);
       // No-op unless DISCOVERY_SCHEDULER_ENABLED=true (see discoveryScheduler.ts).
       startDiscoveryScheduler();
+      // Finished sessions move to "archived" for everyone, not only once their
+      // organiser opens the Sessions list (storage.archiveFinishedSessions).
+      const archiveFinished = () =>
+        storage.archiveFinishedSessions().catch((error) => log(`archive finished sessions failed: ${error?.message ?? error}`));
+      archiveFinished();
+      setInterval(archiveFinished, 10 * 60 * 1000).unref();
     },
   );
 })();

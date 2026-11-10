@@ -80,6 +80,7 @@ Updated 5 Nov 2026. Inventory from `npx playwright test --list`: **404 tests in 
 | | Registration and status | PLAY-003…006 |
 | | "I agree to the rules & policies" before Join (page and API) | PLAY-010 |
 | | Guest: Sign in / Create an account, no Join | PLAY-011, PROD-SAFE-017 |
+| | Finished session: archived - off Play, "Archived" on its page, join refused | PLAY-012 |
 | **G. Responsive** | 6 viewports: navigation, wizard, players, touch targets, check-in, organisation, overflow | ORG-RESP-001…003 |
 | Rankings, reports, series | Existing | ORG-RANK-002/004/006, ORG-REPORT-003/004/010/012, ORG-FLOW-001/003 |
 | **I. Dashboard states** (5 Nov) | New organiser: 0 / 0 / 0 / `—`, welcome card with Create Session | ORG-DASH-001 |

@@ -127,4 +127,26 @@ test.describe('Play: session details', () => {
       await guest.close();
     }
   });
+
+  test('PLAY-012 A finished session is archived: not on Play, its page says Archived, nobody can join', async ({ page }) => {
+    const organiser = await becomeOrganiser(page);
+    const title = `Finished social ${Date.now()}`;
+    const session = await seedHubSession(page, organiser, { title, startAt: inDays(-2), status: 'published', type: 'social' });
+
+    await page.goto('/play');
+    await dismissCookieBanner(page);
+    await page.getByTestId('play-page-search-input').fill(title);
+    await expect(page.getByTestId('play-page-no-matches')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId(`play-session-card-${session.id}`)).toHaveCount(0);
+
+    // A direct link still opens it - as Archived, with nothing to press.
+    await page.goto(`/play/${session.id}`);
+    await expect(page.getByTestId('play-session-details-status')).toHaveText('Archived', { timeout: 15_000 });
+    await expect(page.getByTestId('play-session-details-archived')).toBeDisabled();
+    await expect(page.getByTestId('play-session-details-register')).toHaveCount(0);
+    await expect(page.getByTestId('play-session-details-signin-to-register')).toHaveCount(0);
+
+    const refused = await page.request.post(`/api/organizer/sessions/${session.id}/join`, { data: { acceptedPolicies: true }, failOnStatusCode: false });
+    expect(refused.status()).toBe(400);
+  });
 });

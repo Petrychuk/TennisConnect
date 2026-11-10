@@ -93,6 +93,7 @@ import {
   type ActivityFeedItem,
 } from "@shared/schema";
 import { readSessionPolicies } from "@shared/sessionPolicies";
+import { sessionHasFinished } from "@shared/sessionJoinRules";
 import { db, pool } from "./db";
 import { cascadeDeleteOrganizations as cascadeDeleteOrganizationsShared } from "./lib/organizationCascade";
 import { deleteUserRows } from "./lib/userCascade";
@@ -486,6 +487,7 @@ export interface IStorage {
  getSessionDivisions(parentSessionId: string): Promise<SessionWithDetails[]>;
  createSessionDivision(baseSession: TennisSession, createdBy: string, overrides: Partial<InsertSession> & { title: string }): Promise<TennisSession>;
   getSessionsByOrganization(organizationId: string): Promise<SessionWithDetails[]>;
+  archiveFinishedSessions(): Promise<number>;
   getUpcomingPublishedSessionsByOrganization(organizationId: string): Promise<SessionWithDetails[]>;
   getSessionsThisWeek(): Promise<SessionWithDetails[]>;
   getSessionsUserRegisteredFor(userId: string): Promise<SessionWithDetails[]>;
@@ -3435,11 +3437,12 @@ export class DatabaseStorage implements IStorage {
   // is exactly why sessions in those statuses are filtered out before
   // this ever runs (see getPublicSessions/getPublicSessionById below).
   private computePublicStatus(
-    session: Pick<TennisSession, "status" | "registrationOpensAt" | "registrationClosesAt" | "maxParticipants" | "waitingListEnabled">,
+    session: Pick<TennisSession, "status" | "registrationOpensAt" | "registrationClosesAt" | "maxParticipants" | "waitingListEnabled" | "startAt" | "endAt">,
     registeredCount: number
   ): PublicSessionStatus {
     const now = new Date();
     if (session.status === "live") return "live";
+    if (sessionHasFinished(session, now)) return "archived";
     if (session.registrationOpensAt && session.registrationOpensAt > now) return "upcoming";
     if (session.registrationClosesAt && session.registrationClosesAt < now) return "closed";
     if (session.maxParticipants) {
@@ -3613,6 +3616,9 @@ export class DatabaseStorage implements IStorage {
     const conditions = [
       inArray(tennisSessions.status, ["published", "live"]),
       eq(tennisSessions.visibility, "public"), eq(tennisSessions.isInternalTest, false) /* TC Live v1: internal test sessions are never public */,
+      // A finished session is archived: not listed on Play, even before the
+      // archive job has caught up with it (sessionHasFinished).
+      or(eq(tennisSessions.status, "live"), sql`COALESCE(${tennisSessions.endAt}, ${tennisSessions.startAt}) >= now()`)!,
     ];
     if (filters.format) conditions.push(eq(tennisSessions.type, filters.format));
     // Soft level rule (services/playFilters.ts): also sessions open to all levels
@@ -3736,7 +3742,9 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(tennisSessions.id, id),
-          inArray(tennisSessions.status, ["published", "live"]),
+          // Finished sessions (completed / archived) stay viewable on a
+          // direct link - as "Archived", with nothing to join or cancel.
+          inArray(tennisSessions.status, ["published", "live", "completed", "archived"]),
           eq(tennisSessions.visibility, "public"), eq(tennisSessions.isInternalTest, false) /* TC Live v1: internal test sessions are never public */
         )
       );
@@ -4492,6 +4500,27 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     return created;
+  }
+
+  /**
+   * The archive rule for every organisation at once (server/index.ts runs it
+   * every few minutes): a published or completed session whose end - or
+   * start, with no end - has passed becomes "archived". A live session is
+   * left alone here even if it runs late; getSessionsByOrganization below
+   * still archives it once its organiser's list is opened, as before.
+   */
+  async archiveFinishedSessions(): Promise<number> {
+    const rows = await db
+      .update(tennisSessions)
+      .set({ status: "archived", updatedAt: new Date() })
+      .where(
+        and(
+          sql`${tennisSessions.status} IN ('published', 'completed')`,
+          sql`COALESCE(${tennisSessions.endAt}, ${tennisSessions.startAt}) < now()`
+        )
+      )
+      .returning({ id: tennisSessions.id });
+    return rows.length;
   }
 
   async getSessionsByOrganization(organizationId: string): Promise<SessionWithDetails[]> {

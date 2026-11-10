@@ -143,6 +143,7 @@ export function isEventEligibleForPlayer(
   // No room and no waiting list - nothing to recommend into.
   if (event.playStatus === "full") return false;
   if (event.playStatus === "closed") return false;
+  if (event.playStatus === "archived") return false;
 
   // A hard level mismatch: the organiser set an accepted level and the
   // player's own level is more than one step away from it. One step

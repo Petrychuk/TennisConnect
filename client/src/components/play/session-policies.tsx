@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { CalendarX2, ChevronDown, Clock, RefreshCw, ShieldCheck, type LucideIcon } from "lucide-react";
 import { POLICY_LABELS, hasAnyPolicy, type SessionPolicies } from "@shared/sessionPolicies";
 import { parsePolicyText, splitBold } from "@/lib/formatPolicyText";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,13 @@ import { cn } from "@/lib/utils";
 */
 const LONG_POLICY_CHARS = 700;
 
+const POLICY_ICONS: Record<keyof SessionPolicies, LucideIcon> = {
+  rules: ShieldCheck,
+  refund: RefreshCw,
+  lateArrival: Clock,
+  cancellation: CalendarX2,
+};
+
 function Inline({ text }: { text: string }) {
   return (
     <>
@@ -31,13 +38,13 @@ function Inline({ text }: { text: string }) {
 export function FormattedPolicyText({ text }: { text: string }) {
   const blocks = parsePolicyText(text);
   return (
-    <div className="space-y-2 text-sm leading-relaxed text-muted-foreground wrap-break-word">
+    <div className="space-y-2.5 text-sm leading-relaxed text-foreground/80 wrap-break-word">
       {blocks.map((block, i) => {
         switch (block.type) {
           case "heading":
-            return <p key={i} className="pt-1 text-xs font-semibold uppercase tracking-wide text-foreground">{block.text}</p>;
+            return <p key={i} className="pt-1 text-sm font-bold text-foreground">{block.text}</p>;
           case "subheading":
-            return <p key={i} className="pt-1 text-sm font-semibold text-foreground">{block.text}</p>;
+            return <p key={i} className="pt-1 text-sm font-bold text-foreground">{block.text}</p>;
           case "ordered":
             return (
               <ol key={i} start={block.start} className="list-decimal space-y-1 pl-5 marker:text-muted-foreground">
@@ -103,9 +110,13 @@ export function SessionPoliciesList({
         {entries.map((key) => (
           // Native <details>: collapsed, but the text stays in the page
           // (find-in-page, screen readers, tests reading its text).
-          <details key={key} className="group rounded-2xl border border-border bg-card shadow-sm" data-testid={`${testId}-${key}`}>
-            <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 font-medium [&::-webkit-details-marker]:hidden">
-              {POLICY_LABELS[key]}
+          <details key={key} className="group rounded-2xl border border-border bg-card" data-testid={`${testId}-${key}`}>
+            <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 py-3 font-semibold [&::-webkit-details-marker]:hidden">
+              {(() => {
+                const Icon = POLICY_ICONS[key];
+                return <Icon className="h-5 w-5 shrink-0 text-primary-text" aria-hidden />;
+              })()}
+              <span className="flex-1">{POLICY_LABELS[key]}</span>
               <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
             </summary>
             <div className="border-t border-border px-4 py-3">
@@ -117,10 +128,16 @@ export function SessionPoliciesList({
     );
   }
   return (
-    <div className={compact ? "space-y-3" : "space-y-5"} data-testid={testId}>
+    <div className={cn("divide-y divide-border", compact ? "[&>section]:py-3" : "[&>section]:py-4")} data-testid={testId}>
       {entries.map((key) => (
-        <section key={key} data-testid={`${testId}-${key}`}>
-          <h3 className="mb-1 text-sm font-semibold text-foreground">{POLICY_LABELS[key]}</h3>
+        <section key={key} className="first:pt-0 last:pb-0" data-testid={`${testId}-${key}`}>
+          <h3 className={cn("mb-2 flex items-center gap-2 font-bold text-foreground", compact ? "text-sm" : "text-base")}>
+            {(() => {
+              const Icon = POLICY_ICONS[key];
+              return <Icon className="h-4 w-4 shrink-0 text-primary-text" aria-hidden />;
+            })()}
+            {POLICY_LABELS[key]}
+          </h3>
           <PolicyBody text={policies[key] as string} testId={`${testId}-${key}`} />
         </section>
       ))}

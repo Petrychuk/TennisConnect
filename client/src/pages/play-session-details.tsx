@@ -18,7 +18,6 @@ import {
   FileText,
   Layers,
   MapPin,
-  ShieldCheck,
   Users,
 } from "lucide-react";
 import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.webp";
@@ -70,21 +69,6 @@ function durationLabel(startAt: string, endAt: string | null): string | null {
   if (minutes % 60 === 0) return `${minutes / 60} hour${minutes === 60 ? "" : "s"}`;
   if (minutes > 60) return `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
   return `${minutes} min`;
-}
-
-function Fact({ icon: Icon, label, value, sub, testId }: { icon: typeof CalendarDays; label: string; value: ReactNode; sub?: ReactNode; testId?: string }) {
-  return (
-    <div className="flex min-w-0 items-start gap-3" data-testid={testId}>
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary-text">
-        <Icon className="h-4 w-4" aria-hidden />
-      </span>
-      <div className="min-w-0">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="font-semibold leading-tight">{value}</p>
-        {sub && <p className="text-sm text-muted-foreground leading-tight mt-0.5">{sub}</p>}
-      </div>
-    </div>
-  );
 }
 
 export default function PlaySessionDetailsPage() {
@@ -179,7 +163,28 @@ export default function PlaySessionDetailsPage() {
   const joinDisabled = joinMutation.isPending || (needsAgreement && !agreed);
   let note: ReactNode = null;
   let action: ReactNode;
-  if (session.externalSourceUrl) {
+  // A finished session is archived: shown on a direct link, but nobody -
+  // guest or player - can join, leave or cancel any more (the API refuses
+  // too, shared/sessionJoinRules.ts).
+  const archived = session.playStatus === "archived";
+  if (archived) {
+    note = <p className="text-sm text-muted-foreground" data-testid="play-session-details-archived-note">This session has finished and is archived.</p>;
+    action =
+      session.myRegistrationStatus === "registered" || session.myRegistrationStatus === "waitlisted" ? (
+        <div className="flex flex-row items-stretch gap-2">
+          <Badge className="flex-1 bg-muted text-muted-foreground justify-center py-2" data-testid="play-session-details-registered-badge">
+            <CheckCircle2 className="w-4 h-4 mr-1.5" /> {session.myRegistrationStatus === "registered" ? "You played" : "Was on the waiting list"}
+          </Badge>
+          <Button variant="outline" className="flex-1" disabled data-testid="play-session-details-cancel-registration">
+            Cancel
+          </Button>
+        </div>
+      ) : (
+        <Button className="w-full" disabled data-testid="play-session-details-archived">
+          Session finished
+        </Button>
+      );
+  } else if (session.externalSourceUrl) {
     action = (
       <Button className="w-full" asChild data-testid="play-session-details-view-original">
         <a href={session.externalSourceUrl} target="_blank" rel="noopener noreferrer">Register on the organiser's site</a>
@@ -255,6 +260,25 @@ export default function PlaySessionDetailsPage() {
   }
   const offersJoin = !session.externalSourceUrl && isAuthenticated && !session.myRegistrationStatus && (session.playStatus === "waitlist" || session.playStatus === "open" || session.playStatus === "almost_full");
 
+  const city = session.timeZone.split("/").pop()?.replace(/_/g, " ");
+  const facts: { icon: typeof CalendarDays; value: ReactNode; sub?: ReactNode; testId?: string }[] = [
+    {
+      icon: CalendarDays,
+      value: formatInTimeZone(session.startAt, session.timeZone, { weekday: "short", day: "numeric", month: "short" }),
+      sub: (
+        <>
+          {formatInTimeZone(session.startAt, session.timeZone, { hour: "numeric", minute: "2-digit" })}
+          {session.endAt && <> – {formatInTimeZone(session.endAt, session.timeZone, { hour: "numeric", minute: "2-digit" })}</>}
+        </>
+      ),
+      testId: "play-session-details-when",
+    },
+    ...(session.location ? [{ icon: MapPin, value: session.location, sub: city, testId: "play-session-details-where" }] : []),
+    ...(formatFact ? [{ icon: Layers, value: formatFact, sub: roundsSub, testId: "play-session-details-match-format" }] : []),
+    { icon: BarChart3, value: session.skillLevel ?? "All levels", testId: "play-session-details-level" },
+    ...(duration ? [{ icon: Clock, value: duration, sub: session.courtsCount != null ? `${session.courtsCount} courts` : undefined }] : []),
+  ];
+
   return (
     <div className="min-h-screen bg-background" data-testid="play-session-details-page">
       <SEO
@@ -265,148 +289,143 @@ export default function PlaySessionDetailsPage() {
       />
       <Navbar />
 
-      <main id="main-content" className="container mx-auto max-w-6xl px-4 pt-20 sm:pt-24 pb-24 lg:pb-12">
-        <Link href="/play" className="inline-flex min-h-11 sm:min-h-0 items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-3" data-testid="play-session-details-back-link">
-          <ArrowLeft className="w-4 h-4" /> Back to Play
-        </Link>
+      <main id="main-content" className="pb-24 lg:pb-14">
+        {/* ---------- Banner: full width, the session's own image (or the standard court photo) ---------- */}
+        <section className="relative isolate overflow-hidden bg-foreground pt-20" data-testid="play-session-details-hero">
+          <img src={session.coverImage || courtImage} alt="" aria-hidden className={cn("absolute inset-0 -z-10 h-full w-full object-cover", archived && "grayscale")} />
+          <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/70 via-black/45 to-black/70 lg:bg-gradient-to-r lg:from-black/75 lg:via-black/40 lg:to-black/10" aria-hidden />
 
-        {/* ---------- Banner ---------- */}
-        <section className="relative overflow-hidden rounded-3xl bg-muted min-h-[15rem] sm:min-h-[19rem] lg:min-h-[22rem] flex flex-col justify-end" data-testid="play-session-details-hero">
-          <img src={session.coverImage || courtImage} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10 lg:bg-gradient-to-r lg:from-black/75 lg:via-black/40 lg:to-transparent" aria-hidden />
-          <div className="absolute right-3 top-3 sm:right-4 sm:top-4">
-            <ShareSessionButton url={pageUrl} title={session.title} />
-          </div>
-          <div className="relative p-5 sm:p-7 lg:max-w-[60%] text-white">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge className={cn("font-semibold", PLAY_STATUS_STYLE[session.playStatus])} data-testid="play-session-details-status">
-                {PLAY_STATUS_LABEL[session.playStatus]}
-              </Badge>
-              {/* Category (shared/sessionCategories.ts) + the format itself. */}
-              <Badge variant="outline" className="border-white/40 bg-white/10 text-white" data-testid="play-session-details-category">{category.label}</Badge>
-              <Badge className="bg-white text-foreground hover:bg-white" data-testid="play-session-details-format">{formatTypeLabel(session.type)}</Badge>
+          <div className="container mx-auto max-w-6xl px-4 pt-4 pb-20 sm:pb-24">
+            <div className="flex items-center justify-between gap-3">
+              <Link href="/play" className="inline-flex min-h-11 sm:min-h-0 items-center gap-1.5 text-sm text-white/80 hover:text-white" data-testid="play-session-details-back-link">
+                <ArrowLeft className="w-4 h-4" /> Back to Play
+              </Link>
+              {!archived && <ShareSessionButton url={pageUrl} title={session.title} />}
             </div>
-            <h1 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-display font-bold leading-tight" data-testid="play-session-details-title">{session.title}</h1>
-            {(session.seasonName || session.seriesName) && (
-              <p className="mt-1 text-xs text-white/80" data-testid="play-session-details-season-context">
-                Part of {[session.seasonName, session.seriesName].filter(Boolean).join(" · ")}
-              </p>
-            )}
-            {blurb && <p className="mt-2 text-sm sm:text-base text-white/90 line-clamp-3" data-testid="play-session-details-blurb">{blurb}</p>}
+
+            <div className="mt-4 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-10">
+              <div className="min-w-0 text-white">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge className="bg-white text-foreground hover:bg-white" data-testid="play-session-details-format">{formatTypeLabel(session.type)}</Badge>
+                  {/* Category (shared/sessionCategories.ts) and the player-facing status. */}
+                  <Badge variant="outline" className="border-white/40 bg-white/10 text-white" data-testid="play-session-details-category">{category.label}</Badge>
+                  <Badge className={cn("font-semibold", PLAY_STATUS_STYLE[session.playStatus])} data-testid="play-session-details-status">
+                    {PLAY_STATUS_LABEL[session.playStatus]}
+                  </Badge>
+                </div>
+                <h1 className="mt-3 text-3xl sm:text-5xl font-display font-bold leading-tight break-words" data-testid="play-session-details-title">{session.title}</h1>
+                {(session.seasonName || session.seriesName) && (
+                  <p className="mt-1 text-xs text-white/75" data-testid="play-session-details-season-context">
+                    Part of {[session.seasonName, session.seriesName].filter(Boolean).join(" · ")}
+                  </p>
+                )}
+                {blurb && <p className="mt-3 max-w-xl text-sm sm:text-base leading-relaxed text-white/90 line-clamp-4" data-testid="play-session-details-blurb">{blurb}</p>}
+              </div>
+
+              {/* ---------- Booking card: on the banner, right after the title on a phone ---------- */}
+              <aside className="rounded-2xl bg-card text-card-foreground p-5 shadow-xl space-y-3" data-testid="play-session-details-booking">
+                <p className="text-2xl font-display font-bold" data-testid="play-session-details-price">{priceLabel}</p>
+                <p className="flex items-center gap-2 text-sm" data-testid="play-session-details-spots">
+                  <Users className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden />
+                  {session.maxParticipants != null ? (
+                    <span>
+                      {session.registeredCount} / {session.maxParticipants} players
+                      {spotsLeft != null && spotsLeft > 0 ? (
+                        !archived && <span className="text-green-600 dark:text-green-400 font-medium"> · {spotsLeft} {spotsLeft === 1 ? "spot" : "spots"} left</span>
+                      ) : (
+                        <span className="font-medium"> · Full</span>
+                      )}
+                    </span>
+                  ) : (
+                    <span>{session.registeredCount} players</span>
+                  )}
+                </p>
+                {note}
+                {offersJoin && hasPolicies && !archived && (
+                  <PoliciesAgreement checked={agreed} onCheckedChange={setAgreed} testId="play-session-details-agree" />
+                )}
+                {action}
+                {priceValue > 0 && !archived && <p className="text-xs text-muted-foreground">Paid to the organiser directly.</p>}
+              </aside>
+            </div>
           </div>
         </section>
 
-        <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[auto_1fr]">
-          {/* ---------- Booking card: first on a phone, beside the banner on desktop ---------- */}
-          <aside className="lg:col-start-2 lg:row-start-1 lg:-mt-40 relative z-10" data-testid="play-session-details-booking">
-            <div className="rounded-2xl border border-border bg-card p-5 shadow-lg space-y-4">
-              <div>
-                <p className="text-2xl font-display font-bold" data-testid="play-session-details-price">{priceLabel}</p>
-                {priceValue > 0 && <p className="text-xs text-muted-foreground">per player · paid to the organiser</p>}
-              </div>
-              <p className="flex items-center gap-2 text-sm" data-testid="play-session-details-spots">
-                <Users className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden />
-                {session.maxParticipants != null ? (
-                  <span>
-                    {session.registeredCount} / {session.maxParticipants} players
-                    {spotsLeft != null && spotsLeft > 0 ? (
-                      <span className="text-green-600 dark:text-green-400 font-medium"> · {spotsLeft} {spotsLeft === 1 ? "spot" : "spots"} left</span>
-                    ) : (
-                      <span className="font-medium"> · Full</span>
-                    )}
-                  </span>
-                ) : (
-                  <span>{session.registeredCount} players</span>
-                )}
-              </p>
-              {note}
-              {offersJoin && hasPolicies && (
-                <PoliciesAgreement checked={agreed} onCheckedChange={setAgreed} testId="play-session-details-agree" />
-              )}
-              {action}
-            </div>
-          </aside>
-
-          {/* ---------- Main column ---------- */}
-          <div className="lg:col-start-1 lg:row-start-1 lg:row-span-2 space-y-5 min-w-0">
-            <section className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-sm grid gap-4 sm:grid-cols-2 xl:grid-cols-3" data-testid="play-session-details-facts">
-              <Fact
-                icon={CalendarDays}
-                label="When"
-                value={formatInTimeZone(session.startAt, session.timeZone, { weekday: "short", day: "numeric", month: "short" })}
-                sub={
-                  <>
-                    {formatInTimeZone(session.startAt, session.timeZone, { hour: "numeric", minute: "2-digit" })}
-                    {session.endAt && <> – {formatInTimeZone(session.endAt, session.timeZone, { hour: "numeric", minute: "2-digit" })}</>}
-                  </>
-                }
-                testId="play-session-details-when"
-              />
-              {session.location && <Fact icon={MapPin} label="Where" value={session.location} sub={session.timeZone.split("/").pop()?.replace(/_/g, " ")} testId="play-session-details-where" />}
-              {formatFact && <Fact icon={Layers} label="Format" value={formatFact} sub={roundsSub} testId="play-session-details-match-format" />}
-              <Fact icon={BarChart3} label="Level" value={session.skillLevel ?? "All levels"} testId="play-session-details-level" />
-              {duration && <Fact icon={Clock} label="Duration" value={duration} sub={session.courtsCount != null ? `${session.courtsCount} courts` : null} />}
-            </section>
-
-            {details.length > 0 && (
-              <section className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-sm" data-testid="play-session-details-about">
-                <h2 className="flex items-center gap-2 font-semibold mb-3">
-                  <FileText className="w-4 h-4 text-primary-text" aria-hidden /> Session details
-                </h2>
-                <FormattedPolicyText text={details.join("\n\n")} />
-              </section>
-            )}
-
-            {hasPolicies && (
-              <section id="session-policies" className="scroll-mt-24 space-y-2" data-testid="play-session-details-policies-section">
-                <h2 className="flex items-center gap-2 font-semibold">
-                  <ShieldCheck className="w-4 h-4 text-primary-text" aria-hidden /> Rules &amp; policies
-                </h2>
-                <SessionPoliciesList policies={policies} variant="accordion" testId="play-session-details-policies" />
-              </section>
-            )}
-
-            <section className="rounded-2xl border border-border bg-card p-4 shadow-sm" data-testid="play-session-details-organiser">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <Avatar className="h-11 w-11 shrink-0">
-                    {session.organizationLogo && <AvatarImage src={session.organizationLogo} alt="" />}
-                    <AvatarFallback className="bg-primary/10 text-primary-text font-bold">{initials(session.organizationName)}</AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">Organised by</p>
-                    {/* The organiser's public page (/organisations/:slug). External
-                        events have no TennisConnect organisation, so no slug. */}
-                    {session.organizationSlug ? (
-                      <Link href={`/organisations/${session.organizationSlug}`} className="font-semibold truncate block hover:underline" data-testid="play-session-details-organizer-page">
-                        {session.organizationName}
-                      </Link>
-                    ) : (
-                      <span className="font-semibold truncate block">{session.organizationName}</span>
-                    )}
-                  </div>
+        <div className="container mx-auto max-w-6xl px-4">
+          {/* ---------- Key facts: one light strip over the banner's edge ---------- */}
+          <section
+            className="relative z-10 -mt-12 grid grid-cols-2 gap-x-4 gap-y-4 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5 lg:flex lg:divide-x lg:divide-border lg:gap-0"
+            data-testid="play-session-details-facts"
+          >
+            {facts.map((fact, i) => (
+              <div key={i} className={cn("flex min-w-0 items-center gap-3 lg:flex-1 lg:px-5 lg:first:pl-1 lg:last:pr-1", i === 0 && "col-span-2 sm:col-span-1")} data-testid={fact.testId}>
+                <fact.icon className="h-5 w-5 shrink-0 text-primary-text" aria-hidden />
+                <div className="min-w-0">
+                  <p className="font-semibold leading-tight truncate">{fact.value}</p>
+                  {fact.sub && <p className="text-sm text-muted-foreground leading-tight mt-0.5 truncate">{fact.sub}</p>}
                 </div>
-                {session.organizationSlug ? (
-                  <Button variant="ghost" size="icon" asChild aria-label={`${session.organizationName} - all sessions`} data-testid="play-session-details-view-organizer">
-                    <Link href={`/organisations/${session.organizationSlug}`}>
-                      <ChevronRight className="w-5 h-5" />
-                    </Link>
-                  </Button>
-                ) : (
-                  <Button variant="outline" size="sm" asChild data-testid="play-session-details-view-organizer">
-                    <Link href={`/play?organizer=${session.organizationId}`}>Their sessions</Link>
-                  </Button>
-                )}
               </div>
-            </section>
-          </div>
+            ))}
+          </section>
 
-          {/* ---------- Where: map, address, Google Maps ---------- */}
-          {session.location && (
-            <aside className="lg:col-start-2 lg:row-start-2 min-w-0">
-              <SessionVenueCard sessionId={session.id} venue={session.location} timeZone={session.timeZone} />
-            </aside>
-          )}
+          <div className="mt-6 grid items-start gap-5 lg:grid-cols-2">
+            {/* ---------- Left: details and who organises it ---------- */}
+            <div className="space-y-5 min-w-0">
+              {details.length > 0 && (
+                <section className="rounded-2xl border border-border bg-card p-5" data-testid="play-session-details-about">
+                  <h2 className="flex items-center gap-2.5 text-lg font-semibold mb-3">
+                    <FileText className="w-5 h-5 text-primary-text" aria-hidden /> Session Details
+                  </h2>
+                  <FormattedPolicyText text={details.join("\n\n")} />
+                </section>
+              )}
+
+              <section className="rounded-2xl border border-border bg-card p-4" data-testid="play-session-details-organiser">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar className="h-11 w-11 shrink-0">
+                      {session.organizationLogo && <AvatarImage src={session.organizationLogo} alt="" />}
+                      <AvatarFallback className="bg-primary/10 text-primary-text font-bold">{initials(session.organizationName)}</AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground">Organised by</p>
+                      {/* The organiser's public page (/organisations/:slug). External
+                          events have no TennisConnect organisation, so no slug. */}
+                      {session.organizationSlug ? (
+                        <Link href={`/organisations/${session.organizationSlug}`} className="font-semibold truncate block hover:underline" data-testid="play-session-details-organizer-page">
+                          {session.organizationName}
+                        </Link>
+                      ) : (
+                        <span className="font-semibold truncate block">{session.organizationName}</span>
+                      )}
+                    </div>
+                  </div>
+                  {session.organizationSlug ? (
+                    <Button variant="ghost" size="icon" asChild aria-label={`${session.organizationName} - all sessions`} data-testid="play-session-details-view-organizer">
+                      <Link href={`/organisations/${session.organizationSlug}`}>
+                        <ChevronRight className="w-5 h-5" />
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button variant="outline" size="sm" asChild data-testid="play-session-details-view-organizer">
+                      <Link href={`/play?organizer=${session.organizationId}`}>Their sessions</Link>
+                    </Button>
+                  )}
+                </div>
+              </section>
+            </div>
+
+            {/* ---------- Right: rules & policies (collapsed), then where it is ---------- */}
+            <div className="space-y-5 min-w-0">
+              {hasPolicies && (
+                <section id="session-policies" className="scroll-mt-24" data-testid="play-session-details-policies-section">
+                  <h2 className="sr-only">Rules &amp; policies</h2>
+                  <SessionPoliciesList policies={policies} variant="accordion" testId="play-session-details-policies" />
+                </section>
+              )}
+              {session.location && <SessionVenueCard sessionId={session.id} venue={session.location} timeZone={session.timeZone} />}
+            </div>
+          </div>
         </div>
       </main>
 

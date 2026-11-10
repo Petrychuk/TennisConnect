@@ -137,7 +137,7 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
           <Badge className="flex-1 bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400 justify-center py-2" data-testid="event-modal-registered-badge">
             <CheckCircle2 className="w-4 h-4 mr-1.5" /> Registered
           </Badge>
-          <Button variant="outline" className="flex-1" onClick={() => leaveMutation.mutate()} disabled={leaveMutation.isPending} data-testid="event-modal-cancel">
+          <Button variant="outline" className="flex-1" onClick={() => leaveMutation.mutate()} disabled={leaveMutation.isPending || session.playStatus === "archived"} data-testid="event-modal-cancel">
             {leaveMutation.isPending ? "Cancelling..." : "Cancel Registration"}
           </Button>
         </div>
@@ -148,11 +148,13 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
           <Badge className="flex-1 bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400 justify-center py-2">
             On Waiting List
           </Badge>
-          <Button variant="outline" className="flex-1" onClick={() => leaveMutation.mutate()} disabled={leaveMutation.isPending} data-testid="event-modal-leave-waitlist">
+          <Button variant="outline" className="flex-1" onClick={() => leaveMutation.mutate()} disabled={leaveMutation.isPending || session.playStatus === "archived"} data-testid="event-modal-leave-waitlist">
             {leaveMutation.isPending ? "Leaving..." : "Leave Waiting List"}
           </Button>
         </div>
       );
+    } else if (session.playStatus === "archived") {
+      actionButton = <Button className="mx-auto flex w-fit min-w-44 px-8" disabled data-testid="event-modal-archived">Session finished</Button>;
     } else if (session.playStatus === "closed") {
       actionButton = <Button className="mx-auto flex w-fit min-w-44 px-8" disabled data-testid="event-modal-closed">Registration Closed</Button>;
     } else if (session.playStatus === "full") {

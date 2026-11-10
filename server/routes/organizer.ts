@@ -5,7 +5,7 @@ import { env } from "../env";
 import { sendMessageBetween, ORGANIZER_APPROVED_SUBJECT, ORGANIZER_APPROVED_MESSAGE } from "../services/systemMessages";
 import { organizationProfileSchema, organizationProfileUpdateSchema } from "@shared/organizationProfile";
 import { canInviteToSession } from "@shared/sessionActions";
-import { joinBlockedReason } from "@shared/sessionJoinRules";
+import { joinBlockedReason, sessionHasFinished } from "@shared/sessionJoinRules";
 import { isInternalTestUser, liveAllowedFor, liveMode } from "../lib/liveFeature";
 import { LiveRuleError } from "../lib/liveErrors";
 import { goLiveProblem, scoreProblem } from "@shared/liveRules";
@@ -1847,6 +1847,11 @@ router.post("/sessions/:id/join", requireAuth, async (req, res, next) => {
 router.delete("/sessions/:id/join", requireAuth, async (req, res, next) => {
   try {
     const leaverId = (req.user as any).id;
+    // A finished (archived) session is closed for changes - no cancelling a place in it.
+    const target = await storage.getSessionById(req.params.id);
+    if (target && sessionHasFinished(target)) {
+      return res.status(400).json({ message: "This session has finished." });
+    }
     const registration = await storage.cancelRegistration(req.params.id, leaverId);
 
     const session = await storage.getSessionById(req.params.id);
