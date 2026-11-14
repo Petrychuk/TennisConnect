@@ -67,7 +67,7 @@ export function PlayersTable({ players, onCheckIn, onRemove, onMessage, onMoveTo
                   <Badge className={STATUS_BADGE_STYLE[player.status]}>{STATUS_LABEL[player.status]}</Badge>
                 </TableCell>
                 <TableCell>
-                  {player.status !== "registered" ? (
+                  {player.status !== "registered" || (!onCheckIn && !player.checkedIn) ? (
                     "—"
                   ) : player.checkedIn && player.checkInTime ? (
                     <span className="flex items-center gap-1 text-primary-text font-medium">

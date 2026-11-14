@@ -163,12 +163,14 @@ export default function PlaySessionDetailsPage() {
   const joinDisabled = joinMutation.isPending || (needsAgreement && !agreed);
   let note: ReactNode = null;
   let action: ReactNode;
-  // A finished session is archived: shown on a direct link, but nobody -
-  // guest or player - can join, leave or cancel any more (the API refuses
-  // too, shared/sessionJoinRules.ts).
+  // From its start time a session is archived for players and guests: shown
+  // on a direct link, but nobody can join, leave or cancel any more (the API
+  // refuses too - shared/sessionLifecycle.ts). The organiser still runs it.
   const archived = session.playStatus === "archived";
+  // Registration window closed before the start: places can't be cancelled either.
+  const registrationClosed = session.playStatus === "closed";
   if (archived) {
-    note = <p className="text-sm text-muted-foreground" data-testid="play-session-details-archived-note">This session has finished and is archived.</p>;
+    note = <p className="text-sm text-muted-foreground" data-testid="play-session-details-archived-note">This session has started, so it's archived - registration is closed.</p>;
     action =
       session.myRegistrationStatus === "registered" || session.myRegistrationStatus === "waitlisted" ? (
         <div className="flex flex-row items-stretch gap-2">
@@ -209,7 +211,7 @@ export default function PlaySessionDetailsPage() {
         <Badge className="flex-1 bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400 justify-center py-2" data-testid="play-session-details-registered-badge">
           <CheckCircle2 className="w-4 h-4 mr-1.5" /> Registered
         </Badge>
-        <Button variant="outline" className="flex-1" onClick={() => leaveMutation.mutate()} disabled={leaveMutation.isPending} data-testid="play-session-details-cancel-registration">
+        <Button variant="outline" className="flex-1" onClick={() => leaveMutation.mutate()} disabled={leaveMutation.isPending || registrationClosed} data-testid="play-session-details-cancel-registration">
           {leaveMutation.isPending ? "Cancelling..." : "Cancel"}
         </Button>
       </div>
@@ -219,7 +221,7 @@ export default function PlaySessionDetailsPage() {
     action = (
       <div className="flex flex-row items-stretch gap-2">
         <Badge className="flex-1 bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400 justify-center py-2">On Waiting List</Badge>
-        <Button variant="outline" className="flex-1" onClick={() => leaveMutation.mutate()} disabled={leaveMutation.isPending} data-testid="play-session-details-leave-waitlist">
+        <Button variant="outline" className="flex-1" onClick={() => leaveMutation.mutate()} disabled={leaveMutation.isPending || registrationClosed} data-testid="play-session-details-leave-waitlist">
           {leaveMutation.isPending ? "Leaving..." : "Leave"}
         </Button>
       </div>
@@ -237,12 +239,12 @@ export default function PlaySessionDetailsPage() {
   } else if (session.playStatus === "closed") {
     action = <Button className="w-full" disabled data-testid="play-session-details-closed">Registration Closed</Button>;
   } else if (session.playStatus === "full") {
-    note = <p className="text-sm text-muted-foreground">This session is full and has no waiting list.</p>;
-    action = <Button className="w-full" disabled data-testid="play-session-details-full">Full</Button>;
+    note = <p className="text-sm text-muted-foreground">All places are taken and there's no waiting list.</p>;
+    action = <Button className="w-full" disabled data-testid="play-session-details-full">Registration Closed</Button>;
   } else if (session.playStatus === "waitlist") {
     note = (
       <p className="text-sm text-muted-foreground" data-testid="play-session-details-waitlist-note">
-        This session is full. Join the waiting list - you'll move up automatically if a place opens.
+        All places are taken. You can still join the waiting list - you'll move up automatically if a place opens.
       </p>
     );
     action = (
@@ -333,7 +335,7 @@ export default function PlaySessionDetailsPage() {
                       {spotsLeft != null && spotsLeft > 0 ? (
                         !archived && <span className="text-green-600 dark:text-green-400 font-medium"> · {spotsLeft} {spotsLeft === 1 ? "spot" : "spots"} left</span>
                       ) : (
-                        <span className="font-medium"> · Full</span>
+                        <span className="font-medium"> · {archived ? "Archived" : "Registration Closed"}</span>
                       )}
                     </span>
                   ) : (

@@ -211,7 +211,7 @@ export default function OrganisationDetailPage() {
                         <p className="flex items-center gap-2">
                           <Users className="h-4 w-4 shrink-0" aria-hidden />
                           {session.maxParticipants
-                            ? `${session.registeredCount}/${session.maxParticipants} players${isFull ? " · Full" : ""}${session.waitlistedCount > 0 ? ` · ${session.waitlistedCount} waiting` : ""}`
+                            ? `${session.registeredCount}/${session.maxParticipants} players${isFull ? " · Registration Closed" : ""}${session.waitlistedCount > 0 ? ` · ${session.waitlistedCount} waiting` : ""}`
                             : `${session.registeredCount} players`}
                         </p>
                       </div>

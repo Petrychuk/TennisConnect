@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { InvitePlayersDialog } from "@/components/organiser/shared/invite-players-dialog";
-import { canInviteToSession } from "@shared/sessionActions";
+import { canChangeRoster, canInviteToSession } from "@shared/sessionActions";
 import { getSessionRegistrations, inviteToSession, checkInRegistration, removeRegistration, moveRegistrationToWaitlist } from "@/lib/api/organizer-sessions";
 import { toSessionPlayers } from "@/lib/api/session-adapter";
 import { type SessionListItem, type SessionPlayer } from "@/lib/organiser-sessions-mock-data";
@@ -135,6 +135,18 @@ export function PlayersTab({ session, onOpenMessages, onExport }: PlayersTabProp
       setCheckingInAll(false);
     }
   };
+  // After Finish the roster is a record (shared/sessionActions.ts
+  // canChangeRoster): no check-in, remove or move to the waiting list - the
+  // server refuses them too. Undefined hides each control.
+  const rosterOpen = canChangeRoster(session.status);
+  const rowHandlers = {
+    onCheckIn: rosterOpen ? handleCheckIn : undefined,
+    onRemove: rosterOpen ? handleRemove : undefined,
+    onMessage: handleMessage,
+    onMoveToWaiting: rosterOpen ? handleMoveToWaiting : undefined,
+    onViewProfile: handleViewProfile,
+  };
+  const checkInAll = rosterOpen ? handleCheckInAll : undefined;
   // Undefined hides the toolbar's Invite button (shared/sessionActions.ts).
   const handleInvitePlayers = canInviteToSession(session.status, session.endAt) ? () => setInviteOpen(true) : undefined;
 
@@ -166,7 +178,12 @@ export function PlayersTab({ session, onOpenMessages, onExport }: PlayersTabProp
   );
 
   return (
-    <div data-testid="organiser-session-players-tab">
+    <div data-testid="organiser-session-players-tab" data-roster={rosterOpen ? "open" : "final"}>
+      {!rosterOpen && (
+        <p className="mb-4 rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm text-muted-foreground" data-testid="organiser-players-final-note">
+          This session is {session.status}. The player list is final - nobody can be checked in, removed or moved now.
+        </p>
+      )}
       {/* Desktop (xl+) */}
       <div className="hidden xl:block space-y-6">
         <PlayersStatStrip session={session} players={allPlayers} />
@@ -174,13 +191,13 @@ export function PlayersTab({ session, onOpenMessages, onExport }: PlayersTabProp
         <PlayersToolbar
           search={search}
           onSearchChange={setSearch}
-          onCheckInAll={handleCheckInAll}
+          onCheckInAll={checkInAll}
           checkInAllLoading={checkingInAll}
           onInvitePlayers={handleInvitePlayers}
           level={level}
           onLevelChange={setLevel}
         />
-        <PlayersTable players={visible} onCheckIn={handleCheckIn} onRemove={handleRemove} onMessage={handleMessage} onMoveToWaiting={handleMoveToWaiting} onViewProfile={handleViewProfile} timeZone={session.timeZone} />
+        <PlayersTable players={visible} {...rowHandlers} timeZone={session.timeZone} />
         {paginationText}
         <div className="grid grid-cols-2 gap-6">
           <WaitingListCard players={buckets.waiting} timeZone={session.timeZone} />
@@ -192,8 +209,8 @@ export function PlayersTab({ session, onOpenMessages, onExport }: PlayersTabProp
       <div className="hidden md:block xl:hidden space-y-6">
         <PlayersStatStrip session={session} players={allPlayers} />
         {bucketTabsList}
-        <PlayersToolbar search={search} onSearchChange={setSearch} onCheckInAll={handleCheckInAll} checkInAllLoading={checkingInAll} onInvitePlayers={handleInvitePlayers} level={level} onLevelChange={setLevel} />
-        <PlayersList players={visible} onCheckIn={handleCheckIn} onRemove={handleRemove} onMessage={handleMessage} onMoveToWaiting={handleMoveToWaiting} onViewProfile={handleViewProfile} timeZone={session.timeZone} />
+        <PlayersToolbar search={search} onSearchChange={setSearch} onCheckInAll={checkInAll} checkInAllLoading={checkingInAll} onInvitePlayers={handleInvitePlayers} level={level} onLevelChange={setLevel} />
+        <PlayersList players={visible} {...rowHandlers} timeZone={session.timeZone} />
         {paginationText}
         <WaitingListCard players={buckets.waiting} timeZone={session.timeZone} />
         <CheckInSummaryCard players={allPlayers} />
@@ -204,8 +221,8 @@ export function PlayersTab({ session, onOpenMessages, onExport }: PlayersTabProp
       <div className="md:hidden space-y-6">
         <PlayersStatStrip session={session} players={allPlayers} />
         {bucketTabsList}
-        <PlayersToolbar search={search} onSearchChange={setSearch} onCheckInAll={handleCheckInAll} checkInAllLoading={checkingInAll} onInvitePlayers={handleInvitePlayers} level={level} onLevelChange={setLevel} />
-        <PlayersList players={visible} onCheckIn={handleCheckIn} onRemove={handleRemove} onMessage={handleMessage} onMoveToWaiting={handleMoveToWaiting} onViewProfile={handleViewProfile} timeZone={session.timeZone} />
+        <PlayersToolbar search={search} onSearchChange={setSearch} onCheckInAll={checkInAll} checkInAllLoading={checkingInAll} onInvitePlayers={handleInvitePlayers} level={level} onLevelChange={setLevel} />
+        <PlayersList players={visible} {...rowHandlers} timeZone={session.timeZone} />
         {paginationText}
         <WaitingListCard players={buckets.waiting} timeZone={session.timeZone} />
         <PlayersQuickActionsCard onMessageAll={onOpenMessages} onExport={onExport} onShowWaitingList={() => setBucket("waiting")} />

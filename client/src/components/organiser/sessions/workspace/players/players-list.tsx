@@ -56,7 +56,7 @@ export function PlayersList({ players, onCheckIn, onRemove, onMessage, onMoveToW
                     <span className="w-1.5 h-1.5 rounded-full bg-primary" aria-hidden="true" />
                     {formatInTimeZone(player.checkInTime, timeZone, { hour: "numeric", minute: "2-digit" })}
                   </span>
-                ) : (
+                ) : !onCheckIn ? null : (
                   <Button
                     size="sm"
                     variant="outline"

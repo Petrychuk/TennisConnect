@@ -158,7 +158,7 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
     } else if (session.playStatus === "closed") {
       actionButton = <Button className="mx-auto flex w-fit min-w-44 px-8" disabled data-testid="event-modal-closed">Registration Closed</Button>;
     } else if (session.playStatus === "full") {
-      actionButton = <Button className="mx-auto flex w-fit min-w-44 px-8" disabled data-testid="event-modal-full">Full</Button>;
+      actionButton = <Button className="mx-auto flex w-fit min-w-44 px-8" disabled data-testid="event-modal-full">Registration Closed</Button>;
     } else if (session.playStatus === "waitlist") {
       actionButton = (
         <Button className="mx-auto flex w-fit min-w-44 px-8" onClick={() => joinMutation.mutate()} disabled={joinMutation.isPending || (needsAgreement && !agreed)} data-testid="event-modal-join-waitlist">

@@ -1,5 +1,6 @@
 import { Users, type LucideIcon } from "lucide-react";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
+import { isReadyToStart } from "@shared/sessionLifecycle";
 
 export type SessionBucket =
   | "all"
@@ -79,6 +80,17 @@ export const STATUS_BADGE_STYLE: Record<string, string> = {
   archived: "bg-muted text-muted-foreground",
 };
 
+/**
+ * The organiser's status label for a session: the bucket's label, except a
+ * published session from 2 hours before its start - and after it, until the
+ * organiser starts TC Live - reads "Ready to Start" (shared/sessionLifecycle.ts).
+ * Every Hub screen (list row, grid card, workspace header) uses this one.
+ */
+export function sessionStatusLabel(session: { status: string; startAt: string | Date }, bucket: Exclude<SessionBucket, "all">): string {
+  if ((bucket === "registration-open" || bucket === "upcoming") && isReadyToStart(session)) return "Ready to Start";
+  return STATUS_BADGE_LABEL[bucket];
+}
+
 export interface SessionPrimaryAction {
   label: string;
   urgent: boolean;
@@ -93,7 +105,12 @@ export interface SessionPrimaryAction {
 // than an unfinished draft or a live session in progress.
 // hasRounds: false for Coaching & Fitness (shared/sessionCategories.ts) -
 // they have no Results tab, so a finished one opens its players instead.
-export function getPrimaryActionMeta(bucket: Exclude<SessionBucket, "all">, playIcon: LucideIcon, liveAvailable = true, hasRounds = true): SessionPrimaryAction {
+export function getPrimaryActionMeta(bucket: Exclude<SessionBucket, "all">, playIcon: LucideIcon, liveAvailable = true, hasRounds = true, readyToStart = false): SessionPrimaryAction {
+  // Ready to Start: the one action is starting TC Live (the organiser's
+  // explicit step - the clock never starts it).
+  if (readyToStart && liveAvailable && hasRounds && (bucket === "registration-open" || bucket === "upcoming")) {
+    return { label: "Start Live", urgent: true, icon: playIcon };
+  }
   switch (bucket) {
     case "draft":
       return { label: "Continue Setup", urgent: true };
@@ -115,9 +132,9 @@ export function getPrimaryActionMeta(bucket: Exclude<SessionBucket, "all">, play
  * four steps, Save as Draft, Publish); the flat Edit page is for sessions that
  * are already out (it asks for name, venue and date, which a draft may not have yet).
  */
-/** An archived session is closed: it can be viewed and duplicated, never edited. */
+/** A finished session (completed or archived) keeps its results: it can be viewed and duplicated, never edited. */
 export function canEditSession(session: { status: string }): boolean {
-  return session.status !== "archived";
+  return session.status !== "archived" && session.status !== "completed";
 }
 
 export function sessionEditPath(session: { id: string; status: string }): string {
