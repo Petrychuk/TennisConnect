@@ -66,6 +66,16 @@ test("cancel, archive and results follow the shared rules (shared/sessionActions
   assert.match(SOURCE, /resultsAreFinal\(session\.status\)/);
 });
 
+test("concurrent Generate Round: serialised per session, lost race is a 409 (not a 500) - LIVE-014", () => {
+  const storage = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "storage.ts"), "utf8");
+  const start = storage.indexOf("async generateNextRound(");
+  const body = storage.slice(start, storage.indexOf("async getCurrentRound(", start));
+  assert.match(body, /from\(tennisSessions\)[^;]*\.for\("update"\)/, "session row locked before reading the rounds");
+  assert.ok(body.indexOf('.for("update")') < body.indexOf("existingRounds"), "lock comes first");
+  assert.match(body, /isUniqueViolation\(error\)/, "drizzle wraps the pg error in .cause");
+  assert.doesNotMatch(body, /error\?\.code\s*===\s*"23505"/, "a bare error.code check never matches under drizzle >= 0.44");
+});
+
 test("Live stays request/response: no WebSockets or Supabase Realtime", () => {
   assert.doesNotMatch(SOURCE, /WebSocket|\.channel\(|realtime/i);
 });

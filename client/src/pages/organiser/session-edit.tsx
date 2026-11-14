@@ -324,7 +324,8 @@ function OrganiserSessionEditPageContent() {
               </Field>
             )}
             <div className="flex items-center justify-between gap-3 md:col-start-3 rounded-xl border border-input px-3 min-h-11 md:pointer-fine:min-h-9 self-end">
-              <Label htmlFor="organiser-session-edit-waiting-list" className="text-sm font-medium">Waiting list</Label>
+              {/* The label fills the row, so the whole 44 px row toggles the 20 px switch. */}
+              <Label htmlFor="organiser-session-edit-waiting-list" className="flex flex-1 self-stretch items-center cursor-pointer text-sm font-medium">Waiting list</Label>
               <Switch id="organiser-session-edit-waiting-list" checked={waitingListEnabled} onCheckedChange={setWaitingListEnabled} data-testid="organiser-session-edit-waiting-list" />
             </div>
           </div>

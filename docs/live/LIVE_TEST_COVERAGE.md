@@ -10,7 +10,7 @@ Status on 30 Oct 2026, TC-189 rows updated 14 Nov 2026: **Passed** = executed he
 | `shared/liveRules.test.ts` | score validation (0–99, whole, not 0–0, draws); go-live readiness per mode; round minimum per mode; Not played; redo round | **Passed** 5/5 |
 | `server/lib/liveFeature.test.ts` | flag parsing (off by default, internal, on), DB_ENV no longer decides, internal accounts list | **Passed** 3/3 |
 | `client/src/lib/organiserHub.test.ts` | Live screen guards: no fake share, one section switcher, shared rules, unscored handling, refetch, withdraw reachable, no DB_ENV; TC-189: Not played / Redo round reachable, End Session once, Open Results, polling only (no WebSocket / Realtime), results / roster / archive through shared rules | **Passed** 16/16 (14 Nov) |
-| `server/routes/liveRouteGuards.test.ts` (TC-189 phase 6) | static: guard chain of every Live control route, history and Finish outside the flag, roster freeze on check-in / remove / waitlist, cancel / archive / results rules, no WebSockets / Realtime | **Passed** 5/5 (a removed guard fails it - checked) |
+| `server/routes/liveRouteGuards.test.ts` (TC-189 phase 6) | static: guard chain of every Live control route, history and Finish outside the flag, roster freeze on check-in / remove / waitlist, cancel / archive / results rules, no WebSockets / Realtime, generate serialised per session (LIVE-014) | **Passed** 5/5 (a removed guard fails it - checked) |
 | `tests/safety/environment-guard.unit.ts` | `@prod-live-internal` selection, confirmation, refusal off Production, no suite mixing, per-test allowlist, write allowlist | **Passed** (in 171/171) |
 
 Randomised check (not committed, run here): 1,500 simulated doubles sessions (8–16 players, 3–7 rounds), 0 partner repeats, rest spread ≤ 1.
@@ -55,6 +55,32 @@ Also updated: ORG-WS-002 / ORG-WS-004 read the flag instead of `dbEnv`.
 | LIVE-PROD-002 | Check in, go live, round, scores, leaderboard, finish; history readable; still invisible | Not run (needs approval) |
 
 Selected only with `TEST_ENV=production E2E_PROD_SUITE=prod-live-internal E2E_CONFIRM_PROD_LIVE_INTERNAL=<session id>` and the `E2E_PROD_LIVE_*` variables. Writes are limited to that session's Live routes, every write is written to an audit file, and nothing is deleted. Listing verified here: default Production = 33 prod-safe tests; opt-in = these 2 only; missing variables or a non-Production target are refused.
+
+## Staging run, 14 Nov 2026 (TC Live only, after `TC_LIVE_ENABLED=true` on Staging)
+
+17 passed, 3 failed, 1 skipped. Causes:
+
+| Case | Cause | Fix | Retest |
+|---|---|---|---|
+| LIVE-014 | **App defect.** Three concurrent Generate Round requests answered `[201, 500, 500]`. All three read "no rounds" and raced to insert; the unique `(sessionId, roundNumber)` backstop fired, but drizzle-orm 0.45 wraps the Postgres error (`DrizzleQueryError`, code on `.cause`), so `error.code === "23505"` never matched and the error reached the client as a 500. Not caused by TC-189 | `generateNextRound` locks the session row first (later requests see the active round → 409 `ROUND_IN_PROGRESS`) and the backstop checks the code through `.cause` (`server/lib/pgErrors.ts`, unit-tested) | Not run |
+| LIVE-016 mobile / tablet | **Test defect (timing).** The click on Generate Round only sends the request; the test read `rounds/current` through the API at once, got `null` and destructured it. Every other Live test waits for the courts on screen first | The test waits for `organiser-session-live-courts` before reading the round | Not run |
+| Skipped test | LIVE-015, by design: `test.skip` unless the server runs with `TC_LIVE_ENABLED=false`; Staging keeps Live on. Run it against a local server | none | Run locally |
+
+### Other failures from the same run (14 Nov 2026, from the Playwright report)
+
+| Case | Cause | Kind | Fix |
+|---|---|---|---|
+| ORG-WS-003 | `?tab=rounds` was applied while the session was still loading (all tabs "exist" then) and stayed selected after Coaching & Fitness removed it: no tab was active | **App defect** | The Workspace decides the tab only after the session has loaded, falls back to Overview |
+| ORG-ACT-003, ORG-ACT-004 | Invite and Broadcast answer **201** (they create a registration / messages); the tests expected 200 | Test defect | Tests expect 201 |
+| ORG-DASH-005 | The activity request is `/dashboard/activity?limit=8`; the route glob had no trailing `**`, so the failure was never injected | Test defect | Glob ends with `**` |
+| ORG-WSP-003, ORG-RESP-002 | The Players tab renders a desktop, a tablet and a phone layout (two hidden by CSS), so the test id resolves to 2-3 elements: strict-mode violation | Test defect | `.filter({ visible: true })` |
+| ORG-WIZ-005 | At 768 px with a mouse (Desktop Chrome) controls are 36 px by design (`md:pointer-fine:h-9`); the test demanded 44 px at 768 and 1024 px | Test defect | 44 px expected below 768 px or on a coarse pointer, 36 px with a mouse |
+| ORG-EDIT-007 | The 20 px waiting-list switch counted as a control under 36 px; its 44 px row was not actually clickable beyond the text | App + test | The label fills the row (whole row toggles); the test measures the label row |
+| ORG-DRAFT-003 | The organiser shell has no profile menu, so `logout()` found nothing; the draft page is not the site header | Test defect | The test goes to `/` (site header) before logging out. No Sign out in the organiser shell is a product gap, not changed here |
+| ADMIN-002 | Over the 60 s default: UI registration plus an admin step (ADMIN-007 measured the same) | Test defect (timing) | `test.slow()` |
+| SUPPORT-007 (Stripe phase) | `toHaveURL(/^http:\/\/localhost/)` is only true locally | Test defect | Compares with `baseURL` |
+
+Still open: the one non-test error of the broad run (needs the runner output), and every fix above is unverified until re-run on Staging.
 
 ## TC-189 additions (10–14 Nov 2026)
 

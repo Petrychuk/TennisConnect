@@ -391,6 +391,8 @@ test.describe('TC Live v1', () => {
       await page.getByTestId('organiser-session-live-go-live').click();
       await expect(page.getByTestId('organiser-session-live-badge')).toHaveText(/LIVE/, { timeout: 15_000 });
       await page.getByTestId('organiser-session-live-generate-round').click();
+      // The click only sends the request: wait for the round on screen before reading it through the API.
+      await expect(page.getByTestId('organiser-session-live-courts')).toBeVisible({ timeout: 15_000 });
       const { matches } = (await currentRound(page, sessionId))!;
       const input = page.getByTestId(`organiser-session-live-match-${matches[0].id}-score-a`);
       expect((await input.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);

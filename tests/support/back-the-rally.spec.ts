@@ -151,7 +151,7 @@ test('SUPPORT-006 Invalid Custom Amount Blocks Continue And Shows An Error', asy
 
 });
 
-test('SUPPORT-007 Continue To Payment Opens A New Tab, Doesn\'t Navigate The Current One', async ({ page, context }) => {
+test('SUPPORT-007 Continue To Payment Opens A New Tab, Doesn\'t Navigate The Current One', async ({ page, context, baseURL }) => {
   // Creates a Stripe Checkout session: off unless E2E_ENABLE_STRIPE_TESTS=1.
   skipUnlessStripeEnabled();
 
@@ -188,7 +188,8 @@ test('SUPPORT-007 Continue To Payment Opens A New Tab, Doesn\'t Navigate The Cur
 
   // The original tab never navigates away from the site itself - only
   // a new tab (if Stripe is configured) does.
-  await expect(page).toHaveURL(/^http:\/\/localhost/);
+  // (the site under test: localhost locally, the Staging host there)
+  await expect(page).toHaveURL(new RegExp(`^${(baseURL ?? 'http://localhost').replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}`));
 
   if (popup) {
     await popup.waitForLoadState();

@@ -16,6 +16,9 @@ const TOAST_LIST = '[role="region"][aria-label^="Notifications"]';
 ✓ Response is 200, row disappears from the table */
 
 test('ADMIN-002 Delete User - ordinary player succeeds', async ({ page }) => {
+  // Registers a player through the UI, then an admin step: over the 60 s default
+  // on Staging (ADMIN-007 measured the same for the same kind of flow).
+  test.slow();
 
   // ---------- Test data ----------
 

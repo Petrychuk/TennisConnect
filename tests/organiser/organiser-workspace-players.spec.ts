@@ -100,7 +100,8 @@ test.describe('Session Workspace - players', () => {
     });
 
     await openWorkspaceTab(page, session.id, 'players');
-    await page.getByTestId('organiser-players-checkin-all').click();
+    // The tab renders a desktop, a tablet and a phone layout (two hidden by CSS): click the visible one.
+    await page.getByTestId('organiser-players-checkin-all').filter({ visible: true }).click();
 
     await expect
       .poll(async () => (await sessionRegistrations(page, session.id)).every((r) => r.checkedInAt), { timeout: 15_000 })

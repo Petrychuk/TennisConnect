@@ -202,9 +202,13 @@ test.describe('Edit Session', () => {
     expect(await y('venue')).not.toBe(await y('timezone'));
     await field(page, 'save').scrollIntoViewIfNeeded();
     await expect(field(page, 'save')).toBeInViewport();
+    // A 20 px switch is operated through its label row (the label fills it): measure that.
     const tall = await page.evaluate(() => Array.from(
       document.querySelectorAll('[data-testid^=organiser-session-edit-]')
-    ).filter((e) => e.matches('input, button[role=switch]') && e.getBoundingClientRect().height < 36).length);
+    ).filter((e) => e.matches('input, button[role=switch]')).filter((e) => {
+      const target = e.matches('button[role=switch]') ? document.querySelector(`label[for="${e.id}"]`) ?? e : e;
+      return target.getBoundingClientRect().height < 36;
+    }).length);
     expect(tall).toBe(0);
   });
 });

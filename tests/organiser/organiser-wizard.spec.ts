@@ -228,12 +228,16 @@ test.describe('Create Session wizard', () => {
           spill,
           iconOff,
           minHeight: Math.min(...heights),
+          // Controls are 44 px on a coarse pointer or a narrow screen, 36 px (md:pointer-fine) with a mouse.
+          fine: window.matchMedia('(pointer: fine)').matches,
         };
       });
       expect(m.overflow, `${vp.name}: horizontal overflow`).toBeLessThanOrEqual(0);
       expect(m.spill, `${vp.name}: controls outside their card`).toEqual([]);
       expect(m.iconOff, `${vp.name}: icons not vertically centred in their field`).toBe(0);
-      if (vp.touch) expect(m.minHeight, `${vp.name}: control height`).toBeGreaterThanOrEqual(43.5);
+      // Desktop Chrome has a mouse: from 768 px up the app (correctly) uses 36 px controls there.
+      if (vp.touch && (vp.width < 768 || !m.fine)) expect(m.minHeight, `${vp.name}: control height`).toBeGreaterThanOrEqual(43.5);
+      else if (vp.touch) expect(m.minHeight, `${vp.name}: control height (mouse)`).toBeGreaterThanOrEqual(35.5);
     }
   });
 });

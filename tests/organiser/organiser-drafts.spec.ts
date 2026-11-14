@@ -134,6 +134,8 @@ test.describe('Session drafts', () => {
     const id = draftIdOf(page);
 
     // ---------- Logout / login ----------
+    // The organiser shell has no profile menu; the site header (with Sign out) is on the home page.
+    await page.goto('/');
     await logout(page);
     await login(page, organiser.email, organiser.password);
 

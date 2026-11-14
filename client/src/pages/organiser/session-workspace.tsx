@@ -255,12 +255,21 @@ export default function OrganiserSessionWorkspacePage() {
       !(!usesLiveRounds && (t.key === "rounds" || t.key === "results")),
   );
 
+  // Which tabs exist depends on the session's category and kind, so nothing
+  // is decided until it has loaded. Before, ?tab=rounds was applied while the
+  // session was still loading (every tab "exists" then) and stayed selected
+  // after Coaching & Fitness removed it: no tab was active (ORG-WS-003).
+  const sessionLoaded = !!session;
+  const visibleKeys = visibleTabs.map((t) => t.key).join(",");
   useEffect(() => {
+    if (!sessionLoaded) return;
     const requested = new URLSearchParams(search).get("tab");
     if (requested && visibleTabs.some((t) => t.key === requested)) {
       setTab(requested as WorkspaceTabKey);
+    } else if (!visibleTabs.some((t) => t.key === tab)) {
+      setTab("overview");
     }
-  }, [search]);
+  }, [search, sessionLoaded, visibleKeys]);
 
   // Clicking a tab only ever updated the in-memory `tab` state - the
   // URL's own ?tab= param never followed along, so it stayed stuck at

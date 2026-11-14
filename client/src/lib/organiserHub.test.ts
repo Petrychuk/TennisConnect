@@ -162,6 +162,14 @@ test("TC Live screen: no fake share link, sections on phones, server rules mirro
   assert.doesNotMatch(live, /dbEnv|isStaging/, "TC_LIVE_ENABLED decides, not DB_ENV");
 });
 
+test("Workspace deep link waits for the session: a tab this category doesn't have is never selected (ORG-WS-003)", () => {
+  const ws = read("pages/organiser/session-workspace.tsx");
+  const effect = ws.slice(ws.indexOf("const sessionLoaded"), ws.indexOf("const handleTabChange"));
+  assert.match(effect, /if \(!sessionLoaded\) return;/, "nothing is decided before the session (and its category) has loaded");
+  assert.match(effect, /\[search, sessionLoaded, visibleKeys\]/, "re-evaluated when the tabs are known");
+  assert.match(effect, /setTab\("overview"\)/, "falls back to Overview when the selected tab doesn't exist");
+});
+
 test("TC-189: rounds and scores, results after Finish, no realtime transport", () => {
   const live = read("pages/organiser/session-live.tsx");
   assert.match(live, /markMatchNotPlayed\(/, "Not played reachable on a court");

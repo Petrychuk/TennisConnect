@@ -140,6 +140,7 @@ import { locationTerms, softLevelValues } from "./services/playFilters";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { planRound, computeLeaderboard, type PastMatch } from "./services/liveEngine";
 import { LiveRuleError } from "./lib/liveErrors";
+import { isUniqueViolation } from "./lib/pgErrors";
 import { liveModeOf, matchClosed, notPlayedProblem, redoRoundProblem, roundProblem } from "@shared/liveRules";
 
 // Second reference to `users`, joined on messages.recipientId - lets a
@@ -5518,6 +5519,13 @@ export class DatabaseStorage implements IStorage {
 
     try {
       const { round, insertedMatches } = await db.transaction(async (tx) => {
+        // One generate at a time per session: concurrent clicks / requests
+        // queue here, and the later ones see the active round and answer
+        // 409 ROUND_IN_PROGRESS (TC-189, LIVE-014). Before, all of them read
+        // "no rounds" and raced to insert; only the unique constraint stopped
+        // them, and its error reached the client as a 500 (see below).
+        // Same lock order as finishSession (session row, then rounds).
+        await tx.select({ id: tennisSessions.id }).from(tennisSessions).where(eq(tennisSessions.id, sessionId)).for("update");
         let existingRounds = await tx
           .select()
           .from(sessionRounds)
@@ -5604,7 +5612,10 @@ export class DatabaseStorage implements IStorage {
       // two concurrent "Generate Round" clicks both passed the pre-check
       // and raced to insert. Surface the same message as the pre-check
       // instead of a raw constraint error reaching the client.
-      if (error?.code === "23505") {
+      // drizzle-orm >= 0.44 wraps the driver error in a DrizzleQueryError:
+      // the Postgres code is on `.cause`, not on the error itself. Checking
+      // only `error.code` never matched, so the backstop answered 500.
+      if (isUniqueViolation(error)) {
         throw new LiveRuleError("Current round isn't fully confirmed yet", 409, "ROUND_IN_PROGRESS");
       }
       throw error;

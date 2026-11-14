@@ -124,7 +124,8 @@ test.describe('Organiser Hub responsive', () => {
     // Check-in on a 360 px phone: the card list, a 44 px button.
     await page.setViewportSize({ width: 360, height: 800 });
     await page.goto(`/organiser/sessions/${session.id}?tab=players`);
-    const checkIn = page.getByTestId(`organiser-players-list-item-${registrationId}-checkin`);
+    // The tablet and the phone list are both in the DOM; only the phone one is visible at 360 px.
+    const checkIn = page.getByTestId(`organiser-players-list-item-${registrationId}-checkin`).filter({ visible: true });
     await expect(checkIn).toBeVisible({ timeout: 15_000 });
     expect((await checkIn.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
     await checkIn.click();

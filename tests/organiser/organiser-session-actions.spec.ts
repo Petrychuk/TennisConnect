@@ -93,7 +93,7 @@ test.describe('Session actions', () => {
     await openWorkspaceTab(page, open.id, 'overview');
     expect(await menuItems(page)).toContain('invite');
     const res = await page.request.post(`/api/organizer/sessions/${open.id}/invite`, { data: { userId: invitee.id } });
-    expect(res.status()).toBe(200);
+    expect(res.status()).toBe(201); // creates the invited registration
     const regs = await sessionRegistrations(page, open.id);
     expect(regs.find((r) => r.userId === invitee.id)?.status).toBe('invited');
 
@@ -126,7 +126,7 @@ test.describe('Session actions', () => {
       page.waitForResponse((r) => r.url().endsWith(`/sessions/${session.id}/broadcast`) && r.request().method() === 'POST'),
       page.getByTestId('organiser-session-announcement-send').click(),
     ]);
-    expect(res.status()).toBe(200);
+    expect(res.status()).toBe(201); // creates the messages
     expect((await res.json()).sentTo).toBe(2);
     await expect(page.getByTestId('organiser-session-announcement-dialog')).toBeHidden();
 

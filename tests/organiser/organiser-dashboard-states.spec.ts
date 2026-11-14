@@ -11,7 +11,8 @@ import { becomeOrganiser } from '../helpers/organiser';
 
 const SESSIONS = '**/api/organizer/sessions/mine';
 const STATS = '**/api/organizer/dashboard/stats';
-const ACTIVITY = '**/api/organizer/dashboard/activity';
+// The dashboard asks for ?limit=8: a glob without the trailing ** never matched, so the request wasn't failed.
+const ACTIVITY = '**/api/organizer/dashboard/activity**';
 
 const fail500 = (route: Route) => route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'boom' }) });
 
