@@ -8,12 +8,13 @@ Social Play sessions (`social`, `americano`, `mexicano`, `round-robin`, `king-of
 2. Registration (Play) and **check-in** of registered players (Live screen or Workspace Players tab).
 3. **Go live**: published session, courts set, a full court of available players (2 singles / 4 doubles).
 4. **Rounds**: available players are shuffled onto courts. Repeat partners and opponents are avoided; when there are more players than places, rests rotate evenly. One round at a time.
-5. **Scores**: the organiser enters games per side (0–99, not 0–0; draws allowed) and can correct a score while the session is live. A round closes when every match has a score.
-6. **During play**: late arrivals (check in), sit out / withdraw / back in, from the next round.
+5. **Scores**: the organiser enters games per side (0–99, not 0–0; draws allowed) and can correct a score while the session is live. A match that won't finish is marked **Not played** (never counts; a score can still go in while live). A round closes when every match has a score or is Not played.
+6. **During play**: late arrivals (check in), sit out / withdraw / back in, from the next round. A player who leaves is flagged on the court they're still on. Right after a draw, before any match starts, the round can be **redone** with whoever is available now.
 7. **Leaderboard**: wins, draws, games difference, games won.
-8. **Finish**: confirmation; unscored matches only with "End anyway" (marked not played).
-9. **History**: every round, the final leaderboard, results and CSV export, readable after the session and with Live switched off.
-10. Phone, tablet and desktop; a second device and reconnects show the same session.
+8. **Finish**: confirmation; unscored matches only with "End anyway" (marked not played). After that the session is a record: no scores, rounds, check-in or roster changes; it can't be cancelled, and it can't be archived while still live.
+9. **History**: every round, the final results in the Workspace (summary, podium, table, Send, Export), readable after the session, after archiving and with Live switched off.
+10. Phone, tablet and desktop, one screen with one section switcher; a second device and reconnects show the same session (polling every 10 s while live - no WebSockets or Realtime).
+11. **Lifecycle** (TC-189): the clock never changes the status. A published session leaves Play once registration closes or the start time comes; the organiser can still start Live late, and Live lasts until End Session.
 
 Competition formats (`tournament`, `league`, `club-championship`, `junior-event`) and `custom` use the same engine: rounds are shuffled the same way. Coaching & Fitness has no Live.
 

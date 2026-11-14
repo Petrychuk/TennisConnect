@@ -50,6 +50,8 @@ function resetData() {
     "live-b": { id: "live-b", organizationId: "org-b", status: "live", courtsCount: 2, matchMode: "singles", isInternalTest: false, title: "Live B" },
     "live-i": { id: "live-i", organizationId: "org-i", status: "live", courtsCount: 1, matchMode: "singles", isInternalTest: true, title: "Internal" },
     "pub-i": { id: "pub-i", organizationId: "org-i", status: "published", courtsCount: 1, matchMode: "singles", isInternalTest: true, title: "Internal pub", startAt: new Date(Date.now() + 864e5), endAt: null, timeZone: "Australia/Sydney" },
+    "done-a": { id: "done-a", organizationId: "org-a", status: "completed", courtsCount: 2, matchMode: "singles", isInternalTest: false, title: "Done A" },
+    "arch-a": { id: "arch-a", organizationId: "org-a", status: "archived", courtsCount: 2, matchMode: "singles", isInternalTest: false, title: "Archived A" },
     "draft-i": { id: "draft-i", organizationId: "org-i", status: "draft", isInternalTest: true, title: "Internal draft", location: "Court 1", startAt: new Date(Date.now() + 864e5), endAt: null, parentSessionId: null },
   };
   // pub-a: 3 checked-in + available registrants (doubles needs 4), one withdrawn, one waitlisted+checked in.
@@ -61,6 +63,8 @@ function resetData() {
     { id: "r5", sessionId: "pub-a", userId: "p5", status: "waitlisted", checkedInAt: new Date(), liveStatus: null },
     { id: "r-live-a", sessionId: "live-a", userId: "p1", status: "registered", checkedInAt: new Date(), liveStatus: null },
     { id: "r-live-b", sessionId: "live-b", userId: "p2", status: "registered", checkedInAt: new Date(), liveStatus: null },
+    { id: "r-done", sessionId: "done-a", userId: "p3", status: "registered", checkedInAt: null, liveStatus: null },
+    { id: "r-arch", sessionId: "arch-a", userId: "p3", status: "registered", checkedInAt: null, liveStatus: null },
   ];
   calls.length = 0;
 }
@@ -82,12 +86,18 @@ before(async () => {
     getRegistrationsForSession: async (id: string) => REGS.filter((r) => r.sessionId === id),
     getMatchById: async (id: string) => MATCHES[id],
     goLiveSession: async (id: string) => (calls.push(`go-live:${id}`), { ...SESSIONS[id], status: "live" }),
-    generateNextRound: async (id: string) => {
-      calls.push(`generate:${id}`);
+    generateNextRound: async (id: string, options: { redo?: boolean } = {}) => {
+      calls.push(`${options.redo ? "redo" : "generate"}:${id}`);
+      if (options.redo) throw new LiveRuleError("A match in this round has started - the round can't be redone", 409, "ROUND_STARTED");
       throw new LiveRuleError("Current round isn't fully confirmed yet", 409, "ROUND_IN_PROGRESS");
     },
     getCurrentRound: async () => null,
     startMatch: async (id: string) => (calls.push(`start:${id}`), { ...MATCHES[id], status: "playing" }),
+    markMatchNotPlayed: async (id: string) => {
+      calls.push(`not-played:${id}`);
+      if (MATCHES[id].status === "confirmed") throw new LiveRuleError("This match has a score - correct the score instead", 409);
+      return { ...MATCHES[id], status: "abandoned" };
+    },
     reportMatchScore: async (id: string, _by: string, a: number, b: number) => (calls.push(`score:${id}:${a}-${b}`), { ...MATCHES[id], status: "confirmed", teamAGames: a, teamBGames: b }),
     finishSession: async (id: string, options: { force?: boolean } = {}) => {
       calls.push(`finish:${id}:${options.force ? "force" : "plain"}`);
@@ -96,6 +106,11 @@ before(async () => {
     },
     setRegistrationLiveStatus: async (id: string, liveStatus: any) => (calls.push(`live-status:${id}:${liveStatus}`), { ...REGS.find((r) => r.id === id), liveStatus }),
     getSessionRounds: async () => [],
+    checkInRegistration: async (id: string) => (calls.push(`checkin:${id}`), { ...REGS.find((r) => r.id === id), checkedInAt: new Date() }),
+    cancelRegistrationById: async (id: string) => (calls.push(`remove:${id}`), { ...REGS.find((r) => r.id === id), status: "cancelled" }),
+    moveRegistrationToWaitlist: async (id: string) => (calls.push(`waitlist:${id}`), { ...REGS.find((r) => r.id === id), status: "waitlisted" }),
+    cancelSession: async (id: string) => (calls.push(`cancel:${id}`), { ...SESSIONS[id], status: "cancelled" }),
+    archiveSession: async (id: string) => (calls.push(`archive:${id}`), { ...SESSIONS[id], status: "archived" }),
     getSessionLeaderboard: async () => [],
     createSession: async (orgId: string, by: string, data: any, options: any = {}) => {
       calls.push(`create:${by}:${options.isInternalTest === true}`);
@@ -157,6 +172,8 @@ const LIVE_ROUTES: [string, string, unknown][] = [
   ["GET", "/sessions/live-a/rounds/current", {}],
   ["POST", "/sessions/live-a/matches/m-a/start", {}],
   ["POST", "/sessions/live-a/matches/m-a/score", { teamAGames: 6, teamBGames: 3 }],
+  ["POST", "/sessions/live-a/matches/m-a/not-played", {}],
+  ["POST", "/sessions/live-a/rounds/current/redo", {}],
   ["POST", "/sessions/live-a/registrations/r-live-a/live-status", { liveStatus: "unavailable" }],
   ["POST", "/sessions/pub-a/go-live", {}],
 ];
@@ -257,4 +274,52 @@ test("internal test sessions: created only by internal accounts, joinable/invita
   assert.equal(pub.status, 200);
   assert.ok(calls.includes("publish-direct:draft-i"));
   assert.ok(!calls.includes("submit-review:draft-i") && !calls.includes("get-admins"), "no review, no admin messages");
+});
+
+test("phase 4: not played, redo round, sit out only for registered players - owner only, engine conflicts as 409", async () => {
+  process.env.TC_LIVE_ENABLED = "true";
+  assert.equal((await call("alice", "POST", "/sessions/live-a/matches/m-a/not-played")).status, 200);
+  assert.equal((await call("bob", "POST", "/sessions/live-a/matches/m-a/not-played")).status, 403);
+  assert.equal((await call("alice", "POST", "/sessions/live-a/matches/m-b/not-played")).status, 404, "another session's match");
+  MATCHES["m-a"].status = "confirmed";
+  try {
+    const scored = await call("alice", "POST", "/sessions/live-a/matches/m-a/not-played");
+    assert.equal(scored.status, 409);
+    assert.match(scored.body.message, /correct the score/);
+  } finally {
+    MATCHES["m-a"].status = "playing";
+  }
+
+  const redo = await call("alice", "POST", "/sessions/live-a/rounds/current/redo");
+  assert.equal(redo.status, 409);
+  assert.equal(redo.body.code, "ROUND_STARTED");
+  assert.equal((await call("bob", "POST", "/sessions/live-a/rounds/current/redo")).status, 403);
+  assert.equal((await call("alice", "POST", "/sessions/pub-a/rounds/current/redo")).status, 409, "not live");
+
+  REGS.push({ id: "r-wait", sessionId: "live-a", userId: "p9", status: "waitlisted", checkedInAt: null, liveStatus: null });
+  const waiting = await call("alice", "POST", "/sessions/live-a/registrations/r-wait/live-status", { liveStatus: "withdrawn" });
+  assert.equal(waiting.status, 400);
+  assert.match(waiting.body.message, /Only registered players/);
+  assert.equal((await call("alice", "POST", "/sessions/live-a/registrations/r-live-a/live-status", { liveStatus: "unavailable" })).status, 200);
+  assert.deepEqual(calls, ["not-played:m-a", "not-played:m-a", "redo:live-a", "live-status:r-live-a:unavailable"]);
+});
+
+test("phase 5: after Finish the roster is frozen, a live session isn't cancelled or archived, finished ones archive", async () => {
+  process.env.TC_LIVE_ENABLED = "true";
+  for (const [session, reg] of [["done-a", "r-done"], ["arch-a", "r-arch"]]) {
+    assert.equal((await call("alice", "POST", `/sessions/${session}/checkin/${reg}`)).status, 409, `${session} check-in`);
+    assert.equal((await call("alice", "DELETE", `/sessions/${session}/registrations/${reg}`)).status, 409, `${session} remove`);
+    assert.equal((await call("alice", "POST", `/sessions/${session}/registrations/${reg}/waitlist`)).status, 409, `${session} waitlist`);
+  }
+  assert.equal((await call("alice", "POST", "/sessions/live-a/checkin/r-live-a")).status, 200, "still open while live");
+
+  const cancelLive = await call("alice", "POST", "/sessions/live-a/cancel");
+  assert.equal(cancelLive.status, 409);
+  assert.match(cancelLive.body.message, /end it from the Live screen/);
+  assert.equal((await call("alice", "POST", "/sessions/done-a/cancel")).status, 409);
+  const archiveLive = await call("alice", "POST", "/sessions/live-a/archive");
+  assert.equal(archiveLive.status, 409);
+  assert.equal((await call("alice", "POST", "/sessions/done-a/archive")).status, 200);
+  assert.equal((await call("alice", "POST", "/sessions/arch-a/archive")).status, 200, "already archived: unchanged");
+  assert.deepEqual(calls, ["checkin:r-live-a", "archive:done-a"]);
 });

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { dismissCookieBanner, registerPlayer } from '../helpers/auth';
 import { becomeOrganiser } from '../helpers/organiser';
-import { inDays, seedHubSession } from '../helpers/organiser-hub';
+import { getSession, inDays, seedHubSession, updateSession } from '../helpers/organiser-hub';
 
 /*
   What players see of an organiser's session (Organiser Hub Phase 2):
@@ -128,9 +128,9 @@ test.describe('Play: session details', () => {
     }
   });
 
-  test('PLAY-012 A finished session is archived: not on Play, its page says Archived, nobody can join', async ({ page }) => {
+  test('PLAY-012 Once its start time has come a session is archived for players: off Play, "Archived", nobody can join', async ({ page }) => {
     const organiser = await becomeOrganiser(page);
-    const title = `Finished social ${Date.now()}`;
+    const title = `Started social ${Date.now()}`;
     const session = await seedHubSession(page, organiser, { title, startAt: inDays(-2), status: 'published', type: 'social' });
 
     await page.goto('/play');
@@ -148,5 +148,26 @@ test.describe('Play: session details', () => {
 
     const refused = await page.request.post(`/api/organizer/sessions/${session.id}/join`, { data: { acceptedPolicies: true }, failOnStatusCode: false });
     expect(refused.status()).toBe(400);
+  });
+
+  test('PLAY-013 Registration closes early: off Play, "Registration Closed", no join - and still the organiser\'s upcoming session', async ({ page }) => {
+    const organiser = await becomeOrganiser(page);
+    const title = `Closed early ${Date.now()}`;
+    const session = await seedHubSession(page, organiser, { title, startAt: inDays(3), status: 'published', type: 'social' });
+    await updateSession(page, session.id, { registrationOpensAt: inDays(-2), registrationClosesAt: inDays(-0.01) });
+
+    await page.goto('/play');
+    await dismissCookieBanner(page);
+    await page.getByTestId('play-page-search-input').fill(title);
+    await expect(page.getByTestId('play-page-no-matches')).toBeVisible({ timeout: 15_000 });
+
+    await page.goto(`/play/${session.id}`);
+    await expect(page.getByTestId('play-session-details-status')).toHaveText('Registration Closed', { timeout: 15_000 });
+    await expect(page.getByTestId('play-session-details-closed')).toBeDisabled();
+    const refused = await page.request.post(`/api/organizer/sessions/${session.id}/join`, { data: { acceptedPolicies: true }, failOnStatusCode: false });
+    expect(refused.status()).toBe(400);
+
+    // Not completed, not archived: the organiser still runs it.
+    expect((await getSession(page, session.id)).status).toBe('published');
   });
 });

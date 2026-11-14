@@ -93,7 +93,7 @@ import {
   type ActivityFeedItem,
 } from "@shared/schema";
 import { readSessionPolicies } from "@shared/sessionPolicies";
-import { sessionHasFinished } from "@shared/sessionJoinRules";
+import { isFinished as sessionIsFinished, hasStartTimePassed } from "@shared/sessionLifecycle";
 import { db, pool } from "./db";
 import { cascadeDeleteOrganizations as cascadeDeleteOrganizationsShared } from "./lib/organizationCascade";
 import { deleteUserRows } from "./lib/userCascade";
@@ -121,6 +121,15 @@ export type UserSearchResult = Pick<User, "id" | "name" | "slug" | "avatar" | "r
   lookingToPlay: boolean;
 };
 
+// SQL for shared/sessionLifecycle.ts isPubliclyActive - the one rule for
+// every public listing (Play, organisation page, this week): published, not
+// started, registration not closed. Keep the two in step.
+const publiclyActiveConditions = () => [
+  eq(tennisSessions.status, "published"),
+  sql`${tennisSessions.startAt} > now()`,
+  or(isNull(tennisSessions.registrationClosesAt), sql`${tennisSessions.registrationClosesAt} > now()`)!,
+];
+
 // A sign-up that really counts as a player: not cancelled, and not merely an
 // invitation. An "invited" row only means the organiser sent an invite - nobody
 // has accepted yet - so it must not fill spots, trigger "Waiting List", or
@@ -131,7 +140,7 @@ import { locationTerms, softLevelValues } from "./services/playFilters";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { planRound, computeLeaderboard, type PastMatch } from "./services/liveEngine";
 import { LiveRuleError } from "./lib/liveErrors";
-import { liveModeOf, roundProblem } from "@shared/liveRules";
+import { liveModeOf, matchClosed, notPlayedProblem, redoRoundProblem, roundProblem } from "@shared/liveRules";
 
 // Second reference to `users`, joined on messages.recipientId - lets a
 // conversation-list row resolve "the other participant"'s name/avatar
@@ -487,7 +496,6 @@ export interface IStorage {
  getSessionDivisions(parentSessionId: string): Promise<SessionWithDetails[]>;
  createSessionDivision(baseSession: TennisSession, createdBy: string, overrides: Partial<InsertSession> & { title: string }): Promise<TennisSession>;
   getSessionsByOrganization(organizationId: string): Promise<SessionWithDetails[]>;
-  archiveFinishedSessions(): Promise<number>;
   getUpcomingPublishedSessionsByOrganization(organizationId: string): Promise<SessionWithDetails[]>;
   getSessionsThisWeek(): Promise<SessionWithDetails[]>;
   getSessionsUserRegisteredFor(userId: string): Promise<SessionWithDetails[]>;
@@ -536,10 +544,11 @@ export interface IStorage {
   setRegistrationLiveStatus(registrationId: string, liveStatus: "unavailable" | "withdrawn" | null): Promise<Registration>;
   goLiveSession(sessionId: string): Promise<TennisSession>;
   finishSession(sessionId: string): Promise<TennisSession>;
-  generateNextRound(sessionId: string): Promise<{ round: SessionRound; matches: MatchWithPlayers[] }>;
+  generateNextRound(sessionId: string, options?: { redo?: boolean }): Promise<{ round: SessionRound; matches: MatchWithPlayers[] }>;
   getCurrentRound(sessionId: string): Promise<{ round: SessionRound; matches: MatchWithPlayers[] } | undefined>;
   reportMatchScore(matchId: string, organizerId: string, teamAGames: number, teamBGames: number): Promise<Match>;
   startMatch(matchId: string): Promise<Match>;
+  markMatchNotPlayed(matchId: string): Promise<Match>;
   getSessionLeaderboard(sessionId: string): Promise<LeaderboardRow[]>;
 }
 export class DatabaseStorage implements IStorage {
@@ -3441,10 +3450,12 @@ export class DatabaseStorage implements IStorage {
     registeredCount: number
   ): PublicSessionStatus {
     const now = new Date();
-    if (session.status === "live") return "live";
-    if (sessionHasFinished(session, now)) return "archived";
+    // Once the start time comes - started in TC Live or not, finished or not -
+    // the session is archived for players and guests: read-only, nothing to
+    // join or cancel. The organiser still runs it (shared/sessionLifecycle.ts).
+    if (session.status === "live" || sessionIsFinished(session) || hasStartTimePassed(session, now)) return "archived";
     if (session.registrationOpensAt && session.registrationOpensAt > now) return "upcoming";
-    if (session.registrationClosesAt && session.registrationClosesAt < now) return "closed";
+    if (session.registrationClosesAt && session.registrationClosesAt <= now) return "closed";
     if (session.maxParticipants) {
       const spotsLeft = session.maxParticipants - registeredCount;
       if (spotsLeft <= 0) return session.waitingListEnabled ? "waitlist" : "full";
@@ -3614,11 +3625,8 @@ export class DatabaseStorage implements IStorage {
     dateTo?: Date;
   }): Promise<PublicSessionCard[]> {
     const conditions = [
-      inArray(tennisSessions.status, ["published", "live"]),
+      ...publiclyActiveConditions(),
       eq(tennisSessions.visibility, "public"), eq(tennisSessions.isInternalTest, false) /* TC Live v1: internal test sessions are never public */,
-      // A finished session is archived: not listed on Play, even before the
-      // archive job has caught up with it (sessionHasFinished).
-      or(eq(tennisSessions.status, "live"), sql`COALESCE(${tennisSessions.endAt}, ${tennisSessions.startAt}) >= now()`)!,
     ];
     if (filters.format) conditions.push(eq(tennisSessions.type, filters.format));
     // Soft level rule (services/playFilters.ts): also sessions open to all levels
@@ -4502,45 +4510,11 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  /**
-   * The archive rule for every organisation at once (server/index.ts runs it
-   * every few minutes): a published or completed session whose end - or
-   * start, with no end - has passed becomes "archived". A live session is
-   * left alone here even if it runs late; getSessionsByOrganization below
-   * still archives it once its organiser's list is opened, as before.
-   */
-  async archiveFinishedSessions(): Promise<number> {
-    const rows = await db
-      .update(tennisSessions)
-      .set({ status: "archived", updatedAt: new Date() })
-      .where(
-        and(
-          sql`${tennisSessions.status} IN ('published', 'completed')`,
-          sql`COALESCE(${tennisSessions.endAt}, ${tennisSessions.startAt}) < now()`
-        )
-      )
-      .returning({ id: tennisSessions.id });
-    return rows.length;
-  }
-
   async getSessionsByOrganization(organizationId: string): Promise<SessionWithDetails[]> {
-    // A session that's genuinely wrapped up (past its end time, or its
-    // start time if it has no explicit end) moves to archived - either
-    // the organiser closed it out via TC Live, or nobody did and it's
-    // simply done now. Only published/live/completed sessions qualify;
-    // draft/cancelled/rejected/pending_review keep their own real
-    // meaning regardless of how much time has passed.
-    await db
-      .update(tennisSessions)
-      .set({ status: "archived", updatedAt: new Date() })
-      .where(
-        and(
-          eq(tennisSessions.organizationId, organizationId),
-          sql`${tennisSessions.status} IN ('published', 'live', 'completed')`,
-          sql`COALESCE(${tennisSessions.endAt}, ${tennisSessions.startAt}) < now()`
-        )
-      );
-
+    // No status changes here any more. The clock used to move published,
+    // live and completed sessions to "archived" when this list was opened,
+    // which ended a Live session that ran late and hid finished results.
+    // Status is changed by the organiser only (shared/sessionLifecycle.ts).
     const rows = await db
       .select()
       .from(tennisSessions)
@@ -4559,15 +4533,11 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(tennisSessions.organizationId, organizationId),
-          eq(tennisSessions.status, "published"),
           eq(tennisSessions.isInternalTest, false), // TC Live v1: never on a public organisation page
-          // A session currently in progress (started, hasn't ended)
-          // still belongs here - comparing against startAt alone
-          // dropped it the moment it started, well before it actually
-          // finished. endAt is nullable (older/manually-edited
-          // sessions), so this falls back to startAt only when there's
-          // no real end time to compare against.
-          sql`COALESCE(${tennisSessions.endAt}, ${tennisSessions.startAt}) >= ${new Date()}`
+          // Only what a player can still join (shared/sessionLifecycle.ts
+          // isPubliclyActive): once registration closes or the start time
+          // comes, the session keeps its own page but leaves this list.
+          ...publiclyActiveConditions()
         )
       )
       .orderBy(asc(tennisSessions.startAt));
@@ -4584,9 +4554,8 @@ export class DatabaseStorage implements IStorage {
       .from(tennisSessions)
       .where(
         and(
-          eq(tennisSessions.status, "published"),
+          ...publiclyActiveConditions(),
           eq(tennisSessions.visibility, "public"), eq(tennisSessions.isInternalTest, false) /* TC Live v1: internal test sessions are never public */,
-          gte(tennisSessions.startAt, now),
           lte(tennisSessions.startAt, weekFromNow)
         )
       )
@@ -5536,17 +5505,35 @@ export class DatabaseStorage implements IStorage {
   // session_rounds is the final backstop if both still slip through, and
   // that specific violation is turned into the same clean 400 the
   // pre-check produces rather than a raw Postgres error reaching the client.
-  async generateNextRound(sessionId: string): Promise<{ round: SessionRound; matches: MatchWithPlayers[] }> {
+  //
+  // `redo` (TC-189 phase 4): replace the current round instead - for a late
+  // arrival, or a player who left, right after the round was drawn. Only
+  // while every match in it is still pending (shared/liveRules.ts
+  // redoRoundProblem); the round is locked, deleted with its matches and
+  // drawn again with the same number in the same transaction, so a refusal
+  // (e.g. not enough players any more) leaves the old round untouched.
+  async generateNextRound(sessionId: string, options: { redo?: boolean } = {}): Promise<{ round: SessionRound; matches: MatchWithPlayers[] }> {
     const [session] = await db.select().from(tennisSessions).where(eq(tennisSessions.id, sessionId));
     if (!session) throw new Error("Session not found");
 
     try {
       const { round, insertedMatches } = await db.transaction(async (tx) => {
-        const existingRounds = await tx
+        let existingRounds = await tx
           .select()
           .from(sessionRounds)
           .where(eq(sessionRounds.sessionId, sessionId))
           .orderBy(desc(sessionRounds.roundNumber));
+
+        if (options.redo) {
+          const latest = existingRounds[0];
+          if (latest) await tx.select({ id: sessionRounds.id }).from(sessionRounds).where(eq(sessionRounds.id, latest.id)).for("update");
+          const latestMatches = latest ? await tx.select({ status: matches.status }).from(matches).where(eq(matches.roundId, latest.id)) : [];
+          const redoProblem = redoRoundProblem(latest, latestMatches);
+          if (redoProblem) throw new LiveRuleError(redoProblem, 409, "ROUND_STARTED");
+          await tx.delete(matches).where(eq(matches.roundId, latest!.id));
+          await tx.delete(sessionRounds).where(eq(sessionRounds.id, latest!.id));
+          existingRounds = existingRounds.slice(1);
+        }
 
         const activeRound = existingRounds.find((r) => r.status === "active");
         if (activeRound) {
@@ -5604,7 +5591,7 @@ export class DatabaseStorage implements IStorage {
         }
 
         console.log(
-          `[TC LIVE] session ${sessionId}: round ${nextRoundNumber} generated - ` +
+          `[TC LIVE] session ${sessionId}: round ${nextRoundNumber} ${options.redo ? "redone" : "generated"} - ` +
             `${insertedMatches.length} matches, ${plan.restingPlayerIds.length} resting`
         );
 
@@ -5682,12 +5669,49 @@ export class DatabaseStorage implements IStorage {
     return current;
   }
 
-  // Organizer-only score entry (v0.1 - see TC Live spec §5): saving a
-  // score confirms it immediately, no second-party confirmation step.
-  // reportedBy/confirmedBy are both the organizer for now, kept separate
-  // in the schema so player self-report can land later without a migration.
-  // If every match in the round is now confirmed, the round is closed -
-  // that's what unlocks "Generate Next Round" on the client.
+  // pending / playing -> abandoned ("Not played"), while live: a player
+  // got hurt or left and the match won't finish. It never counts on the
+  // leaderboard, and if it was the last open court the round closes, so
+  // "Generate Next Round" isn't stuck behind a match that won't get a
+  // score. A score can still be entered for it later while live. Repeat =
+  // no-op; a scored match is corrected instead (409).
+  async markMatchNotPlayed(matchId: string): Promise<Match> {
+    const [existing] = await db.select().from(matches).where(eq(matches.id, matchId));
+    if (!existing) throw new Error("Match not found");
+    const [session] = await db.select().from(tennisSessions).where(eq(tennisSessions.id, existing.sessionId));
+    if (!session || session.status !== "live") throw new LiveRuleError("Can only change matches while the session is live", 409);
+    if (existing.status === "abandoned") return existing;
+    const problem = notPlayedProblem(existing.status);
+    if (problem) throw new LiveRuleError(problem, 409);
+
+    const match = await db.transaction(async (tx) => {
+      // Same round lock as reportMatchScore: the last two courts closing
+      // together must still close the round.
+      await tx.select({ id: sessionRounds.id }).from(sessionRounds).where(eq(sessionRounds.id, existing.roundId)).for("update");
+      const [updated] = await tx
+        .update(matches)
+        .set({ status: "abandoned" })
+        .where(and(eq(matches.id, matchId), inArray(matches.status, ["pending", "playing"])))
+        .returning();
+      if (!updated) {
+        // Scored (or marked) by another device a moment ago.
+        const [current] = await tx.select().from(matches).where(eq(matches.id, matchId));
+        if (current.status === "abandoned") return current;
+        throw new LiveRuleError(notPlayedProblem(current.status) ?? "This match changed - reload", 409);
+      }
+      const roundMatches = await tx.select({ status: matches.status }).from(matches).where(eq(matches.roundId, existing.roundId));
+      if (roundMatches.every((m) => matchClosed(m.status))) {
+        await tx
+          .update(sessionRounds)
+          .set({ status: "completed", completedAt: new Date() })
+          .where(and(eq(sessionRounds.id, existing.roundId), eq(sessionRounds.status, "active")));
+      }
+      return updated;
+    });
+    console.log(`[TC LIVE] session ${existing.sessionId}: match ${matchId} marked not played`);
+    return match;
+  }
+
   // Organizer-only score entry (v0.1 - see TC Live spec §5): saving a
   // score confirms it immediately, no second-party confirmation step.
   // reportedBy/confirmedBy are both the organizer for now, kept separate
@@ -5709,12 +5733,11 @@ export class DatabaseStorage implements IStorage {
 
     const [session] = await db.select().from(tennisSessions).where(eq(tennisSessions.id, existing.sessionId));
     if (!session || session.status !== "live") {
-      throw new Error("Can only enter scores while the session is live");
+      throw new LiveRuleError("Can only enter scores while the session is live", 409);
     }
 
-    if (existing.status === "abandoned") {
-      throw new LiveRuleError("This match was abandoned when the session ended", 409);
-    }
+    // A match marked "not played" during Live can still get its score
+    // (played after all). After Finish the session isn't live, see above.
     const isCorrection = existing.status === "confirmed";
 
     const match = await db.transaction(async (tx) => {
@@ -5737,7 +5760,8 @@ export class DatabaseStorage implements IStorage {
         .returning();
 
       const roundMatches = await tx.select().from(matches).where(eq(matches.roundId, match.roundId));
-      const allConfirmed = roundMatches.every((m) => m.status === "confirmed");
+      // Scored or "not played" - either way the court is done.
+      const allConfirmed = roundMatches.every((m) => matchClosed(m.status));
       if (allConfirmed) {
         await tx
           .update(sessionRounds)
