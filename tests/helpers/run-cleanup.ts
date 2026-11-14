@@ -45,7 +45,9 @@ function envForRun(runId: string, env: Record<string, string | undefined>) {
 }
 
 export function planRunCleanup(runId: string, env: Record<string, string | undefined> = process.env) {
-  return postTestHook<CleanupPlanResponse>('cleanup-run', {}, envForRun(runId, env));
+  // Read-only, but it counts every row of every user the run created: after a full suite
+  // (159 tests, ~1h) that took longer than the 60s default and failed the teardown.
+  return postTestHook<CleanupPlanResponse>('cleanup-run', {}, envForRun(runId, env), { timeoutMs: 120_000 });
 }
 
 export function applyRunCleanup(runId: string, env: Record<string, string | undefined> = process.env) {
