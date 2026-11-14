@@ -29,12 +29,19 @@ function formatCountdown(startAt: string): string {
   return `${hours}h ${minutes}m`;
 }
 
-// This is the one card allowed to be big and photographic — everything
-// else on the page stays quiet by comparison. Same photographic
-// treatment across all three states (noLiveSessionImage when nothing's
-// happening, session.coverImage/courtImage once something is) - swaps
-// automatically as `session`/`nextUpcoming` change, no extra logic
-// needed for the transitions between them.
+// No panel behind the text: white text in the bottom-left corner of the photo,
+// with a soft shadow (text and icons) so it stays readable on light photos too.
+const PANEL = "relative self-start m-3 sm:m-4 space-y-2 text-white [text-shadow:0_1px_3px_rgb(0_0_0/0.65)] [&_svg]:drop-shadow-[0_1px_2px_rgb(0_0_0/0.6)]";
+const MUTED = "text-white/90";
+const FAINT = "text-white/80";
+const CHIP = "text-white bg-white/20 hover:bg-white/30";
+
+// Same height on every state and, on desktop, the same height as the
+// Upcoming Sessions card with three sessions in it - so the two sit level.
+const FRAME = "relative overflow-hidden rounded-2xl shadow-sm min-h-[260px] xl:h-[340px] flex flex-col justify-end";
+
+// This is the one card allowed to be big and photographic - everything
+// else on the page stays quiet by comparison.
 //
 // Three states, matching the spec's NOW/starting-soon/live hierarchy:
 //   A - nothing live, nothing starting soon (still shows a "Next: ..."
@@ -45,24 +52,16 @@ function formatCountdown(startAt: string): string {
 //       organiser can prep before it's actually time to go live
 //   C - a session is actually live - full stats plus Enter Live Session
 export function LiveTodayCard({ session, nextUpcoming, className, onEnterLive, onManageCheckIn, onOpenSession }: LiveTodayCardProps) {
+  const msUntilNext = nextUpcoming ? new Date(nextUpcoming.startAt).getTime() - Date.now() : null;
+  const startingSoon = !!nextUpcoming && msUntilNext !== null && msUntilNext > 0 && msUntilNext <= 24 * 60 * 60 * 1000;
+
+  // State C - a session is actually live.
   if (session) {
     return (
-      <div
-        className={cn(
-          "relative overflow-hidden rounded-2xl shadow-sm hover:shadow-md transition-shadow min-h-[280px] flex flex-col justify-end text-primary-foreground",
-          className
-        )}
-        data-testid="organiser-live-today-card"
-      >
-        <img
-          src={session.coverImage || courtImage}
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-linear-to-t from-foreground/85 via-foreground/40 to-foreground/10" />
+      <div className={cn(FRAME, className)} data-testid="organiser-live-today-card">
+        <img src={session.coverImage || courtImage} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" />
 
-        <div className="relative p-5 sm:p-6 space-y-4">
+        <div className={cn(PANEL, "max-w-xl")}>
           <Badge className="bg-primary text-foreground w-fit gap-1.5" data-testid="organiser-live-today-badge">
             <span className="relative flex h-1.5 w-1.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-foreground opacity-75" />
@@ -72,8 +71,8 @@ export function LiveTodayCard({ session, nextUpcoming, className, onEnterLive, o
           </Badge>
 
           <div>
-            <h2 className="text-xl sm:text-2xl font-display font-bold">{session.title}</h2>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-primary-foreground/85 mt-1">
+            <h2 className="text-lg sm:text-xl font-display font-bold">{session.title}</h2>
+            <div className={cn("flex flex-wrap items-center gap-x-4 gap-y-1 text-sm mt-1", MUTED)}>
               <span className="flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5" />
                 {formatInTimeZone(session.startAt, session.timeZone, { hour: "2-digit", minute: "2-digit" })}
@@ -85,74 +84,72 @@ export function LiveTodayCard({ session, nextUpcoming, className, onEnterLive, o
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 max-w-md">
+          <div className="grid grid-cols-3 gap-2 max-w-sm">
             <div>
-              <p className="text-lg font-bold flex items-center gap-1.5">
+              <p className="text-base font-bold flex items-center gap-1.5">
                 <Users className="w-4 h-4" />
                 {session.registeredCount}
               </p>
-              <p className="text-xs text-primary-foreground/75">Registered</p>
+              <p className={cn("text-xs", FAINT)}>Registered</p>
             </div>
             <div>
-              <p className="text-lg font-bold flex items-center gap-1.5">
+              <p className="text-base font-bold flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4" />
                 {session.checkedInCount}
               </p>
-              <p className="text-xs text-primary-foreground/75">Checked In</p>
+              <p className={cn("text-xs", FAINT)}>Checked In</p>
             </div>
             <div>
-              <p className="text-lg font-bold flex items-center gap-1.5">
+              <p className="text-base font-bold flex items-center gap-1.5">
                 <Calendar className="w-4 h-4" />
                 {session.waitingCount}
               </p>
-              <p className="text-xs text-primary-foreground/75">Waiting List</p>
+              <p className={cn("text-xs", FAINT)}>Waiting List</p>
             </div>
           </div>
 
-          <Button
-            size="lg"
-            className="w-full sm:w-auto"
-            onClick={onEnterLive}
-            data-testid="organiser-live-today-enter-button"
-          >
-            <Play className="w-4 h-4 mr-2" />
-            Enter Live Session
-          </Button>
+          {/* No onEnterLive = TC Live isn't available here (Production):
+              open the session instead of a "coming soon" page. */}
+          {onEnterLive ? (
+            <Button
+              size="default"
+              className="w-full sm:w-auto"
+              onClick={onEnterLive}
+              data-testid="organiser-live-today-enter-button"
+            >
+              <Play className="w-4 h-4 mr-2" />
+              Enter Live Session
+            </Button>
+          ) : onOpenSession && (
+            <Button
+              size="default"
+              className="w-full sm:w-auto"
+              onClick={() => onOpenSession(session.id)}
+              data-testid="organiser-live-today-open-button"
+            >
+              Open Session
+            </Button>
+          )}
         </div>
       </div>
     );
   }
 
-  const msUntilNext = nextUpcoming ? new Date(nextUpcoming.startAt).getTime() - Date.now() : null;
-  const startingSoon = nextUpcoming && msUntilNext !== null && msUntilNext > 0 && msUntilNext <= 24 * 60 * 60 * 1000;
-
   // State B - starting soon, not live yet.
   if (startingSoon && nextUpcoming) {
     return (
-      <div
-        className={cn(
-          "relative overflow-hidden rounded-2xl shadow-sm hover:shadow-md transition-shadow min-h-[280px] flex flex-col justify-end text-primary-foreground",
-          className
-        )}
-        data-testid="organiser-live-today-card-soon"
-      >
-        <img
-          src={nextUpcoming.coverImage || courtImage}
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-linear-to-t from-foreground/85 via-foreground/40 to-foreground/10" />
+      <div className={cn(FRAME, className)} data-testid="organiser-live-today-card-soon">
+        <img src={nextUpcoming.coverImage || courtImage} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" />
 
-        <div className="relative p-5 sm:p-6 space-y-4">
+        <div className={cn(PANEL, "max-w-xl")}>
           <Badge variant="secondary" className="w-fit gap-1.5" data-testid="organiser-live-today-badge-soon">
             <Clock className="w-3 h-3" />
             Starts in {formatCountdown(nextUpcoming.startAt)}
           </Badge>
 
           <div>
-            <h2 className="text-xl sm:text-2xl font-display font-bold">{nextUpcoming.title}</h2>
-            <p className="text-sm text-primary-foreground/85 mt-1">
+            <h2 className="text-lg sm:text-xl font-display font-bold">{nextUpcoming.title}</h2>
+            <p className={cn("text-sm mt-1", MUTED)}>
               {nextUpcoming.registeredCount} registered
               {nextUpcoming.checkedInCount > 0 ? ` · ${nextUpcoming.checkedInCount} checked in` : ""}
               {nextUpcoming.location ? ` · ${nextUpcoming.location}` : ""}
@@ -161,14 +158,14 @@ export function LiveTodayCard({ session, nextUpcoming, className, onEnterLive, o
 
           <div className="flex flex-wrap items-center gap-2">
             <Button
-              size="lg"
+              size="default"
               onClick={() => onManageCheckIn?.(nextUpcoming.id)}
               data-testid="organiser-live-today-manage-checkin"
             >
               Manage Check-in
             </Button>
             <Button
-              size="lg"
+              size="default"
               variant="secondary"
               onClick={() => onOpenSession?.(nextUpcoming.id)}
               data-testid="organiser-live-today-open-session"
@@ -183,35 +180,26 @@ export function LiveTodayCard({ session, nextUpcoming, className, onEnterLive, o
 
   // State A - nothing live, nothing starting soon.
   return (
-    <div
-      className={cn(
-        "relative overflow-hidden rounded-2xl shadow-sm min-h-[280px] flex flex-col items-center justify-center text-center gap-2",
-        className
-      )}
-      data-testid="organiser-live-today-card-empty"
-    >
-      <img
-        src={noLiveSessionImage}
-        alt=""
-        aria-hidden="true"
-        className="absolute inset-0 w-full h-full object-cover"
-      />
-      <div className="absolute inset-0 bg-linear-to-t from-foreground/85 via-foreground/50 to-foreground/20" />
-      <Clock className="relative w-6 h-6 text-primary-text" />
-      <p className="relative font-semibold text-primary-text">Nothing live right now</p>
-      <p className="relative text-sm text-primary-text/80">Your next session will show up here on the day.</p>
-      {nextUpcoming && (
-        <button
-          type="button"
-          onClick={() => onOpenSession?.(nextUpcoming.id)}
-          className="relative mt-2 flex items-center gap-1.5 text-sm text-primary-foreground bg-primary/20 hover:bg-primary/30 transition-colors rounded-full px-3 py-1.5"
-          data-testid="organiser-live-today-next-teaser"
-        >
-          Next: {nextUpcoming.title} ·{" "}
-          {formatInTimeZone(nextUpcoming.startAt, nextUpcoming.timeZone, { weekday: "short", hour: "numeric", minute: "2-digit" })}
-          <ArrowRight className="w-3.5 h-3.5" />
-        </button>
-      )}
+    <div className={cn(FRAME, className)} data-testid="organiser-live-today-card-empty">
+      <img src={noLiveSessionImage} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" />
+
+      <div className={cn(PANEL, "max-w-sm flex flex-col items-start gap-1")}>
+        <Clock className="w-5 h-5" />
+        <p className="font-semibold text-base">Nothing live right now</p>
+        <p className={cn("text-xs sm:text-sm", MUTED)}>Your next session will show up here on the day.</p>
+        {nextUpcoming && (
+          <button
+            type="button"
+            onClick={() => onOpenSession?.(nextUpcoming.id)}
+            className={cn("mt-1 flex items-center gap-1.5 text-sm transition-colors rounded-full px-3 py-1.5", CHIP)}
+            data-testid="organiser-live-today-next-teaser"
+          >
+            Next: {nextUpcoming.title} ·{" "}
+            {formatInTimeZone(nextUpcoming.startAt, nextUpcoming.timeZone, { weekday: "short", hour: "numeric", minute: "2-digit" })}
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }

@@ -469,6 +469,7 @@ export function MessagesInbox() {
       // page reload happens to refetch it.
       if (action === "accept" && message.messageType === "session_invite") {
         queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions/mine/registered"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/play/sessions"] });
       }
       if (message.messageType === "play_invite") {
         (window as any).gtag?.(
@@ -907,27 +908,36 @@ export function MessagesInbox() {
                       {hasRealCorrespondent && (
                         <>
                         <Separator className="h-px w-full bg-linear-to-r from-transparent via-[hsl(var(--tennis-ball))] to-transparent my-3" />                    
-                        {!showReplyForm && !conversation.some((m) => m.messageType && m.actionStatus === "pending") && (
-                          <div className="flex flex-row gap-2 mt-3">
+                        {/* Reply is always offered in a real conversation. It used to
+                            disappear while any invitation in the thread was still
+                            "pending" - including an old one for a session that had
+                            moved or started - so a player could not answer the
+                            organiser's plain message at all. Invitations keep their
+                            own Join / Decline buttons. Compact buttons: the thread
+                            is the content, not the controls. */}
+                        {!showReplyForm && (
+                          <div className="flex flex-row gap-2 mt-2">
                             <Button
-                              className="flex-1 md:flex-none md:min-w-[160px] px-2 md:px-6"
+                              size="sm"
+                              className="px-4"
                               onClick={() => setShowReplyForm(true)}
                               data-testid="button-reply"
                             >
-                              <Reply className="w-4 h-4 mr-2 shrink-0" />
+                              <Reply className="w-4 h-4 mr-1.5 shrink-0" />
                               Reply
                             </Button>
 
                             {otherPartyEmail && (
                               <Button
+                                size="sm"
                                 variant="outline"
-                                className="flex-1 md:flex-none md:min-w-[160px] px-2 md:px-6"
+                                className="px-4"
                                 onClick={() => {
                                   window.location.href = `mailto:${otherPartyEmail}`;
                                 }}
                                 data-testid="button-reply-email"
                               >
-                                <Mail className="w-4 h-4 mr-2 shrink-0" />
+                                <Mail className="w-4 h-4 mr-1.5 shrink-0" />
                                 <span className="md:hidden">Email</span>
                                 <span className="hidden md:inline">Reply via Email</span>
                               </Button>
@@ -935,7 +945,7 @@ export function MessagesInbox() {
                           </div>
                         )}
                         {showReplyForm && (
-                          <div className="mt-3 pt-3 space-y-4">
+                          <div className="mt-2 pt-2 space-y-2">
                             <Textarea
                               data-testid="textarea-reply"
                               value={replyContent}
@@ -947,8 +957,21 @@ export function MessagesInbox() {
                               maxLength={1000}
                             />
 
-                            <div className="grid grid-cols-2 gap-2">
-                            <Button
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setShowReplyForm(false);
+                                  setReplyContent("");
+                                }}
+                                data-testid="button-cancel-reply"
+                              >
+                                <X className="w-4 h-4 mr-1.5" />
+                                Cancel
+                              </Button>
+                              <Button
+                                size="sm"
                                 onClick={handleReply}
                                 data-testid="button-send-reply"
                                 disabled={
@@ -956,23 +979,11 @@ export function MessagesInbox() {
                                   replyMutation.isPending
                                 }
                               >
-                                <Send className="w-4 h-4 mr-2" />
+                                <Send className="w-4 h-4 mr-1.5" />
                                 {replyMutation.isPending
                                   ? "Sending..."
                                   : "Send Reply"}
                               </Button>
-
-                              <Button
-                                variant="outline"
-                                onClick={() => {
-                                  setShowReplyForm(false);
-                                  setReplyContent("");
-                                }}
-                              >
-                                <X className="w-4 h-4 mr-2" />
-                                Cancel
-                              </Button>
-
                             </div>
                           </div>
                         )}

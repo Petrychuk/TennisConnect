@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { PlayersStatStrip } from "./players/players-stat-strip";
 import { PlayersToolbar } from "./players/players-toolbar";
@@ -11,25 +10,38 @@ import { WaitingListCard } from "./players/waiting-list-card";
 import { InvitePlayersCard } from "./players/invite-players-card";
 import { CheckInSummaryCard } from "./players/checkin-summary-card";
 import { PlayersQuickActionsCard } from "./players/players-quick-actions-card";
-import { SessionActionsSheet } from "./session-actions-sheet";
+import { QuickMessageModal } from "@/components/messaging/QuickMessageModal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { InvitePlayersDialog } from "@/components/organiser/shared/invite-players-dialog";
+import { canChangeRoster, canInviteToSession } from "@shared/sessionActions";
 import { getSessionRegistrations, inviteToSession, checkInRegistration, removeRegistration, moveRegistrationToWaitlist } from "@/lib/api/organizer-sessions";
 import { toSessionPlayers } from "@/lib/api/session-adapter";
 import { type SessionListItem, type SessionPlayer } from "@/lib/organiser-sessions-mock-data";
 
 interface PlayersTabProps {
   session: SessionListItem;
-  onEdit?: () => void;
+  /** Switches the workspace to its Messages tab (not for divisions). */
+  onOpenMessages?: () => void;
+  onExport: () => void;
 }
 
 type Bucket = "registered" | "checked-in" | "waiting" | "cancelled" | "invited";
 
-export function PlayersTab({ session, onEdit }: PlayersTabProps) {
+export function PlayersTab({ session, onOpenMessages, onExport }: PlayersTabProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [bucket, setBucket] = useState<Bucket>("registered");
-  const [actionsSheetOpen, setActionsSheetOpen] = useState(false);
+  const [level, setLevel] = useState("all");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [checkingInAll, setCheckingInAll] = useState(false);
 
@@ -59,7 +71,9 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
   }, [allPlayers]);
 
   const query = search.trim().toLowerCase();
-  const visible = (query ? buckets[bucket].filter((p) => p.name.toLowerCase().includes(query)) : buckets[bucket]);
+  const visible = buckets[bucket].filter(
+    (p) => (!query || p.name.toLowerCase().includes(query)) && (level === "all" || p.levelLabel === level),
+  );
 
   const checkInMutation = useMutation({
     mutationFn: (registrationId: string) => checkInRegistration(session.id, registrationId),
@@ -83,7 +97,13 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
       toast({ title: "Couldn't remove that player", variant: "destructive" });
     },
   });
-  const handleRemove = (player: SessionPlayer) => removeMutation.mutate(player.id);
+  // Removing a registration can't be undone from here, so it asks first.
+  const [removeTarget, setRemoveTarget] = useState<SessionPlayer | null>(null);
+  const handleRemove = (player: SessionPlayer) => setRemoveTarget(player);
+  // The site's own message composer (POST /api/messages); was a
+  // "Message - coming soon" toast.
+  const [messageTarget, setMessageTarget] = useState<SessionPlayer | null>(null);
+  const handleMessage = (player: SessionPlayer) => setMessageTarget(player);
 
   const moveToWaitingMutation = useMutation({
     mutationFn: (registrationId: string) => moveRegistrationToWaitlist(session.id, registrationId),
@@ -98,10 +118,7 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
   const handleMoveToWaiting = (player: SessionPlayer) => moveToWaitingMutation.mutate(player.id);
 
   const handleViewProfile = (player: SessionPlayer) => {
-    if (!player.isReal || !player.slug) {
-      toast({ title: "No profile to view", description: "This is demo data, not a real player." });
-      return;
-    }
+    if (!player.slug) return;
     window.open(`/${player.role === "coach" ? "coach" : "player"}/${player.slug}`, "_blank", "noopener,noreferrer");
   };
 
@@ -118,7 +135,20 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
       setCheckingInAll(false);
     }
   };
-  const handleInvitePlayers = () => setInviteOpen(true);
+  // After Finish the roster is a record (shared/sessionActions.ts
+  // canChangeRoster): no check-in, remove or move to the waiting list - the
+  // server refuses them too. Undefined hides each control.
+  const rosterOpen = canChangeRoster(session.status);
+  const rowHandlers = {
+    onCheckIn: rosterOpen ? handleCheckIn : undefined,
+    onRemove: rosterOpen ? handleRemove : undefined,
+    onMessage: handleMessage,
+    onMoveToWaiting: rosterOpen ? handleMoveToWaiting : undefined,
+    onViewProfile: handleViewProfile,
+  };
+  const checkInAll = rosterOpen ? handleCheckInAll : undefined;
+  // Undefined hides the toolbar's Invite button (shared/sessionActions.ts).
+  const handleInvitePlayers = canInviteToSession(session.status, session.endAt) ? () => setInviteOpen(true) : undefined;
 
   const bucketTabs: { key: Bucket; label: string }[] = [
     { key: "registered", label: "Registered" },
@@ -148,7 +178,12 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
   );
 
   return (
-    <div data-testid="organiser-session-players-tab">
+    <div data-testid="organiser-session-players-tab" data-roster={rosterOpen ? "open" : "final"}>
+      {!rosterOpen && (
+        <p className="mb-4 rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm text-muted-foreground" data-testid="organiser-players-final-note">
+          This session is {session.status}. The player list is final - nobody can be checked in, removed or moved now.
+        </p>
+      )}
       {/* Desktop (xl+) */}
       <div className="hidden xl:block space-y-6">
         <PlayersStatStrip session={session} players={allPlayers} />
@@ -156,16 +191,17 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
         <PlayersToolbar
           search={search}
           onSearchChange={setSearch}
-          onCheckInAll={handleCheckInAll}
+          onCheckInAll={checkInAll}
           checkInAllLoading={checkingInAll}
           onInvitePlayers={handleInvitePlayers}
-          showAdvancedFilters
+          level={level}
+          onLevelChange={setLevel}
         />
-        <PlayersTable players={visible} onCheckIn={handleCheckIn} onRemove={handleRemove} onMoveToWaiting={handleMoveToWaiting} onViewProfile={handleViewProfile} timeZone={session.timeZone} />
+        <PlayersTable players={visible} {...rowHandlers} timeZone={session.timeZone} />
         {paginationText}
         <div className="grid grid-cols-2 gap-6">
           <WaitingListCard players={buckets.waiting} timeZone={session.timeZone} />
-          <InvitePlayersCard sessionId={session.id} />
+          <InvitePlayersCard session={session} />
         </div>
       </div>
 
@@ -173,26 +209,58 @@ export function PlayersTab({ session, onEdit }: PlayersTabProps) {
       <div className="hidden md:block xl:hidden space-y-6">
         <PlayersStatStrip session={session} players={allPlayers} />
         {bucketTabsList}
-        <PlayersToolbar search={search} onSearchChange={setSearch} onCheckInAll={handleCheckInAll} checkInAllLoading={checkingInAll} onInvitePlayers={handleInvitePlayers} />
-        <PlayersList players={visible} onCheckIn={handleCheckIn} onRemove={handleRemove} onMoveToWaiting={handleMoveToWaiting} onViewProfile={handleViewProfile} timeZone={session.timeZone} />
+        <PlayersToolbar search={search} onSearchChange={setSearch} onCheckInAll={checkInAll} checkInAllLoading={checkingInAll} onInvitePlayers={handleInvitePlayers} level={level} onLevelChange={setLevel} />
+        <PlayersList players={visible} {...rowHandlers} timeZone={session.timeZone} />
         {paginationText}
         <WaitingListCard players={buckets.waiting} timeZone={session.timeZone} />
         <CheckInSummaryCard players={allPlayers} />
-        <PlayersQuickActionsCard lastLabel="Manage Groups" lastIcon={Users2} onMore={() => setActionsSheetOpen(true)} />
+        <PlayersQuickActionsCard onMessageAll={onOpenMessages} onExport={onExport} onShowWaitingList={() => setBucket("waiting")} />
       </div>
 
       {/* Mobile (<md) */}
       <div className="md:hidden space-y-6">
         <PlayersStatStrip session={session} players={allPlayers} />
         {bucketTabsList}
-        <PlayersToolbar search={search} onSearchChange={setSearch} onCheckInAll={handleCheckInAll} checkInAllLoading={checkingInAll} onInvitePlayers={handleInvitePlayers} />
-        <PlayersList players={visible} onCheckIn={handleCheckIn} onRemove={handleRemove} onMoveToWaiting={handleMoveToWaiting} onViewProfile={handleViewProfile} timeZone={session.timeZone} />
+        <PlayersToolbar search={search} onSearchChange={setSearch} onCheckInAll={checkInAll} checkInAllLoading={checkingInAll} onInvitePlayers={handleInvitePlayers} level={level} onLevelChange={setLevel} />
+        <PlayersList players={visible} {...rowHandlers} timeZone={session.timeZone} />
         {paginationText}
         <WaitingListCard players={buckets.waiting} timeZone={session.timeZone} />
-        <PlayersQuickActionsCard onMore={() => setActionsSheetOpen(true)} />
+        <PlayersQuickActionsCard onMessageAll={onOpenMessages} onExport={onExport} onShowWaitingList={() => setBucket("waiting")} />
       </div>
 
-      <SessionActionsSheet open={actionsSheetOpen} onOpenChange={setActionsSheetOpen} onEdit={onEdit} />
+      {messageTarget?.userId && (
+        <QuickMessageModal
+          open
+          onOpenChange={(open) => !open && setMessageTarget(null)}
+          recipient={{ id: messageTarget.userId, name: messageTarget.name, type: messageTarget.role === "coach" ? "coach" : "player" }}
+          title={`Message ${messageTarget.name}`}
+          description={`About "${session.title}". They'll get it in their TennisConnect inbox.`}
+        />
+      )}
+
+      <AlertDialog open={!!removeTarget} onOpenChange={(open) => !open && setRemoveTarget(null)}>
+        <AlertDialogContent data-testid="organiser-players-remove-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {removeTarget?.name} from this session?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Their registration is cancelled and the place becomes free. Nobody is moved up from the
+              waiting list automatically - you can invite or register someone yourself.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (removeTarget) removeMutation.mutate(removeTarget.id);
+                setRemoveTarget(null);
+              }}
+              data-testid="organiser-players-remove-confirm"
+            >
+              Remove Player
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <InvitePlayersDialog
         open={inviteOpen}

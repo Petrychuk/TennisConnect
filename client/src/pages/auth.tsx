@@ -19,6 +19,7 @@ import loginImage from "/assets/images/me_attack.jpg";
 import SEO from "@/components/seo";
 import { registerSchema, loginSchema } from "@/lib/validations/auth";
 import { savePostVerifyRedirect, consumePostVerifyRedirect } from "@/lib/postVerifyRedirect";
+import { postVerifyTarget, profilePathFor, resolveReturnTarget } from "@/lib/postVerifyTarget";
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -84,16 +85,7 @@ export default function AuthPage() {
       // screen.
       if (user.email?.toLowerCase() !== waitingEmail.toLowerCase()) return;
 
-      const redirect = consumePostVerifyRedirect();
-      const target = redirect
-        ? (() => {
-            const url = new URL(redirect.returnTo, window.location.origin);
-            if (redirect.joinSession) url.searchParams.set("joinSession", redirect.joinSession);
-            return url.pathname + url.search;
-          })()
-        : !user.profileCompleted
-          ? "/complete-profile"
-          : `/${user.role}/${user.slug}`;
+      const target = postVerifyTarget(user, consumePostVerifyRedirect());
 
       toast({
         title: "Email confirmed!",
@@ -118,14 +110,16 @@ export default function AuthPage() {
       const returnTo = params.get("returnTo");
       const joinSession = params.get("joinSession");
 
-      if (returnTo) {
+      // Only a same-site path is followed; anything else falls through to
+      // the normal landing below. Where they land is still decided by the
+      // page itself (the Organiser Hub gate checks real permissions).
+      const returnTarget = resolveReturnTarget({ returnTo, joinSession });
+      if (returnTarget) {
         toast({
           title: "Welcome back!",
           description: "You're signed in — picking up right where you left off.",
         });
-        const target = new URL(returnTo, window.location.origin);
-        if (joinSession) target.searchParams.set("joinSession", joinSession);
-        setLocation(target.pathname + target.search);
+        setLocation(returnTarget);
         return;
       }
 
@@ -155,7 +149,7 @@ export default function AuthPage() {
         return;
       }
 
-      setLocation(`/${loggedInUser.role}/${loggedInUser.slug}`);
+      setLocation(profilePathFor(loggedInUser));
 
     } catch (error: any) {
       if (error instanceof EmailNotVerifiedError) {
@@ -301,7 +295,8 @@ const onRegister = async (data: z.infer<typeof registerSchema>) => {
               </p>
             </div>
 
-            <Tabs defaultValue="login" className="w-full">
+            {/* ?tab=register opens Sign Up straight away (e.g. "Create an account" on a session page). */}
+            <Tabs defaultValue={new URLSearchParams(search).get("tab") === "register" ? "register" : "login"} className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-8">
                 <TabsTrigger value="login" data-testid="login-tab" className="cursor-pointer">Sign In</TabsTrigger>
                 <TabsTrigger value="register" data-testid="register-tab" className="cursor-pointer">Sign Up</TabsTrigger>

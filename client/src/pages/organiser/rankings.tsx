@@ -1,4 +1,3 @@
-import { OrganiserBarLogo } from "@/components/organiser/ui/organiser-bar-logo";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -10,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import {
   Select,
   SelectContent,
@@ -46,14 +45,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import SEO from "@/components/seo";
 
-import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar";
-import { useSidebarCollapsed } from "@/lib/use-sidebar-collapsed";
 import { cn } from "@/lib/utils";
-import { NotificationBell } from "@/components/organiser/ui/notification-bell";
-import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
-import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
 import { formatInTimeZone } from "@/lib/timezone";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
 import { seasonStatus, SEASON_STATUS_LABEL, SEASON_STATUS_STYLE, formatSeasonPeriod } from "@/lib/season-utils";
@@ -68,6 +61,7 @@ import {
   getPlayerRecentForm,
 } from "@/lib/api/organizer-rankings";
 import type { SeriesStandingRow } from "@shared/schema";
+import { OrganiserLayout } from "@/components/organiser/ui/organiser-layout";
 import { OrganiserBreadcrumb } from "@/components/organiser/ui/organiser-breadcrumb";
 
 const ALL_SESSIONS = "all";
@@ -123,11 +117,8 @@ function PodiumCard({ pos, player }: { pos: number; player: SeriesStandingRow })
 export default function OrganiserRankingsPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const profileHref = user ? `/${user.role}/${user.slug}` : "/";
-  const organiser = user ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null, isAdmin: user.isAdmin ?? false } : mockOrganiser;
 
   const [tab, setTab] = useState<"rankings" | "results" | "past">("rankings");
   const [seasonId, setSeasonId] = useState<string>("");
@@ -256,48 +247,15 @@ export default function OrganiserRankingsPage() {
 
   const totalPlayers = useMemo(() => new Set(standings.map((p) => p.userId)).size, [standings]);
 
-  if (authLoading) return null;
-  if (!isAuthenticated) {
-    setLocation("/auth");
-    return null;
-  }
-  if (!user?.isOrganizer) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-background">
-        <Card className="max-w-md w-full shadow-sm">
-          <CardContent className="p-6 text-muted-foreground">You need to be an approved organiser to view this page.</CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   const detailsPos = detailsPlayer ? standings.findIndex((p) => p.userId === detailsPlayer.userId) + 1 : 0;
 
   return (
-    <div className="min-h-screen flex bg-background" data-testid="organiser-rankings-page">
-      <SEO title="Rankings | Organiser Hub | TennisConnect" description="Track player standings and results across seasons and session series." noIndex />
-
-      <aside className={cn("hidden xl:flex shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto transition-[width] duration-200", sidebarCollapsed ? "xl:w-20" : "xl:w-72")}>
-        <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} className="w-full" collapsed={sidebarCollapsed} onToggleCollapsed={() => setSidebarCollapsed((v) => !v)} />
-      </aside>
-
-      <main id="main-content" className="flex-1 min-w-0 pb-16 md:pb-0">
-        <div className="flex xl:hidden items-center justify-between px-4 h-14 border-b border-border bg-card">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="hidden md:inline-flex" aria-label="Open Organiser Hub menu" data-testid="organiser-sidebar-trigger">
-                <Menu className="w-5 h-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-72">
-              <SheetTitle className="sr-only">Organiser Hub navigation</SheetTitle>
-              <OrganiserSidebarNav organiser={organiser} profileHref={profileHref} />
-            </SheetContent>
-          </Sheet>
-          <OrganiserBarLogo />
-          <div className="hidden md:block mr-auto font-display font-bold">Rankings</div>
-          <div className="flex items-center gap-1"><NotificationBell testId="organiser-header-bell-mobile" /></div>
-        </div>
+    <OrganiserLayout
+      testId="organiser-rankings-page"
+      seoTitle="Rankings | Organiser Hub | TennisConnect"
+      seoDescription="Track player standings and results across seasons and session series."
+      mobileTitle="Rankings"
+    >
 
         <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
           <OrganiserBreadcrumb current="Rankings" testId="organiser-rankings-page-breadcrumb" />
@@ -653,9 +611,6 @@ export default function OrganiserRankingsPage() {
             </div>
           )}
         </div>
-      </main>
-
-      <OrganiserMobileNav />
 
       <Sheet open={!!detailsPlayer} onOpenChange={(open) => !open && setDetailsPlayer(null)}>
         <SheetContent side="right" className="w-full sm:max-w-md" data-testid="organiser-rankings-player-details">
@@ -802,6 +757,6 @@ export default function OrganiserRankingsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </OrganiserLayout>
   );
 }

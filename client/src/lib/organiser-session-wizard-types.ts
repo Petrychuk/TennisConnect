@@ -1,5 +1,8 @@
 import { zonedTimeToUtc, toZonedDateTimeInputs } from "@/lib/timezone";
 import type { SessionWithDetails, SessionTemplate } from "@shared/schema";
+import { sessionCategoryOf } from "@shared/sessionCategories";
+import { policyColumns, readSessionPolicies } from "@shared/sessionPolicies";
+import { CLEARABLE_SESSION_FIELDS, DRAFT_PLACEHOLDER_TITLE, isPlaceholderTitle } from "@shared/sessionDraft";
 
 export type SessionTypeKey =
   | "social"
@@ -11,6 +14,7 @@ export type SessionTypeKey =
   | "club-championship"
   | "tournament"
   | "junior-event"
+  | "junior-development"
   | "cardio-tennis"
   | "coaching-clinic"
   | "custom";
@@ -47,20 +51,57 @@ export interface SessionTypeOption {
 export const SESSION_TYPE_OPTIONS: SessionTypeOption[] = [
   { key: "social", label: "Social Tennis", description: "Fun, random doubles", mostPopular: true, details: "Casual, flexible tennis focused on playing and socialising, with players and partners rotating throughout the session." },
   { key: "americano", label: "Americano", description: "Rotate partners · Individual points", details: "Players rotate partners over a series of rounds, with points typically tracked individually to create an overall ranking." },
-  { key: "round-robin", label: "Round Robin", description: "Everyone plays · Structured format", details: "Every player, pair, or team competes against others in their group — a structured format that works well for both social and competitive play." },
-  { key: "mexicano", label: "Mexicano", description: "Competitive doubles · Level based", details: "A dynamic format where pairings are adjusted between rounds based on results, helping create increasingly balanced matches." },
-  { key: "king-of-the-court", label: "King of the Court", description: "Challenge and play · Elimination style", details: "Winners move up or stay on the top court while other players rotate — a fast-paced competitive format with continuous movement." },
-  { key: "tournament", label: "Tournament", description: "Draw · Elimination · Champion", details: "A structured competition using knockout, group, or combined formats, progressing toward final standings or a champion." },
-  { key: "league", label: "League Match", description: "Home vs away · Team points · Season", details: "Players or teams compete across scheduled matches, with results contributing to season standings or league rankings." },
-  { key: "club-championship", label: "Club Championship", description: "Seeded draw · Qualifying · Final", details: "A club competition played across one or more stages to determine champions within selected events, divisions, or categories." },
-  { key: "junior-event", label: "Junior Event", description: "Age groups · Development focused", details: "A junior-focused session or competition that can be organised by age, skill level, or development goals." },
+  { key: "round-robin", label: "Round Robin", description: "Everyone plays · Mixed opponents", details: "Players meet as many different partners and opponents as possible over the rounds. Live avoids repeat pairings where it can; it doesn't generate a fixed fixture list." },
+  { key: "mexicano", label: "Mexicano", description: "Competitive doubles · Rotating", details: "Competitive doubles over several rounds with points tracked per player. Live doesn't pair players by results yet - rounds are shuffled, avoiding repeat partners." },
+  { key: "king-of-the-court", label: "King of the Court", description: "Short games · Constant rotation", details: "Fast, short games with players rotating every round. Live doesn't move winners between courts yet - each round is shuffled and scores are recorded per match." },
+  { key: "tournament", label: "Tournament", description: "Results count · Leaderboard", details: "A competitive event where every match result counts towards the session leaderboard. Knockout draws and brackets aren't available yet." },
+  { key: "league", label: "League Match", description: "Results count · Season rankings", details: "Matches whose results count towards a season or series ranking. Team (home vs away) scoring isn't available." },
+  { key: "club-championship", label: "Club Championship", description: "Club event · Divisions", details: "Your club's championship, with divisions for each event if you need them. Seeded draws, qualifying and finals aren't available yet - matches are recorded in rounds." },
+  { key: "junior-event", label: "Junior Competition", description: "Age groups · Competitive", details: "A competition for junior players, organised by age group or level, where results count." },
   { key: "cardio-tennis", label: "Cardio Tennis", description: "Fitness format · High rotation", details: "A high-energy, fitness-focused tennis session combining fast-paced drills, movement, and frequent player rotation." },
   { key: "coaching-clinic", label: "Coaching Clinic", description: "Instructor led · Skill building", details: "A coach-led session focused on specific skills, technique, tactics, or match play through structured drills and activities." },
-  { key: "custom", label: "Custom Session", description: "Create your own · Fully flexible", details: "Build your own format by choosing the rules, scoring, rounds, player rotation, and other session settings." },
+  { key: "junior-development", label: "Junior Development", description: "Age groups · Coach led", details: "A coaching programme for junior players, organised by age or level, focused on learning and development rather than results." },
+  { key: "custom", label: "Custom Session", description: "Anything else · Flexible", details: "For anything the other types don't cover: set singles or doubles, games and rounds, and describe the rest in the description and rules." },
 ];
 
 export type Visibility = "public" | "members" | "invite";
 export type PricingMode = "free" | "paid";
+
+/**
+ * Who a session is for. "" = all levels (stored as null - the same "no
+ * restriction" Play's level filter already treats a null skillLevel as).
+ */
+export const SESSION_LEVEL_OPTIONS = [
+  { value: "", label: "All levels" },
+  { value: "Beginner", label: "Beginner" },
+  { value: "Intermediate", label: "Intermediate" },
+  { value: "Advanced", label: "Advanced" },
+] as const;
+
+/*
+ * Mixed Doubles has no column of its own: matchMode stays "doubles" (that is
+ * what TC Live pairs by) and category records the mix as "mixed". Older
+ * sessions only had it as the "Format: Mixed Doubles" description prefix, so
+ * that is still recognised when reading.
+ */
+export function isMixedSession(row: { category?: string | null; description?: string | null }): boolean {
+  return row.category === "mixed" || /^Format: Mixed Doubles/.test(row.description ?? "");
+}
+/** "Mixed Doubles", "Men's Singles", "Doubles" ... - null when no format is set. */
+export function sessionFormatLabel(row: { matchMode?: string | null; category?: string | null; description?: string | null }): string | null {
+  if (row.matchMode == null) return null;
+  if (isMixedSession(row)) return "Mixed Doubles";
+  const base = row.matchMode === "singles" ? "Singles" : "Doubles";
+  if (row.category === "mens") return `Men's ${base}`;
+  if (row.category === "womens") return `Women's ${base}`;
+  return base;
+}
+function readCategory(category: string | null | undefined): NewSessionDraft["category"] | null {
+  return category === "mens" || category === "womens" || category === "open" ? category : null;
+}
+function categoryToSave(draft: Pick<NewSessionDraft, "matchType" | "category">): string {
+  return draft.matchType === "mixed" ? "mixed" : draft.category;
+}
 
 export interface NewSessionDraft {
   // Step 1
@@ -106,10 +147,15 @@ export interface NewSessionDraft {
   // Step 3 - Format
   matchType: "singles" | "doubles" | "mixed";
   category: "open" | "mens" | "womens";
+  /** "" = all levels. See SESSION_LEVEL_OPTIONS. */
+  skillLevel: string;
   gamesTo: number;
   roundsCount: number;
   noAd: boolean;
   tiebreak: boolean;
+  // Pairing + Live Settings + allowLateRegistration: kept in the draft
+  // shape (templates and older drafts carry them) but NOT shown or sent -
+  // nothing in the backend applies them (Phase 2, Batch 1).
   // Pairing
   randomPartners: boolean;
   avoidRepeatPartners: boolean;
@@ -167,6 +213,7 @@ export function createEmptyDraft(): NewSessionDraft {
     coverImage: null,
     matchType: "doubles",
     category: "open",
+    skillLevel: "",
     gamesTo: 4,
     roundsCount: 5,
     noAd: true,
@@ -253,13 +300,102 @@ export function sessionToDraft(session: SessionWithDetails): NewSessionDraft {
     price: session.price ? Number(session.price) : empty.price,
     visibility: (session.visibility as Visibility) ?? empty.visibility,
     coverImage: session.coverImage ?? empty.coverImage,
-    matchType: session.matchMode === "singles" ? "singles" : "doubles",
-    category: (session.category as NewSessionDraft["category"]) ?? empty.category,
+    matchType: isMixedSession(session) ? "mixed" : session.matchMode === "singles" ? "singles" : "doubles",
+    category: readCategory(session.category) ?? empty.category,
+    skillLevel: session.skillLevel ?? "",
     gamesTo: session.gamesTo ?? empty.gamesTo,
     roundsCount: session.plannedRoundsCount ?? empty.roundsCount,
     noAd: session.noAd ?? empty.noAd,
     tiebreak: session.tiebreak ?? empty.tiebreak,
     seasonId: session.seasonId ?? empty.seasonId,
+    // Columns, or the policy paragraphs of an older session's description.
+    ...(() => {
+      const { policies } = readSessionPolicies(session);
+      return {
+        rulesText: policies.rules ?? "",
+        refundPolicy: policies.refund ?? "",
+        latePolicy: policies.lateArrival ?? "",
+        cancellationPolicy: policies.cancellation ?? "",
+      };
+    })(),
+  };
+}
+
+/*
+ * Saving a DRAFT (Save as Draft, every step) - shared/sessionDraft.ts has the rules.
+ *
+ * draftToSessionPayload: a draft may be incomplete, so nothing publish-only is
+ * required here. A name that is empty (or a single character, which the server
+ * would refuse) is stored as the placeholder title; a type that was never chosen
+ * is left out so the row keeps its default. When the draft is already saved
+ * ("update"), every optional field the form has emptied is sent as an explicit
+ * null, otherwise a cleared venue / end time / cover photo would quietly keep its
+ * old value in the row.
+ */
+export function draftToSessionPayload(draft: NewSessionDraft, mode: "create" | "update") {
+  const base: Record<string, unknown> = { ...draftToInsertSession(draft) };
+  base.title = draft.name.trim().length >= 2 ? draft.name.trim() : DRAFT_PLACEHOLDER_TITLE;
+  if (draft.type === null) delete base.type;
+  if (mode === "update") {
+    for (const key of CLEARABLE_SESSION_FIELDS) {
+      if (base[key] === undefined) base[key] = null;
+    }
+  }
+  return base;
+}
+
+/**
+ * The inverse for RESUMING a saved draft (Continue Setup / ?draft=<id>). Unlike
+ * sessionToDraft (Duplicate: "(Copy)" in the name, dates reset to today) this
+ * keeps exactly what was saved: the name (the placeholder title shows as an empty
+ * name again), real dates and times, registration window, multi-day end date,
+ * and a blank stays blank instead of snapping back to a default.
+ */
+export function savedSessionToDraft(session: SessionWithDetails): NewSessionDraft {
+  const empty = createEmptyDraft();
+  const zone = session.timeZone ?? empty.timeZone;
+  const start = toZonedDateTimeInputs(session.startAt, zone);
+  const end = session.endAt ? toZonedDateTimeInputs(session.endAt, zone) : null;
+  const opens = session.registrationOpensAt ? toZonedDateTimeInputs(session.registrationOpensAt, zone) : null;
+  const closes = session.registrationClosesAt ? toZonedDateTimeInputs(session.registrationClosesAt, zone) : null;
+  const { policies } = readSessionPolicies(session);
+  const priceNum = session.price ? Number(session.price) : 0;
+  const mixed = isMixedSession(session);
+
+  return {
+    ...empty,
+    type: (session.type as SessionTypeKey) ?? null,
+    name: isPlaceholderTitle(session.title) ? "" : session.title,
+    seasonId: session.seasonId ?? null,
+    venue: session.location ?? "",
+    courtCount: session.courtsCount ?? 0,
+    timeZone: zone,
+    date: start.date,
+    endDate: end && end.date !== start.date ? end.date : "",
+    startTime: start.time,
+    endTime: end?.time ?? "",
+    registrationOpens: opens?.date ?? "",
+    registrationOpensTime: opens?.time ?? empty.registrationOpensTime,
+    registrationCloses: closes?.date ?? "",
+    registrationClosesTime: closes?.time ?? empty.registrationClosesTime,
+    maxPlayers: session.maxParticipants ?? 0,
+    waitingListEnabled: session.waitingListEnabled ?? empty.waitingListEnabled,
+    waitingListCapacity: session.waitingListEnabled ? (session.waitingListCapacity ?? null) : empty.waitingListCapacity,
+    pricing: priceNum > 0 ? "paid" : "free",
+    price: priceNum > 0 ? priceNum : empty.price,
+    visibility: (session.visibility as Visibility) ?? empty.visibility,
+    coverImage: session.coverImage ?? null,
+    matchType: mixed ? "mixed" : session.matchMode === "singles" ? "singles" : "doubles",
+    category: readCategory(session.category) ?? empty.category,
+    skillLevel: session.skillLevel ?? "",
+    gamesTo: session.gamesTo ?? empty.gamesTo,
+    roundsCount: session.plannedRoundsCount ?? empty.roundsCount,
+    noAd: session.noAd ?? empty.noAd,
+    tiebreak: session.tiebreak ?? empty.tiebreak,
+    rulesText: policies.rules ?? "",
+    refundPolicy: policies.refund ?? "",
+    latePolicy: policies.lateArrival ?? "",
+    cancellationPolicy: policies.cancellation ?? "",
   };
 }
 
@@ -306,8 +442,9 @@ export function templateToDraft(template: SessionTemplate): NewSessionDraft {
     pricing: template.price && Number(template.price) > 0 ? "paid" : "free",
     price: template.price ? Number(template.price) : empty.price,
     visibility: (template.visibility as Visibility) ?? empty.visibility,
-    matchType: template.matchMode === "singles" ? "singles" : "doubles",
-    category: (template.category as NewSessionDraft["category"]) ?? empty.category,
+    matchType: template.category === "mixed" ? "mixed" : template.matchMode === "singles" ? "singles" : "doubles",
+    category: readCategory(template.category) ?? empty.category,
+    skillLevel: template.skillLevel ?? "",
     gamesTo: template.gamesTo ?? empty.gamesTo,
     roundsCount: template.plannedRoundsCount ?? empty.roundsCount,
     noAd: template.noAd ?? empty.noAd,
@@ -342,7 +479,8 @@ export function draftToTemplateConfig(draft: NewSessionDraft, name: string) {
     visibility: draft.visibility,
     courtsCount: draft.courtCount || null,
     matchMode: draft.matchType === "singles" ? "singles" : "doubles",
-    category: draft.category,
+    category: categoryToSave(draft),
+    skillLevel: draft.skillLevel || null,
     gamesTo: draft.gamesTo || null,
     noAd: draft.noAd,
     tiebreak: draft.tiebreak,
@@ -371,32 +509,24 @@ export function draftToInsertSession(draft: NewSessionDraft) {
   const baseMatchTypeLabel = draft.matchType === "mixed" ? "Mixed Doubles" : draft.matchType === "doubles" ? "Doubles" : "Singles";
   const categoryPrefix = draft.category === "mens" ? "Men's " : draft.category === "womens" ? "Women's " : "";
   const matchTypeLabel = draft.matchType === "mixed" ? baseMatchTypeLabel : `${categoryPrefix}${baseMatchTypeLabel}`;
-  const pairingLabels = [
-    draft.randomPartners ? "Random Partners" : null,
-    draft.avoidRepeatPartners ? "Avoid Repeat Partners" : null,
-    draft.balanceWaitingList ? "Balance Waiting List" : null,
-    draft.usePlayerRating ? "Rating-Based Pairing" : null,
-    draft.allowGuests ? "Guests Allowed" : null,
-  ].filter(Boolean);
-  const formatSummary = [
+  // The pairing toggles (random partners, rating-based, guests, ...) are no
+  // longer shown (Phase 2, Batch 1): they were never applied, yet their
+  // defaults (mostly "on") were written into every session's description.
+  // Coaching & Fitness has no match format (shared/sessionCategories.ts).
+  const usesMatchFormat = sessionCategoryOf(draft.type).usesMatchFormat;
+  const formatSummary = !usesMatchFormat ? "" : [
     `Format: ${matchTypeLabel}`,
     `Games to ${draft.gamesTo}`,
     `${draft.roundsCount} rounds`,
     draft.noAd ? "No-Ad" : null,
     draft.tiebreak ? "Tiebreak" : null,
-    pairingLabels.length ? pairingLabels.join(", ") : null,
   ]
     .filter(Boolean)
     .join(" · ");
 
-  const policySections = [
-    draft.rulesText.trim() ? `Rules: ${draft.rulesText.trim()}` : null,
-    draft.refundPolicy.trim() ? `Refund Policy: ${draft.refundPolicy.trim()}` : null,
-    draft.latePolicy.trim() ? `Late Arrivals: ${draft.latePolicy.trim()}` : null,
-    draft.cancellationPolicy.trim() ? `Cancellations: ${draft.cancellationPolicy.trim()}` : null,
-  ].filter(Boolean);
-
-  const fullDescription = [formatSummary, ...policySections].filter(Boolean).join("\n\n");
+  // Rules and policies have their own columns now (shared/sessionPolicies.ts)
+  // - they used to be folded into the description, so Edit lost them.
+  const fullDescription = formatSummary;
 
   return {
     title: draft.name || "Untitled Session",
@@ -415,17 +545,29 @@ export function draftToInsertSession(draft: NewSessionDraft) {
     courtsCount: draft.courtCount || undefined,
     waitingListEnabled: draft.waitingListEnabled,
     waitingListCapacity: draft.waitingListEnabled ? draft.waitingListCapacity : undefined,
+    skillLevel: draft.skillLevel || undefined,
+    ...policyColumns({
+      rules: draft.rulesText,
+      refund: draft.refundPolicy,
+      lateArrival: draft.latePolicy,
+      cancellation: draft.cancellationPolicy,
+    }),
     // Structured, queryable versions of what formatSummary above already
     // folds into description as text - matchMode also drives TC Live's
     // pairing engine (server/services/liveEngine.ts), which previously
     // never learned what the organizer picked here and silently treated
     // every session as doubles regardless.
-    matchMode: draft.matchType === "singles" ? "singles" : "doubles",
-    category: draft.category,
-    gamesTo: draft.gamesTo || undefined,
-    noAd: draft.noAd,
-    tiebreak: draft.tiebreak,
-    plannedRoundsCount: draft.roundsCount || undefined,
+    // Not sent for Coaching & Fitness: no format, scoring or rounds there.
+    ...(usesMatchFormat
+      ? {
+          matchMode: draft.matchType === "singles" ? "singles" : "doubles",
+          category: categoryToSave(draft),
+          gamesTo: draft.gamesTo || undefined,
+          noAd: draft.noAd,
+          tiebreak: draft.tiebreak,
+          plannedRoundsCount: draft.roundsCount || undefined,
+        }
+      : {}),
     seasonId: draft.seasonId || undefined,
   };
 }

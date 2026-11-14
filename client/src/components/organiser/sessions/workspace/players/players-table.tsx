@@ -1,81 +1,43 @@
-import { useState } from "react";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, ArrowUpDown, Trash2, MessageSquare, UserCircle } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import { formatInTimeZone } from "@/lib/timezone";
-import { useToast } from "@/hooks/use-toast";
 import type { SessionPlayer } from "@/lib/organiser-sessions-mock-data";
+import { LEVEL_BADGE_STYLE, STATUS_BADGE_STYLE, STATUS_LABEL, playerRowActions } from "./player-row-actions";
 
 interface PlayersTableProps {
   players: SessionPlayer[];
   onCheckIn?: (player: SessionPlayer) => void;
   onRemove?: (player: SessionPlayer) => void;
+  onMessage?: (player: SessionPlayer) => void;
   onMoveToWaiting?: (player: SessionPlayer) => void;
   onViewProfile?: (player: SessionPlayer) => void;
-  showGroupColumn?: boolean;
   showJoinedColumn?: boolean;
   // The venue's own zone (session.timeZone) - Joined/Check-in times are
-  // stored as absolute instants, and displaying them without this
-  // showed the ORGANIZER'S OWN BROWSER's local time instead of the
-  // venue's, silently disagreeing with every other real player who
-  // might be checking this from a different timezone.
+  // absolute instants and must be shown in the venue's time, not the
+  // organiser's browser's.
   timeZone: string;
 }
 
-const LEVEL_BADGE_STYLE: Record<SessionPlayer["levelLabel"], string> = {
-  Advanced: "bg-primary/20 text-primary-text",
-  Intermediate: "bg-secondary text-secondary-foreground",
-  Beginner: "bg-secondary text-secondary-foreground",
-  Social: "bg-muted text-muted-foreground",
-};
-
-const STATUS_BADGE_STYLE: Record<SessionPlayer["status"], string> = {
-  registered: "bg-primary/20 text-primary-text",
-  waiting: "bg-muted text-muted-foreground",
-  cancelled: "bg-destructive/10 text-destructive",
-  invited: "bg-accent text-accent-foreground",
-  "no-response": "bg-muted text-muted-foreground",
-};
-
-export function PlayersTable({ players, onCheckIn, onRemove, onMoveToWaiting, onViewProfile, showGroupColumn = false, showJoinedColumn = true, timeZone }: PlayersTableProps) {
-  const { toast } = useToast();
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-
-  const toggle = (id: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-
-  const notify = (action: string, player: SessionPlayer) =>
-    toast({ title: `${action} — coming soon`, description: `Would apply to ${player.name}.` });
-
+// Phase 2: no selection checkboxes (there were no bulk actions behind
+// them), no "Real" badge or demo rating (left over from mock players), and
+// every menu item does what it says - Message opens the real composer.
+export function PlayersTable({ players, onCheckIn, onRemove, onMessage, onMoveToWaiting, onViewProfile, showJoinedColumn = true, timeZone }: PlayersTableProps) {
   return (
     <div className="overflow-x-auto" data-testid="organiser-players-table">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-8">
-              <Checkbox
-                checked={selected.size > 0 && selected.size === players.length}
-                onCheckedChange={(checked) => setSelected(checked ? new Set(players.map((p) => p.id)) : new Set())}
-                data-testid="organiser-players-select-all"
-              />
-            </TableHead>
             <TableHead>Player</TableHead>
             <TableHead>Level</TableHead>
-            {showGroupColumn && <TableHead>Group</TableHead>}
             <TableHead>Status</TableHead>
             <TableHead>Check-in</TableHead>
             {showJoinedColumn && <TableHead>Joined</TableHead>}
@@ -83,110 +45,79 @@ export function PlayersTable({ players, onCheckIn, onRemove, onMoveToWaiting, on
           </TableRow>
         </TableHeader>
         <TableBody>
-          {players.map((player) => (
-            <TableRow key={player.id} data-testid={`organiser-players-row-${player.id}`}>
-              <TableCell>
-                <Checkbox
-                  checked={selected.has(player.id)}
-                  onCheckedChange={() => toggle(player.id)}
-                  data-testid={`organiser-players-row-${player.id}-select`}
-                />
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2.5">
-                  <Avatar className="h-8 w-8 border border-border">
-                    <AvatarImage src={player.avatar ?? undefined} alt={player.name} />
-                    <AvatarFallback className="bg-primary/10 text-primary-text text-xs font-bold">
-                      {player.name[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="font-medium">{player.name}</span>
-                  {player.isReal && (
-                    <Badge className="bg-primary/10 text-primary-text" data-testid={`organiser-players-row-${player.id}-real`}>
-                      Real
-                    </Badge>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1.5">
-                  {/* No real numeric rating exists for any player yet
-                      (no rating pipeline) - showing a decimal here for
-                      a real registration would be a fabricated number,
-                      not real data. Only ever shown for the mock
-                      "crowd" data, which does carry a fake-but-labelled
-                      demo rating. */}
-                  {!player.isReal && <span className="text-sm">{player.level.toFixed(1)}</span>}
-                  <Badge className={LEVEL_BADGE_STYLE[player.levelLabel]}>{player.levelLabel}</Badge>
-                </div>
-              </TableCell>
-              {showGroupColumn && <TableCell>{player.group ?? "—"}</TableCell>}
-              <TableCell>
-                <Badge className={STATUS_BADGE_STYLE[player.status]}>
-                  {player.status === "registered"
-                    ? "Registered"
-                    : player.status === "waiting"
-                    ? "Waiting"
-                    : player.status === "cancelled"
-                    ? "Cancelled"
-                    : player.status === "invited"
-                    ? "Invited"
-                    : "No Response"}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                {player.status !== "registered" ? (
-                  "—"
-                ) : player.checkedIn && player.checkInTime ? (
-                  <span className="flex items-center gap-1 text-primary-text font-medium">
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                    {formatInTimeZone(player.checkInTime, timeZone, { hour: "numeric", minute: "2-digit" })}
-                  </span>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onCheckIn?.(player)}
-                    data-testid={`organiser-players-row-${player.id}-checkin`}
-                  >
-                    Check In
-                  </Button>
-                )}
-              </TableCell>
-              {showJoinedColumn && (
-                <TableCell className="text-muted-foreground text-sm">
-                  {formatInTimeZone(player.joinedAt, timeZone, { hour: "numeric", minute: "2-digit" })}
+          {players.map((player) => {
+            const actions = playerRowActions(player, { onMoveToWaiting, onMessage, onViewProfile, onRemove });
+            return (
+              <TableRow key={player.id} data-testid={`organiser-players-row-${player.id}`}>
+                <TableCell>
+                  <div className="flex items-center gap-2.5">
+                    <Avatar className="h-8 w-8 border border-border">
+                      <AvatarImage src={player.avatar ?? undefined} alt="" />
+                      <AvatarFallback className="bg-primary/10 text-primary-text text-xs font-bold">
+                        {player.name[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="font-medium">{player.name}</span>
+                  </div>
                 </TableCell>
-              )}
-              <TableCell className="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" aria-label="More actions" data-testid={`organiser-players-row-${player.id}-menu`}>
-                      <MoreHorizontal aria-hidden="true" className="w-4 h-4" />
+                <TableCell>
+                  <Badge className={LEVEL_BADGE_STYLE[player.levelLabel]}>{player.levelLabel}</Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge className={STATUS_BADGE_STYLE[player.status]}>{STATUS_LABEL[player.status]}</Badge>
+                </TableCell>
+                <TableCell>
+                  {player.status !== "registered" || (!onCheckIn && !player.checkedIn) ? (
+                    "—"
+                  ) : player.checkedIn && player.checkInTime ? (
+                    <span className="flex items-center gap-1 text-primary-text font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary" aria-hidden="true" />
+                      {formatInTimeZone(player.checkInTime, timeZone, { hour: "numeric", minute: "2-digit" })}
+                    </span>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onCheckIn?.(player)}
+                      aria-label={`Check in ${player.name}`}
+                      data-testid={`organiser-players-row-${player.id}-checkin`}
+                    >
+                      Check In
                     </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => (onMoveToWaiting ? onMoveToWaiting(player) : notify("Move to Waiting", player))}>
-                      <ArrowUpDown className="w-4 h-4 mr-2" />
-                      Move to Waiting
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => notify("Message", player)}>
-                      <MessageSquare className="w-4 h-4 mr-2" />
-                      Message
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => (onViewProfile ? onViewProfile(player) : notify("View Profile", player))}>
-                      <UserCircle className="w-4 h-4 mr-2" />
-                      View Profile
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => (onRemove ? onRemove(player) : notify("Remove", player))} className="text-destructive">
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Remove
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          ))}
+                  )}
+                </TableCell>
+                {showJoinedColumn && (
+                  <TableCell className="text-muted-foreground text-sm">
+                    {formatInTimeZone(player.joinedAt, timeZone, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}
+                  </TableCell>
+                )}
+                <TableCell className="text-right">
+                  {actions.length > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" aria-label={`Actions for ${player.name}`} data-testid={`organiser-players-row-${player.id}-menu`}>
+                          <MoreHorizontal aria-hidden="true" className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {actions.map((action) => (
+                          <DropdownMenuItem
+                            key={action.key}
+                            onClick={action.onSelect}
+                            className={action.destructive ? "text-destructive" : undefined}
+                            data-testid={`organiser-players-row-${player.id}-${action.key}`}
+                          >
+                            <action.icon className="w-4 h-4 mr-2" />
+                            {action.label}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>

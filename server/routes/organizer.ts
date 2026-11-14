@@ -3,8 +3,22 @@ import { storage } from "../storage";
 import { requireAuth, requireAdmin } from "../requireAuth";
 import { env } from "../env";
 import { sendMessageBetween, ORGANIZER_APPROVED_SUBJECT, ORGANIZER_APPROVED_MESSAGE } from "../services/systemMessages";
+import { organizationProfileSchema, organizationProfileUpdateSchema } from "@shared/organizationProfile";
+import { canArchiveSession, canCancelSession, canChangeRoster, canInviteToSession, resultsAreFinal } from "@shared/sessionActions";
+import { joinBlockedReason } from "@shared/sessionJoinRules";
+import { registrationBlockReason } from "@shared/sessionLifecycle";
+import { isInternalTestUser, liveAllowedFor, liveMode } from "../lib/liveFeature";
+import { LiveRuleError } from "../lib/liveErrors";
+import { goLiveProblem, scoreProblem } from "@shared/liveRules";
 import {
-  insertOrganizationSchema,
+  STALE_DRAFT_MESSAGE,
+  publishProblems,
+  publishStatusProblem,
+  readExpectedUpdatedAt,
+  splitNullClears,
+} from "@shared/sessionDraft";
+import {
+  type InsertOrganization,
   insertSessionSchema,
   insertMatchScoreSchema,
   insertSessionTemplateSchema,
@@ -13,6 +27,7 @@ import {
   updateSeasonSchema,
   type Season,
   type TennisSession,
+  type InsertSession,
   insertSeriesSchema,
   updateSeriesSchema,
   type Series,
@@ -141,12 +156,14 @@ router.post("/organizations", requireAuth, requireOrganizer, async (req, res, ne
       return res.status(400).json({ message: "You already have an organization" });
     }
 
-    const parsed = insertOrganizationSchema.safeParse(req.body);
+    // Profile fields only - verified / listingType / status stay server-
+    // and admin-owned (shared/organizationProfile.ts).
+    const parsed = organizationProfileSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ message: "Invalid input", errors: parsed.error });
     }
 
-    const organization = await storage.createOrganization(ownerId, parsed.data);
+    const organization = await storage.createOrganization(ownerId, parsed.data as InsertOrganization);
     res.status(201).json(organization);
   } catch (error) {
     next(error);
@@ -160,12 +177,12 @@ router.put("/organizations/:id", requireAuth, requireOrganizer, async (req, res,
       return res.status(404).json({ message: "Organization not found" });
     }
 
-    const parsed = insertOrganizationSchema.partial().safeParse(req.body);
+    const parsed = organizationProfileUpdateSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ message: "Invalid input", errors: parsed.error });
     }
 
-    const updated = await storage.updateOrganization(organization.id, parsed.data);
+    const updated = await storage.updateOrganization(organization.id, parsed.data as Partial<InsertOrganization>);
     res.json(updated);
   } catch (error) {
     next(error);
@@ -691,7 +708,7 @@ router.get("/dashboard/stats", requireAuth, async (req, res, next) => {
   try {
     const organization = await storage.getOrganizationOwnedByUser((req.user as any).id);
     if (!organization) {
-      return res.json({ activePlayers: 0, attendancePercent: 0, revenueThisWeek: 0, revenueCurrency: "AUD" });
+      return res.json({ activePlayers: 0, attendancePercent: null, revenueThisWeek: 0, revenueCurrency: "AUD" });
     }
     const stats = await storage.getOrganizerDashboardStats(organization.id);
     res.json(stats);
@@ -719,10 +736,22 @@ router.get("/dashboard/activity", requireAuth, async (req, res, next) => {
 // Players page and a session's own Players tab invite dialogs.
 router.get("/players/search", requireAuth, async (req, res, next) => {
   try {
-    const query = typeof req.query.q === "string" ? req.query.q.trim() : "";
-    if (query.length < 2) {
+    const rawQuery = typeof req.query.q === "string" ? req.query.q.trim() : "";
+    // Narrowing filters for the invite dialog. Players only unless scope=all.
+    const level = typeof req.query.level === "string" ? req.query.level.trim() : "";
+    const location = typeof req.query.location === "string" ? req.query.location.trim() : "";
+    const filters = {
+      level: level || undefined,
+      location: location || undefined,
+      lookingToPlay: req.query.lookingToPlay === "1" || req.query.lookingToPlay === "true",
+      allRoles: req.query.scope === "all",
+    };
+    const hasFilter = !!(filters.level || filters.location || filters.lookingToPlay);
+    // Names need 2+ characters; with a filter active the list can be browsed without a name.
+    if (rawQuery.length < 2 && !hasFilter) {
       return res.json([]);
     }
+    const query = rawQuery.length >= 2 ? rawQuery : "";
 
     const context: { sessionId?: string; organizationId?: string } = {};
 
@@ -742,7 +771,7 @@ router.get("/players/search", requireAuth, async (req, res, next) => {
       }
     }
 
-    const results = await storage.searchUsers(query, (req.user as any).id, 10, context);
+    const results = await storage.searchUsers(query, (req.user as any).id, hasFilter ? 20 : 10, context, filters);
     res.json(results);
   } catch (error) {
     next(error);
@@ -803,7 +832,11 @@ router.post("/sessions", requireAuth, requireOrganizer, async (req, res, next) =
       return res.status(400).json({ message: "Invalid input", errors: parsed.error });
     }
 
-    const session = await storage.createSession(organization.id, ownerId, parsed.data);
+    // Internal test identities (TC_INTERNAL_TEST_EMAILS) create internal test
+    // sessions - hidden from the public, Live-only in TC_LIVE_ENABLED=internal.
+    const isInternalTest = isInternalTestUser((req.user as any).email);
+    const session = await storage.createSession(organization.id, ownerId, parsed.data, { isInternalTest });
+    if (isInternalTest) console.log(`[TC LIVE] internal test session ${session.id} created by ${ownerId}`);
     res.status(201).json(session);
   } catch (error) {
     next(error);
@@ -827,14 +860,89 @@ async function requireOwnSession(req: Request, res: Response, next: NextFunction
   }
 }
 
+// For the routes that act on one registration of an organiser's session
+// (/sessions/:id/.../:registrationId). requireOwnSession only proves the
+// organiser owns :id - without this, any organiser could check in, remove,
+// waitlist or set the live status of a registration in SOMEONE ELSE'S
+// session by pairing their own session id with that registration id
+// (Phase 2 audit, 30 Oct 2026). A registration of another session is a
+// 404, the same answer as one that doesn't exist.
+async function requireRegistrationInSession(req: Request, res: Response, next: NextFunction) {
+  try {
+    const registration = await storage.getRegistrationById(req.params.registrationId);
+    if (!registration || registration.sessionId !== req.params.id) {
+      return res.status(404).json({ message: "Registration not found" });
+    }
+    (req as any).registration_ = registration;
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Check-in, remove, move to the waiting list: each changes who is on the
+// leaderboard, so they stop once the session has finished (TC-189 phase 5;
+// shared/sessionActions.ts canChangeRoster). Runs after requireOwnSession.
+function requireRosterOpen(req: Request, res: Response, next: NextFunction) {
+  const session = (req as any).session_ as TennisSession;
+  if (!canChangeRoster(session.status)) {
+    return res.status(409).json({ message: `This session is ${session.status} - its players and results can't be changed` });
+  }
+  next();
+}
+
+// Same rule for /sessions/:id/matches/:matchId/* (TC Live score entry).
+async function requireMatchInSession(req: Request, res: Response, next: NextFunction) {
+  try {
+    const match = await storage.getMatchById(req.params.matchId);
+    if (!match || match.sessionId !== req.params.id) {
+      return res.status(404).json({ message: "Match not found" });
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
 router.put("/sessions/:id", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
   try {
-    const parsed = insertSessionSchema.partial().safeParse(req.body);
+    // `null` on an optional field means "clear it" (a draft whose venue was
+    // emptied must not keep the old one) and `expectedUpdatedAt` is the
+    // stale-write guard - both in shared/sessionDraft.ts.
+    const { expectedUpdatedAt: expectedRaw, ...bodyWithoutGuard } = (req.body ?? {}) as Record<string, unknown>;
+    const { rest, clears } = splitNullClears(bodyWithoutGuard);
+    const expected = readExpectedUpdatedAt(expectedRaw);
+    if (expected.kind === "invalid") {
+      return res.status(400).json({ message: "expectedUpdatedAt must be an ISO date" });
+    }
+    const parsed = insertSessionSchema.partial().safeParse(rest);
     if (!parsed.success) {
       return res.status(400).json({ message: "Invalid input", errors: parsed.error });
     }
     const before = (req as any).session_ as TennisSession;
-    const updated = await storage.updateSession(req.params.id, parsed.data);
+    // An archived session is closed. Hiding Edit in the UI is not enough - the
+    // API refuses too (Duplicate it to run the session again).
+    // A finished session (completed through TC Live, or archived) keeps its
+    // results as they were played: no edits, not even a new date - that
+    // would turn a played session back into an upcoming one. Duplicate it to
+    // run it again (shared/sessionLifecycle.ts).
+    if (before.status === "archived" || before.status === "completed") {
+      return res.status(409).json({
+        code: before.status,
+        message: `${before.status === "completed" ? "Completed" : "Archived"} sessions can't be edited. Duplicate the session to run it again.`,
+      });
+    }
+    const changes = { ...parsed.data, ...clears } as Partial<InsertSession> & Record<string, unknown>;
+    let updated: TennisSession;
+    if (expected.kind === "ok") {
+      const saved = await storage.updateSessionIfUnchanged(req.params.id, changes, expected.at);
+      if (!saved) {
+        return res.status(409).json({ code: "stale", message: STALE_DRAFT_MESSAGE });
+      }
+      updated = saved;
+    } else {
+      updated = await storage.updateSession(req.params.id, changes);
+    }
 
     // Only startAt actually changing means a real reschedule - a
     // no-op PUT (saving the form without touching the date/time) or a
@@ -844,7 +952,8 @@ router.put("/sessions/:id", requireAuth, requireOrganizer, requireOwnSession, as
     // the actual decision a "when's it now" notice needs to inform.
     const oldStart = new Date(before.startAt).getTime();
     const newStart = new Date(updated.startAt).getTime();
-    if (oldStart !== newStart) {
+    // (A draft has nobody registered - saving one never notifies anyone.)
+    if (oldStart !== newStart && before.status !== "draft") {
       const organizer = await storage.getUser((req.user as any).id);
       if (organizer) {
         const newWhen = new Date(updated.startAt).toLocaleString("en-US", {
@@ -878,12 +987,28 @@ router.post("/sessions/:id/publish", requireAuth, requireOrganizer, requireOwnSe
     const isAdmin = (req.user as any).isAdmin;
     const thisSession = (req as any).session_ as TennisSession;
 
+    // Only a draft (or a rejected session being resubmitted) can be published.
+    // Before, publishing a live or published session quietly reset it to
+    // "pending_review", and a double click on Publish submitted it twice.
+    const statusProblem = publishStatusProblem(thisSession.status);
+    if (statusProblem) {
+      return res.status(409).json({ code: "not_publishable", message: statusProblem });
+    }
+    // Drafts may be incomplete; publishing may not.
+    const problems = publishProblems(thisSession);
+    if (problems.length > 0) {
+      return res.status(400).json({ code: "incomplete", message: problems.join(" "), problems });
+    }
+
     // A division of a container that's already published doesn't need
     // its own admin review - the admin already approved the event
     // itself, and a division is just the organiser's own internal
     // breakdown of it (Men's Singles A, Mixed Doubles, etc.), not a
     // new event asking for separate approval.
-    let skipsReview = isAdmin;
+    // An internal test session (TC Live v1) is never public, so there's
+    // nothing for an admin to review - and real admins must not be
+    // messaged about test data.
+    let skipsReview = isAdmin || thisSession.isInternalTest === true;
     if (!skipsReview && thisSession.parentSessionId) {
       const parent = await storage.getSessionById(thisSession.parentSessionId);
       skipsReview = parent?.status === "published";
@@ -934,7 +1059,11 @@ async function notifyActiveRegistrants(
   message: string
 ) {
   const registrationsList = await storage.getRegistrationsForSession(session.id);
-  const activeRecipients = registrationsList.filter((r) => r.status !== "cancelled");
+  // Never message the organiser about their own action: when they are also
+  // registered/invited to their own session (common for admin test
+  // sessions) they used to receive "<organiser> has rescheduled ..." from
+  // themselves.
+  const activeRecipients = registrationsList.filter((r) => r.status !== "cancelled" && r.userId !== organizer.id);
   await Promise.all(
     activeRecipients.map((r) =>
       sendMessageBetween(organizer as any, r.userId, r.userRole, subject, message)
@@ -945,6 +1074,13 @@ async function notifyActiveRegistrants(
 router.post("/sessions/:id/cancel", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
   try {
     const thisSession = (req as any).session_ as TennisSession;
+    // Cancelling told every player "cancelled" even for a session that was
+    // live or had already finished (TC-189 phase 5).
+    if (!canCancelSession(thisSession.status)) {
+      return res.status(409).json({
+        message: thisSession.status === "live" ? "This session is live - end it from the Live screen instead" : `A ${thisSession.status} session can't be cancelled`,
+      });
+    }
     const [session, organizer] = await Promise.all([
       storage.cancelSession(req.params.id),
       storage.getUser((req.user as any).id),
@@ -969,6 +1105,13 @@ router.post("/sessions/:id/cancel", requireAuth, requireOrganizer, requireOwnSes
 
 router.post("/sessions/:id/archive", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
   try {
+    const thisSession = (req as any).session_ as TennisSession;
+    if (thisSession.status === "archived") return res.json(thisSession);
+    // Archiving a live session skipped End Session: the open round stayed
+    // active and its unscored matches pending (TC-189 phase 5).
+    if (!canArchiveSession(thisSession.status)) {
+      return res.status(409).json({ message: "This session is live - end it first, then archive it" });
+    }
     const session = await storage.archiveSession(req.params.id);
     res.json(session);
   } catch (error) {
@@ -1061,6 +1204,13 @@ router.get("/admin/sessions", requireAdmin, async (req, res, next) => {
       next(error);
     }
   });
+
+// Which optional features this server runs (TC Live v1). The Hub hides
+// Live entry points from this, but the routes enforce the flag themselves.
+// "internal": Live only for internal test sessions (session.isInternalTest).
+router.get("/features", requireAuth, (_req, res) => {
+  res.json({ live: liveMode() });
+});
 
 // "Play This Week" — published sessions across all organizations, next 7 days.
 router.get("/sessions/this-week", async (_req, res, next) => {
@@ -1204,23 +1354,38 @@ const LIVE_ENGINE_KNOWN_ERRORS = [
 ];
 
 function handleLiveEngineError(error: any, res: Response, next: NextFunction) {
+  if (error instanceof LiveRuleError) {
+    return res.status(error.status).json({ message: error.message, ...(error.code ? { code: error.code } : {}), ...(error.details ?? {}) });
+  }
   if (LIVE_ENGINE_KNOWN_ERRORS.includes(error?.message)) {
     return res.status(400).json({ message: error.message });
   }
   next(error);
 }
 
-// TC Live is staging-only until it's fully ready for real sessions -
-// production keeps a stub (client/src/pages/organiser/session-live.tsx
-// shows a "coming soon" screen instead of the real one). Gated on
-// env.DB_ENV rather than NODE_ENV because `npm start` sets
-// NODE_ENV=production on every deployed instance, staging included -
-// see server/env.ts. 404 (not 403) so the route looks like it simply
-// doesn't exist on production, and this runs before requireAuth so it
-// doesn't leak anything about auth state either.
-function requireStagingEnv(_req: Request, res: Response, next: NextFunction) {
-  if (env.DB_ENV !== "staging") {
+// TC Live feature flag (TC Live v1 - server/lib/liveFeature.ts). Replaces
+// the old Staging-only gate (requireStagingEnv, DB_ENV === "staging").
+//
+// requireLiveEnabled runs BEFORE requireAuth: with TC_LIVE_ENABLED off, every
+// Live control route is a 404 that reveals nothing about auth state or the
+// session. requireLiveForSession runs after requireOwnSession: in
+// TC_LIVE_ENABLED=internal only internal test sessions get through (404 for
+// the rest). Reads of stored history (/rounds, /leaderboard, results) are
+// never gated - turning Live off is the kill switch and keeps every round
+// and score readable. /finish is gated only by the session being live, so
+// the kill switch can't strand a session in "live".
+function requireLiveEnabled(_req: Request, res: Response, next: NextFunction) {
+  if (liveMode() === "off") {
     return res.status(404).json({ message: "Not found" });
+  }
+  next();
+}
+
+function requireLiveForSession(req: Request, res: Response, next: NextFunction) {
+  const session = (req as any).session_ as TennisSession;
+  if (!liveAllowedFor(session)) {
+    console.log(`[TC LIVE] blocked ${req.method} ${req.path}: Live isn't enabled for session ${session.id} (mode ${liveMode()})`);
+    return res.status(404).json({ message: "Live isn't available for this session" });
   }
   next();
 }
@@ -1229,7 +1394,7 @@ function requireStagingEnv(_req: Request, res: Response, next: NextFunction) {
 // Check-in itself is a normal, everyday Players-tab action (an
 // organizer marking who's physically arrived) - not staging-only TC
 // Live tooling, even though it's also used by the live engine.
-// requireStagingEnv deliberately NOT applied here (unlike go-live and
+// requireLiveEnabled deliberately NOT applied here (unlike go-live and
 // the rest of the TC Live routes below) - it was gating this
 // unintentionally until the regular Players tab started calling it
 // too, which would have made a completely ordinary check-in button
@@ -1239,6 +1404,8 @@ router.post(
   requireAuth,
   requireOrganizer,
   requireOwnSession,
+  requireRosterOpen,
+  requireRegistrationInSession,
   async (req, res, next) => {
     try {
       const registration = await storage.checkInRegistration(req.params.registrationId);
@@ -1257,6 +1424,8 @@ router.delete(
   requireAuth,
   requireOrganizer,
   requireOwnSession,
+  requireRosterOpen,
+  requireRegistrationInSession,
   async (req, res, next) => {
     try {
       const registration = await storage.cancelRegistrationById(req.params.registrationId);
@@ -1274,6 +1443,8 @@ router.post(
   requireAuth,
   requireOrganizer,
   requireOwnSession,
+  requireRosterOpen,
+  requireRegistrationInSession,
   async (req, res, next) => {
     try {
       const registration = await storage.moveRegistrationToWaitlist(req.params.registrationId);
@@ -1288,15 +1459,23 @@ router.post(
 // (e.g. organizer marked someone unavailable by mistake).
 router.post(
   "/sessions/:id/registrations/:registrationId/live-status",
-  requireStagingEnv,
+  requireLiveEnabled,
   requireAuth,
   requireOrganizer,
   requireOwnSession,
+  requireLiveForSession,
+  requireRegistrationInSession,
   async (req, res, next) => {
     try {
       const liveStatus = req.body?.liveStatus;
       if (liveStatus !== null && liveStatus !== "unavailable" && liveStatus !== "withdrawn") {
         return res.status(400).json({ message: "liveStatus must be 'unavailable', 'withdrawn', or null" });
+      }
+      // Only players with a place: a waitlisted, invited or cancelled
+      // registration is never paired, so sitting it out means nothing.
+      const target = (req as any).registration_ as { status: string };
+      if (target.status !== "registered") {
+        return res.status(400).json({ message: `Only registered players can sit out or withdraw (this one is ${target.status})` });
       }
       const registration = await storage.setRegistrationLiveStatus(req.params.registrationId, liveStatus);
       res.json(registration);
@@ -1306,33 +1485,30 @@ router.post(
   }
 );
 
-router.post("/sessions/:id/go-live", requireStagingEnv, requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+router.post("/sessions/:id/go-live", requireLiveEnabled, requireAuth, requireOrganizer, requireOwnSession, requireLiveForSession, async (req, res, next) => {
   try {
     const thisSession = (req as any).session_ as TennisSession;
-    if (thisSession.status !== "published") {
-      return res.status(400).json({ message: `Can't go live from status "${thisSession.status}" - session must be published first` });
-    }
-    if (!thisSession.courtsCount || thisSession.courtsCount < 1) {
-      return res.status(400).json({ message: "Set a court count for this session before going live" });
-    }
+    // Available = registered, checked in, not marked unavailable/withdrawn -
+    // the same pool round generation draws from.
     const registrationsList = await storage.getRegistrationsForSession(req.params.id);
-    const checkedIn = registrationsList.filter((r) => !!r.checkedInAt);
-    if (checkedIn.length < 2) {
-      return res.status(400).json({ message: "Need at least 2 checked-in players to go live" });
+    const available = registrationsList.filter((r) => r.status === "registered" && !!r.checkedInAt && !r.liveStatus).length;
+    const problem = goLiveProblem(thisSession, available);
+    if (problem) {
+      return res.status(400).json({ message: problem });
     }
     const session = await storage.goLiveSession(req.params.id);
-    console.log(`[TC LIVE] session ${req.params.id}: went live (${checkedIn.length} checked in)`);
+    console.log(`[TC LIVE] session ${req.params.id}: went live (${available} available, ${thisSession.courtsCount} courts)`);
     res.json(session);
   } catch (error) {
-    next(error);
+    handleLiveEngineError(error, res, next);
   }
 });
 
-router.post("/sessions/:id/rounds/generate", requireStagingEnv, requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+router.post("/sessions/:id/rounds/generate", requireLiveEnabled, requireAuth, requireOrganizer, requireOwnSession, requireLiveForSession, async (req, res, next) => {
   try {
     const thisSession = (req as any).session_ as TennisSession;
     if (thisSession.status !== "live") {
-      return res.status(400).json({ message: "Session must be live to generate a round" });
+      return res.status(409).json({ message: "Session must be live to generate a round" });
     }
     console.log(`[TC LIVE] session ${req.params.id}: generate round requested`);
     const result = await storage.generateNextRound(req.params.id);
@@ -1342,7 +1518,46 @@ router.post("/sessions/:id/rounds/generate", requireStagingEnv, requireAuth, req
   }
 });
 
-router.get("/sessions/:id/rounds/current", requireStagingEnv, requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+// Every stored round with its matches - the Session Workspace Rounds tab.
+// Read-only, so the same rule as the other session reads (GET /sessions/:id,
+// /divisions, /registrations): the owner, or an admin. Deliberately NOT
+// behind the Live flag: stored history stays readable with Live switched
+// off, and a session that never ran in Live answers [].
+router.get("/sessions/:id/rounds", requireAuth, async (req, res, next) => {
+  try {
+    const session = await storage.getSessionById(req.params.id);
+    if (!session) {
+      return res.status(404).json({ message: "Session not found" });
+    }
+    if (!(req.user as any).isAdmin) {
+      const organization = await storage.getOrganizationById(session.organizationId);
+      if (!organization || organization.ownerId !== (req.user as any).id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+    }
+    res.json(await storage.getSessionRounds(session.id));
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Redo the current round (TC-189 phase 4): drawn again with whoever is
+// available now - for a late arrival or someone who left right after the
+// draw. Only while no match in it has started (409 ROUND_STARTED).
+router.post("/sessions/:id/rounds/current/redo", requireLiveEnabled, requireAuth, requireOrganizer, requireOwnSession, requireLiveForSession, async (req, res, next) => {
+  try {
+    const thisSession = (req as any).session_ as TennisSession;
+    if (thisSession.status !== "live") {
+      return res.status(409).json({ message: "Session must be live to redo a round" });
+    }
+    console.log(`[TC LIVE] session ${req.params.id}: redo round requested`);
+    res.json(await storage.generateNextRound(req.params.id, { redo: true }));
+  } catch (error) {
+    handleLiveEngineError(error, res, next);
+  }
+});
+
+router.get("/sessions/:id/rounds/current", requireLiveEnabled, requireAuth, requireOrganizer, requireOwnSession, requireLiveForSession, async (req, res, next) => {
   try {
     const result = await storage.getCurrentRound(req.params.id);
     res.json(result ?? null);
@@ -1353,14 +1568,35 @@ router.get("/sessions/:id/rounds/current", requireStagingEnv, requireAuth, requi
 
 router.post(
   "/sessions/:id/matches/:matchId/start",
-  requireStagingEnv,
+  requireLiveEnabled,
   requireAuth,
   requireOrganizer,
   requireOwnSession,
+  requireLiveForSession,
+  requireMatchInSession,
   async (req, res, next) => {
     try {
       const match = await storage.startMatch(req.params.matchId);
       res.json(match);
+    } catch (error) {
+      handleLiveEngineError(error, res, next);
+    }
+  }
+);
+
+// "Not played" (TC-189 phase 4): the match won't finish (injury, someone
+// left). Never counts; closes the round if it was the last open court.
+router.post(
+  "/sessions/:id/matches/:matchId/not-played",
+  requireLiveEnabled,
+  requireAuth,
+  requireOrganizer,
+  requireOwnSession,
+  requireLiveForSession,
+  requireMatchInSession,
+  async (req, res, next) => {
+    try {
+      res.json(await storage.markMatchNotPlayed(req.params.matchId));
     } catch (error) {
       handleLiveEngineError(error, res, next);
     }
@@ -1372,15 +1608,22 @@ router.post(
 // self-report/confirm step in v0.1).
 router.post(
   "/sessions/:id/matches/:matchId/score",
-  requireStagingEnv,
+  requireLiveEnabled,
   requireAuth,
   requireOrganizer,
   requireOwnSession,
+  requireLiveForSession,
+  requireMatchInSession,
   async (req, res, next) => {
     try {
       const parsed = insertMatchScoreSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ message: "Invalid score", errors: parsed.error });
+      }
+      // 0-99 whole games, not 0-0 (shared/liveRules.ts - same check as the Live screen).
+      const scoreError = scoreProblem(parsed.data.teamAGames, parsed.data.teamBGames);
+      if (scoreError) {
+        return res.status(400).json({ message: scoreError });
       }
       const organizerId = (req.user as any).id;
       const match = await storage.reportMatchScore(
@@ -1396,10 +1639,12 @@ router.post(
   }
 );
 
-router.post("/sessions/:id/finish", requireStagingEnv, requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
+// Not behind requireLiveEnabled on purpose: with Live switched off (kill
+// switch) an organiser must still be able to close a session that was
+// live. body: { force?: true } ends it even with unscored matches.
+router.post("/sessions/:id/finish", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
   try {
-    const session = await storage.finishSession(req.params.id);
-    console.log(`[TC LIVE] session ${req.params.id}: finished`);
+    const session = await storage.finishSession(req.params.id, { force: req.body?.force === true });
     res.json(session);
   } catch (error) {
     handleLiveEngineError(error, res, next);
@@ -1427,7 +1672,7 @@ router.get("/sessions/:id/leaderboard", requireAuth, requireOrganizer, requireOw
 router.post("/sessions/:id/send-results", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
   try {
     const session = (req as any).session_ as TennisSession;
-    if (session.status !== "completed") {
+    if (!resultsAreFinal(session.status)) {
       return res.status(400).json({ message: "Results are only available once the session has finished" });
     }
     const [leaderboard, organizer] = await Promise.all([
@@ -1541,12 +1786,19 @@ router.post("/sessions/:id/invite", requireAuth, requireOrganizer, requireOwnSes
       return res.status(400).json({ message: "userId is required" });
     }
     const session = (req as any).session_ as TennisSession;
+    if (!canInviteToSession(session.status, session.endAt)) {
+      return res.status(400).json({ message: "Players can only be invited to a published session that hasn't finished." });
+    }
     const [organizer, invitee] = await Promise.all([
       storage.getUser((req.user as any).id),
       storage.getUser(userId),
     ]);
     if (!organizer || !invitee) {
       return res.status(404).json({ message: "User not found" });
+    }
+    // TC Live v1: only internal test accounts may be added to an internal test session.
+    if (session.isInternalTest && !isInternalTestUser(invitee.email)) {
+      return res.status(400).json({ message: "Only internal test accounts can be invited to an internal test session" });
     }
 
     const registration = await storage.createInvitedRegistration(session.id, userId);
@@ -1568,7 +1820,7 @@ router.post("/sessions/:id/invite", requireAuth, requireOrganizer, requireOwnSes
       const endTime = session.endAt ? new Date(session.endAt).toLocaleTimeString("en-US", timeOptions) : null;
       const timeRange = endTime ? `${startTime}–${endTime}` : startTime;
 
-      const formatLabel = session.matchMode === "singles" ? "Singles" : "Doubles";
+      const formatLabel = session.matchMode === "singles" ? "Singles" : session.category === "mixed" ? "Mixed Doubles" : "Doubles";
       const priceValue = session.price ? Number(session.price) : 0;
       const costLabel = priceValue > 0 ? `$${priceValue} ${session.currency}` : "Free";
 
@@ -1602,6 +1854,18 @@ router.post("/sessions/:id/invite", requireAuth, requireOrganizer, requireOwnSes
 router.post("/sessions/:id/join", requireAuth, async (req, res, next) => {
   try {
     const joinerId = (req.user as any).id;
+    // TC Live v1: an internal test session is invisible to real players -
+    // joining it by id is refused like a session that doesn't exist.
+    const target = await storage.getSessionById(req.params.id);
+    if (target?.isInternalTest && !isInternalTestUser((req.user as any).email)) {
+      return res.status(404).json({ message: "Session not found" });
+    }
+    // Registration window and "I agree to the rules and policies" - the same
+    // rules for every client, not only the buttons the page shows.
+    if (target) {
+      const blocked = joinBlockedReason(target, req.body?.acceptedPolicies === true);
+      if (blocked) return res.status(400).json({ message: blocked });
+    }
     const { registration, waitlisted } = await storage.registerForSession(
       req.params.id,
       joinerId
@@ -1648,6 +1912,14 @@ router.post("/sessions/:id/join", requireAuth, async (req, res, next) => {
 router.delete("/sessions/:id/join", requireAuth, async (req, res, next) => {
   try {
     const leaverId = (req.user as any).id;
+    // Once registration has closed, the session has started or it's over,
+    // a place can't be cancelled from Play any more (shared/sessionLifecycle.ts).
+    // The organiser still manages withdrawals in TC Live / Players.
+    const target = await storage.getSessionById(req.params.id);
+    const blocked = target ? registrationBlockReason(target, "leave") : null;
+    if (blocked) {
+      return res.status(400).json({ message: blocked });
+    }
     const registration = await storage.cancelRegistration(req.params.id, leaverId);
 
     const session = await storage.getSessionById(req.params.id);

@@ -24,6 +24,7 @@ export interface OrganiserFixture {
   id: string;
   name: string;
   email: string;
+  password: string;
   slug: string;
   organizationId: string;
   organizationName: string;
@@ -57,6 +58,13 @@ export async function becomeOrganiser(page: Page, organizationName?: string): Pr
 
   const meRes = await page.request.get('/api/auth/me');
   const me = await meRes.json();
+  // The grant must have landed on THIS account (ORG-AUTH-001 diagnostics).
+  if (!me?.authenticated || String(me.email).toLowerCase() !== organiser.email.toLowerCase()) {
+    throw new Error('becomeOrganiser(): the new player is no longer signed in after the admin grant');
+  }
+  if (!me.isOrganizer) {
+    throw new Error('becomeOrganiser(): organiser access was granted but /api/auth/me still says isOrganizer: false');
+  }
 
   const name = organizationName ?? `Playwright Club ${Date.now()}`;
   const orgRes = await page.request.post('/api/organizer/organizations', { data: { name } });
@@ -74,6 +82,7 @@ export async function becomeOrganiser(page: Page, organizationName?: string): Pr
     id: me.id,
     name: me.name,
     email: organiser.email,
+    password: organiser.password,
     slug: me.slug,
     organizationId: organization.id,
     organizationName: organization.name,
@@ -141,8 +150,12 @@ export interface SeededPlayer {
 // E2E_TEST_HOOK_SECRET via postTestHook (helpers/test-hooks.ts). `page`
 // is kept for call-site compatibility; the hook doesn't need the
 // browser session.
-export async function seedPlayers(_page: Page, count: number): Promise<SeededPlayer[]> {
-  const { players } = await postTestHook<{ players: SeededPlayer[] }>('seed-players', { count });
+export async function seedPlayers(
+  _page: Page,
+  count: number,
+  options: { role?: 'player' | 'coach'; approved?: boolean } = {}
+): Promise<SeededPlayer[]> {
+  const { players } = await postTestHook<{ players: SeededPlayer[] }>('seed-players', { count, ...options });
   return players;
 }
 

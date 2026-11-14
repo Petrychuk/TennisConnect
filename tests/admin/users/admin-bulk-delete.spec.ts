@@ -179,7 +179,10 @@ test('ADMIN-006 Bulk delete - an org owner in the batch is reported, not deleted
   const body = await response.json();
   expect(body.deleted).toHaveLength(1);
   expect(body.failed).toHaveLength(1);
-  expect(body.failed[0].message).toContain('You own an organization');
+  expect(body.failed[0].code).toBe('owns_organization_with_sessions');
+  expect(body.failed[0].message).toContain('Bulk Delete Test Org');
+  // Readable summary instead of a toast holding every message.
+  await expect(page.getByTestId('bulk-delete-result-title')).toHaveText('1 deleted, 1 not deleted');
 
   // ---------- Final verification: plain player gone, org owner's row
   // still there (not force-deleted) ----------

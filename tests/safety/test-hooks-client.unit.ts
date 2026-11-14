@@ -155,4 +155,20 @@ describe('tests/helpers/test-hooks.ts', () => {
       /PRODUCTION host/
     );
   });
+
+  it('never calls a hook on Production: refused before anything (or the secret) is sent', async () => {
+    const before = seen.length;
+    let fetched = false;
+    await assert.rejects(
+      postTestHook(
+        'seed-players',
+        { count: 1 },
+        { ...env(), TEST_ENV: 'production', BASE_URL: 'https://tennisconnect.com.au' },
+        { fetchImpl: async () => { fetched = true; throw new Error('must not be called'); } },
+      ),
+      (error: unknown) => error instanceof TestHookError && error.kind === 'refused' && !String(error.message).includes(SECRET),
+    );
+    assert.equal(fetched, false, 'no request was made');
+    assert.equal(seen.length, before);
+  });
 });

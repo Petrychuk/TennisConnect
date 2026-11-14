@@ -1,0 +1,12 @@
+-- TC Live v1: internal test sessions (server-side marker).
+-- true only for sessions created by an internal test account
+-- (TC_INTERNAL_TEST_EMAILS, server/lib/liveFeature.ts). Such sessions are
+-- excluded from every public listing (Play, recommendations, smart search,
+-- organisation pages, "this week", platform stats), can only be joined by
+-- internal accounts, and are the only sessions Live runs for when
+-- TC_LIVE_ENABLED=internal. Never set from a request body.
+-- NOT NULL DEFAULT false: every existing session stays a normal session.
+-- Additive. Apply BEFORE deploying code that reads it: every select on
+-- sessions lists all columns, so a missing column fails with
+-- "column does not exist".
+ALTER TABLE "sessions" ADD COLUMN IF NOT EXISTS "is_internal_test" boolean NOT NULL DEFAULT false;

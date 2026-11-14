@@ -1,5 +1,6 @@
 import { Users, type LucideIcon } from "lucide-react";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
+import { isReadyToStart } from "@shared/sessionLifecycle";
 
 export type SessionBucket =
   | "all"
@@ -79,6 +80,17 @@ export const STATUS_BADGE_STYLE: Record<string, string> = {
   archived: "bg-muted text-muted-foreground",
 };
 
+/**
+ * The organiser's status label for a session: the bucket's label, except a
+ * published session from 2 hours before its start - and after it, until the
+ * organiser starts TC Live - reads "Ready to Start" (shared/sessionLifecycle.ts).
+ * Every Hub screen (list row, grid card, workspace header) uses this one.
+ */
+export function sessionStatusLabel(session: { status: string; startAt: string | Date }, bucket: Exclude<SessionBucket, "all">): string {
+  if ((bucket === "registration-open" || bucket === "upcoming") && isReadyToStart(session)) return "Ready to Start";
+  return STATUS_BADGE_LABEL[bucket];
+}
+
 export interface SessionPrimaryAction {
   label: string;
   urgent: boolean;
@@ -91,17 +103,40 @@ export interface SessionPrimaryAction {
 // urgent thing on the page (the session already happened), so they
 // stay a plain outline button instead of visually shouting louder
 // than an unfinished draft or a live session in progress.
-export function getPrimaryActionMeta(bucket: Exclude<SessionBucket, "all">, playIcon: LucideIcon): SessionPrimaryAction {
+// hasRounds: false for Coaching & Fitness (shared/sessionCategories.ts) -
+// they have no Results tab, so a finished one opens its players instead.
+export function getPrimaryActionMeta(bucket: Exclude<SessionBucket, "all">, playIcon: LucideIcon, liveAvailable = true, hasRounds = true, readyToStart = false): SessionPrimaryAction {
+  // Ready to Start: the one action is starting TC Live (the organiser's
+  // explicit step - the clock never starts it).
+  if (readyToStart && liveAvailable && hasRounds && (bucket === "registration-open" || bucket === "upcoming")) {
+    return { label: "Start Live", urgent: true, icon: playIcon };
+  }
   switch (bucket) {
     case "draft":
       return { label: "Continue Setup", urgent: true };
     case "live":
-      return { label: "Enter Live", urgent: true, icon: playIcon };
+      // Without TC Live (Production) the button opens the workspace.
+      return liveAvailable ? { label: "Enter Live", urgent: true, icon: playIcon } : { label: "Manage Session", urgent: true };
     case "completed":
-      return { label: "View Results", urgent: false };
     case "archived":
-      return { label: "View History", urgent: false };
+      // Archived used to say "View History" and open ?tab=history, a tab
+      // that doesn't exist (it fell back to Overview).
+      return { label: hasRounds ? "View Results" : "View Players", urgent: false };
     default:
       return { label: "Manage Session", urgent: true }; // registration-open, upcoming
   }
+}
+
+/**
+ * Where "open / edit this session" goes. A draft is finished in the wizard (all
+ * four steps, Save as Draft, Publish); the flat Edit page is for sessions that
+ * are already out (it asks for name, venue and date, which a draft may not have yet).
+ */
+/** A finished session (completed or archived) keeps its results: it can be viewed and duplicated, never edited. */
+export function canEditSession(session: { status: string }): boolean {
+  return session.status !== "archived" && session.status !== "completed";
+}
+
+export function sessionEditPath(session: { id: string; status: string }): string {
+  return session.status === "draft" ? `/organiser/sessions/new?draft=${session.id}` : `/organiser/sessions/${session.id}/edit`;
 }

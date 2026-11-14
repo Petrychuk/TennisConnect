@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,10 @@ import { RECOMMENDATION_REASON_TEXT } from "@/lib/play-status";
 import { resolveRegistrationCta, resolvePartnerBadge } from "@shared/partnerEvents";
 import { ActivityStatus } from "./ActivityStatus";
 import { getPlaySessionById, joinSession, leaveSession } from "@/lib/api/play";
+import { isCompetitionType } from "@shared/sessionCategories";
+import { SessionPoliciesList } from "@/components/play/session-policies";
+import { PoliciesAgreement } from "@/components/play/policies-agreement";
+import { hasAnyPolicy } from "@shared/sessionPolicies";
 
 function formatLabel(type: string): string {
   const known = SESSION_TYPE_OPTIONS.find((t) => t.key === type)?.label;
@@ -36,7 +40,6 @@ function initials(name: string): string {
 // Same 4 formats the Play page's own "Competitions" quick filter
 // groups - reused here to pick "Join Competition" vs "Join Session"
 // wording (spec §10), rather than duplicating the list a second time.
-const COMPETITION_TYPES = new Set(["tournament", "league", "club-championship", "junior-event"]);
 
 interface EventQuickViewModalProps {
   sessionId: string | null;
@@ -71,9 +74,13 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
     retry: false,
   });
   const session = sessionQuery.data;
+  // "I agree to the rules & policies" before joining a session that has any.
+  const [agreed, setAgreed] = useState(false);
+  useEffect(() => setAgreed(false), [sessionId]);
+  const needsAgreement = !!session && isAuthenticated && hasAnyPolicy(session.policies ?? ({} as any));
 
   const joinMutation = useMutation({
-    mutationFn: () => joinSession(sessionId!),
+    mutationFn: () => joinSession(sessionId!, agreed),
     onSuccess: ({ waitlisted }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/play/sessions", sessionId] });
       queryClient.invalidateQueries({ queryKey: ["/api/play/sessions"] });
@@ -98,7 +105,7 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
   });
 
   let actionButton: ReactNode = null;
-  const isCompetition = session ? COMPETITION_TYPES.has(session.type) : false;
+  const isCompetition = session ? isCompetitionType(session.type) : false;
   const joinLabel = isCompetition ? "Join Competition" : "Join Session";
 
   if (session) {
@@ -125,39 +132,42 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
       );
     } else if (session.myRegistrationStatus === "registered") {
       actionButton = (
-        <div className="flex flex-col gap-2 w-full">
-          <Badge className="bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400 justify-center py-2" data-testid="event-modal-registered-badge">
+        // Status and the action side by side (desktop and phone alike).
+        <div className="flex flex-row items-stretch gap-2 w-full">
+          <Badge className="flex-1 bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400 justify-center py-2" data-testid="event-modal-registered-badge">
             <CheckCircle2 className="w-4 h-4 mr-1.5" /> Registered
           </Badge>
-          <Button variant="outline" className="w-full" onClick={() => leaveMutation.mutate()} disabled={leaveMutation.isPending} data-testid="event-modal-cancel">
+          <Button variant="outline" className="flex-1" onClick={() => leaveMutation.mutate()} disabled={leaveMutation.isPending || session.playStatus === "archived"} data-testid="event-modal-cancel">
             {leaveMutation.isPending ? "Cancelling..." : "Cancel Registration"}
           </Button>
         </div>
       );
     } else if (session.myRegistrationStatus === "waitlisted") {
       actionButton = (
-        <div className="flex flex-col gap-2 w-full">
-          <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400 justify-center py-2">
+        <div className="flex flex-row items-stretch gap-2 w-full">
+          <Badge className="flex-1 bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400 justify-center py-2">
             On Waiting List
           </Badge>
-          <Button variant="outline" className="w-full" onClick={() => leaveMutation.mutate()} disabled={leaveMutation.isPending} data-testid="event-modal-leave-waitlist">
+          <Button variant="outline" className="flex-1" onClick={() => leaveMutation.mutate()} disabled={leaveMutation.isPending || session.playStatus === "archived"} data-testid="event-modal-leave-waitlist">
             {leaveMutation.isPending ? "Leaving..." : "Leave Waiting List"}
           </Button>
         </div>
       );
+    } else if (session.playStatus === "archived") {
+      actionButton = <Button className="mx-auto flex w-fit min-w-44 px-8" disabled data-testid="event-modal-archived">Session finished</Button>;
     } else if (session.playStatus === "closed") {
       actionButton = <Button className="mx-auto flex w-fit min-w-44 px-8" disabled data-testid="event-modal-closed">Registration Closed</Button>;
     } else if (session.playStatus === "full") {
-      actionButton = <Button className="mx-auto flex w-fit min-w-44 px-8" disabled data-testid="event-modal-full">Full</Button>;
+      actionButton = <Button className="mx-auto flex w-fit min-w-44 px-8" disabled data-testid="event-modal-full">Registration Closed</Button>;
     } else if (session.playStatus === "waitlist") {
       actionButton = (
-        <Button className="mx-auto flex w-fit min-w-44 px-8" onClick={() => joinMutation.mutate()} disabled={joinMutation.isPending} data-testid="event-modal-join-waitlist">
+        <Button className="mx-auto flex w-fit min-w-44 px-8" onClick={() => joinMutation.mutate()} disabled={joinMutation.isPending || (needsAgreement && !agreed)} data-testid="event-modal-join-waitlist">
           {joinMutation.isPending ? "Joining..." : "Join Waiting List"}
         </Button>
       );
     } else {
       actionButton = (
-        <Button className="mx-auto flex w-fit min-w-44 px-8" onClick={() => joinMutation.mutate()} disabled={joinMutation.isPending} data-testid="event-modal-join">
+        <Button className="mx-auto flex w-fit min-w-44 px-8" onClick={() => joinMutation.mutate()} disabled={joinMutation.isPending || (needsAgreement && !agreed)} data-testid="event-modal-join">
           {joinMutation.isPending ? "Joining..." : joinLabel}
         </Button>
       );
@@ -213,11 +223,16 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                <p className="flex items-center gap-2" data-testid="event-modal-datetime">
-                  📅 {formatInTimeZone(session.startAt, session.timeZone, { weekday: "short", day: "numeric", month: "short" })}
-                  {" · "}
-                  {formatInTimeZone(session.startAt, session.timeZone, { hour: "numeric", minute: "2-digit" })}
-                  {session.endAt && ` – ${formatInTimeZone(session.endAt, session.timeZone, { hour: "numeric", minute: "2-digit" })}`}
+                <p className="flex items-start gap-2" data-testid="event-modal-datetime">
+                  <span aria-hidden>📅</span>
+                  {/* Date on one line, the time below it: a long time range no longer gets cut off. */}
+                  <span className="flex flex-col">
+                    <span data-testid="event-modal-date">{formatInTimeZone(session.startAt, session.timeZone, { weekday: "short", day: "numeric", month: "short" })}</span>
+                    <span className="text-muted-foreground" data-testid="event-modal-time">
+                      {formatInTimeZone(session.startAt, session.timeZone, { hour: "numeric", minute: "2-digit" })}
+                      {session.endAt && ` – ${formatInTimeZone(session.endAt, session.timeZone, { hour: "numeric", minute: "2-digit" })}`}
+                    </span>
+                  </span>
                 </p>
                 {session.location && (
                   <p className="flex items-center gap-2 min-w-0" data-testid="event-modal-location">
@@ -253,7 +268,14 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
               {session.description && (
                 <div data-testid="event-modal-description">
                   <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1">About</p>
-                  <p className="text-sm text-muted-foreground">{session.description}</p>
+                  <p className="text-sm text-muted-foreground whitespace-pre-line">{session.description}</p>
+                </div>
+              )}
+
+              {session.policies && Object.values(session.policies).some(Boolean) && (
+                <div data-testid="event-modal-policies-section">
+                  <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1">Rules & policies</p>
+                  <SessionPoliciesList policies={session.policies} compact testId="event-modal-policies" />
                 </div>
               )}
 
@@ -289,6 +311,9 @@ export function EventQuickViewModal({ sessionId, onOpenChange, recommendation, o
               )}
             </div>
 
+            {needsAgreement && !session.myRegistrationStatus && (session.playStatus === "open" || session.playStatus === "almost_full" || session.playStatus === "waitlist") && (
+              <PoliciesAgreement checked={agreed} onCheckedChange={setAgreed} policiesHref="#" testId="event-modal-agree" />
+            )}
             <div className="flex justify-center pt-2">{actionButton}</div>
           </>
         )}

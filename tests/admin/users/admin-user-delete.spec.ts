@@ -301,16 +301,14 @@ test('ADMIN-003 Delete User - blocked with real reason when the organization has
   expect(response.status()).toBe(400);
 
   const body = await response.json();
-  expect(body.message).toContain('You own an organization');
+  expect(body.code).toBe('owns_organization_with_sessions');
+  expect(body.message).toContain('Not deleted');
 
-  // ---------- Final verification: toast shows the real reason, and the
-  // user was NOT actually deleted ----------
+  // ---------- Final verification: the dialog shows the real reason and the
+  // way forward (no longer a toast), and the user was NOT actually deleted ----------
 
-  // Inside the toast list: the toast's aria-live announcer repeats the same
-  // text, so a page-wide getByText matched two elements (strict mode).
-  await expect(
-    page.locator(TOAST_LIST).getByText(/you own an organization/i)
-  ).toBeVisible();
+  await expect(page.getByTestId('user-delete-blocked-reason')).toContainText('which has 1 session');
+  await expect(page.getByTestId('user-delete-blocked-delete-org')).toBeVisible();
   await expect(row).toBeVisible();
 
 });

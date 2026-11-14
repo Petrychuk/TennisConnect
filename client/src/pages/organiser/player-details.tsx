@@ -1,4 +1,5 @@
 import { Link, useLocation, useRoute } from "wouter";
+import { OrganiserAccessGate } from "@/components/organiser/ui/organiser-layout";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,7 +35,7 @@ const LEVEL_BADGE_STYLE: Record<string, string> = {
 // correct option (an organiser's player list is rarely huge) rather
 // than adding a new endpoint just for this one page, same reasoning
 // already used for the session-template edit page.
-export default function OrganiserPlayerDetailsPage() {
+function OrganiserPlayerDetailsPageContent() {
   const { isAuthenticated, user, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/organiser/players/:slug");
@@ -48,26 +49,7 @@ export default function OrganiserPlayerDetailsPage() {
   const allPlayers = toOrgPlayers(myPlayersQuery.data ?? []);
   const player = allPlayers.find((p) => p.slug === slug);
 
-  if (authLoading) return null;
-  if (!isAuthenticated) {
-    setLocation("/auth");
-    return null;
-  }
 
-  if (!user?.isOrganizer) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-background">
-        <Card className="max-w-md w-full shadow-sm">
-          <CardHeader>
-            <CardTitle asChild><h1>Organiser access required</h1></CardTitle>
-          </CardHeader>
-          <CardContent className="text-muted-foreground">
-            You need to be an approved organiser to view this page.
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   if (myPlayersQuery.isLoading) {
     return (
@@ -156,5 +138,15 @@ export default function OrganiserPlayerDetailsPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+// Access (signed in, organiser or admin) is checked once, for every Hub
+// page, by OrganiserAccessGate (components/organiser/ui/organiser-layout.tsx).
+export default function OrganiserPlayerDetailsPage() {
+  return (
+    <OrganiserAccessGate>
+      <OrganiserPlayerDetailsPageContent />
+    </OrganiserAccessGate>
   );
 }

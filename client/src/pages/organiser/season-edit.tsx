@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { OrganiserAccessGate } from "@/components/organiser/ui/organiser-layout";
 import { Link, useLocation, useRoute } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -28,7 +29,7 @@ import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
 // here that could) - per the spec's own explicit rule, this only
 // warns the organiser when a change would leave existing sessions
 // outside the new date range, rather than silently detaching them.
-export default function OrganiserSeasonEditPage() {
+function OrganiserSeasonEditPageContent() {
   const { isAuthenticated, user, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/organiser/seasons/:id/edit");
@@ -104,22 +105,6 @@ export default function OrganiserSeasonEditPage() {
     }
   };
 
-  if (authLoading) return null;
-  if (!isAuthenticated) {
-    setLocation("/auth");
-    return null;
-  }
-  if (!user?.isOrganizer) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-background">
-        <Card className="max-w-md w-full shadow-sm">
-          <CardContent className="p-6 text-muted-foreground">
-            You need to be an approved organiser to view this page.
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   if (seasonQuery.isLoading) {
     return (
@@ -233,5 +218,15 @@ export default function OrganiserSeasonEditPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+// Access (signed in, organiser or admin) is checked once, for every Hub
+// page, by OrganiserAccessGate (components/organiser/ui/organiser-layout.tsx).
+export default function OrganiserSeasonEditPage() {
+  return (
+    <OrganiserAccessGate>
+      <OrganiserSeasonEditPageContent />
+    </OrganiserAccessGate>
   );
 }

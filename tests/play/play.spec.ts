@@ -192,6 +192,7 @@ test.describe('Play', () => {
     await page.goto(`/play/${session.id}`);
     await expect(page.getByTestId('play-session-details-join-waitlist')).toBeVisible({ timeout: 15000 });
     await expect(page.getByTestId('play-session-details-register')).toHaveCount(0);
-    await expect(page.getByTestId('play-session-details-status')).toHaveText('Waiting List');
+    // Full before the start: "Registration Closed", with the waiting list as the only action.
+    await expect(page.getByTestId('play-session-details-status')).toHaveText('Registration Closed');
   });
 });

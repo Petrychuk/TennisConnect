@@ -17,6 +17,7 @@ import type {
   Season,
   InsertSeason,
 } from "@shared/schema";
+import type { OrganizationProfile } from "@shared/organizationProfile";
 
 const BASE = "/api/organizer";
 
@@ -108,6 +109,17 @@ export async function createOrganization(name: string): Promise<Organization> {
   return res.json();
 }
 
+/** "Your Organisation" page - profile fields only (shared/organizationProfile.ts). */
+export async function updateOrganization(id: string, updates: Partial<OrganizationProfile>): Promise<Organization> {
+  const res = await apiRequest("PUT", `${BASE}/organizations/${id}`, updates);
+  return res.json();
+}
+
+export async function createOrganizationWithProfile(profile: OrganizationProfile): Promise<Organization> {
+  const res = await apiRequest("POST", `${BASE}/organizations`, profile);
+  return res.json();
+}
+
 export async function getOrganizationByUserSlug(userSlug: string): Promise<(Organization & { upcomingSessions: SessionWithDetails[] }) | null> {
   const res = await apiRequest("GET", `${BASE}/organizations/by-user/${userSlug}`);
   return res.json();
@@ -129,7 +141,8 @@ export async function getMySessions(): Promise<SessionWithDetails[]> {
 
 export interface DashboardStats {
   activePlayers: number;
-  attendancePercent: number;
+  /** null = no registrations yet for a session that happened, so no percentage exists. */
+  attendancePercent: number | null;
   revenueThisWeek: number;
   revenueCurrency: string;
 }
@@ -150,11 +163,28 @@ export async function getMyPlayers(): Promise<OrgPlayerRow[]> {
   return res.json();
 }
 
-export type SearchablePlayer = { id: string; name: string; slug: string; avatar: string | null; role: string; alreadyConnected: boolean };
+export type SearchablePlayer = {
+  id: string;
+  name: string;
+  slug: string;
+  avatar: string | null;
+  role: string;
+  alreadyConnected: boolean;
+  skillLevel: string | null;
+  location: string | null;
+  lookingToPlay: boolean;
+};
+
+/** Narrowing for the invite search. Players only unless `allRoles`; with a filter set a name isn't needed. */
+export type PlayerSearchFilters = { level?: string; location?: string; lookingToPlay?: boolean; allRoles?: boolean };
 
 /** Search real platform users by name, for either invite dialog. Pass a sessionId or community context so already-connected players are flagged instead of being re-invitable. */
-export async function searchPlayers(query: string, context?: { sessionId?: string; community?: boolean }): Promise<SearchablePlayer[]> {
+export async function searchPlayers(query: string, context?: { sessionId?: string; community?: boolean }, filters?: PlayerSearchFilters): Promise<SearchablePlayer[]> {
   const params = new URLSearchParams({ q: query });
+  if (filters?.level) params.set("level", filters.level);
+  if (filters?.location?.trim()) params.set("location", filters.location.trim());
+  if (filters?.lookingToPlay) params.set("lookingToPlay", "1");
+  if (filters?.allRoles) params.set("scope", "all");
   if (context?.sessionId) params.set("sessionId", context.sessionId);
   if (context?.community) params.set("community", "1");
   const res = await apiRequest("GET", `${BASE}/players/search?${params.toString()}`);
@@ -301,9 +331,27 @@ export async function generateNextRound(sessionId: string): Promise<{ round: Ses
   return res.json();
 }
 
-/** Null if no round has been generated yet. */
+/** Every stored round with its matches, oldest first ([] if the session never ran in Live). */
+export async function getSessionRounds(sessionId: string): Promise<{ round: SessionRound; matches: MatchWithPlayers[] }[]> {
+  const res = await apiRequest("GET", `${BASE}/sessions/${sessionId}/rounds`);
+  return res.json();
+}
+
+/** The latest round, or null if no round has been generated yet. */
 export async function getCurrentRound(sessionId: string): Promise<{ round: SessionRound; matches: MatchWithPlayers[] } | null> {
   const res = await apiRequest("GET", `${BASE}/sessions/${sessionId}/rounds/current`);
+  return res.json();
+}
+
+/** Redo the current round with whoever is available now - only while no match in it has started (409 ROUND_STARTED). */
+export async function redoCurrentRound(sessionId: string): Promise<{ round: SessionRound; matches: MatchWithPlayers[] }> {
+  const res = await apiRequest("POST", `${BASE}/sessions/${sessionId}/rounds/current/redo`);
+  return res.json();
+}
+
+/** "Not played": the match won't finish. Never counts; closes the round if it was the last open court. */
+export async function markMatchNotPlayed(sessionId: string, matchId: string): Promise<Match> {
+  const res = await apiRequest("POST", `${BASE}/sessions/${sessionId}/matches/${matchId}/not-played`);
   return res.json();
 }
 
@@ -327,8 +375,9 @@ export async function reportMatchScore(
 }
 
 /** live -> completed. */
-export async function finishSession(id: string): Promise<TennisSession> {
-  const res = await apiRequest("POST", `${BASE}/sessions/${id}/finish`);
+/** force: end even with unscored matches (they're marked abandoned and never count). Without it the server answers 409 UNSCORED_MATCHES. */
+export async function finishSession(id: string, force = false): Promise<TennisSession> {
+  const res = await apiRequest("POST", `${BASE}/sessions/${id}/finish`, force ? { force: true } : undefined);
   return res.json();
 }
 

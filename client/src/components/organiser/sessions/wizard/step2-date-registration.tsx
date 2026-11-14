@@ -3,11 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarDays, ClipboardList, DollarSign, Eye, ImagePlus, Info, X } from "lucide-react";
+import { CalendarDays, ClipboardList, DollarSign, Globe, ImagePlus, LayoutGrid, MapPin, Trophy, Type, UserRound, Users, X, type LucideIcon } from "lucide-react";
 import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 import { useToast } from "@/hooks/use-toast";
 import { uploadImage } from "@/lib/uploadImage";
@@ -28,26 +29,79 @@ function todayInput() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+// One control height for the whole step: 44px on anything touch (the project's
+// tap-target rule, phones and iPads alike), and a denser 36px only from md up
+// when the pointer is a mouse (pointer-fine).
+const CONTROL = "h-11 md:pointer-fine:h-9";
+
+function Field({ label, required, className, children }: { label: string; required?: boolean; className?: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-1.5">
-      <Label className="text-sm">{label}</Label>
+    <div className={cn("space-y-1 min-w-0", className)}>
+      <Label className="text-xs font-medium text-muted-foreground">
+        {label}
+        {required && <span className="text-destructive" aria-hidden> *</span>}
+      </Label>
       {children}
     </div>
   );
 }
 
-function SectionCard({ icon: Icon, title, children }: { icon: typeof CalendarDays; title: string; children: React.ReactNode }) {
+// A leading icon inside a text input or select. The icon is decoration only
+// (pointer-events-none) and sits on the control's vertical centre; the control
+// gets matching left padding. Date and time inputs are left alone: the browser
+// already draws its own picker icon on the right.
+function WithIcon({ icon: Icon, children }: { icon: LucideIcon; children: React.ReactNode }) {
   return (
-    <Card className="shadow-sm" data-testid={`organiser-wizard-section-${title.toLowerCase().replace(/\s+/g, "-")}`}>
-      <CardHeader className="flex flex-row items-center gap-2 space-y-0">
-        <Icon className="w-4 h-4 text-primary-text" />
-        <CardTitle className="text-base">{title}</CardTitle>
+    <div className="relative">
+      <Icon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden />
+      {children}
+    </div>
+  );
+}
+
+// Section card. The content is a container-query grid: two columns only when
+// the card itself is wide enough (>= 28rem), whatever the screen width - the
+// Registration card is half the page on desktop and full width on a tablet.
+const COLUMNS = {
+  one: "",
+  two: "@md:grid-cols-2",
+  six: "@md:grid-cols-2 @2xl:grid-cols-6",
+} as const;
+
+function SectionCard({
+  icon: Icon,
+  title,
+  children,
+  columns = "two",
+}: {
+  icon: LucideIcon;
+  title: string;
+  children: React.ReactNode;
+  /** one: always a single column; two: 2 columns from 28rem; six: 2 columns, then a 6-column grid from 42rem */
+  columns?: "one" | "two" | "six";
+}) {
+  return (
+    <Card className="shadow-sm @container" data-testid={`organiser-wizard-section-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>
+      <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 p-4 pb-3">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary-text">
+          <Icon className="h-4 w-4" aria-hidden />
+        </span>
+        <CardTitle className="text-sm font-semibold leading-none">{title}</CardTitle>
       </CardHeader>
-      <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">{children}</CardContent>
+      <CardContent className={cn("grid grid-cols-1 gap-3 p-4 pt-0", COLUMNS[columns])}>{children}</CardContent>
     </Card>
   );
 }
+
+// date + time pair, never wrapping, never wider than its card
+function DateTimeRow({ children }: { children: React.ReactNode }) {
+  return <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,8.5rem)] gap-2">{children}</div>;
+}
+
+// One segment of a segmented control (Free | Paid, Public | Members | Invite
+// only). The radio is an invisible layer over the whole segment: it gets the click and the focus.
+const SEGMENT =
+  "relative flex min-h-11 md:pointer-fine:min-h-8 cursor-pointer items-center justify-center rounded-lg px-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground has-[[data-state=checked]]:bg-background has-[[data-state=checked]]:text-foreground has-[[data-state=checked]]:shadow-sm has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring";
 
 export function Step2DateRegistration({ draft, onChange }: Step2DateRegistrationProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -90,19 +144,17 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
     }
   };
 
-  return (
-    <div className="space-y-4" data-testid="organiser-wizard-step2">
-      <div className="flex items-start gap-2 rounded-xl bg-primary/5 border border-primary/20 px-3 py-2.5 text-sm text-muted-foreground">
-        <Info className="w-4 h-4 text-primary-text shrink-0 mt-0.5" />
-        <p>You can always edit session details later — nothing here is final.</p>
-      </div>
+  const visibilityHint: Record<NewSessionDraft["visibility"], string> = {
+    public: "Anyone can find and join it on Play.",
+    members: "Only your club members can join.",
+    invite: "Only people you invite can join.",
+  };
 
+  return (
+    <div className="space-y-3" data-testid="organiser-wizard-step2">
+      {/* Cover photo: its own block, as before. */}
       <Card className="shadow-sm" data-testid="organiser-wizard-section-cover-photo">
-        <CardHeader className="flex flex-row items-center gap-2 space-y-0">
-          <ImagePlus className="w-4 h-4 text-primary-text" />
-          <CardTitle className="text-base">Cover Photo</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="p-3">
           <input
             ref={fileInputRef}
             type="file"
@@ -112,313 +164,326 @@ export function Step2DateRegistration({ draft, onChange }: Step2DateRegistration
             data-testid="organiser-wizard-cover-photo-input"
           />
           {isUploadingCover ? (
-            <div className="w-full h-32 rounded-xl border-2 border-dashed border-border flex items-center justify-center text-muted-foreground">
+            <div className="flex h-16 items-center justify-center rounded-lg border-2 border-dashed border-border text-muted-foreground">
               <TennisBallSpinner />
             </div>
           ) : draft.coverImage ? (
-            <div className="relative rounded-xl overflow-hidden h-40">
-              <img src={draft.coverImage} alt="Session cover" className="absolute inset-0 w-full h-full object-cover" />
+            <div className="flex items-center gap-3">
+              <img src={draft.coverImage} alt="Session cover" className="h-16 w-24 shrink-0 rounded-lg object-cover" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">Cover photo</p>
+                <p className="truncate text-xs text-muted-foreground">Shown on the session card and page.</p>
+              </div>
               <Button
                 type="button"
-                variant="secondary"
+                variant="outline"
                 size="icon"
-                className="absolute top-2 right-2 h-8 w-8"
+                className="h-11 w-11 shrink-0 md:pointer-fine:h-9 md:pointer-fine:w-9"
+                aria-label="Remove cover photo"
                 onClick={() => onChange("coverImage", null)}
                 data-testid="organiser-wizard-cover-photo-remove"
               >
-                <X className="w-4 h-4" />
+                <X className="h-4 w-4" />
               </Button>
             </div>
           ) : (
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="w-full h-32 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-1.5 text-muted-foreground hover:border-primary/40 hover:text-primary-text transition-colors"
+              className="flex min-h-16 w-full items-center gap-3 rounded-lg border-2 border-dashed border-border px-3 py-2 text-left text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary-text"
               data-testid="organiser-wizard-cover-photo-trigger"
             >
-              <ImagePlus className="w-6 h-6" />
-              <span className="text-sm font-medium">Upload a cover photo</span>
-              <span className="text-xs">Optional — defaults to a standard court photo</span>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary-text">
+                <ImagePlus className="h-5 w-5" aria-hidden />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-foreground">Upload a cover photo</span>
+                <span className="block text-xs">Optional — defaults to a standard court photo</span>
+              </span>
             </button>
           )}
         </CardContent>
       </Card>
 
-      <SectionCard icon={ClipboardList} title="Session">
-        <Field label="Session Name">
-          <Input
-            value={draft.name}
-            onChange={(e) => onChange("name", e.target.value)}
-            placeholder="e.g. Wednesday Social Tennis"
-            data-testid="organiser-wizard-session-name"
-          />
+      <SectionCard icon={CalendarDays} title="Session" columns="six">
+        <Field label="Session name" required className="@2xl:col-span-4">
+          <WithIcon icon={Type}>
+            <Input
+              value={draft.name}
+              onChange={(e) => onChange("name", e.target.value)}
+              placeholder="e.g. Wednesday Social"
+              className={cn(CONTROL, "pl-9")}
+              data-testid="organiser-wizard-session-name"
+            />
+          </WithIcon>
         </Field>
-        <Field label="Season (Optional)">
-          <Select
-            value={draft.seasonId ?? "none"}
-            onValueChange={(v) => onChange("seasonId", v === "none" ? null : v)}
-          >
-            <SelectTrigger aria-label="Season" data-testid="organiser-wizard-session-season">
-              <SelectValue placeholder="No Season" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">No Season</SelectItem>
-              {matchingSeasons.map((s) => (
-                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <Field label="Season" className="@2xl:col-span-2">
+          <WithIcon icon={Trophy}>
+            <Select value={draft.seasonId ?? "none"} onValueChange={(v) => onChange("seasonId", v === "none" ? null : v)}>
+              <SelectTrigger aria-label="Season" className={cn(CONTROL, "pl-9")} data-testid="organiser-wizard-session-season">
+                <SelectValue placeholder="No season" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No season</SelectItem>
+                {matchingSeasons.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </WithIcon>
         </Field>
-        <Field label="Venue">
-          <Input
-            value={draft.venue}
-            onChange={(e) => onChange("venue", e.target.value)}
-            placeholder="e.g. Lyne Park Tennis Centre"
-            data-testid="organiser-wizard-session-venue"
-          />
+        <Field label="Venue" required className="@2xl:col-span-3">
+          <WithIcon icon={MapPin}>
+            <Input
+              value={draft.venue}
+              onChange={(e) => onChange("venue", e.target.value)}
+              placeholder="e.g. Lyne Park Tennis Centre"
+              className={cn(CONTROL, "pl-9")}
+              data-testid="organiser-wizard-session-venue"
+            />
+          </WithIcon>
         </Field>
-        <Field label="City / Timezone">
-          <Select value={draft.timeZone} onValueChange={(v) => onChange("timeZone", v)}>
-            <SelectTrigger aria-label="City / timezone" data-testid="organiser-wizard-session-timezone">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {AU_CITY_TIMEZONES.map((c) => (
-                <SelectItem key={c.timeZone} value={c.timeZone}>
-                  {c.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <Field label="City" required className="@2xl:col-span-2">
+          <WithIcon icon={Globe}>
+            <Select value={draft.timeZone} onValueChange={(v) => onChange("timeZone", v)}>
+              <SelectTrigger aria-label="City / timezone" className={cn(CONTROL, "pl-9")} data-testid="organiser-wizard-session-timezone">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {AU_CITY_TIMEZONES.map((c) => (
+                  <SelectItem key={c.timeZone} value={c.timeZone}>
+                    {c.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </WithIcon>
         </Field>
-        <Field label="Court Count">
-          <NumberField
-            min={1}
-            value={draft.courtCount}
-            onChange={(v) => onChange("courtCount", v)}
-            data-testid="organiser-wizard-session-courts"
-          />
+        <Field label="Courts" required className="@2xl:col-span-1">
+          <WithIcon icon={LayoutGrid}>
+            <NumberField
+              min={1}
+              value={draft.courtCount}
+              onChange={(v) => onChange("courtCount", v)}
+              className={cn(CONTROL, "pl-9")}
+              data-testid="organiser-wizard-session-courts"
+            />
+          </WithIcon>
         </Field>
       </SectionCard>
 
-      <SectionCard icon={CalendarDays} title="Date">
-        <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Field label="Date">
-            <Input
-              type="date"
-              value={draft.date}
-              onChange={(e) => onChange("date", e.target.value)}
-              data-testid="organiser-wizard-date"
-            />
-            {draft.date && draft.date < todayInput() && (
-              <p className="text-xs text-destructive" data-testid="organiser-wizard-date-past-error">
-                That date has already passed.
-              </p>
-            )}
+      <SectionCard icon={CalendarDays} title="Date & Time" columns="one">
+        <div className="grid grid-cols-2 gap-3 @md:grid-cols-3">
+          <Field label="Date" required className="col-span-2 @md:col-span-1">
+            <Input type="date" value={draft.date} onChange={(e) => onChange("date", e.target.value)} className={CONTROL} data-testid="organiser-wizard-date" />
           </Field>
-          <Field label="Start Time">
-            <Input
-              type="time"
-              value={draft.startTime}
-              onChange={(e) => onChange("startTime", e.target.value)}
-              data-testid="organiser-wizard-start-time"
-            />
+          <Field label="Starts" required>
+            <Input type="time" value={draft.startTime} onChange={(e) => onChange("startTime", e.target.value)} className={CONTROL} data-testid="organiser-wizard-start-time" />
           </Field>
-          <Field label="End Time">
-            <Input
-              type="time"
-              value={draft.endTime}
-              onChange={(e) => onChange("endTime", e.target.value)}
-              data-testid="organiser-wizard-end-time"
-            />
+          <Field label="Ends" required>
+            <Input type="time" value={draft.endTime} onChange={(e) => onChange("endTime", e.target.value)} className={CONTROL} data-testid="organiser-wizard-end-time" />
           </Field>
         </div>
-
-        <div className="sm:col-span-2 space-y-1.5">
-          <label className="flex items-center gap-2 text-sm cursor-pointer w-fit">
+        {draft.date && draft.date < todayInput() && (
+          <p className="text-xs text-destructive" data-testid="organiser-wizard-date-past-error">
+            That date has already passed.
+          </p>
+        )}
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
+          <label className="flex min-h-11 w-fit cursor-pointer items-center gap-2 text-sm text-muted-foreground md:pointer-fine:min-h-9">
             <input
               type="checkbox"
               checked={!!draft.endDate}
               onChange={(e) => onChange("endDate", e.target.checked ? draft.date : "")}
-              className="accent-primary"
+              className="h-4 w-4 accent-primary"
               data-testid="organiser-wizard-multiday-toggle"
             />
-            This runs over multiple days (e.g. a 2-3 day tournament)
+            Runs over several days
           </label>
-          {draft.endDate && (
-            <div className="max-w-[200px]">
-              <Field label="Ends On">
-                <Input
-                  type="date"
-                  value={draft.endDate}
-                  min={draft.date || undefined}
-                  onChange={(e) => onChange("endDate", e.target.value)}
-                  data-testid="organiser-wizard-end-date"
-                />
-                {draft.date && draft.endDate < draft.date && (
-                  <p className="text-xs text-destructive" data-testid="organiser-wizard-end-date-error">
-                    End date can't be before the start date.
-                  </p>
-                )}
-              </Field>
-            </div>
-          )}
+          <SessionWeatherPreview city={AU_CITY_TIMEZONES.find((c) => c.timeZone === draft.timeZone)?.label ?? ""} date={draft.date} />
         </div>
-
-        <div className="sm:col-span-2">
-          <SessionWeatherPreview
-            city={AU_CITY_TIMEZONES.find((c) => c.timeZone === draft.timeZone)?.label ?? ""}
-            date={draft.date}
-          />
-        </div>
+        {draft.endDate && (
+          <Field label="Ends on" className="max-w-full @md:max-w-[14rem]">
+            <Input
+              type="date"
+              value={draft.endDate}
+              min={draft.date || undefined}
+              onChange={(e) => onChange("endDate", e.target.value)}
+              className={CONTROL}
+              data-testid="organiser-wizard-end-date"
+            />
+            {draft.date && draft.endDate < draft.date && (
+              <p className="text-xs text-destructive" data-testid="organiser-wizard-end-date-error">
+                End date can't be before the start date.
+              </p>
+            )}
+          </Field>
+        )}
       </SectionCard>
 
-      <SectionCard icon={ClipboardList} title="Registration">
-        <Field label="Opens">
-          <div className="flex gap-2">
-            <Input
-              type="date"
-              value={draft.registrationOpens}
-              onChange={(e) => onChange("registrationOpens", e.target.value)}
-              className="flex-1"
-              data-testid="organiser-wizard-registration-opens"
-            />
-            <Input
-              type="time"
-              value={draft.registrationOpensTime}
-              onChange={(e) => onChange("registrationOpensTime", e.target.value)}
-              className="w-28 shrink-0"
-              data-testid="organiser-wizard-registration-opens-time"
-            />
-          </div>
-        </Field>
-        <Field label="Closes">
-          <div className="flex gap-2">
-            <Input
-              type="date"
-              value={draft.registrationCloses}
-              max={draft.date || undefined}
-              onChange={(e) => onChange("registrationCloses", e.target.value)}
-              className="flex-1"
-              data-testid="organiser-wizard-registration-closes"
-            />
-            <Input
-              type="time"
-              value={draft.registrationClosesTime}
-              onChange={(e) => onChange("registrationClosesTime", e.target.value)}
-              className="w-28 shrink-0"
-              data-testid="organiser-wizard-registration-closes-time"
-            />
-          </div>
-          {draft.date && draft.registrationCloses > draft.date && (
-            <p className="text-xs text-destructive" data-testid="organiser-wizard-registration-closes-error">
-              Registration can't close after the session date.
-            </p>
-          )}
-        </Field>
-        <Field label="Max Players">
-          <div className="max-w-[140px]">
-            <NumberField
-              min={1}
-              value={draft.maxPlayers}
-              onChange={(v) => onChange("maxPlayers", v)}
-              data-testid="organiser-wizard-max-players"
-            />
-          </div>
-        </Field>
-        <div className="flex items-center justify-between rounded-xl border border-border px-3 py-2.5">
-          <Label className="text-sm">Waiting List</Label>
-          <Switch
-            checked={draft.waitingListEnabled}
-            onCheckedChange={(v) => onChange("waitingListEnabled", v)}
-            data-testid="organiser-wizard-waiting-list-toggle"
-          />
-        </div>
-        {draft.waitingListEnabled && (
-          <Field label="Waiting List Spots">
-            <div className="flex items-center gap-2 max-w-[220px]">
-              <NumberField
-                min={1}
-                value={draft.waitingListCapacity ?? NaN}
-                onChange={(v) => onChange("waitingListCapacity", v)}
-                placeholder="Unlimited"
-                data-testid="organiser-wizard-waiting-list-capacity"
+      {/* Who can come and at what price - side by side on a wide screen. */}
+      <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-2">
+        <SectionCard icon={ClipboardList} title="Registration" columns="one">
+          <Field label="Opens" required>
+            <DateTimeRow>
+              <Input
+                type="date"
+                value={draft.registrationOpens}
+                onChange={(e) => onChange("registrationOpens", e.target.value)}
+                className={CONTROL}
+                data-testid="organiser-wizard-registration-opens"
               />
-              <label className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0 cursor-pointer">
+              <Input
+                type="time"
+                value={draft.registrationOpensTime}
+                onChange={(e) => onChange("registrationOpensTime", e.target.value)}
+                className={CONTROL}
+                data-testid="organiser-wizard-registration-opens-time"
+              />
+            </DateTimeRow>
+          </Field>
+          <Field label="Closes" required>
+            <DateTimeRow>
+              <Input
+                type="date"
+                value={draft.registrationCloses}
+                max={draft.date || undefined}
+                onChange={(e) => onChange("registrationCloses", e.target.value)}
+                className={CONTROL}
+                data-testid="organiser-wizard-registration-closes"
+              />
+              <Input
+                type="time"
+                value={draft.registrationClosesTime}
+                onChange={(e) => onChange("registrationClosesTime", e.target.value)}
+                className={CONTROL}
+                data-testid="organiser-wizard-registration-closes-time"
+              />
+            </DateTimeRow>
+            {draft.date && draft.registrationCloses > draft.date && (
+              <p className="text-xs text-destructive" data-testid="organiser-wizard-registration-closes-error">
+                Registration can't close after the session date.
+              </p>
+            )}
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Max players">
+              <WithIcon icon={Users}>
+                <NumberField
+                  min={1}
+                  value={draft.maxPlayers}
+                  onChange={(v) => onChange("maxPlayers", v)}
+                  className={cn(CONTROL, "pl-9")}
+                  data-testid="organiser-wizard-max-players"
+                />
+              </WithIcon>
+            </Field>
+            <Field label="Waiting list">
+              <div className={cn(CONTROL, "flex items-center justify-between rounded-md border border-input px-3")}>
+                <UserRound className="h-4 w-4 text-muted-foreground" aria-hidden />
+                <Switch
+                  checked={draft.waitingListEnabled}
+                  onCheckedChange={(v) => onChange("waitingListEnabled", v)}
+                  aria-label="Waiting List"
+                  data-testid="organiser-wizard-waiting-list-toggle"
+                />
+              </div>
+            </Field>
+          </div>
+          {draft.waitingListEnabled && (
+            <Field label="Waiting list spots">
+              <WithIcon icon={Users}>
+                <NumberField
+                  min={1}
+                  value={draft.waitingListCapacity ?? NaN}
+                  onChange={(v) => onChange("waitingListCapacity", v)}
+                  placeholder="Unlimited"
+                  className={cn(CONTROL, "pl-9")}
+                  data-testid="organiser-wizard-waiting-list-capacity"
+                />
+              </WithIcon>
+              <label className="flex min-h-11 w-fit cursor-pointer items-center gap-2 text-sm text-muted-foreground md:pointer-fine:min-h-9">
                 <input
                   type="checkbox"
                   checked={draft.waitingListCapacity == null}
                   onChange={(e) => onChange("waitingListCapacity", e.target.checked ? null : 10)}
+                  className="h-4 w-4 accent-primary"
                   data-testid="organiser-wizard-waiting-list-unlimited"
                 />
                 Unlimited
               </label>
-            </div>
-          </Field>
-        )}
-        <div className="flex items-center justify-between rounded-xl border border-border px-3 py-2.5 sm:col-span-2">
-          <Label className="text-sm">Allow Late Registration</Label>
-          <Switch
-            checked={draft.allowLateRegistration}
-            onCheckedChange={(v) => onChange("allowLateRegistration", v)}
-            data-testid="organiser-wizard-late-registration-toggle"
-          />
-        </div>
-      </SectionCard>
+            </Field>
+          )}
+          {/* "Allow Late Registration" was here - never saved and no rule
+              behind it (Phase 1 audit 5.1). Registration closes at the time
+              set above. */}
+        </SectionCard>
 
-      <SectionCard icon={DollarSign} title="Pricing">
-        <div className="sm:col-span-2">
+        <SectionCard icon={DollarSign} title="Price & Visibility" columns="one">
+          {/* Segmented choices: one row each, the explanation only for the one picked. */}
           <RadioGroup
             value={draft.pricing}
             onValueChange={(v) => onChange("pricing", v as NewSessionDraft["pricing"])}
-            className="flex gap-4"
+            className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1"
+            aria-label="Pricing"
             data-testid="organiser-wizard-pricing-mode"
           >
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <RadioGroupItem value="free" data-testid="organiser-wizard-pricing-free" />
+            <label className={SEGMENT}>
+              <RadioGroupItem value="free" className="absolute inset-0 h-full w-full rounded-lg border-0 opacity-0 cursor-pointer" data-testid="organiser-wizard-pricing-free" />
               Free
             </label>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <RadioGroupItem value="paid" data-testid="organiser-wizard-pricing-paid" />
+            <label className={SEGMENT}>
+              <RadioGroupItem value="paid" className="absolute inset-0 h-full w-full rounded-lg border-0 opacity-0 cursor-pointer" data-testid="organiser-wizard-pricing-paid" />
               Paid
             </label>
           </RadioGroup>
-        </div>
-        {draft.pricing === "paid" && (
-          <Field label="Price">
-            <NumberField
-              min={0}
-              value={draft.price}
-              onChange={(v) => onChange("price", v)}
-              data-testid="organiser-wizard-price"
-            />
-          </Field>
-        )}
-      </SectionCard>
+          {draft.pricing === "paid" && (
+            <Field label="Price per player" className="max-w-[12rem]">
+              <WithIcon icon={DollarSign}>
+                <NumberField
+                  min={0}
+                  value={draft.price}
+                  onChange={(v) => onChange("price", v)}
+                  className={cn(CONTROL, "pl-9")}
+                  data-testid="organiser-wizard-price"
+                />
+              </WithIcon>
+            </Field>
+          )}
+          {draft.pricing === "paid" && (
+            <p className="text-xs text-muted-foreground" data-testid="organiser-wizard-price-note">
+              TennisConnect shows the price but doesn't collect payment - players pay you directly.
+            </p>
+          )}
 
-      <SectionCard icon={Eye} title="Visibility">
-        <div className="sm:col-span-2">
-          <RadioGroup
-            value={draft.visibility}
-            onValueChange={(v) => onChange("visibility", v as NewSessionDraft["visibility"])}
-            className="space-y-2"
-            data-testid="organiser-wizard-visibility"
-          >
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <RadioGroupItem value="public" data-testid="organiser-wizard-visibility-public" />
-              Public — anyone can find and join
-            </label>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <RadioGroupItem value="members" data-testid="organiser-wizard-visibility-members" />
-              Members Only — only club members
-            </label>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <RadioGroupItem value="invite" data-testid="organiser-wizard-visibility-invite" />
-              Invite Only — only people you invite
-            </label>
-          </RadioGroup>
-        </div>
-      </SectionCard>
+          <div className="space-y-1.5 pt-1">
+            <Label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <Users className="h-3.5 w-3.5" aria-hidden /> Who can join
+            </Label>
+            <RadioGroup
+              value={draft.visibility}
+              onValueChange={(v) => onChange("visibility", v as NewSessionDraft["visibility"])}
+              className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1"
+              aria-label="Visibility"
+              data-testid="organiser-wizard-visibility"
+            >
+              <label className={SEGMENT}>
+                <RadioGroupItem value="public" className="absolute inset-0 h-full w-full rounded-lg border-0 opacity-0 cursor-pointer" data-testid="organiser-wizard-visibility-public" />
+                Public
+              </label>
+              <label className={SEGMENT}>
+                <RadioGroupItem value="members" className="absolute inset-0 h-full w-full rounded-lg border-0 opacity-0 cursor-pointer" data-testid="organiser-wizard-visibility-members" />
+                Members
+              </label>
+              <label className={SEGMENT}>
+                <RadioGroupItem value="invite" className="absolute inset-0 h-full w-full rounded-lg border-0 opacity-0 cursor-pointer" data-testid="organiser-wizard-visibility-invite" />
+                Invite only
+              </label>
+            </RadioGroup>
+            <p className="text-xs text-muted-foreground" data-testid="organiser-wizard-visibility-hint">{visibilityHint[draft.visibility]}</p>
+          </div>
+        </SectionCard>
+      </div>
     </div>
   );
 }

@@ -8,101 +8,93 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, ArrowUpDown, Trash2, MessageSquare, UserCircle } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { MoreHorizontal } from "lucide-react";
 import type { SessionPlayer } from "@/lib/organiser-sessions-mock-data";
 import { formatInTimeZone } from "@/lib/timezone";
+import { LEVEL_BADGE_STYLE, STATUS_BADGE_STYLE, STATUS_LABEL, playerRowActions } from "./player-row-actions";
 
 interface PlayersListProps {
   players: SessionPlayer[];
   onCheckIn?: (player: SessionPlayer) => void;
   onRemove?: (player: SessionPlayer) => void;
+  onMessage?: (player: SessionPlayer) => void;
   onMoveToWaiting?: (player: SessionPlayer) => void;
   onViewProfile?: (player: SessionPlayer) => void;
-  // See players-table.tsx's own comment - without this, Check-in time
-  // showed the organizer's own browser's local time instead of the
-  // venue's.
+  // Venue time zone - see players-table.tsx.
   timeZone: string;
 }
 
-const LEVEL_BADGE_STYLE: Record<SessionPlayer["levelLabel"], string> = {
-  Advanced: "bg-primary/20 text-primary-text",
-  Intermediate: "bg-secondary text-secondary-foreground",
-  Beginner: "bg-secondary text-secondary-foreground",
-  Social: "bg-muted text-muted-foreground",
-};
-
-export function PlayersList({ players, onCheckIn, onRemove, onMoveToWaiting, onViewProfile, timeZone }: PlayersListProps) {
-  const { toast } = useToast();
-  const notify = (action: string, player: SessionPlayer) =>
-    toast({ title: `${action} — coming soon`, description: `Would apply to ${player.name}.` });
-
+// Tablet/phone version of PlayersTable - same real actions
+// (player-row-actions.ts). No demo "0.0" rating or "Real" badge any more.
+export function PlayersList({ players, onCheckIn, onRemove, onMessage, onMoveToWaiting, onViewProfile, timeZone }: PlayersListProps) {
   return (
     <div className="space-y-2" data-testid="organiser-players-list">
-      {players.map((player) => (
-        <Card key={player.id} className="shadow-sm" data-testid={`organiser-players-list-item-${player.id}`}>
-          <CardContent className="p-3 flex items-center gap-3">
-            <Avatar className="h-9 w-9 border border-border">
-              <AvatarImage src={player.avatar ?? undefined} alt={player.name} />
-              <AvatarFallback className="bg-primary/10 text-primary-text text-xs font-bold">
-                {player.name[0]}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1">
-              <div className="font-medium text-sm truncate flex items-center gap-1.5">
-                {player.name}
-                {player.isReal && (
-                  <Badge className="bg-primary/10 text-primary-text" data-testid={`organiser-players-list-item-${player.id}-real`}>
-                    Real
-                  </Badge>
-                )}
+      {players.map((player) => {
+        const actions = playerRowActions(player, { onMoveToWaiting, onMessage, onViewProfile, onRemove });
+        return (
+          <Card key={player.id} className="shadow-sm" data-testid={`organiser-players-list-item-${player.id}`}>
+            <CardContent className="p-3 flex items-center gap-3">
+              <Avatar className="h-9 w-9 border border-border">
+                <AvatarImage src={player.avatar ?? undefined} alt="" />
+                <AvatarFallback className="bg-primary/10 text-primary-text text-xs font-bold">
+                  {player.name[0]}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <div className="font-medium text-sm truncate">{player.name}</div>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <Badge className={LEVEL_BADGE_STYLE[player.levelLabel]}>{player.levelLabel}</Badge>
+                  {player.status !== "registered" && (
+                    <Badge className={STATUS_BADGE_STYLE[player.status]}>{STATUS_LABEL[player.status]}</Badge>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">{player.level.toFixed(1)}</span>
-                <Badge className={LEVEL_BADGE_STYLE[player.levelLabel]}>{player.levelLabel}</Badge>
-              </div>
-            </div>
 
-            {player.status === "registered" &&
-              (player.checkedIn && player.checkInTime ? (
-                <span className="flex items-center gap-1 text-primary-text text-xs font-medium shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                  {formatInTimeZone(player.checkInTime, timeZone, { hour: "numeric", minute: "2-digit" })}
-                </span>
-              ) : (
-                <Button size="sm" variant="outline" className="shrink-0" onClick={() => onCheckIn?.(player)} data-testid={`organiser-players-list-item-${player.id}-checkin`}>
-                  Check In
-                </Button>
-              ))}
+              {player.status === "registered" &&
+                (player.checkedIn && player.checkInTime ? (
+                  <span className="flex items-center gap-1 text-primary-text text-xs font-medium shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary" aria-hidden="true" />
+                    {formatInTimeZone(player.checkInTime, timeZone, { hour: "numeric", minute: "2-digit" })}
+                  </span>
+                ) : !onCheckIn ? null : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0 min-h-11 px-4"
+                    onClick={() => onCheckIn?.(player)}
+                    aria-label={`Check in ${player.name}`}
+                    data-testid={`organiser-players-list-item-${player.id}-checkin`}
+                  >
+                    Check In
+                  </Button>
+                ))}
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="More actions" className="shrink-0" data-testid={`organiser-players-list-item-${player.id}-menu`}>
-                  <MoreHorizontal aria-hidden="true" className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => (onMoveToWaiting ? onMoveToWaiting(player) : notify("Move to Waiting", player))}>
-                  <ArrowUpDown className="w-4 h-4 mr-2" />
-                  Move to Waiting
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => notify("Message", player)}>
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  Message
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => (onViewProfile ? onViewProfile(player) : notify("View Profile", player))}>
-                  <UserCircle className="w-4 h-4 mr-2" />
-                  View Profile
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => (onRemove ? onRemove(player) : notify("Remove", player))} className="text-destructive">
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Remove
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </CardContent>
-        </Card>
-      ))}
+              {actions.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" aria-label={`Actions for ${player.name}`} className="shrink-0 h-11 w-11" data-testid={`organiser-players-list-item-${player.id}-menu`}>
+                      <MoreHorizontal aria-hidden="true" className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {actions.map((action) => (
+                      <DropdownMenuItem
+                        key={action.key}
+                        onClick={action.onSelect}
+                        className={action.destructive ? "text-destructive" : undefined}
+                        data-testid={`organiser-players-list-item-${player.id}-${action.key}`}
+                      >
+                        <action.icon className="w-4 h-4 mr-2" />
+                        {action.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }

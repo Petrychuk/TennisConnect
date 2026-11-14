@@ -9,7 +9,7 @@ import { createHash } from 'node:crypto';
 import { E2EAuthError, assertE2EAuthAllowed, e2eCredentials, loginViaApi, storageStatePath } from '../helpers/e2e-auth';
 import { RUN_ID_ENV, RunOwnershipError, currentRunId, ensureRunId, requireRunOwnedEmail, runOwnedEmail } from '../fixtures/run-id';
 import { TEST_RUN_ID_HEADER, testHookHeaders } from '../helpers/test-hooks';
-import { generateTestUser } from '../fixtures/test-users';
+import { generateTestUser, ignoredLegacyCredentialKeys, resolveTestUser } from '../fixtures/test-users';
 import { classifyEmail, isOwnedByRun } from '../../server/seeds/e2e/identities';
 
 // Synthetic login value for the fake request below - never a real account's.
@@ -141,4 +141,34 @@ test('test-hook requests carry the run token when a run is active', () => {
   const runId = ensureRunId(env);
   assert.equal(testHookHeaders(env)[TEST_RUN_ID_HEADER], runId);
   assert.equal(testHookHeaders({ ...env, [RUN_ID_ENV]: 'forged' })[TEST_RUN_ID_HEADER], undefined, 'a malformed token is never sent');
+});
+
+// ---- Legacy TEST_<ROLE>_* accounts (ORG-AUTH-001, 30 Oct 2026) ----
+const LEGACY = { TEST_ADMIN_EMAIL: 'admin@legacy.example', TEST_ADMIN_PASSWORD: 'legacy-pw-not-real', E2E_ADMIN_PASSWORD: 'e2e-pw-not-real' };
+
+test('legacy accounts no longer replace e2e-admin silently on a local run', () => {
+  for (const TEST_ENV of [undefined, 'local', 'staging']) {
+    const user = resolveTestUser('admin', { ...LEGACY, TEST_ENV });
+    assert.equal(user.email, 'e2e-admin@tennisconnect.test', `TEST_ENV=${TEST_ENV}`);
+    assert.equal(user.password, 'e2e-pw-not-real');
+    assert.equal(user.source, 'baseline');
+  }
+  assert.deepEqual(ignoredLegacyCredentialKeys({ ...LEGACY, TEST_ENV: 'local' }), ['TEST_ADMIN_EMAIL', 'TEST_ADMIN_PASSWORD']);
+});
+
+test('legacy accounts only with TEST_ENV=local + E2E_LEGACY_LOCAL_ACCOUNTS=1 + a complete pair', () => {
+  const opted = resolveTestUser('admin', { ...LEGACY, TEST_ENV: 'local', E2E_LEGACY_LOCAL_ACCOUNTS: '1' });
+  assert.deepEqual([opted.email, opted.password, opted.source], ['admin@legacy.example', 'legacy-pw-not-real', 'legacy-local']);
+  assert.deepEqual(ignoredLegacyCredentialKeys({ ...LEGACY, TEST_ENV: 'local', E2E_LEGACY_LOCAL_ACCOUNTS: '1' }), []);
+  // The opt-in never reaches Staging or Production.
+  for (const TEST_ENV of ['staging', 'production']) {
+    assert.equal(resolveTestUser('admin', { ...LEGACY, TEST_ENV, E2E_LEGACY_LOCAL_ACCOUNTS: '1' }).source, 'baseline', TEST_ENV);
+  }
+  // Half a pair is an error naming variables only - never a mix, never an empty password.
+  assert.throws(
+    () => resolveTestUser('admin', { TEST_ENV: 'local', E2E_LEGACY_LOCAL_ACCOUNTS: '1', TEST_ADMIN_EMAIL: 'admin@legacy.example', E2E_ADMIN_PASSWORD: 'e2e-pw-not-real' }),
+    (error: Error) => /TEST_ADMIN_PASSWORD/.test(error.message) && !error.message.includes('e2e-pw-not-real'),
+  );
+  // Roles without legacy variables (organiser, player-2) are always the baseline account.
+  assert.equal(resolveTestUser('organiser', { TEST_ENV: 'local', E2E_LEGACY_LOCAL_ACCOUNTS: '1' }).email, 'e2e-organiser@tennisconnect.test');
 });

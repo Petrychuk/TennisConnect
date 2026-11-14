@@ -67,7 +67,7 @@ export function MessagesTab({ session }: MessagesTabProps) {
             className="min-h-20"
             data-testid="organiser-session-messages-draft"
           />
-          <Button onClick={handlePost} disabled={!draft.trim() || sending} className="ml-auto flex" data-testid="organiser-session-messages-post">
+          <Button size="sm" onClick={handlePost} disabled={!draft.trim() || sending} className="ml-auto flex" data-testid="organiser-session-messages-post">
             <Send className="w-4 h-4 mr-2" />
             {sending ? "Sending..." : "Post Update"}
           </Button>

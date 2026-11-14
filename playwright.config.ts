@@ -3,11 +3,12 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, devices } from '@playwright/test';
 import { describeE2EEnvLoad, loadE2EEnv } from './tests/safety/load-e2e-env';
 import {
-  PROD_SAFE_GREP,
-  productionTestMatch,
+  productionSelection,
+  productionSuite,
   resolveTarget,
 } from './tests/safety/environment-guard';
 import { ensureRunId } from './tests/fixtures/run-id';
+import { ignoredLegacyCredentialKeys, LEGACY_LOCAL_OPT_IN } from './tests/fixtures/test-users';
 
 /**
  * Read environment variables from file.
@@ -41,8 +42,25 @@ if (e2eEnv.staging && !process.env.TC_E2E_ENV_LOGGED) {
   process.env.TC_E2E_ENV_LOGGED = '1';
 }
 
+// Retired shared accounts (TEST_ADMIN_EMAIL ...) used to replace the e2e-*
+// accounts silently on local runs (ORG-AUTH-001). They're ignored unless
+// opted in - say so once, key names only.
+const ignoredLegacy = ignoredLegacyCredentialKeys(process.env);
+if (ignoredLegacy.length > 0 && !process.env.TC_E2E_LEGACY_LOGGED) {
+  console.error(
+    `[e2e-env] ignored legacy test-account variables: ${ignoredLegacy.join(', ')} - ` +
+      `tests use the e2e-*@tennisconnect.test accounts (E2E_*_PASSWORD). ` +
+      `Local runs that really need the old accounts: ${LEGACY_LOCAL_OPT_IN}=1.`,
+  );
+  process.env.TC_E2E_LEGACY_LOGGED = '1';
+}
+
 const target = resolveTarget(process.env);
 const isProduction = target.testEnv === 'production';
+// "prod-safe" unless the internal Live suite is explicitly requested,
+// configured and confirmed (refused otherwise - environment-guard.ts).
+const prodSuite = productionSuite(process.env);
+const prodSelection = productionSelection(prodSuite);
 
 // One run token per Playwright run, inherited by all workers. Temporary
 // records carry it so Stage 3 cleanup can be limited to this run's data.
@@ -62,8 +80,8 @@ export default defineConfig({
      file outside the allowlist. */
   ...(isProduction
     ? {
-        testMatch: productionTestMatch(),
-        grep: PROD_SAFE_GREP,
+        testMatch: prodSelection.testMatch,
+        grep: prodSelection.grep,
       }
     : {}),
   /* Fails closed unless the live server confirms TEST_ENV.
@@ -77,7 +95,8 @@ export default defineConfig({
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  // Never retry the internal Production Live suite: it writes.
+  retries: prodSuite === 'prod-live-internal' ? 0 : process.env.CI ? 2 : 0,
   /* Cap workers everywhere, not just CI: each worker opens its own DB
      session, and the Supabase pooler in session mode here has pool_size 15.
      Running unbounded workers (default = CPU core count) against a shared
@@ -98,13 +117,15 @@ export default defineConfig({
   metadata: {
     testEnv: target.testEnv,
     target: target.origin,
+    ...(isProduction ? { productionSuite: prodSuite } : {}),
   },
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
 
   use: {
     // Validated by resolveTarget() above - never set baseURL anywhere else.
     baseURL: target.baseURL,
-    trace: 'on-first-retry',
+    // Kept for every failed test (Staging runs use 0 retries, so 'on-first-retry' never recorded one).
+    trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },

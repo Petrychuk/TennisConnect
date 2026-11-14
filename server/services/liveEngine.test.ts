@@ -192,5 +192,109 @@ test("computeLeaderboard: a tied score counts as a draw for both sides, not a wi
   assert.equal(byId.p2.draws, 1);
 });
 
+// ---- TC Live v1 (30 Oct 2026) ----
+
+/** Plays `rounds` rounds through planRound, feeding history back in like storage does. */
+function simulate(n: number, courtsCount: number, mode: "singles" | "doubles", rounds: number) {
+  const pastMatches: PastMatch[] = [];
+  const restCounts: Record<string, number> = {};
+  const roster = players(n);
+  const plans = [];
+  for (let r = 0; r < rounds; r++) {
+    const plan = planRound({ players: roster, courtsCount, mode, pastMatches, restCounts });
+    plans.push(plan);
+    pastMatches.push(...plan.matches);
+    for (const id of plan.restingPlayerIds) restCounts[id] = (restCounts[id] ?? 0) + 1;
+  }
+  return { plans, restCounts, pastMatches, roster };
+}
+
+test("every round: nobody plays twice, nobody is both playing and resting, everyone accounted for", () => {
+  for (const [n, courts, mode] of [[7, 2, "doubles"], [9, 3, "singles"], [13, 2, "doubles"], [5, 4, "singles"]] as const) {
+    const { plans } = simulate(n, courts, mode, 6);
+    for (const plan of plans) {
+      const onCourt = plan.matches.flatMap((m) => [...m.teamAIds, ...m.teamBIds]);
+      assert.equal(new Set(onCourt).size, onCourt.length, `${n}/${courts}/${mode}: no double booking`);
+      assert.ok(onCourt.every((id) => !plan.restingPlayerIds.includes(id)));
+      assert.equal(onCourt.length + plan.restingPlayerIds.length, n);
+      assert.ok(plan.matches.length <= courts, "never more matches than courts");
+      const size = mode === "singles" ? 1 : 2;
+      assert.ok(plan.matches.every((m) => m.teamAIds.length === size && m.teamBIds.length === size));
+    }
+  }
+});
+
+test("odd player count and too few courts: rests rotate so nobody rests twice before everyone rested once", () => {
+  // 9 singles players, 2 courts -> 4 play, 5 rest each round.
+  const { plans, restCounts } = simulate(9, 2, "singles", 9);
+  for (const plan of plans) assert.equal(plan.matches.length, 2);
+  const counts = Object.values(restCounts);
+  assert.ok(Math.max(...counts) - Math.min(...counts) <= 1, `rests stay within one of each other: ${JSON.stringify(restCounts)}`);
+  // 5 doubles players, 1 court: exactly one rests per round, a different one each time for 5 rounds.
+  const five = simulate(5, 1, "doubles", 5);
+  const resters = five.plans.map((p) => p.restingPlayerIds[0]);
+  assert.equal(new Set(resters).size, 5, `every player rests once in five rounds: ${resters.join(",")}`);
+});
+
+test("doubles partner rotation: 8 players over 3 rounds never repeat a partner while a fresh one exists", () => {
+  // 8 players, 2 courts: each player has 7 possible partners; greedy pairing
+  // should avoid a repeat in the first rounds (allowing a small tolerance, it
+  // is a greedy heuristic, not a perfect round-robin scheduler).
+  const { pastMatches } = simulate(8, 2, "doubles", 3);
+  const partners = new Map<string, number>();
+  for (const m of pastMatches) {
+    for (const team of [m.teamAIds, m.teamBIds]) {
+      const key = [...team].sort().join("|");
+      partners.set(key, (partners.get(key) ?? 0) + 1);
+    }
+  }
+  const partnerCounts = Array.from(partners.values());
+const partnerEntries = Array.from(partners.entries());
+
+assert.ok(
+  partnerCounts.every((count) => count === 1),
+  `no repeated partnership in 3 rounds: ${JSON.stringify(partnerEntries)}`
+  );
+});
+
+test("fewer players than one court needs: no match at all (the server refuses such a round)", () => {
+  const plan = planRound({ players: players(3), courtsCount: 2, mode: "doubles", pastMatches: [], restCounts: {} });
+  assert.equal(plan.matches.length, 0);
+  assert.equal(plan.restingPlayerIds.length, 3);
+});
+
+test("computeLeaderboard: wins, then draws, then games difference, then games won, then a stable id order", () => {
+  const m = (a: string, b: string, ga: number, gb: number) => ({ teamAIds: [a], teamBIds: [b], teamAGames: ga, teamBGames: gb, status: "confirmed" });
+  const rows = computeLeaderboard({
+    matches: [
+      m("pA", "x1", 6, 0), // A: 1 win, +6
+      m("pB", "x2", 6, 5), // B: 1 win, +1
+      m("pC", "x3", 4, 4), // C: 1 draw
+      m("pD", "x4", 6, 5), // D: 1 win, +1, same as B -> games won equal too -> id order
+      m("x5", "pE", 9, 9), // E: 1 draw, more games than C
+    ],
+    restCounts: {},
+    players: [],
+  });
+  const order = rows.map((r) => r.userId).filter((id) => id.startsWith("p"));
+  assert.deepEqual(order, ["pA", "pB", "pD", "pE", "pC"]);
+  // Same input in a different order gives the same table.
+  const again = computeLeaderboard({ matches: [m("pD", "x4", 6, 5), m("pB", "x2", 6, 5)], restCounts: {}, players: [] });
+  assert.deepEqual(again.map((r) => r.userId).slice(0, 2), ["pB", "pD"]);
+});
+
+test("computeLeaderboard: abandoned and unscored matches never count", () => {
+  const rows = computeLeaderboard({
+    matches: [
+      { teamAIds: ["p1"], teamBIds: ["p2"], teamAGames: 6, teamBGames: 1, status: "abandoned" },
+      { teamAIds: ["p1"], teamBIds: ["p2"], teamAGames: null, teamBGames: null, status: "playing" },
+    ],
+    restCounts: { p1: 1 },
+    players: [{ id: "p1" }, { id: "p2" }],
+  });
+  for (const r of rows) assert.equal(r.matchesPlayed, 0, r.userId);
+  assert.equal(rows.find((r) => r.userId === "p1")!.restRounds, 1);
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

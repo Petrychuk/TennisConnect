@@ -211,6 +211,17 @@ export function createTestHooksRouter(deps: TestHooksDeps) {
       const scope = runScope(req, res);
       if (!scope) return;
       const count = Math.min(Math.max(Number(req.body?.count) || 1, 1), 30);
+      // Optional, for the admin user-deletion suite: coaches as well as
+      // players, and pending (not yet approved) accounts. Anything else is
+      // refused rather than guessed.
+      const role = req.body?.role ?? "player";
+      if (role !== "player" && role !== "coach") {
+        return res.status(400).json({ message: "role must be player or coach" });
+      }
+      const approved = req.body?.approved === undefined ? true : req.body.approved;
+      if (typeof approved !== "boolean") {
+        return res.status(400).json({ message: "approved must be a boolean" });
+      }
       const password = "Test123456!";
       const hashed = await deps.hashPassword(password);
 
@@ -219,16 +230,16 @@ export function createTestHooksRouter(deps: TestHooksDeps) {
         const stamp = `${Date.now()}_${i}_${Math.floor(Math.random() * 1_000_000)}`;
         // Run-owned address when the request carries a run id (always on Staging).
         const email = scope.runId
-          ? runScopedEmail(scope.runId, `seed-player-${stamp.replace(/_/g, "-")}`)
-          : `seed_player_${stamp}@tennisconnect.test`;
+          ? runScopedEmail(scope.runId, `seed-${role}-${stamp.replace(/_/g, "-")}`)
+          : `seed_${role}_${stamp}@tennisconnect.test`;
         const user = await deps.storage.createUser({
-          name: `Seed Player ${stamp}`,
+          name: `Seed ${role === "coach" ? "Coach" : "Player"} ${stamp}`,
           email,
           password: hashed,
-          role: "player",
+          role,
           isTestUser: true,
           profileCompleted: true,
-          isApproved: true,
+          isApproved: approved,
           emailVerified: true,
         } as any);
         players.push({ id: user.id, name: user.name, email: user.email, slug: user.slug, password });

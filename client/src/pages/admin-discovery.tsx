@@ -9,7 +9,7 @@ import { OrganiserSidebarNav } from "@/components/organiser/ui/organiser-sidebar
 import { OrganiserMobileNav } from "@/components/organiser/ui/organiser-mobile-nav";
 import { NotificationBell } from "@/components/organiser/ui/notification-bell";
 import { useSidebarCollapsed } from "@/lib/use-sidebar-collapsed";
-import { mockOrganiser } from "@/lib/organiser-hub-mock-data";
+import { useOrganiserIdentity } from "@/components/organiser/ui/organiser-layout";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -175,10 +175,8 @@ export default function AdminDiscoveryPage() {
   const isAdmin = !!user?.isAdmin;
 
   const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed();
-  const profileHref = user ? `/${user.role}/${user.slug}` : "/";
-  const organiser = user
-    ? { ...mockOrganiser, name: user.name, avatar: user.avatar ?? null, isAdmin: user.isAdmin ?? false }
-    : mockOrganiser;
+  // Real name, avatar and role (Admin / Organiser · Admin) - no mock fallback.
+  const { organiser, profileHref } = useOrganiserIdentity();
 
   const [view, setView] = useState<"queue" | "sources">("queue");
   const [tab, setTab] = useState<Tab>("PENDING");

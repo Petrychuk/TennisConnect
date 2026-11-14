@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import { SCHEMA_DRIFT_MESSAGE, isSchemaDriftError } from "./lib/schemaDrift";
 
 // Process diagnostics for unexpected crashes and Railway restarts.
 process.on("unhandledRejection", (reason) => {
@@ -261,8 +262,11 @@ app.use((req, res, next) => {
       // only the response sent back is generic for this one category,
       // and only in production (kept verbose in development).
       const looksLikeRawDriverError = typeof err.code === "string" && !err.status && !err.statusCode;
-      const message =
-        looksLikeRawDriverError && process.env.NODE_ENV === "production"
+      // Code newer than the database (a migration not applied): say so, in every
+      // environment, without the SQL statement the driver puts in .message.
+      const message = isSchemaDriftError(err)
+        ? SCHEMA_DRIFT_MESSAGE
+        : looksLikeRawDriverError && process.env.NODE_ENV === "production"
           ? "Something went wrong. Please try again."
           : err.message || "Internal Server Error";
 

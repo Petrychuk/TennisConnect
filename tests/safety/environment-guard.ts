@@ -506,6 +506,94 @@ export function productionTestMatch(
 
 export const PROD_SAFE_GREP = new RegExp(escapeRegExp(PROD_SAFE_TAG));
 
+// ---------- Production: internal TC Live validation (opt-in) ----------
+/*
+  A SECOND, separate Production suite for validating TC Live on Production
+  with internal test data only (docs/live/LIVE_RUNBOOK.md). Never selected
+  by default, never together with @prod-safe:
+
+    E2E_PROD_SUITE=prod-live-internal            the opt-in
+    E2E_CONFIRM_PROD_LIVE_INTERNAL=<session id>  this run's confirmation
+    E2E_PROD_LIVE_SESSION_ID                     the one internal test session it may touch
+    E2E_PROD_LIVE_ORGANISER_EMAIL / _PASSWORD    the internal organiser (Production identity)
+    E2E_PROD_LIVE_PLAYER_SLUGS                   the internal players allowed in that session
+
+  The server is the real barrier: the session must report isInternalTest
+  (only TC_INTERNAL_TEST_EMAILS accounts can create or join one), and
+  TC_LIVE_ENABLED must be "internal" or "true". tests/fixtures/
+  prod-live-internal.ts allows writes only to that session's Live routes,
+  records every write (audit file) and never deletes anything. No
+  ALLOW_PROD-style bypass: every value is checked here, names only in errors.
+*/
+export const PROD_LIVE_INTERNAL_TAG = '@prod-live-internal';
+
+export const PROD_LIVE_INTERNAL_ALLOWLIST: readonly ProdSafeEntry[] = [
+  { file: 'tests/prod-live-internal/live-internal.spec.ts', testIds: ['LIVE-PROD-001', 'LIVE-PROD-002'] },
+];
+
+export const PROD_LIVE_INTERNAL_REQUIRED_ENV = [
+  'E2E_PROD_LIVE_SESSION_ID',
+  'E2E_PROD_LIVE_ORGANISER_EMAIL',
+  'E2E_PROD_LIVE_ORGANISER_PASSWORD',
+  'E2E_PROD_LIVE_PLAYER_SLUGS',
+] as const;
+
+export const PROD_LIVE_INTERNAL_GREP = new RegExp(escapeRegExp(PROD_LIVE_INTERNAL_TAG));
+
+export type ProductionSuite = 'prod-safe' | 'prod-live-internal';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Which Production suite this run may select. "prod-safe" unless the
+ * internal Live suite is explicitly requested AND fully configured AND
+ * confirmed for this exact session - otherwise the run is refused.
+ */
+export function productionSuite(env: EnvLike): ProductionSuite {
+  const raw = (env.E2E_PROD_SUITE ?? '').trim();
+  if (raw === '' || raw === 'prod-safe') return 'prod-safe';
+  if (raw !== 'prod-live-internal') {
+    throw new EnvironmentGuardError(`E2E_PROD_SUITE="${raw}" is not a Production suite (prod-safe, prod-live-internal).`);
+  }
+  if (parseTestEnv(env.TEST_ENV) !== 'production') {
+    throw new EnvironmentGuardError('E2E_PROD_SUITE=prod-live-internal is only for TEST_ENV=production.');
+  }
+  const missing = PROD_LIVE_INTERNAL_REQUIRED_ENV.filter((key) => !(env[key] ?? '').trim());
+  if (missing.length > 0) {
+    throw new EnvironmentGuardError(`prod-live-internal needs ${missing.join(', ')}.`);
+  }
+  const sessionId = env.E2E_PROD_LIVE_SESSION_ID!.trim();
+  if (!UUID_RE.test(sessionId)) {
+    throw new EnvironmentGuardError('E2E_PROD_LIVE_SESSION_ID must be a session id (uuid).');
+  }
+  if ((env.E2E_CONFIRM_PROD_LIVE_INTERNAL ?? '').trim() !== sessionId) {
+    throw new EnvironmentGuardError(
+      'prod-live-internal writes to Production: confirm this run by setting E2E_CONFIRM_PROD_LIVE_INTERNAL to the same value as E2E_PROD_LIVE_SESSION_ID.',
+    );
+  }
+  return 'prod-live-internal';
+}
+
+/** testMatch + grep for a Production run of `suite`. */
+export function productionSelection(suite: ProductionSuite): { testMatch: RegExp[]; grep: RegExp; tag: string } {
+  return suite === 'prod-live-internal'
+    ? { testMatch: productionTestMatch(PROD_LIVE_INTERNAL_ALLOWLIST), grep: PROD_LIVE_INTERNAL_GREP, tag: PROD_LIVE_INTERNAL_TAG }
+    : { testMatch: productionTestMatch(), grep: PROD_SAFE_GREP, tag: PROD_SAFE_TAG };
+}
+
+/** Throws unless (file, title, tags) is an allowlisted @prod-live-internal test. */
+export function assertProdLiveInternalTest(test: { file: string; title: string; tags: readonly string[] }) {
+  const entry = PROD_LIVE_INTERNAL_ALLOWLIST.find((item) => item.file === test.file);
+  if (!entry) throw new EnvironmentGuardError(`"${test.file}" is not in PROD_LIVE_INTERNAL_ALLOWLIST.`);
+  if (!test.tags.includes(PROD_LIVE_INTERNAL_TAG)) {
+    throw new EnvironmentGuardError(`test "${test.title}" in ${test.file} is not tagged ${PROD_LIVE_INTERNAL_TAG}.`);
+  }
+  const id = extractTestId(test.title);
+  if (!id || !entry.testIds.includes(id)) {
+    throw new EnvironmentGuardError(`test "${test.title}" (id ${id ?? 'missing'}) is not in PROD_LIVE_INTERNAL_ALLOWLIST.`);
+  }
+}
+
 export function toRepoRelative(rootDir: string, file: string): string {
   return path.relative(rootDir, file).split(path.sep).join('/');
 }
@@ -560,7 +648,11 @@ function asArray<T>(value: T | T[]): T[] {
  * restricted to the allowlist and to @prod-safe. (A CLI --grep is applied
  * in addition to the project grep, so it can narrow but not widen.)
  */
-export function assertProjectsSafe(projects: readonly ProjectLike[], target: VerifiedTarget) {
+export function assertProjectsSafe(
+  projects: readonly ProjectLike[],
+  target: VerifiedTarget,
+  suite: ProductionSuite = target.testEnv === 'production' ? productionSuite(process.env) : 'prod-safe',
+) {
   if (projects.length === 0) {
     throw new EnvironmentGuardError('no Playwright projects are configured.');
   }
@@ -585,20 +677,21 @@ export function assertProjectsSafe(projects: readonly ProjectLike[], target: Ver
 
     if (target.testEnv !== 'production') continue;
 
-    const expected = productionTestMatch().map(re => re.source).sort();
+    const selection = productionSelection(suite);
+    const expected = selection.testMatch.map(re => re.source).sort();
     const actual = asArray(project.testMatch)
       .map(item => (item instanceof RegExp ? item.source : `glob:${item}`))
       .sort();
     if (JSON.stringify(actual) !== JSON.stringify(expected)) {
       throw new EnvironmentGuardError(
-        `project "${project.name}" testMatch is not the Production allowlist.`
+        `project "${project.name}" testMatch is not the Production allowlist for ${suite}.`
       );
     }
 
     const greps = asArray(project.grep);
-    if (greps.length === 0 || !greps.every(re => re.source.includes(PROD_SAFE_TAG))) {
+    if (greps.length === 0 || !greps.every(re => re.source.includes(selection.tag))) {
       throw new EnvironmentGuardError(
-        `on Production the test filter must select ${PROD_SAFE_TAG} ` +
+        `on Production the test filter must select ${selection.tag} ` +
         `(got ${greps.map(re => `/${re.source}/`).join(', ') || 'none'}). ` +
         `Filters such as @smoke are not allowed on Production.`
       );

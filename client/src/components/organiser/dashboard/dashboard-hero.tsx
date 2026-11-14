@@ -1,22 +1,11 @@
-import { motion } from "framer-motion";
-import { Link } from "wouter";
-import { Card, CardContent } from "@/components/ui/card";
-import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
-import { Users, CalendarDays, UsersRound, Percent, DollarSign } from "lucide-react";
-import type { OrganiserUser, StatStripItem } from "@/lib/organiser-hub-mock-data";
+import type { OrganiserUser } from "@/lib/organiser-hub-mock-data";
+import { cn } from "@/lib/utils";
 
 interface DashboardHeroProps {
   organiser: OrganiserUser;
-  stats: StatStripItem[];
+  className?: string;
+  testId?: string;
 }
-
-const STAT_ICON: Record<string, typeof Users> = {
-  live: Users,
-  upcoming: CalendarDays,
-  players: UsersRound,
-  attendance: Percent,
-  revenue: DollarSign,
-};
 
 function greeting() {
   const hour = new Date().getHours();
@@ -25,88 +14,13 @@ function greeting() {
   return "Good evening";
 }
 
-function StatCard({ stat }: { stat: StatStripItem }) {
-  const Icon = STAT_ICON[stat.key] ?? Users;
-  const body = (
-    <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-      <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-primary/10 text-primary-text flex items-center justify-center shrink-0">
-        <Icon className="w-4 h-4" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-lg font-bold leading-tight truncate">{stat.value}</p>
-        <p className="text-xs text-muted-foreground leading-tight sm:truncate">{stat.label}</p>
-        <p className="text-[11px] text-muted-foreground/70 truncate">{stat.sublabel}</p>
-      </div>
-    </CardContent>
-  );
-
-  // Only clickable when there's somewhere real to send the organiser -
-  // Attendance has no href yet (no Reports page exists) and stays a
-  // plain, non-interactive card rather than a link to nowhere.
-  if (stat.href) {
-    return (
-      <Link href={stat.href} className="block h-full" data-testid={`organiser-stat-strip-${stat.key}`}>
-        <Card className="h-full shadow-sm hover:shadow-md hover:border-primary/40 transition-all cursor-pointer">
-          {body}
-        </Card>
-      </Link>
-    );
-  }
-
+// Greeting only. The separate KPI row (Live / Upcoming / Active Players /
+// Attendance) was removed from Home on purpose - the same numbers live in
+// TC Live, Upcoming Sessions and Reports. Nothing on the backend changed.
+export function DashboardHero({ organiser, className, testId = "organiser-dashboard-hero" }: DashboardHeroProps) {
   return (
-    <Card className="h-full shadow-sm hover:shadow-md transition-shadow" data-testid={`organiser-stat-strip-${stat.key}`}>
-      {body}
-    </Card>
-  );
-}
-
-export function DashboardHero({ organiser, stats }: DashboardHeroProps) {
-  return (
-    <div className="px-4 sm:px-6 lg:px-8 pt-4" data-testid="organiser-dashboard-hero">
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        <h1 className="text-2xl sm:text-3xl font-display font-bold flex items-center gap-2">
-          {greeting()}, {organiser.name}! <span aria-hidden>👋</span>
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Here's what's happening with your tennis community today.
-        </p>
-      </motion.div>
-
-      {/* Mobile — single row, swipeable, loops around */}
-      <motion.div
-        className="sm:hidden mt-6"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        <Carousel opts={{ loop: true, align: "start" }} data-testid="organiser-stat-strip-carousel">
-          <CarouselContent className="-ml-3">
-            {stats.map((stat) => (
-              <CarouselItem key={stat.key} className="pl-3 basis-[44%]">
-                <StatCard stat={stat} />
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-        </Carousel>
-      </motion.div>
-
-      {/* Tablet & desktop — grid */}
-      <div className="hidden sm:grid sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6 mt-6">
-        {stats.map((stat, index) => (
-          <motion.div
-            key={stat.key}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: index * 0.05 }}
-          >
-            <StatCard stat={stat} />
-          </motion.div>
-        ))}
-      </div>
-    </div>
+    <h1 className={cn("text-xl sm:text-2xl font-display font-bold flex items-center gap-2 min-w-0", className)} data-testid={testId}>
+      <span className="truncate">{greeting()}, {organiser.name}!</span> <span aria-hidden>👋</span>
+    </h1>
   );
 }
