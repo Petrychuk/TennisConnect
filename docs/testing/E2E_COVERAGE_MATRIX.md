@@ -80,7 +80,11 @@ Updated 5 Nov 2026. Inventory from `npx playwright test --list`: **404 tests in 
 | | Registration and status | PLAY-003…006 |
 | | "I agree to the rules & policies" before Join (page and API) | PLAY-010 |
 | | Guest: Sign in / Create an account, no Join | PLAY-011, PROD-SAFE-017 |
-| | Finished session: archived - off Play, "Archived" on its page, join refused | PLAY-012 |
+| | Start time reached: archived for players - off Play, "Archived" on its page, join refused | PLAY-012 |
+| | Registration closed early: off Play, "Registration Closed", join refused, still the organiser's (published) | PLAY-013 |
+| | Lifecycle: no status change by the clock, delayed Start Live, Live past its end, Finish -> Completed (no edits) | LIVE-017 |
+| | Live: a player leaves mid-round - flagged on the court, Not played closes the round (never counts, score can still go in); a late arrival - Redo round before anyone starts (refused after) | LIVE-018, LIVE-019 |
+| | After Finish: results in the Workspace (final, podium, summary, table), roster frozen (check-in / remove / waitlist 409), Cancel / Archive refused while live, archived keeps results | LIVE-020 |
 | **G. Responsive** | 6 viewports: navigation, wizard, players, touch targets, check-in, organisation, overflow | ORG-RESP-001…003 |
 | Rankings, reports, series | Existing | ORG-RANK-002/004/006, ORG-REPORT-003/004/010/012, ORG-FLOW-001/003 |
 | **I. Dashboard states** (5 Nov) | New organiser: 0 / 0 / 0 / `—`, welcome card with Create Session | ORG-DASH-001 |

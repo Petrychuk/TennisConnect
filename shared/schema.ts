@@ -1337,7 +1337,11 @@ export type ReportsData = {
 // §8). "closed" covers a published session whose registration window
 // has passed but the session itself hasn't happened/been marked live
 // yet.
-// "archived": the session is over (shared/sessionJoinRules.ts sessionHasFinished) - shown on a direct link only, nothing to do.
+// What players and guests see (shared/sessionLifecycle.ts). "full" and
+// "waitlist" both read "Registration Closed" - waitlist still offers Join
+// Waiting List. "archived": the start time has come (or the session is live,
+// completed or archived) - read-only on a direct link, never listed.
+// "live" is kept for older clients; the server no longer sends it to players.
 export type PublicSessionStatus = "live" | "upcoming" | "open" | "almost_full" | "full" | "waitlist" | "closed" | "archived";
 
 export type PublicSessionCard = {

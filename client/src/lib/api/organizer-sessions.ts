@@ -343,6 +343,18 @@ export async function getCurrentRound(sessionId: string): Promise<{ round: Sessi
   return res.json();
 }
 
+/** Redo the current round with whoever is available now - only while no match in it has started (409 ROUND_STARTED). */
+export async function redoCurrentRound(sessionId: string): Promise<{ round: SessionRound; matches: MatchWithPlayers[] }> {
+  const res = await apiRequest("POST", `${BASE}/sessions/${sessionId}/rounds/current/redo`);
+  return res.json();
+}
+
+/** "Not played": the match won't finish. Never counts; closes the round if it was the last open court. */
+export async function markMatchNotPlayed(sessionId: string, matchId: string): Promise<Match> {
+  const res = await apiRequest("POST", `${BASE}/sessions/${sessionId}/matches/${matchId}/not-played`);
+  return res.json();
+}
+
 export async function startMatch(sessionId: string, matchId: string): Promise<Match> {
   const res = await apiRequest("POST", `${BASE}/sessions/${sessionId}/matches/${matchId}/start`);
   return res.json();

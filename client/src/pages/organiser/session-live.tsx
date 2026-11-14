@@ -1,4 +1,3 @@
-import { ConnectWord } from "@/components/ui/brandBall";
 import { OrganiserAccessGate } from "@/components/organiser/ui/organiser-layout";
 import { useEffect, useState } from "react";
 import { Link, useRoute } from "wouter";
@@ -6,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -24,15 +24,14 @@ import {
   CheckCircle2,
   Hourglass,
   Trophy,
-  LayoutDashboard,
+  LayoutGrid,
   Users,
   Repeat,
-  ClipboardList,
   MessageSquare,
-  Settings,
-  Square,
-  Percent,
+  Coffee,
   WifiOff,
+  Flag,
+  Shuffle,
 } from "lucide-react";
 import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 import { useToast } from "@/hooks/use-toast";
@@ -46,6 +45,8 @@ import {
   generateNextRound,
   getCurrentRound,
   startMatch,
+  markMatchNotPlayed,
+  redoCurrentRound,
   reportMatchScore,
   finishSession,
   getSessionLeaderboard,
@@ -56,16 +57,25 @@ import { MessagesTab } from "@/components/organiser/sessions/workspace/messages-
 import { RoundsTab } from "@/components/organiser/sessions/workspace/rounds-tab";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 import type { MatchWithPlayers, RegistrationWithUser } from "@shared/schema";
-import { goLiveProblem, liveModeOf, MAX_GAMES, roundProblem, scoreProblem } from "@shared/liveRules";
+import { goLiveProblem, liveModeOf, MAX_GAMES, redoRoundProblem, roundProblem, scoreProblem } from "@shared/liveRules";
 import { cn } from "@/lib/utils";
 
 /*
-  TC Live v1 control centre (Social Play singles & doubles).
+  TC Live v1 - one screen to run a Social Play singles / doubles session
+  (TC-189 phase 3). Mobile first: it is used on court.
 
-    published  check-in list + Go Live
-    live       courts and score entry, players (late arrivals, unavailable,
-               withdrawn), round history, leaderboard, messages, End Session
-    completed  final leaderboard and every round (read-only)
+    published  check-in list, one action: Go Live
+    live       sticky header (name, LIVE, round, End Session), one section
+               switcher (Courts / Players / Leaderboard / Rounds / Messages).
+               Courts: the round card with the one next action (Start
+               Round 1 / Generate Next Round) and progress, then a large
+               card per court with its score entry; on a wide screen the
+               leaderboard sits beside the courts.
+    completed  final leaderboard, then every round (read-only)
+
+  Before this there were a desktop rail AND phone tabs for the same six
+  sections, five stat tiles and End Session in two places; the Settings
+  section only repeated the format. One switcher, one End Session.
 
   Everything is server state: a reload, a second device or a dropped
   connection shows the same session (queries refetch every 10 s while live,
@@ -79,15 +89,14 @@ import { cn } from "@/lib/utils";
   history.
 */
 
-type LiveTab = "overview" | "players" | "rounds" | "leaderboard" | "messages" | "settings";
+type LiveTab = "courts" | "players" | "leaderboard" | "rounds" | "messages";
 
-const NAV_ITEMS: { key: LiveTab; label: string; icon: typeof LayoutDashboard }[] = [
-  { key: "overview", label: "Courts", icon: LayoutDashboard },
+const SECTIONS: { key: LiveTab; label: string; icon: typeof LayoutGrid }[] = [
+  { key: "courts", label: "Courts", icon: LayoutGrid },
   { key: "players", label: "Players", icon: Users },
-  { key: "rounds", label: "Rounds", icon: Repeat },
   { key: "leaderboard", label: "Leaderboard", icon: Trophy },
+  { key: "rounds", label: "Rounds", icon: Repeat },
   { key: "messages", label: "Messages", icon: MessageSquare },
-  { key: "settings", label: "Settings", icon: Settings },
 ];
 
 const LIVE_REFRESH_MS = 10_000;
@@ -115,7 +124,7 @@ function OrganiserSessionLivePageContent() {
   const sessionId = params?.id;
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<LiveTab>("overview");
+  const [activeTab, setActiveTab] = useState<LiveTab>("courts");
   const [busy, setBusy] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
   const [unscored, setUnscored] = useState<number | null>(null);
@@ -227,247 +236,222 @@ function OrganiserSessionLivePageContent() {
   const checkedInCount = registrationsQuery.data ? registrations.filter((r) => r.status === "registered" && !!r.checkedInAt).length : session.checkedInCount;
   const round = roundQuery.data;
   const roundReadyForNext = !round || round.round.status === "completed";
-  const nextRoundBlocker = roundReadyForNext ? roundProblem(session.matchMode, available) : "Every match this round needs a score first";
-  const matchesThisRound = round?.matches.length ?? 0;
-  const scoresSubmitted = round?.matches.filter((m) => m.status === "confirmed").length ?? 0;
-  const completionPercent = matchesThisRound > 0 ? Math.round((scoresSubmitted / matchesThisRound) * 100) : 0;
+  const nextRoundBlocker = roundReadyForNext ? roundProblem(session.matchMode, available) : "Every court needs a score (or Not played) first";
   const modeLabel = liveModeOf(session.matchMode) === "singles" ? "Singles" : "Doubles";
+  const nameOf = new Map(registrations.map((r) => [r.userId, r.userName ?? "Player"]));
+  // Phase 4: who left during the round (still on a court card), and who
+  // arrived or came back after the draw (plays from the next round, or now
+  // if the round is redone).
+  const awayIds = new Set(registrations.filter((r) => r.status === "registered" && !!r.liveStatus).map((r) => r.userId));
+  const inRound = new Set(round ? [...round.matches.flatMap((m) => [...(m.teamAIds ?? []), ...(m.teamBIds ?? [])]), ...(round.round.restingPlayerIds ?? [])] : []);
+  const joiners = round ? registrations.filter((r) => isAvailable(r) && !inRound.has(r.userId)).map((r) => r.userName ?? "Player") : [];
+  const canRedo = !!round && !redoRoundProblem(round.round, round.matches) && !roundProblem(session.matchMode, available);
   const roundsTabSession = { id: session.id, status: session.status, isInternalTest: session.isInternalTest } as unknown as SessionListItem;
 
   const controls = allowed && isLive; // round / score / player controls
   const generate = () => runAction("generate the next round", () => generateNextRound(session.id));
 
+  const openFinish = () => {
+    setUnscored(null);
+    setFinishOpen(true);
+  };
+  const badge = isLive ? "LIVE" : status === "completed" ? "COMPLETED" : "CHECK-IN";
+  const meta = [
+    modeLabel,
+    isLive && round ? `Round ${round.round.roundNumber}` : null,
+    `${checkedInCount}/${session.registeredCount} checked in`,
+    session.courtsCount ? `${session.courtsCount} court${session.courtsCount === 1 ? "" : "s"}` : null,
+  ].filter(Boolean);
+
   return (
-    <div className="min-h-screen flex bg-background" data-testid="organiser-session-live" data-live-allowed={allowed ? "true" : "false"}>
+    <div className="min-h-screen bg-muted/30" data-testid="organiser-session-live" data-live-allowed={allowed ? "true" : "false"}>
       <SEO title={`Live — ${session.title} | TennisConnect`} description={`Live control centre for ${session.title}.`} noIndex />
 
-      {controls && (
-        <aside className="hidden lg:flex lg:w-60 shrink-0 border-r border-border sticky top-0 h-screen overflow-y-auto">
-          <div className="dark flex flex-col h-full w-full bg-background text-foreground">
-            <div className="px-5 pt-6 pb-4">
-              <Link href="/" className="text-lg font-display font-bold flex items-center gap-1">
-                Tennis<span className="text-[hsl(var(--logo-connect))]"><ConnectWord /></span>
-                <div className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--logo-connect))] mt-1" />
+      {/* ---------- Sticky header: who / state / the one destructive action ---------- */}
+      <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85">
+        <div className="mx-auto max-w-6xl px-3 sm:px-6">
+          <div className="flex items-center gap-2 sm:gap-3 py-2.5">
+            <Button asChild variant="ghost" size="icon" className="h-11 w-11 shrink-0" aria-label="Back to Session Workspace">
+              <Link href={`/organiser/sessions/${session.id}`} data-testid="organiser-session-live-back">
+                <ArrowLeft className="w-5 h-5" />
               </Link>
-              <p className="text-[11px] font-semibold tracking-widest text-muted-foreground mt-3">LIVE SESSION</p>
-            </div>
-            <nav className="px-3 space-y-1 flex-1" aria-label="Live session sections">
-              {NAV_ITEMS.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => setActiveTab(item.key)}
-                    aria-current={activeTab === item.key ? "page" : undefined}
-                    className={cn(
-                      "w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors text-left",
-                      activeTab === item.key ? "bg-primary/10 text-primary-text" : "text-foreground/80 hover:bg-accent/10 hover:text-foreground",
-                    )}
-                    data-testid={`organiser-live-nav-${item.key}`}
-                  >
-                    <Icon className="w-4 h-4 shrink-0" />
-                    {item.label}
-                  </button>
-                );
-              })}
-            </nav>
-            <Link
-              href={`/organiser/sessions/${session.id}`}
-              className="mx-3 mb-4 flex items-center gap-2 rounded-xl border border-border px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/10 transition-colors"
-              data-testid="organiser-session-live-back"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Exit Live Session
-            </Link>
-          </div>
-        </aside>
-      )}
-
-      <div className="flex-1 min-w-0">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-          {!online && (
-            <div role="status" className="flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900" data-testid="organiser-session-live-offline">
-              <WifiOff className="w-4 h-4 shrink-0" />
-              You're offline. Nothing is saved until the connection is back - the screen updates by itself when it is.
-            </div>
-          )}
-
-          {(!controls) && (
-            <Link
-              href={`/organiser/sessions/${session.id}`}
-              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors min-h-11"
-              data-testid="organiser-session-live-back"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Session Workspace
-            </Link>
-          )}
-
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <h1 className="font-display text-xl sm:text-2xl font-bold break-words">{session.title}</h1>
-                <Badge className="bg-primary text-primary-foreground gap-1.5" data-testid="organiser-session-live-badge">
+            </Button>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 min-w-0">
+                <h1 className="font-display text-base sm:text-xl font-bold truncate">{session.title}</h1>
+                {/* High-contrast state: dark pill, red pulse while live. */}
+                <span
+                  className={cn(
+                    "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold tracking-wide",
+                    isLive ? "bg-foreground text-background" : status === "completed" ? "bg-muted text-foreground" : "bg-primary text-foreground",
+                  )}
+                  data-testid="organiser-session-live-badge"
+                >
                   {isLive && (
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-foreground opacity-75" />
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary-foreground" />
+                    <span className="relative flex h-2 w-2" aria-hidden>
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75 motion-reduce:animate-none" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
                     </span>
                   )}
-                  {isLive ? "LIVE" : status === "completed" ? "COMPLETED" : "CHECK-IN"}
-                </Badge>
-                <Badge variant="outline" data-testid="organiser-session-live-mode">{modeLabel}</Badge>
+                  {badge}
+                </span>
               </div>
-              <p className="text-muted-foreground text-sm">
-                {isLive && round ? `Round ${round.round.roundNumber} · ` : ""}
-                {checkedInCount} / {session.registeredCount} checked in
-                {session.courtsCount ? ` · ${session.courtsCount} court${session.courtsCount === 1 ? "" : "s"}` : ""}
+              <p className="text-xs sm:text-sm text-muted-foreground truncate" data-testid="organiser-session-live-meta">
+                <span data-testid="organiser-session-live-mode">{meta[0]}</span>
+                {meta.slice(1).map((m) => ` · ${m}`).join("")}
               </p>
             </div>
             {isLive && (
               <Button
                 variant="outline"
-                className="text-destructive border-destructive/30 hover:bg-destructive/10 min-h-11 shrink-0"
+                size="sm"
+                className="shrink-0 min-h-11 text-destructive border-destructive/30 hover:bg-destructive/10"
                 disabled={busy}
-                onClick={() => {
-                  setUnscored(null);
-                  setFinishOpen(true);
-                }}
+                onClick={openFinish}
                 data-testid="organiser-session-live-finish"
               >
-                End Session
+                <Flag className="w-4 h-4 sm:mr-1.5" aria-hidden />
+                <span className="sr-only sm:not-sr-only">End Session</span>
               </Button>
             )}
           </div>
 
-          {/* Section tabs on phones and tablets (the rail is desktop-only). */}
+          {/* One section switcher for every screen size. */}
           {controls && (
-            <nav className="lg:hidden -mx-4 px-4 overflow-x-auto" aria-label="Live session sections">
-              <div className="flex gap-2 w-max">
-                {NAV_ITEMS.map((item) => (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => setActiveTab(item.key)}
-                    aria-current={activeTab === item.key ? "page" : undefined}
-                    className={cn(
-                      "min-h-11 px-4 rounded-full border text-sm font-medium whitespace-nowrap",
-                      activeTab === item.key ? "border-primary bg-primary/10 text-primary-text" : "border-border text-muted-foreground",
-                    )}
-                    data-testid={`organiser-live-tab-${item.key}`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
+            <nav className="-mx-3 sm:mx-0 overflow-x-auto pb-2" aria-label="Live session sections">
+              <div className="flex w-max gap-1 px-3 sm:px-0">
+                {SECTIONS.map((item) => {
+                  const Icon = item.icon;
+                  const selected = activeTab === item.key;
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => setActiveTab(item.key)}
+                      aria-current={selected ? "page" : undefined}
+                      className={cn(
+                        "inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        selected ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                      )}
+                      data-testid={`organiser-live-tab-${item.key}`}
+                    >
+                      <Icon className="w-4 h-4" aria-hidden />
+                      {item.label}
+                      {item.key === "players" && (
+                        <span className={cn("rounded-full px-1.5 text-xs", selected ? "bg-background/20" : "bg-muted")}>{available}</span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </nav>
           )}
+        </div>
+      </header>
 
-          {isLive && !allowed && (
-            <Card className="shadow-sm" data-testid="organiser-session-live-switched-off">
-              <CardContent className="p-4 text-sm space-y-1">
-                <p className="font-medium">Live is switched off on this site.</p>
-                <p className="text-muted-foreground">
-                  Rounds and scores can't be changed right now. Everything recorded so far is kept, and you can still end the session.
-                </p>
-              </CardContent>
-            </Card>
-          )}
+      <main className="mx-auto max-w-6xl px-3 sm:px-6 py-4 space-y-4">
+        {!online && (
+          <div role="status" className="flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900" data-testid="organiser-session-live-offline">
+            <WifiOff className="w-4 h-4 shrink-0" />
+            You're offline. Nothing is saved until the connection is back - the screen updates by itself when it is.
+          </div>
+        )}
 
-          {controls && (
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3" data-testid="organiser-session-live-stats">
-              <StatCard icon={Users} label="Available" value={`${available}/${checkedInCount}`} />
-              <StatCard icon={Square} label="Matches this round" value={String(matchesThisRound)} />
-              <StatCard icon={Repeat} label="Current round" value={round ? String(round.round.roundNumber) : "—"} />
-              <StatCard icon={ClipboardList} label="Scores in" value={`${scoresSubmitted}/${matchesThisRound}`} />
-              <StatCard icon={Percent} label="Round done" value={`${completionPercent}%`} />
+        {isLive && !allowed && (
+          <Card className="shadow-sm" data-testid="organiser-session-live-switched-off">
+            <CardContent className="p-4 text-sm space-y-1">
+              <p className="font-medium">Live is switched off on this site.</p>
+              <p className="text-muted-foreground">
+                Rounds and scores can't be changed right now. Everything recorded so far is kept, and you can still end the session.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {status === "completed" && (
+          // After End Session everything here is read-only; the Workspace keeps the full results.
+          <section className="flex flex-wrap items-center gap-3 rounded-2xl border border-primary/30 bg-primary/10 p-4" data-testid="organiser-session-live-completed">
+            <CheckCircle2 className="w-6 h-6 text-primary-text shrink-0" aria-hidden />
+            <div className="flex-1 min-w-[12rem]">
+              <p className="font-semibold">Session complete</p>
+              <p className="text-sm text-muted-foreground">The results are final. Send them to players or export them from Results.</p>
             </div>
-          )}
+            <Button asChild className="min-h-11 w-full sm:w-auto">
+              <Link href={`/organiser/sessions/${session.id}?tab=results`} data-testid="organiser-session-live-open-results">
+                <Trophy className="w-4 h-4 mr-2" /> Open Results
+              </Link>
+            </Button>
+          </section>
+        )}
 
-          {status === "published" && allowed && (
-            <CheckInPanel
-              registrations={registrations}
-              loading={registrationsQuery.isLoading}
-              busy={busy}
-              goLiveBlocker={goLiveProblem(session, available)}
-              waitlisted={session.waitlistedCount}
-              onCheckIn={(id) => runAction("check that player in", () => checkInRegistration(session.id, id))}
-              onGoLive={() => runAction("go live", () => goLiveSession(session.id))}
-            />
-          )}
+        {status === "published" && allowed && (
+          <CheckInPanel
+            registrations={registrations}
+            loading={registrationsQuery.isLoading}
+            busy={busy}
+            goLiveBlocker={goLiveProblem(session, available)}
+            waitlisted={session.waitlistedCount}
+            onCheckIn={(id) => runAction("check that player in", () => checkInRegistration(session.id, id))}
+            onGoLive={() => runAction("go live", () => goLiveSession(session.id))}
+          />
+        )}
 
-          {controls && activeTab === "overview" && (
+        {controls && activeTab === "courts" && (
+          <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_19rem]">
             <LiveRoundPanel
               round={round}
               loading={roundQuery.isLoading}
               busy={busy}
               roundReadyForNext={roundReadyForNext}
               nextRoundBlocker={nextRoundBlocker}
+              nameOf={nameOf}
               onGenerateRound={generate}
+              joiners={joiners}
+              awayIds={awayIds}
+              canRedo={canRedo}
+              onRedo={() => runAction("redo the round", () => redoCurrentRound(session.id))}
+              onNotPlayed={(matchId) => runAction("mark the match as not played", () => markMatchNotPlayed(session.id, matchId))}
               onStart={(matchId) => runAction("start the match", () => startMatch(session.id, matchId))}
               onScore={(matchId, a, b) => runAction("save the score", () => reportMatchScore(session.id, matchId, a, b))}
             />
-          )}
+            {/* Wide screens: the standings beside the courts, updating as scores come in. */}
+            <aside className="hidden lg:block lg:sticky lg:top-32">
+              <LeaderboardPanel rows={leaderboardQuery.data ?? []} loading={leaderboardQuery.isLoading} final={false} compact />
+            </aside>
+          </div>
+        )}
 
-          {controls && activeTab === "players" && (
-            <LivePlayersPanel
-              registrations={registrations}
-              loading={registrationsQuery.isLoading}
-              busy={busy}
-              onCheckIn={(id) => runAction("check that player in", () => checkInRegistration(session.id, id))}
-              onSetStatus={(id, liveStatus) => runAction("update that player", () => setRegistrationLiveStatus(session.id, id, liveStatus))}
-            />
-          )}
+        {controls && activeTab === "players" && (
+          <LivePlayersPanel
+            registrations={registrations}
+            loading={registrationsQuery.isLoading}
+            busy={busy}
+            onCheckIn={(id) => runAction("check that player in", () => checkInRegistration(session.id, id))}
+            onSetStatus={(id, liveStatus) => runAction("update that player", () => setRegistrationLiveStatus(session.id, id, liveStatus))}
+          />
+        )}
 
-          {(controls && activeTab === "rounds") || status === "completed" || (isLive && !allowed) ? (
-            <section className="space-y-3" aria-label="Rounds">
-              {status === "completed" && <h2 className="font-display text-lg font-bold">Rounds</h2>}
-              <RoundsTab session={roundsTabSession} hideOpenLive />
-            </section>
-          ) : null}
+        {((controls && activeTab === "leaderboard") || status === "completed" || (isLive && !allowed)) && (
+          <LeaderboardPanel rows={leaderboardQuery.data ?? []} loading={leaderboardQuery.isLoading} final={status === "completed"} />
+        )}
 
-          {((controls && activeTab === "leaderboard") || status === "completed" || (isLive && !allowed)) && (
-            <LeaderboardPanel rows={leaderboardQuery.data ?? []} loading={leaderboardQuery.isLoading} final={status === "completed"} />
-          )}
+        {(controls && activeTab === "rounds") || status === "completed" || (isLive && !allowed) ? (
+          <section className="space-y-3" aria-label="Rounds">
+            {status === "completed" && <h2 className="font-display text-lg font-bold">Rounds</h2>}
+            <RoundsTab session={roundsTabSession} hideOpenLive />
+          </section>
+        ) : null}
 
-          {controls && activeTab === "messages" && (
-            <MessagesTab session={{ id: session.id, timeZone: session.timeZone ?? "Australia/Sydney" }} />
-          )}
+        {controls && activeTab === "messages" && (
+          <MessagesTab session={{ id: session.id, timeZone: session.timeZone ?? "Australia/Sydney" }} />
+        )}
 
-          {controls && activeTab === "settings" && (
-            <Card className="shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-base">Settings</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  {modeLabel} · {session.courtsCount ?? "?"} court{session.courtsCount === 1 ? "" : "s"}. Court count and format are set in Edit Session.
-                  Ending the session moves it to Completed and keeps the final leaderboard.
-                </p>
-                <Button
-                  variant="outline"
-                  className="text-destructive border-destructive/30 hover:bg-destructive/10 min-h-11"
-                  disabled={busy}
-                  onClick={() => {
-                    setUnscored(null);
-                    setFinishOpen(true);
-                  }}
-                  data-testid="organiser-session-live-finish-settings"
-                >
-                  End Session
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {status !== "published" && status !== "live" && status !== "completed" && (
-            <div className="rounded-2xl border border-dashed border-border py-12 text-center text-muted-foreground" data-testid="organiser-session-live-not-ready">
-              This session isn't ready for live control (status: {status}). Publish it first.
-            </div>
-          )}
-        </div>
-      </div>
+        {status !== "published" && status !== "live" && status !== "completed" && (
+          <div className="rounded-2xl border border-dashed border-border py-12 text-center text-muted-foreground" data-testid="organiser-session-live-not-ready">
+            This session isn't ready for live control (status: {status}). Publish it first.
+          </div>
+        )}
+      </main>
 
       <AlertDialog open={finishOpen} onOpenChange={(open) => !busy && setFinishOpen(open)}>
         <AlertDialogContent data-testid="organiser-session-live-finish-dialog">
@@ -498,21 +482,9 @@ function OrganiserSessionLivePageContent() {
   );
 }
 
-function StatCard({ icon: Icon, label, value }: { icon: typeof Users; label: string; value: string }) {
+function PlayerAvatar({ r, className }: { r: Pick<RegistrationWithUser, "userAvatar" | "userName">; className?: string }) {
   return (
-    <Card className="shadow-sm">
-      <CardContent className="p-3">
-        <Icon className="w-4 h-4 text-primary-text mb-1" />
-        <p className="text-lg font-bold">{value}</p>
-        <p className="text-[11px] text-muted-foreground">{label}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
-function PlayerAvatar({ r }: { r: Pick<RegistrationWithUser, "userAvatar" | "userName"> }) {
-  return (
-    <Avatar className="w-8 h-8 shrink-0">
+    <Avatar className={cn("w-9 h-9 shrink-0", className)}>
       <AvatarImage src={r.userAvatar ?? undefined} />
       <AvatarFallback>{r.userName?.[0] ?? "?"}</AvatarFallback>
     </Avatar>
@@ -537,49 +509,57 @@ function CheckInPanel({
   onGoLive: () => void;
 }) {
   const registered = registrations.filter((r) => r.status === "registered");
+  const done = registered.filter((r) => !!r.checkedInAt).length;
   return (
-    <Card className="shadow-sm" data-testid="organiser-session-live-checkin">
-      <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 space-y-0">
-        <div>
-          <CardTitle className="text-base">Check-In</CardTitle>
-          <p className="text-xs text-muted-foreground mt-1">
-            Only registered players can be checked in{waitlisted > 0 ? ` (${waitlisted} on the waiting list)` : ""}.
-          </p>
-        </div>
-        <div className="flex flex-col items-stretch sm:items-end gap-1">
-          <Button disabled={!!goLiveBlocker || busy} onClick={onGoLive} className="min-h-11" data-testid="organiser-session-live-go-live">
-            <Play className="w-4 h-4 mr-2" />
-            Go Live
-          </Button>
-          {goLiveBlocker && (
-            <p className="text-xs text-muted-foreground" data-testid="organiser-session-live-go-live-blocker">{goLiveBlocker}</p>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-1">
-        {loading && <TennisBallSpinner />}
-        {!loading && registered.length === 0 && <p className="text-muted-foreground text-sm">No registered players yet.</p>}
-        {registered.map((r) => (
-          <div key={r.id} className="flex items-center gap-3 py-2 border-b border-border last:border-0" data-testid={`organiser-session-live-checkin-row-${r.id}`}>
-            <PlayerAvatar r={r} />
-            <span className="text-sm flex-1 min-w-0 truncate">{r.userName}</span>
-            {r.checkedInAt ? (
-              <span className="flex items-center gap-1 text-sm text-primary-text font-medium" data-testid={`organiser-session-live-checkin-row-${r.id}-done`}>
-                <CheckCircle2 className="w-4 h-4" /> Checked in
-              </span>
-            ) : (
-              <Button size="sm" variant="outline" className="min-h-11 px-4" disabled={busy} onClick={() => onCheckIn(r.id)} data-testid={`organiser-session-live-checkin-row-${r.id}-button`}>
-                Check In
-              </Button>
-            )}
+    <section className="space-y-3" data-testid="organiser-session-live-checkin">
+      {/* The one action before Live: Go Live, with what still blocks it. */}
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm space-y-3">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <h2 className="font-display text-lg font-bold">Check-in</h2>
+            <p className="text-sm text-muted-foreground">
+              {done} of {registered.length} checked in{waitlisted > 0 ? ` · ${waitlisted} on the waiting list` : ""}
+            </p>
           </div>
-        ))}
-      </CardContent>
-    </Card>
+          <p className="text-2xl font-bold tabular-nums">{registered.length ? Math.round((done / registered.length) * 100) : 0}%</p>
+        </div>
+        <Progress value={registered.length ? (done / registered.length) * 100 : 0} className="h-2" aria-label="Checked in" />
+        <Button size="lg" disabled={!!goLiveBlocker || busy} onClick={onGoLive} className="w-full min-h-12 text-base" data-testid="organiser-session-live-go-live">
+          <Play className="w-5 h-5 mr-2" />
+          Go Live
+        </Button>
+        {goLiveBlocker && (
+          <p className="text-sm text-muted-foreground text-center" data-testid="organiser-session-live-go-live-blocker">{goLiveBlocker}</p>
+        )}
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card shadow-sm">
+        <p className="px-4 pt-3 text-xs text-muted-foreground">Only registered players can be checked in.</p>
+        {loading && <div className="p-4"><TennisBallSpinner /></div>}
+        {!loading && registered.length === 0 && <p className="p-4 text-muted-foreground text-sm">No registered players yet.</p>}
+        <ul className="divide-y divide-border">
+          {registered.map((r) => (
+            <li key={r.id} className="flex items-center gap-3 px-4 py-2" data-testid={`organiser-session-live-checkin-row-${r.id}`}>
+              <PlayerAvatar r={r} />
+              <span className="text-sm font-medium flex-1 min-w-0 truncate">{r.userName}</span>
+              {r.checkedInAt ? (
+                <span className="flex min-h-11 items-center gap-1 text-sm text-primary-text font-medium" data-testid={`organiser-session-live-checkin-row-${r.id}-done`}>
+                  <CheckCircle2 className="w-4 h-4" /> Checked in
+                </span>
+              ) : (
+                <Button size="sm" variant="outline" className="min-h-11 px-5" disabled={busy} onClick={() => onCheckIn(r.id)} data-testid={`organiser-session-live-checkin-row-${r.id}-button`}>
+                  Check In
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
   );
 }
 
-/** Live Players tab: late arrivals, unavailable (sits out, can come back) and withdrawn. */
+/** Live Players: late arrivals, unavailable (sits out, can come back) and withdrawn. */
 function LivePlayersPanel({
   registrations,
   loading,
@@ -594,53 +574,58 @@ function LivePlayersPanel({
   onSetStatus: (registrationId: string, liveStatus: "unavailable" | "withdrawn" | null) => void;
 }) {
   const registered = registrations.filter((r) => r.status === "registered");
+  const STATE_LABEL: Record<string, string> = { "not-arrived": "Not checked in", available: "Available", unavailable: "Sitting out", withdrawn: "Withdrawn" };
+  const STATE_STYLE: Record<string, string> = {
+    "not-arrived": "bg-muted text-muted-foreground",
+    available: "bg-primary/15 text-primary-text",
+    unavailable: "bg-amber-100 text-amber-800",
+    withdrawn: "bg-destructive/10 text-destructive",
+  };
   return (
-    <Card className="shadow-sm" data-testid="organiser-session-live-players">
-      <CardHeader>
-        <CardTitle className="text-base">Players</CardTitle>
-        <p className="text-xs text-muted-foreground">
-          Changes apply from the next round. A player already on court finishes their match.
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-1">
-        {loading && <TennisBallSpinner />}
+    <section className="rounded-2xl border border-border bg-card shadow-sm" data-testid="organiser-session-live-players">
+      <div className="px-4 pt-4 pb-2">
+        <h2 className="font-display text-lg font-bold">Players</h2>
+        <p className="text-sm text-muted-foreground">Changes apply from the next round. A player already on court finishes their match.</p>
+      </div>
+      {loading && <div className="p-4"><TennisBallSpinner /></div>}
+      <ul className="divide-y divide-border">
         {registered.map((r) => {
           const state = !r.checkedInAt ? "not-arrived" : r.liveStatus ?? "available";
           const id = `organiser-session-live-player-${r.id}`;
           return (
-            <div key={r.id} className="flex flex-wrap items-center gap-2 py-2 border-b border-border last:border-0" data-testid={id} data-state={state}>
+            <li key={r.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5" data-testid={id} data-state={state}>
               <PlayerAvatar r={r} />
-              <span className="text-sm flex-1 min-w-[8rem] truncate">{r.userName}</span>
-              <Badge variant="outline" className="shrink-0" data-testid={`${id}-state`}>
-                {state === "not-arrived" ? "Not checked in" : state === "available" ? "Available" : state === "unavailable" ? "Sitting out" : "Withdrawn"}
-              </Badge>
+              <span className="text-sm font-medium flex-1 min-w-[8rem] truncate">{r.userName}</span>
+              <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium", STATE_STYLE[state])} data-testid={`${id}-state`}>
+                {STATE_LABEL[state]}
+              </span>
               <div className="flex gap-2 w-full sm:w-auto">
                 {state === "not-arrived" && (
-                  <Button size="sm" variant="outline" className="min-h-11 flex-1" disabled={busy} onClick={() => onCheckIn(r.id)} data-testid={`${id}-checkin`}>
+                  <Button size="sm" variant="outline" className="min-h-11 flex-1 sm:flex-none" disabled={busy} onClick={() => onCheckIn(r.id)} data-testid={`${id}-checkin`}>
                     Check In
                   </Button>
                 )}
                 {state === "available" && (
                   <>
-                    <Button size="sm" variant="outline" className="min-h-11 flex-1" disabled={busy} onClick={() => onSetStatus(r.id, "unavailable")} data-testid={`${id}-unavailable`}>
+                    <Button size="sm" variant="outline" className="min-h-11 flex-1 sm:flex-none" disabled={busy} onClick={() => onSetStatus(r.id, "unavailable")} data-testid={`${id}-unavailable`}>
                       Sit out
                     </Button>
-                    <Button size="sm" variant="outline" className="min-h-11 flex-1 text-destructive" disabled={busy} onClick={() => onSetStatus(r.id, "withdrawn")} data-testid={`${id}-withdraw`}>
+                    <Button size="sm" variant="outline" className="min-h-11 flex-1 sm:flex-none text-destructive" disabled={busy} onClick={() => onSetStatus(r.id, "withdrawn")} data-testid={`${id}-withdraw`}>
                       Withdraw
                     </Button>
                   </>
                 )}
                 {(state === "unavailable" || state === "withdrawn") && (
-                  <Button size="sm" variant="outline" className="min-h-11 flex-1" disabled={busy} onClick={() => onSetStatus(r.id, null)} data-testid={`${id}-return`}>
+                  <Button size="sm" variant="outline" className="min-h-11 flex-1 sm:flex-none" disabled={busy} onClick={() => onSetStatus(r.id, null)} data-testid={`${id}-return`}>
                     Back in
                   </Button>
                 )}
               </div>
-            </div>
+            </li>
           );
         })}
-      </CardContent>
-    </Card>
+      </ul>
+    </section>
   );
 }
 
@@ -650,7 +635,13 @@ function LiveRoundPanel({
   busy,
   roundReadyForNext,
   nextRoundBlocker,
+  nameOf,
   onGenerateRound,
+  joiners,
+  awayIds,
+  canRedo,
+  onRedo,
+  onNotPlayed,
   onStart,
   onScore,
 }: {
@@ -659,62 +650,136 @@ function LiveRoundPanel({
   busy: boolean;
   roundReadyForNext: boolean;
   nextRoundBlocker: string | null;
+  nameOf: Map<string, string>;
   onGenerateRound: () => void;
+  /** Available players not in this round: arrived or came back after the draw. */
+  joiners: string[];
+  /** Players marked Sit out / Withdrawn - flagged on the court they're still on. */
+  awayIds: Set<string>;
+  /** Nothing in the round has started, and enough players to draw again. */
+  canRedo: boolean;
+  onRedo: () => void;
+  onNotPlayed: (matchId: string) => void;
   onStart: (matchId: string) => void;
   onScore: (matchId: string, teamAGames: number, teamBGames: number) => void;
 }) {
-  if (loading) return <TennisBallSpinner />;
-
-  const generateButton = (testId: string, label: string) => (
-    <div className="flex flex-col items-stretch sm:items-start gap-1">
-      <Button disabled={busy || !!nextRoundBlocker} onClick={onGenerateRound} className="min-h-11" data-testid={testId}>
-        {label}
-      </Button>
-      {nextRoundBlocker && roundReadyForNext && (
-        <p className="text-xs text-muted-foreground" data-testid={`${testId}-blocker`}>{nextRoundBlocker}</p>
-      )}
-    </div>
-  );
+  if (loading) return <div className="py-10 flex justify-center"><TennisBallSpinner /></div>;
 
   if (!round) {
     return (
-      <Card className="shadow-sm">
-        <CardContent className="py-10 text-center space-y-3">
-          <p className="text-muted-foreground">No round yet. Round 1 puts available players on courts.</p>
-          <div className="flex justify-center">{generateButton("organiser-session-live-generate-round", "Start Round 1")}</div>
-        </CardContent>
-      </Card>
+      <section className="rounded-2xl border border-dashed border-border bg-card p-6 text-center space-y-3">
+        <LayoutGrid className="mx-auto w-8 h-8 text-muted-foreground" aria-hidden />
+        <div>
+          <p className="font-semibold">No round yet</p>
+          <p className="text-sm text-muted-foreground">Round 1 puts the available players on courts.</p>
+        </div>
+        <Button size="lg" disabled={busy || !!nextRoundBlocker} onClick={onGenerateRound} className="min-h-12 px-8 text-base" data-testid="organiser-session-live-generate-round">
+          <Play className="w-5 h-5 mr-2" /> Start Round 1
+        </Button>
+        {nextRoundBlocker && <p className="text-sm text-muted-foreground" data-testid="organiser-session-live-generate-round-blocker">{nextRoundBlocker}</p>}
+      </section>
     );
   }
 
-  const resting = round.round.restingPlayerIds?.length ?? 0;
+  const total = round.matches.length;
+  const scored = round.matches.filter((m) => m.status === "confirmed" || m.status === "abandoned").length;
+  const resting = round.round.restingPlayerIds ?? [];
+  const allIn = round.round.status === "completed";
   return (
-    <div className="space-y-3" data-testid="organiser-session-live-courts">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground" data-testid="organiser-session-live-round-status">
-          Round {round.round.roundNumber} · {round.round.status === "completed" ? "all scores in" : "in progress"}
-          {resting > 0 ? ` · ${resting} resting` : ""}
-        </p>
-        {generateButton("organiser-session-live-generate-round-inline", "Generate Next Round")}
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+    <div className="space-y-3 min-w-0" data-testid="organiser-session-live-courts">
+      {/* Round card: where the round is, and the one next action. */}
+      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-display text-2xl font-bold leading-none">Round {round.round.roundNumber}</p>
+            <p className="mt-1 text-sm text-muted-foreground" data-testid="organiser-session-live-round-status">
+              Round {round.round.roundNumber} · {allIn ? "all scores in" : "in progress"}
+              {resting.length > 0 ? ` · ${resting.length} resting` : ""}
+            </p>
+          </div>
+          <div className="flex flex-col items-stretch gap-1 w-full sm:w-auto">
+            <Button
+              size="lg"
+              variant={allIn ? "default" : "outline"}
+              disabled={busy || !!nextRoundBlocker}
+              onClick={onGenerateRound}
+              className="min-h-12"
+              data-testid="organiser-session-live-generate-round-inline"
+            >
+              <Repeat className="w-4 h-4 mr-2" /> Generate Next Round
+            </Button>
+            {nextRoundBlocker && roundReadyForNext && (
+              <p className="text-xs text-muted-foreground" data-testid="organiser-session-live-generate-round-inline-blocker">{nextRoundBlocker}</p>
+            )}
+          </div>
+        </div>
+        <div className="space-y-1">
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>Scores in</span>
+            <span className="tabular-nums" data-testid="organiser-session-live-scores-in">{scored}/{total}</span>
+          </div>
+          <Progress value={total ? (scored / total) * 100 : 0} className="h-2" aria-label="Scores entered this round" />
+        </div>
+        {resting.length > 0 && (
+          <p className="flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground" data-testid="organiser-session-live-resting">
+            <Coffee className="w-4 h-4" aria-hidden /> Resting:
+            <span className="text-foreground">{resting.map((id) => nameOf.get(id) ?? "Player").join(", ")}</span>
+          </p>
+        )}
+        {joiners.length > 0 && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-muted/60 px-3 py-2 text-sm" data-testid="organiser-session-live-joiners">
+            <p className="flex-1 min-w-[12rem]">
+              <span className="font-medium">Joins next round:</span> {joiners.join(", ")}
+            </p>
+            {canRedo && (
+              <Button size="sm" variant="outline" className="min-h-11" disabled={busy} onClick={onRedo} data-testid="organiser-session-live-redo-round">
+                <Shuffle className="w-4 h-4 mr-1.5" /> Redo round with them
+              </Button>
+            )}
+          </div>
+        )}
+        {joiners.length === 0 && canRedo && (
+          // Someone left right after the draw: draw again before anyone starts.
+          <div className="flex justify-end">
+            <Button size="sm" variant="ghost" className="min-h-11 text-muted-foreground" disabled={busy} onClick={onRedo} data-testid="organiser-session-live-redo-round">
+              <Shuffle className="w-4 h-4 mr-1.5" /> Redo round
+            </Button>
+          </div>
+        )}
+      </section>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {round.matches.map((match) => (
-          <MatchCard key={match.id} match={match} busy={busy} onStart={onStart} onScore={onScore} />
+          <MatchCard
+            key={match.id}
+            match={match}
+            busy={busy}
+            awayNames={[...match.teamA, ...match.teamB].filter((p) => awayIds.has(p.id)).map((p) => p.name)}
+            onStart={onStart}
+            onNotPlayed={onNotPlayed}
+            onScore={onScore}
+          />
         ))}
       </div>
     </div>
   );
 }
 
+/** One court: the two sides as scoreboard rows, the score entered right beside them. */
 function MatchCard({
   match,
   busy,
+  awayNames,
   onStart,
+  onNotPlayed,
   onScore,
 }: {
   match: MatchWithPlayers;
   busy: boolean;
+  /** Players on this court marked Sit out / Withdrawn after the draw. */
+  awayNames: string[];
   onStart: (matchId: string) => void;
+  onNotPlayed: (matchId: string) => void;
   onScore: (matchId: string, teamAGames: number, teamBGames: number) => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -722,111 +787,138 @@ function MatchCard({
   const [teamBGames, setTeamBGames] = useState("");
   const names = (players: MatchWithPlayers["teamA"]) => players.map((p) => p.name).join(" & ");
   const confirmed = match.status === "confirmed";
-  const showInputs = (match.status === "pending" || match.status === "playing" || (confirmed && editing));
+  const notPlayed = match.status === "abandoned";
+  const open = match.status === "pending" || match.status === "playing";
+  const showInputs = open || ((confirmed || notPlayed) && editing);
   const a = teamAGames === "" ? NaN : Number(teamAGames);
   const b = teamBGames === "" ? NaN : Number(teamBGames);
   const filled = teamAGames !== "" && teamBGames !== "";
   const problem = filled ? scoreProblem(a, b) : null;
   const id = `organiser-session-live-match-${match.id}`;
+  const winner = confirmed && !editing && match.teamAGames != null && match.teamBGames != null
+    ? match.teamAGames > match.teamBGames ? "a" : match.teamBGames > match.teamAGames ? "b" : null
+    : null;
+
+  const side = (key: "a" | "b") => {
+    const team = key === "a" ? match.teamA : match.teamB;
+    const value = key === "a" ? teamAGames : teamBGames;
+    const setValue = key === "a" ? setTeamAGames : setTeamBGames;
+    const final = key === "a" ? match.teamAGames : match.teamBGames;
+    return (
+      <div className={cn("flex items-center gap-3 rounded-xl px-3 py-2", winner === key ? "bg-primary/15" : "bg-muted/50")}>
+        <p className={cn("flex-1 min-w-0 text-sm sm:text-base break-words", winner === key ? "font-bold" : "font-medium")}>{names(team)}</p>
+        {showInputs ? (
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={MAX_GAMES}
+            aria-label={`Games won by ${names(team)}`}
+            className="w-16 h-12 shrink-0 text-center text-xl font-bold tabular-nums"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            data-testid={`${id}-score-${key}`}
+          />
+        ) : confirmed ? (
+          <span className="w-12 shrink-0 text-center text-2xl font-bold tabular-nums">{final}</span>
+        ) : null}
+      </div>
+    );
+  };
 
   return (
-    <Card className="shadow-sm" data-testid={id} data-status={match.status}>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-3 gap-2">
-          <p className="font-semibold text-sm">{match.courtLabel}</p>
-          {confirmed ? (
-            <Badge variant="secondary" className="gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Score in</Badge>
-          ) : match.status === "playing" ? (
-            <Badge className="gap-1 bg-amber-100 text-amber-800 hover:bg-amber-100"><Hourglass className="w-3.5 h-3.5" /> Playing</Badge>
-          ) : match.status === "abandoned" ? (
-            <Badge variant="outline" className="text-muted-foreground">Not played</Badge>
-          ) : (
-            <Badge variant="outline" className="gap-1 text-muted-foreground">Not started</Badge>
-          )}
-        </div>
-
-        <p className="text-sm mb-1 break-words">{names(match.teamA)}</p>
-        <p className="text-xs text-muted-foreground mb-1">vs</p>
-        <p className="text-sm mb-3 break-words">{names(match.teamB)}</p>
-
-        {confirmed && !editing && (
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 text-lg font-bold" data-testid={`${id}-score`}>
-              <span>{match.teamAGames}</span>
-              <span className="text-muted-foreground">–</span>
-              <span>{match.teamBGames}</span>
-            </div>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="min-h-11"
-              disabled={busy}
-              onClick={() => {
-                setTeamAGames(String(match.teamAGames ?? ""));
-                setTeamBGames(String(match.teamBGames ?? ""));
-                setEditing(true);
-              }}
-              data-testid={`${id}-correct`}
-            >
-              Correct score
-            </Button>
-          </div>
+    <article className="rounded-2xl border border-border bg-card p-3 sm:p-4 shadow-sm space-y-2" data-testid={id} data-status={match.status}>
+      <div className="flex items-center justify-between gap-2">
+        <p className="font-display text-lg font-bold">{match.courtLabel}</p>
+        {confirmed ? (
+          <Badge variant="secondary" className="gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Score in</Badge>
+        ) : match.status === "playing" ? (
+          <Badge className="gap-1 bg-amber-100 text-amber-800 hover:bg-amber-100"><Hourglass className="w-3.5 h-3.5" /> Playing</Badge>
+        ) : match.status === "abandoned" ? (
+          <Badge variant="outline" className="text-muted-foreground">Not played</Badge>
+        ) : (
+          <Badge variant="outline" className="gap-1 text-muted-foreground">Not started</Badge>
         )}
+      </div>
 
+      {side("a")}
+      {side("b")}
+      {confirmed && !editing && (
+        // Kept for tests and screen readers: the score as text.
+        <p className="sr-only" data-testid={`${id}-score`}>{match.teamAGames} – {match.teamBGames}</p>
+      )}
+
+      {open && awayNames.length > 0 && (
+        <p className="rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900" data-testid={`${id}-player-away`}>
+          {awayNames.join(" & ")} {awayNames.length === 1 ? "is" : "are"} out now. Enter the score so far, or mark the match Not played.
+        </p>
+      )}
+      {notPlayed && !editing && (
+        <p className="text-xs text-muted-foreground" data-testid={`${id}-not-played-note`}>Not played - doesn't count on the leaderboard.</p>
+      )}
+
+      {problem && <p className="text-xs text-destructive" data-testid={`${id}-score-error`}>{problem}</p>}
+
+      <div className="flex flex-wrap gap-2 pt-1">
+        {match.status === "pending" && (
+          <Button size="sm" variant="outline" className="min-h-11 flex-1" disabled={busy} onClick={() => onStart(match.id)} data-testid={`${id}-start`}>
+            Mark as started
+          </Button>
+        )}
         {showInputs && (
-          <div className="space-y-2">
-            {match.status === "pending" && (
-              <Button size="sm" variant="secondary" className="w-full min-h-11" disabled={busy} onClick={() => onStart(match.id)} data-testid={`${id}-start`}>
-                Mark as started
-              </Button>
-            )}
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                max={MAX_GAMES}
-                aria-label={`Games won by ${names(match.teamA)}`}
-                className="w-16 h-11 text-center text-base"
-                value={teamAGames}
-                onChange={(e) => setTeamAGames(e.target.value)}
-                data-testid={`${id}-score-a`}
-              />
-              <span className="text-muted-foreground">–</span>
-              <Input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                max={MAX_GAMES}
-                aria-label={`Games won by ${names(match.teamB)}`}
-                className="w-16 h-11 text-center text-base"
-                value={teamBGames}
-                onChange={(e) => setTeamBGames(e.target.value)}
-                data-testid={`${id}-score-b`}
-              />
-              <Button
-                size="sm"
-                className="flex-1 min-h-11"
-                disabled={!filled || !!problem || busy}
-                onClick={() => {
-                  onScore(match.id, a, b);
-                  setEditing(false);
-                }}
-                data-testid={`${id}-save-score`}
-              >
-                {confirmed ? "Save" : "Enter Score"}
-              </Button>
-            </div>
-            {problem && <p className="text-xs text-destructive" data-testid={`${id}-score-error`}>{problem}</p>}
-            {confirmed && editing && (
-              <Button size="sm" variant="ghost" className="min-h-11" onClick={() => setEditing(false)} data-testid={`${id}-correct-cancel`}>
-                Cancel
-              </Button>
-            )}
-          </div>
+          <Button
+            size="sm"
+            className="min-h-11 flex-1"
+            disabled={!filled || !!problem || busy}
+            onClick={() => {
+              onScore(match.id, a, b);
+              setEditing(false);
+            }}
+            data-testid={`${id}-save-score`}
+          >
+            {confirmed || notPlayed ? "Save" : "Enter Score"}
+          </Button>
         )}
-      </CardContent>
-    </Card>
+        {open && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="min-h-11 text-muted-foreground"
+            disabled={busy}
+            onClick={() => onNotPlayed(match.id)}
+            data-testid={`${id}-not-played`}
+          >
+            Not played
+          </Button>
+        )}
+        {notPlayed && !editing && (
+          <Button size="sm" variant="ghost" className="min-h-11 ml-auto" disabled={busy} onClick={() => setEditing(true)} data-testid={`${id}-enter-score`}>
+            Enter score
+          </Button>
+        )}
+        {(confirmed || notPlayed) && editing && (
+          <Button size="sm" variant="ghost" className="min-h-11" onClick={() => setEditing(false)} data-testid={`${id}-correct-cancel`}>
+            Cancel
+          </Button>
+        )}
+        {confirmed && !editing && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="min-h-11 ml-auto"
+            disabled={busy}
+            onClick={() => {
+              setTeamAGames(String(match.teamAGames ?? ""));
+              setTeamBGames(String(match.teamBGames ?? ""));
+              setEditing(true);
+            }}
+            data-testid={`${id}-correct`}
+          >
+            Correct score
+          </Button>
+        )}
+      </div>
+    </article>
   );
 }
 
@@ -834,35 +926,46 @@ function LeaderboardPanel({
   rows,
   loading,
   final,
+  compact = false,
 }: {
   rows: { userId: string; userName: string; userAvatar: string | null; matchesPlayed: number; wins: number; losses: number; draws: number; gamesWon: number; gamesLost: number; restRounds: number }[];
   loading: boolean;
   final: boolean;
+  /** Beside the courts on wide screens: top 8, no row ids (the Leaderboard section has the full list). */
+  compact?: boolean;
 }) {
+  const shown = compact ? rows.slice(0, 8) : rows;
   return (
-    <Card className="shadow-sm" data-testid="organiser-session-live-leaderboard">
-      <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <Trophy className="w-4 h-4 text-primary-text" /> {final ? "Final leaderboard" : "Leaderboard"}
-        </CardTitle>
-        <p className="text-xs text-muted-foreground">Wins, then draws, then games difference. Only scored matches count.</p>
-      </CardHeader>
-      <CardContent>
-        {loading && <TennisBallSpinner />}
-        {!loading && rows.length === 0 && <p className="text-muted-foreground text-sm">No scores yet.</p>}
-        {rows.map((row, i) => (
-          <div key={row.userId} className="flex items-center gap-3 py-2 border-b border-border last:border-0" data-testid={`organiser-session-live-leaderboard-row-${row.userId}`} data-position={i + 1}>
-            <span className="w-5 text-sm text-muted-foreground">{i + 1}</span>
-            <PlayerAvatar r={row} />
-            <span className="text-sm flex-1 min-w-0 truncate">{row.userName}</span>
-            <span className="text-xs text-muted-foreground">
+    <section className="rounded-2xl border border-border bg-card shadow-sm" data-testid={compact ? "organiser-session-live-leaderboard-mini" : "organiser-session-live-leaderboard"}>
+      <div className="px-4 pt-4 pb-2">
+        <h2 className="font-display text-lg font-bold flex items-center gap-2">
+          <Trophy className="w-5 h-5 text-primary-text" aria-hidden /> {final ? "Final leaderboard" : "Leaderboard"}
+        </h2>
+        {!compact && <p className="text-xs text-muted-foreground">Wins, then draws, then games difference. Only scored matches count.</p>}
+      </div>
+      {loading && <div className="p-4"><TennisBallSpinner /></div>}
+      {!loading && rows.length === 0 && <p className="px-4 pb-4 text-muted-foreground text-sm">No scores yet.</p>}
+      <ol className="divide-y divide-border">
+        {shown.map((row, i) => (
+          <li
+            key={row.userId}
+            className={cn("flex items-center gap-3 px-4 py-2", i < 3 && rows.length > 0 && "bg-primary/5")}
+            data-testid={compact ? undefined : `organiser-session-live-leaderboard-row-${row.userId}`}
+            data-position={i + 1}
+          >
+            <span className={cn("w-6 text-center text-sm font-bold tabular-nums", i === 0 ? "text-primary-text" : "text-muted-foreground")}>{i + 1}</span>
+            <PlayerAvatar r={row} className="w-8 h-8" />
+            <span className="text-sm font-medium flex-1 min-w-0 truncate">{row.userName}</span>
+            <span className="text-sm font-semibold tabular-nums">
               {row.wins}W{row.draws > 0 ? `–${row.draws}D` : ""}–{row.losses}L
             </span>
-            <span className="text-xs text-muted-foreground w-14 text-right">{row.gamesWon}–{row.gamesLost}</span>
-          </div>
+            {!compact && (
+              <span className="hidden sm:inline text-xs text-muted-foreground w-14 text-right tabular-nums">{row.gamesWon}–{row.gamesLost}</span>
+            )}
+          </li>
         ))}
-      </CardContent>
-    </Card>
+      </ol>
+    </section>
   );
 }
 

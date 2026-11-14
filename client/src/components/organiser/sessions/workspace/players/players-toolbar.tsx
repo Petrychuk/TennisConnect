@@ -62,10 +62,12 @@ export function PlayersToolbar({
       )}
 
       <div className="flex gap-2">
-        <Button variant="outline" className="flex-1 sm:flex-none" onClick={onCheckInAll} disabled={checkInAllLoading} data-testid="organiser-players-checkin-all">
-          {checkInAllLoading ? <TennisBallSpinner className="mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
-          Check-in All
-        </Button>
+        {onCheckInAll && (
+          <Button variant="outline" className="flex-1 sm:flex-none" onClick={onCheckInAll} disabled={checkInAllLoading} data-testid="organiser-players-checkin-all">
+            {checkInAllLoading ? <TennisBallSpinner className="mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+            Check-in All
+          </Button>
+        )}
         {onInvitePlayers && (
           <Button className="flex-1 sm:flex-none" onClick={onInvitePlayers} data-testid="organiser-players-invite-button">
             <UserPlus className="w-4 h-4 mr-2" />

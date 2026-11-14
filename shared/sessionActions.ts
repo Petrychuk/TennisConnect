@@ -38,3 +38,31 @@ export function publicSessionPath(session: { id: string; status?: string | null;
   if (session.visibility && session.visibility !== "public") return null;
   return `/play/${session.id}`;
 }
+
+/*
+  After Finish (TC-189 phase 5): a completed or archived session is a
+  record. Its results are final, so the roster they were computed from is
+  frozen too - no check-in, remove or move to the waiting list (each
+  changes who appears on the leaderboard).
+*/
+const FINISHED_STATUSES = ["completed", "archived"];
+
+/** Results (final standings, rounds) exist and are read-only. */
+export function resultsAreFinal(status: string | null | undefined): boolean {
+  return FINISHED_STATUSES.includes(status ?? "");
+}
+
+/** Check in, remove, move to the waiting list. */
+export function canChangeRoster(status: string | null | undefined): boolean {
+  return !!status && !FINISHED_STATUSES.includes(status) && status !== "cancelled";
+}
+
+/** Cancel tells every player the session is off - only before it ran. */
+export function canCancelSession(status: string | null | undefined): boolean {
+  return ["draft", "pending_review", "published"].includes(status ?? "");
+}
+
+/** A live session is ended with End Session (scores closed, results final), never archived mid-play. */
+export function canArchiveSession(status: string | null | undefined): boolean {
+  return !!status && status !== "live" && status !== "archived";
+}

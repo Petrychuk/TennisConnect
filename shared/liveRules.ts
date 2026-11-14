@@ -47,3 +47,27 @@ export function roundProblem(matchMode: string | null | undefined, available: nu
   }
   return null;
 }
+
+/** A match that no longer holds up its round: scored, or marked "not played". */
+export function matchClosed(status: string): boolean {
+  return status === "confirmed" || status === "abandoned";
+}
+
+/** Why a match can't be marked "not played", or null (already not played = no-op). */
+export function notPlayedProblem(status: string): string | null {
+  if (status === "confirmed") return "This match has a score - correct the score instead";
+  return null;
+}
+
+/**
+ * Why the current round can't be redone (reshuffled with whoever is available
+ * now), or null. Only before anything happened on court: once a match is
+ * started, scored or marked not played the round stays as it is.
+ */
+export function redoRoundProblem(round: { status: string } | null | undefined, matches: { status: string }[]): string | null {
+  if (!round) return "There is no round to redo yet";
+  if (round.status !== "active" || matches.some((m) => m.status !== "pending")) {
+    return "A match in this round has started - the round can't be redone";
+  }
+  return null;
+}

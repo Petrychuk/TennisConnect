@@ -5,6 +5,7 @@ import { Calendar, MapPin, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { MockSession } from "@/lib/organiser-hub-mock-data";
 import { formatInTimeZone } from "@/lib/timezone";
+import { isReadyToStart } from "@shared/sessionLifecycle";
 
 interface UpcomingSessionsCardProps {
   sessions: MockSession[];
@@ -13,6 +14,8 @@ interface UpcomingSessionsCardProps {
 }
 
 function sessionStatusLabel(session: MockSession) {
+  // Same "Ready to Start" as the Sessions list and the Workspace (shared/sessionLifecycle.ts).
+  if (isReadyToStart(session)) return "Ready to Start";
   if (session.waitingCount > 0) return `${session.waitingCount} on Waiting List`;
   if (session.maxParticipants && session.registeredCount >= session.maxParticipants) return "Full";
   if (session.status === "pending_review") return "Awaiting Approval";

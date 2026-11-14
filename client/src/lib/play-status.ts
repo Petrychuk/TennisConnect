@@ -2,13 +2,15 @@ import type { PublicSessionStatus } from "@shared/schema";
 
 // Player-facing status labels/colors (spec §8) - never the organiser's
 // own draft/pending_review/rejected/live-internal vocabulary.
+// Full reads "Registration Closed" too: no places left before the start.
+// With a waiting list the one action left is Join Waiting List.
 export const PLAY_STATUS_LABEL: Record<PublicSessionStatus, string> = {
   live: "Live",
   upcoming: "Upcoming",
   open: "Registration Open",
   almost_full: "Almost Full",
-  full: "Full",
-  waitlist: "Waiting List",
+  full: "Registration Closed",
+  waitlist: "Registration Closed",
   closed: "Registration Closed",
   archived: "Archived",
 };

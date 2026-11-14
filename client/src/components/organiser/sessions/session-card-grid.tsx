@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useLiveAvailable } from "@/lib/use-live-available";
 import { sessionCategoryOf } from "@shared/sessionCategories";
+import { isReadyToStart } from "@shared/sessionLifecycle";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,7 +43,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
-import { bucketFor, STATUS_BADGE_LABEL, STATUS_BADGE_STYLE, getPrimaryActionMeta, sessionEditPath } from "./session-utils";
+import { bucketFor, sessionStatusLabel, STATUS_BADGE_STYLE, getPrimaryActionMeta, sessionEditPath } from "./session-utils";
 import { SaveAsTemplateDialog } from "./save-as-template-dialog";
 import { Metric } from "./session-card";
 import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.webp";
@@ -88,10 +89,13 @@ export function SessionCardGrid({ session, onDuplicate, onDelete, onArchive }: S
     onDuplicate?.(session);
   };
 
-  const primaryAction = getPrimaryActionMeta(bucket, Play, liveAvailable, hasRounds);
+  const readyToStart = isReadyToStart(session);
+  const primaryAction = getPrimaryActionMeta(bucket, Play, liveAvailable, hasRounds, readyToStart);
   const primaryOnClick =
     bucket === "draft"
       ? openEdit // Continue Setup: back into the wizard, with everything that was saved
+      : (bucket === "registration-open" || bucket === "upcoming") && primaryAction.label === "Start Live"
+      ? openLive
       : bucket === "registration-open" || bucket === "upcoming"
       ? openWorkspace
       : bucket === "live"
@@ -119,7 +123,7 @@ export function SessionCardGrid({ session, onDuplicate, onDelete, onArchive }: S
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary-foreground" />
                 </span>
               )}
-              {STATUS_BADGE_LABEL[bucket]}
+              {sessionStatusLabel(session, bucket)}
             </Badge>
           </div>
           <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mt-2">

@@ -25,7 +25,7 @@ Classes: **WORKING**, **PARTIAL**, **BROKEN**, **MISSING**, **MISLEADING** (a co
 | Finish | **BROKEN (P0):** `finishSession` had no status check, so it completed drafts, cancelled sessions, anything. It left the open round "active" and its unscored matches pending | Live only (409 otherwise); idempotent. Unscored matches need `force`: they're marked `abandoned` (never counted) and the round is closed, in one transaction |
 | History | PARTIAL: Live showed only the current round | All rounds on the Live screen and in the Workspace (Batch 2 endpoint); results and export after finish |
 | Reconnect / second device | **MISSING (P1):** no refetching; another device stayed stale until reloaded | Refetch every 10 s while live, on focus and on reconnect; offline banner |
-| Phone / tablet | **BROKEN (P1):** the section rail was desktop-only, so Players, Leaderboard, Messages and Settings were unreachable below 1024 px. Score inputs were 32 px | Section tabs below `lg`; 44 px controls; numeric keypad |
+| Phone / tablet | **BROKEN (P1):** the section rail was desktop-only, so Players, Leaderboard, Messages and Settings were unreachable below 1024 px. Score inputs were 32 px | One section switcher for every size (TC-189 phase 3); 44 px controls; 48 px score fields; numeric keypad |
 | "Share Live Board" | **MISLEADING:** copied the organiser's own URL as a "live board" | Removed (no public board exists) |
 | End Session | PARTIAL: no confirmation | Confirmation; explicit "End anyway" for unscored matches |
 | Error messages | PARTIAL: raw `409: {"message":…}` in toasts | The server's message |
@@ -39,9 +39,24 @@ Classes: **WORKING**, **PARTIAL**, **BROKEN**, **MISSING**, **MISLEADING** (a co
 | Ownership / IDOR | WORKING (Batch 1: `requireOwnSession` + `requireRegistrationInSession` / `requireMatchInSession`) | Unchanged; route tests extended |
 | Production test data | **MISSING** | `sessions.is_internal_test` (server-set from `TC_INTERNAL_TEST_EMAILS`), excluded from every public listing; join and invite restricted; published without review or admin messages |
 
+## TC-189 re-check (14 Nov 2026)
+
+| Item | Before | Now |
+|---|---|---|
+| Status by the clock | **BROKEN (P1):** a time-based job archived sessions after their end time - including Live sessions running late, which lost their open round | Removed. Status changes only by people; public availability is derived (`shared/sessionLifecycle.ts`) |
+| Late start | PARTIAL: nothing told the organiser a session was due | Ready to Start from 2 h before; Start Live any time after |
+| Player leaves mid-match | **MISSING (P1):** the round stayed open until a made-up score was entered | Not played (never counts, closes the round); the player is flagged on the court |
+| Late arrival after the draw | PARTIAL: waited a whole round | Redo round while no match has started (409 `ROUND_STARTED` after) |
+| Archive a live session | **BROKEN (P1):** status jumped to archived with the round open and matches pending | 409; End Session first |
+| Cancel a live or completed session | **BROKEN (P1):** every player was told it was cancelled | 409; cancel only before it runs |
+| Roster after Finish | **BROKEN (P1):** check-in / remove / waitlist changed who was on the final leaderboard | 409 (`requireRosterOpen`); controls hidden |
+| Results after archiving | **BROKEN (P2):** hidden | Shown, read-only |
+| Live screen | PARTIAL: two navigations, five stat tiles, End Session twice | One sticky header and switcher, round card with the one next action, court cards (phase 3) |
+
 ## Known limitations (v1)
 
 - Organiser-only scoring, with no player self-report or confirmation step. `reportedBy` / `confirmedBy` are kept for later.
+- Redo round replaces the drawn round (deleted with its matches) - allowed only while every match is pending, so no score is ever lost.
 - One match per court, with every court the same mode. Doubles with 6 players on 2 courts gives one match and 2 resting (no mixed singles + doubles).
 - `plannedRoundsCount` is informational; rounds continue until the organiser ends the session.
 - No public spectator board.

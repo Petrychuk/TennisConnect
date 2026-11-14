@@ -63,8 +63,11 @@ Turn it back on with the previous value.
 
 | Situation | Action |
 |---|---|
-| Round won't advance | Every match needs a score. Scores can be corrected. With the row lock, a concurrent save can no longer leave a fully scored round open |
-| A player left mid-session | Players → Withdraw (applies from the next round; their current match is finished or scored) |
+| Round won't advance | Every court needs a score or **Not played**. Scores can be corrected. With the row lock, a concurrent save can no longer leave a fully scored round open |
+| A player left mid-session | Players → Withdraw (applies from the next round). Their current court is flagged: enter the score so far, or mark it **Not played** |
+| Someone arrived just after the draw | Courts → "Joins next round" → **Redo round with them** (only before any match starts); otherwise they play from the next round |
 | Session stuck "live" (organiser gone) | The organiser (or someone signed in as the owner) uses End Session → End anyway. Unscored matches become "not played". Admins can't end other organisers' sessions (owner-only writes) |
 | Wrong score after finishing | Not editable after Completed (by design). Correct it before ending |
+| Organiser wants to cancel or archive a live session | Refused (409). End Session first; a finished session can be archived (results kept), never cancelled |
+| Player list needs changing after the session | Refused after End Session (the results depend on it). Duplicate the session to run it again |
 | Live misbehaving | Kill switch; report with the `[TC LIVE]` lines for that session id |

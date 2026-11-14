@@ -183,7 +183,7 @@ test.describe('TC Live v1', () => {
 
     const board = (await (await page.request.get(`/api/organizer/sessions/${sessionId}/leaderboard`)).json()) as { userId: string }[];
     expect(board.map((r) => r.userId)).toEqual([bigWinner, closeWinner, closeLoser, bigLoser]);
-    await page.getByTestId('organiser-live-nav-leaderboard').click();
+    await page.getByTestId('organiser-live-tab-leaderboard').click();
     await expect(page.getByTestId(`organiser-session-live-leaderboard-row-${bigWinner}`)).toHaveAttribute('data-position', '1');
     await expect(page.getByTestId(`organiser-session-live-leaderboard-row-${bigLoser}`)).toHaveAttribute('data-position', '4');
   });
@@ -261,7 +261,7 @@ test.describe('TC Live v1', () => {
     await apiGoLive(page, sessionId);
     const r1 = await apiGenerate(page, sessionId);
     await openLive(page, sessionId);
-    await page.getByTestId('organiser-live-nav-players').click();
+    await page.getByTestId('organiser-live-tab-players').click();
     // Late arrival: player 4 checks in now.
     await page.getByTestId(`organiser-session-live-player-${registrationIds[3]}-checkin`).click();
     await expect(page.getByTestId(`organiser-session-live-player-${registrationIds[3]}`)).toHaveAttribute('data-state', 'available', { timeout: 15_000 });
@@ -396,7 +396,7 @@ test.describe('TC Live v1', () => {
       expect((await input.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
       await uiScore(page, matches[0].id, 6, 4);
       await expectNoHorizontalOverflow(page, `live ${viewport.name}`);
-      // Sections are reachable without the desktop rail.
+      // One section switcher on every screen size.
       await page.getByTestId('organiser-live-tab-leaderboard').click();
       await expect(page.getByTestId('organiser-session-live-leaderboard')).toBeVisible();
       await page.getByTestId('organiser-live-tab-players').click();
@@ -405,4 +405,167 @@ test.describe('TC Live v1', () => {
       await testInfo.attach(`live-${viewport.name}`, { body: await page.screenshot(), contentType: 'image/png' });
     });
   }
+
+  test('LIVE-017 Lifecycle: the clock never changes status - delayed start, Live past its end, Finish completes', async ({ page }) => {
+    const organiser = await becomeOrganiser(page);
+    await requireLiveOn(page);
+    const players = await seedPlayers(page, 4);
+    // Scheduled 3.6 h ago, "ended" 1.2 h ago - and nobody started it.
+    const { id: sessionId } = await seedHubSession(
+      page,
+      organiser,
+      {
+        title: `Late start ${Date.now()}`,
+        startAt: inDays(-0.15),
+        status: 'published',
+        type: 'social',
+        registrations: players.map((p) => ({ userId: p.id, checkedIn: true })),
+      },
+      { matchMode: 'singles', courtsCount: 2, location: 'Court Complex', endAt: inDays(-0.05) },
+    );
+
+    // Opening the organiser's list used to archive it by time. Not any more.
+    await page.request.get('/api/organizer/sessions/mine');
+    expect(await sessionStatus(page, sessionId)).toBe('published');
+
+    // Players and guests: archived and read-only from the start time.
+    const pub = await (await page.request.get(`/api/play/sessions/${sessionId}`)).json();
+    expect(pub.playStatus).toBe('archived');
+    expect((await page.request.post(`/api/organizer/sessions/${sessionId}/join`, { data: { acceptedPolicies: true }, failOnStatusCode: false })).status()).toBe(400);
+
+    // The organiser: Ready to Start, and starting late works.
+    await page.goto(`/organiser/sessions/${sessionId}`);
+    await expect(page.getByTestId('organiser-session-status-badge')).toHaveText('READY TO START', { timeout: 15_000 });
+    await expect(page.getByTestId('organiser-session-primary-action')).toHaveText(/Start Live/);
+    await apiGoLive(page, sessionId);
+
+    // Live past the scheduled end stays live, even after the list is opened again.
+    await page.request.get('/api/organizer/sessions/mine');
+    expect(await sessionStatus(page, sessionId)).toBe('live');
+
+    const { matches } = await apiGenerate(page, sessionId);
+    for (const m of matches) await apiScore(page, sessionId, m.id, 6, 3);
+    const finish = await page.request.post(`/api/organizer/sessions/${sessionId}/finish`, { data: {} });
+    expect(finish.status(), await finish.text()).toBe(200);
+    expect(await sessionStatus(page, sessionId)).toBe('completed');
+
+    // Completed: results stay, no edits, still archived for players.
+    const board = await page.request.get(`/api/organizer/sessions/${sessionId}/leaderboard`);
+    expect(board.ok()).toBeTruthy();
+    expect((await board.json()).length).toBeGreaterThan(0);
+    const edit = await page.request.put(`/api/organizer/sessions/${sessionId}`, { data: { title: 'Changed' }, failOnStatusCode: false });
+    expect(edit.status()).toBe(409);
+    expect((await (await page.request.get(`/api/play/sessions/${sessionId}`)).json()).playStatus).toBe('archived');
+  });
+
+  test('LIVE-018 Not played: closes the round without a score, never counts, can still get a score while live', async ({ page }) => {
+    const { sessionId, registrationIds } = await setUp(page, { mode: 'singles', courts: 2, players: 4 });
+    await apiGoLive(page, sessionId);
+    const r1 = await apiGenerate(page, sessionId);
+    const [first, second] = r1.matches;
+    await apiScore(page, sessionId, first.id, 6, 3);
+    // A player on the second court leaves: flagged on the court card.
+    const leaver = second.teamAIds[0];
+    const fixture = await sessionRegistrations(page, sessionId);
+    const leaverReg = fixture.find((r: { userId: string }) => r.userId === leaver)!.id;
+    expect(registrationIds).toContain(leaverReg);
+    const away = await page.request.post(`/api/organizer/sessions/${sessionId}/registrations/${leaverReg}/live-status`, { data: { liveStatus: 'withdrawn' } });
+    expect(away.status()).toBe(200);
+
+    await openLive(page, sessionId);
+    const card = `organiser-session-live-match-${second.id}`;
+    await expect(page.getByTestId(`${card}-player-away`)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('organiser-session-live-generate-round-inline')).toBeDisabled();
+    await page.getByTestId(`${card}-not-played`).click();
+    await expect(page.getByTestId(card)).toHaveAttribute('data-status', 'abandoned', { timeout: 15_000 });
+    await expect(page.getByTestId('organiser-session-live-round-status')).toContainText('all scores in');
+    expect((await currentRound(page, sessionId))!.round.status).toBe('completed');
+
+    // Not counted: only the scored match is on the leaderboard.
+    const board = await (await page.request.get(`/api/organizer/sessions/${sessionId}/leaderboard`)).json();
+    expect(board.reduce((n: number, r: { matchesPlayed: number }) => n + r.matchesPlayed, 0)).toBe(2);
+    // A scored match can't be marked not played; repeating is a no-op.
+    expect((await page.request.post(`/api/organizer/sessions/${sessionId}/matches/${first.id}/not-played`, { failOnStatusCode: false })).status()).toBe(409);
+    expect((await page.request.post(`/api/organizer/sessions/${sessionId}/matches/${second.id}/not-played`)).status()).toBe(200);
+
+    // Played after all: the score goes in while the session is live.
+    await page.getByTestId(`${card}-enter-score`).click();
+    await uiScore(page, second.id, 4, 6);
+    const after = await (await page.request.get(`/api/organizer/sessions/${sessionId}/leaderboard`)).json();
+    expect(after.reduce((n: number, r: { matchesPlayed: number }) => n + r.matchesPlayed, 0)).toBe(4);
+    // The withdrawn player isn't drawn into round 2.
+    const r2 = await apiGenerate(page, sessionId);
+    expect(r2.matches.flatMap((m) => [...m.teamAIds, ...m.teamBIds])).not.toContain(leaver);
+  });
+
+  test('LIVE-019 Redo round: a late arrival joins before anyone starts; refused once a match starts', async ({ page }) => {
+    const { sessionId, registrationIds, players } = await setUp(page, { mode: 'singles', courts: 2, players: 4, checkedIn: 3 });
+    await apiGoLive(page, sessionId);
+    const r1 = await apiGenerate(page, sessionId);
+    expect(r1.matches).toHaveLength(1);
+    // The fourth player arrives just after the draw.
+    const late = registrationIds[3];
+    expect((await page.request.post(`/api/organizer/sessions/${sessionId}/checkin/${late}`)).ok()).toBeTruthy();
+
+    await openLive(page, sessionId);
+    await expect(page.getByTestId('organiser-session-live-joiners')).toBeVisible({ timeout: 15_000 });
+    await page.getByTestId('organiser-session-live-redo-round').click();
+    await expect.poll(async () => (await currentRound(page, sessionId))!.matches.length, { timeout: 15_000 }).toBe(2);
+    const redone = (await currentRound(page, sessionId))!;
+    expect(redone.round.roundNumber).toBe(1);
+    expect(redone.round.restingPlayerIds ?? []).toHaveLength(0);
+    expect(redone.matches.flatMap((m) => [...m.teamAIds, ...m.teamBIds])).toContain(players[3].id);
+    expect(await allRounds(page, sessionId)).toHaveLength(1);
+    await expect(page.getByTestId('organiser-session-live-joiners')).toHaveCount(0);
+
+    // Once a match is under way the round stays as drawn.
+    await page.getByTestId(`organiser-session-live-match-${redone.matches[0].id}-start`).click();
+    await expect(page.getByTestId(`organiser-session-live-match-${redone.matches[0].id}`)).toHaveAttribute('data-status', 'playing', { timeout: 15_000 });
+    await expect(page.getByTestId('organiser-session-live-redo-round')).toHaveCount(0);
+    const refused = await page.request.post(`/api/organizer/sessions/${sessionId}/rounds/current/redo`, { failOnStatusCode: false });
+    expect(refused.status()).toBe(409);
+    expect((await refused.json()).code).toBe('ROUND_STARTED');
+  });
+
+  test('LIVE-020 After Finish: results final in the Workspace, roster frozen, not cancelled or archived mid-play', async ({ page }) => {
+    const { sessionId, registrationIds } = await setUp(page, { mode: 'singles', courts: 1, players: 3 });
+    await apiGoLive(page, sessionId);
+    const r1 = await apiGenerate(page, sessionId);
+    await apiScore(page, sessionId, r1.matches[0].id, 6, 1);
+    const api = `/api/organizer/sessions/${sessionId}`;
+    // While live: End Session is the way out, not Cancel or Archive.
+    expect((await page.request.post(`${api}/cancel`, { failOnStatusCode: false })).status()).toBe(409);
+    expect((await page.request.post(`${api}/archive`, { failOnStatusCode: false })).status()).toBe(409);
+    expect(await sessionStatus(page, sessionId)).toBe('live');
+    expect((await page.request.post(`${api}/finish`)).status()).toBe(200);
+
+    await openLive(page, sessionId);
+    await expect(page.getByTestId('organiser-session-live-completed')).toBeVisible({ timeout: 15_000 });
+    await page.getByTestId('organiser-session-live-open-results').click();
+    const results = page.getByTestId('organiser-session-results-tab');
+    await expect(results).toHaveAttribute('data-final', 'true', { timeout: 15_000 });
+    await expect(page.getByTestId('organiser-session-results-podium-1')).toBeVisible();
+    await expect(page.getByTestId('organiser-session-results-1')).toContainText('+5');
+    await expect(page.getByTestId('organiser-session-results-summary-scored')).toContainText('1');
+    await expect(page.getByTestId('organiser-session-results-summary-rounds')).toContainText('1');
+
+    // Roster frozen: no controls, and the server refuses.
+    await page.goto(`/organiser/sessions/${sessionId}?tab=players`);
+    await expect(page.getByTestId('organiser-session-players-tab')).toHaveAttribute('data-roster', 'final', { timeout: 15_000 });
+    await expect(page.getByTestId('organiser-players-final-note')).toBeVisible();
+    await expect(page.getByTestId('organiser-players-checkin-all')).toHaveCount(0);
+    const reg = registrationIds[0];
+    for (const [method, path] of [['POST', `${api}/checkin/${reg}`], ['DELETE', `${api}/registrations/${reg}`], ['POST', `${api}/registrations/${reg}/waitlist`]] as const) {
+      expect((await page.request.fetch(path, { method, failOnStatusCode: false })).status(), `${method} ${path}`).toBe(409);
+    }
+    expect((await page.request.post(`${api}/matches/${r1.matches[0].id}/score`, { data: { teamAGames: 1, teamBGames: 6 }, failOnStatusCode: false })).status()).toBeGreaterThanOrEqual(400);
+    expect((await page.request.post(`${api}/cancel`, { failOnStatusCode: false })).status()).toBe(409);
+
+    // Archived afterwards: the results are kept and still shown.
+    expect((await page.request.post(`${api}/archive`)).status()).toBe(200);
+    await page.goto(`/organiser/sessions/${sessionId}?tab=results`);
+    await expect(page.getByTestId('organiser-session-results-1')).toBeVisible({ timeout: 15_000 });
+    const board = await (await page.request.get(`${api}/leaderboard`)).json();
+    expect(board[0].wins).toBe(1);
+  });
 });

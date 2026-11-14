@@ -124,10 +124,11 @@ function OrganiserSessionEditPageContent() {
   }, [isDraft, params?.id, setLocation]);
 
   // An archived session is closed - it can't be edited, so don't show the form.
-  const isArchived = session?.status === "archived";
+  // Finished sessions (completed or archived) aren't edited - the server refuses too.
+  const isArchived = session?.status === "archived" || session?.status === "completed";
   useEffect(() => {
     if (isArchived && params?.id) {
-      toast({ title: "Archived sessions can't be edited", description: "Duplicate it to run it again." });
+      toast({ title: session?.status === "completed" ? "Completed sessions can't be edited" : "Archived sessions can't be edited", description: "Duplicate it to run it again." });
       setLocation(`/organiser/sessions/${params.id}`, { replace: true });
     }
   }, [isArchived, params?.id, setLocation, toast]);

@@ -152,13 +152,29 @@ test("no Hub control only announces that it isn't wired up", () => {
 test("TC Live screen: no fake share link, sections on phones, server rules mirrored, kill switch keeps history", () => {
   const live = read("pages/organiser/session-live.tsx");
   assert.doesNotMatch(live, /handleShareLiveBoard|organiser-session-live-share/, "no 'Share Live Board' copying the organiser URL");
-  assert.match(live, /organiser-live-tab-\$\{item\.key\}/, "section tabs below the desktop rail");
+  assert.match(live, /organiser-live-tab-\$\{item\.key\}/, "one section switcher on every screen size");
+  assert.doesNotMatch(live, /organiser-live-nav-/, "no second (desktop rail) navigation for the same sections");
   assert.match(live, /scoreProblem\(/, "score validation shared with the server");
   assert.match(live, /goLiveProblem\(/);
   assert.match(live, /UNSCORED_MATCHES/, "End Session handles unscored matches explicitly");
   assert.match(live, /refetchInterval/, "a second device / reconnect sees the same state");
   assert.match(live, /setRegistrationLiveStatus/, "withdraw / sit out / back in are reachable");
   assert.doesNotMatch(live, /dbEnv|isStaging/, "TC_LIVE_ENABLED decides, not DB_ENV");
+});
+
+test("TC-189: rounds and scores, results after Finish, no realtime transport", () => {
+  const live = read("pages/organiser/session-live.tsx");
+  assert.match(live, /markMatchNotPlayed\(/, "Not played reachable on a court");
+  assert.match(live, /redoCurrentRound\(/, "Redo round reachable");
+  assert.match(live, /redoRoundProblem\(/, "redo offered with the server's rule");
+  assert.match(live, /organiser-session-live-open-results/, "after End Session: a way to the results");
+  assert.equal((live.match(/data-testid="organiser-session-live-finish"/g) ?? []).length, 1, "End Session in one place");
+  for (const f of ["pages/organiser/session-live.tsx", "components/organiser/sessions/workspace/results-tab.tsx", "components/organiser/sessions/workspace/rounds-tab.tsx"]) {
+    assert.doesNotMatch(read(f), /new WebSocket|EventSource|supabase\.channel|\.channel\(/, `${f}: polling only (TC-189: no WebSockets / Realtime)`);
+  }
+  assert.match(read("components/organiser/sessions/workspace/results-tab.tsx"), /resultsAreFinal\(/, "results for completed and archived");
+  assert.match(read("components/organiser/sessions/workspace/players-tab.tsx"), /canChangeRoster\(/, "roster read-only after Finish");
+  assert.match(read("pages/organiser/session-workspace.tsx"), /canArchiveSession\(/, "no Archive while live");
 });
 
 test("player CSV export quotes every cell and defuses spreadsheet formulas", async () => {

@@ -30,7 +30,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { canAnnounceToSession, canInviteToSession } from "@shared/sessionActions";
+import { canAnnounceToSession, canArchiveSession, canInviteToSession } from "@shared/sessionActions";
 import { publishSession, archiveSession, cancelSession, inviteToSession, broadcastToSession, getSessionRegistrations, createSessionDivision } from "@/lib/api/organizer-sessions";
 import { InvitePlayersDialog } from "@/components/organiser/shared/invite-players-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -57,7 +57,8 @@ import { RoundsTab } from "@/components/organiser/sessions/workspace/rounds-tab"
 import { MessagesTab } from "@/components/organiser/sessions/workspace/messages-tab";
 import { ResultsTab } from "@/components/organiser/sessions/workspace/results-tab";
 import { SettingsTab } from "@/components/organiser/sessions/workspace/settings-tab";
-import { bucketFor, canEditSession, sessionEditPath } from "@/components/organiser/sessions/session-utils";
+import { bucketFor, canEditSession, sessionEditPath, sessionStatusLabel } from "@/components/organiser/sessions/session-utils";
+import { isReadyToStart } from "@shared/sessionLifecycle";
 import { friendlyApiError } from "@/lib/apiError";
 
 import { useQuery } from "@tanstack/react-query";
@@ -79,15 +80,6 @@ const WORKSPACE_TABS = [
 ] as const;
 
 type WorkspaceTabKey = (typeof WORKSPACE_TABS)[number]["key"];
-
-const BUCKET_BADGE_LABEL: Record<string, string> = {
-  live: "LIVE",
-  "registration-open": "REGISTRATION OPEN",
-  upcoming: "UPCOMING",
-  draft: "DRAFT",
-  completed: "COMPLETED",
-  archived: "ARCHIVED",
-};
 
 export default function OrganiserSessionWorkspacePage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
@@ -325,6 +317,8 @@ export default function OrganiserSessionWorkspacePage() {
       ? { label: "View Results", onClick: () => handleTabChange("results"), icon: undefined }
       : bucket === "completed" || bucket === "archived"
       ? { label: "View Players", onClick: goPlayers, icon: undefined }
+      : liveAvailable && usesLiveRounds && bucket !== "live" && isReadyToStart(session)
+      ? { label: "Start Live", onClick: goLive, icon: Play } // Ready to Start: the organiser starts it
       : liveAvailable && usesLiveRounds
       ? { label: "Enter Live Session", onClick: goLive, icon: Play } // live, registration-open, upcoming
       : { label: "Manage Players", onClick: goPlayers, icon: undefined };
@@ -364,8 +358,8 @@ export default function OrganiserSessionWorkspacePage() {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="font-display text-2xl sm:text-3xl font-bold">{session.title}</h1>
-                <Badge className={bucket === "live" ? "bg-primary text-foreground" : "bg-primary/10 text-primary-text"}>
-                  {BUCKET_BADGE_LABEL[bucket]}
+                <Badge className={bucket === "live" ? "bg-primary text-foreground" : "bg-primary/10 text-primary-text"} data-testid="organiser-session-status-badge">
+                  {sessionStatusLabel(session, bucket).toUpperCase()}
                 </Badge>
               </div>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
@@ -448,7 +442,8 @@ export default function OrganiserSessionWorkspacePage() {
                       Cancel Session
                     </DropdownMenuItem>
                   )}
-                  {session.status !== "archived" && (
+                  {/* Not while live: End Session closes the scores first. */}
+                  {canArchiveSession(session.status) && (
                     <DropdownMenuItem onClick={() => setConfirmArchiveOpen(true)} disabled={archiving} data-testid="organiser-session-more-archive">
                       <Archive className="w-4 h-4 mr-2" />
                       {archiving ? "Archiving..." : "Archive"}

@@ -4,8 +4,9 @@ import { requireAuth, requireAdmin } from "../requireAuth";
 import { env } from "../env";
 import { sendMessageBetween, ORGANIZER_APPROVED_SUBJECT, ORGANIZER_APPROVED_MESSAGE } from "../services/systemMessages";
 import { organizationProfileSchema, organizationProfileUpdateSchema } from "@shared/organizationProfile";
-import { canInviteToSession } from "@shared/sessionActions";
-import { joinBlockedReason, sessionHasFinished } from "@shared/sessionJoinRules";
+import { canArchiveSession, canCancelSession, canChangeRoster, canInviteToSession, resultsAreFinal } from "@shared/sessionActions";
+import { joinBlockedReason } from "@shared/sessionJoinRules";
+import { registrationBlockReason } from "@shared/sessionLifecycle";
 import { isInternalTestUser, liveAllowedFor, liveMode } from "../lib/liveFeature";
 import { LiveRuleError } from "../lib/liveErrors";
 import { goLiveProblem, scoreProblem } from "@shared/liveRules";
@@ -879,6 +880,17 @@ async function requireRegistrationInSession(req: Request, res: Response, next: N
   }
 }
 
+// Check-in, remove, move to the waiting list: each changes who is on the
+// leaderboard, so they stop once the session has finished (TC-189 phase 5;
+// shared/sessionActions.ts canChangeRoster). Runs after requireOwnSession.
+function requireRosterOpen(req: Request, res: Response, next: NextFunction) {
+  const session = (req as any).session_ as TennisSession;
+  if (!canChangeRoster(session.status)) {
+    return res.status(409).json({ message: `This session is ${session.status} - its players and results can't be changed` });
+  }
+  next();
+}
+
 // Same rule for /sessions/:id/matches/:matchId/* (TC Live score entry).
 async function requireMatchInSession(req: Request, res: Response, next: NextFunction) {
   try {
@@ -910,22 +922,17 @@ router.put("/sessions/:id", requireAuth, requireOrganizer, requireOwnSession, as
     const before = (req as any).session_ as TennisSession;
     // An archived session is closed. Hiding Edit in the UI is not enough - the
     // API refuses too (Duplicate it to run the session again).
-    if (before.status === "archived") {
-      return res.status(409).json({ code: "archived", message: "Archived sessions can't be edited. Duplicate the session to run it again." });
+    // A finished session (completed through TC Live, or archived) keeps its
+    // results as they were played: no edits, not even a new date - that
+    // would turn a played session back into an upcoming one. Duplicate it to
+    // run it again (shared/sessionLifecycle.ts).
+    if (before.status === "archived" || before.status === "completed") {
+      return res.status(409).json({
+        code: before.status,
+        message: `${before.status === "completed" ? "Completed" : "Archived"} sessions can't be edited. Duplicate the session to run it again.`,
+      });
     }
     const changes = { ...parsed.data, ...clears } as Partial<InsertSession> & Record<string, unknown>;
-
-    // A completed session whose date is moved into the future is being run
-    // again: its status must follow the date, otherwise it keeps the
-    // "Completed" label (and its bucket) forever while showing a future date.
-    // It goes back to "published" - it was already reviewed/approved when it
-    // first ran.
-    if (before.status === "completed" && changes.startAt) {
-      const nextStart = new Date(changes.startAt as string | Date).getTime();
-      if (Number.isFinite(nextStart) && nextStart > Date.now()) {
-        changes.status = "published";
-      }
-    }
     let updated: TennisSession;
     if (expected.kind === "ok") {
       const saved = await storage.updateSessionIfUnchanged(req.params.id, changes, expected.at);
@@ -1067,6 +1074,13 @@ async function notifyActiveRegistrants(
 router.post("/sessions/:id/cancel", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
   try {
     const thisSession = (req as any).session_ as TennisSession;
+    // Cancelling told every player "cancelled" even for a session that was
+    // live or had already finished (TC-189 phase 5).
+    if (!canCancelSession(thisSession.status)) {
+      return res.status(409).json({
+        message: thisSession.status === "live" ? "This session is live - end it from the Live screen instead" : `A ${thisSession.status} session can't be cancelled`,
+      });
+    }
     const [session, organizer] = await Promise.all([
       storage.cancelSession(req.params.id),
       storage.getUser((req.user as any).id),
@@ -1091,6 +1105,13 @@ router.post("/sessions/:id/cancel", requireAuth, requireOrganizer, requireOwnSes
 
 router.post("/sessions/:id/archive", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
   try {
+    const thisSession = (req as any).session_ as TennisSession;
+    if (thisSession.status === "archived") return res.json(thisSession);
+    // Archiving a live session skipped End Session: the open round stayed
+    // active and its unscored matches pending (TC-189 phase 5).
+    if (!canArchiveSession(thisSession.status)) {
+      return res.status(409).json({ message: "This session is live - end it first, then archive it" });
+    }
     const session = await storage.archiveSession(req.params.id);
     res.json(session);
   } catch (error) {
@@ -1383,6 +1404,7 @@ router.post(
   requireAuth,
   requireOrganizer,
   requireOwnSession,
+  requireRosterOpen,
   requireRegistrationInSession,
   async (req, res, next) => {
     try {
@@ -1402,6 +1424,7 @@ router.delete(
   requireAuth,
   requireOrganizer,
   requireOwnSession,
+  requireRosterOpen,
   requireRegistrationInSession,
   async (req, res, next) => {
     try {
@@ -1420,6 +1443,7 @@ router.post(
   requireAuth,
   requireOrganizer,
   requireOwnSession,
+  requireRosterOpen,
   requireRegistrationInSession,
   async (req, res, next) => {
     try {
@@ -1446,6 +1470,12 @@ router.post(
       const liveStatus = req.body?.liveStatus;
       if (liveStatus !== null && liveStatus !== "unavailable" && liveStatus !== "withdrawn") {
         return res.status(400).json({ message: "liveStatus must be 'unavailable', 'withdrawn', or null" });
+      }
+      // Only players with a place: a waitlisted, invited or cancelled
+      // registration is never paired, so sitting it out means nothing.
+      const target = (req as any).registration_ as { status: string };
+      if (target.status !== "registered") {
+        return res.status(400).json({ message: `Only registered players can sit out or withdraw (this one is ${target.status})` });
       }
       const registration = await storage.setRegistrationLiveStatus(req.params.registrationId, liveStatus);
       res.json(registration);
@@ -1511,6 +1541,22 @@ router.get("/sessions/:id/rounds", requireAuth, async (req, res, next) => {
   }
 });
 
+// Redo the current round (TC-189 phase 4): drawn again with whoever is
+// available now - for a late arrival or someone who left right after the
+// draw. Only while no match in it has started (409 ROUND_STARTED).
+router.post("/sessions/:id/rounds/current/redo", requireLiveEnabled, requireAuth, requireOrganizer, requireOwnSession, requireLiveForSession, async (req, res, next) => {
+  try {
+    const thisSession = (req as any).session_ as TennisSession;
+    if (thisSession.status !== "live") {
+      return res.status(409).json({ message: "Session must be live to redo a round" });
+    }
+    console.log(`[TC LIVE] session ${req.params.id}: redo round requested`);
+    res.json(await storage.generateNextRound(req.params.id, { redo: true }));
+  } catch (error) {
+    handleLiveEngineError(error, res, next);
+  }
+});
+
 router.get("/sessions/:id/rounds/current", requireLiveEnabled, requireAuth, requireOrganizer, requireOwnSession, requireLiveForSession, async (req, res, next) => {
   try {
     const result = await storage.getCurrentRound(req.params.id);
@@ -1532,6 +1578,25 @@ router.post(
     try {
       const match = await storage.startMatch(req.params.matchId);
       res.json(match);
+    } catch (error) {
+      handleLiveEngineError(error, res, next);
+    }
+  }
+);
+
+// "Not played" (TC-189 phase 4): the match won't finish (injury, someone
+// left). Never counts; closes the round if it was the last open court.
+router.post(
+  "/sessions/:id/matches/:matchId/not-played",
+  requireLiveEnabled,
+  requireAuth,
+  requireOrganizer,
+  requireOwnSession,
+  requireLiveForSession,
+  requireMatchInSession,
+  async (req, res, next) => {
+    try {
+      res.json(await storage.markMatchNotPlayed(req.params.matchId));
     } catch (error) {
       handleLiveEngineError(error, res, next);
     }
@@ -1607,7 +1672,7 @@ router.get("/sessions/:id/leaderboard", requireAuth, requireOrganizer, requireOw
 router.post("/sessions/:id/send-results", requireAuth, requireOrganizer, requireOwnSession, async (req, res, next) => {
   try {
     const session = (req as any).session_ as TennisSession;
-    if (session.status !== "completed") {
+    if (!resultsAreFinal(session.status)) {
       return res.status(400).json({ message: "Results are only available once the session has finished" });
     }
     const [leaderboard, organizer] = await Promise.all([
@@ -1847,10 +1912,13 @@ router.post("/sessions/:id/join", requireAuth, async (req, res, next) => {
 router.delete("/sessions/:id/join", requireAuth, async (req, res, next) => {
   try {
     const leaverId = (req.user as any).id;
-    // A finished (archived) session is closed for changes - no cancelling a place in it.
+    // Once registration has closed, the session has started or it's over,
+    // a place can't be cancelled from Play any more (shared/sessionLifecycle.ts).
+    // The organiser still manages withdrawals in TC Live / Players.
     const target = await storage.getSessionById(req.params.id);
-    if (target && sessionHasFinished(target)) {
-      return res.status(400).json({ message: "This session has finished." });
+    const blocked = target ? registrationBlockReason(target, "leave") : null;
+    if (blocked) {
+      return res.status(400).json({ message: blocked });
     }
     const registration = await storage.cancelRegistration(req.params.id, leaverId);
 

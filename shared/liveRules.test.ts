@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { goLiveProblem, roundProblem, scoreProblem } from "./liveRules";
+import { goLiveProblem, matchClosed, notPlayedProblem, redoRoundProblem, roundProblem, scoreProblem } from "./liveRules";
 
 test("score validation: whole games 0-99, ties allowed, 0-0 refused", () => {
   assert.equal(scoreProblem(6, 4), null);
@@ -31,4 +31,25 @@ test("a round needs a full court of available players (no empty doubles rounds)"
   assert.equal(roundProblem("singles", 2), null);
   assert.match(roundProblem("singles", 1)!, /at least 2/);
   assert.match(roundProblem(null, 2)!, /Doubles/, "unknown mode is doubles, like the engine");
+});
+
+test("not played: a pending or playing match closes without a score; a scored one is corrected instead", () => {
+  assert.equal(notPlayedProblem("pending"), null);
+  assert.equal(notPlayedProblem("playing"), null);
+  assert.equal(notPlayedProblem("abandoned"), null, "repeat is a no-op");
+  assert.match(notPlayedProblem("confirmed")!, /correct the score/);
+  assert.equal(matchClosed("confirmed"), true);
+  assert.equal(matchClosed("abandoned"), true);
+  assert.equal(matchClosed("playing"), false);
+  assert.equal(matchClosed("pending"), false);
+});
+
+test("redo round: only while every match is still pending", () => {
+  const active = { status: "active" };
+  assert.equal(redoRoundProblem(active, [{ status: "pending" }, { status: "pending" }]), null);
+  assert.match(redoRoundProblem(active, [{ status: "pending" }, { status: "playing" }])!, /has started/);
+  assert.match(redoRoundProblem(active, [{ status: "confirmed" }])!, /has started/);
+  assert.match(redoRoundProblem(active, [{ status: "abandoned" }])!, /has started/);
+  assert.match(redoRoundProblem({ status: "completed" }, [])!, /has started/);
+  assert.match(redoRoundProblem(null, [])!, /no round/);
 });

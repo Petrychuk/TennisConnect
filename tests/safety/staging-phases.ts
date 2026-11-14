@@ -147,13 +147,15 @@ export const STAGING_PHASES: Readonly<Record<StagingPhase, readonly PhaseEntry[]
       ids: ['ORG-ACT-001', 'ORG-ACT-002', 'ORG-ACT-003', 'ORG-ACT-004', 'ORG-ACT-005', 'ORG-ACT-006'],
     },
     // PLAY-010 registers a run-owned player into a run-owned session; PLAY-011 is a guest view;
-    // PLAY-012 seeds a run-owned past session (join refused).
-    { file: 'tests/play/play-session-details.spec.ts', ids: ['PLAY-007', 'PLAY-008', 'PLAY-009', 'PLAY-010', 'PLAY-011', 'PLAY-012'] },
+    // PLAY-012 seeds a run-owned started session, PLAY-013 one whose registration closed early (joins refused).
+    { file: 'tests/play/play-session-details.spec.ts', ids: ['PLAY-007', 'PLAY-008', 'PLAY-009', 'PLAY-010', 'PLAY-011', 'PLAY-012', 'PLAY-013'] },
     // TC Live v1 (30 Oct 2026): needs TC_LIVE_ENABLED=true on Staging. Run-owned
     // organisers/players/sessions; LIVE-015 skips itself unless Live is off.
     {
       file: 'tests/live/live-engine.spec.ts',
-      ids: Array.from({ length: 16 }, (_, i) => `LIVE-${String(i + 1).padStart(3, '0')}`),
+      // LIVE-017: lifecycle (delayed start, Live past its end, Finish -> completed).
+      // LIVE-018/019 (TC-189 phase 4): Not played, Redo round. LIVE-020 (phase 5): results after Finish.
+      ids: Array.from({ length: 20 }, (_, i) => `LIVE-${String(i + 1).padStart(3, '0')}`),
     },
     { file: 'tests/play/play.spec.ts', ids: ['PLAY-001', 'PLAY-002', 'PLAY-003', 'PLAY-004', 'PLAY-005', 'PLAY-006'] },
     {
