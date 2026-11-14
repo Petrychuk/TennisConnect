@@ -148,7 +148,10 @@ test.describe('Session drafts', () => {
 
     // ---------- Edit on another step and save again ----------
     await next(page, 3);
-    await page.getByTestId('organiser-wizard-rules-policies-expand').click();
+    // A draft that already has rules opens with the section expanded (no "add" button).
+    const expand = page.getByTestId('organiser-wizard-rules-policies-expand');
+    await expect(expand.or(page.getByTestId('organiser-wizard-rules-text'))).toBeVisible({ timeout: 15_000 });
+    if (await expand.isVisible()) await expand.click();
     await expect(page.getByTestId('organiser-wizard-rules-text')).toHaveValue('Rules from day one');
     await page.getByTestId('organiser-wizard-refund-policy').fill('No refunds');
     await saveDraft(page);

@@ -147,6 +147,9 @@ export function PlayersTab({ session, onOpenMessages, onExport }: PlayersTabProp
     onViewProfile: handleViewProfile,
   };
   const checkInAll = rosterOpen ? handleCheckInAll : undefined;
+  // Disabled while the list loads: pressed before it, Check-in All saw nobody
+  // to check in and did nothing at all (ORG-WSP-003).
+  const checkInAllBusy = checkingInAll || registrationsQuery.isLoading;
   // Undefined hides the toolbar's Invite button (shared/sessionActions.ts).
   const handleInvitePlayers = canInviteToSession(session.status, session.endAt) ? () => setInviteOpen(true) : undefined;
 
@@ -192,7 +195,7 @@ export function PlayersTab({ session, onOpenMessages, onExport }: PlayersTabProp
           search={search}
           onSearchChange={setSearch}
           onCheckInAll={checkInAll}
-          checkInAllLoading={checkingInAll}
+          checkInAllLoading={checkInAllBusy}
           onInvitePlayers={handleInvitePlayers}
           level={level}
           onLevelChange={setLevel}
@@ -209,7 +212,7 @@ export function PlayersTab({ session, onOpenMessages, onExport }: PlayersTabProp
       <div className="hidden md:block xl:hidden space-y-6">
         <PlayersStatStrip session={session} players={allPlayers} />
         {bucketTabsList}
-        <PlayersToolbar search={search} onSearchChange={setSearch} onCheckInAll={checkInAll} checkInAllLoading={checkingInAll} onInvitePlayers={handleInvitePlayers} level={level} onLevelChange={setLevel} />
+        <PlayersToolbar search={search} onSearchChange={setSearch} onCheckInAll={checkInAll} checkInAllLoading={checkInAllBusy} onInvitePlayers={handleInvitePlayers} level={level} onLevelChange={setLevel} />
         <PlayersList players={visible} {...rowHandlers} timeZone={session.timeZone} />
         {paginationText}
         <WaitingListCard players={buckets.waiting} timeZone={session.timeZone} />
@@ -221,7 +224,7 @@ export function PlayersTab({ session, onOpenMessages, onExport }: PlayersTabProp
       <div className="md:hidden space-y-6">
         <PlayersStatStrip session={session} players={allPlayers} />
         {bucketTabsList}
-        <PlayersToolbar search={search} onSearchChange={setSearch} onCheckInAll={checkInAll} checkInAllLoading={checkingInAll} onInvitePlayers={handleInvitePlayers} level={level} onLevelChange={setLevel} />
+        <PlayersToolbar search={search} onSearchChange={setSearch} onCheckInAll={checkInAll} checkInAllLoading={checkInAllBusy} onInvitePlayers={handleInvitePlayers} level={level} onLevelChange={setLevel} />
         <PlayersList players={visible} {...rowHandlers} timeZone={session.timeZone} />
         {paginationText}
         <WaitingListCard players={buckets.waiting} timeZone={session.timeZone} />

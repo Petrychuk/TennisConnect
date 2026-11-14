@@ -100,6 +100,8 @@ test.describe('Session Workspace - players', () => {
     });
 
     await openWorkspaceTab(page, session.id, 'players');
+    // Like ORG-WSP-001: act once the list has loaded (a click before it had nobody to check in).
+    await expect(page.getByTestId(`organiser-players-row-${session.registrationIds[0]}-checkin`)).toBeVisible({ timeout: 15_000 });
     // The tab renders a desktop, a tablet and a phone layout (two hidden by CSS): click the visible one.
     await page.getByTestId('organiser-players-checkin-all').filter({ visible: true }).click();
 
