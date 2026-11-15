@@ -58,11 +58,30 @@ export function canChangeRoster(status: string | null | undefined): boolean {
 }
 
 /** Cancel tells every player the session is off - only before it ran. */
+export const CANCELLABLE_SESSION_STATUSES = ["draft", "pending_review", "published"] as const;
+
 export function canCancelSession(status: string | null | undefined): boolean {
-  return ["draft", "pending_review", "published"].includes(status ?? "");
+  return (CANCELLABLE_SESSION_STATUSES as readonly string[]).includes(status ?? "");
 }
 
 /** A live session is ended with End Session (scores closed, results final), never archived mid-play. */
+export const ARCHIVE_BLOCKED_SESSION_STATUSES = ["live", "archived"] as const;
+
 export function canArchiveSession(status: string | null | undefined): boolean {
-  return !!status && status !== "live" && status !== "archived";
+  return !!status && !(ARCHIVE_BLOCKED_SESSION_STATUSES as readonly string[]).includes(status);
+}
+
+/** Only a session waiting for review can be approved or rejected by an admin (TC-212). */
+export const REVIEWABLE_SESSION_STATUS = "pending_review";
+
+/**
+ * Edit (PUT /sessions/:id, the Edit page, Settings and Notes): never for a
+ * finished session (completed / archived - its results are a record) or a
+ * cancelled one (players were told it's off; duplicate it to run it again).
+ * TC-212, OH-AUDIT-006.
+ */
+export const EDIT_LOCKED_SESSION_STATUSES = ["completed", "archived", "cancelled"] as const;
+
+export function isSessionEditable(status: string | null | undefined): boolean {
+  return !!status && !(EDIT_LOCKED_SESSION_STATUSES as readonly string[]).includes(status);
 }

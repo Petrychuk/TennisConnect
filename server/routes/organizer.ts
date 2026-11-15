@@ -4,7 +4,16 @@ import { requireAuth, requireAdmin } from "../requireAuth";
 import { env } from "../env";
 import { sendMessageBetween, ORGANIZER_APPROVED_SUBJECT, ORGANIZER_APPROVED_MESSAGE } from "../services/systemMessages";
 import { organizationProfileSchema, organizationProfileUpdateSchema } from "@shared/organizationProfile";
-import { canArchiveSession, canCancelSession, canChangeRoster, canInviteToSession, resultsAreFinal } from "@shared/sessionActions";
+import {
+  EDIT_LOCKED_SESSION_STATUSES,
+  REVIEWABLE_SESSION_STATUS,
+  canArchiveSession,
+  canCancelSession,
+  canChangeRoster,
+  canInviteToSession,
+  isSessionEditable,
+  resultsAreFinal,
+} from "@shared/sessionActions";
 import { joinBlockedReason } from "@shared/sessionJoinRules";
 import { registrationBlockReason } from "@shared/sessionLifecycle";
 import { isInternalTestUser, liveAllowedFor, liveMode } from "../lib/liveFeature";
@@ -972,7 +981,27 @@ router.put("/sessions/:id", requireAuth, requireOrganizer, requireOwnSession, as
         message: `${before.status === "completed" ? "Completed" : "Archived"} sessions can't be edited. Duplicate the session to run it again.`,
       });
     }
+    // A cancelled session is closed too: players were told it's off (TC-212,
+    // OH-AUDIT-006). Editing its date used to send them a "Rescheduled" notice.
+    if (!isSessionEditable(before.status)) {
+      return res.status(409).json({
+        code: before.status,
+        message: "Cancelled sessions can't be edited. Duplicate the session to run it again.",
+      });
+    }
     const changes = { ...parsed.data, ...clears } as Partial<InsertSession> & Record<string, unknown>;
+    // Capacity can't go below the players who already have a place (TC-212).
+    // Clearing it (null = no limit) or raising it is always fine.
+    if (typeof changes.maxParticipants === "number" && changes.maxParticipants !== before.maxParticipants) {
+      const { registered } = await storage.getSessionRegistrationCounts(before.id);
+      if (changes.maxParticipants < registered) {
+        return res.status(409).json({
+          code: "capacity_below_registered",
+          registered,
+          message: `${registered} player${registered === 1 ? " is" : "s are"} already registered - set the capacity to ${registered} or more, or remove players first.`,
+        });
+      }
+    }
     // Re-linking to another organisation's season/series, a series of a
     // different season, or a new parent event is refused before anything is
     // written (TC-211, server/lib/sessionLinkage.ts).
@@ -984,16 +1013,22 @@ router.put("/sessions/:id", requireAuth, requireOrganizer, requireOwnSession, as
     if (linkProblem) {
       return res.status(linkProblem.status).json({ code: linkProblem.code, message: linkProblem.message });
     }
-    let updated: TennisSession;
-    if (expected.kind === "ok") {
-      const saved = await storage.updateSessionIfUnchanged(req.params.id, changes, expected.at);
-      if (!saved) {
-        return res.status(409).json({ code: "stale", message: STALE_DRAFT_MESSAGE });
+    // The write itself refuses a session that was cancelled / finished after
+    // the read above (TC-212), so a concurrent Cancel can't be overwritten.
+    const guard = { lockedStatuses: EDIT_LOCKED_SESSION_STATUSES };
+    const saved =
+      expected.kind === "ok"
+        ? await storage.updateSessionIfUnchanged(req.params.id, changes, expected.at, guard)
+        : await storage.updateSession(req.params.id, changes, guard);
+    if (!saved) {
+      const now = await storage.getSessionById(req.params.id);
+      if (!now) return res.status(404).json({ message: "Session not found" });
+      if (!isSessionEditable(now.status)) {
+        return res.status(409).json({ code: now.status, message: `This session is ${now.status} - it can't be edited.` });
       }
-      updated = saved;
-    } else {
-      updated = await storage.updateSession(req.params.id, changes);
+      return res.status(409).json({ code: "stale", message: STALE_DRAFT_MESSAGE });
     }
+    const updated: TennisSession = saved;
 
     // Only startAt actually changing means a real reschedule - a
     // no-op PUT (saving the form without touching the date/time) or a
@@ -1065,9 +1100,17 @@ router.post("/sessions/:id/publish", requireAuth, requireOrganizer, requireOwnSe
       skipsReview = parent?.status === "published";
     }
 
-    const session = skipsReview
+    const transitioned = skipsReview
       ? await storage.publishSessionDirect(req.params.id, reviewerId)
       : await storage.submitSessionForReview(req.params.id);
+    // Conditional on draft/rejected in the UPDATE (TC-212): a second, concurrent
+    // Publish finds nothing to change - 409, and the admins aren't told twice.
+    if (!transitioned) {
+      const now = await storage.getSessionById(req.params.id);
+      if (!now) return res.status(404).json({ message: "Session not found" });
+      return res.status(409).json({ code: "not_publishable", message: publishStatusProblem(now.status) });
+    }
+    const session = transitioned;
 
     // An organiser (not an admin) submitting for review is the moment
     // an admin needs to know about - a direct admin publish doesn't
@@ -1132,10 +1175,18 @@ router.post("/sessions/:id/cancel", requireAuth, requireOrganizer, requireOwnSes
         message: thisSession.status === "live" ? "This session is live - end it from the Live screen instead" : `A ${thisSession.status} session can't be cancelled`,
       });
     }
-    const [session, organizer] = await Promise.all([
-      storage.cancelSession(req.params.id),
-      storage.getUser((req.user as any).id),
-    ]);
+    // Conditional on a cancellable status in the UPDATE (TC-212): only the
+    // request that really cancels it notifies the players - never twice, and
+    // never for a session that went live or was cancelled meanwhile.
+    const session = await storage.cancelSession(req.params.id);
+    if (!session) {
+      const now = await storage.getSessionById(req.params.id);
+      if (!now) return res.status(404).json({ message: "Session not found" });
+      return res.status(409).json({
+        message: now.status === "live" ? "This session is live - end it from the Live screen instead" : `A ${now.status} session can't be cancelled`,
+      });
+    }
+    const organizer = await storage.getUser((req.user as any).id);
     // Whoever had already joined needs to hear this directly, not
     // discover it by the session quietly vanishing from their Upcoming
     // Sessions - a cancellation notice is exactly what a real organizer
@@ -1164,6 +1215,13 @@ router.post("/sessions/:id/archive", requireAuth, requireOrganizer, requireOwnSe
       return res.status(409).json({ message: "This session is live - end it first, then archive it" });
     }
     const session = await storage.archiveSession(req.params.id);
+    if (!session) {
+      // Changed meanwhile (TC-212): archived by another tab is fine, gone live is not.
+      const now = await storage.getSessionById(req.params.id);
+      if (!now) return res.status(404).json({ message: "Session not found" });
+      if (now.status === "archived") return res.json(now);
+      return res.status(409).json({ message: "This session is live - end it first, then archive it" });
+    }
     res.json(session);
   } catch (error) {
     next(error);
@@ -1184,6 +1242,23 @@ router.delete("/sessions/:id", requireAuth, requireOrganizer, requireOwnSession,
     next(error);
   }
 });
+
+// Admin review (TC-212): 404 for an unknown session, 409 for one that isn't
+// waiting for review. The UPDATE is conditional too (reviewConflict covers a
+// second admin, or a double click, getting there first).
+async function reviewProblem(id: string, verb: "approved" | "rejected") {
+  const session = await storage.getSessionById(id);
+  if (!session) return { status: 404, body: { message: "Session not found" } };
+  if (session.status !== REVIEWABLE_SESSION_STATUS) {
+    return { status: 409, body: { code: "not_pending_review", message: `This session is ${session.status} - only a session waiting for review can be ${verb}.` } };
+  }
+  return null;
+}
+
+async function reviewConflict(id: string, verb: "approved" | "rejected") {
+  const now = await storage.getSessionById(id);
+  return { code: "not_pending_review", message: `This session is ${now?.status ?? "no longer available"} - only a session waiting for review can be ${verb}.` };
+}
 
 // Admin: every session across every organization, so nothing goes live
 // without being seen first. Optional ?status= filter (e.g. pending_review).
@@ -1206,7 +1281,12 @@ router.get("/admin/sessions", requireAdmin, async (req, res, next) => {
   router.post("/admin/sessions/:id/approve", requireAdmin, async (req, res, next) => {
     try {
       const reviewerId = (req.user as any).id;
+      // Only a session waiting for review (TC-212, OH-AUDIT-005): approving a
+      // cancelled, live or finished session used to publish it again.
+      const problem = await reviewProblem(req.params.id, "approved");
+      if (problem) return res.status(problem.status).json(problem.body);
       const session = await storage.approveSession(req.params.id, reviewerId);
+      if (!session) return res.status(409).json(await reviewConflict(req.params.id, "approved"));
 
       const [creator, reviewer] = await Promise.all([
         storage.getUser(session.createdBy),
@@ -1232,7 +1312,10 @@ router.get("/admin/sessions", requireAdmin, async (req, res, next) => {
     try {
       const reviewerId = (req.user as any).id;
       const note = typeof req.body?.note === "string" ? req.body.note.slice(0, 500) : undefined;
+      const problem = await reviewProblem(req.params.id, "rejected");
+      if (problem) return res.status(problem.status).json(problem.body);
       const session = await storage.rejectSession(req.params.id, reviewerId, note);
+      if (!session) return res.status(409).json(await reviewConflict(req.params.id, "rejected"));
 
       const [creator, reviewer] = await Promise.all([
         storage.getUser(session.createdBy),

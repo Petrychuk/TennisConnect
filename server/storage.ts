@@ -135,6 +135,15 @@ const publiclyActiveConditions = () => [
 // has accepted yet - so it must not fill spots, trigger "Waiting List", or
 // inflate player, attendance and revenue figures.
 const countsAsPlayer = () => notInArray(registrations.status, ["cancelled", "invited"]);
+
+// TC-212: a session write that must not land on a session in one of these
+// statuses (checked in the UPDATE itself, so a concurrent cancel / finish
+// between the route's read and this write can't be overwritten).
+export interface SessionWriteGuard {
+  lockedStatuses?: readonly string[];
+}
+const notLocked = (guard?: SessionWriteGuard) =>
+  guard?.lockedStatuses?.length ? notInArray(tennisSessions.status, [...guard.lockedStatuses]) : undefined;
 import { alias } from "drizzle-orm/pg-core";
 import { locationTerms, softLevelValues } from "./services/playFilters";
 import { supabaseAdmin } from "./supabaseAdmin";
@@ -142,6 +151,8 @@ import { planRound, computeLeaderboard, type PastMatch } from "./services/liveEn
 import { LiveRuleError } from "./lib/liveErrors";
 import { isUniqueViolation } from "./lib/pgErrors";
 import { liveModeOf, matchClosed, notPlayedProblem, redoRoundProblem, roundProblem } from "@shared/liveRules";
+import { ARCHIVE_BLOCKED_SESSION_STATUSES, CANCELLABLE_SESSION_STATUSES, REVIEWABLE_SESSION_STATUS } from "@shared/sessionActions";
+import { PUBLISHABLE_STATUSES } from "@shared/sessionDraft";
 
 // Second reference to `users`, joined on messages.recipientId - lets a
 // conversation-list row resolve "the other participant"'s name/avatar
@@ -500,22 +511,23 @@ export interface IStorage {
   getUpcomingPublishedSessionsByOrganization(organizationId: string): Promise<SessionWithDetails[]>;
   getSessionsThisWeek(): Promise<SessionWithDetails[]>;
   getSessionsUserRegisteredFor(userId: string): Promise<SessionWithDetails[]>;
-  updateSession(id: string, updates: Partial<InsertSession>): Promise<TennisSession>;
+  updateSession(id: string, updates: Partial<InsertSession>, options?: SessionWriteGuard): Promise<TennisSession | undefined>;
   /** Save only if the row is still the one the editor loaded (updatedAt, to the millisecond). undefined = it moved on. */
   updateSessionIfUnchanged(
     id: string,
     updates: Partial<InsertSession> & Record<string, unknown>,
-    expectedUpdatedAt: Date
+    expectedUpdatedAt: Date,
+    options?: SessionWriteGuard
   ): Promise<TennisSession | undefined>;
  // Organizer: send a draft to the admin queue.
-  submitSessionForReview(id: string): Promise<TennisSession>;
+  submitSessionForReview(id: string): Promise<TennisSession | undefined>;
   // Admin: approve (-> published) or reject (-> rejected) a submitted session.
- approveSession(id: string, reviewerId: string): Promise<TennisSession>;
- rejectSession(id: string, reviewerId: string, note?: string): Promise<TennisSession>;
+ approveSession(id: string, reviewerId: string): Promise<TennisSession | undefined>;
+ rejectSession(id: string, reviewerId: string, note?: string): Promise<TennisSession | undefined>;
   // Admin only: publish directly, bypassing review (admins don't review themselves).
- publishSessionDirect(id: string, reviewerId: string): Promise<TennisSession>;
- cancelSession(id: string): Promise<TennisSession>;
- archiveSession(id: string): Promise<TennisSession>;
+ publishSessionDirect(id: string, reviewerId: string): Promise<TennisSession | undefined>;
+ cancelSession(id: string): Promise<TennisSession | undefined>;
+ archiveSession(id: string): Promise<TennisSession | undefined>;
  deleteSession(id: string): Promise<void>;
  getRegistrationsForSession(sessionId: string): Promise<RegistrationWithUser[]>;
  getPlayersForOrganization(organizationId: string): Promise<OrgPlayerRow[]>;
@@ -4612,8 +4624,9 @@ export class DatabaseStorage implements IStorage {
 
   async updateSession(
     id: string,
-    updates: Partial<InsertSession>
-  ): Promise<TennisSession> {
+    updates: Partial<InsertSession>,
+    options?: SessionWriteGuard
+  ): Promise<TennisSession | undefined> {
     const { price, ...rest } = updates;
   
     const normalizedUpdates = {
@@ -4627,7 +4640,7 @@ export class DatabaseStorage implements IStorage {
     const [session] = await db
       .update(tennisSessions)
       .set(normalizedUpdates)
-      .where(eq(tennisSessions.id, id))
+      .where(and(eq(tennisSessions.id, id), notLocked(options)))
       .returning();
   
     return session;
@@ -4639,7 +4652,8 @@ export class DatabaseStorage implements IStorage {
   async updateSessionIfUnchanged(
     id: string,
     updates: Partial<InsertSession> & Record<string, unknown>,
-    expectedUpdatedAt: Date
+    expectedUpdatedAt: Date,
+    options?: SessionWriteGuard
   ): Promise<TennisSession | undefined> {
     const { price, ...rest } = updates as any;
     const [session] = await db
@@ -4652,23 +4666,28 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(tennisSessions.id, id),
-          sql`date_trunc('milliseconds', ${tennisSessions.updatedAt}) = date_trunc('milliseconds', ${expectedUpdatedAt.toISOString()}::timestamptz)`
+          sql`date_trunc('milliseconds', ${tennisSessions.updatedAt}) = date_trunc('milliseconds', ${expectedUpdatedAt.toISOString()}::timestamptz)`,
+          notLocked(options)
         )
       )
       .returning();
     return session;
   }
 
-  async submitSessionForReview(id: string): Promise<TennisSession> {
+  // TC-212: every status change below is conditional on the status it starts
+  // from, in the UPDATE itself. undefined = the session wasn't in a state this
+  // transition applies to (or doesn't exist) - the route answers 404 / 409 and
+  // sends no notification, so a double click or retry can't notify twice.
+  async submitSessionForReview(id: string): Promise<TennisSession | undefined> {
     const [session] = await db
       .update(tennisSessions)
       .set({ status: "pending_review", updatedAt: new Date() })
-      .where(eq(tennisSessions.id, id))
+      .where(and(eq(tennisSessions.id, id), inArray(tennisSessions.status, [...PUBLISHABLE_STATUSES])))
       .returning();
     return session;
   }
 
-  async approveSession(id: string, reviewerId: string): Promise<TennisSession> {
+  async approveSession(id: string, reviewerId: string): Promise<TennisSession | undefined> {
     const [session] = await db
       .update(tennisSessions)
       .set({
@@ -4678,12 +4697,12 @@ export class DatabaseStorage implements IStorage {
         reviewNote: null,
         updatedAt: new Date(),
       })
-      .where(eq(tennisSessions.id, id))
+      .where(and(eq(tennisSessions.id, id), eq(tennisSessions.status, REVIEWABLE_SESSION_STATUS)))
       .returning();
     return session;
   }
 
-  async rejectSession(id: string, reviewerId: string, note?: string): Promise<TennisSession> {
+  async rejectSession(id: string, reviewerId: string, note?: string): Promise<TennisSession | undefined> {
     const [session] = await db
       .update(tennisSessions)
       .set({
@@ -4693,14 +4712,14 @@ export class DatabaseStorage implements IStorage {
         reviewNote: note || null,
         updatedAt: new Date(),
       })
-      .where(eq(tennisSessions.id, id))
+      .where(and(eq(tennisSessions.id, id), eq(tennisSessions.status, REVIEWABLE_SESSION_STATUS)))
       .returning();
     return session;
   }
 
   // Admins skip the review queue entirely — they're the ones approving
   // everyone else, so there's no one above them to approve their own events.
-  async publishSessionDirect(id: string, reviewerId: string): Promise<TennisSession> {
+  async publishSessionDirect(id: string, reviewerId: string): Promise<TennisSession | undefined> {
     const [session] = await db
       .update(tennisSessions)
       .set({
@@ -4709,16 +4728,16 @@ export class DatabaseStorage implements IStorage {
         reviewedAt: new Date(),
         updatedAt: new Date(),
       })
-      .where(eq(tennisSessions.id, id))
+      .where(and(eq(tennisSessions.id, id), inArray(tennisSessions.status, [...PUBLISHABLE_STATUSES])))
       .returning();
     return session;
   }
 
-  async cancelSession(id: string): Promise<TennisSession> {
+  async cancelSession(id: string): Promise<TennisSession | undefined> {
     const [session] = await db
       .update(tennisSessions)
       .set({ status: "cancelled", updatedAt: new Date() })
-      .where(eq(tennisSessions.id, id))
+      .where(and(eq(tennisSessions.id, id), inArray(tennisSessions.status, [...CANCELLABLE_SESSION_STATUSES])))
       .returning();
     return session;
   }
@@ -4726,11 +4745,11 @@ export class DatabaseStorage implements IStorage {
   // The Sessions list's "Archived" bucket (session-utils.ts bucketFor)
   // has always checked for status === "archived" - nothing on the
   // backend ever actually set that status until now.
-  async archiveSession(id: string): Promise<TennisSession> {
+  async archiveSession(id: string): Promise<TennisSession | undefined> {
     const [session] = await db
       .update(tennisSessions)
       .set({ status: "archived", updatedAt: new Date() })
-      .where(eq(tennisSessions.id, id))
+      .where(and(eq(tennisSessions.id, id), notInArray(tennisSessions.status, [...ARCHIVE_BLOCKED_SESSION_STATUSES])))
       .returning();
     return session;
   }

@@ -142,6 +142,10 @@ export const STAGING_PHASES: Readonly<Record<StagingPhase, readonly PhaseEntry[]
     // every write aimed at the other organiser's data must be refused. Nothing is
     // published, emailed or messaged.
     { file: 'tests/security/organiser-linkage.spec.ts', ids: ['SEC-ORG-001', 'SEC-ORG-002', 'SEC-ORG-003'] },
+    // TC-212 (Organiser Hub audit Batch 2): one run-owned organiser and players. Only a
+    // draft with nobody registered is cancelled; admin calls are all refused (409/404).
+    // Nothing is published, submitted for review or messaged.
+    { file: 'tests/security/organiser-lifecycle.spec.ts', ids: ['SEC-LC-001', 'SEC-LC-002', 'SEC-LC-003', 'SEC-LC-004'] },
     { file: 'tests/organiser/organiser-wizard.spec.ts', ids: ['ORG-WIZ-001', 'ORG-WIZ-002', 'ORG-WIZ-003', 'ORG-WIZ-004', 'ORG-WIZ-005'] },
     { file: 'tests/organiser/organiser-edit.spec.ts', ids: ['ORG-EDIT-001', 'ORG-EDIT-002', 'ORG-EDIT-003', 'ORG-EDIT-004', 'ORG-EDIT-005', 'ORG-EDIT-006', 'ORG-EDIT-007'] },
     { file: 'tests/organiser/organiser-drafts.spec.ts', ids: ['ORG-DRAFT-001', 'ORG-DRAFT-002', 'ORG-DRAFT-003', 'ORG-DRAFT-004', 'ORG-DRAFT-005', 'ORG-DRAFT-006', 'ORG-DRAFT-007'] },
