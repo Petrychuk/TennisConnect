@@ -138,6 +138,10 @@ export const STAGING_PHASES: Readonly<Record<StagingPhase, readonly PhaseEntry[]
     // organisers, players and sessions; messages only to run-owned players.
     // ORG-WIZ-004 skips itself unless E2E_ALLOW_PUBLISH_REVIEW=1 (it messages every admin).
     { file: 'tests/organiser/organiser-permissions.spec.ts', ids: ['ORG-PERM-001', 'ORG-PERM-002'] },
+    // TC-211 (Organiser Hub audit Batch 1, 15 Nov 2026): two run-owned organisers;
+    // every write aimed at the other organiser's data must be refused. Nothing is
+    // published, emailed or messaged.
+    { file: 'tests/security/organiser-linkage.spec.ts', ids: ['SEC-ORG-001', 'SEC-ORG-002', 'SEC-ORG-003'] },
     { file: 'tests/organiser/organiser-wizard.spec.ts', ids: ['ORG-WIZ-001', 'ORG-WIZ-002', 'ORG-WIZ-003', 'ORG-WIZ-004', 'ORG-WIZ-005'] },
     { file: 'tests/organiser/organiser-edit.spec.ts', ids: ['ORG-EDIT-001', 'ORG-EDIT-002', 'ORG-EDIT-003', 'ORG-EDIT-004', 'ORG-EDIT-005', 'ORG-EDIT-006', 'ORG-EDIT-007'] },
     { file: 'tests/organiser/organiser-drafts.spec.ts', ids: ['ORG-DRAFT-001', 'ORG-DRAFT-002', 'ORG-DRAFT-003', 'ORG-DRAFT-004', 'ORG-DRAFT-005', 'ORG-DRAFT-006', 'ORG-DRAFT-007'] },
