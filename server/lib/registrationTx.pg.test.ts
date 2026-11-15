@@ -11,7 +11,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { and, eq, sql } from "drizzle-orm";
-import { registrationAuditEvents, registrations, tennisSessions } from "@shared/schema";
+import { registrationAuditEvents, registrations, tennisSessions } from "../../shared/schema";
 import { createTestDb, testPgUrl, type TestDb } from "../test-support/pgTestDb";
 import { makeFixtures } from "../test-support/dbFixtures";
 import {
@@ -30,6 +30,7 @@ const skip = url ? false : "set E2E_TEST_PG_URL to a local Postgres to run datab
 
 const DAY = 24 * 3600 * 1000;
 const inDays = (d: number) => new Date(Date.now() + d * DAY);
+let _seq = 0;
 
 type F = ReturnType<typeof makeFixtures>;
 
@@ -44,11 +45,12 @@ async function withDb(fn: (t: TestDb, f: F) => Promise<void>) {
 
 /** An organiser's published session (a week out) and `n` players. */
 async function setup(f: F, extra: Partial<typeof tennisSessions.$inferInsert>, n: number) {
-  const owner = await f.user("owner@tennisconnect.test");
+  const s = _seq++;
+  const owner = await f.user(`owner${s}@tennisconnect.test`);
   const org = await f.organization(owner.id);
   const session = await f.session(org.id, owner.id, { status: "published", startAt: inDays(7), maxParticipants: 2, waitingListEnabled: true, ...extra });
   const players = [];
-  for (let i = 0; i < n; i++) players.push(await f.user(`p${i}@tennisconnect.test`));
+  for (let i = 0; i < n; i++) players.push(await f.user(`p${i}s${s}@tennisconnect.test`));
   return { session, players: players.map((p) => p.id) };
 }
 
@@ -339,7 +341,8 @@ test("accepting an invitation: a full session waitlists; after the cutoff or on 
 
 /** A published session whose registration has closed (the late-add window), owner id included. */
 async function closedSession(f: F, extra: Partial<typeof tennisSessions.$inferInsert>, n: number) {
-  const owner = await f.user("organiser@tennisconnect.test");
+  const s = _seq++;
+  const owner = await f.user(`organiser${s}@tennisconnect.test`);
   const org = await f.organization(owner.id);
   const session = await f.session(org.id, owner.id, {
     status: "published",
@@ -350,7 +353,7 @@ async function closedSession(f: F, extra: Partial<typeof tennisSessions.$inferIn
     ...extra,
   });
   const players = [];
-  for (let i = 0; i < n; i++) players.push((await f.user(`late${i}@tennisconnect.test`)).id);
+  for (let i = 0; i < n; i++) players.push((await f.user(`late${i}s${s}@tennisconnect.test`)).id);
   return { session, ownerId: owner.id, players };
 }
 
