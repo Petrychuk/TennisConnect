@@ -358,8 +358,8 @@ export interface IStorage {
   updateSeason(id: string, updates: Partial<InsertSeason>): Promise<Season>;
   archiveSeason(id: string): Promise<Season>;
   deleteSeason(id: string): Promise<void>;
-  addSessionsToSeason(seasonId: string, sessionIds: string[]): Promise<void>;
-  removeSessionFromSeason(sessionId: string): Promise<void>;
+  addSessionsToSeason(seasonId: string, sessionIds: string[], organizationId: string): Promise<void>;
+  removeSessionFromSeason(sessionId: string, seasonId: string, organizationId: string): Promise<boolean>;
 
   // ===== SERIES & RANKINGS =====
   createSeries(input: InsertSeries): Promise<Series>;
@@ -367,8 +367,8 @@ export interface IStorage {
   getSeriesById(id: string): Promise<Series | undefined>;
   updateSeries(id: string, updates: Partial<InsertSeries>): Promise<Series>;
   deleteSeries(id: string): Promise<void>;
-  addSessionsToSeries(seriesId: string, sessionIds: string[]): Promise<void>;
-  removeSessionFromSeries(sessionId: string): Promise<void>;
+  addSessionsToSeries(seriesId: string, sessionIds: string[], organizationId: string, seasonId: string): Promise<void>;
+  removeSessionFromSeries(sessionId: string, seriesId: string, organizationId: string): Promise<boolean>;
   getSessionsForSeries(seriesId: string): Promise<Array<TennisSession & { playersCount: number; roundsCount: number }>>;
   getSeriesStandings(seriesId: string): Promise<SeriesStandingRow[]>;
   getSeriesSessionResults(seriesId: string, sessionId: string): Promise<SeriesSessionResultRow[]>;
@@ -2927,21 +2927,33 @@ export class DatabaseStorage implements IStorage {
     await db.delete(seasons).where(eq(seasons.id, id));
   }
 
-  async addSessionsToSeason(seasonId: string, sessionIds: string[]): Promise<void> {
+  // Scoped by organisation in the UPDATE itself (TC-211): the route already
+  // filters to the organiser's own sessions, this keeps it true for any caller.
+  async addSessionsToSeason(seasonId: string, sessionIds: string[], organizationId: string): Promise<void> {
     if (sessionIds.length === 0) return;
     await db
       .update(tennisSessions)
       .set({ seasonId, updatedAt: new Date() })
-      .where(inArray(tennisSessions.id, sessionIds));
+      .where(and(inArray(tennisSessions.id, sessionIds), eq(tennisSessions.organizationId, organizationId)));
   }
 
   // Only ever nulls out the one column - the session itself, its
   // registrations, and any scores/results are completely untouched.
-  async removeSessionFromSeason(sessionId: string): Promise<void> {
-    await db
+  // Scoped by session, season AND organisation (TC-211, OH-AUDIT-002): it
+  // used to null season_id for any session id. Returns whether a row changed.
+  async removeSessionFromSeason(sessionId: string, seasonId: string, organizationId: string): Promise<boolean> {
+    const rows = await db
       .update(tennisSessions)
       .set({ seasonId: null, updatedAt: new Date() })
-      .where(eq(tennisSessions.id, sessionId));
+      .where(
+        and(
+          eq(tennisSessions.id, sessionId),
+          eq(tennisSessions.seasonId, seasonId),
+          eq(tennisSessions.organizationId, organizationId)
+        )
+      )
+      .returning({ id: tennisSessions.id });
+    return rows.length > 0;
   }
 
   async createSeries(input: InsertSeries): Promise<Series> {
@@ -3004,22 +3016,39 @@ export class DatabaseStorage implements IStorage {
     await db.delete(series).where(eq(series.id, id));
   }
 
-  async addSessionsToSeries(seriesId: string, sessionIds: string[]): Promise<void> {
+  // Only the organisation's own sessions already in the series' season
+  // (TC-211) - enforced in the UPDATE as well as by the route's filter.
+  async addSessionsToSeries(seriesId: string, sessionIds: string[], organizationId: string, seasonId: string): Promise<void> {
     if (sessionIds.length === 0) return;
     await db
       .update(tennisSessions)
       .set({ seriesId, updatedAt: new Date() })
-      .where(inArray(tennisSessions.id, sessionIds));
+      .where(
+        and(
+          inArray(tennisSessions.id, sessionIds),
+          eq(tennisSessions.organizationId, organizationId),
+          eq(tennisSessions.seasonId, seasonId)
+        )
+      );
   }
 
   // Only ever nulls out the one column (which is exactly "No Ranking"
   // for this session, see the schema's own comment) - the session
   // itself, its registrations, and any scores/results are untouched.
-  async removeSessionFromSeries(sessionId: string): Promise<void> {
-    await db
+  // Scoped by session, series AND organisation (TC-211, OH-AUDIT-002).
+  async removeSessionFromSeries(sessionId: string, seriesId: string, organizationId: string): Promise<boolean> {
+    const rows = await db
       .update(tennisSessions)
       .set({ seriesId: null, updatedAt: new Date() })
-      .where(eq(tennisSessions.id, sessionId));
+      .where(
+        and(
+          eq(tennisSessions.id, sessionId),
+          eq(tennisSessions.seriesId, seriesId),
+          eq(tennisSessions.organizationId, organizationId)
+        )
+      )
+      .returning({ id: tennisSessions.id });
+    return rows.length > 0;
   }
 
   async getSessionsForSeries(seriesId: string): Promise<Array<TennisSession & { playersCount: number; roundsCount: number }>> {

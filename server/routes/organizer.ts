@@ -9,6 +9,7 @@ import { joinBlockedReason } from "@shared/sessionJoinRules";
 import { registrationBlockReason } from "@shared/sessionLifecycle";
 import { isInternalTestUser, liveAllowedFor, liveMode } from "../lib/liveFeature";
 import { LiveRuleError } from "../lib/liveErrors";
+import { sessionLinkageProblem } from "../lib/sessionLinkage";
 import { goLiveProblem, scoreProblem } from "@shared/liveRules";
 import {
   STALE_DRAFT_MESSAGE,
@@ -482,7 +483,7 @@ router.post("/seasons/:id/sessions", requireAuth, requireOrganizer, requireOwnSe
     const ownSessions = await storage.getSessionsByOrganization(season.organizationId);
     const ownIds = new Set(ownSessions.map((s) => s.id));
     const validIds = sessionIds.filter((id) => ownIds.has(id));
-    await storage.addSessionsToSeason(season.id, validIds);
+    await storage.addSessionsToSeason(season.id, validIds, season.organizationId);
     res.status(204).end();
   } catch (error) {
     next(error);
@@ -493,7 +494,20 @@ router.delete("/seasons/:id/sessions/:sessionId", requireAuth, requireOrganizer,
   try {
     // Only ever nulls sessions.season_id for this one session - never
     // deletes the session, its registrations, or any scores/results.
-    await storage.removeSessionFromSeason(req.params.sessionId);
+    // requireOwnSeason proves the season is the caller's; the session must be
+    // too (TC-211, OH-AUDIT-002: any session id used to be detached). Another
+    // organisation's session is a 404, the same as one that doesn't exist.
+    const season = (req as any).season as Season;
+    const target = await storage.getSessionById(req.params.sessionId);
+    if (!target || target.organizationId !== season.organizationId) {
+      return res.status(404).json({ message: "Session not found" });
+    }
+    // Not in this season (already detached, or never attached): nothing to
+    // change - a repeated Remove stays a no-op. The write itself is scoped by
+    // session, season AND organisation.
+    if (target.seasonId === season.id) {
+      await storage.removeSessionFromSeason(target.id, season.id, season.organizationId);
+    }
     res.status(204).end();
   } catch (error) {
     next(error);
@@ -607,7 +621,7 @@ router.post("/series/:id/sessions", requireAuth, requireOrganizer, requireOwnSer
       ownSessions.filter((s) => s.seasonId === seriesRow.seasonId).map((s) => s.id)
     );
     const toAttach = sessionIds.filter((id) => validIds.has(id));
-    await storage.addSessionsToSeries(seriesRow.id, toAttach);
+    await storage.addSessionsToSeries(seriesRow.id, toAttach, seriesRow.organizationId, seriesRow.seasonId);
     res.status(204).end();
   } catch (error) {
     next(error);
@@ -618,7 +632,15 @@ router.delete("/series/:id/sessions/:sessionId", requireAuth, requireOrganizer, 
   try {
     // Only ever nulls sessions.series_id for this one session - never
     // touches the session itself or any of its results.
-    await storage.removeSessionFromSeries(req.params.sessionId);
+    // Same ownership rule as the season detach above (TC-211, OH-AUDIT-002).
+    const seriesRow = (req as any).series as Series;
+    const target = await storage.getSessionById(req.params.sessionId);
+    if (!target || target.organizationId !== seriesRow.organizationId) {
+      return res.status(404).json({ message: "Session not found" });
+    }
+    if (target.seriesId === seriesRow.id) {
+      await storage.removeSessionFromSeries(target.id, seriesRow.id, seriesRow.organizationId);
+    }
     res.status(204).end();
   } catch (error) {
     next(error);
@@ -831,6 +853,12 @@ router.post("/sessions", requireAuth, requireOrganizer, async (req, res, next) =
     if (!parsed.success) {
       return res.status(400).json({ message: "Invalid input", errors: parsed.error });
     }
+    // Season / series / parent event must be this organisation's own and
+    // agree with each other (TC-211, shared rules in server/lib/sessionLinkage.ts).
+    const linkProblem = await sessionLinkageProblem(organization.id, parsed.data as Record<string, unknown>, storage);
+    if (linkProblem) {
+      return res.status(linkProblem.status).json({ code: linkProblem.code, message: linkProblem.message });
+    }
 
     // Internal test identities (TC_INTERNAL_TEST_EMAILS) create internal test
     // sessions - hidden from the public, Live-only in TC_LIVE_ENABLED=internal.
@@ -933,6 +961,17 @@ router.put("/sessions/:id", requireAuth, requireOrganizer, requireOwnSession, as
       });
     }
     const changes = { ...parsed.data, ...clears } as Partial<InsertSession> & Record<string, unknown>;
+    // Re-linking to another organisation's season/series, a series of a
+    // different season, or a new parent event is refused before anything is
+    // written (TC-211, server/lib/sessionLinkage.ts).
+    const linkProblem = await sessionLinkageProblem(before.organizationId, changes, storage, {
+      seasonId: before.seasonId ?? null,
+      seriesId: before.seriesId ?? null,
+      parentSessionId: before.parentSessionId ?? null,
+    });
+    if (linkProblem) {
+      return res.status(linkProblem.status).json({ code: linkProblem.code, message: linkProblem.message });
+    }
     let updated: TennisSession;
     if (expected.kind === "ok") {
       const saved = await storage.updateSessionIfUnchanged(req.params.id, changes, expected.at);
