@@ -24,11 +24,16 @@ interface InvitePlayersDialogProps {
   onOpenChange: (open: boolean) => void;
   title: string;
   description: string;
-  onInvite: (userId: string) => Promise<void>;
+  /** Resolve false when the action was handed off (e.g. to a confirmation step) and isn't done yet. */
+  onInvite: (userId: string, name: string) => Promise<void | false>;
   /** Passed straight through to the search - flags players already connected in this specific context so they can't be re-invited. */
   searchContext?: { sessionId?: string; community?: boolean };
   /** Label shown (instead of "Invite") for a player already connected in this context. */
   alreadyConnectedLabel?: string;
+  /** Button labels (TC-213: the same dialog adds players after the cutoff). Defaults: Invite / Inviting... / Invited. */
+  actionLabel?: string;
+  pendingLabel?: string;
+  doneLabel?: string;
 }
 
 export function InvitePlayersDialog({
@@ -39,6 +44,9 @@ export function InvitePlayersDialog({
   onInvite,
   searchContext,
   alreadyConnectedLabel = "Already joined",
+  actionLabel = "Invite",
+  pendingLabel = "Inviting...",
+  doneLabel = "Invited",
 }: InvitePlayersDialogProps) {
   const { toast } = useToast();
   const [query, setQuery] = useState("");
@@ -91,11 +99,12 @@ export function InvitePlayersDialog({
   const handleInvite = async (player: SearchablePlayer) => {
     setInvitingId(player.id);
     try {
-      await onInvite(player.id);
+      const done = await onInvite(player.id, player.name);
+      if (done === false) return;
       setInvitedIds((prev) => new Set(prev).add(player.id));
-      toast({ title: `Invited ${player.name}` });
+      toast({ title: `${doneLabel} ${player.name}` });
     } catch (error: any) {
-      toast({ title: "Couldn't send invite", description: error?.message ?? "Please try again.", variant: "destructive" });
+      toast({ title: actionLabel === "Invite" ? "Couldn't send invite" : `Couldn't ${actionLabel.toLowerCase()} ${player.name}`, description: error?.message ?? "Please try again.", variant: "destructive" });
     } finally {
       setInvitingId(null);
     }
@@ -224,12 +233,12 @@ export function InvitePlayersDialog({
                     {isInvited ? (
                       <>
                         <Check className="w-4 h-4 mr-1.5" />
-                        Invited
+                        {doneLabel}
                       </>
                     ) : (
                       <>
                         <UserPlus className="w-4 h-4 mr-1.5" />
-                        {invitingId === player.id ? "Inviting..." : "Invite"}
+                        {invitingId === player.id ? pendingLabel : actionLabel}
                       </>
                     )}
                   </Button>

@@ -70,7 +70,8 @@ before(async () => {
     getRegistrationById: async (id: string) => REGISTRATIONS[id],
     getMatchById: async (id: string) => MATCHES[id],
     checkInRegistration: async (id: string) => (writes.push(`checkin:${id}`), { ...REGISTRATIONS[id], checkedInAt: new Date() }),
-    cancelRegistrationById: async (id: string) => (writes.push(`cancel:${id}`), { ...REGISTRATIONS[id], status: "cancelled" }),
+    // TC-213: storage returns { registration, changed, promotedIds }.
+    cancelRegistrationById: async (id: string) => (writes.push(`cancel:${id}`), { registration: { ...REGISTRATIONS[id], status: "cancelled" }, changed: true, promotedIds: [] }),
     moveRegistrationToWaitlist: async (id: string) => (writes.push(`waitlist:${id}`), { ...REGISTRATIONS[id], status: "waitlisted" }),
     startMatch: async (id: string) => (writes.push(`start:${id}`), MATCHES[id]),
     updateOrganization: async (id: string, updates: any) => (orgUpdates.push({ id, updates }), { ...ORGS[id], ...updates }),

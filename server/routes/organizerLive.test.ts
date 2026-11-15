@@ -107,7 +107,8 @@ before(async () => {
     setRegistrationLiveStatus: async (id: string, liveStatus: any) => (calls.push(`live-status:${id}:${liveStatus}`), { ...REGS.find((r) => r.id === id), liveStatus }),
     getSessionRounds: async () => [],
     checkInRegistration: async (id: string) => (calls.push(`checkin:${id}`), { ...REGS.find((r) => r.id === id), checkedInAt: new Date() }),
-    cancelRegistrationById: async (id: string) => (calls.push(`remove:${id}`), { ...REGS.find((r) => r.id === id), status: "cancelled" }),
+    // TC-213: storage returns { registration, changed, promotedIds }.
+    cancelRegistrationById: async (id: string) => (calls.push(`remove:${id}`), { registration: { ...REGS.find((r) => r.id === id), status: "cancelled" }, changed: true, promotedIds: [] }),
     moveRegistrationToWaitlist: async (id: string) => (calls.push(`waitlist:${id}`), { ...REGS.find((r) => r.id === id), status: "waitlisted" }),
     cancelSession: async (id: string) => (calls.push(`cancel:${id}`), { ...SESSIONS[id], status: "cancelled" }),
     archiveSession: async (id: string) => (calls.push(`archive:${id}`), { ...SESSIONS[id], status: "archived" }),

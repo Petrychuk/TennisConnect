@@ -303,6 +303,19 @@ export async function removeRegistration(sessionId: string, registrationId: stri
   return res.json();
 }
 
+/**
+ * TC-213: add a player after the registration cutoff (organiser only).
+ * 409 waitlist_override_required until overrideWaitlist + reason are sent when
+ * someone else is first on the waiting list; the server audits every addition.
+ */
+export async function lateRegisterPlayer(
+  sessionId: string,
+  data: { userId: string; overrideWaitlist?: boolean; reason?: string },
+): Promise<{ registration: Registration; overrodeWaitlist: boolean }> {
+  const res = await apiRequest("POST", `${BASE}/sessions/${sessionId}/late-registrations`, data);
+  return res.json();
+}
+
 export async function moveRegistrationToWaitlist(sessionId: string, registrationId: string): Promise<Registration> {
   const res = await apiRequest("POST", `${BASE}/sessions/${sessionId}/registrations/${registrationId}/waitlist`);
   return res.json();

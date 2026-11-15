@@ -141,6 +141,8 @@ const countsAsPlayer = () => notInArray(registrations.status, ["cancelled", "inv
 // between the route's read and this write can't be overwritten).
 export interface SessionWriteGuard {
   lockedStatuses?: readonly string[];
+  /** TC-213: told which waitlisted registrations a capacity change promoted (after the commit). */
+  onPromoted?: (registrationIds: string[]) => void;
 }
 const notLocked = (guard?: SessionWriteGuard) =>
   guard?.lockedStatuses?.length ? notInArray(tennisSessions.status, [...guard.lockedStatuses]) : undefined;
@@ -153,6 +155,19 @@ import { isUniqueViolation } from "./lib/pgErrors";
 import { liveModeOf, matchClosed, notPlayedProblem, redoRoundProblem, roundProblem } from "@shared/liveRules";
 import { ARCHIVE_BLOCKED_SESSION_STATUSES, CANCELLABLE_SESSION_STATUSES, REVIEWABLE_SESSION_STATUS } from "@shared/sessionActions";
 import { PUBLISHABLE_STATUSES } from "@shared/sessionDraft";
+import {
+  acceptInvitation,
+  cancelPlayerRegistration,
+  moveRegistrationToWaitlist as moveRegistrationToWaitlistTx,
+  registerPlayer,
+  removeRegistrationById,
+  updateSessionCapacity,
+  lateRegisterPlayer as lateRegisterPlayerTx,
+  type CancelResult,
+  type JoinResult,
+  type LateAddInput,
+  type LateAddResult,
+} from "./lib/registrationTx";
 
 // Second reference to `users`, joined on messages.recipientId - lets a
 // conversation-list row resolve "the other participant"'s name/avatar
@@ -544,8 +559,8 @@ export interface IStorage {
  getAllSessionsForAdmin(status?: string): Promise<SessionWithDetails[]>;
 
   // ===== REGISTRATIONS =====
-  registerForSession(sessionId: string, userId: string): Promise<{ registration: Registration; waitlisted: boolean }>;
-  cancelRegistration(sessionId: string, userId: string): Promise<Registration>;
+  registerForSession(sessionId: string, userId: string): Promise<JoinResult>;
+  cancelRegistration(sessionId: string, userId: string): Promise<CancelResult>;
   getViewerRegistrationStatus(sessionId: string, userId: string): Promise<string | null>;
   getSessionRegistrationCounts(sessionId: string): Promise<{ registered: number; waitlisted: number }>;
 
@@ -4636,6 +4651,13 @@ export class DatabaseStorage implements IStorage {
         : {}),
       updatedAt: new Date(),
     };
+    // A capacity change is checked and written under the session lock, and a
+    // raised limit fills the new places from the waiting list (TC-213).
+    if (updates.maxParticipants !== undefined) {
+      const { session, promotedIds } = await updateSessionCapacity(db, id, normalizedUpdates, notLocked(options));
+      if (promotedIds.length > 0) options?.onPromoted?.(promotedIds);
+      return session;
+    }
   
     const [session] = await db
       .update(tennisSessions)
@@ -4656,20 +4678,25 @@ export class DatabaseStorage implements IStorage {
     options?: SessionWriteGuard
   ): Promise<TennisSession | undefined> {
     const { price, ...rest } = updates as any;
+    const set = {
+      ...rest,
+      ...(price !== undefined ? { price: price !== null ? String(price) : null } : {}),
+      updatedAt: new Date(),
+    };
+    const unchanged = and(
+      sql`date_trunc('milliseconds', ${tennisSessions.updatedAt}) = date_trunc('milliseconds', ${expectedUpdatedAt.toISOString()}::timestamptz)`,
+      notLocked(options)
+    );
+    // Capacity: under the session lock, like updateSession (TC-213).
+    if (updates.maxParticipants !== undefined) {
+      const { session, promotedIds } = await updateSessionCapacity(db, id, set, unchanged);
+      if (promotedIds.length > 0) options?.onPromoted?.(promotedIds);
+      return session;
+    }
     const [session] = await db
       .update(tennisSessions)
-      .set({
-        ...rest,
-        ...(price !== undefined ? { price: price !== null ? String(price) : null } : {}),
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(tennisSessions.id, id),
-          sql`date_trunc('milliseconds', ${tennisSessions.updatedAt}) = date_trunc('milliseconds', ${expectedUpdatedAt.toISOString()}::timestamptz)`,
-          notLocked(options)
-        )
-      )
+      .set(set)
+      .where(and(eq(tennisSessions.id, id), unchanged))
       .returning();
     return session;
   }
@@ -4779,112 +4806,20 @@ export class DatabaseStorage implements IStorage {
   // REGISTRATIONS
   // =====================
 
+  // Join / leave, atomic with the capacity check and the waiting list
+  // (TC-213, server/lib/registrationTx.ts). `changed: false` = repeat request,
+  // nothing happened - the route doesn't notify anyone again.
   async registerForSession(
     sessionId: string,
     userId: string
-  ): Promise<{ registration: Registration; waitlisted: boolean }> {
-    const [session] = await db
-      .select()
-      .from(tennisSessions)
-      .where(eq(tennisSessions.id, sessionId));
-
-    if (!session) {
-      throw new Error("Session not found");
-    }
-    if (session.status !== "published") {
-      throw new Error("Session is not open for registration");
-    }
-
-    const [existing] = await db
-      .select()
-      .from(registrations)
-      .where(
-        and(
-          eq(registrations.sessionId, sessionId),
-          eq(registrations.userId, userId)
-        )
-      );
-
-    const { registered } = await this.getSessionRegistrationCounts(sessionId);
-    const isFull =
-      session.maxParticipants != null && registered >= session.maxParticipants;
-    const nextStatus = isFull
-      ? (session.waitingListEnabled ? "waitlisted" : null)
-      : "registered";
-
-    if (!nextStatus) {
-      throw new Error("Session is full");
-    }
-
-    // An invited player who joins from the session page takes a place like
-    // anyone else; before, the open invitation was returned unchanged and
-    // they stayed "invited" - joined in the UI, never on the list.
-    if (existing && existing.status !== "cancelled" && existing.status !== "invited") {
-      return { registration: existing, waitlisted: existing.status === "waitlisted" };
-    }
-
-    if (existing) {
-      const [updated] = await db
-        .update(registrations)
-        .set({ status: nextStatus, checkedInAt: null, ...(existing.status === "invited" ? { createdAt: new Date() } : {}) })
-        .where(eq(registrations.id, existing.id))
-        .returning();
-      return { registration: updated, waitlisted: nextStatus === "waitlisted" };
-    }
-
-    const [created] = await db
-      .insert(registrations)
-      .values({ sessionId, userId, status: nextStatus })
-      .returning();
-    return { registration: created, waitlisted: nextStatus === "waitlisted" };
+  ): Promise<JoinResult> {
+    return registerPlayer(db, sessionId, userId);
   }
 
-  async cancelRegistration(sessionId: string, userId: string): Promise<Registration> {
-    const [existing] = await db
-      .select()
-      .from(registrations)
-      .where(
-        and(
-          eq(registrations.sessionId, sessionId),
-          eq(registrations.userId, userId)
-        )
-      );
-
-    if (!existing) {
-      throw new Error("Registration not found");
-    }
-
-    const wasRegistered = existing.status === "registered";
-
-    const [cancelled] = await db
-      .update(registrations)
-      .set({ status: "cancelled" })
-      .where(eq(registrations.id, existing.id))
-      .returning();
-
-    // A spot opened up — promote the longest-waiting waitlisted player.
-    if (wasRegistered) {
-      const [nextInLine] = await db
-        .select()
-        .from(registrations)
-        .where(
-          and(
-            eq(registrations.sessionId, sessionId),
-            eq(registrations.status, "waitlisted")
-          )
-        )
-        .orderBy(asc(registrations.createdAt))
-        .limit(1);
-
-      if (nextInLine) {
-        await db
-          .update(registrations)
-          .set({ status: "registered" })
-          .where(eq(registrations.id, nextInLine.id));
-      }
-    }
-
-    return cancelled;
+  // A held place freed this way goes to the oldest waitlisted player, exactly
+  // once (registrationTx.ts promoteFromWaitlist).
+  async cancelRegistration(sessionId: string, userId: string): Promise<CancelResult> {
+    return cancelPlayerRegistration(db, sessionId, userId);
   }
 
   // Real registrations for a session, joined with just enough user info
@@ -5171,44 +5106,12 @@ export class DatabaseStorage implements IStorage {
   // spot, not subject to the usual capacity/waitlist check joinSession
   // applies to a self-initiated join, since the organiser already
   // decided to include this specific player when they sent the invite.
+  // Accepting takes a real place, so the same limits as Join apply, under the
+  // same session lock: a full session waitlists them (or says it's full), and
+  // the registration cutoff applies (TC-213, registrationTx.ts). createdAt
+  // becomes the moment they accepted - when they really joined.
   async acceptInvitedRegistration(sessionId: string, userId: string): Promise<Registration> {
-    const [existing] = await db
-      .select()
-      .from(registrations)
-      .where(and(eq(registrations.sessionId, sessionId), eq(registrations.userId, userId)));
-
-    if (!existing) {
-      throw new Error("Invitation not found");
-    }
-    // Only an open invitation turns into a place; anything else (already
-    // registered, waitlisted, cancelled) stays as it is.
-    if (existing.status !== "invited") return existing;
-
-    // Accepting takes a real place, so the same limits as Join apply: when
-    // the session is already full the player goes on the waiting list (or
-    // is told it's full) instead of pushing it over capacity.
-    const [session] = await db.select().from(tennisSessions).where(eq(tennisSessions.id, sessionId));
-    let status: "registered" | "waitlisted" = "registered";
-    if (session?.maxParticipants) {
-      const [{ count: taken }] = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(registrations)
-        .where(and(eq(registrations.sessionId, sessionId), eq(registrations.status, "registered")));
-      if (Number(taken) >= session.maxParticipants) {
-        if (!session.waitingListEnabled) throw new Error("This session is full.");
-        status = "waitlisted";
-      }
-    }
-
-    // createdAt becomes the moment they accepted: that's when they joined
-    // (the Players tab "Joined" date and the organiser's activity feed),
-    // not when the invitation was sent.
-    const [updated] = await db
-      .update(registrations)
-      .set({ status, createdAt: new Date() })
-      .where(eq(registrations.id, existing.id))
-      .returning();
-    return updated;
+    return acceptInvitation(db, sessionId, userId);
   }
 
   async updateMessageActionStatus(id: string, actionStatus: string): Promise<Message> {
@@ -5355,37 +5258,27 @@ export class DatabaseStorage implements IStorage {
     return current;
   }
 
-  // Organizer removing a specific player from their session - the
-  // Players tab's own "Remove" action (used to be a fake toast, no
-  // request ever sent). Same cancelled status a player's own
-  // self-service leaveSession sets, just organizer-initiated and
-  // looked up by registrationId directly rather than needing the
-  // player's own userId first.
-  async cancelRegistrationById(registrationId: string): Promise<Registration> {
-    const [registration] = await db
-      .update(registrations)
-      .set({ status: "cancelled" })
-      .where(eq(registrations.id, registrationId))
-      .returning();
-    if (!registration) throw new Error("Registration not found");
-    return registration;
+  // Organizer removing a specific player from their session - the Players
+  // tab's "Remove". Same as the player cancelling: a freed place goes to the
+  // oldest waitlisted player, exactly once; removing twice is a no-op
+  // (TC-213, OH-AUDIT-007; registrationTx.ts).
+  async cancelRegistrationById(registrationId: string): Promise<CancelResult> {
+    return removeRegistrationById(db, registrationId);
   }
 
-  // Organizer manually moving a registered player to the waiting list -
-  // an admin override (e.g. correcting a mistake, or freeing a spot for
-  // someone else) rather than the normal "session is full" path a new
-  // registration takes on its own. Deliberately simple: flips status
-  // only, no capacity/reordering logic - the existing waiting-list
-  // display already sorts by joinedAt, so this player just takes
-  // whatever position their (unchanged) original joinedAt puts them at.
+  // After the registration cutoff the organiser adds a player themselves
+  // (TC-213 approved rule) - capacity, duplicates and the waiting list checked
+  // under the session lock, every addition audited (registrationTx.ts).
+  async lateRegisterPlayer(input: LateAddInput): Promise<LateAddResult> {
+    return lateRegisterPlayerTx(db, input);
+  }
+
+  // Organizer moving a registered player to the waiting list - an override.
+  // Only from "registered" (409 otherwise; it used to resurrect cancelled and
+  // invited rows); check-in cleared; the freed place is left for the organiser
+  // (TC-213; registrationTx.ts).
   async moveRegistrationToWaitlist(registrationId: string): Promise<Registration> {
-    const [registration] = await db
-      .update(registrations)
-      .set({ status: "waitlisted" })
-      .where(eq(registrations.id, registrationId))
-      .returning();
-    if (!registration) throw new Error("Registration not found");
-    return registration;
+    return moveRegistrationToWaitlistTx(db, registrationId);
   }
 
   async setRegistrationLiveStatus(
