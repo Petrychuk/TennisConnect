@@ -9,6 +9,7 @@ import { SessionQuickStatsCard } from "./session-quick-stats-card";
 import { SessionStatusCard } from "./session-status-card";
 import { SessionReadinessCard } from "./session-readiness-card";
 import { SessionNotesCard } from "./session-notes-card";
+import { isSessionEditable } from "@shared/sessionActions";
 import { DivisionsCard } from "./divisions-card";
 import { LiveTodayCard } from "@/components/organiser/dashboard/live-today-card";
 import type { MockSession } from "@/lib/organiser-hub-mock-data";
@@ -159,7 +160,7 @@ export function OverviewTab({ session, onEdit, onInvite, isDivision }: OverviewT
         {isMultiDivisionType && <DivisionsCard sessionId={session.id} />}
         <div className="grid grid-cols-2 gap-4">
           <SessionDetailsCard session={session} />
-          <SessionNotesCard sessionId={session.id} initialNote={detail.notes} />
+          <SessionNotesCard sessionId={session.id} initialNote={detail.notes} readOnly={!isSessionEditable(session.status)} />
         </div>
         {quickStats}
       </div>
@@ -175,7 +176,7 @@ export function OverviewTab({ session, onEdit, onInvite, isDivision }: OverviewT
         {isMultiDivisionType && <DivisionsCard sessionId={session.id} />}
         <div className="grid grid-cols-2 gap-4">
           <SessionDetailsCard session={session} />
-          <SessionNotesCard sessionId={session.id} initialNote={detail.notes} />
+          <SessionNotesCard sessionId={session.id} initialNote={detail.notes} readOnly={!isSessionEditable(session.status)} />
         </div>
         {quickStats}
       </div>
@@ -201,7 +202,7 @@ export function OverviewTab({ session, onEdit, onInvite, isDivision }: OverviewT
           )}
         </div>
         <SessionDetailsCard session={session} />
-        <SessionNotesCard sessionId={session.id} initialNote={detail.notes} />
+        <SessionNotesCard sessionId={session.id} initialNote={detail.notes} readOnly={!isSessionEditable(session.status)} />
         {quickStats}
       </div>
     </div>

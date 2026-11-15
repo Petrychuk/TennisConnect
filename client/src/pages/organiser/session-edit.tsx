@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { isSessionEditable } from "@shared/sessionActions";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, CalendarDays, ChevronRight, FileText, MapPin, Users } from "lucide-react";
@@ -124,11 +125,13 @@ function OrganiserSessionEditPageContent() {
   }, [isDraft, params?.id, setLocation]);
 
   // An archived session is closed - it can't be edited, so don't show the form.
-  // Finished sessions (completed or archived) aren't edited - the server refuses too.
-  const isArchived = session?.status === "archived" || session?.status === "completed";
+  // Finished (completed or archived) and cancelled sessions aren't edited - the
+  // server refuses too (shared/sessionActions.ts isSessionEditable, TC-212).
+  const isArchived = !!session && !isSessionEditable(session.status);
   useEffect(() => {
     if (isArchived && params?.id) {
-      toast({ title: session?.status === "completed" ? "Completed sessions can't be edited" : "Archived sessions can't be edited", description: "Duplicate it to run it again." });
+      const label = session?.status === "completed" ? "Completed" : session?.status === "cancelled" ? "Cancelled" : "Archived";
+      toast({ title: `${label} sessions can't be edited`, description: "Duplicate it to run it again." });
       setLocation(`/organiser/sessions/${params.id}`, { replace: true });
     }
   }, [isArchived, params?.id, setLocation, toast]);
