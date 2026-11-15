@@ -1,6 +1,7 @@
 import { Users, type LucideIcon } from "lucide-react";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 import { isReadyToStart } from "@shared/sessionLifecycle";
+import { isSessionEditable } from "@shared/sessionActions";
 
 export type SessionBucket =
   | "all"
@@ -132,9 +133,13 @@ export function getPrimaryActionMeta(bucket: Exclude<SessionBucket, "all">, play
  * four steps, Save as Draft, Publish); the flat Edit page is for sessions that
  * are already out (it asks for name, venue and date, which a draft may not have yet).
  */
-/** A finished session (completed or archived) keeps its results: it can be viewed and duplicated, never edited. */
+/**
+ * A finished session (completed or archived) keeps its results, and a cancelled
+ * one was called off: they can be viewed and duplicated, never edited. Same rule
+ * as PUT /sessions/:id (shared/sessionActions.ts isSessionEditable, TC-212).
+ */
 export function canEditSession(session: { status: string }): boolean {
-  return session.status !== "archived" && session.status !== "completed";
+  return isSessionEditable(session.status);
 }
 
 export function sessionEditPath(session: { id: string; status: string }): string {

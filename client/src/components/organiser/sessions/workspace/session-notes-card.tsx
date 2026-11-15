@@ -10,13 +10,15 @@ import { updateSession } from "@/lib/api/organizer-sessions";
 interface SessionNotesCardProps {
   sessionId: string;
   initialNote?: string | null;
+  /** Finished or cancelled session: the note is shown, not editable (the server refuses, TC-212). */
+  readOnly?: boolean;
 }
 
 // Persisted via sessions.notes (PUT /sessions/:id, the same generic
 // update route session-edit.tsx already uses) - previously this only
 // updated local component state, so "Save" looked like it worked but
 // the note was gone on the next page load.
-export function SessionNotesCard({ sessionId, initialNote = null }: SessionNotesCardProps) {
+export function SessionNotesCard({ sessionId, initialNote = null, readOnly = false }: SessionNotesCardProps) {
   const [note, setNote] = useState(initialNote ?? "");
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -38,7 +40,7 @@ export function SessionNotesCard({ sessionId, initialNote = null }: SessionNotes
     <Card className="shadow-sm" data-testid="organiser-session-notes-card">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle asChild className="text-base"><h2>Session Notes</h2></CardTitle>
-        {!isEditing && (
+        {!isEditing && !readOnly && (
           <button
             type="button"
             onClick={() => setIsEditing(true)}

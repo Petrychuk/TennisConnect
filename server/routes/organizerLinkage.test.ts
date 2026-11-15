@@ -59,6 +59,10 @@ function freshSessions(): Record<string, any> {
   };
 }
 
+// Season / series rows as the PUT routes leave them (TC-211 follow-up).
+const seasonWrites: any[] = [];
+const seriesWrites: any[] = [];
+
 let SESSIONS: Record<string, any> = {};
 let nextId = 1;
 let tick = 0;
@@ -80,6 +84,8 @@ before(async () => {
     getOrganizationOwnedByUser: async (userId: string) => Object.values(ORGS).find((o: any) => o.ownerId === userId),
     getSeasonById: async (id: string) => SEASONS[id],
     getSeriesById: async (id: string) => SERIES[id],
+    updateSeason: async (id: string, updates: any) => (seasonWrites.push({ id, updates }), { ...SEASONS[id], ...updates }),
+    updateSeries: async (id: string, updates: any) => (seriesWrites.push({ id, updates }), { ...SERIES[id], ...updates }),
     getSessionById: async (id: string) => SESSIONS[id],
     getSessionsByOrganization: async (orgId: string) => Object.values(SESSIONS).filter((x: any) => x.organizationId === orgId),
     createSession: async (organizationId: string, createdBy: string, data: any) => {
@@ -155,6 +161,8 @@ beforeEach(() => {
   SESSIONS = freshSessions();
   nextId = 1;
   writes.length = 0;
+  seasonWrites.length = 0;
+  seriesWrites.length = 0;
 });
 
 async function call(user: string | null, method: string, path: string, body?: unknown) {
@@ -363,4 +371,41 @@ test("TC-211-12 attach keeps working for own sessions and drops foreign ones, wi
   assert.equal(writes[1], "addSessionsToSeries:series-a1:a-free:org-a:season-a1");
   assert.equal(SESSIONS["a-free"].seriesId, "series-a1");
   assert.deepEqual(SESSIONS["b-ranked"], freshSessions()["b-ranked"]);
+});
+
+// ---------- Follow-up: a season / series can't be moved to another organisation or season ----------
+
+test("TC-211-13 PUT /seasons/:id can't hand the season to another organisation or creator", async () => {
+  for (const body of [{ organizationId: "org-b" }, { createdBy: "bob" }, { name: "Mine now", organizationId: "org-b" }]) {
+    const r = await call("alice", "PUT", "/seasons/season-a1", body);
+    assert.equal(r.status, 400, JSON.stringify(body));
+    assert.equal(r.body?.code, "not_editable");
+  }
+  // Someone else's season: still refused by ownership first.
+  assert.equal((await call("alice", "PUT", "/seasons/season-b", { name: "Taken over" })).status, 403);
+  assert.deepEqual(seasonWrites, []);
+
+  // Renaming, and echoing the stored owner back, still work.
+  let r = await call("alice", "PUT", "/seasons/season-a1", { name: "A Summer 2026" });
+  assert.equal(r.status, 200);
+  r = await call("alice", "PUT", "/seasons/season-a1", { name: "A Summer", organizationId: "org-a", createdBy: undefined });
+  assert.equal(r.status, 200);
+  assert.equal(seasonWrites.length, 2);
+});
+
+test("TC-211-14 PUT /series/:id can't move the series to another organisation, creator or season", async () => {
+  const attempts = [{ organizationId: "org-b" }, { seasonId: "season-b" }, { seasonId: "season-a2" }, { createdBy: "bob" }];
+  for (let i = 0; i < 2; i++) {
+    for (const body of attempts) {
+      const r = await call("alice", "PUT", "/series/series-a1", body);
+      assert.equal(r.status, 400, JSON.stringify(body));
+      assert.equal(r.body?.code, "not_editable");
+    }
+  }
+  assert.equal((await call("alice", "PUT", "/series/series-b", { name: "Taken over" })).status, 403);
+  assert.deepEqual(seriesWrites, []);
+
+  const r = await call("alice", "PUT", "/series/series-a1", { name: "A Ladder 2", seasonId: "season-a1" });
+  assert.equal(r.status, 200);
+  assert.deepEqual(seriesWrites, [{ id: "series-a1", updates: { name: "A Ladder 2", seasonId: "season-a1" } }]);
 });

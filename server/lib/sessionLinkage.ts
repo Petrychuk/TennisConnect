@@ -32,7 +32,7 @@ export interface LinkageLookups {
 
 export interface LinkageProblem {
   status: 400 | 404;
-  code: "season_not_found" | "series_not_found" | "series_season_mismatch" | "parent_not_editable" | "invalid_linkage";
+  code: "season_not_found" | "series_not_found" | "series_season_mismatch" | "parent_not_editable" | "invalid_linkage" | "not_editable";
   message: string;
 }
 
@@ -43,6 +43,25 @@ export interface CurrentLinkage {
 }
 
 const has = (o: object, key: string) => Object.prototype.hasOwnProperty.call(o, key);
+
+/**
+ * PUT /seasons/:id and PUT /series/:id: the owning organisation, the creator
+ * and (for a series) its season are fixed once created - changing them would
+ * move the season / series, and every ranked session in it, into another
+ * organisation or season. Sending the stored value back unchanged is fine.
+ */
+export function fixedFieldProblem(
+  changes: Record<string, unknown>,
+  current: Record<string, unknown>,
+  fields: readonly string[],
+): LinkageProblem | null {
+  for (const field of fields) {
+    if (has(changes, field) && changes[field] !== undefined && changes[field] !== current[field]) {
+      return { status: 400, code: "not_editable", message: `${field} can't be changed` };
+    }
+  }
+  return null;
+}
 
 const SEASON_NOT_FOUND: LinkageProblem = { status: 404, code: "season_not_found", message: "Season not found" };
 const SERIES_NOT_FOUND: LinkageProblem = { status: 404, code: "series_not_found", message: "Series not found" };

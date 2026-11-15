@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 import { getSessionDetail } from "@/lib/organiser-sessions-mock-data";
 import { updateSession } from "@/lib/api/organizer-sessions";
+import { isSessionEditable } from "@shared/sessionActions";
 
 interface SettingsTabProps {
   session: SessionListItem;
@@ -55,6 +56,10 @@ export function SettingsTab({ session }: SettingsTabProps) {
     },
   });
 
+  // Finished or cancelled: the server refuses every change (TC-212), so the
+  // switches show the state but can't be flipped.
+  const locked = !isSessionEditable(session.status);
+
   const rows = [
     {
       key: "registration",
@@ -62,7 +67,7 @@ export function SettingsTab({ session }: SettingsTabProps) {
       description: "Players can join this session.",
       checked: !!session.registrationOpen,
       onCheckedChange: (v: boolean) => registrationMutation.mutate(v),
-      disabled: registrationMutation.isPending,
+      disabled: locked || registrationMutation.isPending,
     },
     {
       key: "waitlist",
@@ -70,7 +75,7 @@ export function SettingsTab({ session }: SettingsTabProps) {
       description: "Auto-promote from the waiting list when a spot opens up.",
       checked: !!detail.waitingListEnabled,
       onCheckedChange: (v: boolean) => waitingListMutation.mutate(v),
-      disabled: waitingListMutation.isPending,
+      disabled: locked || waitingListMutation.isPending,
     },
   ];
 

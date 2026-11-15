@@ -6,7 +6,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { sessionLinkageProblem, type LinkageLookups } from "./sessionLinkage";
+import { fixedFieldProblem, sessionLinkageProblem, type LinkageLookups } from "./sessionLinkage";
 
 const SEASONS: Record<string, { id: string; organizationId: string }> = {
   "season-a1": { id: "season-a1", organizationId: "org-a" },
@@ -77,6 +77,16 @@ test("parentSessionId: never set on create, only echoed unchanged on update", as
   assert.equal((await sessionLinkageProblem("org-a", { parentSessionId: "event-a" }, lookups, none))?.code, "parent_not_editable");
   assert.equal(await sessionLinkageProblem("org-a", { parentSessionId: "event-a" }, lookups, { ...none, parentSessionId: "event-a" }), null);
   assert.equal(await sessionLinkageProblem("org-a", { parentSessionId: null }, lookups, none), null);
+});
+
+test("fixedFieldProblem: owner, creator and season of a season/series can't change; echoing them is fine", () => {
+  const current = { organizationId: "org-a", createdBy: "alice", seasonId: "season-a1", name: "Ladder" };
+  const fields = ["organizationId", "createdBy", "seasonId"] as const;
+  assert.equal(fixedFieldProblem({ name: "Renamed" }, current, fields), null);
+  assert.equal(fixedFieldProblem({ name: "Renamed", organizationId: "org-a", seasonId: "season-a1", createdBy: "alice" }, current, fields), null);
+  for (const change of [{ organizationId: "org-b" }, { createdBy: "bob" }, { seasonId: "season-a2" }, { seasonId: null }]) {
+    assert.deepEqual(fixedFieldProblem(change, current, fields)?.code, "not_editable", JSON.stringify(change));
+  }
 });
 
 test("malformed ids are a 400, not a lookup", async () => {

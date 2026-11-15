@@ -1,6 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { canAnnounceToSession, canArchiveSession, canCancelSession, canChangeRoster, canInviteToSession, publicSessionPath, resultsAreFinal } from "./sessionActions";
+import {
+  CANCELLABLE_SESSION_STATUSES,
+  EDIT_LOCKED_SESSION_STATUSES,
+  REVIEWABLE_SESSION_STATUS,
+  canAnnounceToSession,
+  canArchiveSession,
+  canCancelSession,
+  canChangeRoster,
+  canInviteToSession,
+  isSessionEditable,
+  publicSessionPath,
+  resultsAreFinal,
+} from "./sessionActions";
 
 const NOW = new Date("2026-10-30T10:00:00Z");
 
@@ -42,4 +54,18 @@ test("after Finish: results final, roster frozen; cancel only before it ran; a l
   assert.equal(canArchiveSession("published"), true);
   assert.equal(canArchiveSession("live"), false);
   assert.equal(canArchiveSession("archived"), false);
+});
+
+// TC-212 (OH-AUDIT-005/006): the lists the conditional database writes use
+// must say exactly what the predicates say.
+test("edit: never a completed, archived or cancelled session; every other status can be edited", () => {
+  for (const status of ["draft", "pending_review", "rejected", "published", "live"]) assert.equal(isSessionEditable(status), true, status);
+  for (const status of ["completed", "archived", "cancelled", null, undefined, ""]) assert.equal(isSessionEditable(status), false, String(status));
+  assert.deepEqual([...EDIT_LOCKED_SESSION_STATUSES].sort(), ["archived", "cancelled", "completed"]);
+});
+
+test("cancel / review status lists match their predicates", () => {
+  for (const status of CANCELLABLE_SESSION_STATUSES) assert.equal(canCancelSession(status), true, status);
+  assert.deepEqual([...CANCELLABLE_SESSION_STATUSES].sort(), ["draft", "pending_review", "published"]);
+  assert.equal(REVIEWABLE_SESSION_STATUS, "pending_review");
 });
