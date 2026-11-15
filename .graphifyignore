@@ -1,0 +1,36 @@
+# Dependencies and local environments
+node_modules/
+.venv/
+venv/
+
+# Build and generated output
+dist/
+build/
+coverage/
+playwright-report/
+test-results/
+.next/
+.cache/
+
+# Graphify output
+graphify-out/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+*.p12
+*.pfx
+*.sqlite
+*.db
+
+# Git internals
+.git/
+
+# Temporary files
+*.log
+*.tmp
+*.bak

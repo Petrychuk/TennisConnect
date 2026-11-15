@@ -1,0 +1,38 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f \"${CLAUDE_PROJECT_DIR:-.}/.venv/Scripts/graphify.exe\" ]; then exec \"${CLAUDE_PROJECT_DIR:-.}/.venv/Scripts/graphify.exe\" hook-guard search; elif [ -x \"${CLAUDE_PROJECT_DIR:-.}/.venv/bin/graphify\" ]; then exec \"${CLAUDE_PROJECT_DIR:-.}/.venv/bin/graphify\" hook-guard search; fi; exit 0",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f \"${CLAUDE_PROJECT_DIR:-.}/.venv/Scripts/graphify.exe\" ]; then exec \"${CLAUDE_PROJECT_DIR:-.}/.venv/Scripts/graphify.exe\" hook-guard read; elif [ -x \"${CLAUDE_PROJECT_DIR:-.}/.venv/bin/graphify\" ]; then exec \"${CLAUDE_PROJECT_DIR:-.}/.venv/bin/graphify\" hook-guard read; fi; exit 0",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f \"${CLAUDE_PROJECT_DIR:-.}/.venv/Scripts/graphify.exe\" ]; then exec \"${CLAUDE_PROJECT_DIR:-.}/.venv/Scripts/graphify.exe\" hook-guard compact; elif [ -x \"${CLAUDE_PROJECT_DIR:-.}/.venv/bin/graphify\" ]; then exec \"${CLAUDE_PROJECT_DIR:-.}/.venv/bin/graphify\" hook-guard compact; fi; exit 0",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

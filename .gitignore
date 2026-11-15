@@ -13,7 +13,8 @@ vite.config.ts.*
 *.env
 .env.sync
 !.env.example
-.env.e2e.staging.local (placeholders only)
+# Local staging E2E config (real values) - never commit. The .example template below IS committed.
+.env.e2e.staging.local
 !.env.e2e.staging.example
 credentials.json
 *.pem
@@ -45,3 +46,9 @@ backfill-backup/
 # Postgres password files
 .pgpass
 *.pgpass
+
+docs/business-audit/ 
+.venv/
+
+# Graphify generated output (rebuild with `graphify update .`)
+graphify-out/
