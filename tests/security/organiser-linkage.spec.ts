@@ -60,6 +60,7 @@ test.describe('Organiser Hub - cross-organisation season / series linkage (TC-21
     try {
       // ---------- Test data ----------
       const bRes = await seasonWithSeries(b.page, 'B');
+      const aRes = await seasonWithSeries(page, 'A');
       const bEvent = await seedHubSession(b.page, b.organiser, { title: `B event ${Date.now()}`, startAt: inDays(5), status: 'draft' });
       const aSession = await seedHubSession(page, a, { title: `A own ${Date.now()}`, startAt: inDays(5), status: 'draft' });
       const aBefore = linkage(await rawSession(page, aSession.id));
@@ -88,6 +89,14 @@ test.describe('Organiser Hub - cross-organisation season / series linkage (TC-21
         }
       }
 
+      // ---------- Actions: move A's own season / series into B's organisation or season ----------
+      for (const data of [{ organizationId: b.organiser.organizationId }, { seasonId: bRes.season.id }]) {
+        const res = await page.request.put(`${API}/series/${aRes.series.id}`, { data, failOnStatusCode: false });
+        expect(res.status(), `PUT own series with ${Object.keys(data)[0]} of B`).toBe(400);
+      }
+      const seasonMove = await page.request.put(`${API}/seasons/${aRes.season.id}`, { data: { organizationId: b.organiser.organizationId }, failOnStatusCode: false });
+      expect(seasonMove.status(), 'PUT own season into B\'s organisation').toBe(400);
+
       // ---------- Verify request: an unknown id answers exactly like a foreign one ----------
       const foreign = await page.request.put(`${API}/sessions/${aSession.id}`, { data: { seasonId: bRes.season.id }, failOnStatusCode: false });
       const unknown = await page.request.put(`${API}/sessions/${aSession.id}`, { data: { seasonId: '00000000-0000-0000-0000-000000000000' }, failOnStatusCode: false });
@@ -101,6 +110,10 @@ test.describe('Organiser Hub - cross-organisation season / series linkage (TC-21
       expect(bSeasonSessions.map((s: { id: string }) => s.id), 'nothing of A\'s appears in B\'s season').not.toContain(aSession.id);
       const bSeriesSessions = await (await b.page.request.get(`${API}/series/${bRes.series.id}/sessions`)).json();
       expect(bSeriesSessions, 'B\'s series is still empty').toHaveLength(0);
+      const bSeriesList = await (await b.page.request.get(`${API}/seasons/${bRes.season.id}/series`)).json();
+      expect(bSeriesList.map((x: { id: string }) => x.id), 'A\'s series did not move into B\'s season').toEqual([bRes.series.id]);
+      const bSeasons = await (await b.page.request.get(`${API}/seasons`)).json();
+      expect(bSeasons.map((x: { id: string }) => x.id), 'A\'s season did not move into B\'s organisation').not.toContain(aRes.season.id);
       const bDivisions = await (await b.page.request.get(`${API}/sessions/${bEvent.id}/divisions`)).json();
       expect(Array.isArray(bDivisions) ? bDivisions.length : 0, 'no division was added to B\'s event').toBe(0);
     } finally {

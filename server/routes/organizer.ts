@@ -9,7 +9,7 @@ import { joinBlockedReason } from "@shared/sessionJoinRules";
 import { registrationBlockReason } from "@shared/sessionLifecycle";
 import { isInternalTestUser, liveAllowedFor, liveMode } from "../lib/liveFeature";
 import { LiveRuleError } from "../lib/liveErrors";
-import { sessionLinkageProblem } from "../lib/sessionLinkage";
+import { fixedFieldProblem, sessionLinkageProblem } from "../lib/sessionLinkage";
 import { goLiveProblem, scoreProblem } from "@shared/liveRules";
 import {
   STALE_DRAFT_MESSAGE,
@@ -432,6 +432,11 @@ router.put("/seasons/:id", requireAuth, requireOrganizer, requireOwnSeason, asyn
       return res.status(400).json({ message: "Invalid input", errors: parsed.error });
     }
     const season = (req as any).season as Season;
+    // The season can't be handed to another organisation or creator (TC-211).
+    const fixed = fixedFieldProblem(parsed.data as Record<string, unknown>, season as unknown as Record<string, unknown>, ["organizationId", "createdBy"]);
+    if (fixed) {
+      return res.status(fixed.status).json({ code: fixed.code, message: fixed.message });
+    }
     const nextStart = parsed.data.startDate ?? season.startDate;
     const nextEnd = parsed.data.endDate ?? season.endDate;
     if (nextEnd < nextStart) {
@@ -574,6 +579,13 @@ router.put("/series/:id", requireAuth, requireOrganizer, requireOwnSeries, async
     const parsed = updateSeriesSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ message: "Invalid input", errors: parsed.error });
+    }
+    // Nor moved to another organisation, creator or season - its ranked
+    // sessions belong to its season (TC-211).
+    const current = (req as any).series as Series;
+    const fixed = fixedFieldProblem(parsed.data as Record<string, unknown>, current as unknown as Record<string, unknown>, ["organizationId", "createdBy", "seasonId"]);
+    if (fixed) {
+      return res.status(fixed.status).json({ code: fixed.code, message: fixed.message });
     }
     const updated = await storage.updateSeries(req.params.id, parsed.data);
     res.json(updated);
