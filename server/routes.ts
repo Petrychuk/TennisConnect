@@ -3,6 +3,8 @@ import crypto from "crypto";
 import { createServer, type Server } from "http";
 import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
+import { LiveRuleError } from "./lib/liveErrors";
+import { notifyPromotedPlayers } from "./services/registrationNotifications";
 import { hashPassword, comparePasswords } from "./auth";
 import { omitPassword } from "./lib/sanitizeUser";
 import uploadMediaRouter from "./routes/uploadMedia";
@@ -1620,6 +1622,8 @@ export async function registerRoutes(app: Express): Promise<void> {
         } catch (err: any) {
           // Full and no waiting list: the invitation stays open, the player is told why.
           if (err?.message === "This session is full.") return res.status(409).json({ message: err.message });
+          // Registration closed, started, cancelled or finished (TC-213 / TC-189 cutoff).
+          if (err instanceof LiveRuleError) return res.status(err.status).json({ message: err.message, code: err.code });
           throw err;
         }
       }
@@ -1655,7 +1659,9 @@ export async function registerRoutes(app: Express): Promise<void> {
         if (!message.relatedSessionId) {
           return res.status(400).json({ message: "Missing session" });
         }
-        await storage.cancelRegistration(message.relatedSessionId, req.user!.id);
+        const { promotedIds } = await storage.cancelRegistration(message.relatedSessionId, req.user!.id);
+        // A held place freed this way went to the next waitlisted player (TC-213).
+        await notifyPromotedPlayers(message.relatedSessionId, promotedIds);
       }
       // play_invite: same as accept above, nothing else to undo -
       // declining is just the status flip.

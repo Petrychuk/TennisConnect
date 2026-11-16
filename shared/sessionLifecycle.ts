@@ -69,6 +69,17 @@ export function registrationBlockReason(s: LifecycleSession, action: "join" | "l
 }
 
 /**
+ * Whether a freed place goes to the next player on the waiting list (TC-213).
+ * Only while registration could still change - the same cutoff as a player's
+ * own cancel: published, not started, not live, registration not closed. After
+ * the cutoff the roster is the organiser's to manage (check-in, TC Live); a
+ * waitlisted player is never moved in behind their back once play is near.
+ */
+export function waitlistPromotionOpen(s: LifecycleSession, now = new Date()): boolean {
+  return registrationBlockReason(s, "leave", now) === null;
+}
+
+/**
  * The organiser's "Ready to Start": a published session from 2 hours before
  * its start - and still after the start time passes (they may start late).
  * Nothing changes in the database; Start Live is the organiser's action.

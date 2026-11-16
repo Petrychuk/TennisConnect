@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ChevronRight } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import type { WaitingPlayer } from "@/lib/organiser-sessions-mock-data";
 import { formatInTimeZone } from "@/lib/timezone";
 
@@ -13,6 +12,14 @@ interface WaitingListCardProps {
   // See players-table.tsx's own comment - without this, "Joined" showed
   // the organizer's own browser's local time instead of the venue's.
   timeZone: string;
+  /**
+   * TC-213: after the registration cutoff the organiser moves a waitlisted
+   * player into the session themselves. Undefined hides the button - before
+   * the cutoff free places are filled from this list automatically, in order.
+   */
+  onMoveToRegistered?: (player: WaitingPlayer) => void;
+  /** The player whose move is in progress (button disabled). */
+  movingId?: string | null;
 }
 
 const LEVEL_BADGE_STYLE: Record<WaitingPlayer["levelLabel"], string> = {
@@ -22,8 +29,7 @@ const LEVEL_BADGE_STYLE: Record<WaitingPlayer["levelLabel"], string> = {
   Social: "bg-muted text-muted-foreground",
 };
 
-export function WaitingListCard({ players, className, timeZone }: WaitingListCardProps) {
-  const { toast } = useToast();
+export function WaitingListCard({ players, className, timeZone, onMoveToRegistered, movingId }: WaitingListCardProps) {
 
   return (
     <Card className={className} data-testid="organiser-waiting-list-card">
@@ -42,7 +48,7 @@ export function WaitingListCard({ players, className, timeZone }: WaitingListCar
             Nobody's waiting.
           </p>
         ) : (
-          players.map((player) => (
+          players.map((player, index) => (
             <div
               key={player.id}
               className="flex items-center gap-3 rounded-xl border border-border p-3"
@@ -55,7 +61,10 @@ export function WaitingListCard({ players, className, timeZone }: WaitingListCar
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <p className="font-medium text-sm truncate">{player.name}</p>
+                <p className="font-medium text-sm truncate">
+                  <span className="text-muted-foreground mr-1" data-testid={`organiser-waiting-list-item-${player.id}-position`}>#{index + 1}</span>
+                  {player.name}
+                </p>
                 <div className="flex items-center gap-1.5">
                   <Badge className={LEVEL_BADGE_STYLE[player.levelLabel]}>{player.levelLabel}</Badge>
                   <span className="text-xs text-muted-foreground">
@@ -63,15 +72,18 @@ export function WaitingListCard({ players, className, timeZone }: WaitingListCar
                   </span>
                 </div>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                className="shrink-0"
-                onClick={() => toast({ title: "Move to Registered", description: `${player.name} would move to the registered list.` })}
-                data-testid={`organiser-waiting-list-item-${player.id}-move`}
-              >
-                Move to Registered
-              </Button>
+              {onMoveToRegistered && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0 min-h-9"
+                  disabled={movingId === player.id}
+                  onClick={() => onMoveToRegistered(player)}
+                  data-testid={`organiser-waiting-list-item-${player.id}-move`}
+                >
+                  Move to Registered
+                </Button>
+              )}
             </div>
           ))
         )}

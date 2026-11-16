@@ -22,8 +22,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { InvitePlayersDialog } from "@/components/organiser/shared/invite-players-dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { canChangeRoster, canInviteToSession } from "@shared/sessionActions";
-import { getSessionRegistrations, inviteToSession, checkInRegistration, removeRegistration, moveRegistrationToWaitlist } from "@/lib/api/organizer-sessions";
+import { waitlistPromotionOpen } from "@shared/sessionLifecycle";
+import { getSessionRegistrations, inviteToSession, checkInRegistration, removeRegistration, moveRegistrationToWaitlist, lateRegisterPlayer } from "@/lib/api/organizer-sessions";
+import { apiErrorInfo } from "@/lib/api-error";
 import { toSessionPlayers } from "@/lib/api/session-adapter";
 import { type SessionListItem, type SessionPlayer } from "@/lib/organiser-sessions-mock-data";
 
@@ -127,11 +131,27 @@ export function PlayersTab({ session, onOpenMessages, onExport }: PlayersTabProp
     if (notYetCheckedIn.length === 0) return;
     setCheckingInAll(true);
     try {
-      await Promise.all(notYetCheckedIn.map((p) => checkInRegistration(session.id, p.id)));
-      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.id, "registrations"] });
-    } catch {
-      toast({ title: "Some players couldn't be checked in", variant: "destructive" });
+      // TC-215 / OH-AUDIT-014: use allSettled so one failure doesn't mask the
+      // rest. Always invalidate afterward (some may have succeeded).
+      const results = await Promise.allSettled(
+        notYetCheckedIn.map((p) => checkInRegistration(session.id, p.id))
+      );
+      const failed = results.filter((r) => r.status === "rejected");
+      if (failed.length === 0) {
+        toast({ title: `All ${notYetCheckedIn.length} players checked in` });
+      } else if (failed.length === notYetCheckedIn.length) {
+        toast({ title: "Check-in failed — please try again", variant: "destructive" });
+      } else {
+        const ok = notYetCheckedIn.length - failed.length;
+        toast({
+          title: `${ok} of ${notYetCheckedIn.length} players checked in`,
+          description: `${failed.length} failed — you can retry with the Check-in All button`,
+          variant: "destructive",
+        });
+      }
     } finally {
+      // Always refresh: even a partial batch changed the roster.
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.id, "registrations"] });
       setCheckingInAll(false);
     }
   };
@@ -150,8 +170,67 @@ export function PlayersTab({ session, onOpenMessages, onExport }: PlayersTabProp
   // Disabled while the list loads: pressed before it, Check-in All saw nobody
   // to check in and did nothing at all (ORG-WSP-003).
   const checkInAllBusy = checkingInAll || registrationsQuery.isLoading;
+  // TC-213: until the registration cutoff free places go to the waiting list
+  // automatically. After it the organiser adds players themselves - "Move to
+  // Registered" on the waiting list, or the Add dialog - and skipping the
+  // waiting list needs an explicit, audited confirmation (server-enforced).
+  const lateAddOpen =
+    rosterOpen &&
+    (session.status === "published" || session.status === "live") &&
+    !waitlistPromotionOpen({ status: session.status, startAt: session.startAt, registrationClosesAt: session.registrationClosesAt ?? null });
+  const [overrideTarget, setOverrideTarget] = useState<{ userId: string; name: string; ahead: number; nextName: string } | null>(null);
+  const [overrideReason, setOverrideReason] = useState("");
+  const [overrideBusy, setOverrideBusy] = useState(false);
+  const [movingId, setMovingId] = useState<string | null>(null);
+
+  /** true = added; false = handed to the override confirmation. Throws with the server's message otherwise. */
+  const lateAdd = async (userId: string, name: string, override?: { reason: string }): Promise<boolean> => {
+    try {
+      await lateRegisterPlayer(session.id, { userId, ...(override ? { overrideWaitlist: true, reason: override.reason } : {}) });
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.id, "registrations"] });
+      toast({ title: `${name} added to the session`, description: "They've been sent a message." });
+      return true;
+    } catch (error) {
+      const info = apiErrorInfo(error);
+      if (info.code === "waitlist_override_required" && !override) {
+        const next = buckets.waiting.find((p) => p.userId === info.body?.nextUserId);
+        setOverrideReason("");
+        setOverrideTarget({ userId, name, ahead: Number(info.body?.ahead ?? 1), nextName: next?.name ?? "the next player" });
+        return false;
+      }
+      throw new Error(info.message);
+    }
+  };
+
+  const handleMoveToRegistered = async (player: { id: string; name: string; userId?: string }) => {
+    if (!player.userId) return;
+    setMovingId(player.id);
+    try {
+      await lateAdd(player.userId, player.name);
+    } catch (error: any) {
+      toast({ title: `Couldn't add ${player.name}`, description: error?.message ?? "Please try again.", variant: "destructive" });
+    } finally {
+      setMovingId(null);
+    }
+  };
+  const moveToRegistered = lateAddOpen ? handleMoveToRegistered : undefined;
+
+  const confirmOverride = async () => {
+    if (!overrideTarget || !overrideReason.trim()) return;
+    setOverrideBusy(true);
+    try {
+      await lateAdd(overrideTarget.userId, overrideTarget.name, { reason: overrideReason.trim() });
+      setOverrideTarget(null);
+    } catch (error: any) {
+      toast({ title: `Couldn't add ${overrideTarget.name}`, description: error?.message ?? "Please try again.", variant: "destructive" });
+    } finally {
+      setOverrideBusy(false);
+    }
+  };
+
   // Undefined hides the toolbar's Invite button (shared/sessionActions.ts).
-  const handleInvitePlayers = canInviteToSession(session.status, session.endAt) ? () => setInviteOpen(true) : undefined;
+  // After the cutoff the same button adds players instead of inviting them.
+  const handleInvitePlayers = lateAddOpen || canInviteToSession(session.status, session.endAt) ? () => setInviteOpen(true) : undefined;
 
   const bucketTabs: { key: Bucket; label: string }[] = [
     { key: "registered", label: "Registered" },
@@ -203,7 +282,7 @@ export function PlayersTab({ session, onOpenMessages, onExport }: PlayersTabProp
         <PlayersTable players={visible} {...rowHandlers} timeZone={session.timeZone} />
         {paginationText}
         <div className="grid grid-cols-2 gap-6">
-          <WaitingListCard players={buckets.waiting} timeZone={session.timeZone} />
+          <WaitingListCard players={buckets.waiting} timeZone={session.timeZone} onMoveToRegistered={moveToRegistered} movingId={movingId} />
           <InvitePlayersCard session={session} />
         </div>
       </div>
@@ -215,7 +294,7 @@ export function PlayersTab({ session, onOpenMessages, onExport }: PlayersTabProp
         <PlayersToolbar search={search} onSearchChange={setSearch} onCheckInAll={checkInAll} checkInAllLoading={checkInAllBusy} onInvitePlayers={handleInvitePlayers} level={level} onLevelChange={setLevel} />
         <PlayersList players={visible} {...rowHandlers} timeZone={session.timeZone} />
         {paginationText}
-        <WaitingListCard players={buckets.waiting} timeZone={session.timeZone} />
+        <WaitingListCard players={buckets.waiting} timeZone={session.timeZone} onMoveToRegistered={moveToRegistered} movingId={movingId} />
         <CheckInSummaryCard players={allPlayers} />
         <PlayersQuickActionsCard onMessageAll={onOpenMessages} onExport={onExport} onShowWaitingList={() => setBucket("waiting")} />
       </div>
@@ -227,7 +306,7 @@ export function PlayersTab({ session, onOpenMessages, onExport }: PlayersTabProp
         <PlayersToolbar search={search} onSearchChange={setSearch} onCheckInAll={checkInAll} checkInAllLoading={checkInAllBusy} onInvitePlayers={handleInvitePlayers} level={level} onLevelChange={setLevel} />
         <PlayersList players={visible} {...rowHandlers} timeZone={session.timeZone} />
         {paginationText}
-        <WaitingListCard players={buckets.waiting} timeZone={session.timeZone} />
+        <WaitingListCard players={buckets.waiting} timeZone={session.timeZone} onMoveToRegistered={moveToRegistered} movingId={movingId} />
         <PlayersQuickActionsCard onMessageAll={onOpenMessages} onExport={onExport} onShowWaitingList={() => setBucket("waiting")} />
       </div>
 
@@ -246,8 +325,9 @@ export function PlayersTab({ session, onOpenMessages, onExport }: PlayersTabProp
           <AlertDialogHeader>
             <AlertDialogTitle>Remove {removeTarget?.name} from this session?</AlertDialogTitle>
             <AlertDialogDescription>
-              Their registration is cancelled and the place becomes free. Nobody is moved up from the
-              waiting list automatically - you can invite or register someone yourself.
+              Their registration is cancelled. Until registration closes, the first player on the waiting
+              list takes the place automatically and is told. After that the place stays free - you can add
+              a player yourself.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -265,18 +345,72 @@ export function PlayersTab({ session, onOpenMessages, onExport }: PlayersTabProp
         </AlertDialogContent>
       </AlertDialog>
 
-      <InvitePlayersDialog
-        open={inviteOpen}
-        onOpenChange={setInviteOpen}
-        title={`Invite Players to ${session.title}`}
-        description="Search for players on TennisConnect and invite them to this session."
-        onInvite={async (userId) => {
-          await inviteToSession(session.id, userId);
-          queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.id, "registrations"] });
-        }}
-        searchContext={{ sessionId: session.id }}
-        alreadyConnectedLabel="Already joined"
-      />
+      {lateAddOpen ? (
+        <InvitePlayersDialog
+          open={inviteOpen}
+          onOpenChange={setInviteOpen}
+          title={`Add a Player to ${session.title}`}
+          description="Registration has closed. A player you add gets a place straight away if there's room. The waiting list comes first unless you confirm skipping it."
+          onInvite={async (userId, name) => ((await lateAdd(userId, name)) ? undefined : false)}
+          searchContext={{ sessionId: session.id }}
+          alreadyConnectedLabel="Already in this session"
+          actionLabel="Add"
+          pendingLabel="Adding..."
+          doneLabel="Added"
+        />
+      ) : (
+        <InvitePlayersDialog
+          open={inviteOpen}
+          onOpenChange={setInviteOpen}
+          title={`Invite Players to ${session.title}`}
+          description="Search for players on TennisConnect and invite them to this session."
+          onInvite={async (userId) => {
+            await inviteToSession(session.id, userId);
+            queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.id, "registrations"] });
+          }}
+          searchContext={{ sessionId: session.id }}
+          alreadyConnectedLabel="Already joined"
+        />
+      )}
+
+      <AlertDialog open={!!overrideTarget} onOpenChange={(open) => !open && !overrideBusy && setOverrideTarget(null)}>
+        <AlertDialogContent data-testid="organiser-players-override-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Skip the waiting list for {overrideTarget?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {overrideTarget?.ahead === 1
+                ? `${overrideTarget?.nextName} is waiting ahead of them.`
+                : `${overrideTarget?.ahead} players are waiting ahead of them, starting with ${overrideTarget?.nextName}.`}{" "}
+              They keep their places on the waiting list. This is recorded with your name, the time and your reason.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="organiser-players-override-reason">Reason</Label>
+            <Textarea
+              id="organiser-players-override-reason"
+              value={overrideReason}
+              onChange={(e) => setOverrideReason(e.target.value)}
+              maxLength={500}
+              placeholder="e.g. Partner of a player who withdrew at the last minute"
+              className="min-h-20"
+              data-testid="organiser-players-override-reason"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={overrideBusy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={overrideBusy || !overrideReason.trim()}
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmOverride();
+              }}
+              data-testid="organiser-players-override-confirm"
+            >
+              Add {overrideTarget?.name}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

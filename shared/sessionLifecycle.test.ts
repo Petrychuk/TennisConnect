@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isPubliclyActive, isReadyToStart, registrationBlockReason } from "./sessionLifecycle";
+import { isPubliclyActive, isReadyToStart, registrationBlockReason, waitlistPromotionOpen } from "./sessionLifecycle";
 
 const now = new Date("2026-11-10T08:00:00Z");
 const h = (hours: number) => new Date(now.getTime() + hours * 3600_000).toISOString();
@@ -48,4 +48,18 @@ test("not open yet: can't join, listed", () => {
   const soon = { ...published, registrationOpensAt: h(2) };
   assert.equal(isPubliclyActive(soon, now), true);
   assert.equal(registrationBlockReason(soon, "join", now), "Registration hasn't opened yet.");
+});
+
+// TC-213: a freed place is filled from the waiting list only before the
+// registration cutoff - never once the session started, went live or closed.
+test("waitlistPromotionOpen: same cutoff as a player's own cancel", () => {
+  const now = new Date("2026-11-15T10:00:00Z");
+  const base = { status: "published", startAt: "2026-11-20T08:00:00Z", registrationOpensAt: null, registrationClosesAt: null };
+  assert.equal(waitlistPromotionOpen(base, now), true);
+  assert.equal(waitlistPromotionOpen({ ...base, registrationOpensAt: "2026-11-18T00:00:00Z" }, now), true, "not open yet still promotes (the waitlisted already joined)");
+  assert.equal(waitlistPromotionOpen({ ...base, registrationClosesAt: "2026-11-14T00:00:00Z" }, now), false, "registration closed");
+  assert.equal(waitlistPromotionOpen({ ...base, startAt: "2026-11-15T09:00:00Z" }, now), false, "start time passed");
+  for (const status of ["live", "completed", "archived", "cancelled", "draft", "pending_review"]) {
+    assert.equal(waitlistPromotionOpen({ ...base, status }, now), false, status);
+  }
 });

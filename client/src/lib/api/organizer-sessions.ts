@@ -143,7 +143,7 @@ export interface DashboardStats {
   activePlayers: number;
   /** null = no registrations yet for a session that happened, so no percentage exists. */
   attendancePercent: number | null;
-  revenueThisWeek: number;
+  estimatedRevenueThisWeek: number;
   revenueCurrency: string;
 }
 
@@ -300,6 +300,19 @@ export async function checkInRegistration(sessionId: string, registrationId: str
 
 export async function removeRegistration(sessionId: string, registrationId: string): Promise<Registration> {
   const res = await apiRequest("DELETE", `${BASE}/sessions/${sessionId}/registrations/${registrationId}`);
+  return res.json();
+}
+
+/**
+ * TC-213: add a player after the registration cutoff (organiser only).
+ * 409 waitlist_override_required until overrideWaitlist + reason are sent when
+ * someone else is first on the waiting list; the server audits every addition.
+ */
+export async function lateRegisterPlayer(
+  sessionId: string,
+  data: { userId: string; overrideWaitlist?: boolean; reason?: string },
+): Promise<{ registration: Registration; overrodeWaitlist: boolean }> {
+  const res = await apiRequest("POST", `${BASE}/sessions/${sessionId}/late-registrations`, data);
   return res.json();
 }
 

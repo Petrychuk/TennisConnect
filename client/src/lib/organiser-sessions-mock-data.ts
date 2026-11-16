@@ -187,6 +187,8 @@ function minutesAgo(minutes: number) {
 
 export interface WaitingPlayer {
   id: string;
+  /** The registrant's user id (TC-213: needed to add them after the cutoff). */
+  userId?: string;
   name: string;
   avatar: string | null;
   level: number;

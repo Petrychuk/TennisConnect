@@ -1112,6 +1112,32 @@ export const registrations = pgTable(
   })
 );
 
+// TC-213: organiser actions on registrations that need an audit trail - a
+// player added after the registration cutoff ("late_add"), and above all one
+// added ahead of people on the waiting list ("late_add_waitlist_override",
+// which requires a reason). Append-only: actor, player, time, reason, and in
+// `details` the previous status and the waitlisted registrations skipped.
+// Deleted with the session (organisation cascade); actor / player are set to
+// null when that account is deleted (user cascade) so the record survives.
+export const registrationAuditEvents = pgTable(
+  "registration_audit_events",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    sessionId: varchar("session_id").notNull().references(() => tennisSessions.id),
+    playerId: varchar("player_id").references(() => users.id),
+    actorId: varchar("actor_id").references(() => users.id),
+    action: text("action").notNull(),
+    reason: text("reason"),
+    details: json("details").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    sessionIdIdx: index("registration_audit_events_session_id_idx").on(table.sessionId),
+  })
+);
+
+export type RegistrationAuditEvent = typeof registrationAuditEvents.$inferSelect;
+
 // One generated round of a live session. `restingPlayerIds` freezes the
 // set of checked-in players who didn't get a court this round (odd
 // numbers, or more checked-in players than courtsCount * teamSize

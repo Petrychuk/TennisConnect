@@ -36,6 +36,7 @@ import {
   organizerRequests,
   passwordResetTokens,
   payments,
+  registrationAuditEvents,
   playerProfiles,
   registrations,
   tennisSessions,
@@ -62,6 +63,8 @@ export const USER_CASCADE_COVERAGE: Readonly<Record<string, "delete" | "set-null
   "sessions.reviewed_by": "set-null",
   "external_activities.reviewed_by": "set-null",
   "payments.user_id": "set-null",
+  "registration_audit_events.actor_id": "set-null",
+  "registration_audit_events.player_id": "set-null",
   "password_reset_tokens.user_id": "delete",
   "email_verification_tokens.user_id": "delete",
   // Owned through an organisation: the caller removes (organisation
@@ -113,6 +116,10 @@ export async function deleteUserRows(qb: CascadeExecutor, userIds: readonly stri
     .where(inArray(externalActivities.reviewedBy, allowedIds));
 
   await qb.update(payments).set({ userId: null }).where(inArray(payments.userId, allowedIds));
+
+  // TC-213 audit trail: the record of what happened stays, without the account.
+  await qb.update(registrationAuditEvents).set({ actorId: null }).where(inArray(registrationAuditEvents.actorId, allowedIds));
+  await qb.update(registrationAuditEvents).set({ playerId: null }).where(inArray(registrationAuditEvents.playerId, allowedIds));
 
   await qb.delete(passwordResetTokens).where(inArray(passwordResetTokens.userId, allowedIds));
   await qb.delete(emailVerificationTokens).where(inArray(emailVerificationTokens.userId, allowedIds));

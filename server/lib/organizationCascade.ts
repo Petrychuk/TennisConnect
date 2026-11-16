@@ -30,6 +30,7 @@ import {
   messages,
   organizationMembers,
   organizations,
+  registrationAuditEvents,
   registrations,
   seasons,
   series,
@@ -68,6 +69,7 @@ export const ORGANIZATION_CASCADE_COVERAGE: Readonly<Record<string, "delete" | "
   "session_rounds.session_id": "delete",
   "registrations.session_id": "delete",
   "session_updates.session_id": "delete",
+  "registration_audit_events.session_id": "delete",
   "sessions.parent_session_id": "set-null",
   "tournament_history.session_id": "set-null",
   "messages.related_session_id": "set-null",
@@ -87,6 +89,7 @@ export const ORGANIZATION_CASCADE_TABLES = [
   "registrations",
   "matches",
   "session_updates",
+  "registration_audit_events",
   "community_memberships",
   "organization_members",
 ] as const;
@@ -158,6 +161,9 @@ export async function cascadeDeleteOrganizations(
     result.sessionUpdates = (
       await qb.delete(sessionUpdates).where(inArray(sessionUpdates.sessionId, sessionIds)).returning({ id: sessionUpdates.id })
     ).length;
+    // TC-213 audit trail of late additions - goes with its session (not
+    // counted in the result: nothing reports it separately).
+    await qb.delete(registrationAuditEvents).where(inArray(registrationAuditEvents.sessionId, sessionIds));
     result.sessions = (
       await qb.delete(tennisSessions).where(inArray(tennisSessions.id, sessionIds)).returning({ id: tennisSessions.id })
     ).length;
