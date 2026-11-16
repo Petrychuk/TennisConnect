@@ -55,3 +55,38 @@ export function zonedTimeToUtc(dateStr: string, timeStr: string, timeZone: strin
   // Re-derive the offset at the instant we actually landed on.
   return new Date(localAsUtc - offsetMsAt(firstPass, timeZone));
 }
+
+/**
+ * Return the YYYY-MM-DD date string for a UTC instant in a given IANA
+ * time zone. Useful for grouping UTC timestamps by their local date.
+ */
+export function utcToZonedDateStr(utc: Date, timeZone: string): string {
+  const offset = offsetMsAt(utc.getTime(), timeZone);
+  const local = new Date(utc.getTime() + offset);
+  return local.toISOString().slice(0, 10);
+}
+
+/**
+ * Return the UTC Date for the very start (00:00:00.000) of a local
+ * date in a given IANA time zone. `dateStr` is YYYY-MM-DD.
+ */
+export function startOfDayUtc(dateStr: string, timeZone: string): Date {
+  return zonedTimeToUtc(dateStr, "00:00", timeZone);
+}
+
+/**
+ * Return the UTC Date for the last instant (23:59:59.999) of a local
+ * date in a given IANA time zone. `dateStr` is YYYY-MM-DD.
+ */
+export function endOfDayUtc(dateStr: string, timeZone: string): Date {
+  const endOfDay = zonedTimeToUtc(dateStr, "23:59", timeZone);
+  // Add 59 seconds + 999 ms to cover the full minute.
+  return new Date(endOfDay.getTime() + 59_999);
+}
+
+/**
+ * Return today's YYYY-MM-DD date string in the given IANA time zone.
+ */
+export function todayInZone(timeZone: string): string {
+  return utcToZonedDateStr(new Date(), timeZone);
+}

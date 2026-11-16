@@ -748,12 +748,12 @@ router.get("/players/mine", requireAuth, async (req, res, next) => {
   }
 });
 
-// Dashboard stat strip - Active Players / Attendance / Revenue.
+// Dashboard stat strip - Active Players / Attendance / Estimated Revenue.
 router.get("/dashboard/stats", requireAuth, async (req, res, next) => {
   try {
     const organization = await storage.getOrganizationOwnedByUser((req.user as any).id);
     if (!organization) {
-      return res.json({ activePlayers: 0, attendancePercent: null, revenueThisWeek: 0, revenueCurrency: "AUD" });
+      return res.json({ activePlayers: 0, attendancePercent: null, estimatedRevenueThisWeek: 0, revenueCurrency: "AUD" });
     }
     const stats = await storage.getOrganizerDashboardStats(organization.id);
     res.json(stats);

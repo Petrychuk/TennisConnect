@@ -143,7 +143,7 @@ export interface DashboardStats {
   activePlayers: number;
   /** null = no registrations yet for a session that happened, so no percentage exists. */
   attendancePercent: number | null;
-  revenueThisWeek: number;
+  estimatedRevenueThisWeek: number;
   revenueCurrency: string;
 }
 

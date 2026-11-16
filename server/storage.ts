@@ -98,7 +98,7 @@ import { db, pool } from "./db";
 import { cascadeDeleteOrganizations as cascadeDeleteOrganizationsShared } from "./lib/organizationCascade";
 import { deleteUserRows } from "./lib/userCascade";
 import { planUserDeletion, uniqueIds, SELF_SERVICE_DELETION_MESSAGES, type DeletionResult, type UserDeletionFacts } from "@shared/userDeletion";
-import { zonedTimeToUtc } from "./lib/zonedTime";
+import { zonedTimeToUtc, startOfDayUtc, endOfDayUtc, utcToZonedDateStr, todayInZone } from "./lib/zonedTime";
 import { classifyQueueTab, type QueueTab } from "./services/discoveryQueue";
 import { expandOccurrences, makeOccurrenceId, parseOccurrenceId } from "./services/discoveryOccurrences";
 import { summariseLabelForCard } from "./services/discoveryPrice";
@@ -546,7 +546,7 @@ export interface IStorage {
  deleteSession(id: string): Promise<void>;
  getRegistrationsForSession(sessionId: string): Promise<RegistrationWithUser[]>;
  getPlayersForOrganization(organizationId: string): Promise<OrgPlayerRow[]>;
-  getOrganizerDashboardStats(organizationId: string): Promise<{ activePlayers: number; attendancePercent: number | null; revenueThisWeek: number; revenueCurrency: string }>;
+  getOrganizerDashboardStats(organizationId: string): Promise<{ activePlayers: number; attendancePercent: number | null; estimatedRevenueThisWeek: number; revenueCurrency: string }>;
   getRecentActivityForOrganization(organizationId: string, limit: number): Promise<ActivityFeedItem[]>;
  createInvitedRegistration(sessionId: string, userId: string): Promise<Registration>;
  acceptInvitedRegistration(sessionId: string, userId: string): Promise<Registration>;
@@ -3131,7 +3131,7 @@ export class DatabaseStorage implements IStorage {
           db
             .select({ userId: registrations.userId })
             .from(registrations)
-            .where(and(eq(registrations.sessionId, session.id), ne(registrations.status, "cancelled"))),
+            .where(and(eq(registrations.sessionId, session.id), countsAsPlayer())),
         ]);
         const entries = computeLeaderboard({
           matches: matchRows.map((m) => ({
@@ -3176,7 +3176,7 @@ export class DatabaseStorage implements IStorage {
     }
     return Array.from(totals.entries())
       .map(([userId, t]) => ({ userId, ...t }))
-      .sort((a, b) => b.points - a.points || b.wins - a.wins);
+      .sort((a, b) => b.points - a.points || b.wins - a.wins || (a.userId < b.userId ? -1 : a.userId > b.userId ? 1 : 0));
   }
 
   // The accumulated Series Ranking (spec §10, "Season -> Series -> All
@@ -3219,7 +3219,7 @@ export class DatabaseStorage implements IStorage {
 
     const rows = match.entries
       .map((e) => ({ userId: e.userId, matchesPlayed: e.matchesPlayed, wins: e.wins, points: e.points }))
-      .sort((a, b) => b.points - a.points || b.wins - a.wins);
+      .sort((a, b) => b.points - a.points || b.wins - a.wins || (a.userId < b.userId ? -1 : a.userId > b.userId ? 1 : 0));
     return this.joinUserNames(rows);
   }
 
@@ -3234,7 +3234,7 @@ export class DatabaseStorage implements IStorage {
     const recent = sessionLeaderboards.slice(-limit).reverse();
     return recent
       .map(({ session, entries }): PlayerFormEntry | null => {
-        const sorted = [...entries].sort((a, b) => b.points - a.points || b.wins - a.wins);
+        const sorted = [...entries].sort((a, b) => b.points - a.points || b.wins - a.wins || (a.userId < b.userId ? -1 : a.userId > b.userId ? 1 : 0));
         const idx = sorted.findIndex((e) => e.userId === userId);
         if (idx === -1) return null;
         return {
@@ -3248,6 +3248,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   // ===== REPORTS =====
+
+  /** Resolve the effective IANA timezone for an organisation.
+   *  Organisations have no timezone column; we fall back to the most
+   *  common timezone among their sessions, then to Australia/Sydney
+   *  (the platform's sole market). */
+  private async getOrgTimeZone(organizationId: string): Promise<string> {
+    const row = await db
+      .select({ tz: tennisSessions.timeZone, cnt: sql<number>`count(*)` })
+      .from(tennisSessions)
+      .where(eq(tennisSessions.organizationId, organizationId))
+      .groupBy(tennisSessions.timeZone)
+      .orderBy(sql`count(*) desc`)
+      .limit(1);
+    return row[0]?.tz ?? "Australia/Sydney";
+  }
 
   private emptyReportsData(reason: ReportsEmptyReason): ReportsData {
     return {
@@ -3290,9 +3305,10 @@ export class DatabaseStorage implements IStorage {
   // combine into a single chart point rather than overlapping.
   private computeParticipationSeries(
     sessionRows: TennisSession[],
-    regRows: { sessionId: string; checkedInAt: Date | null }[]
+    regRows: { sessionId: string; checkedInAt: Date | null }[],
+    tz: string
   ): ParticipationPoint[] {
-    const dateBySession = new Map(sessionRows.map((s) => [s.id, s.startAt.toISOString().slice(0, 10)]));
+    const dateBySession = new Map(sessionRows.map((s) => [s.id, utcToZonedDateStr(s.startAt, s.timeZone ?? tz)]));
     const bucket = new Map<string, { registered: number; attended: number }>();
     for (const r of regRows) {
       const date = dateBySession.get(r.sessionId);
@@ -3364,10 +3380,12 @@ export class DatabaseStorage implements IStorage {
       return earlier[earlier.length - 1];
     };
 
+    const tz = await this.getOrgTimeZone(organizationId);
+
     type Scope = { from: Date; to: Date; seasonIdFilter: string | null };
     const toDateRange = (startDate: string, endDate: string): { from: Date; to: Date } => ({
-      from: new Date(`${startDate}T00:00:00Z`),
-      to: new Date(`${endDate}T23:59:59Z`),
+      from: startOfDayUtc(startDate, tz),
+      to: endOfDayUtc(endDate, tz),
     });
 
     let scope: Scope | undefined;
@@ -3387,14 +3405,20 @@ export class DatabaseStorage implements IStorage {
       // comparison indicator simply doesn't show for this period.
     } else if (period === "last_30_days" || period === "last_3_months") {
       const days = period === "last_30_days" ? 30 : 90;
-      const from = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-      scope = { from, to: now, seasonIdFilter: null };
-      const prevTo = new Date(from.getTime() - 1000);
-      const prevFrom = new Date(from.getTime() - days * 24 * 60 * 60 * 1000);
-      previousScope = { from: prevFrom, to: prevTo, seasonIdFilter: null };
+      const todayStr = todayInZone(tz);
+      // Walk back `days` calendar days in the org's timezone.
+      const fromDate = new Date(startOfDayUtc(todayStr, tz).getTime() - (days - 1) * 24 * 60 * 60 * 1000);
+      const fromStr = utcToZonedDateStr(fromDate, tz);
+      scope = { from: startOfDayUtc(fromStr, tz), to: endOfDayUtc(todayStr, tz), seasonIdFilter: null };
+      // Previous comparison window of the same length.
+      const prevToDate = new Date(startOfDayUtc(fromStr, tz).getTime() - 1000);
+      const prevToStr = utcToZonedDateStr(prevToDate, tz);
+      const prevFromDate = new Date(prevToDate.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
+      const prevFromStr = utcToZonedDateStr(prevFromDate, tz);
+      previousScope = { from: startOfDayUtc(prevFromStr, tz), to: endOfDayUtc(prevToStr, tz), seasonIdFilter: null };
     } else {
       if (!customFrom || !customTo) return this.emptyReportsData("no_org_data");
-      scope = { from: new Date(`${customFrom}T00:00:00Z`), to: new Date(`${customTo}T23:59:59Z`), seasonIdFilter: null };
+      scope = { from: startOfDayUtc(customFrom, tz), to: endOfDayUtc(customTo, tz), seasonIdFilter: null };
       // A custom range has no unambiguous "previous" range - skip the
       // comparison rather than guess one.
     }
@@ -3448,7 +3472,7 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    const participation = this.computeParticipationSeries(current.sessionRows, current.regRows);
+    const participation = this.computeParticipationSeries(current.sessionRows, current.regRows, tz);
 
     let seriesPerformance: SeriesPerformanceRow[] = [];
     let sessionPerformance: SessionPerformanceRow[] = [];
@@ -4907,7 +4931,7 @@ export class DatabaseStorage implements IStorage {
   // "upcoming" stat already on this page.
   async getOrganizerDashboardStats(
     organizationId: string
-  ): Promise<{ activePlayers: number; attendancePercent: number | null; revenueThisWeek: number; revenueCurrency: string }> {
+  ): Promise<{ activePlayers: number; attendancePercent: number | null; estimatedRevenueThisWeek: number; revenueCurrency: string }> {
     const [players, attendanceRows, revenueRows] = await Promise.all([
       this.getPlayersForOrganization(organizationId),
       db
@@ -4921,7 +4945,7 @@ export class DatabaseStorage implements IStorage {
           and(
             eq(tennisSessions.organizationId, organizationId),
             sql`${tennisSessions.status} IN ('live', 'completed', 'archived')`,
-            ne(registrations.status, "cancelled")
+            countsAsPlayer()
           )
         ),
       db
@@ -4952,13 +4976,14 @@ export class DatabaseStorage implements IStorage {
     // claim nobody showed up, and the dashboard shows "—" for "can't be calculated".
     const attendancePercent = registered > 0 ? Math.round((checkedIn / registered) * 100) : null;
 
-    const revenueThisWeek = revenueRows.reduce(
+    /** Estimated (price × registered count) — no payment processing exists. */
+    const estimatedRevenueThisWeek = revenueRows.reduce(
       (sum, r) => sum + Number(r.price ?? 0) * Number(r.registeredCount ?? 0),
       0
     );
     const revenueCurrency = revenueRows[0]?.currency ?? "AUD";
 
-    return { activePlayers: players.length, attendancePercent, revenueThisWeek, revenueCurrency };
+    return { activePlayers: players.length, attendancePercent, estimatedRevenueThisWeek, revenueCurrency };
   }
 
   async getRecentActivityForOrganization(organizationId: string, limit: number): Promise<ActivityFeedItem[]> {
