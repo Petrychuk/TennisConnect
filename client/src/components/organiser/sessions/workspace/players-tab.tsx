@@ -131,11 +131,27 @@ export function PlayersTab({ session, onOpenMessages, onExport }: PlayersTabProp
     if (notYetCheckedIn.length === 0) return;
     setCheckingInAll(true);
     try {
-      await Promise.all(notYetCheckedIn.map((p) => checkInRegistration(session.id, p.id)));
-      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.id, "registrations"] });
-    } catch {
-      toast({ title: "Some players couldn't be checked in", variant: "destructive" });
+      // TC-215 / OH-AUDIT-014: use allSettled so one failure doesn't mask the
+      // rest. Always invalidate afterward (some may have succeeded).
+      const results = await Promise.allSettled(
+        notYetCheckedIn.map((p) => checkInRegistration(session.id, p.id))
+      );
+      const failed = results.filter((r) => r.status === "rejected");
+      if (failed.length === 0) {
+        toast({ title: `All ${notYetCheckedIn.length} players checked in` });
+      } else if (failed.length === notYetCheckedIn.length) {
+        toast({ title: "Check-in failed — please try again", variant: "destructive" });
+      } else {
+        const ok = notYetCheckedIn.length - failed.length;
+        toast({
+          title: `${ok} of ${notYetCheckedIn.length} players checked in`,
+          description: `${failed.length} failed — you can retry with the Check-in All button`,
+          variant: "destructive",
+        });
+      }
     } finally {
+      // Always refresh: even a partial batch changed the roster.
+      queryClient.invalidateQueries({ queryKey: ["/api/organizer/sessions", session.id, "registrations"] });
       setCheckingInAll(false);
     }
   };

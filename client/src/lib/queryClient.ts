@@ -45,13 +45,30 @@ export const getQueryFn: <T>(options: {
     return await res.json();
   };
 
+/**
+ * TC-215 / OH-AUDIT-013 — Frontend data freshness:
+ *
+ * staleTime: 30 000 ms — queries older than 30 s are refetched automatically
+ * on the next render or window focus. This replaces the previous Infinity
+ * value that caused rosters, reports and rankings to stay frozen until the
+ * organiser did a full page reload. 30 s is short enough to pick up another
+ * organiser's changes (two-device / two-tab scenarios) and long enough to
+ * avoid redundant fetches during normal single-tab navigation.
+ *
+ * refetchOnWindowFocus: true — when the organiser switches back to TennisConnect
+ * from another tab or app, stale queries are refetched so the roster reflects
+ * any join/leave/check-in that happened while they were away.
+ *
+ * Queries that are genuinely static (e.g. seasons) can override locally with
+ * a longer staleTime.
+ */
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
-      refetchOnWindowFocus: false,
-      staleTime: Infinity,
+      refetchOnWindowFocus: true,
+      staleTime: 30_000,
       retry: false,
     },
     mutations: {

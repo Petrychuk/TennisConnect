@@ -3,6 +3,7 @@ import { storage } from "../storage";
 import { requireAuth, requireAdmin } from "../requireAuth";
 import { env } from "../env";
 import { sendMessageBetween, ORGANIZER_APPROVED_SUBJECT, ORGANIZER_APPROVED_MESSAGE } from "../services/systemMessages";
+import { publicBrowseLimiter, smartSearchLimiter } from "../lib/rateLimiters";
 import { organizationProfileSchema, organizationProfileUpdateSchema } from "@shared/organizationProfile";
 import {
   EDIT_LOCKED_SESSION_STATUSES,
@@ -202,7 +203,8 @@ router.put("/organizations/:id", requireAuth, requireOrganizer, async (req, res,
 });
 
 // Public organization page (used by /organizations/:slug).
-router.get("/organizations/:slug", async (req, res, next) => {
+// TC-215 / OH-AUDIT-016: rate-limit unauthenticated browse endpoints.
+router.get("/organizations/:slug", publicBrowseLimiter, async (req, res, next) => {
   try {
     const organization = await storage.getOrganizationBySlug(req.params.slug);
     if (!organization) {
@@ -223,7 +225,7 @@ router.get("/organizations/:slug", async (req, res, next) => {
 // extra hop to find what to show. Public, no auth - same visibility
 // as the organization route above, just keyed by user slug instead of
 // organization slug since that's what the profile page already has.
-router.get("/organizations/by-user/:userSlug", async (req, res, next) => {
+router.get("/organizations/by-user/:userSlug", publicBrowseLimiter, async (req, res, next) => {
   try {
     const user = await storage.getUserBySlug(req.params.userSlug);
     if (!user) {
@@ -779,7 +781,8 @@ router.get("/dashboard/activity", requireAuth, async (req, res, next) => {
 
 // Search real platform users to invite - used by both the org-wide
 // Players page and a session's own Players tab invite dialogs.
-router.get("/players/search", requireAuth, async (req, res, next) => {
+// TC-215 / OH-AUDIT-016: rate-limit search to prevent enumeration.
+router.get("/players/search", requireAuth, smartSearchLimiter, async (req, res, next) => {
   try {
     const rawQuery = typeof req.query.q === "string" ? req.query.q.trim() : "";
     // Narrowing filters for the invite dialog. Players only unless scope=all.
@@ -1044,6 +1047,10 @@ router.put("/sessions/:id", requireAuth, requireOrganizer, requireOwnSession, as
     // the actual decision a "when's it now" notice needs to inform.
     const oldStart = new Date(before.startAt).getTime();
     const newStart = new Date(updated.startAt).getTime();
+    // TC-215 / OH-AUDIT-009: respond first so notification latency doesn't
+    // delay the organiser's save response. The update is committed.
+    res.json(updated);
+
     // (A draft has nobody registered - saving one never notifies anyone.)
     if (oldStart !== newStart && before.status !== "draft") {
       const organizer = await storage.getUser((req.user as any).id);
@@ -1058,16 +1065,16 @@ router.put("/sessions/:id", requireAuth, requireOrganizer, requireOwnSession, as
           hour12: true,
           timeZone: updated.timeZone,
         });
-        await notifyActiveRegistrants(
-          before,
-          organizer,
-          `Rescheduled: ${updated.title}`,
-          `${organizer.name} has rescheduled "${updated.title}" to ${newWhen}.`
-        );
+        bestEffort(`reschedule notices for session ${before.id}`, () =>
+          notifyActiveRegistrants(
+            before,
+            organizer,
+            `Rescheduled: ${updated.title}`,
+            `${organizer.name} has rescheduled "${updated.title}" to ${newWhen}.`
+          )
+        ).catch(() => {});
       }
     }
-
-    res.json(updated);
   } catch (error) {
     // 409 capacity_below_registered from the locked check in storage (TC-213):
     // a join that landed after the pre-check above.
@@ -1194,20 +1201,25 @@ router.post("/sessions/:id/cancel", requireAuth, requireOrganizer, requireOwnSes
         message: now.status === "live" ? "This session is live - end it from the Live screen instead" : `A ${now.status} session can't be cancelled`,
       });
     }
+    // TC-215 / OH-AUDIT-009: respond first so notification latency doesn't
+    // delay the organiser's cancel response. The cancellation is committed.
+    res.json(session);
+
     const organizer = await storage.getUser((req.user as any).id);
     // Whoever had already joined needs to hear this directly, not
     // discover it by the session quietly vanishing from their Upcoming
     // Sessions - a cancellation notice is exactly what a real organizer
     // would send by hand if this route didn't do it for them.
     if (organizer) {
-      await notifyActiveRegistrants(
-        thisSession,
-        organizer,
-        `Cancelled: ${thisSession.title}`,
-        `${organizer.name} has cancelled "${thisSession.title}". We're sorry for the inconvenience.`
-      );
+      bestEffort(`cancel notices for session ${thisSession.id}`, () =>
+        notifyActiveRegistrants(
+          thisSession,
+          organizer,
+          `Cancelled: ${thisSession.title}`,
+          `${organizer.name} has cancelled "${thisSession.title}". We're sorry for the inconvenience.`
+        )
+      ).catch(() => {});
     }
-    res.json(session);
   } catch (error) {
     next(error);
   }
@@ -1355,7 +1367,7 @@ router.get("/features", requireAuth, (_req, res) => {
 });
 
 // "Play This Week" — published sessions across all organizations, next 7 days.
-router.get("/sessions/this-week", async (_req, res, next) => {
+router.get("/sessions/this-week", publicBrowseLimiter, async (_req, res, next) => {
   try {
     const sessions = await storage.getSessionsThisWeek();
     res.json(sessions);
@@ -1968,8 +1980,11 @@ router.post("/sessions/:id/late-registrations", requireAuth, requireOrganizer, r
       overrideWaitlist: overrideRaw === true,
       reason: typeof reasonRaw === "string" ? reasonRaw : null,
     });
-    await notifyLateAddedPlayer(session.id, organizerId, userId);
     res.status(201).json({ registration: result.registration, overrodeWaitlist: result.overrodeWaitlist });
+    // Fire-and-forget (TC-215 / OH-AUDIT-009): the registration is committed
+    // and the client has its response — a slow or failed notification must
+    // never delay or fail the HTTP reply.
+    notifyLateAddedPlayer(session.id, organizerId, userId).catch(() => {});
   } catch (error) {
     handleLiveEngineError(error, res, next);
   }
@@ -2067,12 +2082,16 @@ router.post("/sessions/:id/join", requireAuth, async (req, res, next) => {
       joinerId
     );
 
+    // TC-215 / OH-AUDIT-009: respond first so a slow or failed notification
+    // never delays or fails the HTTP reply. The registration is committed.
+    res.status(201).json({ registration, waitlisted });
+
     // A repeated Join (double tap, retry) changes nothing - and tells nobody
     // again (TC-213). `changed` is only false for that case.
     const session = changed === false ? undefined : await storage.getSessionById(req.params.id);
-    // Best-effort (TC-213): the place is already taken - a failed message
-    // must not turn it into "Unable to join".
-    if (session && session.createdBy !== joinerId) await bestEffort(`join notices for session ${session.id}`, async () => {
+    // Fire-and-forget (TC-213 + TC-215): the place is already taken - a failed
+    // message must not turn it into "Unable to join", and must not delay the reply.
+    if (session && session.createdBy !== joinerId) bestEffort(`join notices for session ${session.id}`, async () => {
       const [organizer, joiner] = await Promise.all([
         storage.getUser(session.createdBy),
         storage.getUser(joinerId),
@@ -2101,9 +2120,7 @@ router.post("/sessions/:id/join", requireAuth, async (req, res, next) => {
             : `${joiner.name} just joined "${session.title}".`
         );
       }
-    });
-
-    res.status(201).json({ registration, waitlisted });
+    }).catch(() => {});
   } catch (error: any) {
     res.status(400).json({ message: error.message || "Unable to join session" });
   }
@@ -2122,9 +2139,14 @@ router.delete("/sessions/:id/join", requireAuth, async (req, res, next) => {
     }
     const { registration, changed, promotedIds } = await storage.cancelRegistration(req.params.id, leaverId);
 
+    // TC-215 / OH-AUDIT-009: respond first so a slow or failed notification
+    // never delays or fails the HTTP reply. The cancellation is committed.
+    res.json(registration);
+
     // Cancelling an already cancelled place is a no-op: no second "left" message (TC-213).
     const session = changed ? await storage.getSessionById(req.params.id) : undefined;
-    if (session && session.createdBy !== leaverId) await bestEffort(`leave notices for session ${session.id}`, async () => {
+    // Fire-and-forget (TC-213 + TC-215): must not delay or fail the reply.
+    if (session && session.createdBy !== leaverId) bestEffort(`leave notices for session ${session.id}`, async () => {
       const [organizer, leaver] = await Promise.all([
         storage.getUser(session.createdBy),
         storage.getUser(leaverId),
@@ -2149,11 +2171,9 @@ router.delete("/sessions/:id/join", requireAuth, async (req, res, next) => {
           `${leaver.name} withdrew from "${session.title}".`
         );
       }
-    });
+    }).catch(() => {});
     // The freed place went to the next player on the waiting list (committed above).
-    await notifyPromotedPlayers(req.params.id, promotedIds);
-
-    res.json(registration);
+    notifyPromotedPlayers(req.params.id, promotedIds).catch(() => {});
   } catch (error: any) {
     res.status(400).json({ message: error.message || "Unable to cancel registration" });
   }
