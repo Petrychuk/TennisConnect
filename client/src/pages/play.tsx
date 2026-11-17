@@ -7,14 +7,7 @@ import SEO from "@/components/seo";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { AppPagination } from "@/components/shared/AppPagination";
 import { Search, MapPin, X, Sparkles } from "lucide-react";
 import { PlaySessionCard } from "@/components/play/session-card";
 import { EventQuickViewModal } from "@/components/play/EventQuickViewModal";
@@ -753,49 +746,11 @@ export default function PlayPage() {
                   ))}
                 </div>
 
-                {totalPages > 1 && (
-                  <Pagination data-testid="play-page-pagination">
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious
-                          href="#"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            if (currentPage > 1) setPage(currentPage - 1);
-                          }}
-                          className={currentPage === 1 ? "pointer-events-none opacity-50" : undefined}
-                          data-testid="play-page-pagination-previous"
-                        />
-                      </PaginationItem>
-                      {Array.from({ length: totalPages }).map((_, i) => (
-                        <PaginationItem key={i}>
-                          <PaginationLink
-                            href="#"
-                            isActive={currentPage === i + 1}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              setPage(i + 1);
-                            }}
-                            data-testid={`play-page-pagination-${i + 1}`}
-                          >
-                            {i + 1}
-                          </PaginationLink>
-                        </PaginationItem>
-                      ))}
-                      <PaginationItem>
-                        <PaginationNext
-                          href="#"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            if (currentPage < totalPages) setPage(currentPage + 1);
-                          }}
-                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : undefined}
-                          data-testid="play-page-pagination-next"
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
-                )}
+                <AppPagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setPage}
+                />
               </>
             ))}
           </div>

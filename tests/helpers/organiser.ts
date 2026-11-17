@@ -54,7 +54,12 @@ export async function becomeOrganiser(page: Page, organizationName?: string): Pr
 
   // The page's own session cookie is still valid - it just needs a
   // fresh /api/auth/me for the client to see isOrganizer: true.
-  await page.reload();
+  // waitUntil: 'networkidle' ensures the SPA has finished its
+  // post-reload fetches (/api/auth/me, etc.) before we continue -
+  // on Staging the default 'load' sometimes fires while /api/auth/me
+  // is still in-flight, causing the subsequent me.isOrganizer check
+  // to race against the network (LIVE-016 mobile/tablet timeout).
+  await page.reload({ waitUntil: 'networkidle', timeout: 30_000 });
 
   const meRes = await page.request.get('/api/auth/me');
   const me = await meRes.json();

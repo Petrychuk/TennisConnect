@@ -67,8 +67,15 @@ test('ADMIN-001 New User Queue - Approve Pending Player', async ({ page }) => {
   expect(response.ok()).toBeTruthy();
 
   // ---------- Final verification ----------
+  // After the PATCH, the UI calls loadUsers() (a fresh GET /api/admin/users)
+  // and re-renders the whole table. Wait for that re-fetch to land before
+  // asserting - otherwise the check races against the network round-trip
+  // and the row still shows "Pending" (Staging latency, Nov 2026 regression).
+  await page.waitForResponse(
+    r => r.url().includes('/api/admin/users') && r.request().method() === 'GET' && r.ok()
+  );
 
-  await expect(row.getByText('Approved')).toBeVisible();
+  await expect(row.getByText('Approved')).toBeVisible({ timeout: 10_000 });
   await expect(row.getByText('Pending')).not.toBeVisible();
 
 });

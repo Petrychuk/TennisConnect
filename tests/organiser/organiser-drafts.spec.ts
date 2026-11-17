@@ -29,6 +29,10 @@ async function saveDraft(page: Page) {
   await page.getByTestId('organiser-wizard-save-draft-bottom').click();
   await expect(page.getByText(SAVED).first()).toBeVisible({ timeout: 15_000 });
   await expect(page).toHaveURL(/\/organiser\/sessions\/new\?draft=/);
+  // The toast sits at z-100 and intercepts pointer events on the Next
+  // button below it (ORG-DRAFT-001 timeout). Wait for it to auto-dismiss
+  // before returning, so the caller's next click isn't blocked.
+  await expect(page.getByText(SAVED)).toHaveCount(0, { timeout: 10_000 });
 }
 
 const draftIdOf = (page: Page) => new URL(page.url()).searchParams.get('draft')!;

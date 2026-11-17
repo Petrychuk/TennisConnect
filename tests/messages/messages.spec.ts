@@ -706,6 +706,10 @@ test('MSG-015 Toast Notifications', async ({ page }) => {
 // ========================================================================
 
 test('MSG-016 Send Message Via Players Listing (Player → Player)', async ({ page }) => {
+  // Multi-account flow: register sender, register+approve target,
+  // login as sender, navigate, send, verify target receives it.
+  // Measured 55-70 s on Staging — test.slow() gives 3x the default.
+  test.slow();
 
   // ---------- Test data ----------
 
@@ -815,7 +819,12 @@ test('MSG-017 Guest Cannot Send Message Via Players Listing', async ({ page }) =
   // Contact tab's inline sign-in card, but a guest still can't reach
   // the actual send action either way.
 
-  await expect(page.getByText(/registration required/i)).toBeVisible();
+  // Scope to the toast region: the Radix toast renders both a ToastTitle
+  // and the toast container, so an unscoped getByText can match multiple
+  // elements and Playwright's strict-mode check fails.
+  await expect(
+    page.locator(TOAST_LIST).getByText(/registration required/i)
+  ).toBeVisible();
   await expect(page.getByTestId('input-message')).toHaveCount(0);
 
 });
