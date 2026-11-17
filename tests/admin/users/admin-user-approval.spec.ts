@@ -53,14 +53,21 @@ test('ADMIN-001 New User Queue - Approve Pending Player', async ({ page }) => {
 
   // ---------- Save ----------
 
-  const [response] = await Promise.all([
-    page.waitForResponse(
-      response =>
-        /\/api\/admin\/users\/.+\/approve$/.test(response.url()) &&
-        response.request().method() === 'PATCH'
-    ),
-    page.getByTestId('user-action-confirm').click(),
-  ]);
+  // Both listeners are registered BEFORE the click: the UI re-fetches the
+  // list (GET /api/admin/users) straight after the PATCH answers, so a
+  // listener added once the PATCH has returned can miss that response.
+  const approveResponse = page.waitForResponse(
+    r =>
+      /\/api\/admin\/users\/.+\/approve$/.test(r.url()) &&
+      r.request().method() === 'PATCH'
+  );
+  const listRefetch = page.waitForResponse(
+    r =>
+      new URL(r.url()).pathname === '/api/admin/users' &&
+      r.request().method() === 'GET'
+  );
+  await page.getByTestId('user-action-confirm').click();
+  const response = await approveResponse;
 
   // ---------- Verify request ----------
 
@@ -68,14 +75,11 @@ test('ADMIN-001 New User Queue - Approve Pending Player', async ({ page }) => {
 
   // ---------- Final verification ----------
   // After the PATCH, the UI calls loadUsers() (a fresh GET /api/admin/users)
-  // and re-renders the whole table. Wait for that re-fetch to land before
-  // asserting - otherwise the check races against the network round-trip
-  // and the row still shows "Pending" (Staging latency, Nov 2026 regression).
-  await page.waitForResponse(
-    r => r.url().includes('/api/admin/users') && r.request().method() === 'GET' && r.ok()
-  );
+  // and re-renders the whole table: wait for that re-fetch, then assert the
+  // row, instead of racing the network round-trip.
+  expect((await listRefetch).ok()).toBeTruthy();
 
-  await expect(row.getByText('Approved')).toBeVisible({ timeout: 10_000 });
-  await expect(row.getByText('Pending')).not.toBeVisible();
+  await expect(row.getByText('Approved')).toBeVisible();
+  await expect(row.getByText('Pending')).toHaveCount(0);
 
 });

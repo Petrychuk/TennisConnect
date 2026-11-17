@@ -19,6 +19,9 @@ import { getSession, mySessions } from '../helpers/organiser-hub';
 test.use({ viewport: { width: 1440, height: 900 } });
 
 const SAVED = 'Session saved as draft';
+// The toast list (Radix ToastViewport). Scoping to it ignores the hidden
+// screen-reader copy of every toast that Radix renders elsewhere in <body>.
+const TOAST_LIST = '[role="region"][aria-label^="Notifications"]';
 
 function dateInput(days: number): string {
   const d = new Date(Date.now() + days * 24 * 3600 * 1000);
@@ -27,12 +30,17 @@ function dateInput(days: number): string {
 
 async function saveDraft(page: Page) {
   await page.getByTestId('organiser-wizard-save-draft-bottom').click();
-  await expect(page.getByText(SAVED).first()).toBeVisible({ timeout: 15_000 });
+  const toast = page.locator(TOAST_LIST).getByText(SAVED);
+  await expect(toast).toBeVisible({ timeout: 15_000 });
   await expect(page).toHaveURL(/\/organiser\/sessions\/new\?draft=/);
-  // The toast sits at z-100 and intercepts pointer events on the Next
-  // button below it (ORG-DRAFT-001 timeout). Wait for it to auto-dismiss
-  // before returning, so the caller's next click isn't blocked.
-  await expect(page.getByText(SAVED)).toHaveCount(0, { timeout: 10_000 });
+  // The toast appears bottom-right (z-100), right under the pointer that just
+  // clicked Save, and covers the Next button. Radix pauses a toast's
+  // auto-dismiss timer while the pointer is over it, so waiting for it to
+  // disappear by itself can hang. Close it explicitly, then confirm it is gone
+  // so the caller's next click is not intercepted.
+  const close = page.locator(`${TOAST_LIST} [toast-close]`);
+  if (await close.count()) await close.first().click();
+  await expect(toast).toHaveCount(0, { timeout: 10_000 });
 }
 
 const draftIdOf = (page: Page) => new URL(page.url()).searchParams.get('draft')!;
