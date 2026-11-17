@@ -66,7 +66,7 @@ export function AppPagination({
           {createPages().map((page, index) =>
             page === "..." ? (
               <span
-                key={index}
+                key={`dots-${index}`}
                 className="px-2 text-muted-foreground"
               >
                 ...

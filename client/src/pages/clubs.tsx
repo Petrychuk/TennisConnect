@@ -24,6 +24,7 @@ import { getServiceLabel, getSurfaceLabel, formatLocation } from "@/lib/clubVari
 import { HeroBadge } from "@/components/shared/hero-badge";
 import { HeroSearch, HeroSearchFiltersButton, HeroShortcuts, type HeroShortcut } from "@/components/shared/hero-search";
 import { HeroFiltersPanel, FilterSection } from "@/components/shared/hero-filters";
+import { AppPagination } from "@/components/shared/AppPagination";
 import { DelayedTennisLoader } from "@/components/ui/tennisLoader";
 import { HeroPhoto } from "@/components/shared/hero-photo";
 
@@ -326,6 +327,7 @@ export default function ClubsPage() {
     setFilterLocation("all");
     setFilterServices([]);
     setFilterCategory("all");
+    setCurrentPage(1);
   }
 
   useEffect(() => {
@@ -605,9 +607,11 @@ export default function ClubsPage() {
             </div>
 
             {totalPages > 1 && (
-              <div className="mt-16">
-                {/* Pagination */}
-              </div>
+              <AppPagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
             )}
           </>
 
