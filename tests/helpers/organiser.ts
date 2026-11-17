@@ -1,7 +1,10 @@
-import { Page } from '@playwright/test';
+import { Page, request as playwrightRequest, test } from '@playwright/test';
 import { registerPlayer } from './auth';
-import { grantOrganizerAccess } from './messages';
 import { TEST_USERS } from '../fixtures/test-users';
+import { expectRunOwned } from '../fixtures/run-id';
+import { baselineSessionState, forgetBaselineSession } from './e2e-auth';
+import { grantOrganizerAccess } from './messages';
+import { classifyEmail } from '../../server/seeds/e2e/identities';
 import { postTestHook } from './test-hooks';
 
 /*
@@ -30,26 +33,45 @@ export interface OrganiserFixture {
   organizationName: string;
 }
 
-// Registers a fresh player account, grants it organizer access (via a
-// separate admin browser context, same recipe as
-// helpers/messages.ts:grantOrganizerAccess), then creates its
+// Registers a fresh player account, grants it organizer access (as the
+// admin, through the real PATCH /api/admin/users/:id/grant-organizer), then creates its
 // Organization - the one-time setup every Organiser Hub page requires
 // (GET /api/organizer/organizations/me). Returns with `page` already
 // logged in as the new organiser, sitting wherever
 // registerPlayer()/the reload left it.
 export async function becomeOrganiser(page: Page, organizationName?: string): Promise<OrganiserFixture> {
   const organiser = await registerPlayer(page);
+  // Admin action on an account: it must belong to this run.
+  expectRunOwned(organiser.email);
 
-  const browser = page.context().browser();
-  if (!browser) {
-    throw new Error('becomeOrganiser(): page has no browser (persistent context?) - cannot open a separate admin session.');
+  const newMe = await (await page.request.get('/api/auth/me')).json();
+  if (!newMe?.authenticated || String(newMe.email).toLowerCase() !== organiser.email.toLowerCase()) {
+    throw new Error('becomeOrganiser(): the new player is not signed in after registration');
   }
-  const adminContext = await browser.newContext();
-  const adminPage = await adminContext.newPage();
-  try {
-    await grantOrganizerAccess(adminPage, TEST_USERS.admin.email, TEST_USERS.admin.password, organiser.email);
-  } finally {
-    await adminContext.close();
+
+  // The grant is setup here, not what these tests check, so it goes through
+  // the admin API in its own signed-in request context instead of clicking
+  // through the admin Users table. That table lists every account (900+ on
+  // Staging) and the UI path alone took 25-30 s of each Organiser Hub / Live
+  // test's 60 s (LIVE-016, ORG-DRAFT-001, Nov 2026). The UI grant itself stays
+  // covered by the admin and messages suites (grantOrganizerAccess).
+  // The admin session is the worker's cached one (same as login() uses), so
+  // this adds no POST /api/auth/login against the 10-per-15-minutes limit.
+  if (classifyEmail(TEST_USERS.admin.email).kind === 'baseline') {
+    await grantOrganiserAsAdmin(newMe.id);
+  } else {
+    // Legacy local admin (E2E_LEGACY_LOCAL_ACCOUNTS): no cached session to
+    // reuse, so keep the original admin-UI path in a separate browser context.
+    const browser = page.context().browser();
+    if (!browser) {
+      throw new Error('becomeOrganiser(): page has no browser (persistent context?) - cannot open a separate admin session.');
+    }
+    const adminContext = await browser.newContext();
+    try {
+      await grantOrganizerAccess(await adminContext.newPage(), TEST_USERS.admin.email, TEST_USERS.admin.password, organiser.email);
+    } finally {
+      await adminContext.close();
+    }
   }
 
   // The page's own session cookie is still valid - it just needs a
@@ -92,6 +114,36 @@ export async function becomeOrganiser(page: Page, organizationName?: string): Pr
     organizationId: organization.id,
     organizationName: organization.name,
   };
+}
+
+async function grantOrganiserAsAdmin(userId: string) {
+  const info = test.info();
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const admin = await playwrightRequest.newContext({
+      baseURL: info.project.use.baseURL,
+      storageState: await baselineSessionState('admin', info),
+    });
+    try {
+      const me = await (await admin.get('/api/auth/me', { failOnStatusCode: false })).json().catch(() => null);
+      const isTheAdmin = !!me?.authenticated && String(me.email).toLowerCase() === TEST_USERS.admin.email.trim().toLowerCase();
+      if (!isTheAdmin) {
+        // The server ended the cached session: log in once more and retry.
+        forgetBaselineSession('admin', info.parallelIndex);
+        continue;
+      }
+      if (!me.isAdmin) {
+        throw new Error(`becomeOrganiser(): ${TEST_USERS.admin.email} is signed in but is not an admin on this server - check the Staging seed`);
+      }
+      const grant = await admin.patch(`/api/admin/users/${userId}/grant-organizer`, { failOnStatusCode: false });
+      if (grant.status() !== 200) {
+        throw new Error(`becomeOrganiser(): PATCH grant-organizer returned ${grant.status()} - ${await grant.text()}`);
+      }
+      return;
+    } finally {
+      await admin.dispose();
+    }
+  }
+  throw new Error(`becomeOrganiser(): could not restore an admin session for ${TEST_USERS.admin.email}`);
 }
 
 async function getMyUserId(page: Page): Promise<string> {

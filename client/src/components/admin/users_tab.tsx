@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import {
@@ -165,8 +165,11 @@ export default function AdminUsersTab() {
     });
 
     if (!res.ok) return;
-    const data = await res.json();
-    setUsers(data);
+    const data: User[] = await res.json();
+    // Keep the previous object for every account that did not change, so the
+    // memoised rows skip them: one approval re-renders one row, not the whole
+    // list (900+ accounts on Staging froze the tab for ~12 s - ADMIN-001).
+    setUsers((prev) => reuseUnchangedUsers(prev, data));
 
     // Drops any selected id that's no longer in the list (deleted via
     // the single-row action, or via a bulk delete this same reload just
@@ -469,6 +472,29 @@ export default function AdminUsersTab() {
     );
   }
 
+  // One stable object for every row, so a memoised row re-renders only when
+  // its own user, its selection or the signed-in admin changes. The handlers
+  // above are recreated on each render; the ref always holds the latest ones.
+  const latestActions = useRef({
+    openApprove, openHide, openUnhide, openGrantOrganizer, openRevokeOrganizer,
+    editUser, openDelete, toggleSelected, setOrgDeleteTarget,
+  });
+  latestActions.current = {
+    openApprove, openHide, openUnhide, openGrantOrganizer, openRevokeOrganizer,
+    editUser, openDelete, toggleSelected, setOrgDeleteTarget,
+  };
+  const rowActions = useMemo<UserRowActions>(() => ({
+    approve: (u) => latestActions.current.openApprove(u),
+    hide: (u) => latestActions.current.openHide(u),
+    unhide: (u) => latestActions.current.openUnhide(u),
+    grantOrganizer: (u) => latestActions.current.openGrantOrganizer(u),
+    revokeOrganizer: (u) => latestActions.current.openRevokeOrganizer(u),
+    edit: (u) => latestActions.current.editUser(u),
+    remove: (u) => latestActions.current.openDelete(u),
+    toggleSelected: (id) => latestActions.current.toggleSelected(id),
+    deleteOrganization: (target) => latestActions.current.setOrgDeleteTarget(target),
+  }), []);
+
   return (
     <div className="bg-card rounded-2xl md:rounded-3xl border border-border p-4 md:p-6" data-testid="admin-users-tab">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
@@ -628,212 +654,13 @@ export default function AdminUsersTab() {
 
           <tbody>
             {filteredUsers.map((user) => (
-              <tr
+              <UserRow
                 key={user.id}
-                className="border-b"
-                data-testid={`user-row-${user.id}`}
-              >
-                <td className="py-4">
-                  <a
-                    href={
-                      user.role === "coach"
-                        ? `/coach/${user.slug}`
-                        : `/player/${user.slug}`
-                    }
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-medium hover:text-primary-text hover:underline"
-                    data-testid={`user-name-link-${user.id}`}
-                  >
-                    {user.name}
-                  </a>
-                  {user.isTestUser && (
-                  <Badge variant="secondary">
-                    TEST
-                  </Badge>
-                )}
-                  {user.deletionBlock && (
-                    <Badge
-                      variant="secondary"
-                      className="ml-1 bg-amber-100 text-amber-800"
-                      title={user.deletionBlock.message}
-                      data-testid={`user-protected-${user.id}`}
-                    >
-                      Protected
-                      <span className="sr-only">: {user.deletionBlock.message}</span>
-                    </Badge>
-                  )}
-                </td>
-                <td className="min-w-[200px]">{user.email}</td>
-                <td>{user.role}</td>
-                <td data-testid={`user-organizer-status-${user.id}`}>
-                  {user.isOrganizer ? (
-                    <Badge className="bg-primary/10 text-primary-text">Organiser</Badge>
-                  ) : user.organizerRequestStatus === "pending" ? (
-                    <Badge variant="secondary" className="bg-orange-100 text-orange-700">
-                      Awaiting Approval
-                    </Badge>
-                  ) : user.organizerRequestStatus === "rejected" ? (
-                    <Badge variant="secondary" className="bg-red-100 text-red-700">
-                      Rejected
-                    </Badge>
-                  ) : user.organizerRequestStatus === "revoked" ? (
-                    <Badge variant="secondary" className="bg-slate-200 text-slate-700">
-                      Revoked
-                    </Badge>
-                  ) : (
-                    <span className="text-muted-foreground text-sm">—</span>
-                  )}
-                </td>
-                <td>
-                  {user.isHidden ? (
-                    <Badge variant="secondary" className="bg-orange-100 text-orange-700">
-                      Hidden
-                    </Badge>
-                  ) : user.isApproved && !user.profileCompleted ? (
-                    <Badge
-                      className="bg-amber-100 text-amber-800"
-                      title="Approved, but the player/coach hasn't finished their profile yet - won't show in the public directory until they do"
-                    >
-                      Approved · Profile incomplete
-                    </Badge>
-                  ) : user.isApproved ? (
-                    <Badge className="bg-green-100 text-green-700">
-                      Approved
-                    </Badge>
-                  ) : (
-                    <Badge className="bg-red-100 text-red-700">
-                      Pending
-                    </Badge>
-                  )}
-                </td>
-
-                <td>
-                 <div className="flex flex-wrap justify-center gap-1">
-                    {!user.isApproved && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => openApprove(user)}
-                        title="Approve User"
-                        aria-label={`Approve User: ${user.name}`}
-                        data-testid={`approve-user-${user.id}`}
-                      >
-                        <CheckCircle className="w-5 h-5 text-green-600" />
-                      </Button>
-                    )}
-                    {user.isApproved && !user.isHidden && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => openHide(user)}
-                        title="Hide User"
-                        aria-label={`Hide User: ${user.name}`}
-                        data-testid={`hide-user-${user.id}`}
-                      >
-                        <EyeOff className="w-5 h-5 text-orange-500" />
-                      </Button>
-                    )}
-
-                    {user.isHidden && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => openUnhide(user)}
-                        title="Restore User"
-                        aria-label={`Restore User: ${user.name}`}
-                        data-testid={`unhide-user-${user.id}`}
-                      >
-                        <Eye className="w-5 h-5 text-green-600" />
-                      </Button>
-                    )}
-
-                    {!user.isOrganizer ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => openGrantOrganizer(user)}
-                        title="Grant Organiser Access"
-                        aria-label={`Grant Organiser Access: ${user.name}`}
-                        data-testid={`grant-organizer-${user.id}`}
-                      >
-                        <Trophy className="w-5 h-5 text-primary-text" />
-                      </Button>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => openRevokeOrganizer(user)}
-                        title="Revoke Organiser Access"
-                        aria-label={`Revoke Organiser Access: ${user.name}`}
-                        data-testid={`revoke-organizer-${user.id}`}
-                      >
-                        <UserMinus className="w-5 h-5 text-destructive" />
-                      </Button>
-                    )}
-
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => editUser(user)}
-                      title="Edit User"
-                      aria-label={`Edit User: ${user.name}`}
-                      data-testid={`edit-user-${user.id}`}
-                    >
-                      <Pencil className="w-5 h-5 text-blue-600" />
-                    </Button>
-
-                    {user.ownedOrganization && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => setOrgDeleteTarget({ id: user.ownedOrganization!.id, name: user.ownedOrganization!.name })}
-                        title={`Delete Organization "${user.ownedOrganization.name}"`}
-                        aria-label={`Delete organisation ${user.ownedOrganization.name}`}
-                        data-testid={`delete-organization-${user.ownedOrganization.id}`}
-                      >
-                        <Building2 className="w-5 h-5 text-destructive" aria-hidden="true" />
-                      </Button>
-                    )}
-                    
-                    {user.id !== currentUser?.id && (
-                      <Button
-                        size="icon-sm"
-                        variant="ghost"
-                        onClick={() => openDelete(user)}
-                        title="Delete User"
-                        aria-label={`Delete User: ${user.name}`}
-                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        data-testid={`delete-user-${user.id}`}
-                      >
-                        <Trash2 className="h-4 w-4" aria-hidden="true" />
-                      </Button>
-                    )} 
-                  </div>
-                </td>
-                <td>
-                  {new Date(
-                    user.createdAt
-                  ).toLocaleDateString()}
-                </td>
-                <td className="text-center">
-                  {user.id !== currentUser?.id && (
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(user.id)}
-                      onChange={() => toggleSelected(user.id)}
-                      data-testid={`select-user-${user.id}`}
-                    />
-                  )}
-                </td>
-              </tr>
+                user={user}
+                currentUserId={currentUser?.id}
+                selected={selectedIds.has(user.id)}
+                actions={rowActions}
+              />
             ))}
           </tbody>
         </table>
@@ -1080,3 +907,248 @@ function BulkDeleteResultPanel({
     </section>
   );
 }
+
+/** Returns `next`, with each account that is unchanged replaced by its previous object. */
+function reuseUnchangedUsers(prev: User[], next: User[]): User[] {
+  if (prev.length === 0) return next;
+  const before = new Map(prev.map((u) => [u.id, u]));
+  return next.map((u) => {
+    const old = before.get(u.id);
+    return old && JSON.stringify(old) === JSON.stringify(u) ? old : u;
+  });
+}
+
+interface UserRowActions {
+  approve: (user: User) => void;
+  hide: (user: User) => void;
+  unhide: (user: User) => void;
+  grantOrganizer: (user: User) => void;
+  revokeOrganizer: (user: User) => void;
+  edit: (user: User) => void;
+  remove: (user: User) => void;
+  toggleSelected: (id: string) => void;
+  deleteOrganization: (target: { id: string; name: string }) => void;
+}
+
+// One row of the Users table. Memoised: with 900+ accounts, re-rendering every
+// row on each dialog open or reload blocked the tab for seconds.
+const UserRow = memo(function UserRow({
+  user,
+  currentUserId,
+  selected,
+  actions,
+}: {
+  user: User;
+  currentUserId: string | undefined;
+  selected: boolean;
+  actions: UserRowActions;
+}) {
+  return (
+    <tr
+      key={user.id}
+      className="border-b"
+      data-testid={`user-row-${user.id}`}
+    >
+      <td className="py-4">
+        <a
+          href={
+            user.role === "coach"
+              ? `/coach/${user.slug}`
+              : `/player/${user.slug}`
+          }
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium hover:text-primary-text hover:underline"
+          data-testid={`user-name-link-${user.id}`}
+        >
+          {user.name}
+        </a>
+        {user.isTestUser && (
+        <Badge variant="secondary">
+          TEST
+        </Badge>
+      )}
+        {user.deletionBlock && (
+          <Badge
+            variant="secondary"
+            className="ml-1 bg-amber-100 text-amber-800"
+            title={user.deletionBlock.message}
+            data-testid={`user-protected-${user.id}`}
+          >
+            Protected
+            <span className="sr-only">: {user.deletionBlock.message}</span>
+          </Badge>
+        )}
+      </td>
+      <td className="min-w-[200px]">{user.email}</td>
+      <td>{user.role}</td>
+      <td data-testid={`user-organizer-status-${user.id}`}>
+        {user.isOrganizer ? (
+          <Badge className="bg-primary/10 text-primary-text">Organiser</Badge>
+        ) : user.organizerRequestStatus === "pending" ? (
+          <Badge variant="secondary" className="bg-orange-100 text-orange-700">
+            Awaiting Approval
+          </Badge>
+        ) : user.organizerRequestStatus === "rejected" ? (
+          <Badge variant="secondary" className="bg-red-100 text-red-700">
+            Rejected
+          </Badge>
+        ) : user.organizerRequestStatus === "revoked" ? (
+          <Badge variant="secondary" className="bg-slate-200 text-slate-700">
+            Revoked
+          </Badge>
+        ) : (
+          <span className="text-muted-foreground text-sm">—</span>
+        )}
+      </td>
+      <td>
+        {user.isHidden ? (
+          <Badge variant="secondary" className="bg-orange-100 text-orange-700">
+            Hidden
+          </Badge>
+        ) : user.isApproved && !user.profileCompleted ? (
+          <Badge
+            className="bg-amber-100 text-amber-800"
+            title="Approved, but the player/coach hasn't finished their profile yet - won't show in the public directory until they do"
+          >
+            Approved · Profile incomplete
+          </Badge>
+        ) : user.isApproved ? (
+          <Badge className="bg-green-100 text-green-700">
+            Approved
+          </Badge>
+        ) : (
+          <Badge className="bg-red-100 text-red-700">
+            Pending
+          </Badge>
+        )}
+      </td>
+
+      <td>
+       <div className="flex flex-wrap justify-center gap-1">
+          {!user.isApproved && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => actions.approve(user)}
+              title="Approve User"
+              aria-label={`Approve User: ${user.name}`}
+              data-testid={`approve-user-${user.id}`}
+            >
+              <CheckCircle className="w-5 h-5 text-green-600" />
+            </Button>
+          )}
+          {user.isApproved && !user.isHidden && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => actions.hide(user)}
+              title="Hide User"
+              aria-label={`Hide User: ${user.name}`}
+              data-testid={`hide-user-${user.id}`}
+            >
+              <EyeOff className="w-5 h-5 text-orange-500" />
+            </Button>
+          )}
+
+          {user.isHidden && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => actions.unhide(user)}
+              title="Restore User"
+              aria-label={`Restore User: ${user.name}`}
+              data-testid={`unhide-user-${user.id}`}
+            >
+              <Eye className="w-5 h-5 text-green-600" />
+            </Button>
+          )}
+
+          {!user.isOrganizer ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => actions.grantOrganizer(user)}
+              title="Grant Organiser Access"
+              aria-label={`Grant Organiser Access: ${user.name}`}
+              data-testid={`grant-organizer-${user.id}`}
+            >
+              <Trophy className="w-5 h-5 text-primary-text" />
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => actions.revokeOrganizer(user)}
+              title="Revoke Organiser Access"
+              aria-label={`Revoke Organiser Access: ${user.name}`}
+              data-testid={`revoke-organizer-${user.id}`}
+            >
+              <UserMinus className="w-5 h-5 text-destructive" />
+            </Button>
+          )}
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => actions.edit(user)}
+            title="Edit User"
+            aria-label={`Edit User: ${user.name}`}
+            data-testid={`edit-user-${user.id}`}
+          >
+            <Pencil className="w-5 h-5 text-blue-600" />
+          </Button>
+
+          {user.ownedOrganization && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => actions.deleteOrganization({ id: user.ownedOrganization!.id, name: user.ownedOrganization!.name })}
+              title={`Delete Organization "${user.ownedOrganization.name}"`}
+              aria-label={`Delete organisation ${user.ownedOrganization.name}`}
+              data-testid={`delete-organization-${user.ownedOrganization.id}`}
+            >
+              <Building2 className="w-5 h-5 text-destructive" aria-hidden="true" />
+            </Button>
+          )}
+          
+          {user.id !== currentUserId && (
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              onClick={() => actions.remove(user)}
+              title="Delete User"
+              aria-label={`Delete User: ${user.name}`}
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+              data-testid={`delete-user-${user.id}`}
+            >
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          )} 
+        </div>
+      </td>
+      <td>
+        {new Date(
+          user.createdAt
+        ).toLocaleDateString()}
+      </td>
+      <td className="text-center">
+        {user.id !== currentUserId && (
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={() => actions.toggleSelected(user.id)}
+            data-testid={`select-user-${user.id}`}
+          />
+        )}
+      </td>
+    </tr>
+  );
+});
