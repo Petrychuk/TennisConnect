@@ -8,6 +8,8 @@
     "build": "tsx scripts/build.ts",
     "start": "cross-env NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
+    "audit:gate": "node scripts/audit-gate.mjs",
+    "test:audit-gate": "node --test scripts/audit-gate.test.mjs",
     "db:push": "drizzle-kit push",
     "db:push:staging": "tsx scripts/db-push.ts staging",
     "db:push:prod": "tsx scripts/db-push.ts prod",
@@ -157,5 +159,13 @@
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"
+  },
+  "overrides": {
+    "drizzle-kit": {
+      "esbuild": "$esbuild"
+    },
+    "@esbuild-kit/core-utils": {
+      "esbuild": "$esbuild"
+    }
   }
 }

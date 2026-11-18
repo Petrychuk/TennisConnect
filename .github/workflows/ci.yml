@@ -65,7 +65,14 @@ jobs:
       # ones are reported but don't block, since those are common
       # enough in transitive deps that blocking on every one of them
       # would make this check something people learn to ignore.
-      - run: npm audit --audit-level=high
+      #
+      # `npm audit` has no per-advisory ignore, so the gate wraps it: same
+      # high/critical threshold, plus ONE time-boxed exception (picomatch
+      # GHSA-fc5q-39xc-vjpf, no patched release yet) that expires on
+      # 2026-12-02. It fails closed if the audit errors or returns bad JSON.
+      # See docs/SECURITY_EXCEPTIONS.md.
+      - run: npm run test:audit-gate
+      - run: npm run audit:gate
 
   secret-scan:
     name: Secret scan
