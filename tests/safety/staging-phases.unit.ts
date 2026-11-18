@@ -122,6 +122,18 @@ describe('staging phases', () => {
     const grep = new RegExp(phaseGrep(['SEC-NAME', 'PLAY-001']));
     assert.ok(grep.test("SEC-NAME: ' OR 1=1 --"));
     assert.ok(grep.test('@smoke PLAY-001 Published session'));
+    // An id with a label after the number is one whole id (PAG-001-Games-mobile), never its prefix.
+    const labelled = new RegExp(phaseGrep(['PAG-001-Games-mobile']));
+    assert.ok(labelled.test('PAG-001-Games-mobile Games pagination on a phone'));
+    assert.ok(!labelled.test('PAG-001-Games-mobile2 Something'));
+    assert.ok(!new RegExp(phaseGrep(['PAG-001'])).test('PAG-001-Games-mobile Games pagination'));
+    assert.equal(testIdOf('PAG-001-Games-mobile Games pagination on a phone'), 'PAG-001-Games-mobile');
+    assert.equal(testIdOf('PAG-001-Players Players pagination renders unique ascending page numbers'), 'PAG-001-Players');
+    // Existing id shapes are unchanged.
+    assert.equal(testIdOf('@smoke PLAY-001 Published session'), 'PLAY-001');
+    assert.equal(testIdOf('ORG-ONB-012a Something'), 'ORG-ONB-012a');
+    assert.equal(testIdOf("SEC-NAME: ' OR 1=1 --"), 'SEC-NAME');
+    assert.equal(testIdOf('PROFILE-RD-001 Redesign'), 'PROFILE-RD-001');
     assert.ok(!grep.test('PLAY-0011 Something'));
     assert.ok(!grep.test('SEC-NAMES: x'));
   });
