@@ -63,6 +63,14 @@ export const STAGING_PHASES: Readonly<Record<StagingPhase, readonly PhaseEntry[]
       file: 'tests/public/coaches-directory.spec.ts',
       ids: ['PUBLIC-COACH-001', 'PUBLIC-COACH-002', 'PUBLIC-COACH-003', 'PUBLIC-COACH-004', 'PUBLIC-COACH-005'],
     },
+    // Pagination (TC-217, 17 Nov 2026): guest-only, no login, nothing written. Players / Coaches /
+    // Clubs open the public page and click the client-side pager (GET only); Games answers its one
+    // list request with synthetic sessions in the browser (page.route), so nothing is read from or
+    // written to the environment. Not in the Production allowlist (environment-guard.ts).
+    {
+      file: 'tests/public/pagination.spec.ts',
+      ids: ['PAG-001-Players', 'PAG-001-Coaches', 'PAG-001-Clubs', 'PAG-001-Games-desktop', 'PAG-001-Games-mobile'],
+    },
     // Production-safe smoke expansion (29 Oct 2026): guest-only and GET-only,
     // enforced by the prod-safe fixture on every environment. PROD-SAFE-001..005
     // stay in the read-only set (staging-readonly.ts).
@@ -228,9 +236,13 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** First test id in a title (after optional tags), e.g. "@smoke PLAY-001 ..." -> PLAY-001, "SEC-NAME: x" -> SEC-NAME. */
+/**
+ * First test id in a title (after optional tags), e.g. "@smoke PLAY-001 ..." -> PLAY-001,
+ * "SEC-NAME: x" -> SEC-NAME. A number may be followed by a label, for one test per variant
+ * of the same check: "PAG-001-Games-mobile ..." -> PAG-001-Games-mobile.
+ */
 export function testIdOf(title: string): string | undefined {
-  return title.match(/(?:^|\s)([A-Z]+(?:-[A-Z]+)*-(?:\d+[a-z]?|NAME|LOGIN|FORGOT))(?=[\s:]|$)/)?.[1];
+  return title.match(/(?:^|\s)([A-Z]+(?:-[A-Z]+)*-(?:\d+[a-z]?(?:-[A-Za-z]+)*|NAME|LOGIN|FORGOT))(?=[\s:]|$)/)?.[1];
 }
 
 /** Whole-id match, also before ":" (payload tests are titled "SEC-NAME: <payload>"). */
