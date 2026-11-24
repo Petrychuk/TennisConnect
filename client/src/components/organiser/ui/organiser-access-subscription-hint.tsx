@@ -9,7 +9,7 @@
 // the person requesting access. It never grants access, never starts a
 // checkout session, and never touches Stripe directly.
 
-import { useOrganiserBilling, type BillingStatusResponse } from "@/hooks/use-organiser-billing";
+import { useOrganiserBilling } from "@/hooks/use-organiser-billing";
 import { PricingTerms } from "./organiser-subscription";
 import { resolveSubscriptionView, SUBSCRIPTION_COPY } from "@/lib/organiserOnboarding";
 
