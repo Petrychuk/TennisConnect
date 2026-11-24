@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 import { useAuth } from "@/lib/auth-context";
 import { useOrganizerStatus } from "@/hooks/use-organizer-status";
+import { AccessSubscriptionHint } from "./organiser-access-subscription-hint";
 import {
   ONBOARDING_COPY as COPY,
   canRequestAccess,
@@ -166,6 +167,8 @@ export function OrganiserAccessModal({ onDismiss }: Props) {
                 {error}
               </p>
             )}
+
+            <AccessSubscriptionHint />
 
             <div className="mt-6 flex flex-col gap-3">
               {view.kind === "error" ? (

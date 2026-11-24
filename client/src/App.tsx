@@ -30,6 +30,7 @@ const ClubDetailPage = lazy(() => import("@/pages/club-detail"));
 const PartnersPage = lazy(() => import("@/pages/partners"));
 const TournamentsPage = lazy(() => import("@/pages/tournaments"));
 const PlayPage = lazy(() => import("@/pages/play"));
+const PlaySessionLivePage = lazy(() => import("@/pages/play-session-live"));
 const PlaySessionDetailsPage = lazy(() => import("@/pages/play-session-details"));
 const MessagesPage = lazy(() => import("@/pages/messages"));
 const CompleteProfilePage = lazy(() => import("@/pages/complete-profile"));
@@ -109,6 +110,7 @@ function Router() {
         <Route path="/500" component={Error500Page} />
         <Route path="/tournaments" component={TournamentsPage} />
         <Route path="/play" component={PlayPage} />
+        <Route path="/play/:id/live" component={PlaySessionLivePage} />
         <Route path="/play/:id" component={PlaySessionDetailsPage} />
         <Route path="/articles" component={ArticlesPage} />
         <Route path="/articles/:slug" component={ArticleDetailPage} />

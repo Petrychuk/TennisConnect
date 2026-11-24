@@ -189,7 +189,7 @@ test("TC_LIVE_ENABLED unset or false: every Live control route is a 404 - for th
     }
   }
   assert.deepEqual(calls, [], "nothing reached storage");
-  assert.deepEqual((await call("alice", "GET", "/features")).body, { live: "off" });
+  assert.deepEqual((await call("alice", "GET", "/features")).body, { live: "off", subscription: false });
 });
 
 test("kill switch keeps history: rounds and leaderboard stay readable, a live session can still be ended", async () => {
@@ -203,7 +203,7 @@ test("kill switch keeps history: rounds and leaderboard stay readable, a live se
 
 test("TC_LIVE_ENABLED=internal: only internal test sessions get Live", async () => {
   process.env.TC_LIVE_ENABLED = "internal";
-  assert.deepEqual((await call("alice", "GET", "/features")).body, { live: "internal" });
+  assert.deepEqual((await call("alice", "GET", "/features")).body, { live: "internal", subscription: false });
   assert.equal((await call("alice", "POST", "/sessions/live-a/matches/m-a/start")).status, 404, "a real organiser's session");
   assert.equal((await call("alice", "POST", "/sessions/pub-a/go-live")).status, 404);
   assert.equal((await call("ivy", "POST", "/sessions/pub-i/go-live")).status, 400, "internal session reaches the rules (not enough players)");
@@ -242,6 +242,12 @@ test("scores: whole games 0-99, not 0-0; engine conflicts come back as 409 with 
     assert.equal(res.status, 400, `${a}-${b}`);
   }
   assert.equal((await call("alice", "POST", "/sessions/live-a/matches/m-a/score", { teamAGames: 5, teamBGames: 5 })).status, 200, "a draw is allowed");
+  // TC-189 (24 Nov 2026): the organiser can correct or decide a score as a 2:2 draw - saved as it is, no winner forced.
+  const draw = await call("alice", "POST", "/sessions/live-a/matches/m-a/score", { teamAGames: 2, teamBGames: 2 });
+  assert.equal(draw.status, 200);
+  assert.equal(draw.body.teamAGames, 2);
+  assert.equal(draw.body.teamBGames, 2);
+  assert.equal(draw.body.status, "confirmed");
   const gen = await call("alice", "POST", "/sessions/live-a/rounds/generate");
   assert.equal(gen.status, 409);
   assert.equal(gen.body.code, "ROUND_IN_PROGRESS");

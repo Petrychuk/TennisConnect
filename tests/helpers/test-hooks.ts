@@ -28,6 +28,7 @@ export const TEST_RUN_ID_HEADER = 'X-E2E-Run-Id';
 
 export type TestHookName =
   | 'issue-verification-token'
+  | 'organiser-subscription'
   | 'seed-players'
   | 'seed-session'
   | 'preflight'

@@ -13,6 +13,7 @@ import { OrganiserSidebarNav } from "./organiser-sidebar";
 import { OrganiserMobileNav } from "./organiser-mobile-nav";
 import { OrganiserBarLogo } from "./organiser-bar-logo";
 import { OrganiserAccessModal } from "./organiser-access-modal";
+import { OrganiserSubscribeModal, useSubscriptionGate } from "./organiser-subscription";
 import { NotificationBell } from "./notification-bell";
 import type { OrganiserUser } from "@/lib/organiser-types";
 
@@ -85,6 +86,28 @@ export function OrganiserAccessGate({ children }: { children: ReactNode }) {
     );
   }
 
+  return <SubscriptionGate>{children}</SubscriptionGate>;
+}
+
+/*
+  Paid subscription (ORGANISER_SUBSCRIPTION_ENABLED, default off): an approved
+  organiser who has not subscribed sees the subscribe modal instead of the Hub.
+  With the flag off, for admins and for grandfathered organisers the Hub renders
+  exactly as before. The API enforces the same rule (402), whatever this shows.
+*/
+function SubscriptionGate({ children }: { children: ReactNode }) {
+  const [, setLocation] = useLocation();
+  const { loading, mustSubscribe, billing, returning } = useSubscriptionGate();
+
+  if (loading) return <DelayedTennisLoader text="Loading Organiser Hub…" />;
+  if (mustSubscribe && billing) {
+    return (
+      <div className="min-h-screen bg-muted/40" data-testid="organiser-subscription-required">
+        <SEO title="Organiser Hub | TennisConnect" description="Start your Organiser Hub subscription." noIndex />
+        <OrganiserSubscribeModal billing={billing} returningFromCheckout={returning} onDismiss={(profilePath) => setLocation(profilePath)} />
+      </div>
+    );
+  }
   return <>{children}</>;
 }
 

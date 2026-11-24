@@ -327,7 +327,7 @@ export default function OrganiserSessionWorkspacePage() {
       : bucket === "completed" || bucket === "archived"
       ? { label: "View Players", onClick: goPlayers, icon: undefined }
       : liveAvailable && usesLiveRounds && bucket !== "live" && isReadyToStart(session)
-      ? { label: "Start Live", onClick: goLive, icon: Play } // Ready to Start: the organiser starts it
+      ? { label: "Open Check-in", onClick: goLive, icon: Play } // Ready to Start: check players in; Live starts by itself at the start time
       : liveAvailable && usesLiveRounds
       ? { label: "Enter Live Session", onClick: goLive, icon: Play } // live, registration-open, upcoming
       : { label: "Manage Players", onClick: goPlayers, icon: undefined };

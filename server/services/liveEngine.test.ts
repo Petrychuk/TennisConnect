@@ -192,6 +192,23 @@ test("computeLeaderboard: a tied score counts as a draw for both sides, not a wi
   assert.equal(byId.p2.draws, 1);
 });
 
+test("computeLeaderboard: a 2:2 draw keeps the existing points rule (12 per draw + 1 per game won), same for both sides", () => {
+  const [a, b] = computeLeaderboard({
+    players: players(2),
+    restCounts: {},
+    matches: [{ teamAIds: ["p1"], teamBIds: ["p2"], teamAGames: 2, teamBGames: 2, status: "confirmed" }],
+  });
+  assert.equal(a.points, 12 + 2);
+  assert.equal(b.points, 12 + 2);
+  // A reported (unconfirmed) or disputed 2:2 never counts.
+  const pending = computeLeaderboard({
+    players: players(2),
+    restCounts: {},
+    matches: [{ teamAIds: ["p1"], teamBIds: ["p2"], teamAGames: 2, teamBGames: 2, status: "disputed" }],
+  });
+  assert.ok(pending.every((r) => r.draws === 0 && r.points === 0));
+});
+
 // ---- TC Live v1 (30 Oct 2026) ----
 
 /** Plays `rounds` rounds through planRound, feeding history back in like storage does. */

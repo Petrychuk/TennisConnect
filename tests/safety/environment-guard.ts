@@ -483,6 +483,8 @@ export const PROD_SAFE_ALLOWLIST: readonly ProdSafeEntry[] = [
       'PROD-SAFE-032',
       // 29 Oct 2026: guest API contract for coach contact details (security fix).
       'PROD-SAFE-033',
+      // 17 Nov 2026: guest API contract for Organiser Hub billing (read-only, flag-agnostic).
+      'PROD-SAFE-034',
     ],
   },
 ];

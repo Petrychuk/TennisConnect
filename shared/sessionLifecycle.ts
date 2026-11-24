@@ -3,12 +3,16 @@
   the Organiser Hub (TC Live v1, TC-189). Pure - unit-tested in
   ./sessionLifecycle.test.ts.
 
-  Stored status (tennis_sessions.status) is changed only by people:
+  Stored status (tennis_sessions.status):
     draft / pending_review -> published (publish), published -> live
-    (organiser starts TC Live), live -> completed (organiser finishes),
-    completed -> archived (organiser archives), any -> cancelled.
-  The clock never changes it: a session doesn't become live because its
-  start time came, and stays live past its scheduled end until finished.
+    (AUTOMATICALLY at the scheduled start - PO decision 10 Nov 2026, see
+    isDueToGoLive; the server makes the change once, conditionally),
+    live -> completed (organiser finishes, never the clock),
+    completed -> archived (organiser archives), cancelled before it runs.
+  The start time is the only moment the clock acts, and only for sessions
+  that run in TC Live where Live is enabled. A session stays live past its
+  scheduled end until the organiser finishes it. An earlier registration
+  deadline closes registration but never starts Live.
 
   Four separate questions, answered from status + times:
     - public availability:  isPubliclyActive   (listed on Play, the
@@ -18,6 +22,8 @@
     - Live readiness:        isReadyToStart     (organiser's "Ready to Start")
     - finished:              status completed / archived
 */
+
+import { sessionCategoryOf } from "./sessionCategories";
 
 export interface LifecycleSession {
   status: string;
@@ -80,12 +86,28 @@ export function waitlistPromotionOpen(s: LifecycleSession, now = new Date()): bo
 }
 
 /**
- * The organiser's "Ready to Start": a published session from 2 hours before
- * its start - and still after the start time passes (they may start late).
- * Nothing changes in the database; Start Live is the organiser's action.
+ * The organiser's "Ready to Start" (derived, never stored): a published
+ * session from 2 hours before its start. It turns live by itself at the
+ * start time (isDueToGoLive); if Live is switched off in this environment it
+ * stays published and keeps showing Ready to Start after the start time.
  */
 export function isReadyToStart(s: LifecycleSession, now = new Date()): boolean {
   if (s.status !== "published") return false;
   const start = ms(s.startAt);
   return start != null && start - READY_TO_START_LEAD_MS <= now.getTime();
+}
+
+/**
+ * Due to turn live by itself (PO decision 10 Nov 2026): published, its start
+ * time has come, and its format runs in TC Live (not Coaching & Fitness).
+ * Readiness of players is not required - Live may start with nobody checked
+ * in yet and no round; the organiser checks people in and draws rounds.
+ * Whether Live is enabled for the session (TC_LIVE_ENABLED) is the server's
+ * part (server/lib/liveAutoStart.ts), as is "only once": the stored change
+ * is conditional on the status still being published.
+ */
+export function isDueToGoLive(s: LifecycleSession & { type?: string | null }, now = new Date()): boolean {
+  if (s.status !== "published") return false;
+  if (!sessionCategoryOf(s.type).usesLiveRounds) return false;
+  return hasStartTimePassed(s, now);
 }

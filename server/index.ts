@@ -239,6 +239,12 @@ app.use((req, res, next) => {
 
   console.log("✅ API routes registered");
 
+  // TC Live: published sessions turn live by themselves at their scheduled
+  // start (TC-189). Does nothing while TC_LIVE_ENABLED is off.
+  const { startLiveAutoStartJob } = await import("./lib/liveAutoStart");
+  const { storage } = await import("./storage");
+  startLiveAutoStartJob(storage);
+
   // Any /api/* path no router handled is a real 404 in JSON. Without this
   // it fell through to the SPA catch-all (static.ts / vite.ts) and came
   // back as 200 + index.html, so a client calling a wrong API path got

@@ -71,3 +71,73 @@ export function redoRoundProblem(round: { status: string } | null | undefined, m
   }
   return null;
 }
+
+/*
+  Player score entry (TC-189, PO decision 10 Nov 2026 - phase 1).
+
+  A player on court reports their match's score from their phone; the other
+  side confirms it by reporting the same score. Statuses (matches.status is
+  text, so no migration): pending / playing -> "reported" (one side said it)
+  -> "confirmed" (the other side agreed) or "disputed" (the other side said
+  something else; the organiser decides). Only confirmed counts, and only
+  confirmed or not-played closes a round (matchClosed). The organiser can
+  enter or correct any score at any time (the existing organiser route),
+  which confirms it.
+*/
+
+export type PlayerScoreOutcome =
+  | { kind: "reported" } // first report, or the same side updating its own report
+  | { kind: "confirmed" } // the other side reported the same score
+  | { kind: "disputed" }; // the other side reported a different score
+
+export interface PlayerScoreMatch {
+  status: string;
+  teamAIds: string[];
+  teamBIds: string[];
+  teamAGames: number | null;
+  teamBGames: number | null;
+  reportedBy: string | null;
+}
+
+export function sideOf(match: Pick<PlayerScoreMatch, "teamAIds" | "teamBIds">, userId: string | null | undefined): "A" | "B" | null {
+  if (!userId) return null;
+  if (match.teamAIds.includes(userId)) return "A";
+  if (match.teamBIds.includes(userId)) return "B";
+  return null;
+}
+
+/**
+ * What a player's score report does, or why it can't be taken (with the HTTP
+ * status the server answers). Score validity itself is scoreProblem.
+ */
+export function playerScoreDecision(
+  sessionStatus: string,
+  match: PlayerScoreMatch,
+  userId: string,
+  teamAGames: number,
+  teamBGames: number,
+): { ok: true; outcome: PlayerScoreOutcome } | { ok: false; status: number; message: string } {
+  if (sessionStatus !== "live") return { ok: false, status: 409, message: "Scores can only be entered while the session is live" };
+  const side = sideOf(match, userId);
+  if (!side) return { ok: false, status: 403, message: "Only players in this match can enter its score" };
+  if (match.status === "confirmed") return { ok: false, status: 409, message: "This score is already confirmed - ask the organiser to correct it" };
+  if (match.status === "abandoned") return { ok: false, status: 409, message: "This match was marked not played - ask the organiser" };
+  if (match.status === "disputed") return { ok: false, status: 409, message: "The two sides entered different scores - the organiser will decide" };
+  if (match.status !== "reported") return { ok: true, outcome: { kind: "reported" } };
+
+  const reporterSide = sideOf(match, match.reportedBy);
+  // Same side again (or the reporter left the match): their report is replaced.
+  if (reporterSide === null || reporterSide === side) return { ok: true, outcome: { kind: "reported" } };
+  const same = match.teamAGames === teamAGames && match.teamBGames === teamBGames;
+  return { ok: true, outcome: { kind: same ? "confirmed" : "disputed" } };
+}
+
+/** The player's own next step on their match, for the player screen. */
+export function playerScoreAction(match: PlayerScoreMatch, userId: string): "enter" | "confirm" | "waiting" | "disputed" | "final" | "none" {
+  const side = sideOf(match, userId);
+  if (!side) return "none";
+  if (match.status === "confirmed" || match.status === "abandoned") return "final";
+  if (match.status === "disputed") return "disputed";
+  if (match.status === "reported") return sideOf(match, match.reportedBy) === side ? "waiting" : "confirm";
+  return "enter";
+}

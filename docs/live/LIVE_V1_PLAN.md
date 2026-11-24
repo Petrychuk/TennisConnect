@@ -2,18 +2,30 @@
 
 10 Nov 2026, branch `feature/organiser-hub-v2`. Builds on the 30 Oct audit (`LIVE_FUNCTIONAL_AUDIT.md`): the engine, Live routes, flag, ownership checks and the Live screen already exist and are reused. No parallel system, no new database statuses.
 
+> **Updated 24 Nov 2026 to the PO-approved decisions of 10 Nov 2026 (Jira TC-189), which override earlier text in this file:**
+> 1. Live starts **automatically** at the scheduled start time - no Start Live click needed (`isDueToGoLive`, `server/lib/liveAutoStart.ts`).
+> 2. **Players enter scores on mobile** in v1 (`/play/:id/live`, `server/routes/livePlayer.ts`), with validation, permissions and organiser oversight.
+> 3. **Finish Session stays manual**; Live continues past the scheduled end until the organiser finishes.
+> 4. **Ready to Start is derived**, never stored.
+> 5. Pairing **minimises repeated partners** (then opponents) with the existing scoring rules (`liveEngine.ts planRound`, `computeLeaderboard`).
+
 ## One lifecycle (`shared/sessionLifecycle.ts`)
 
-Stored status changes only by people: draft → published (publish) → live (organiser starts TC Live) → completed (organiser finishes) → archived (organiser archives, never while live); cancelled only before it runs (draft, pending review, published). **The clock never changes it.**
+Stored status: draft → published (publish) → live (**automatically at the scheduled start**, where TC Live is enabled and the format runs in Live; the organiser may also start early) → completed (organiser finishes - never the clock) → archived (organiser archives, never while live); cancelled only before it runs (draft, pending review, published). The start time is the only moment the clock acts; an earlier registration deadline closes registration but never starts Live.
 
 | Question | Rule | Used by |
 |---|---|---|
 | Publicly listed? (`isPubliclyActive`) | published, start time not reached, registration not closed | Play list, organisation page, this week, recommendations (SQL: `publiclyActiveConditions` in `server/storage.ts`) |
 | Can a player join / cancel? (`registrationBlockReason`) | no once registration closed, the start time came, live, finished or cancelled | `POST/DELETE /sessions/:id/join`, public page, Quick View |
-| Organiser's "Ready to Start" (`isReadyToStart`) | published, from 2 h before the start and any time after (late start) | Sessions list, grid, Workspace header, Home upcoming; primary action becomes **Start Live** |
+| Organiser's "Ready to Start" (`isReadyToStart`, derived) | published, from 2 h before the start (after it only while TC Live is off here) | Sessions list, grid, Workspace header, Home upcoming; primary action **Open Check-in** |
+| Turns live by itself (`isDueToGoLive`) | published, start time reached, format runs in TC Live; Live enabled for the session (`TC_LIVE_ENABLED`) | Minute sweep + on organiser/player read (`server/lib/liveAutoStart.ts`); one conditional UPDATE, exactly once |
 | What players see (`computePublicStatus`) | open / almost full / upcoming → listed; full, waitlist, registration window over → "Registration Closed" (only the waiting list stays, when on); start time reached, live, completed, archived → "Archived", read-only | Play cards, `/play/:id` |
 
 Removed: the time-based archiving (on opening the organiser's list, and the 10-minute job). It ended Live sessions that ran late and hid completed results. Completed and archived sessions can't be edited (409); duplicate to run again.
+
+## Player score entry (v1)
+
+Statuses on `matches.status` (text - no migration): pending / playing → **reported** (one side entered it, `reportedBy`) → **confirmed** (the other side entered the same score, `confirmedBy`) or **disputed** (a different score; the first stays, the organiser decides). Only confirmed counts; reported / disputed keep the round open. The organiser can confirm, change or decide any score at any time with the existing score route. Rules: `shared/liveRules.ts` `playerScoreDecision`, `playerScoreAction`. Server: `GET /api/live/sessions/:id/me`, `POST /api/live/sessions/:id/matches/:matchId/report` (Live flag, registered players of the session only, current round only, match + round row locks). Audit: `[TC LIVE] … reported/confirmed/disputed by player …` log lines.
 
 ## Phases
 
@@ -42,10 +54,10 @@ Removed: the time-based archiving (on opening the organiser's list, and the 10-m
 
 | Concept | Where it lives | Changes by |
 |---|---|---|
-| Stored status (draft / pending_review / published / live / completed / archived / cancelled) | `sessions.status` | People only: publish, Start Live, End Session, Archive, Cancel |
+| Stored status (draft / pending_review / published / live / completed / archived / cancelled) | `sessions.status` | Publish, **automatic Live at the start time**, End Session, Archive, Cancel |
 | Public availability (listed, joinable) | `shared/sessionLifecycle.ts` `isPubliclyActive`, `registrationBlockReason` | Derived: status + registration window + start time |
 | What players see (Open … Registration Closed, Archived) | `server/storage.ts` `computePublicStatus`, `client/src/lib/play-status.ts` | Derived |
-| Organiser's Ready to Start / Start Live | `isReadyToStart` | Derived: published, 2 h before the start or later |
+| Organiser's Ready to Start | `isReadyToStart` | Derived: published, from 2 h before the start |
 | Live state (rounds, matches, player live status) | `session_rounds`, `matches`, `registrations.live_status` | Organiser on the Live screen, only while live |
 | Final results | `resultsAreFinal` (completed, archived); leaderboard computed from confirmed matches | Read-only after End Session |
 
@@ -65,6 +77,8 @@ Then on Staging (`TC_LIVE_ENABLED=true`, see `LIVE_RUNBOOK.md`): LIVE-001…020 
 
 ## Remaining risks
 
+- Automatic start and player score entry (24 Nov 2026) are unit-tested only; LIVE-017 was rewritten for automatic start; no Playwright spec covers player score entry yet.
+- A disputed match keeps only the first report's score in the row; the second is in the server log.
 - Nothing in TC-189 has run against a server yet: Playwright (LIVE-017…020, PLAY-012/013), the route tests and the type check / build are written but unexecuted here.
 - Row locking for Not played and Redo round (same pattern as score entry) is reviewed, not executed against Postgres; LIVE-014 covers the older concurrency paths only.
 - Redo round deletes the drawn round and its matches (only while all are pending - no score is ever lost). The log line `[TC LIVE] … round N redone` is the record.

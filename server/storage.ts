@@ -94,6 +94,7 @@ import {
 } from "@shared/schema";
 import { readSessionPolicies } from "@shared/sessionPolicies";
 import { isFinished as sessionIsFinished, hasStartTimePassed } from "@shared/sessionLifecycle";
+import { SESSION_CATEGORIES } from "@shared/sessionCategories";
 import { db, pool } from "./db";
 import { cascadeDeleteOrganizations as cascadeDeleteOrganizationsShared } from "./lib/organizationCascade";
 import { deleteUserRows } from "./lib/userCascade";
@@ -152,7 +153,7 @@ import { supabaseAdmin } from "./supabaseAdmin";
 import { planRound, computeLeaderboard, type PastMatch } from "./services/liveEngine";
 import { LiveRuleError } from "./lib/liveErrors";
 import { isUniqueViolation } from "./lib/pgErrors";
-import { liveModeOf, matchClosed, notPlayedProblem, redoRoundProblem, roundProblem } from "@shared/liveRules";
+import { liveModeOf, matchClosed, notPlayedProblem, playerScoreDecision, redoRoundProblem, roundProblem, type PlayerScoreOutcome } from "@shared/liveRules";
 import { ARCHIVE_BLOCKED_SESSION_STATUSES, CANCELLABLE_SESSION_STATUSES, REVIEWABLE_SESSION_STATUS } from "@shared/sessionActions";
 import { PUBLISHABLE_STATUSES } from "@shared/sessionDraft";
 import {
@@ -571,6 +572,8 @@ export interface IStorage {
   checkInRegistration(registrationId: string): Promise<Registration>;
   setRegistrationLiveStatus(registrationId: string, liveStatus: "unavailable" | "withdrawn" | null): Promise<Registration>;
   goLiveSession(sessionId: string): Promise<TennisSession>;
+  autoStartDueSessions(opts: { now?: Date; internalOnly: boolean; sessionId?: string }): Promise<string[]>;
+  reportMatchScoreByPlayer(matchId: string, userId: string, teamAGames: number, teamBGames: number): Promise<{ match: Match; outcome: PlayerScoreOutcome["kind"] }>;
   finishSession(sessionId: string): Promise<TennisSession>;
   generateNextRound(sessionId: string, options?: { redo?: boolean }): Promise<{ round: SessionRound; matches: MatchWithPlayers[] }>;
   getCurrentRound(sessionId: string): Promise<{ round: SessionRound; matches: MatchWithPlayers[] } | undefined>;
@@ -5336,6 +5339,33 @@ export class DatabaseStorage implements IStorage {
     throw new LiveRuleError(`Can't go live from status "${current.status}"`, 409);
   }
 
+  // published -> live AUTOMATICALLY at the scheduled start (TC-189, PO
+  // decision 10 Nov 2026; rule: shared/sessionLifecycle.ts isDueToGoLive).
+  // One conditional UPDATE: only rows still "published" whose start time has
+  // come, in a format that runs in TC Live, that aren't a container of
+  // divisions. Exactly once by construction - a second call, a second
+  // server instance or a concurrent manual start finds nothing to change.
+  // internalOnly = TC_LIVE_ENABLED=internal (only internal test sessions).
+  // Returns the ids that turned live in this call.
+  async autoStartDueSessions(opts: { now?: Date; internalOnly: boolean; sessionId?: string }): Promise<string[]> {
+    const now = opts.now ?? new Date();
+    const nonLiveFormats = SESSION_CATEGORIES.filter((c) => !c.usesLiveRounds).flatMap((c) => [...c.formats]);
+    const conditions = [
+      eq(tennisSessions.status, "published"),
+      lte(tennisSessions.startAt, now),
+      notInArray(tennisSessions.type, nonLiveFormats),
+      sql`not exists (select 1 from tennis_sessions child where child.parent_session_id = ${tennisSessions.id})`,
+    ];
+    if (opts.internalOnly) conditions.push(eq(tennisSessions.isInternalTest, true));
+    if (opts.sessionId) conditions.push(eq(tennisSessions.id, opts.sessionId));
+    const rows = await db
+      .update(tennisSessions)
+      .set({ status: "live", updatedAt: now })
+      .where(and(...conditions))
+      .returning({ id: tennisSessions.id });
+    return rows.map((r) => r.id);
+  }
+
   // live -> completed. Leaderboard is computed on demand from confirmed
   // matches (getSessionLeaderboard), not snapshotted here - see TC Live
   // spec §6 for why writing into tournamentHistory is a separate, later step.
@@ -5754,6 +5784,58 @@ export class DatabaseStorage implements IStorage {
     );
 
     return match;
+  }
+
+  // A player on court reports their match's score (TC-189, PO 10 Nov 2026).
+  // Rules: shared/liveRules.ts playerScoreDecision - first report ->
+  // "reported", the other side's same score -> "confirmed" (counts, may close
+  // the round), a different one -> "disputed" (the organiser decides with the
+  // organiser score route). The match row and its round are locked, so two
+  // players saving at once are applied one after the other, never both
+  // against the same stale state.
+  async reportMatchScoreByPlayer(
+    matchId: string,
+    userId: string,
+    teamAGames: number,
+    teamBGames: number,
+  ): Promise<{ match: Match; outcome: PlayerScoreOutcome["kind"] }> {
+    const result = await db.transaction(async (tx) => {
+      const [first] = await tx.select().from(matches).where(eq(matches.id, matchId));
+      if (!first) throw new LiveRuleError("Match not found", 404);
+      await tx.select({ id: sessionRounds.id }).from(sessionRounds).where(eq(sessionRounds.id, first.roundId)).for("update");
+      const [existing] = await tx.select().from(matches).where(eq(matches.id, matchId)).for("update");
+      const [session] = await tx.select({ status: tennisSessions.status }).from(tennisSessions).where(eq(tennisSessions.id, existing.sessionId));
+
+      const decision = playerScoreDecision(session?.status ?? "", existing, userId, teamAGames, teamBGames);
+      if (!decision.ok) throw new LiveRuleError(decision.message, decision.status as 403 | 409);
+      const outcome = decision.outcome.kind;
+      const now = new Date();
+
+      const patch =
+        outcome === "confirmed"
+          ? { status: "confirmed", confirmedBy: userId, confirmedAt: now }
+          : outcome === "disputed"
+          ? { status: "disputed" } // the first report's score stays; the organiser decides
+          : { status: "reported", teamAGames, teamBGames, reportedBy: userId, confirmedBy: null, confirmedAt: null };
+      const [match] = await tx.update(matches).set(patch).where(eq(matches.id, matchId)).returning();
+
+      if (outcome === "confirmed") {
+        const roundMatches = await tx.select().from(matches).where(eq(matches.roundId, match.roundId));
+        if (roundMatches.every((m) => matchClosed(m.status))) {
+          await tx.update(sessionRounds).set({ status: "completed", completedAt: now }).where(eq(sessionRounds.id, match.roundId));
+        }
+      }
+      return { match, outcome, previous: existing };
+    });
+
+    // Audit trail in the server log, like the organiser's score entries.
+    const { match, outcome, previous } = result;
+    console.log(
+      `[TC LIVE] session ${match.sessionId}: match ${matchId} ${outcome} by player ${userId} - ` +
+        `${teamAGames}-${teamBGames}` +
+        (outcome === "disputed" ? ` (first report ${previous.teamAGames}-${previous.teamBGames} by ${previous.reportedBy})` : ""),
+    );
+    return { match, outcome };
   }
 
   async getSessionLeaderboard(sessionId: string): Promise<LeaderboardRow[]> {

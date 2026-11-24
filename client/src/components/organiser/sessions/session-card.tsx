@@ -43,7 +43,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { SessionListItem } from "@/lib/organiser-sessions-mock-data";
 import { SESSION_TYPE_OPTIONS } from "@/lib/organiser-session-wizard-types";
-import { bucketFor, sessionStatusLabel, STATUS_BADGE_STYLE, getPrimaryActionMeta, sessionEditPath } from "./session-utils";
+import { bucketFor, sessionStatusLabel, STATUS_BADGE_STYLE, getPrimaryActionMeta, sessionEditPath, OPEN_CHECK_IN_LABEL } from "./session-utils";
 import { SaveAsTemplateDialog } from "./save-as-template-dialog";
 import courtImage from "/assets/images/cinematic_tennis_court_abstract_background.webp";
 
@@ -104,7 +104,7 @@ export function SessionCard({ session, onDuplicate, onDelete, onArchive }: Sessi
   const primaryOnClick =
     bucket === "draft"
       ? openEdit // Continue Setup: back into the wizard, with everything that was saved
-      : (bucket === "registration-open" || bucket === "upcoming") && primaryAction.label === "Start Live"
+      : (bucket === "registration-open" || bucket === "upcoming") && primaryAction.label === OPEN_CHECK_IN_LABEL
       ? openLive
       : bucket === "registration-open" || bucket === "upcoming"
       ? openWorkspace

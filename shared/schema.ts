@@ -2200,3 +2200,18 @@ export const insertPaymentSchema = createInsertSchema(payments).omit({
 
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type Payment = typeof payments.$inferSelect;
+
+// Organiser Hub paid subscription (see server/lib/organiserSubscription.ts).
+export const organiserSubscriptions = pgTable("organiser_subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().unique().references(() => users.id),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id").unique(),
+  status: text("status").default("none").notNull(),
+  trialEnd: timestamp("trial_end", { withTimezone: true }),
+  currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+export type OrganiserSubscription = typeof organiserSubscriptions.$inferSelect;
