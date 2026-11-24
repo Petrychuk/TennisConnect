@@ -32,6 +32,7 @@ import {
   marketplaceItems,
   matches,
   messages,
+  organiserSubscriptions,
   organizationMembers,
   organizerRequests,
   passwordResetTokens,
@@ -65,6 +66,7 @@ export const USER_CASCADE_COVERAGE: Readonly<Record<string, "delete" | "set-null
   "payments.user_id": "set-null",
   "registration_audit_events.actor_id": "set-null",
   "registration_audit_events.player_id": "set-null",
+  "organiser_subscriptions.user_id": "delete",
   "password_reset_tokens.user_id": "delete",
   "email_verification_tokens.user_id": "delete",
   // Owned through an organisation: the caller removes (organisation
@@ -121,6 +123,7 @@ export async function deleteUserRows(qb: CascadeExecutor, userIds: readonly stri
   await qb.update(registrationAuditEvents).set({ actorId: null }).where(inArray(registrationAuditEvents.actorId, allowedIds));
   await qb.update(registrationAuditEvents).set({ playerId: null }).where(inArray(registrationAuditEvents.playerId, allowedIds));
 
+  await qb.delete(organiserSubscriptions).where(inArray(organiserSubscriptions.userId, allowedIds));
   await qb.delete(passwordResetTokens).where(inArray(passwordResetTokens.userId, allowedIds));
   await qb.delete(emailVerificationTokens).where(inArray(emailVerificationTokens.userId, allowedIds));
 
