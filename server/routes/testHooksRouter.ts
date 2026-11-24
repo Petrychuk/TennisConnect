@@ -48,7 +48,15 @@ export interface TestHooksDeps {
    * -> the cleanup hooks answer 501.
    */
   runCleanup?: RunCleanupDeps;
+  /**
+   * Organiser Hub subscription state for a run-owned test user (the paid-plan
+   * flag, server/lib/organiserSubscription.ts). Absent -> the hook answers 501.
+   */
+  setOrganiserSubscription?: (userId: string, status: string) => Promise<void>;
 }
+
+/** Subscription states a test may put a run-owned user in (never "grandfathered"). */
+export const TEST_SUBSCRIPTION_STATUSES = ["none", "trialing", "active", "past_due", "canceled"] as const;
 
 export interface RunCleanupDeps {
   /** Read-only plan, plus how many uploaded files would be removed (null if unknown). */
@@ -149,6 +157,39 @@ export function createTestHooksRouter(deps: TestHooksDeps) {
       }));
 
     res.json({ emails });
+  });
+
+  // Puts a run-owned test user's Organiser Hub subscription into a known state,
+  // so E2E tests can reach the "subscribed" and "lapsed" cases without a real
+  // Stripe Checkout. Writes only organiser_subscriptions - never users.is_organizer
+  // (approval stays a separate, admin action).
+  router.post("/organiser-subscription", async (req, res, next) => {
+    try {
+      const scope = runScope(req, res);
+      if (!scope) return;
+      if (!deps.setOrganiserSubscription) {
+        return res.status(501).json({ message: "Organiser subscription hook is not available" });
+      }
+      const { email, status } = req.body || {};
+      if (!email || typeof email !== "string") {
+        return res.status(400).json({ message: "Email is required" });
+      }
+      if (!(TEST_SUBSCRIPTION_STATUSES as readonly string[]).includes(status)) {
+        return res.status(400).json({ message: `status must be one of ${TEST_SUBSCRIPTION_STATUSES.join(", ")}` });
+      }
+      const user = await deps.storage.getUserByEmail(email);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      if (user.isTestUser !== true) {
+        return res.status(403).json({ message: "Subscriptions can only be set for test users" });
+      }
+      if (!userInRunScope(user, scope.runId)) {
+        return res.status(403).json({ message: "Subscriptions can only be set for this test run's users" });
+      }
+      await deps.setOrganiserSubscription(user.id, status);
+      res.json({ ok: true, status });
+    } catch (error) {
+      next(error);
+    }
   });
 
   router.post("/issue-verification-token", async (req, res, next) => {

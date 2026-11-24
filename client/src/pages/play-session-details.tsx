@@ -28,6 +28,7 @@ import { formatInTimeZone } from "@/lib/timezone";
 import { SESSION_TYPE_OPTIONS, sessionFormatLabel } from "@/lib/organiser-session-wizard-types";
 import { PLAY_STATUS_LABEL, PLAY_STATUS_STYLE } from "@/lib/play-status";
 import { getPlaySessionById, joinSession, leaveSession } from "@/lib/api/play";
+import { getPlayerLive, playerLiveKey } from "@/lib/api/live-player";
 import { FormattedPolicyText, SessionPoliciesList } from "@/components/play/session-policies";
 import { SessionVenueCard } from "@/components/play/session-venue-card";
 import { ShareSessionButton } from "@/components/play/share-session-button";
@@ -87,6 +88,13 @@ export default function PlaySessionDetailsPage() {
     retry: false,
   });
   const session = sessionQuery.data;
+  // Asked only for a registered player once the session has started (TC-189).
+  const playerLive = useQuery({
+    queryKey: playerLiveKey(sessionId ?? ""),
+    queryFn: () => getPlayerLive(sessionId!),
+    enabled: !!sessionId && isAuthenticated && session?.myRegistrationStatus === "registered" && session?.playStatus === "archived",
+    retry: false,
+  });
 
   const joinMutation = useMutation({
     mutationFn: () => joinSession(sessionId!, agreed),
@@ -167,9 +175,19 @@ export default function PlaySessionDetailsPage() {
   // on a direct link, but nobody can join, leave or cancel any more (the API
   // refuses too - shared/sessionLifecycle.ts). The organiser still runs it.
   const archived = session.playStatus === "archived";
+  // TC Live for players (TC-189): a registered player of a live session gets
+  // "Open TC Live" - only when the server says Live is available to them.
+  const liveEntry = playerLive.data?.session.status === "live";
   // Registration window closed before the start: places can't be cancelled either.
   const registrationClosed = session.playStatus === "closed";
-  if (archived) {
+  if (archived && liveEntry) {
+    note = <p className="text-sm text-muted-foreground">The session is live. See your court and enter your score.</p>;
+    action = (
+      <Button className="w-full min-h-12" asChild data-testid="play-session-details-open-live">
+        <Link href={`/play/${session.id}/live`}>Open TC Live</Link>
+      </Button>
+    );
+  } else if (archived) {
     note = <p className="text-sm text-muted-foreground" data-testid="play-session-details-archived-note">This session has started, so it's archived - registration is closed.</p>;
     action =
       session.myRegistrationStatus === "registered" || session.myRegistrationStatus === "waitlisted" ? (

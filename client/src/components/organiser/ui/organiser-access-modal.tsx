@@ -5,10 +5,14 @@ import { Button } from "@/components/ui/button";
 import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 import { useAuth } from "@/lib/auth-context";
 import { useOrganizerStatus } from "@/hooks/use-organizer-status";
+import { useOrganiserBilling } from "@/hooks/use-organiser-billing";
+import { PricingTerms } from "./organiser-subscription";
 import {
   ONBOARDING_COPY as COPY,
+  SUBSCRIPTION_COPY as SUB,
   canRequestAccess,
   resolveOnboardingView,
+  resolveSubscriptionView,
 } from "@/lib/organiserOnboarding";
 import { profilePathFor } from "@/lib/postVerifyTarget";
 import courtPhoto from "/assets/images/dynamic_tennis_ball_on_court_line_with_dramatic_lighting.png";
@@ -51,6 +55,9 @@ async function postOrganiserRequest(): Promise<{ ok: true } | { ok: false; messa
 export function OrganiserAccessModal({ onDismiss }: Props) {
   const { user, fetchCurrentUser } = useAuth();
   const { data: status, loading, refresh } = useOrganizerStatus(true);
+  // Pricing is shown only when the server says subscriptions are on.
+  const { data: billing } = useOrganiserBilling(true);
+  const showPricing = resolveSubscriptionView(billing) === "request-pricing" && !!billing?.price;
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -165,6 +172,13 @@ export function OrganiserAccessModal({ onDismiss }: Props) {
               <p role="alert" data-testid="organiser-onboarding-error" className="mt-3 rounded-lg border border-destructive/40 px-3 py-2.5 text-sm text-destructive">
                 {error}
               </p>
+            )}
+
+            {showPricing && billing?.price && (
+              <div className="mt-5 space-y-2">
+                <PricingTerms price={billing.price} testIdPrefix="organiser-onboarding" />
+                <p className="text-xs text-muted-foreground" data-testid="organiser-onboarding-after-approval">{SUB.afterApproval}</p>
+              </div>
             )}
 
             <div className="mt-6 flex flex-col gap-3">

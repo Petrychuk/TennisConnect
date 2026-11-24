@@ -39,7 +39,13 @@ export interface OrganiserFixture {
 // (GET /api/organizer/organizations/me). Returns with `page` already
 // logged in as the new organiser, sitting wherever
 // registerPlayer()/the reload left it.
-export async function becomeOrganiser(page: Page, organizationName?: string): Promise<OrganiserFixture> {
+/**
+ * Registers a run-owned player and has the admin approve them as an organiser
+ * (users.is_organizer = true) - approval only. With the paid-subscription flag on
+ * (ORGANISER_SUBSCRIPTION_ENABLED) such an account still has no subscription, so
+ * the Organiser Hub API answers 402 until one is set (grantTestSubscription).
+ */
+export async function registerApprovedOrganiser(page: Page) {
   const organiser = await registerPlayer(page);
   // Admin action on an account: it must belong to this run.
   expectRunOwned(organiser.email);
@@ -91,6 +97,36 @@ export async function becomeOrganiser(page: Page, organizationName?: string): Pr
   }
   if (!me.isOrganizer) {
     throw new Error('becomeOrganiser(): organiser access was granted but /api/auth/me still says isOrganizer: false');
+  }
+
+  return { organiser, me };
+}
+
+/** Is the paid Organiser Hub subscription switched on on this server? */
+export async function subscriptionsEnabled(page: Page): Promise<boolean> {
+  const res = await page.request.get('/api/organizer/billing/status', { failOnStatusCode: false });
+  if (!res.ok()) return false;
+  return !!(await res.json().catch(() => null))?.enabled;
+}
+
+/**
+ * Puts a run-owned test user's subscription in a known state through the
+ * Staging/local test hook (never a real Checkout, never Production). Only
+ * organiser_subscriptions changes: approval stays the admin's.
+ */
+export async function grantTestSubscription(email: string, status: 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' = 'trialing') {
+  expectRunOwned(email);
+  await postTestHook('organiser-subscription', { email, status });
+}
+
+export async function becomeOrganiser(page: Page, organizationName?: string): Promise<OrganiserFixture> {
+  const { organiser, me } = await registerApprovedOrganiser(page);
+
+  // Subscriptions on: an approved organiser also needs a subscription to use
+  // the Hub API (creating the organisation below). Tests that are not about
+  // billing get one here; ORG-SUB-* tests that are use registerApprovedOrganiser.
+  if (await subscriptionsEnabled(page)) {
+    await grantTestSubscription(organiser.email, 'trialing');
   }
 
   const name = organizationName ?? `Playwright Club ${Date.now()}`;

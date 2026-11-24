@@ -6,7 +6,16 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ONBOARDING_COPY, canRequestAccess, resolveOnboardingView, type OnboardingView } from "./organiserOnboarding";
+import {
+  ONBOARDING_COPY,
+  SUBSCRIPTION_COPY,
+  canRequestAccess,
+  formatPrice,
+  pricingCopy,
+  resolveOnboardingView,
+  resolveSubscriptionView,
+  type OnboardingView,
+} from "./organiserOnboarding";
 
 const none = { isOrganizer: false, request: null };
 const withRequest = (status: "pending" | "approved" | "rejected" | "revoked", isOrganizer = false) => ({
@@ -78,4 +87,56 @@ test("loading and failed status checks never offer the button", () => {
   assert.equal(failed.kind, "error");
   assert.equal(canRequestAccess(loading), false);
   assert.equal(canRequestAccess(failed), false);
+});
+
+// ---------- Paid subscription copy and visibility (TC-190 section F) ----------
+
+const PRICE = { amountCents: 4000, currency: "aud", interval: "month", trialDays: 7 };
+
+test("price formats as A$40, with cents only when there are some", () => {
+  assert.equal(formatPrice(PRICE), "A$40");
+  assert.equal(formatPrice({ amountCents: 3950, currency: "aud" }), "A$39.50");
+  assert.equal(formatPrice({ amountCents: 1000, currency: "usd" }), "USD 10");
+});
+
+test("pricing copy matches the ticket word for word", () => {
+  const copy = pricingCopy(PRICE);
+  assert.equal(copy.title, "Organiser Hub — A$40/month");
+  assert.equal(copy.trial, "Start with a 7-day free trial.");
+  assert.equal(
+    copy.terms,
+    "Try Organiser Hub free for 7 days. After your trial ends, your subscription will automatically renew at A$40 per month until you cancel.",
+  );
+  assert.equal(copy.cancel, "Cancel anytime before your trial ends to avoid being charged.");
+});
+
+test("the copy follows the server's price, so it cannot drift from what is charged", () => {
+  const copy = pricingCopy({ ...PRICE, amountCents: 5000, trialDays: 14 });
+  assert.match(copy.title, /A\$50\/month/);
+  assert.match(copy.trial, /14-day/);
+  assert.match(copy.terms, /free for 14 days/);
+});
+
+test("subscription UI is hidden unless the server says subscriptions are on", () => {
+  assert.equal(resolveSubscriptionView(null), "hidden");
+  assert.equal(resolveSubscriptionView(undefined), "hidden");
+  assert.equal(resolveSubscriptionView({ enabled: false, stage: "disabled" }), "hidden");
+  // Even a "stage" that would show something is ignored while billing is off.
+  assert.equal(resolveSubscriptionView({ enabled: false, stage: "not_approved" }), "hidden");
+  assert.equal(resolveSubscriptionView({ enabled: false, stage: "subscribe_required" }), "hidden");
+});
+
+test("subscription UI per stage when on: pricing before approval, subscribe after, manage once paying", () => {
+  assert.equal(resolveSubscriptionView({ enabled: true, stage: "not_approved" }), "request-pricing");
+  assert.equal(resolveSubscriptionView({ enabled: true, stage: "subscribe_required" }), "subscribe");
+  assert.equal(resolveSubscriptionView({ enabled: true, stage: "subscribed" }), "manage");
+  assert.equal(resolveSubscriptionView({ enabled: true, stage: "grandfathered" }), "hidden");
+  assert.equal(resolveSubscriptionView({ enabled: true, stage: "admin" }), "hidden");
+});
+
+test("the primary CTA and the approval rule are unchanged by billing", () => {
+  assert.equal(ONBOARDING_COPY.requestCta, "Request Organiser Access");
+  assert.equal(canRequestAccess({ kind: "none" }), true);
+  assert.match(ONBOARDING_COPY.note, /subject to approval/);
+  assert.match(SUBSCRIPTION_COPY.afterApproval, /approved/);
 });

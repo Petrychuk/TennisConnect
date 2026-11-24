@@ -40,6 +40,7 @@ import { db } from "../db";
 import { supabaseAdmin } from "../supabaseAdmin";
 import { applyRunCleanup, listRunResidue, listRunStorage, planRunCleanup } from "../services/e2eRunCleanup";
 import { supabaseRunStorage } from "../services/e2eRunStorage";
+import { organiserSubscriptionStore } from "../lib/organiserSubscriptionStore";
 
 /**
  * File deletion during run cleanup is a write to whichever Supabase project
@@ -69,6 +70,9 @@ export default createTestHooksRouter({
     secret: process.env[TEST_HOOK_SECRET_ENV],
   }),
   capturedEmails,
+  setOrganiserSubscription: async (userId, status) => {
+    await organiserSubscriptionStore.upsert(userId, { status });
+  },
   getPreflight: () => ({
     dbEnv: env.DB_ENV,
     commit:

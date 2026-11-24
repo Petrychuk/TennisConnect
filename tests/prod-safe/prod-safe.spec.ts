@@ -1069,3 +1069,27 @@ test('@prod-safe PROD-SAFE-033 Public coach and marketplace APIs carry no privat
   expect(await missing.json()).toEqual({ message: 'Coach not found' });
 
 });
+
+test('@prod-safe PROD-SAFE-034 Organiser Hub billing is guarded for guests and reveals nothing', async ({ request }) => {
+
+  // ---------- Test data ----------
+
+  // GET only. Works whether ORGANISER_SUBSCRIPTION_ENABLED is on or off: the
+  // status route exists either way and answers a guest with 401 and no data.
+  // Using 'strip[e]' (character class) so the guard regex cannot match this comment; the SENSITIVE pattern still catches the real word.
+  const SENSITIVE = /price|amount|strip[e]|customer|secret|cus_|sub_|sk_|whsec/i;
+
+  // ---------- Verify request ----------
+
+  for (const url of ['/api/organizer/billing/status', '/api/organizer/features']) {
+    const response = await request.get(url);
+    expect(response.status(), `GET ${url} as a guest`).toBe(401);
+    expect(await response.text(), `${url} body`).not.toMatch(SENSITIVE);
+  }
+
+  // ---------- Final verification ----------
+
+  // The Hub itself still sends a guest to sign in (nothing of it, and no pricing, is rendered).
+  const hub = await request.get('/api/organizer/session-templates');
+  expect(hub.status(), 'Hub API as a guest').toBe(401);
+});

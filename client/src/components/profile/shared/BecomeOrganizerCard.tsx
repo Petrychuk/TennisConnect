@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import type { OrganizerStatusData } from "@/hooks/use-organizer-status";
 import { resolveOrganizerCardView } from "@/lib/organizer-status";
+import { ManageSubscriptionRow } from "@/components/organiser/ui/organiser-subscription";
 
 interface BecomeOrganizerCardProps {
   status: OrganizerStatusData;
@@ -64,6 +65,7 @@ export function BecomeOrganizerCard({ status, onChange }: BecomeOrganizerCardPro
       </CardHeader>
       <CardContent>
         {view.kind === "approved" ? (
+          <>
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
             <div className="flex items-center gap-2 text-sm" data-testid="organizer-status-approved">
               <CheckCircle2 className="w-4 h-4 text-primary-text" />
@@ -73,6 +75,8 @@ export function BecomeOrganizerCard({ status, onChange }: BecomeOrganizerCardPro
               <Link href="/organiser">Open Organiser Hub</Link>
             </Button>
           </div>
+          <ManageSubscriptionRow />
+          </>
         ) : view.kind === "pending" ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="organizer-request-pending">
             <Clock className="w-4 h-4" />

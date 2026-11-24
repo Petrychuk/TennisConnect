@@ -83,14 +83,18 @@ export const STATUS_BADGE_STYLE: Record<string, string> = {
 
 /**
  * The organiser's status label for a session: the bucket's label, except a
- * published session from 2 hours before its start - and after it, until the
- * organiser starts TC Live - reads "Ready to Start" (shared/sessionLifecycle.ts).
+ * published session from 2 hours before its start reads "Ready to Start"
+ * (derived - shared/sessionLifecycle.ts). At the start time it turns live by
+ * itself; only with TC Live switched off does it stay Ready to Start.
  * Every Hub screen (list row, grid card, workspace header) uses this one.
  */
 export function sessionStatusLabel(session: { status: string; startAt: string | Date }, bucket: Exclude<SessionBucket, "all">): string {
   if ((bucket === "registration-open" || bucket === "upcoming") && isReadyToStart(session)) return "Ready to Start";
   return STATUS_BADGE_LABEL[bucket];
 }
+
+/** Ready to Start's primary action: opens the Live screen's check-in. */
+export const OPEN_CHECK_IN_LABEL = "Open Check-in";
 
 export interface SessionPrimaryAction {
   label: string;
@@ -107,10 +111,10 @@ export interface SessionPrimaryAction {
 // hasRounds: false for Coaching & Fitness (shared/sessionCategories.ts) -
 // they have no Results tab, so a finished one opens its players instead.
 export function getPrimaryActionMeta(bucket: Exclude<SessionBucket, "all">, playIcon: LucideIcon, liveAvailable = true, hasRounds = true, readyToStart = false): SessionPrimaryAction {
-  // Ready to Start: the one action is starting TC Live (the organiser's
-  // explicit step - the clock never starts it).
+  // Ready to Start: the one action is checking players in on the Live
+  // screen. Live itself starts automatically at the scheduled start (TC-189).
   if (readyToStart && liveAvailable && hasRounds && (bucket === "registration-open" || bucket === "upcoming")) {
-    return { label: "Start Live", urgent: true, icon: playIcon };
+    return { label: OPEN_CHECK_IN_LABEL, urgent: true, icon: playIcon };
   }
   switch (bucket) {
     case "draft":

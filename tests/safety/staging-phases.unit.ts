@@ -103,6 +103,7 @@ describe('staging phases', () => {
     assert.deepEqual(keysOf(STAGING_PHASES.stripe), [
       key('tests/support/back-the-rally.spec.ts', 'SUPPORT-007'),
       key('tests/support/back-the-rally.spec.ts', 'SUPPORT-008'),
+      key('tests/organiser/organiser-subscription.spec.ts', 'ORG-SUB-011'),
     ]);
     assert.equal(STAGING_PHASE_ORDER.indexOf('security-last'), STAGING_PHASE_ORDER.length - 2);
     assert.ok(keysOf(LOCAL_ONLY_TESTS).includes(key('tests/admin/users/admin-user-delete.spec.ts', 'ADMIN-009')));

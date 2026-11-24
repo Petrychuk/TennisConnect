@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isPubliclyActive, isReadyToStart, registrationBlockReason, waitlistPromotionOpen } from "./sessionLifecycle";
+import { isDueToGoLive, isPubliclyActive, isReadyToStart, registrationBlockReason, waitlistPromotionOpen } from "./sessionLifecycle";
 
 const now = new Date("2026-11-10T08:00:00Z");
 const h = (hours: number) => new Date(now.getTime() + hours * 3600_000).toISOString();
@@ -62,4 +62,41 @@ test("waitlistPromotionOpen: same cutoff as a player's own cancel", () => {
   for (const status of ["live", "completed", "archived", "cancelled", "draft", "pending_review"]) {
     assert.equal(waitlistPromotionOpen({ ...base, status }, now), false, status);
   }
+});
+
+// TC-189 PO decision 10 Nov 2026: Live starts automatically at the scheduled start.
+test("isDueToGoLive: exactly at the scheduled start, not a millisecond before", () => {
+  const start = "2026-11-20T08:00:00Z";
+  const s = { status: "published", startAt: start, type: "social" };
+  assert.equal(isDueToGoLive(s, new Date("2026-11-20T07:59:59.999Z")), false);
+  assert.equal(isDueToGoLive(s, new Date(start)), true);
+  assert.equal(isDueToGoLive(s, new Date("2026-11-20T11:00:00Z")), true, "late: still due until it is started");
+});
+
+test("isDueToGoLive: an earlier registration deadline does not start Live", () => {
+  const s = { status: "published", startAt: "2026-11-20T08:00:00Z", registrationClosesAt: "2026-11-19T08:00:00Z", type: "social" };
+  const between = new Date("2026-11-19T20:00:00Z");
+  assert.equal(registrationBlockReason(s, "join", between), "Registration is closed.");
+  assert.equal(isDueToGoLive(s, between), false);
+});
+
+test("isDueToGoLive: only published sessions in formats that run in TC Live", () => {
+  const now = new Date("2026-11-20T09:00:00Z");
+  const base = { status: "published", startAt: "2026-11-20T08:00:00Z" };
+  for (const type of ["social", "americano", "tournament", "custom", null]) {
+    assert.equal(isDueToGoLive({ ...base, type }, now), true, String(type));
+  }
+  for (const type of ["coaching-clinic", "cardio-tennis", "junior-development"]) {
+    assert.equal(isDueToGoLive({ ...base, type }, now), false, type);
+  }
+  for (const status of ["draft", "pending_review", "live", "completed", "archived", "cancelled"]) {
+    assert.equal(isDueToGoLive({ ...base, status, type: "social" }, now), false, status);
+  }
+});
+
+test("isDueToGoLive: an absolute instant - the same answer in every server time zone (incl. Sydney DST start)", () => {
+  // 2026-10-04 02:00 Sydney is the DST jump (AEST -> AEDT). 09:00 AEDT = 22:00Z the day before.
+  const s = { status: "published", startAt: "2026-10-04T09:00:00+11:00", type: "social" };
+  assert.equal(isDueToGoLive(s, new Date("2026-10-03T21:59:59Z")), false);
+  assert.equal(isDueToGoLive(s, new Date("2026-10-03T22:00:00Z")), true);
 });

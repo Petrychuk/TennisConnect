@@ -32,6 +32,7 @@ import {
   WifiOff,
   Flag,
   Shuffle,
+  Clock,
 } from "lucide-react";
 import { TennisBallSpinner } from "@/components/ui/tennisLoader";
 import { useToast } from "@/hooks/use-toast";
@@ -135,7 +136,9 @@ function OrganiserSessionLivePageContent() {
     queryKey: ["/api/organizer/sessions", sessionId],
     queryFn: () => getSessionById(sessionId!),
     enabled: !!sessionId,
-    refetchInterval: (query) => ((query.state.data as any)?.status === "live" ? LIVE_REFRESH_MS : false),
+    // Also while published: Live starts by itself at the scheduled start
+    // (TC-189), and the check-in screen must switch to it without a reload.
+    refetchInterval: (query) => (["live", "published"].includes((query.state.data as any)?.status) ? LIVE_REFRESH_MS : false),
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   });
@@ -390,6 +393,7 @@ function OrganiserSessionLivePageContent() {
             loading={registrationsQuery.isLoading}
             busy={busy}
             goLiveBlocker={goLiveProblem(session, available)}
+            startAt={session.startAt}
             waitlisted={session.waitlistedCount}
             onCheckIn={(id) => runAction("check that player in", () => checkInRegistration(session.id, id))}
             onGoLive={() => runAction("go live", () => goLiveSession(session.id))}
@@ -496,6 +500,7 @@ function CheckInPanel({
   loading,
   busy,
   goLiveBlocker,
+  startAt,
   waitlisted,
   onCheckIn,
   onGoLive,
@@ -504,6 +509,7 @@ function CheckInPanel({
   loading: boolean;
   busy: boolean;
   goLiveBlocker: string | null;
+  startAt: string | Date;
   waitlisted: number;
   onCheckIn: (registrationId: string) => void;
   onGoLive: () => void;
@@ -512,7 +518,8 @@ function CheckInPanel({
   const done = registered.filter((r) => !!r.checkedInAt).length;
   return (
     <section className="space-y-3" data-testid="organiser-session-live-checkin">
-      {/* The one action before Live: Go Live, with what still blocks it. */}
+      {/* Before Live: check-in. Live starts by itself at the scheduled start
+          (TC-189); "Start now" is only for starting early. */}
       <div className="rounded-2xl border border-border bg-card p-4 shadow-sm space-y-3">
         <div className="flex items-end justify-between gap-3">
           <div>
@@ -524,9 +531,13 @@ function CheckInPanel({
           <p className="text-2xl font-bold tabular-nums">{registered.length ? Math.round((done / registered.length) * 100) : 0}%</p>
         </div>
         <Progress value={registered.length ? (done / registered.length) * 100 : 0} className="h-2" aria-label="Checked in" />
-        <Button size="lg" disabled={!!goLiveBlocker || busy} onClick={onGoLive} className="w-full min-h-12 text-base" data-testid="organiser-session-live-go-live">
+        <p className="flex items-center gap-2 rounded-xl bg-primary/10 px-3 py-2 text-sm font-medium text-primary-text" data-testid="organiser-session-live-auto-start">
+          <Clock className="w-4 h-4 shrink-0" aria-hidden />
+          Live starts automatically at {new Date(startAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        </p>
+        <Button size="lg" variant="outline" disabled={!!goLiveBlocker || busy} onClick={onGoLive} className="w-full min-h-12 text-base" data-testid="organiser-session-live-go-live">
           <Play className="w-5 h-5 mr-2" />
-          Go Live
+          Start now
         </Button>
         {goLiveBlocker && (
           <p className="text-sm text-muted-foreground text-center" data-testid="organiser-session-live-go-live-blocker">{goLiveBlocker}</p>
@@ -683,6 +694,8 @@ function LiveRoundPanel({
 
   const total = round.matches.length;
   const scored = round.matches.filter((m) => m.status === "confirmed" || m.status === "abandoned").length;
+  // Player-entered scores waiting for the other side or for the organiser (TC-189).
+  const toReview = round.matches.filter((m) => m.status === "reported" || m.status === "disputed").length;
   const resting = round.round.restingPlayerIds ?? [];
   const allIn = round.round.status === "completed";
   return (
@@ -694,6 +707,7 @@ function LiveRoundPanel({
             <p className="font-display text-2xl font-bold leading-none">Round {round.round.roundNumber}</p>
             <p className="mt-1 text-sm text-muted-foreground" data-testid="organiser-session-live-round-status">
               Round {round.round.roundNumber} · {allIn ? "all scores in" : "in progress"}
+              {toReview > 0 ? ` · ${toReview} to confirm` : ""}
               {resting.length > 0 ? ` · ${resting.length} resting` : ""}
             </p>
           </div>
@@ -788,8 +802,13 @@ function MatchCard({
   const names = (players: MatchWithPlayers["teamA"]) => players.map((p) => p.name).join(" & ");
   const confirmed = match.status === "confirmed";
   const notPlayed = match.status === "abandoned";
+  // Scores from players (TC-189): one side reported, waiting for the other
+  // side; or the two sides disagree. The organiser confirms or decides.
+  const reported = match.status === "reported";
+  const disputed = match.status === "disputed";
   const open = match.status === "pending" || match.status === "playing";
-  const showInputs = open || ((confirmed || notPlayed) && editing);
+  const showInputs = open || disputed || ((confirmed || notPlayed || reported) && editing);
+  const reporterName = [...match.teamA, ...match.teamB].find((p) => p.id === match.reportedBy)?.name;
   const a = teamAGames === "" ? NaN : Number(teamAGames);
   const b = teamBGames === "" ? NaN : Number(teamBGames);
   const filled = teamAGames !== "" && teamBGames !== "";
@@ -819,8 +838,8 @@ function MatchCard({
             onChange={(e) => setValue(e.target.value)}
             data-testid={`${id}-score-${key}`}
           />
-        ) : confirmed ? (
-          <span className="w-12 shrink-0 text-center text-2xl font-bold tabular-nums">{final}</span>
+        ) : confirmed || reported ? (
+          <span className={cn("w-12 shrink-0 text-center text-2xl font-bold tabular-nums", reported && "text-muted-foreground")}>{final}</span>
         ) : null}
       </div>
     );
@@ -836,6 +855,10 @@ function MatchCard({
           <Badge className="gap-1 bg-amber-100 text-amber-800 hover:bg-amber-100"><Hourglass className="w-3.5 h-3.5" /> Playing</Badge>
         ) : match.status === "abandoned" ? (
           <Badge variant="outline" className="text-muted-foreground">Not played</Badge>
+        ) : reported ? (
+          <Badge className="gap-1 bg-sky-100 text-sky-800 hover:bg-sky-100" data-testid={`${id}-reported`}><Hourglass className="w-3.5 h-3.5" /> To confirm</Badge>
+        ) : disputed ? (
+          <Badge className="gap-1 bg-destructive/10 text-destructive hover:bg-destructive/10" data-testid={`${id}-disputed`}>Scores differ</Badge>
         ) : (
           <Badge variant="outline" className="gap-1 text-muted-foreground">Not started</Badge>
         )}
@@ -851,6 +874,16 @@ function MatchCard({
       {open && awayNames.length > 0 && (
         <p className="rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900" data-testid={`${id}-player-away`}>
           {awayNames.join(" & ")} {awayNames.length === 1 ? "is" : "are"} out now. Enter the score so far, or mark the match Not played.
+        </p>
+      )}
+      {reported && !editing && (
+        <p className="text-xs text-muted-foreground" data-testid={`${id}-reported-note`}>
+          Entered by {reporterName ?? "a player"}. The other side confirms it, or you can.
+        </p>
+      )}
+      {disputed && (
+        <p className="rounded-lg bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive" data-testid={`${id}-disputed-note`}>
+          The two sides entered different scores ({reporterName ?? "first entry"}: {match.teamAGames}–{match.teamBGames}). Enter the correct score.
         </p>
       )}
       {notPlayed && !editing && (
@@ -876,10 +909,37 @@ function MatchCard({
             }}
             data-testid={`${id}-save-score`}
           >
-            {confirmed || notPlayed ? "Save" : "Enter Score"}
+            {confirmed || notPlayed || reported ? "Save" : disputed ? "Decide Score" : "Enter Score"}
           </Button>
         )}
-        {open && (
+        {reported && !editing && match.teamAGames != null && match.teamBGames != null && (
+          <Button
+            size="sm"
+            className="min-h-11 flex-1"
+            disabled={busy}
+            onClick={() => onScore(match.id, match.teamAGames!, match.teamBGames!)}
+            data-testid={`${id}-confirm-reported`}
+          >
+            Confirm {match.teamAGames}–{match.teamBGames}
+          </Button>
+        )}
+        {reported && !editing && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="min-h-11"
+            disabled={busy}
+            onClick={() => {
+              setTeamAGames(String(match.teamAGames ?? ""));
+              setTeamBGames(String(match.teamBGames ?? ""));
+              setEditing(true);
+            }}
+            data-testid={`${id}-change-reported`}
+          >
+            Change
+          </Button>
+        )}
+        {(open || reported || disputed) && !editing && (
           <Button
             size="sm"
             variant="ghost"
@@ -896,7 +956,7 @@ function MatchCard({
             Enter score
           </Button>
         )}
-        {(confirmed || notPlayed) && editing && (
+        {(confirmed || notPlayed || reported) && editing && (
           <Button size="sm" variant="ghost" className="min-h-11" onClick={() => setEditing(false)} data-testid={`${id}-correct-cancel`}>
             Cancel
           </Button>

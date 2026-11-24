@@ -25,6 +25,8 @@ import coachesRouter from "./routes/coaches";
 import { sendSystemMessage, sendMessageBetween, pairConversationId, ORGANIZER_APPROVED_SUBJECT, ORGANIZER_APPROVED_MESSAGE } from "./services/systemMessages";
 import uploadContentRouter from "./routes/upload-content";
 import organizerRouter from "./routes/organizer";
+import livePlayerRouter from "./routes/livePlayer";
+import organizerBillingRouter from "./routes/organizerBilling";
 import playRouter from "./routes/play";
 import weatherRouter from "./routes/weather";
 import supportRouter from "./routes/support";
@@ -190,7 +192,10 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/api/players", playersRouter);
   app.use("/api/coaches", coachesRouter);
   app.use("/api/upload/content", uploadContentRouter);
+  app.use("/api/organizer/billing", organizerBillingRouter);
   app.use("/api/organizer", organizerRouter);
+  // TC Live for players: their match, score reports (TC-189).
+  app.use("/api/live", livePlayerRouter);
   app.use("/api/play", playRouter);
   app.use("/api/weather", weatherRouter);
   app.use("/api/support", supportRouter);

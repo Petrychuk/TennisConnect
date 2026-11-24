@@ -1,3 +1,4 @@
+import { autoStartIfDue } from "../lib/liveAutoStart";
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { storage } from "../storage";
 import { requireAuth, requireAdmin } from "../requireAuth";
@@ -18,6 +19,8 @@ import {
 import { joinBlockedReason } from "@shared/sessionJoinRules";
 import { registrationBlockReason } from "@shared/sessionLifecycle";
 import { isInternalTestUser, liveAllowedFor, liveMode } from "../lib/liveFeature";
+import { hasOrganiserEntitlement, subscriptionEnabled } from "../lib/organiserSubscription";
+import { organiserSubscriptionStore } from "../lib/organiserSubscriptionStore";
 import { LiveRuleError } from "../lib/liveErrors";
 import { fixedFieldProblem, sessionLinkageProblem } from "../lib/sessionLinkage";
 import { LATE_ADD_REASON_MAX } from "../lib/registrationTx";
@@ -48,13 +51,26 @@ import {
 
 const router = Router();
 
-function requireOrganizer(req: Request, res: Response, next: NextFunction) {
+async function requireOrganizer(req: Request, res: Response, next: NextFunction) {
     const u = req.user as any;
       // Admins can create Organizations/Sessions directly — they don't need
       // to request organizer access from themselves.
       if (!u?.isOrganizer && !u?.isAdmin) {
          return res.status(403).json({ message: "Organiser access required" });
        }
+      // Paid subscription (ORGANISER_SUBSCRIPTION_ENABLED, default off): an
+      // approved organiser also needs an active/trialing subscription or a
+      // grandfathered account. Admins never do.
+      if (!u.isAdmin && subscriptionEnabled()) {
+        try {
+          const sub = await organiserSubscriptionStore.get(u.id);
+          if (!hasOrganiserEntitlement({ enabled: true, isOrganizer: u.isOrganizer, status: sub?.status ?? null })) {
+            return res.status(402).json({ message: "An active Organiser Hub subscription is required", code: "SUBSCRIPTION_REQUIRED" });
+          }
+        } catch (error) {
+          return next(error);
+        }
+      }
        next();
 }
 
@@ -907,7 +923,9 @@ async function requireOwnSession(req: Request, res: Response, next: NextFunction
     if (!organization || organization.ownerId !== (req.user as any).id) {
       return res.status(403).json({ message: "Forbidden" });
     }
-    (req as any).session_ = session;
+    // TC Live: a session due to start is turned live before anything else
+    // sees it, so every route acts on the effective state (TC-189).
+    (req as any).session_ = await autoStartIfDue(storage, session);
     next();
   } catch (error) {
     next(error);
@@ -1363,7 +1381,7 @@ router.get("/admin/sessions", requireAdmin, async (req, res, next) => {
 // Live entry points from this, but the routes enforce the flag themselves.
 // "internal": Live only for internal test sessions (session.isInternalTest).
 router.get("/features", requireAuth, (_req, res) => {
-  res.json({ live: liveMode() });
+  res.json({ live: liveMode(), subscription: subscriptionEnabled() });
 });
 
 // "Play This Week" — published sessions across all organizations, next 7 days.
@@ -1395,6 +1413,9 @@ router.get("/sessions/:id", requireAuth, async (req, res, next) => {
         return res.status(403).json({ message: "Forbidden" });
       }
     }
+    // Due to start -> turned live first, so the Hub never shows a stale
+    // "published" for a session that has started (TC-189 automatic start).
+    await autoStartIfDue(storage, session);
     const enriched = await storage.getSessionByIdWithDetails(req.params.id, (req.user as any).id);
     res.json(enriched);
   } catch (error) {

@@ -76,7 +76,7 @@ export const STAGING_PHASES: Readonly<Record<StagingPhase, readonly PhaseEntry[]
     // stay in the read-only set (staging-readonly.ts).
     {
       file: 'tests/prod-safe/prod-safe.spec.ts',
-      ids: Array.from({ length: 28 }, (_, i) => `PROD-SAFE-${String(i + 6).padStart(3, '0')}`),
+      ids: Array.from({ length: 29 }, (_, i) => `PROD-SAFE-${String(i + 6).padStart(3, '0')}`),
     },
   ],
   'mutating-core': [
@@ -115,6 +115,13 @@ export const STAGING_PHASES: Readonly<Record<StagingPhase, readonly PhaseEntry[]
     {
       file: 'tests/organiser/organiser-onboarding.spec.ts',
       ids: ['ORG-ONB-001', 'ORG-ONB-002', 'ORG-ONB-003', 'ORG-ONB-004', 'ORG-ONB-005', 'ORG-ONB-006', 'ORG-ONB-007', 'ORG-ONB-009', 'ORG-ONB-010', 'ORG-ONB-011', 'ORG-ONB-012a', 'ORG-ONB-012b'],
+    },
+    // Organiser Hub paid subscription (17 Nov 2026): run-owned players/organisers; subscription
+    // states are set through the run-scoped test hook (no card, no real Checkout). Tests skip
+    // themselves for the flag mode (ORGANISER_SUBSCRIPTION_ENABLED) the server is not in.
+    {
+      file: 'tests/organiser/organiser-subscription.spec.ts',
+      ids: ['ORG-SUB-002', 'ORG-SUB-003', 'ORG-SUB-004', 'ORG-SUB-005', 'ORG-SUB-006', 'ORG-SUB-007', 'ORG-SUB-008', 'ORG-SUB-009', 'ORG-SUB-010'],
     },
     // Dashboard states (5 Nov 2026): run-owned organiser with no sessions; failures are simulated
     // in the browser (page.route), nothing extra is written.
@@ -171,7 +178,8 @@ export const STAGING_PHASES: Readonly<Record<StagingPhase, readonly PhaseEntry[]
       file: 'tests/live/live-engine.spec.ts',
       // LIVE-017: lifecycle (delayed start, Live past its end, Finish -> completed).
       // LIVE-018/019 (TC-189 phase 4): Not played, Redo round. LIVE-020 (phase 5): results after Finish.
-      ids: Array.from({ length: 20 }, (_, i) => `LIVE-${String(i + 1).padStart(3, '0')}`),
+      // LIVE-021/022 (TC-189, 24 Nov 2026): players score on their phones - a 2:2 draw confirmed; a dispute decided by the organiser.
+      ids: Array.from({ length: 22 }, (_, i) => `LIVE-${String(i + 1).padStart(3, '0')}`),
     },
     { file: 'tests/play/play.spec.ts', ids: ['PLAY-001', 'PLAY-002', 'PLAY-003', 'PLAY-004', 'PLAY-005', 'PLAY-006'] },
     {
@@ -200,7 +208,11 @@ export const STAGING_PHASES: Readonly<Record<StagingPhase, readonly PhaseEntry[]
     },
   ],
   'security-last': [{ file: 'tests/security/security-payloads.spec.ts', ids: ['SEC-LOGIN', 'SEC-FORGOT'] }],
-  stripe: [{ file: 'tests/support/back-the-rally.spec.ts', ids: ['SUPPORT-007', 'SUPPORT-008'] }],
+  stripe: [
+    { file: 'tests/support/back-the-rally.spec.ts', ids: ['SUPPORT-007', 'SUPPORT-008'] },
+    // Creates a Stripe Checkout subscription session (test mode); never opens Stripe's page.
+    { file: 'tests/organiser/organiser-subscription.spec.ts', ids: ['ORG-SUB-011'] },
+  ],
 };
 
 /**
