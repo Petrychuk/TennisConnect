@@ -5354,7 +5354,7 @@ export class DatabaseStorage implements IStorage {
       eq(tennisSessions.status, "published"),
       lte(tennisSessions.startAt, now),
       notInArray(tennisSessions.type, nonLiveFormats),
-      sql`not exists (select 1 from tennis_sessions child where child.parent_session_id = ${tennisSessions.id})`,
+      sql`not exists (select 1 from sessions child where child.parent_session_id = ${tennisSessions.id})`,
     ];
     if (opts.internalOnly) conditions.push(eq(tennisSessions.isInternalTest, true));
     if (opts.sessionId) conditions.push(eq(tennisSessions.id, opts.sessionId));
