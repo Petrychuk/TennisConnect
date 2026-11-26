@@ -372,6 +372,12 @@ test('ADMIN-008 Delete User - an empty organization is cascaded away, not a bloc
   });
   expect(orgResponse.ok()).toBeTruthy();
 
+  // Clear the player session before switching back to admin — the API login
+  // above changed the cookie to the player's, so without this cleanup the
+  // admin login can race with stale requests that re-set the player cookie.
+  await page.goto('about:blank');
+  await page.context().clearCookies();
+
   await login(
     page,
     TEST_USERS.admin.email,

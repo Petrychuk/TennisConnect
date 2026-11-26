@@ -125,7 +125,9 @@ test.describe('Organiser Rankings', () => {
     await page.getByTestId(`organiser-rankings-filter-series-${tuesday.id}`).click();
     const tuesdayRowA = page.getByTestId(`organiser-rankings-row-${a.id}`);
     await expect(tuesdayRowA).toBeVisible({ timeout: 15000 });
-    await expect(tuesdayRowA).toContainText('31');
+    // Points column (5th cell: rank, name, sessions, wins, points)
+    const tuesdayPointsA = tuesdayRowA.locator('td').nth(4);
+    await expect(tuesdayPointsA).toHaveText('31');
 
     // Switch to Wednesday - this must show the OPPOSITE result. If
     // Tuesday's points had leaked in (summed, or the filter silently
@@ -135,8 +137,11 @@ test.describe('Organiser Rankings', () => {
     const wednesdayRowC = page.getByTestId(`organiser-rankings-row-${c.id}`);
     const wednesdayRowA = page.getByTestId(`organiser-rankings-row-${a.id}`);
     await expect(wednesdayRowC).toBeVisible({ timeout: 15000 });
-    await expect(wednesdayRowC).toContainText('31');
-    await expect(wednesdayRowA).not.toContainText('31');
+    // Check the points cell specifically to avoid substring match on player names
+    const wednesdayPointsC = wednesdayRowC.locator('td').nth(4);
+    const wednesdayPointsA = wednesdayRowA.locator('td').nth(4);
+    await expect(wednesdayPointsC).toHaveText('31');
+    await expect(wednesdayPointsA).not.toHaveText('31');
   });
 
   test('@smoke ORG-RANK-006 ORG-RANK-007 ORG-RANK-008 Session Results vs accumulated Series Ranking', async ({ page }) => {

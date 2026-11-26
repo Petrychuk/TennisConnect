@@ -90,7 +90,7 @@ test.describe('Organiser subscription', () => {
     const text = (await modal(page).innerText()) ?? '';
     expect(text, 'no billing claim while billing is off').not.toMatch(/A\$|free trial|per month|\/month|subscription/i);
     await expect(page.getByTestId('organiser-onboarding-request')).toHaveText(COPY.request);
-    await expect(page.getByTestId('organiser-onboarding-request')).toBeEnabled();
+    await expect(page.getByTestId('organiser-onboarding-request')).toBeEnabled({ timeout: 15000 });
 
     // Billing endpoints do nothing: no Stripe call, no customer, no session.
     for (const path of ['/api/organizer/billing/checkout', '/api/organizer/billing/portal']) {

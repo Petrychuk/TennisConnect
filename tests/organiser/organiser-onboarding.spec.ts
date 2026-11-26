@@ -38,6 +38,7 @@ const modal = (page: Page) => page.getByTestId('organiser-onboarding-modal');
 /** Registers a run-owned player (verified, signed in) and opens the Hub directly. */
 async function openHubAsNewPlayer(page: Page) {
   const user = await registerPlayer(page);
+  await completePlayerProfile(page);
   await page.goto('/organiser');
   await expect(modal(page)).toBeVisible({ timeout: 15000 });
   return user;
