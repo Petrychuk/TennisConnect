@@ -10,18 +10,22 @@
 //                                 ignored, so Production delivery can't be
 //                                 switched off (or on) by this mechanism.
 //   EMAIL_TRANSPORT=resend     -> "resend" (explicit opt-out elsewhere)
-//   EMAIL_TRANSPORT=capture    -> "capture"
-//   DB_ENV=staging (unset)     -> "capture"  <- Staging default, EXCEPT
+//   DB_ENV=staging             -> "capture"  <- Staging default, EXCEPT
 //                                 recipients on STAGING_EMAIL_ALLOWLIST
 //                                 (real team addresses for manual testing,
 //                                 e.g. password reset) -> "resend"
+//                                 The allowlist overrides EMAIL_TRANSPORT
+//                                 on Staging (but never for test domains).
+//   EMAIL_TRANSPORT=capture    -> "capture" (outside Staging / Production)
 //   anything else (local dev)  -> "resend"   (unchanged behaviour)
 //
 // STAGING_EMAIL_ALLOWLIST: comma/space separated exact addresses
 // ("anna@gmail.com") and/or whole domains ("@tennisconnect.com.au").
-// Applies on Staging only, never overrides EMAIL_TRANSPORT=capture, and
-// never matches the reserved test domain - automated test accounts
-// (@tennisconnect.test) are always captured.
+// Applies on Staging only and never matches the reserved test domain -
+// automated test accounts (@tennisconnect.test) are always captured.
+// The allowlist takes priority over EMAIL_TRANSPORT=capture on Staging
+// so that manual testing receives real emails while E2E tests (which
+// use @tennisconnect.test addresses) remain captured.
 //
 // Storage is in-process memory (decided 24 Oct 2026): no migration, lost on
 // restart, assumes a single Staging instance. Bounded by count and age.
@@ -44,10 +48,13 @@ export function resolveEmailTransport(source: {
 
   if (dbEnv === "production") return "resend";
   if (configured === "resend") return "resend";
-  if (configured === "capture") return "capture";
+  // On Staging the allowlist takes priority over EMAIL_TRANSPORT=capture
+  // so that manual testing (real team addresses) receives real emails
+  // while E2E tests (@tennisconnect.test, never allowlisted) stay captured.
   if (dbEnv === "staging") {
     return isAllowlistedRecipient(source.recipient, source.allowlist) ? "resend" : "capture";
   }
+  if (configured === "capture") return "capture";
   return "resend";
 }
 

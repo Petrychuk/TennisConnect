@@ -114,12 +114,21 @@ async function main() {
     assert.equal(resolveEmailTransport({ dbEnv: "staging", configured: undefined, recipient: "e2e-run-x@tennisconnect.test", allowlist: list }), "capture");
   });
 
-  await test("the allowlist applies on Staging only and never overrides EMAIL_TRANSPORT=capture", () => {
+  await test("on Staging the allowlist takes priority over EMAIL_TRANSPORT=capture", () => {
     const base = { recipient: "anna.tester@gmail.com", allowlist: ALLOW };
-    assert.equal(resolveEmailTransport({ ...base, dbEnv: "staging", configured: "capture" }), "capture");
+    // Allowlisted recipient gets real email even when EMAIL_TRANSPORT=capture
+    assert.equal(resolveEmailTransport({ ...base, dbEnv: "staging", configured: "capture" }), "resend", "allowlisted + capture → resend");
+    // Non-allowlisted recipient stays captured
+    assert.equal(resolveEmailTransport({ dbEnv: "staging", configured: "capture", recipient: "someone@gmail.com", allowlist: ALLOW }), "capture", "non-allowlisted + capture → capture");
+    // Reserved test domain stays captured even with capture configured
+    assert.equal(resolveEmailTransport({ dbEnv: "staging", configured: "capture", recipient: "e2e@tennisconnect.test", allowlist: ALLOW }), "capture", "test domain + capture → capture");
+    // No recipient (preflight) stays captured
+    assert.equal(resolveEmailTransport({ dbEnv: "staging", configured: "capture" }), "capture", "no recipient (preflight) → capture");
+    // Production is unchanged regardless
     assert.equal(resolveEmailTransport({ ...base, dbEnv: "production", configured: undefined }), "resend", "Production unchanged");
-    assert.equal(resolveEmailTransport({ ...base, dbEnv: "unknown", configured: "capture" }), "capture");
-    assert.equal(resolveEmailTransport({ dbEnv: "staging", configured: undefined, recipient: "someone@gmail.com", allowlist: ALLOW }), "capture");
+    // Outside Staging/Production, EMAIL_TRANSPORT=capture still works
+    assert.equal(resolveEmailTransport({ ...base, dbEnv: "unknown", configured: "capture" }), "capture", "non-staging capture honoured");
+    assert.equal(resolveEmailTransport({ dbEnv: "staging", configured: undefined, recipient: "someone@gmail.com", allowlist: ALLOW }), "capture", "non-allowlisted without capture");
   });
 
   await test("malformed allowlist entries are ignored", () => {
